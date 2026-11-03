@@ -81,6 +81,7 @@ import * as m0092 from './0092_very_low_priority';
 import * as m0093 from './0093_board_card_defaults';
 import * as m0094 from './0094_board_kind_decides_backlog';
 import * as m0095 from './0095_points_field';
+import * as m0096 from './0096_ticket_checklists';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -172,4 +173,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0093_board_card_defaults': m0093,
   '0094_board_kind_decides_backlog': m0094,
   '0095_points_field': m0095,
+  '0096_ticket_checklists': m0096,
 };

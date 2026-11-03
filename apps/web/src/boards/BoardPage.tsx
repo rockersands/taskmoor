@@ -21,6 +21,8 @@ import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useSyncEngine } from '../sync/SyncProvider';
+import type { SubticketProgress } from '../tickets/tools/client';
+import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
@@ -200,6 +202,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const askingTitleId = useId();
   const [board, setBoard] = useState<Board | null>(null);
   const [data, setData] = useState<BoardData | null>(null);
+  const progress = useSubticketProgress(data?.cards ?? null, client.subticketProgress);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [filters, setFilters] = useState<string[]>([]);
   const [people, setPeople] = useState<string[]>(() => peopleFromRoute(currentRoute()));
@@ -723,6 +726,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
               <ClockIcon width={14} height={14} />
               {card.daysInColumn}
             </span>
+          )}
+          {progress[card.id] && (
+            <SubticketProgressMini progress={progress[card.id] as SubticketProgress} />
           )}
           {'assignee' in card.fields && (
             <CardPerson name={nameOf(card.fields.assignee)} nobody={t('boards.card.unassigned')} />

@@ -237,6 +237,40 @@ describe('clone and deep clone (M1-124)', () => {
     rmSync(files, { recursive: true, force: true });
   });
 
+  it('[CORE-033] (3) copies the checklists with every item open again, and leaves the original alone', async () => {
+    const source = await ticket('alice', { track: 'CA', summary: 'With a checklist' });
+    const made = await post('alice', `/api/v1/tickets/${source.key}/checklists`, {
+      name: 'Steps',
+      items: ['First', 'Second', 'Third'],
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const list = made.json().checklists[0] as { id: number; items: { id: number }[] };
+    for (const [i, state] of ['done', 'rejected'].entries()) {
+      const res = await as('alice', {
+        method: 'PATCH',
+        url: `/api/v1/tickets/${source.key}/checklists/${list.id}/items/${list.items[i]?.id}`,
+        payload: { state },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+    }
+    const { items } = await clone('alice', source.key);
+    const copyKey = copyOf(items, source.key);
+    const copy = (await get('alice', `/api/v1/tickets/${copyKey}/checklists`)).json();
+    expect(copy.checklists).toMatchObject([
+      {
+        name: 'Steps',
+        items: [
+          { text: 'First', state: 'open' },
+          { text: 'Second', state: 'open' },
+          { text: 'Third', state: 'open' },
+        ],
+      },
+    ]);
+    expect(copy.progress).toEqual({ done: 0, counted: 3, percent: 0 });
+    const original = (await get('alice', `/api/v1/tickets/${source.key}/checklists`)).json();
+    expect(original.progress).toEqual({ done: 1, counted: 2, percent: 50 });
+  });
+
   it('[CORE-023] (1) clones a ticket with its subtickets, attachments and links, each copy linked to its original by Copies', async () => {
     const other = await ticket('alice', { track: 'CA', summary: 'Payments API is down' });
     const priority = (await get('alice', '/api/v1/priorities')).json().priorities[0].id as number;

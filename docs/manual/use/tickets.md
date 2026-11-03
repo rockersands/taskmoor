@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md
+sources: apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -186,6 +186,26 @@ and redo. Markdown shortcuts work as you type: `## ` for a heading, `- ` for a l
 checklist, `> ` for a quote. Ctrl B makes text bold and Ctrl K adds a link. Pasted Markdown
 turns into rich text. Press Escape, then Tab, to leave the editor.
 
+Type `/` at the start of a line or after a space, in a description or a comment, for a menu of
+blocks; go on typing to narrow it, as in `/hea`. The arrow keys walk it, Enter or Tab picks, and
+Escape closes it and leaves what you typed. It offers:
+
+| Kind | Blocks |
+|---|---|
+| Text | Paragraph, headings 1 to 6, quote |
+| Lists | Bulleted, numbered, checklist |
+| Panels | Information, note, warning, success, error |
+| Layout | Collapsible section, two or three columns, table, divider |
+| In a line | Link, mention, another ticket, emoji, date, status label |
+| Other | Code block with a language, a file of this ticket |
+
+A block that needs something asks for it above the text, such as a code block's language or a
+status label's words and colour. A collapsible section has a title and opens with a click where it
+is read. Columns stack on a phone. A file is found by its name among the ticket's attachments and
+opens for whoever may see it; a ticket shows only its key, so a document never gives away the summary
+of a ticket someone may not see. Some blocks cannot be written exactly in every format: columns and
+files lose their form in [wiki markup](../admin/rest-api.md), and columns in Markdown.
+
 ### Comments and mentions
 
 The **Activity** section opens on **Comments**, oldest first. Write in **Add a comment** and
@@ -209,12 +229,61 @@ upload that would pass yours, or the workspace's, is refused with what is used a
 contents of ZIP files; **Download all as ZIP** takes every file at once. Deleting a file asks
 first and is for good. If the server checks files for viruses, a file is held until it passes.
 
+### Checklists
+
+Every ticket type can hold one or several named checklists, separate from the description. Press
+**Add a checklist**, give it a name, and add items with **Add an item**: type, press Enter and go on
+typing the next.
+
+An item is **Open**, **In progress**, **Done** or **Rejected**. Ticking its box makes it done and
+unticking makes it open; the list beside it sets any of the four. Each checklist shows how far along
+it is with a bar and the numbers, such as **3 of 4 done (75%)**, and when a ticket has any, the
+section shows the same for all of them together. **A rejected item is left out of the percentage**,
+because it will never be done: three done, one open and one rejected reads 75%.
+
+**Edit** changes an item's words or a checklist's name, **Move up** and **Move down** change the
+order, with the keyboard as with the pointer, and **Remove** takes it away. Every change shows in the
+ticket's [history](#history) and reaches others who have the ticket open. Changing a checklist needs
+the **Edit tickets** permission; a status that reserves editing to some people holds here too, and
+the section says so. Everyone who can see the ticket can read them.
+
+[Cloning a ticket](#cloning-a-ticket) copies its checklists with every item open again. They travel
+in [exports](../admin/import-export.md), go to the trash with the ticket, and the items you wrote are
+in [your data download](account.md).
+
+### Subtickets
+
+The **Subtickets** section lists the tickets under this one, each with its status, and how far
+along they are: a bar, and the numbers in text, such as **1 of 2 closed (50%)**. A subticket counts
+as closed when its status is in the closed stage of its workflow. You only see, and count, the ones
+you may see.
+
+To add one, type its summary and press **Add**, or Enter, to stay here and add another; **Add and
+open** takes you to it. If the track has several subticket types, the form asks which. When the
+track asks for more fields than the summary, the page names them. Subtickets are ordinary tickets:
+they move through the track's workflow like any other, by their own page or on a board. A subticket
+has no subtickets of its own, so its page has no such section. On an outcome, the section is called
+**Tickets under this** and holds the tickets one level down, the same way.
+
+The same small progress shows on [board cards](boards.md) and in [the list view](views.md#the-list-view)
+and search results, for tickets that have any.
+
 ### Links
 
-The **Links** section shows the ticket's links to other tickets, with the link's wording (such
-as "blocks" or "relates to"), and its web links. It appears only when there are links. Links
-are made through the [REST API](../admin/rest-api.md); the web app does not yet have a form to
-add or remove them.
+The **Links** section shows the ticket's links to other tickets, grouped under what they say
+from this ticket's side (such as **blocks**, **is blocked by** or **relates to**), whichever
+ticket they were made from, and its web links.
+
+Press **Add a link**. Under **How it relates**, choose one of your site's link types, read from
+this ticket's side. In **Ticket number or name**, type a ticket's number or words from its summary:
+matching tickets of the same track appear as you type, and only ones you may see. Arrow keys walk
+the list, Enter picks and Escape closes it. Pick as many as you need, then press **Done**.
+**Remove** beside a link takes it away from both tickets.
+
+The list only looks in this ticket's track. Links to other tracks, which an import or the
+[REST API](../admin/rest-api.md) can make, show and can be removed like any other. Changing
+links needs the **Link tickets** permission. Site and configuration administrators manage the
+link types, and can turn links off, through the [REST API](../admin/rest-api.md).
 
 ### Following and voting
 
@@ -265,7 +334,7 @@ Press **Clone**. The copies are made in the background, parents first, and the d
 many are done. Each copy:
 
 - starts in the first status of its workflow, with the original's type, description, people,
-  dates, priority, labels, estimate and custom fields. In the same track it also keeps the
+  dates, priority, labels, estimate and custom fields, and its checklists with every item open. In the same track it also keeps the
   original's releases, areas and visibility level;
 - is linked to its original with the **copies** link (the original reads **is copied by**);
 - under a deep clone, sits under the copy of its parent, and two copied tickets that were linked

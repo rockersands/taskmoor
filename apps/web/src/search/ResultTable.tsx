@@ -8,6 +8,8 @@ import { useSession } from '../session/SessionProvider';
 import { IconSelect } from '../shell/IconSelect';
 import { priorityName } from '../shell/priorityName';
 import { PriorityGlyph, PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import type { SubticketProgress } from '../tickets/tools/client';
+import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { SearchClient, SearchTicket } from './client';
 import {
   type CellEditor,
@@ -59,6 +61,7 @@ export function ResultTable({
 }: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
+  const progress = useSubticketProgress(tickets, client.subticketProgress);
   const [priorities, setPriorities] = useState<
     { id: number; name: string; level?: number }[] | null
   >(null);
@@ -98,6 +101,9 @@ export function ResultTable({
                   <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>
                     {ticket.key}
                   </a>
+                  {progress[ticket.id] && (
+                    <SubticketProgressMini progress={progress[ticket.id] as SubticketProgress} />
+                  )}
                   {marks && marks.names.length > 0 && (
                     <span className="format-marks">
                       {marks.names.map((name) => (

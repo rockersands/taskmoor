@@ -181,6 +181,25 @@ describe('API v1 contract (M1-065)', () => {
       })
     ).link;
     await call('GET', '/api/v1/tickets/:id/links', `/api/v1/tickets/${a.key}/links`);
+    // Checklists (CORE-033).
+    const lists = '/api/v1/tickets/:id/checklists';
+    const listsAt = `/api/v1/tickets/${a.key}/checklists`;
+    await call('GET', lists, listsAt);
+    const made = await call('POST', lists, listsAt, { name: 'Steps', items: ['First'] });
+    const list = made.checklists[0] as { id: number; items: { id: number }[] };
+    const second = await call('POST', lists, listsAt, { name: 'More' });
+    await call('PUT', `${lists}/order`, `${listsAt}/order`, {
+      ids: [second.checklists[1].id, list.id],
+    });
+    await call('PATCH', `${lists}/:checklistId`, `${listsAt}/${list.id}`, { name: 'The steps' });
+    const items = `${lists}/:checklistId/items`;
+    const itemsAt = `${listsAt}/${list.id}/items`;
+    const added = await call('POST', items, itemsAt, { text: 'Second' });
+    const row = added.checklists[1].items[1] as { id: number };
+    await call('PUT', `${items}/order`, `${itemsAt}/order`, { ids: [row.id, list.items[0]?.id] });
+    await call('PATCH', `${items}/:itemId`, `${itemsAt}/${row.id}`, { state: 'done' });
+    await call('DELETE', `${items}/:itemId`, `${itemsAt}/${row.id}`);
+    await call('DELETE', `${lists}/:checklistId`, `${listsAt}/${list.id}`);
     await call(
       'DELETE',
       '/api/v1/tickets/:id/links/:linkId',

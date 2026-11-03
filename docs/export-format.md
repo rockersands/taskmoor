@@ -69,6 +69,7 @@ comments.ndjson
 links.ndjson
 time-entries.ndjson
 attachments.ndjson
+checklists.ndjson
 history.ndjson
 attachments/<attachment id>
 ```
@@ -154,6 +155,7 @@ and an import refuses it.
 | tickets | see below |
 | comments | `ticket`, `author?`, `body` (rich text), `visibleGroup?`, `visibleRole?`, `createdAt`, `updatedAt`, `editedAt?`, `editedBy?`, `deletedAt?`, `deletedBy?` |
 | links | `source`, `target`, `type` (`{name, outward, inward}`), `creator?`, `createdAt` |
+| checklists | `ticket`, `name`, `position`, `creator?`, `createdAt`, `updatedAt`, `items` (each `{text, state, position, creator?, createdAt, updatedAt}`; `state` is `open`, `in_progress`, `done` or `rejected`). An export from before checklists has no such file |
 | time-entries | `ticket`, `author`, `startedAt`, `seconds`, `description`, `visibleGroup?`, `visibleRole?`, `createdBy?`, `createdAt`, `updatedAt` |
 | attachments | `ticket`, `name`, `declaredType`, `sniffedType?`, `size` (bytes), `sha256`, `author?`, `createdAt`, `width?`, `height?`, `file` (its path in the export) |
 | history | see below |

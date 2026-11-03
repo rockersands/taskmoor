@@ -51,6 +51,7 @@ import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
 import { registerBoardRoutes } from './routes/boards';
 import { registerBulkRoutes } from './routes/bulk';
+import { registerChecklistRoutes } from './routes/checklists';
 import { registerCloneRoutes } from './routes/clone';
 import { registerCommentRoutes } from './routes/comments';
 import { registerDashboardRoutes } from './routes/dashboards';
@@ -94,6 +95,7 @@ import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSimilarRoutes } from './routes/similar';
 import { registerSsoRoutes } from './routes/sso';
+import { registerSubticketRoutes } from './routes/subtickets';
 import { registerSyncRoutes } from './routes/sync';
 import { registerTeamRoutes } from './routes/teams';
 import { registerTicketTemplateRoutes } from './routes/ticket-templates';
@@ -512,6 +514,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
+    registerSubticketRoutes(app, db);
+    registerChecklistRoutes(app, db);
     // Entity properties (M1-129); boards and sprints register theirs with the board routes.
     registerCorePropertyRoutes(app, db);
     registerTimeRoutes(app, db, fieldCatalogs);

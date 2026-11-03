@@ -29,6 +29,9 @@ CORE-027,CORE,Teams,M1,Must,Jira Free (Atlassian Teams)
 CORE-028,CORE,Work intake forms,M2,Must,Jira Free
 CORE-029,CORE,Ticket templates,M1,Must,User requirement
 CORE-030,CORE,Creating a ticket from a template,M1,Must,User requirement
+CORE-031,CORE,Links from the ticket page,M1,Must,User requirement
+CORE-032,CORE,Subtickets on the ticket page,M1,Must,User requirement
+CORE-033,CORE,Checklists,M1,Must,User requirement
 WF-001,WF,Workflow model,M1,Must,Jira Free
 WF-002,WF,Workflow editor,M1,Must,Jira Free (new editor); exceeds Jira (rollback)
 WF-003,WF,Guards,M1,Must,Jira Free
@@ -105,6 +108,8 @@ NTF-009,NTF,Share and reply by email,M2,Should,Jira Free
 NTF-010,NTF,Chat integrations,M2,Must,"Jira Free (Slack, Teams apps)"
 NTF-011,NTF,Rich links and wiki pages,M2,Should,"Jira Free (Smart Links, Confluence links)"
 NTF-012,NTF,Whiteboards,M4,Should,YouTrack; ClickUp
+NTF-013,NTF,Slash menu,M1,Must,User requirement
+NTF-014,NTF,New blocks in the document schema,M1,Must,User requirement
 API-001,API,Native REST API,M1,Must,Jira Free
 API-002,API,API authentication,M1,Must,Jira Free
 API-003,API,Shim v2,M1,Must,Jira Free

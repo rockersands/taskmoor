@@ -94,18 +94,54 @@ export function commentReadableSql(
              AND (a.user_id = ${userId} OR a.group_id IN ${groups}))))`;
 }
 
-/** A comment's text without formatting, for email: mentions as their names, blocks as lines. */
+type DocNode = ReturnType<typeof schema.nodeFromJSON>;
+
+/** What an inline or block leaf reads as in plain text. */
+function leafText(leaf: DocNode): string {
+  switch (leaf.type.name) {
+    case 'hardBreak':
+      return '\n';
+    case 'mention':
+      return `@${leaf.attrs.label ?? leaf.attrs.id ?? ''}`;
+    case 'ticketRef':
+      return String(leaf.attrs.key ?? '');
+    case 'attachmentRef':
+      return String(leaf.attrs.name ?? '');
+    default:
+      return '';
+  }
+}
+
+/**
+ * A comment's text without formatting, for email: mentions as their names, blocks as lines, a
+ * collapsible section as its title, then its text (ADR-120). The walk is `textBetween`'s, with
+ * the section's title added: `textBetween` reads text and leaves only, never a block's attributes.
+ */
 export function commentText(body: JsonValue, max = 600): string {
-  let text: string;
+  let text = '';
   try {
-    const node = schema.nodeFromJSON(body);
-    text = node.textBetween(0, node.content.size, '\n', (leaf) =>
-      leaf.type.name === 'hardBreak'
-        ? '\n'
-        : leaf.type.name === 'mention'
-          ? `@${leaf.attrs.label ?? leaf.attrs.id ?? ''}`
-          : '',
-    );
+    const doc = schema.nodeFromJSON(body);
+    let first = true;
+    const line = (s: string) => {
+      if (first) first = false;
+      else text += '\n';
+      text += s;
+    };
+    doc.descendants((node) => {
+      if (node.isText) {
+        text += node.text ?? '';
+      } else if (node.type.name === 'expand') {
+        const title = String(node.attrs.title ?? '').trim();
+        if (title !== '') line(title);
+      } else if (node.isLeaf) {
+        const s = leafText(node);
+        if (node.isBlock && s !== '') line(s);
+        else text += s;
+      } else if (node.isTextblock) {
+        line('');
+      }
+      return !node.isLeaf;
+    });
   } catch {
     return '';
   }

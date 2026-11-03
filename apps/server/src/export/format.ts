@@ -47,6 +47,7 @@ export const EXPORT_FILES: readonly { kind: EntityKind; file: string }[] = [
   { kind: 'link', file: 'links.ndjson' },
   { kind: 'time_entry', file: 'time-entries.ndjson' },
   { kind: 'attachment', file: 'attachments.ndjson' },
+  { kind: 'checklist', file: 'checklists.ndjson' },
   { kind: 'history', file: 'history.ndjson' },
 ];
 

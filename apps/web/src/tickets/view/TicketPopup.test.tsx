@@ -11,6 +11,7 @@ import type { Connect } from '../../richtext/CollaborativeEditor';
 import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
 import { fakeCloneClient } from '../clone/fixtures';
+import { fakeToolsClient } from '../tools/fixtures';
 import type { TicketClient, TicketDetails } from './client';
 import { fakeTicketClient, SHOP_41 } from './fixtures';
 import { TicketPage } from './TicketPage';
@@ -71,6 +72,191 @@ const opened = async () => {
 };
 
 describe('the ticket pop-up', () => {
+  it('[CORE-031] [CORE-032] [CORE-033] holds the ticket tools, working as on the full page', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    const onChange = vi.fn();
+    function Page() {
+      useTicketChanges(onChange);
+      return <a href="#/tickets/SHOP-41">The card</a>;
+    }
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <Page />
+            <TicketPopup client={fakeTicketClient()} tools={tools} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    // Checklists: a tick counts at once, and the page beneath hears of it.
+    const list = await within(dialog).findByRole('region', { name: 'Before release' });
+    expect(within(list).getByText('3 of 4 done (75%)')).toBeVisible();
+    await user.click(within(list).getByRole('checkbox', { name: 'Tell the people' }));
+    expect(await within(list).findByText('4 of 4 done (100%)')).toBeVisible();
+    expect(onChange).toHaveBeenCalled();
+    // Subtickets.
+    const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
+    await user.type(
+      within(subs).getByRole('textbox', { name: 'New subticket' }),
+      'From the pop-up{Enter}',
+    );
+    expect(await within(subs).findByText('From the pop-up')).toBeVisible();
+    // Links, by keyboard; Escape closes the list and the form, not the pop-up.
+    const links = within(dialog).getByRole('region', { name: 'Links' });
+    await user.click(within(links).getByRole('button', { name: 'Add a link' }));
+    const picker = await within(links).findByRole('combobox', { name: 'Ticket number or name' });
+    await waitFor(() => expect(picker).toHaveFocus());
+    await user.keyboard('retry');
+    await within(dialog).findByRole('option', { name: /SHOP-40/ });
+    await user.keyboard('{Enter}');
+    expect(await within(links).findByRole('link', { name: 'SHOP-40' })).toBeVisible();
+    await waitFor(() => expect(picker).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(links).queryByRole('combobox', { name: 'Ticket number or name' })).toBeNull(),
+    );
+    expect(screen.getByRole('dialog', { name: NAME })).toBeVisible();
+    // A closed picker leaves no list behind, so the next Escape closes the pop-up.
+    expect(within(dialog).queryByRole('listbox')).toBeNull();
+  });
+
+  it('[CORE-032] Add and open shows the new subticket in the pop-up, with the page still beneath', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    tools.createChild = async () => ({ id: 400, key: 'SHOP-400' });
+    const client = fakeTicketClient();
+    const made = { ...SHOP_41, id: 400, key: 'SHOP-400', summary: 'Made in the pop-up' };
+    client.get = async (key) => (key === 'SHOP-400' ? made : SHOP_41);
+    const onChange = vi.fn();
+    function Page() {
+      useTicketChanges(onChange);
+      return <a href="#/tickets/SHOP-41">The card</a>;
+    }
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <Page />
+            <TicketPopup client={client} tools={tools} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
+    await user.type(
+      within(subs).getByRole('textbox', { name: 'New subticket' }),
+      'Made in the pop-up',
+    );
+    await user.click(within(subs).getByRole('button', { name: 'Add and open' }));
+    // No question about a draft: the summary was saved, not left behind.
+    expect(
+      await screen.findByRole('dialog', { name: 'SHOP-400 Made in the pop-up' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(addressRoute()).toBe('#/tickets/SHOP-400');
+    expect(currentRoute()).toBe('#/tracks/SHOP/board?people=7');
+    // The board beneath hears of the new ticket.
+    expect(onChange).toHaveBeenCalled();
+    window.history.back();
+    expect(await screen.findByRole('dialog', { name: NAME })).toBeVisible();
+  });
+
+  it('[NFR-005] a subticket summary on its way is still a draft, so a refusal loses nothing', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    let refuse: (() => void) | undefined;
+    tools.createChild = () =>
+      new Promise((_, reject) => {
+        refuse = () => reject(new Error('refused'));
+      });
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <a href="#/tickets/SHOP-41">The card</a>
+            <TicketPopup client={fakeTicketClient()} tools={tools} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
+    const field = within(subs).getByRole('textbox', { name: 'New subticket' });
+    await user.type(field, 'Not saved yet');
+    await user.click(within(subs).getByRole('button', { name: 'Add' }));
+    expect(hasDraft(dialog)).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Close this ticket' }));
+    await user.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Discard what you have not saved?' }),
+      ).getByRole('button', { name: 'Keep editing' }),
+    );
+    await act(async () => refuse?.());
+    expect(field).toHaveValue('Not saved yet');
+    expect(screen.getByRole('dialog', { name: NAME })).toBeVisible();
+  });
+
+  it('[CORE-033] counts a half-written item as a draft, and not a saved name', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <a href="#/tickets/SHOP-41">The card</a>
+            <TicketPopup client={fakeTicketClient()} tools={fakeToolsClient()} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const list = await within(dialog).findByRole('region', { name: 'Before release' });
+    await user.click(within(list).getByRole('button', { name: 'Edit Print it' }));
+    expect(hasDraft(dialog)).toBe(false);
+    await user.keyboard('{Escape}');
+    await user.type(
+      within(list).getByRole('textbox', { name: 'Add an item to Before release' }),
+      'half',
+    );
+    expect(hasDraft(dialog)).toBe(true);
+  });
+
+  it('[NTF-013] Escape closes the slash menu and leaves the pop-up open', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <a href="#/tickets/SHOP-41">The card</a>
+            <TicketPopup client={fakeTicketClient()} tools={fakeToolsClient()} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const editor = await waitFor(() => {
+      const found = dialog.querySelector<HTMLElement>('.comment-composer [contenteditable]');
+      if (!found) throw new Error('no composer yet');
+      return found;
+    });
+    await user.click(editor);
+    await user.keyboard('/hea');
+    await within(dialog).findByRole('listbox', { name: 'Blocks to add' });
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(dialog).queryByRole('listbox', { name: 'Blocks to add' })).toBeNull(),
+    );
+    expect(screen.getByRole('dialog', { name: NAME })).toBeVisible();
+  });
+
   it('[AGL-018] opens over the page at the ticket’s address, and the page stays', async () => {
     const user = userEvent.setup();
     renderPopup();

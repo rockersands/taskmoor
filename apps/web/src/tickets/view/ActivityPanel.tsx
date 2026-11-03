@@ -15,6 +15,7 @@ import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { MentionSource } from '../../richtext/mentions';
 import { useMotionOnChange } from '../../shell/motion';
+import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
 import type { HistoryEntry, TicketClient, TimeEntry } from './client';
 
 export type ActivityTab = 'comments' | 'history' | 'time' | 'all';
@@ -52,6 +53,9 @@ const FIELDS: Record<string, MessageId> = {
   attachment: 'ticketView.history.attachment',
   link: 'ticketView.history.link',
   webLink: 'ticketView.history.webLink',
+  checklist: 'ticketTools.history.checklist',
+  checklistItem: 'ticketTools.history.item',
+  checklistOrder: 'ticketTools.history.order',
   timeEntry: 'ticketView.history.timeEntry',
   trash: 'ticketView.history.trash',
   rank: 'ticketView.history.rank',
@@ -178,6 +182,15 @@ function useChangeText() {
         : c.field;
     const from = c.from.display ?? c.from.value;
     const to = c.to.display ?? c.to.value;
+    if (c.field === 'checklistItemState') {
+      const stateName = (value: string | null) =>
+        t(ITEM_STATE_LABELS[value as ItemState] ?? 'ticketTools.state.open');
+      return t('ticketTools.history.state', {
+        item: c.to.display ?? '',
+        from: stateName(c.from.value),
+        to: stateName(c.to.value),
+      });
+    }
     if (c.field === 'comment') {
       return t(
         to === null ? 'ticketView.history.commentDeleted' : 'ticketView.history.commentAdded',

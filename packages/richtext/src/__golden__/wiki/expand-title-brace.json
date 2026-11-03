@@ -1,0 +1,26 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "title": "a b"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "Body.",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "expand"
+    }
+  ],
+  "type": "doc"
+}

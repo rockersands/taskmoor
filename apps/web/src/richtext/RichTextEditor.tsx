@@ -3,7 +3,9 @@ import {
   fromMarkdown,
   isSafeHref,
   looksLikeMarkdown,
+  MAX_TITLE_LENGTH,
   type PmJson,
+  TICKET_KEY,
 } from '@taskmoor/richtext';
 import { type AnyExtension, type Editor, Extension, type Node as TiptapNode } from '@tiptap/core';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
@@ -19,8 +21,18 @@ import {
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
+import { BlockPrompt } from './BlockPrompt';
+import { showAttachment, useEditorTools } from './EditorTools';
 import { Icon, type IconName } from './icons';
 import type { MentionPerson, MentionSource } from './mentions';
+import {
+  type BlockPromptKind,
+  matchingTools,
+  SLASH_TOOLS,
+  type SlashContext,
+  type SlashTool,
+} from './slashTools';
 
 /**
  * The rich text editor (M1-017; NTF-005, NTF-006; ADR-014): Tiptap on the shared schema of
@@ -32,6 +44,8 @@ import type { MentionPerson, MentionSource } from './mentions';
  *   and pasted Markdown (a table, say) turns into rich text.
  * - "@" offers people to mention (a listbox the arrow keys walk, Enter or Tab picks); someone
  *   who cannot see the ticket is marked so, and picking them says they will not be told.
+ * - "/" at the start of a line or after a space opens a searchable menu of blocks (NTF-013): the
+ *   arrow keys walk it, Enter or Tab picks, Escape closes it and leaves what was typed.
  * - Tab indents list items and moves between table cells; Escape leaves the editor, so the
  *   next Tab moves on.
  * - Content the editor cannot show (kept whole from the other format) shows a placeholder and
@@ -65,6 +79,20 @@ interface Suggesting {
   rect: DOMRect | null;
   pick: (person: MentionPerson) => void;
 }
+
+interface SlashMenu {
+  items: SlashTool[];
+  active: number;
+  rect: DOMRect | null;
+  pick: (tool: SlashTool) => void;
+}
+
+/**
+ * What a section's title may not hold: the server takes it only as one line of text
+ * (`isExpandTitle`), and a text field keeps a pasted tab.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g;
 
 /** The document, or null when it is empty. */
 export function docOf(editor: Editor): PmJson | null {
@@ -257,6 +285,15 @@ export function RichTextEditor({
   onChangeRef.current = onChange;
   const [notice, setNotice] = useState('');
   const [link, setLink] = useState<{ value: string; error: boolean } | null>(null);
+  const [slash, setSlash] = useState<SlashMenu | null>(null);
+  const slashRef = useRef(slash);
+  slashRef.current = slash;
+  const [prompt, setPrompt] = useState<BlockPromptKind | null>(null);
+  const tools = useEditorTools();
+  const toolsRef = useRef(tools);
+  toolsRef.current = tools;
+  const translate = useRef(t);
+  translate.current = t;
   const openLinkRef = useRef<() => void>(() => {});
   const [focusIndex, setFocusIndex] = useState(0);
 
@@ -266,6 +303,7 @@ export function RichTextEditor({
     warning: (name: string) => t('richtext.mention.warning', { name }),
     checkbox: (text: string) =>
       text === '' ? t('richtext.taskItemEmpty') : t('richtext.taskItem', { text }),
+    expandTitle: t('richtext.expand.title'),
   };
   const labelsRef = useRef(labels);
   labelsRef.current = labels;
@@ -273,61 +311,141 @@ export function RichTextEditor({
   // The extensions are fixed for the editor's life; what they call back reads refs.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the editor is built once
   const extensions = useMemo(() => {
+    const toolLabel = (tool: SlashTool) => translate.current(tool.label, tool.values);
+    /** What a tool reaches; `from` is where "/" was typed, so what goes in starts there. */
+    const slashContext = (current: Editor, from?: number): SlashContext => ({
+      tools: toolsRef.current,
+      hasMentions: Boolean(mentionsRef.current),
+      openPrompt: setPrompt,
+      openLink: () => openLinkRef.current(),
+      focusTitle: () => {
+        // The section that just went in is the first from where "/" was typed: another section
+        // above it may have no title either.
+        const start = (from ?? current.state.selection.from) - 1;
+        let at: number | null = null;
+        current.state.doc.descendants((node, position) => {
+          if (at === null && node.type.name === 'expand' && position >= start) at = position;
+          return at === null;
+        });
+        const section = at === null ? null : current.view.nodeDOM(at);
+        const title =
+          section instanceof HTMLElement
+            ? section.querySelector<HTMLInputElement>('.rt-expand-title')
+            : null;
+        window.setTimeout(() => title?.focus(), 0);
+      },
+    });
     const base = editorExtensions({
       undoRedo: !collaboration,
       taskItem: { a11y: { checkboxLabel: (node) => labelsRef.current.checkbox(node.textContent) } },
       mention: {
-        suggestion: {
-          char: '@',
-          allow: () => Boolean(mentionsRef.current),
-          items: async ({ query }) => {
-            const source = mentionsRef.current;
-            if (!source) return [];
-            try {
-              return await source(query);
-            } catch {
-              return [];
-            }
-          },
-          render: () => {
-            const show = (props: {
-              items: MentionPerson[];
-              clientRect?: (() => DOMRect | null) | null;
-              command: (attrs: { id: string; label: string }) => void;
-            }) => {
-              setSuggesting((now) => ({
-                items: props.items,
-                active: Math.min(now?.active ?? 0, Math.max(0, props.items.length - 1)),
-                rect: props.clientRect?.() ?? null,
-                pick: (person) => {
-                  props.command({ id: String(person.id), label: person.name });
-                  setNotice(person.canView ? '' : labelsRef.current.warning(person.name));
+        suggestions: [
+          {
+            char: '/',
+            allow: ({ state, range }) => {
+              const parent = state.doc.resolve(range.from).parent;
+              return parent.isTextblock && parent.type.name !== 'codeBlock';
+            },
+            items: ({ query, editor: current }) => {
+              const context = slashContext(current);
+              return matchingTools(
+                SLASH_TOOLS.filter((tool) => tool.available?.(current, context) ?? true),
+                query,
+                toolLabel,
+              ) as never[];
+            },
+            command: ({ editor: current, range, props }) => {
+              current.chain().focus().deleteRange(range).run();
+              (props as unknown as SlashTool).run(current, slashContext(current, range.from));
+            },
+            render: () => {
+              const show = (props: {
+                items: SlashTool[];
+                clientRect?: (() => DOMRect | null) | null;
+                command: (tool: SlashTool) => void;
+              }) => {
+                setSlash((now) => ({
+                  items: props.items,
+                  active: Math.min(now?.active ?? 0, Math.max(0, props.items.length - 1)),
+                  rect: props.clientRect?.() ?? null,
+                  pick: (tool) => props.command(tool),
+                }));
+              };
+              return {
+                onStart: show as never,
+                onUpdate: show as never,
+                onExit: () => setSlash(null),
+                onKeyDown: ({ event }) => {
+                  const now = slashRef.current;
+                  if (!now || now.items.length === 0) return false;
+                  const count = now.items.length;
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    const step = event.key === 'ArrowDown' ? 1 : count - 1;
+                    setSlash({ ...now, active: (now.active + step) % count });
+                    return true;
+                  }
+                  if (event.key === 'Enter' || event.key === 'Tab') {
+                    const tool = now.items[now.active];
+                    if (tool) now.pick(tool);
+                    return true;
+                  }
+                  return false;
                 },
-              }));
-            };
-            return {
-              onStart: show,
-              onUpdate: show,
-              onExit: () => setSuggesting(null),
-              onKeyDown: ({ event }) => {
-                const now = suggestingRef.current;
-                if (!now || now.items.length === 0) return false;
-                const count = now.items.length;
-                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                  const step = event.key === 'ArrowDown' ? 1 : count - 1;
-                  setSuggesting({ ...now, active: (now.active + step) % count });
-                  return true;
-                }
-                if (event.key === 'Enter' || event.key === 'Tab') {
-                  const person = now.items[now.active];
-                  if (person) now.pick(person);
-                  return true;
-                }
-                return false;
-              },
-            };
+              };
+            },
           },
-        },
+          {
+            char: '@',
+            allow: () => Boolean(mentionsRef.current),
+            items: async ({ query }) => {
+              const source = mentionsRef.current;
+              if (!source) return [];
+              try {
+                return await source(query);
+              } catch {
+                return [];
+              }
+            },
+            render: () => {
+              const show = (props: {
+                items: MentionPerson[];
+                clientRect?: (() => DOMRect | null) | null;
+                command: (attrs: { id: string; label: string }) => void;
+              }) => {
+                setSuggesting((now) => ({
+                  items: props.items,
+                  active: Math.min(now?.active ?? 0, Math.max(0, props.items.length - 1)),
+                  rect: props.clientRect?.() ?? null,
+                  pick: (person) => {
+                    props.command({ id: String(person.id), label: person.name });
+                    setNotice(person.canView ? '' : labelsRef.current.warning(person.name));
+                  },
+                }));
+              };
+              return {
+                onStart: show,
+                onUpdate: show,
+                onExit: () => setSuggesting(null),
+                onKeyDown: ({ event }) => {
+                  const now = suggestingRef.current;
+                  if (!now || now.items.length === 0) return false;
+                  const count = now.items.length;
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    const step = event.key === 'ArrowDown' ? 1 : count - 1;
+                    setSuggesting({ ...now, active: (now.active + step) % count });
+                    return true;
+                  }
+                  if (event.key === 'Enter' || event.key === 'Tab') {
+                    const person = now.items[now.active];
+                    if (person) now.pick(person);
+                    return true;
+                  }
+                  return false;
+                },
+              };
+            },
+          },
+        ],
       },
     });
     const shown = base.map((extension) => {
@@ -343,6 +461,107 @@ export function RichTextEditor({
             dom.contentEditable = 'false';
             return { dom };
           },
+        });
+      }
+      if (extension.name === 'expand') {
+        return (extension as TiptapNode).extend({
+          addNodeView:
+            () =>
+            ({ node: first, getPos, editor: current }) => {
+              let node = first;
+              const dom = document.createElement('div');
+              dom.className = 'rt-expand';
+              const title = document.createElement('input');
+              title.type = 'text';
+              title.className = 'rt-expand-title';
+              title.maxLength = MAX_TITLE_LENGTH;
+              title.value = String(node.attrs.title ?? '');
+              title.disabled = !current.isEditable;
+              title.setAttribute('aria-label', labelsRef.current.expandTitle);
+              title.addEventListener('input', () => {
+                // A pasted tab or other control character becomes a space, as it is typed.
+                const clean = title.value.replace(CONTROL_CHARACTERS, ' ');
+                if (clean !== title.value) {
+                  const caret = title.selectionStart;
+                  title.value = clean;
+                  if (caret !== null) title.setSelectionRange(caret, caret);
+                }
+                const at = typeof getPos === 'function' ? getPos() : undefined;
+                if (at === undefined) return;
+                current.view.dispatch(
+                  current.state.tr.setNodeMarkup(at, undefined, {
+                    ...node.attrs,
+                    title: clean,
+                  }),
+                );
+              });
+              // Enter or Escape goes on to the section's text.
+              title.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== 'Escape') return;
+                event.preventDefault();
+                event.stopPropagation();
+                const at = typeof getPos === 'function' ? getPos() : undefined;
+                if (at !== undefined)
+                  current
+                    .chain()
+                    .focus(at + 2)
+                    .run();
+              });
+              const contentDOM = document.createElement('div');
+              contentDOM.className = 'rt-expand-body';
+              dom.append(title, contentDOM);
+              return {
+                dom,
+                contentDOM,
+                stopEvent: (event) => event.target === title,
+                ignoreMutation: (mutation) => mutation.target === title,
+                update: (next) => {
+                  if (next.type.name !== 'expand') return false;
+                  node = next;
+                  const value = String(next.attrs.title ?? '');
+                  if (title.value !== value) title.value = value;
+                  return true;
+                },
+              };
+            },
+        });
+      }
+      if (extension.name === 'attachmentRef') {
+        return (extension as TiptapNode).extend({
+          addNodeView:
+            () =>
+            ({ node }) => {
+              const dom = document.createElement('div');
+              dom.contentEditable = 'false';
+              dom.setAttribute('data-attachment-ref', String(node.attrs.name ?? ''));
+              window.setTimeout(() =>
+                showAttachment(
+                  dom,
+                  String(node.attrs.name ?? ''),
+                  Boolean(node.attrs.image),
+                  toolsRef.current,
+                ),
+              );
+              dom.textContent = String(node.attrs.name ?? '');
+              return { dom };
+            },
+        });
+      }
+      if (extension.name === 'ticketRef') {
+        return (extension as TiptapNode).extend({
+          addNodeView:
+            () =>
+            ({ node }) => {
+              const key = String(node.attrs.key ?? '');
+              const dom = document.createElement('a');
+              dom.className = 'rt-ticket-ref';
+              dom.textContent = key;
+              dom.contentEditable = 'false';
+              if (TICKET_KEY.test(key)) {
+                dom.href = routeHref(`#/tickets/${encodeURIComponent(key)}`);
+              }
+              return { dom };
+            },
         });
       }
       if (extension.name === 'date') {
@@ -444,9 +663,17 @@ export function RichTextEditor({
     set('aria-invalid', invalid ? 'true' : null);
     set('aria-readonly', editable ? null : 'true');
     const open = suggesting !== null && suggesting.items.length > 0;
-    set('aria-autocomplete', mentions ? 'list' : null);
-    set('aria-controls', open ? listboxId : null);
-    set('aria-activedescendant', open ? `${listboxId}-${suggesting.active}` : null);
+    const slashOpen = slash !== null && slash.items.length > 0;
+    set('aria-autocomplete', editable ? 'list' : null);
+    set('aria-controls', open || slashOpen ? listboxId : null);
+    set(
+      'aria-activedescendant',
+      open
+        ? `${listboxId}-${suggesting.active}`
+        : slashOpen
+          ? `${listboxId}-${slash.active}`
+          : null,
+    );
   }, [
     editor,
     labelledBy,
@@ -456,9 +683,15 @@ export function RichTextEditor({
     editable,
     hintId,
     suggesting,
+    slash,
     listboxId,
-    mentions,
   ]);
+
+  // The active entry stays in view while the arrow keys walk a long menu.
+  useEffect(() => {
+    if (!slash) return;
+    document.getElementById(`${listboxId}-${slash.active}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [slash, listboxId]);
 
   const state = useEditorState({
     editor,
@@ -494,7 +727,16 @@ export function RichTextEditor({
       setLink({ ...link, error: true });
       return;
     }
-    editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    // With nothing selected and no link here, the address itself goes in as the link's text.
+    if (editor.state.selection.empty && !editor.isActive('link')) {
+      editor
+        .chain()
+        .focus()
+        .insertContent({ type: 'text', text: href, marks: [{ type: 'link', attrs: { href } }] })
+        .run();
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    }
     setLink(null);
   };
   const removeLink = () => {
@@ -566,6 +808,47 @@ export function RichTextEditor({
     setFocusIndex(next);
     all[next]?.focus();
   };
+
+  const slashPopup = (() => {
+    if (!slash) return null;
+    const wrap = wrapperRef.current?.getBoundingClientRect();
+    const rect = slash.rect;
+    const top = wrap && rect ? rect.bottom - wrap.top + 4 : 0;
+    const left = wrap && rect ? Math.max(0, Math.min(rect.left - wrap.left, wrap.width - 288)) : 0;
+    if (slash.items.length === 0) {
+      return (
+        <p className="rt-mentions rt-mentions-empty" style={{ top, left }}>
+          {t('richtext.slash.none')}
+        </p>
+      );
+    }
+    return (
+      <div
+        id={listboxId}
+        role="listbox"
+        aria-label={t('richtext.slash.list')}
+        className="rt-mentions rt-slash"
+        style={{ top, left }}
+      >
+        {slash.items.map((tool, i) => (
+          // biome-ignore lint/a11y/useKeyWithClickEvents: the editor's arrow keys and Enter pick
+          <div
+            key={tool.id}
+            id={`${listboxId}-${i}`}
+            role="option"
+            aria-selected={i === slash.active}
+            tabIndex={-1}
+            className="rt-mention-option rt-slash-option"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => slash.pick(tool)}
+          >
+            <span className="rt-slash-icon">{tool.icon && <Icon name={tool.icon} />}</span>
+            <span>{t(tool.label, tool.values)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  })();
 
   const popup = (() => {
     if (!suggesting) return null;
@@ -692,8 +975,19 @@ export function RichTextEditor({
           )}
         </div>
       )}
+      {prompt && editor && (
+        <BlockPrompt
+          kind={prompt}
+          editor={editor}
+          onClose={() => {
+            setPrompt(null);
+            editor.commands.focus();
+          }}
+        />
+      )}
       <EditorContent editor={editor} className="rt-body" />
       {popup}
+      {slashPopup}
       {editable && (
         <p id={hintId} className="visually-hidden">
           {t('richtext.hint')}

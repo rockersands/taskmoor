@@ -8,6 +8,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { SessionProvider } from '../../session/SessionProvider';
 import { fakeCloneClient } from '../clone/fixtures';
+import { fakeToolsClient } from '../tools/fixtures';
 import { fakeTicketClient, SHOP_41 } from './fixtures';
 import { TicketPage } from './TicketPage';
 
@@ -25,6 +26,7 @@ const meta = {
   args: {
     ticket: 'SHOP-41',
     client: fakeTicketClient(),
+    tools: fakeToolsClient(),
     comments: fakeCommentClient(),
     attachments: fakeAttachmentClient(),
     clone: fakeCloneClient().client,

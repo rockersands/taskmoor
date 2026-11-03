@@ -616,6 +616,38 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
         updatedAt: e.updatedAt,
       }),
     ),
+  checklist: (d) =>
+    parse(
+      z.object({
+        ticket: id,
+        name: text,
+        position: z.number().int(),
+        creator: nullableId,
+        createdAt: text,
+        updatedAt: text,
+        items: z.array(
+          z.object({
+            text,
+            state: z.enum(['open', 'in_progress', 'done', 'rejected']),
+            position: z.number().int(),
+            creator: nullableId,
+            createdAt: text,
+            updatedAt: text,
+          }),
+        ),
+      }),
+      d,
+      (c) => ({
+        kind: 'checklist',
+        ticket: r('ticket', c.ticket),
+        name: c.name,
+        position: c.position,
+        creator: nr('user', c.creator),
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        items: c.items.map((item) => ({ ...item, creator: nr('user', item.creator) })),
+      }),
+    ),
   attachment: (d) =>
     parse(
       z.object({

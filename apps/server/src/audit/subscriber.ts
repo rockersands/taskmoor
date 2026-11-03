@@ -287,6 +287,7 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.linked': TICKET_ACTIVITY,
   'ticket.unlinked': TICKET_ACTIVITY,
   'ticket.web_link_added': TICKET_ACTIVITY,
+  'ticket.checklist_changed': TICKET_ACTIVITY,
   // An integration's data on an entity (M1-129): the property holds its own state; declaring
   // a property index is configuration and audited.
   'ticket.property_set': PROPERTY_DATA,

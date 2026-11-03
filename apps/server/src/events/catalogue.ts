@@ -770,6 +770,26 @@ export const EVENT_TYPES = {
     subject: 'ticket',
     payload: z.object({ key: z.string(), webLinkId: id }),
   },
+  /** A change to a ticket's checklists (CORE-033): ids only; the words are in its history. */
+  'ticket.checklist_changed': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      change: z.enum([
+        'added',
+        'renamed',
+        'removed',
+        'reordered',
+        'item_added',
+        'item_edited',
+        'item_state',
+        'item_removed',
+        'items_reordered',
+      ]),
+      checklistId: id,
+      itemId: id.nullable(),
+    }),
+  },
   'ticket.followed': { subject: 'ticket', payload: z.object({ key: z.string(), userId: id }) },
   'ticket.unfollowed': { subject: 'ticket', payload: z.object({ key: z.string(), userId: id }) },
   'ticket.voted': { subject: 'ticket', payload: z.object({ key: z.string() }) },

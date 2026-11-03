@@ -1,6 +1,7 @@
 import { stableJson } from '@taskmoor/testkit/golden';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
+import { docShapeProblem } from './adf';
 import { fromAdfJson, type PmJson, toAdfFromJson } from './convert';
 import { fromMarkdown, isSafeHref, looksLikeMarkdown, toMarkdown } from './markdown';
 import { DOCUMENTS, SOURCES } from './markdown-corpus';
@@ -195,6 +196,38 @@ describe('Markdown details', () => {
     }
     expect(isSafeHref('https://exa\tmple.test/a\nb')).toBe(true);
     expect(isSafeHref('\t/relative')).toBe(true);
+  });
+
+  it('[NTF-014] (2) reads a section title with tabs and control characters as one line of text', () => {
+    const doc = fromMarkdown('> [!EXPAND] Step\t1\u0007 of\u000b 2\u007f\n>\n> Body.\n');
+    expect(doc.content?.[0]).toMatchObject({ type: 'expand', attrs: { title: 'Step 1 of 2' } });
+    // What the reader makes, the save checks accept (API-011).
+    expect(docShapeProblem(doc)).toBeNull();
+  });
+
+  it('[NTF-014] (1) keeps a quote that starts with a section or panel marker as text a quote', () => {
+    for (const text of ['[!EXPAND] is how a section starts.', '[!WARNING]']) {
+      const doc = normal({
+        type: 'doc',
+        content: [
+          {
+            type: 'blockquote',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+          },
+        ],
+      });
+      const markdown = toMarkdown(doc);
+      expect(fromMarkdown(markdown), markdown).toEqual(doc);
+    }
+    // Escaped or written as a character reference, the marker is text the author typed.
+    for (const markdown of ['> \\[!EXPAND] Title\n', '> &#91;!EXPAND] Title\n', '> \\[!INFO]\n']) {
+      expect(fromMarkdown(markdown).content?.[0]?.type, markdown).toBe('blockquote');
+    }
+    expect(fromMarkdown('> [!EXPAND] Title\n').content?.[0]?.type).toBe('expand');
+    expect(fromMarkdown('> [!INFO]\n> Body.\n').content?.[0]?.type).toBe('panel');
+    // A leading byte order mark does not move the markers.
+    const bom = fromMarkdown('\ufeffIntro.\n\n> [!INFO]\n> b\n\n> [!EXPAND] Later\n> c\n');
+    expect(bom.content?.map((block) => block.type)).toEqual(['paragraph', 'panel', 'expand']);
   });
 
   it('reads an empty text as an empty document', () => {

@@ -7,10 +7,15 @@ import type { AiClient } from '../../ai/client';
 import { SummaryPanel } from '../../ai/SummaryPanel';
 import { ApiError } from '../../api/client';
 import { AttachmentPanel } from '../../attachments/AttachmentPanel';
-import type { AttachmentClient } from '../../attachments/client';
+import { type AttachmentClient, attachmentClient } from '../../attachments/client';
 import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
+import {
+  type EditorAttachment,
+  type EditorTools,
+  EditorToolsProvider,
+} from '../../richtext/EditorTools';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { boardBehind } from '../../routing/cameFrom';
 import {
@@ -36,6 +41,10 @@ import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
+import { ChecklistsPanel } from '../tools/ChecklistsPanel';
+import { pickerQuery, type TicketToolsClient, ticketToolsClient } from '../tools/client';
+import { LinksPanel } from '../tools/LinksPanel';
+import { SubticketsPanel } from '../tools/SubticketsPanel';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
   type NumberField,
@@ -43,10 +52,8 @@ import {
   type TicketClient,
   type TicketDetails,
   type TicketEdit,
-  type TicketLink,
   type Transition,
   ticketClient,
-  type WebLink,
 } from './client';
 import { InfoPanel } from './InfoPanel';
 import { StatusMenu } from './StatusMenu';
@@ -63,6 +70,8 @@ export interface TicketPageProps {
   comments?: CommentClient;
   /** Where the Clone action starts its copies (M1-124). */
   clone?: CloneClient;
+  /** Links, subtickets and checklists (CORE-031 to CORE-033). */
+  tools?: TicketToolsClient;
   /** How the description's shared document opens (M1-017); stories keep it in the page. */
   connect?: Connect;
   /** Where "@" finds people; the backend's list for the ticket by default. */
@@ -87,6 +96,42 @@ const FILLABLE = ['close-reason', 'priority'];
 export const TICKET_POPUP_CLASS = 'ticket-popup';
 
 const NO_COMMANDS: Command[] = [];
+
+/**
+ * What the blocks of a ticket's description and comments reach (NTF-013, NTF-014): the ticket's
+ * files, read once per page unless the menu asks again, and tickets through search. A read that
+ * failed is not kept, so the next reference asks again rather than showing bare names until a
+ * reload.
+ */
+export function ticketEditorTools(
+  files: AttachmentClient,
+  tools: Pick<TicketToolsClient, 'pick'>,
+): EditorTools {
+  let read: Promise<EditorAttachment[]> | null = null;
+  return {
+    attachments: (fresh) => {
+      if (fresh || !read) {
+        const asked = files.list().then(({ attachments: list }) =>
+          list.map((file) => ({
+            name: file.name,
+            image: file.kind === 'image',
+            href: files.urls.content(file),
+            thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
+          })),
+        );
+        asked.catch(() => {
+          if (read === asked) read = null;
+        });
+        read = asked;
+      }
+      return read;
+    },
+    tickets: (typed) => {
+      const query = pickerQuery(typed);
+      return query ? tools.pick(query) : Promise.resolve([]);
+    },
+  };
+}
 
 const typing = (target: EventTarget | null) => {
   const el = target as HTMLElement | null;
@@ -119,6 +164,7 @@ export function TicketView({
   attachments,
   comments,
   clone,
+  tools,
   connect,
   mentions = (ticketId) => mentionSource({ ticket: ticketId }),
   ai = {},
@@ -130,6 +176,11 @@ export function TicketView({
   const descriptionId = useId();
   const detailsId = useId();
   const engine = useSyncEngine();
+  // The page's own client reads a ticket's links; stories and tests pass one or both.
+  const toolsClient = useMemo(
+    () => tools ?? { ...ticketToolsClient, links: client.links },
+    [tools, client],
+  );
   const { session } = useSession();
   const me =
     session.status === 'signed-in'
@@ -207,6 +258,15 @@ export function TicketView({
       popup?.onTicket({ key: shownKey, summary: shownSummary });
     }
   }, [shownKey, shownSummary]);
+
+  // What the blocks of its description and comments reach (NTF-013, NTF-014).
+  const editorTools = useMemo<EditorTools>(
+    () =>
+      ticketId === null
+        ? {}
+        : ticketEditorTools(attachments ?? attachmentClient(ticketId), toolsClient),
+    [ticketId, attachments, toolsClient],
+  );
 
   // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
   // ticket's row there moves on, the page reads the ticket again, so the open view follows
@@ -310,6 +370,12 @@ export function TicketView({
     setMessage(said);
     setProblem(null);
     // The page beneath the pop-up shows it at once.
+    if (popup) announceTicketChange();
+  };
+
+  // A link, subticket or checklist changed: history reads again, and so does the page beneath.
+  const toolChanged = () => {
+    setRevision((r) => r + 1);
     if (popup) announceTicketChange();
   };
 
@@ -682,62 +748,87 @@ export function TicketView({
         )}
       </header>
 
-      <div className="ticket-columns">
-        <div className="ticket-main">
-          <section aria-labelledby={descriptionId} className="ticket-text">
-            <h2 id={descriptionId} className="facts-title">
-              {t('ticketPage.description')}
-            </h2>
-            <CollaborativeEditor
-              ticketId={shown.id}
-              field="description"
-              labelledBy={descriptionId}
-              fallback={shown.description ?? null}
-              user={me}
-              {...(findPeople ? { mentions: findPeople } : {})}
-              {...(connect ? { connect } : {})}
-            />
-          </section>
-          {loaded && (
-            <SummaryPanel
-              ticket={{ id: loaded.id, key: loaded.key }}
-              trackId={loaded.track.id}
-              {...(ai.client ? { client: ai.client } : {})}
-              {...(ai.notice ? { notice: ai.notice } : {})}
-              {...(ai.features ? { features: ai.features } : {})}
-            />
-          )}
-          {loaded && <LinksPanel ticketId={loaded.id} client={client} revision={revision} />}
-          <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
-          <ActivityPanel
-            ticket={{ id: shown.id, key: shown.key }}
-            client={client}
-            comments={comments}
-            mentions={findPeople}
-            tab={tab}
-            onTab={setTab}
-            revision={revision}
-          />
-        </div>
-        {loaded && (
-          <div className="ticket-side">
-            <section aria-labelledby={detailsId} className="ticket-details">
-              <h2 id={detailsId} className="ticket-section-title">
-                {t('ticketView.details')}
+      <EditorToolsProvider value={editorTools}>
+        <div className="ticket-columns">
+          <div className="ticket-main">
+            <section aria-labelledby={descriptionId} className="ticket-text">
+              <h2 id={descriptionId} className="facts-title">
+                {t('ticketPage.description')}
               </h2>
-              <Details
-                ticket={loaded}
-                me={me}
-                client={client}
-                when={when}
-                onEdit={edit}
-                onAssignToMe={assignToMe}
+              <CollaborativeEditor
+                ticketId={shown.id}
+                field="description"
+                labelledBy={descriptionId}
+                fallback={shown.description ?? null}
+                user={me}
+                {...(findPeople ? { mentions: findPeople } : {})}
+                {...(connect ? { connect } : {})}
               />
             </section>
-            <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
+            {loaded && (
+              <SummaryPanel
+                ticket={{ id: loaded.id, key: loaded.key }}
+                trackId={loaded.track.id}
+                {...(ai.client ? { client: ai.client } : {})}
+                {...(ai.notice ? { notice: ai.notice } : {})}
+                {...(ai.features ? { features: ai.features } : {})}
+              />
+            )}
+            {loaded && (
+              <ChecklistsPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={toolChanged}
+              />
+            )}
+            {loaded && (
+              <SubticketsPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={toolChanged}
+              />
+            )}
+            {loaded && (
+              <LinksPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={toolChanged}
+              />
+            )}
+            <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
+            <ActivityPanel
+              ticket={{ id: shown.id, key: shown.key }}
+              client={client}
+              comments={comments}
+              mentions={findPeople}
+              tab={tab}
+              onTab={setTab}
+              revision={revision}
+            />
           </div>
-        )}
-      </div>
+          {loaded && (
+            <div className="ticket-side">
+              <section aria-labelledby={detailsId} className="ticket-details">
+                <h2 id={detailsId} className="ticket-section-title">
+                  {t('ticketView.details')}
+                </h2>
+                <Details
+                  ticket={loaded}
+                  me={me}
+                  client={client}
+                  when={when}
+                  onEdit={edit}
+                  onAssignToMe={assignToMe}
+                />
+              </section>
+              <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
+            </div>
+          )}
+        </div>
+      </EditorToolsProvider>
       {cloning && loaded && (
         <CloneDialog
           ticket={{
@@ -1183,60 +1274,6 @@ function NumberFact({
         </form>
       </dd>
     </div>
-  );
-}
-
-function LinksPanel({
-  ticketId,
-  client,
-  revision,
-}: {
-  ticketId: number;
-  client: TicketClient;
-  revision: number;
-}) {
-  const t = useT();
-  const titleId = useId();
-  const [links, setLinks] = useState<{ links: TicketLink[]; webLinks: WebLink[] } | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
-  useEffect(() => {
-    let live = true;
-    client.links(ticketId).then(
-      (found) => live && setLinks(found),
-      () => live && setLinks({ links: [], webLinks: [] }),
-    );
-    return () => {
-      live = false;
-    };
-  }, [client, ticketId, revision]);
-  if (!links || (links.links.length === 0 && links.webLinks.length === 0)) return null;
-  return (
-    <section aria-labelledby={titleId} className="ticket-links">
-      <h2 id={titleId} className="ticket-section-title">
-        {t('ticketView.links')}
-      </h2>
-      <ul className="ticket-link-list">
-        {links.links.map((l) => (
-          <li key={`t${l.id}`}>
-            <span className="ticket-link-phrase">{l.phrase}</span>{' '}
-            <a
-              href={routeHref(`#/tickets/${encodeURIComponent(l.ticket.key)}`)}
-              className={l.ticket.closed ? 'ticket-link-closed' : undefined}
-            >
-              {l.ticket.key}
-            </a>{' '}
-            {l.ticket.summary}
-          </li>
-        ))}
-        {links.webLinks.map((w) => (
-          <li key={`w${w.id}`}>
-            <a href={w.url} target="_blank" rel="noopener noreferrer nofollow">
-              {w.title || w.url}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

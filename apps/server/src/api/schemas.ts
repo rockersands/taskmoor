@@ -271,6 +271,49 @@ export const link = z
   .loose()
   .meta({ id: 'Link' });
 
+const checklistProgress = z
+  .object({
+    done: z.number().int(),
+    counted: z.number().int().meta({ description: 'Items that count: all but the rejected ones.' }),
+    percent: nullable(z.number().int()).meta({
+      description: 'A whole percent; null when nothing counts.',
+    }),
+  })
+  .loose();
+
+export const checklists = z
+  .object({
+    checklists: z.array(
+      z
+        .object({
+          id,
+          name: z.string(),
+          items: z.array(
+            z
+              .object({
+                id,
+                text: z.string(),
+                state: z.enum(['open', 'in_progress', 'done', 'rejected']),
+                createdAt: instant,
+                updatedAt: instant,
+              })
+              .loose(),
+          ),
+          progress: checklistProgress,
+          createdAt: instant,
+          updatedAt: instant,
+        })
+        .loose(),
+    ),
+    progress: checklistProgress,
+    canEdit: z.boolean().meta({ description: 'May this person change them.' }),
+    lock: z.unknown().meta({
+      description: 'The status lock that holds editing back, when one does; otherwise null.',
+    }),
+  })
+  .loose()
+  .meta({ id: 'TicketChecklists' });
+
 export const property = z
   .object({
     key: z.string(),

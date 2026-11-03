@@ -52,6 +52,17 @@ async function receiver(
   return { server, port: (server.address() as AddressInfo).port, seen };
 }
 
+/** 127.0.0.2 where the system answers on all of 127/8 (Linux, Windows), else ::1 (macOS). */
+async function secondLoopback(): Promise<string> {
+  const probe = createServer();
+  const bound = await new Promise<boolean>((resolve) => {
+    probe.once('error', () => resolve(false));
+    probe.listen(0, '127.0.0.2', () => resolve(true));
+  });
+  if (bound) await new Promise<void>((resolve) => probe.close(() => resolve()));
+  return bound ? '127.0.0.2' : '::1';
+}
+
 describe('outbound guard: addresses (ASVS 5.2.6)', () => {
   it('[NFR-008] refuses loopback, private, CGNAT, link-local, unique-local, multicast, reserved and metadata addresses', () => {
     const cases: [string, string | null][] = [
@@ -225,14 +236,18 @@ describe('outbound guard: requests (ASVS 5.2.6, 12.6.1)', () => {
   });
 
   it('[NFR-008] connects to the address it checked: a second answer from DNS cannot swap it (rebinding)', async () => {
-    // Linux answers on all of 127/8: the checked address is 127.0.0.2, the swapped one 127.0.0.1.
-    other = await receiver('127.0.0.2', () => ({ status: 200, body: 'checked' }));
+    // The checked address is a second loopback one (127.0.0.2, or ::1 on macOS); the swapped
+    // one is 127.0.0.1, where nothing answers on this port.
+    const checked = await secondLoopback();
+    other = await receiver(checked, () => ({ status: 200, body: 'checked' }));
     let calls = 0;
     const resolve: Resolver = async () => {
       calls += 1;
-      return [{ address: calls === 1 ? '127.0.0.2' : '127.0.0.1', family: 4 }];
+      return calls === 1
+        ? [{ address: checked, family: checked.includes(':') ? 6 : 4 }]
+        : [{ address: '127.0.0.1', family: 4 }];
     };
-    const g = guard({ allow: '127.0.0.2', resolve });
+    const g = guard({ allow: checked, resolve });
     const res = await g.fetch(`http://rebind.example:${other.port}/`);
     expect(await res.text()).toBe('checked');
     expect(calls).toBe(1);
@@ -240,7 +255,7 @@ describe('outbound guard: requests (ASVS 5.2.6, 12.6.1)', () => {
     // A new connection resolves again, and the swapped answer is refused.
     g.close();
     await expect(
-      createOutboundGuard({ allow: '127.0.0.2', resolve }).fetch(
+      createOutboundGuard({ allow: checked, resolve }).fetch(
         `http://rebind.example:${other.port}/`,
       ),
     ).rejects.toThrow(/loopback/);

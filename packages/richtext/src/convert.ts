@@ -1,5 +1,13 @@
 import type { Node as PmNode } from '@tiptap/pm/model';
-import { type AdfMark, type AdfNode, adfShapeProblem } from './adf';
+import {
+  type AdfMark,
+  type AdfNode,
+  adfShapeProblem,
+  isAttachmentName,
+  isExpandTitle,
+  MAX_COLUMNS,
+  TICKET_KEY,
+} from './adf';
 import { schema } from './schema';
 
 /** ProseMirror's JSON form, which the schema can parse. */
@@ -14,6 +22,46 @@ export interface PmJson {
 type Attrs = Record<string, unknown>;
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+/** How a file of the ticket reads in the other format: a media node of this collection. */
+const ATTACHMENT_COLLECTION = 'taskmoor-attachments';
+/** How a ticket reference reads there: a card with the ticket's address (`/browse/` resolves). */
+const TICKET_ADDRESS = /^\/browse\/([^/?#]+)$/;
+
+/** The layout a section holds, when it is one the editor can edit; else it is kept whole. */
+function columnsOf(node: AdfNode): AdfNode[] | null {
+  const columns = node.content ?? [];
+  if (columns.length === 0 || columns.length > MAX_COLUMNS) return null;
+  const fits = columns.every(
+    (c) =>
+      c.type === 'layoutColumn' &&
+      (c.content ?? []).length > 0 &&
+      (c.attrs?.width === undefined || typeof c.attrs.width === 'number'),
+  );
+  return fits ? columns : null;
+}
+
+/** The media node a file of the ticket is written as, when it holds nothing else. */
+const fileMedia = (id: unknown): AdfNode => ({
+  type: 'media',
+  attrs: { type: 'file', id, collection: ATTACHMENT_COLLECTION },
+});
+
+/**
+ * The file a media wrapper names, when it is a file of the ticket; else it is kept whole. A
+ * media node with more than the file (a size, alt text, marks) is kept too, for the export.
+ */
+function attachmentOf(node: AdfNode): { name: string; media: AdfNode | null } | null {
+  const [only, ...rest] = node.content ?? [];
+  if (!only || rest.length > 0 || only.type !== 'media') return null;
+  const { type, id, collection, ...more } = only.attrs ?? {};
+  if (collection !== ATTACHMENT_COLLECTION || !isAttachmentName(id)) return null;
+  const plain =
+    type === 'file' &&
+    Object.keys(more).length === 0 &&
+    Object.keys(only).every((key) => key === 'type' || key === 'attrs');
+  return { name: id, media: plain ? null : clone(only) };
+}
 
 // ---------------------------------------------------------------------------------------------
 // Import
@@ -81,6 +129,42 @@ function block(node: AdfNode): PmJson {
         attrs: withAdf(node, { panelType: a.panelType ?? 'info' }),
         content: blocks(node.content),
       };
+    case 'expand':
+      // Without blocks, or with a title that is no line of text, it stays as it came.
+      if ((node.content ?? []).length === 0 || (a.title !== undefined && !isExpandTitle(a.title))) {
+        return { type: 'unknownBlock', attrs: { adf: clone(node) } };
+      }
+      return {
+        type: 'expand',
+        attrs: withAdf(node, { title: a.title ?? '' }),
+        content: blocks(node.content),
+      };
+    case 'layoutSection': {
+      const columns = columnsOf(node);
+      if (!columns) return { type: 'unknownBlock', attrs: { adf: clone(node) } };
+      return {
+        type: 'columnLayout',
+        attrs: withAdf(node),
+        content: columns.map((column) => ({
+          type: 'column',
+          attrs: withAdf(column, { width: column.attrs?.width ?? null }),
+          content: blocks(column.content),
+        })),
+      };
+    }
+    case 'mediaSingle':
+    case 'mediaGroup': {
+      const file = attachmentOf(node);
+      if (file === null) return { type: 'unknownBlock', attrs: { adf: clone(node) } };
+      return {
+        type: 'attachmentRef',
+        attrs: withAdf(node, {
+          name: file.name,
+          image: node.type === 'mediaSingle',
+          adfMedia: file.media,
+        }),
+      };
+    }
     case 'table':
       return { type: 'table', attrs: withAdf(node), content: blocks(node.content) };
     case 'tableRow':
@@ -141,6 +225,13 @@ function inline(node: AdfNode): PmJson {
         type: 'status',
         attrs: withAdf(node, { text: a.text ?? '', color: a.color ?? 'neutral' }),
       };
+    case 'inlineCard': {
+      const key = typeof a.url === 'string' ? TICKET_ADDRESS.exec(a.url)?.[1] : undefined;
+      if (key && TICKET_KEY.test(key)) {
+        return { type: 'ticketRef', attrs: withAdf(node, { key }) };
+      }
+      return { type: 'unknownInline', attrs: { adf: clone(node) } };
+    }
     default:
       return { type: 'unknownInline', attrs: { adf: clone(node) } };
   }
@@ -246,6 +337,34 @@ function exportNode(n: PmJson): AdfNode {
       return node('hardBreak', attrsOut(a));
     case 'panel':
       return node('panel', attrsOut(a, { panelType: { value: a.panelType } }), children());
+    case 'expand':
+      return node(
+        'expand',
+        attrsOut(a, { title: { value: a.title, isDefault: (a.title ?? '') === '' } }),
+        children(),
+      );
+    case 'columnLayout':
+      return node('layoutSection', attrsOut(a), children());
+    case 'column':
+      return node(
+        'layoutColumn',
+        attrsOut(a, { width: { value: a.width, isDefault: a.width == null } }),
+        children(),
+      );
+    case 'attachmentRef': {
+      // The kept media node comes back whole; the file it names is the editor's.
+      const kept = a.adfMedia as AdfNode | null | undefined;
+      const media: AdfNode = kept
+        ? {
+            ...clone(kept),
+            type: 'media',
+            attrs: { ...clone(kept.attrs ?? {}), id: a.name, collection: ATTACHMENT_COLLECTION },
+          }
+        : fileMedia(a.name);
+      return node(a.image ? 'mediaSingle' : 'mediaGroup', attrsOut(a), [media]);
+    }
+    case 'ticketRef':
+      return node('inlineCard', attrsOut(a, { url: { value: `/browse/${String(a.key)}` } }));
     case 'table':
       return node('table', attrsOut(a), children());
     case 'tableRow':

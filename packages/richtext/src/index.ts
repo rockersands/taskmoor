@@ -6,7 +6,10 @@ export {
   canonicalAdf,
   countNodes,
   docShapeProblem,
+  MAX_ATTACHMENT_NAME,
   MAX_DOCUMENT_DEPTH,
+  MAX_TITLE_LENGTH,
+  TICKET_KEY,
 } from './adf';
 export { COLLAB_FRAGMENT, docFromYDoc, EMPTY_DOC, writeDocToYDoc } from './collab';
 export { fromAdf, fromAdfJson, type PmJson, toAdf, toAdfFromJson } from './convert';

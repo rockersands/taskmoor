@@ -86,6 +86,52 @@ describe('documents in Yjs (ADR-014)', () => {
     expect(merged.content?.[0]?.content?.[0]?.text).toBe('New plan');
   });
 
+  it('[NTF-014] (3) holds every new block, and two peers converge on it', () => {
+    const start: PmJson = {
+      type: 'doc',
+      content: [
+        {
+          type: 'expand',
+          attrs: { title: 'More' },
+          content: [paragraph('Inside').content?.[0] as PmJson],
+        },
+        {
+          type: 'columnLayout',
+          content: [
+            { type: 'column', content: [paragraph('Left').content?.[0] as PmJson] },
+            { type: 'column', content: [paragraph('Right').content?.[0] as PmJson] },
+          ],
+        },
+        { type: 'attachmentRef', attrs: { name: 'a.png', image: true } },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'ticketRef', attrs: { key: 'PAY-42' } },
+            { type: 'date', attrs: { timestamp: '1760000000000' } },
+            { type: 'status', attrs: { text: 'OPEN', color: 'blue' } },
+            { type: 'emoji', attrs: { shortName: ':tada:', text: '🎉' } },
+          ],
+        },
+        { type: 'panel', attrs: { panelType: 'warning' }, content: [{ type: 'paragraph' }] },
+      ],
+    };
+    const { a, b } = peers(start);
+    expect(docFromYDoc(a)).toEqual(normal(start));
+    expect(docFromYDoc(b)).toEqual(normal(start));
+    // One retitles the section while the other adds a block.
+    const retitled = normal(start);
+    (retitled.content?.[0]?.attrs as Record<string, unknown>).title = 'Much more';
+    writeDocToYDoc(a, retitled);
+    const added = normal(start);
+    added.content?.push({ type: 'attachmentRef', attrs: { name: 'b.pdf', image: false } });
+    writeDocToYDoc(b, added);
+    exchange(a, b);
+    const merged = docFromYDoc(a);
+    expect(merged).toEqual(docFromYDoc(b));
+    expect(merged.content?.[0]?.attrs?.title).toBe('Much more');
+    expect(merged.content?.at(-1)?.attrs?.name).toBe('b.pdf');
+  });
+
   it('updates a document in place: writing what it holds changes nothing', () => {
     const ydoc = new Y.Doc();
     writeDocToYDoc(ydoc, paragraph('Same text'));

@@ -84,6 +84,8 @@ const EXEMPT: Record<string, string> = {
   'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
   'POST /api/v1/admin/ai/test':
     'reads only: asks the AI provider for its models with the saved or given settings, stores nothing (M1-076)',
+  'POST /api/v1/tickets/subticket-progress':
+    'reads only: how many tickets under shown tickets are closed, as the viewer (CORE-032)',
   'POST /api/v1/search/format-rules':
     'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
   'PUT /api/v1/me/recent-tickets/:id':
@@ -2199,6 +2201,101 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         call(String(state.bo1b), {
           method: 'DELETE',
           url: `/api/v1/tickets/${state.ticket}/web-links/${state.webLink}`,
+        }),
+    },
+    // Checklists (CORE-033): one event for each change, whatever it changed.
+    {
+      route: 'POST /api/v1/tickets/:id/checklists',
+      expect: 'ticket.checklist_changed',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/checklists`,
+          payload: { name: 'Contract list', items: ['First', 'Second'] },
+        });
+        const body = res.json();
+        state.checklist = body.checklists?.[0]?.id;
+        state.checklistItems = body.checklists?.[0]?.items?.map((i: { id: number }) => i.id);
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id/checklists/:checklistId',
+      expect: 'ticket.checklist_changed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}`,
+          payload: { name: 'Contract list, renamed' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/checklists/:checklistId/items',
+      expect: 'ticket.checklist_changed',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}/items`,
+          payload: { text: 'Third' },
+        });
+        state.checklistItem = res.json().checklists?.[0]?.items?.at(-1)?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id/checklists/:checklistId/items/:itemId',
+      expect: 'ticket.checklist_changed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}/items/${state.checklistItem}`,
+          payload: { text: 'Third, edited', state: 'done' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/checklists/:checklistId/items/order',
+      expect: 'ticket.checklist_changed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}/items/order`,
+          payload: { ids: [state.checklistItem, ...(state.checklistItems as unknown as number[])] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/checklists/:checklistId/items/:itemId',
+      expect: 'ticket.checklist_changed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}/items/${state.checklistItem}`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/checklists/order',
+      expect: 'ticket.checklist_changed',
+      prepare: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/checklists`,
+          payload: { name: 'Another' },
+        });
+        state.secondChecklist = res.json().checklists?.at(-1)?.id;
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/checklists/order`,
+          payload: { ids: [state.secondChecklist, state.checklist] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/checklists/:checklistId',
+      expect: 'ticket.checklist_changed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/checklists/${state.checklist}`,
         }),
     },
     // Entity properties (M1-129): set, replaced and removed; the index is declared and dropped.

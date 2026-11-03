@@ -88,6 +88,43 @@ export const MAX_DOCUMENT_DEPTH = 128;
  */
 export const MAX_TABLE_SPAN = 1000;
 
+/**
+ * The new blocks' values (NTF-014). Neither reaches a URL or the DOM as markup: a ticket reference
+ * holds a key and an attachment reference a file name, which readers look up on the ticket.
+ */
+export const TICKET_KEY = /^[A-Za-z][A-Za-z0-9_]{0,99}-[0-9]{1,18}$/;
+export const MAX_TITLE_LENGTH = 255;
+export const MAX_ATTACHMENT_NAME = 255;
+/** The most columns a layout may hold, as the Jira-compatible format lays them out. */
+export const MAX_COLUMNS = 6;
+/** Text with no control characters, within a length. */
+const plainLine = (v: unknown, max: number): boolean =>
+  typeof v === 'string' &&
+  v.length <= max &&
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses
+  !/[\u0000-\u001f\u007f]/.test(v);
+export const isExpandTitle = (v: unknown): v is string => plainLine(v, MAX_TITLE_LENGTH);
+export const isAttachmentName = (v: unknown): v is string =>
+  plainLine(v, MAX_ATTACHMENT_NAME) && (v as string).trim() !== '';
+
+/** Why a new block's attributes are not what it may hold, or null. */
+function blockValueProblem(type: string, attrs: Record<string, unknown>): string | null {
+  switch (type) {
+    case 'ticketRef':
+      return typeof attrs.key === 'string' && TICKET_KEY.test(attrs.key)
+        ? null
+        : 'a ticket reference without a ticket key';
+    case 'attachmentRef':
+      return isAttachmentName(attrs.name) ? null : 'an attachment reference without a file name';
+    case 'expand':
+      return attrs.title === undefined || attrs.title === null || isExpandTitle(attrs.title)
+        ? null
+        : 'a collapsible section with a title that is not a line of text';
+    default:
+      return null;
+  }
+}
+
 const TABLE_CELLS = new Set(['tableCell', 'tableHeader']);
 
 /** Why a cell's `colspan` or `rowspan` cannot be laid out, or null. */
@@ -158,7 +195,8 @@ export function adfShapeProblem(root: unknown): string | null {
 /**
  * The same for a stored document (the editor's JSON): its nodes, plus the other format's
  * attributes it keeps (`adfAttrs`, the whole node of an `unknownBlock` or `unknownInline`, an
- * `unknownMark`'s attributes), which the writers read back. Null when well formed.
+ * `unknownMark`'s attributes, an `attachmentRef`'s media node), which the writers read back.
+ * Null when well formed.
  */
 export function docShapeProblem(root: unknown): string | null {
   const stack: { node: unknown; depth: number }[] = [{ node: root, depth: 1 }];
@@ -173,13 +211,27 @@ export function docShapeProblem(root: unknown): string | null {
     const { node, depth } = stack.pop() as { node: unknown; depth: number };
     if (depth > MAX_DOCUMENT_DEPTH) return `nested deeper than ${MAX_DOCUMENT_DEPTH}`;
     if (!isPlainObject(node) || typeof node.type !== 'string') return 'a node without a type';
+    if (
+      (node.type === 'ticketRef' || node.type === 'attachmentRef') &&
+      !isPlainObject(node.attrs)
+    ) {
+      return blockValueProblem(node.type, {});
+    }
     if (node.attrs !== undefined && node.attrs !== null) {
       if (!isPlainObject(node.attrs)) return `attributes of ${node.type} that are not an object`;
-      const problem = keptAttrs(node.attrs, node.type) ?? spanProblem(node.type, node.attrs);
+      const problem =
+        keptAttrs(node.attrs, node.type) ??
+        spanProblem(node.type, node.attrs) ??
+        blockValueProblem(node.type, node.attrs);
       if (problem) return problem;
       if (node.type === 'unknownBlock' || node.type === 'unknownInline') {
         const kept = adfShapeProblem(node.attrs.adf);
         if (kept) return `the kept ${node.type}: ${kept}`;
+      }
+      const media = node.type === 'attachmentRef' ? node.attrs.adfMedia : undefined;
+      if (media !== undefined && media !== null) {
+        const kept = adfShapeProblem(media);
+        if (kept) return `the kept media of an attachment reference: ${kept}`;
       }
     }
     if (node.marks !== undefined) {

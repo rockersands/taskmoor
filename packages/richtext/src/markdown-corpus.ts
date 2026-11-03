@@ -94,6 +94,70 @@ export interface CorpusDocument {
 }
 
 export const DOCUMENTS: CorpusDocument[] = [
+  {
+    name: 'expand',
+    lossless: true,
+    doc: doc(
+      {
+        type: 'expand',
+        attrs: { title: 'Steps to reproduce' },
+        content: [p(t('First open the page.')), ul([p(t('then wait'))], [p(t('then look'))])],
+      },
+      { type: 'expand', attrs: { title: '' }, content: [p(t('No title here.'))] },
+    ),
+  },
+  {
+    name: 'expand-title-symbols',
+    lossless: true,
+    doc: doc({
+      type: 'expand',
+      attrs: { title: 'Costs *are* [high] & _odd_' },
+      content: [p(t('Body.'))],
+    }),
+  },
+  {
+    // Quotes whose text only looks like a marker: the writer escapes it, the reader keeps it text.
+    name: 'quote-starting-with-a-marker',
+    lossless: true,
+    doc: doc(
+      quote(p(t('[!EXPAND] is how a section starts.'))),
+      quote(p(t('[!WARNING]')), p(t('Not a panel.'))),
+      quote(p(t('[!expand]'))),
+    ),
+  },
+  {
+    name: 'ticket-reference',
+    lossless: true,
+    doc: doc(
+      p(
+        t('Blocked by '),
+        { type: 'ticketRef', attrs: { key: 'PAY-42' } },
+        t(' and '),
+        { type: 'ticketRef', attrs: { key: 'OPS_2-7' } },
+        t('.'),
+      ),
+    ),
+  },
+  {
+    name: 'attachment-reference',
+    lossless: true,
+    doc: doc(
+      { type: 'attachmentRef', attrs: { name: 'screen shot (1).png', image: true } },
+      { type: 'attachmentRef', attrs: { name: 'notes [final].pdf', image: false } },
+      p(t('After them.')),
+    ),
+  },
+  {
+    name: 'columns',
+    lossless: false,
+    doc: doc({
+      type: 'columnLayout',
+      content: [
+        { type: 'column', content: [h(2, t('Left')), p(t('One.'))] },
+        { type: 'column', content: [p(t('Two.'))] },
+      ],
+    }),
+  },
   { name: 'plain-paragraph', lossless: true, doc: doc(p(t('The export button does nothing.'))) },
   {
     name: 'paragraphs',
@@ -566,6 +630,33 @@ export const DOCUMENTS: CorpusDocument[] = [
       ]),
     ),
   },
+  {
+    // The media node's size, alt text and marks are the other format's own: Markdown drops them.
+    name: 'imported-attachment',
+    lossless: false,
+    doc: fromAdfJson(
+      adfDoc([
+        {
+          type: 'mediaSingle',
+          attrs: { layout: 'center' },
+          content: [
+            {
+              type: 'media',
+              attrs: {
+                type: 'file',
+                id: 'login.png',
+                collection: 'taskmoor-attachments',
+                width: 640,
+                height: 480,
+                alt: 'Login',
+              },
+              marks: [{ type: 'border', attrs: { size: 2 } }],
+            },
+          ],
+        },
+      ]),
+    ),
+  },
 ];
 
 export interface CorpusSource {
@@ -679,6 +770,16 @@ export const SOURCES: CorpusSource[] = [
   {
     name: 'soft-breaks',
     markdown: 'One sentence\nwraps onto\n  the next line.\n',
+  },
+  {
+    // A tab and other control characters in a section title read as spaces (NTF-014).
+    name: 'section-title-controls',
+    markdown: '> [!EXPAND] Step\t1\u0007 of\u000b 2\n>\n> Body.\n',
+  },
+  {
+    // An escaped marker or one written as a character reference is text, in a plain quote.
+    name: 'escaped-markers',
+    markdown: '> \\[!EXPAND] Not a section\n\n> &#91;!INFO]\n> Not a panel.\n',
   },
   { name: 'empty', markdown: '' },
 ];

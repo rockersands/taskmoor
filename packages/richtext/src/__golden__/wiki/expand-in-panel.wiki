@@ -1,0 +1,5 @@
+{panel:bgColor=#deebff}
+{expand:Inside}
+Body.
+{expand}
+{panel}

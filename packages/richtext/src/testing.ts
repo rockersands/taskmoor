@@ -114,8 +114,14 @@ function inlineNode(rng: Rng): AdfNode {
       [5, 5],
       [6, 4],
       [7, 4],
+      [8, 2],
     ] as const)
   ) {
+    case 8:
+      return {
+        type: 'inlineCard',
+        attrs: { url: `/browse/${rng.pick(['PAY', 'OPS'])}-${rng.int(1, 999)}` },
+      };
     case 1:
       return {
         type: 'mention',
@@ -233,6 +239,9 @@ function blockNode(rng: Rng, depth: number): AdfNode {
     [7, 4],
     [8, 4],
     [9, 6],
+    [10, 3],
+    [11, 3],
+    [12, 2],
   ] as const);
   switch (choice) {
     case 1:
@@ -289,6 +298,38 @@ function blockNode(rng: Rng, depth: number): AdfNode {
         node.content = [paragraph(rng), ...(rng.chance(0.3) ? [list(rng, depth + 1)] : [])];
       return node;
     }
+    case 10:
+      return {
+        type: 'expand',
+        ...(rng.chance(0.8) ? { attrs: { title: words(rng, 1, 3) } } : {}),
+        content: [paragraph(rng), ...(depth < 1 && rng.chance(0.3) ? [list(rng, depth + 1)] : [])],
+      };
+    case 11:
+      return {
+        type: 'layoutSection',
+        content: Array.from({ length: rng.int(2, 3) }, () => ({
+          type: 'layoutColumn',
+          ...(rng.chance(0.5) ? { attrs: { width: rng.pick([25, 33.33, 50]) } } : {}),
+          content: [
+            paragraph(rng),
+            ...(depth < 1 && rng.chance(0.3) ? [list(rng, depth + 1)] : []),
+          ],
+        })),
+      };
+    case 12:
+      return {
+        type: rng.pick(['mediaSingle', 'mediaGroup']),
+        content: [
+          {
+            type: 'media',
+            attrs: {
+              type: 'file',
+              id: `${rng.pick(WORDS)}.png`,
+              collection: 'taskmoor-attachments',
+            },
+          },
+        ],
+      };
     default:
       return paragraph(rng);
   }

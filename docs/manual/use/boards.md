@@ -73,6 +73,8 @@ the sprint first, and a planned sprint cannot start on a Kanban board. A board s
 If some tickets are in statuses that no column shows, the board names those statuses and how
 many tickets are in them. Someone who may change the board can give them a column.
 
+A card whose ticket has subtickets shows how many are closed, with a small bar, such as **1/2**.
+
 ### Moving cards
 
 Moving a card to another column changes the ticket's status to that column's. On the workflow a new

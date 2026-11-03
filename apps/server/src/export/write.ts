@@ -972,6 +972,79 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
     }
   });
 
+  await write('checklist', async (out) => {
+    await paged(
+      (after, limit) =>
+        db
+          .selectFrom('ticket_checklist as c')
+          .innerJoin('ticket as k', 'k.id', 'c.ticket_id')
+          .select([
+            'c.id',
+            'c.ticket_id',
+            'c.name',
+            'c.position',
+            'c.created_by',
+            ts('c.created_at').as('created_at'),
+            ts('c.updated_at').as('updated_at'),
+          ])
+          .where('c.workspace_id', '=', ws)
+          .where(inTracks('k.track_id'))
+          .where('c.id', '>', after)
+          .orderBy('c.id')
+          .limit(limit)
+          .execute(),
+      async (rows) => {
+        // The items with their times as text, as every other time here (`itemsOf` reads them as
+        // dates, which keep milliseconds only). `paged` never hands over an empty page.
+        const found = await db
+          .selectFrom('ticket_checklist_item')
+          .select([
+            'checklist_id',
+            'text',
+            'state',
+            'position',
+            'created_by',
+            ts('created_at').as('created_at'),
+            ts('updated_at').as('updated_at'),
+          ])
+          .where(
+            'checklist_id',
+            'in',
+            rows.map((r) => r.id),
+          )
+          .orderBy('checklist_id')
+          .orderBy('position')
+          .orderBy('id')
+          .execute();
+        const items = new Map<number, typeof found>();
+        for (const item of found) {
+          const list = items.get(item.checklist_id) ?? [];
+          list.push(item);
+          items.set(item.checklist_id, list);
+        }
+        for (const c of rows) {
+          await out.record({
+            id: idOf('checklist', c.id),
+            ticket: idOf('ticket', c.ticket_id),
+            name: c.name,
+            position: c.position,
+            creator: ref('user', c.created_by),
+            createdAt: c.created_at,
+            updatedAt: c.updated_at,
+            items: (items.get(c.id) ?? []).map((item) => ({
+              text: item.text,
+              state: item.state,
+              position: item.position,
+              creator: ref('user', item.created_by),
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
+            })),
+          });
+        }
+      },
+    );
+  });
+
   await write('history', async (out) => {
     await ticketPages(async (ids) => {
       const rows = await db

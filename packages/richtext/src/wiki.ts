@@ -1,4 +1,4 @@
-import { type AdfNode, layoutSpan } from './adf';
+import { type AdfNode, layoutSpan, MAX_TITLE_LENGTH } from './adf';
 import type { PmJson } from './convert';
 import { dayOf, isSafeHref, readableBlocks, SAFE_COLOR } from './markdown';
 import { schema } from './schema';
@@ -15,7 +15,8 @@ import { schema } from './schema';
  *   plain one;
  * - `{code:sql}` ... `{code}` and `{noformat}` ... `{noformat}` hold text taken as it is;
  *   `{quote}` ... `{quote}` holds blocks; `{panel:...}` ... `{panel}` holds blocks in a panel
- *   (`{info}`, `{note}`, `{tip}` and `{warning}` read as panels of those types).
+ *   (`{info}`, `{note}`, `{tip}` and `{warning}` read as panels of those types);
+ *   `{expand:Title}` ... `{expand}` holds blocks in a collapsible section.
  *
  * Inside a line: `*bold*`, `_italic_`, `-strike-`, `+underline+`, `^superscript^`,
  * `~subscript~`, `{{monospace}}`, `{color:#36b37e}text{color}`, `[text|address]`, `[address]`,
@@ -50,6 +51,11 @@ import { schema } from './schema';
  *   addresses the editor may not hold (`javascript:` and the like) keep only their text;
  * - a code language that the markup cannot carry is dropped, and a code block whose text holds
  *   its own closing tag is written with `{noformat}`;
+ * - columns are written as their blocks, one column after the other, and read back as that;
+ * - a file of the ticket is written as its name and a ticket reference as its key, and both read
+ *   back as text;
+ * - a collapsible section inside another loses its frame, and `}` in a section's title is dropped:
+ *   the markup cannot hold either;
  * - nodes and marks kept whole for the other format are written as the readable content they
  *   hold;
  * - web and email addresses in text (`https://...`, `mailto:...`) read back as links.
@@ -133,12 +139,13 @@ const entity = (ch: string) => `&#${ch.codePointAt(0) as number};`;
 /** Writes a document (ProseMirror JSON on the shared schema) as wiki markup. */
 export function toWiki(doc: PmJson): string {
   if (doc.type !== 'doc') throw new Error(`Expected a doc node, got "${doc.type}"`);
-  return blocksOut(doc.content ?? [], { quote: false, panel: false });
+  return blocksOut(doc.content ?? [], { quote: false, panel: false, expand: false });
 }
 
 interface BlockContext {
   quote: boolean;
   panel: boolean;
+  expand: boolean;
 }
 
 function blocksOut(nodes: readonly PmJson[], ctx: BlockContext): string {
@@ -185,6 +192,21 @@ function blockOut(n: PmJson, ctx: BlockContext): string {
       if (ctx.panel) return blocksOut(content, ctx);
       return `{panel:${panelParams(String(a.panelType ?? 'info'))}}\n${blocksOut(content, { ...ctx, panel: true })}\n{panel}`;
     }
+    case 'expand': {
+      if (ctx.expand) return blocksOut(content, ctx);
+      const title = expandTitle(a.title);
+      return `{expand${title === '' ? '' : `:${title}`}}\n${blocksOut(content, { ...ctx, expand: true })}\n{expand}`;
+    }
+    case 'columnLayout':
+      return blocksOut(
+        content.flatMap((column) => column.content ?? []),
+        ctx,
+      );
+    case 'attachmentRef':
+      return inlineOut([{ type: 'text', text: String(a.name ?? '') }], {
+        newlines: true,
+        lineStart: true,
+      });
     case 'table':
       return tableOut(n);
     case 'unknownBlock':
@@ -192,6 +214,19 @@ function blockOut(n: PmJson, ctx: BlockContext): string {
     default:
       return '';
   }
+}
+
+/**
+ * A collapsible section's title as its opening tag can hold it, and as the document may hold it
+ * (NTF-014): one line, no `}`, and control characters read as spaces like white space does.
+ */
+function expandTitle(title: unknown): string {
+  return (
+    String(title ?? '')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it replaces
+      .replace(/[}\s\u0000-\u001f\u007f]+/g, (run) => (/^}+$/.test(run) ? '' : ' '))
+      .trim()
+  );
 }
 
 function panelParams(panelType: string): string {
@@ -264,6 +299,15 @@ function flatInline(block: PmJson): PmJson[] {
       return [];
     case 'unknownBlock':
       return joinBreaks(readableBlocks(a.adf as AdfNode | null).map(flatInline));
+    case 'attachmentRef':
+      return a.name ? [{ type: 'text', text: String(a.name) }] : [];
+    case 'expand': {
+      const title = expandTitle(a.title);
+      return joinBreaks([
+        title === '' ? [] : [{ type: 'text', text: title }],
+        ...(block.content ?? []).map(flatInline),
+      ]);
+    }
     case 'table':
       return joinBreaks(
         (block.content ?? []).flatMap((row) =>
@@ -402,6 +446,8 @@ function leafUnits(n: PmJson, marks: MarkJson[]): Unit[] {
       return lits(dayOf(String(a.timestamp ?? '')));
     case 'status':
       return a.text ? lits(`[${String(a.text)}]`) : [];
+    case 'ticketRef':
+      return a.key ? lits(String(a.key)) : [];
     default:
       return [];
   }
@@ -725,7 +771,11 @@ function render(units: Unit[], opts: LineOptions): string {
 
 /** Reads wiki markup into a document on the shared schema. */
 export function fromWiki(text: string): PmJson {
-  const content = unnest(blocksIn(text.replace(/\r\n?/g, '\n')), { quote: false, panel: false });
+  const content = unnest(blocksIn(text.replace(/\r\n?/g, '\n')), {
+    quote: false,
+    panel: false,
+    expand: false,
+  });
   const json: PmJson = {
     type: 'doc',
     content: content.length > 0 ? content : [{ type: 'paragraph' }],
@@ -757,6 +807,9 @@ function unnest(blocks: readonly PmJson[], ctx: BlockContext): PmJson[] {
     } else if (b.type === 'panel') {
       if (ctx.panel) splice(unnest(content, ctx));
       else out.push(within(b, { ...ctx, panel: true }));
+    } else if (b.type === 'expand') {
+      if (ctx.expand) splice(unnest(content, ctx));
+      else out.push(within(b, { ...ctx, expand: true }));
     } else {
       out.push(b);
     }
@@ -764,7 +817,7 @@ function unnest(blocks: readonly PmJson[], ctx: BlockContext): PmJson[] {
   return out;
 }
 
-const MACRO = /[ \t]*\{(code|noformat|quote|panel|info|note|tip|warning)(?::([^}\n]*))?\}/iy;
+const MACRO = /[ \t]*\{(code|noformat|quote|panel|info|note|tip|warning|expand)(?::([^}\n]*))?\}/iy;
 const HEADING = /^h([1-6])\.(?:\s(.*))?$/;
 const RULE = /^-{4,}[ \t]*$/;
 const QUOTE_LINE = /^bq\.(?:\s(.*))?$/;
@@ -949,6 +1002,18 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
     return {
       blocks: [
         { type: 'blockquote', content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }] },
+      ],
+      end,
+    };
+  }
+  if (name === 'expand') {
+    return {
+      blocks: [
+        {
+          type: 'expand',
+          attrs: { title: expandTitle(m[2]).slice(0, MAX_TITLE_LENGTH) },
+          content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }],
+        },
       ],
       end,
     };
@@ -1587,6 +1652,13 @@ function plainBlocks(nodes: readonly PmJson[], out: string[]): void {
       case 'unknownBlock':
         plainBlocks(readableBlocks(n.attrs?.adf as AdfNode | null), out);
         break;
+      case 'attachmentRef':
+        out.push(String(n.attrs?.name ?? ''));
+        break;
+      case 'expand':
+        out.push(String(n.attrs?.title ?? ''));
+        plainBlocks(n.content ?? [], out);
+        break;
       case 'horizontalRule':
         break;
       default:
@@ -1627,6 +1699,8 @@ function plainInline(nodes: readonly PmJson[]): string {
           return dayOf(String(a.timestamp ?? ''));
         case 'status':
           return String(a.text ?? '');
+        case 'ticketRef':
+          return String(a.key ?? '');
         case 'unknownInline': {
           const adf = a.adf as AdfNode | null;
           const text = adf?.text ?? adf?.attrs?.text ?? adf?.attrs?.url;
