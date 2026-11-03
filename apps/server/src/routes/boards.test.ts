@@ -70,6 +70,11 @@ describe('boards (M1-043)', () => {
   const T = (name: string) => tickets[name] as { id: number; key: string };
 
   async function createBoard(who: string, body: Record<string, unknown>) {
+    // A track has one board (ADR-116): each test starts its track's board afresh.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', body.trackId as number)
+      .execute();
     const res = await post(who, '/api/v1/boards', body);
     expect(res.statusCode, res.body).toBe(201);
     return res.json().board as { id: number; columns: { id: string }[]; version: number };
@@ -181,21 +186,21 @@ describe('boards (M1-043)', () => {
     }
     await ticket('a1', 'BA', { priorityId: priority.Urgent, assigneeId: users.alice?.id });
     await ticket('a2', 'BA', { assigneeId: users.bob?.id });
-    await ticket('b1', 'BB', { labels: ['blue'] });
-    await ticket('b2', 'BB', { labels: ['blue'], assigneeId: users.alice?.id });
-    await ticket('c1', 'BC', { priorityId: priority.Urgent });
-    await ticket('c2', 'BC');
+    await ticket('b1', 'BA', { labels: ['blue'] });
+    await ticket('b2', 'BA', { labels: ['blue'], assigneeId: users.alice?.id });
+    await ticket('c1', 'BA', { priorityId: priority.Urgent, labels: ['far'] });
+    await ticket('c2', 'BA', { labels: ['far'] });
   });
   afterAll(async () => {
     await app.close();
   });
 
-  it('[AGL-001] shows the tickets of every track its query covers, in rank order', async () => {
+  it('[AGL-001] shows the tickets of its track, in rank order', async () => {
     const board = await createBoard('alice', {
       name: 'Three tracks',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
     });
     // Default columns: one per status stage of the board's workflows.
     expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
@@ -227,18 +232,82 @@ describe('boards (M1-043)', () => {
     expect(created.payload).toMatchObject({ name: 'Three tracks', kind: 'kanban' });
   });
 
-  it('[QRY-008] never shows or counts a ticket the viewer may not see', async () => {
+  it('[QRY-008] [AGL-001] never shows a board or a ticket of a track the viewer may not see', async () => {
     const board = await createBoard('alice', {
-      name: 'Shared view',
+      name: 'Hidden',
       kind: 'kanban',
-      trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      trackId: tracks.BC,
     });
-    const d = await data('bob', board.id);
-    expect(d.cards.map((c) => c.key)).toEqual(['a1', 'a2', 'b1', 'b2'].map((n) => T(n).key));
-    expect(d.columns[0]?.count).toBe(4);
-    // Bob does not browse BC: the board still names it, and shows him the rest.
-    expect((await data('alice', board.id)).columns[0]?.count).toBe(6);
+    // Bob does not browse BC: neither the board nor its read answers him.
+    expect((await get('bob', `/api/v1/boards/${board.id}`)).statusCode).toBe(404);
+    expect((await get('bob', `/api/v1/tracks/${tracks.BC}/board`)).statusCode).toBe(404);
+    expect((await get('alice', `/api/v1/boards/${board.id}`)).statusCode).toBe(200);
+  });
+
+  it('[AGL-001] keeps one board per track, inside the track (ADR-116)', async () => {
+    const first = await createBoard('alice', { name: 'One', kind: 'kanban', trackId: tracks.BB });
+    expect(first.columns.length).toBeGreaterThan(0);
+    const second = await post('alice', '/api/v1/boards', {
+      name: 'Two',
+      kind: 'scrum',
+      trackId: tracks.BB,
+    });
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toEqual({ error: 'track_has_board', boardId: first.id });
+    // No track, and a query that names none, is refused.
+    const nowhere = await post('alice', '/api/v1/boards', {
+      name: 'Mine',
+      kind: 'kanban',
+      source: { query: 'assignee = currentUser()' },
+    });
+    expect(nowhere.statusCode).toBe(400);
+    expect(nowhere.json().fields).toEqual({ trackId: 'required' });
+    // Across tracks is refused, at creation and when changed afterwards.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BC as number)
+      .execute();
+    const across = await post('alice', '/api/v1/boards', {
+      name: 'Both',
+      kind: 'kanban',
+      trackId: tracks.BC,
+      source: { query: 'track IN (BB, BC)' },
+    });
+    expect(across.json().fields).toEqual({ source: 'outside_track' });
+    const widened = await patch('alice', `/api/v1/boards/${first.id}`, {
+      source: { query: 'track = BC' },
+    });
+    expect(widened.json().fields).toEqual({ source: 'outside_track' });
+    // A query confined to the track names the track by itself.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BB as number)
+      .execute();
+    const named = await post('alice', '/api/v1/boards', {
+      name: 'Named',
+      kind: 'kanban',
+      source: { query: 'track = BB AND labels = blue' },
+    });
+    expect(named.statusCode, named.body).toBe(201);
+    expect(named.json().board.location).toMatchObject({ type: 'track' });
+  });
+
+  it('[AGL-001] gives a track its board the first time it is opened, once', async () => {
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BB as number)
+      .execute();
+    const opened = await get('bob', `/api/v1/tracks/${tracks.BB}/board`);
+    expect(opened.statusCode, opened.body).toBe(200);
+    const board = opened.json().board;
+    expect(board.name).toBe('Track BB');
+    // A person who only opened it gains nothing over it.
+    expect(board.mayConfigure).toBe(false);
+    expect(board.admins).toEqual([]);
+    const byKey = await get('alice', '/api/v1/tracks/bb/board');
+    expect(byKey.json().board.id).toBe(board.id);
+    const data = await get('bob', `/api/v1/boards/${board.id}/data`);
+    expect(data.statusCode, data.body).toBe(200);
   });
 
   it('[AGL-001] only board admins, track admins of the location and administrators configure', async () => {
@@ -278,16 +347,6 @@ describe('boards (M1-043)', () => {
     // A stale version is refused.
     const stale = await patch('alice', `/api/v1/boards/${board.id}`, { name: 'Old', version: 1 });
     expect(stale.statusCode).toBe(409);
-    // A board kept by a person is theirs and their board admins' alone.
-    const own = await createBoard('bob', {
-      name: 'Bob only',
-      kind: 'kanban',
-      source: { query: 'track = BA' },
-    });
-    expect((await get('alice', `/api/v1/boards/${own.id}`)).statusCode).toBe(404);
-    expect((await get('admin', `/api/v1/boards/${own.id}`)).statusCode).toBe(200);
-    const listed = (await get('alice', '/api/v1/boards')).json().boards as { id: number }[];
-    expect(listed.some((b) => b.id === own.id)).toBe(false);
     const removed = await as('carol', { method: 'DELETE', url: `/api/v1/boards/${board.id}` });
     expect(removed.statusCode).toBe(204);
   });
@@ -296,8 +355,8 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'Mapping',
       kind: 'kanban',
-      trackId: tracks.BB,
-      source: { query: 'track = BB' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA AND labels = blue' },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [] },
         { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
@@ -341,8 +400,8 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'WIP',
       kind: 'kanban',
-      trackId: tracks.BC,
-      source: { query: 'track IN (BA, BB, BC)' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
       columns: COLUMNS(),
     });
     for (const name of ['a1', 'a2', 'b1', 'b2']) await setStatus(name, 'Active');
@@ -364,7 +423,7 @@ describe('boards (M1-043)', () => {
       name: 'Filters',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       boardFilters: [
         { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()' },
         { id: 'blue', name: 'Blue', query: 'labels = blue' },
@@ -397,6 +456,7 @@ describe('boards (M1-043)', () => {
     ]);
     expect((await data('alice', plain.id, ['mine', 'recent'])).cards.map((c) => c.key)).toEqual([
       T('a1').key,
+      T('b2').key,
     ]);
   });
 
@@ -405,7 +465,7 @@ describe('boards (M1-043)', () => {
       name: 'Lanes',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       swimlanes: {
         mode: 'queries',
         lanes: [
@@ -446,7 +506,7 @@ describe('boards (M1-043)', () => {
       name: 'People',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA' },
       swimlanes: { mode: 'assignees', unassigned: 'first' },
     });
     let d = await data('alice', board.id);
@@ -460,7 +520,7 @@ describe('boards (M1-043)', () => {
       .where('id', 'in', [T('b1').id, T('b2').id])
       .execute();
     await patch('alice', `/api/v1/boards/${board.id}`, {
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       swimlanes: { mode: 'parents' },
     });
     await database.db
@@ -471,12 +531,13 @@ describe('boards (M1-043)', () => {
     d = await data('bob', board.id);
     expect(d.lanes.map((l) => [l.id, l.catchAll])).toEqual([
       [`parent-${T('a1').id}`, false],
+      [`parent-${T('c1').id}`, false],
       ['other', true],
     ]);
     const lane = (name: string) => d.cards.find((c) => c.id === T(name).id)?.laneId;
     expect(['a1', 'a2', 'b1', 'b2'].map(lane)).toEqual([
       'other',
-      'other',
+      `parent-${T('c1').id}`,
       `parent-${T('a1').id}`,
       `parent-${T('a1').id}`,
     ]);
@@ -488,12 +549,12 @@ describe('boards (M1-043)', () => {
       name: 'Cards',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA' },
       cardRules: {
         colourBy: 'queries',
         colours: [
           { query: 'priority = Urgent', colour: '#c4314b' },
-          { query: 'track = BA', colour: '#2f6fdb' },
+          { query: 'labels IS EMPTY', colour: '#2f6fdb' },
         ],
         fields: ['assignee', 'labels'],
       },
@@ -571,8 +632,8 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'Sub-filter',
       kind: 'kanban',
-      trackId: tracks.BB,
-      source: { query: 'track = BB' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA AND labels = blue' },
       subFilter: { query: 'labels IS EMPTY OR assignee IS NOT EMPTY' },
     });
     const d = await data('alice', board.id);
@@ -585,7 +646,7 @@ describe('boards (M1-043)', () => {
       name: 'Moves',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA AND (labels IS EMPTY OR labels = blue)' },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [S('New')] },
         { id: 'doing', name: 'Doing', statusIds: [S('Active')] },

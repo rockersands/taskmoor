@@ -1,7 +1,7 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { QueryError } from '@taskmoor/query';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Kysely, Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
@@ -32,6 +32,7 @@ import {
   updateBoardBody,
   withIds,
 } from '../boards/model';
+import { confinedTrackKey, trackBoardQuery } from '../boards/one-per-track';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { uniqueViolation } from '../scim/store';
@@ -44,6 +45,7 @@ import { resolveTicket } from '../tickets/store';
 import {
   type BoardWorkflowChange,
   BoardWorkflowError,
+  mayManageWorkflow,
   syncBoardWorkflow,
 } from '../workflows/board-managed';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
@@ -276,7 +278,11 @@ export interface RouteAnswer {
 
 /** What other routes may do with boards: make one as the caller (track templates, M1-054). */
 export interface BoardRoutes {
-  createBoard: (request: FastifyRequest, body: unknown) => Promise<RouteAnswer>;
+  createBoard: (
+    request: FastifyRequest,
+    body: unknown,
+    options?: { forTrack?: boolean; system?: boolean },
+  ) => Promise<RouteAnswer>;
 }
 
 export function registerBoardRoutes(
@@ -576,7 +582,12 @@ export function registerBoardRoutes(
   });
 
   /** Makes a board as the caller: the create route's checks, defaults and event. */
-  async function createBoard(request: FastifyRequest, input: unknown): Promise<RouteAnswer> {
+  async function createBoard(
+    request: FastifyRequest,
+    input: unknown,
+    /** A track's own board, made for it on first use or by its template (ADR-116). */
+    options: { forTrack?: boolean; system?: boolean } = {},
+  ): Promise<RouteAnswer> {
     const user = request.user;
     if (!user) return { statusCode: 401, payload: { error: 'unauthenticated' } };
     const refused = (fields: Record<string, string>) => ({
@@ -587,73 +598,193 @@ export function registerBoardRoutes(
     if (!parsed.success) return refused(shapeErrors(parsed.error));
     const body = parsed.data;
     const ws = request.workspaceId;
-    const trackId = body.trackId ?? null;
-    if (trackId !== null) {
-      const track = await db
-        .selectFrom('track')
-        .select(['id', 'archived_at'])
-        .where('id', '=', trackId)
+    // One board per track, and none outside a track (ADR-116).
+    let givenQuery: string | null = null;
+    if (body.source && 'query' in body.source) givenQuery = body.source.query;
+    if (body.source && 'savedSearchId' in body.source) {
+      const saved = await db
+        .selectFrom('saved_search')
+        .select('query')
+        .where('id', '=', body.source.savedSearchId)
         .where('workspace_id', '=', ws)
-        .where('deleted_at', 'is', null)
         .executeTakeFirst();
-      if (!track) return refused({ trackId: 'not_found' });
+      givenQuery = saved?.query ?? null;
+    }
+    const confined = givenQuery === null ? null : confinedTrackKey(givenQuery);
+    const track = await db
+      .selectFrom('track')
+      .select(['id', 'key', 'archived_at'])
+      .where('workspace_id', '=', ws)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        body.trackId != null
+          ? eb('id', '=', body.trackId)
+          : eb(sql`lower(key)`, '=', (confined ?? '').toLowerCase()),
+      )
+      .executeTakeFirst();
+    if (!track) {
+      return refused({ trackId: body.trackId == null ? 'required' : 'not_found' });
+    }
+    const trackId = track.id;
+    if (!options.system) {
       const held = await request.authz.track(trackId);
       const browses = held.has('browse_track') || held.has('administer_track');
-      if (!browses && !(await isConfigAdmin(request))) return refused({ trackId: 'not_found' });
-      if (track.archived_at) return { statusCode: 409, payload: { error: 'track_archived' } };
+      const configures = await isConfigAdmin(request);
+      if (!browses && !configures) return refused({ trackId: 'not_found' });
     }
+    if (track.archived_at) return { statusCode: 409, payload: { error: 'track_archived' } };
+    const existing = await db
+      .selectFrom('board')
+      .select('id')
+      .where('location_track_id', '=', trackId)
+      .executeTakeFirst();
+    if (existing) {
+      return { statusCode: 409, payload: { error: 'track_has_board', boardId: existing.id } };
+    }
+    const source = body.source ?? { query: trackBoardQuery(track.key) };
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return refused(checked.fields);
+    if (body.source && (confined === null || confined.toLowerCase() !== track.key.toLowerCase())) {
+      return refused({ source: 'outside_track' });
+    }
     const scope = await boardScope(db, catalogs, request);
-    const columns =
-      checked.columns ?? (await defaultColumns(scope, sourceQuery(body.source), trackId));
+    const columns = checked.columns ?? (await defaultColumns(scope, sourceQuery(source), trackId));
     const swimlanes = checked.swimlanes ?? DEFAULT_SWIMLANES;
     const boardFilters = checked.boardFilters ?? DEFAULT_BOARD_FILTERS;
     const cardRules = checked.cardRules ?? DEFAULT_CARD_RULES;
-    const adminIds = [...new Set([user.id, ...(body.adminIds ?? [])])];
-    const created = await db.transaction().execute(async (trx) => {
-      const row = await trx
-        .insertInto('board')
-        .values({
-          workspace_id: ws,
-          name: body.name,
-          description: body.description ?? '',
-          kind: body.kind,
-          location_track_id: trackId,
-          location_user_id: trackId === null ? user.id : null,
-          filter_query: 'query' in body.source ? body.source.query : null,
-          saved_search_id: 'savedSearchId' in body.source ? body.source.savedSearchId : null,
-          sub_filter_query: body.subFilter?.query ?? null,
-          columns: JSON.stringify(columns),
-          swimlanes: JSON.stringify(swimlanes),
-          board_filters: JSON.stringify(boardFilters),
-          ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
-          card_rules: JSON.stringify(cardRules),
-          sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
-          team_id: body.teamId ?? null,
-          created_by: user.id,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await trx
-        .insertInto('board_admin')
-        .values(adminIds.map((userId) => ({ workspace_id: ws, board_id: row.id, user_id: userId })))
-        .execute();
-      await emit(trx, by(request), {
-        type: 'board.created',
-        subjectId: row.id,
-        payload: {
-          name: body.name,
-          kind: body.kind,
-          trackId,
-          query: sourceQuery(body.source),
+    const adminIds = options.system ? [] : [...new Set([user.id, ...(body.adminIds ?? [])])];
+    const made = await db
+      .transaction()
+      .execute(async (trx) => {
+        const row = await trx
+          .insertInto('board')
+          .values({
+            workspace_id: ws,
+            name: body.name,
+            description: body.description ?? '',
+            kind: body.kind,
+            location_track_id: trackId,
+            location_user_id: null,
+            filter_query: 'query' in source ? source.query : null,
+            saved_search_id: 'savedSearchId' in source ? source.savedSearchId : null,
+            sub_filter_query: body.subFilter?.query ?? null,
+            columns: JSON.stringify(columns),
+            swimlanes: JSON.stringify(swimlanes),
+            board_filters: JSON.stringify(boardFilters),
+            ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
+            card_rules: JSON.stringify(cardRules),
+            sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
+            team_id: body.teamId ?? null,
+            created_by: options.system ? null : user.id,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        if (adminIds.length > 0) {
+          await trx
+            .insertInto('board_admin')
+            .values(
+              adminIds.map((userId) => ({ workspace_id: ws, board_id: row.id, user_id: userId })),
+            )
+            .execute();
+        }
+        // A track's own board manages its workflow where nobody else shares it: each column is a
+        // status (the user's decision; ADR-116, ADR-079).
+        let workflow: BoardWorkflowChange | undefined;
+        if (options.forTrack && (await mayManageWorkflow(trx, ws, trackId))) {
+          const synced = await syncBoardWorkflow(
+            trx,
+            by(request),
+            { id: row.id, trackId },
+            columns,
+            {
+              collapse: true,
+            },
+          );
+          workflow = synced.change;
+          await trx
+            .updateTable('board')
+            .set({ manages_workflow: true, columns: JSON.stringify(synced.columns) })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        await emit(trx, by(request), {
+          type: 'board.created',
+          subjectId: row.id,
+          payload: {
+            name: body.name,
+            kind: body.kind,
+            trackId,
+            query: sourceQuery(source),
+            ...(workflow ? { workflow } : {}),
+          },
+        });
+        return row.id;
+      })
+      .then(
+        (id) => ({ id }),
+        (error: unknown) => {
+          // Two people opening a new track at once: the other one's board is the track's.
+          if (uniqueViolation(error) === 'board_one_per_track_idx') return { taken: true as const };
+          throw error;
         },
-      });
-      return row.id;
-    });
-    const row = await boardQuery(db, ws).where('b.id', '=', created).executeTakeFirstOrThrow();
-    return { statusCode: 201, payload: { board: view(row, await adminsOf(created), true) } };
+      );
+    if ('taken' in made) return { statusCode: 409, payload: { error: 'track_has_board' } };
+    const row = await boardQuery(db, ws).where('b.id', '=', made.id).executeTakeFirstOrThrow();
+    return { statusCode: 201, payload: { board: view(row, await adminsOf(made.id), true) } };
   }
+
+  // A track's one board (ADR-116): made the first time anyone who can see the track opens it, so
+  // a Blank track has one too. It belongs to the track, not to who happened to open it first.
+  app.get('/api/v1/tracks/:id/board', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const { id: ref } = request.params as { id: string };
+    const track = await db
+      .selectFrom('track')
+      .select(['id', 'name', 'archived_at'])
+      .where('workspace_id', '=', request.workspaceId)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        /^\d{1,10}$/.test(ref)
+          ? eb('id', '=', Number(ref))
+          : eb(sql`lower(key)`, '=', ref.toLowerCase()),
+      )
+      .executeTakeFirst();
+    if (!track) return notFound(reply);
+    const held = await request.authz.track(track.id);
+    const browses = held.has('browse_track') || held.has('administer_track');
+    if (!browses && !(await isConfigAdmin(request))) return notFound(reply);
+    const find = () =>
+      boardQuery(db, request.workspaceId)
+        .where('b.location_track_id', '=', track.id)
+        .executeTakeFirst();
+    let row = await find();
+    if (!row) {
+      if (track.archived_at) return notFound(reply);
+      const made = await createBoard(
+        request,
+        { name: track.name, kind: 'kanban', trackId: track.id },
+        { forTrack: true, system: true },
+      );
+      const error = (made.payload as { error?: string }).error;
+      if (made.statusCode !== 201 && error !== 'track_has_board') {
+        return reply.code(made.statusCode).send(made.payload);
+      }
+      row = await find();
+      if (!row) return notFound(reply);
+    }
+    const admins = await adminsOf(row.id);
+    return {
+      board: view(
+        row,
+        admins,
+        await mayConfigure(
+          request,
+          row,
+          admins.map((a) => a.id),
+        ),
+      ),
+    };
+  });
 
   app.post('/api/v1/boards', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
@@ -716,6 +847,27 @@ export function registerBoardRoutes(
     }
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return invalidFields(reply, checked.fields);
+    if (body.source && found.row.location_track_id !== null) {
+      const text =
+        'query' in body.source
+          ? body.source.query
+          : ((
+              await db
+                .selectFrom('saved_search')
+                .select('query')
+                .where('id', '=', body.source.savedSearchId)
+                .where('workspace_id', '=', request.workspaceId)
+                .executeTakeFirst()
+            )?.query ?? '');
+      const own = await db
+        .selectFrom('track')
+        .select('key')
+        .where('id', '=', found.row.location_track_id)
+        .executeTakeFirstOrThrow();
+      if (confinedTrackKey(text)?.toLowerCase() !== own.key.toLowerCase()) {
+        return invalidFields(reply, { source: 'outside_track' });
+      }
+    }
     const outcome = await db
       .transaction()
       .execute(async (trx) => {

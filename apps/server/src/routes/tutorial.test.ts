@@ -89,7 +89,7 @@ describe('tutorial progress (ADR-115)', () => {
 
   it('[IAM-008] refuses an unknown section, a wrong state and extra fields', async () => {
     const put = (url: string, payload: unknown) =>
-      as('ada@example.com', { method: 'PUT', url, payload: payload as InjectOptions['payload'] });
+      as('ada@example.com', { method: 'PUT', url, payload: payload as object });
     expect((await put('/api/v1/account/tutorial/nope', { state: 'done' })).statusCode).toBe(404);
     expect((await put('/api/v1/account/tutorial/boards', { state: 'shown' })).statusCode).toBe(400);
     expect((await put('/api/v1/account/tutorial/offer', { state: 'done' })).statusCode).toBe(400);

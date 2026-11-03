@@ -55,6 +55,66 @@ interface Actor {
   actorId: number | null;
 }
 
+/** Whether a map and its default workflow serve this track alone. */
+async function usedOnlyBy(
+  trx: Trx,
+  ws: number,
+  trackId: number,
+  mapId: number,
+  workflowId: number,
+): Promise<boolean> {
+  const otherTrack = await trx
+    .selectFrom('track')
+    .select('id')
+    .where('workspace_id', '=', ws)
+    .where('workflow_map_id', '=', mapId)
+    .where('id', '!=', trackId)
+    .where('deleted_at', 'is', null)
+    .executeTakeFirst();
+  if (otherTrack) return false;
+  const otherMap = await trx
+    .selectFrom('workflow_map')
+    .select('id')
+    .where('workspace_id', '=', ws)
+    .where('default_workflow_id', '=', workflowId)
+    .where('id', '!=', mapId)
+    .executeTakeFirst();
+  if (otherMap) return false;
+  const row = await trx
+    .selectFrom('workflow')
+    .select('is_default')
+    .where('id', '=', workflowId)
+    .executeTakeFirstOrThrow();
+  return !row.is_default;
+}
+
+/**
+ * Whether a new board of this track can take over its workflow. Never one other tracks use, and
+ * never one where someone configured guards, checks or rules: those stay in force (ADR-116).
+ * A local-mode track still on the shared default gets a workflow of its own, leaving that as it is.
+ */
+export async function mayManageWorkflow(trx: Trx, ws: number, trackId: number): Promise<boolean> {
+  let track: Awaited<ReturnType<typeof trackWorkflow>>;
+  try {
+    track = await trackWorkflow(trx, ws, trackId);
+  } catch (error) {
+    if (error instanceof BoardWorkflowError) return false;
+    throw error;
+  }
+  if (track.workflowId === null) return true;
+  const row = await trx
+    .selectFrom('workflow')
+    .select('published_version')
+    .where('id', '=', track.workflowId)
+    .executeTakeFirstOrThrow();
+  const definition = await loadDefinition(trx, track.workflowId, row.published_version);
+  if (definition.board) return true;
+  return !(
+    definition.transitions.some((t) => t.guards || (t.checks?.length ?? 0) > 0) ||
+    Object.keys(definition.rules ?? {}).length > 0
+  );
+}
+
 /**
  * The track's own map and the workflow it gives every type: null when that is still a shared
  * workflow (a new local-mode track starts on the workspace's default), which the board then
@@ -73,9 +133,22 @@ export async function trackWorkflow(
     .where('workspace_id', '=', ws)
     .executeTakeFirst();
   if (!track) throw new BoardWorkflowError('not_a_track_board');
-  if (track.mode !== 'local') throw new BoardWorkflowError('shared_mode_track');
   const mapId = await trackMapId(trx, ws, trackId);
   const map = mapId === undefined ? null : await loadMap(trx, ws, mapId, 'update');
+  if (track.mode !== 'local') {
+    // A shared-mode track qualifies only when nothing else uses its map or its workflow.
+    if (!map || !(await usedOnlyBy(trx, ws, trackId, map.id, map.defaultWorkflowId))) {
+      throw new BoardWorkflowError('shared_mode_track');
+    }
+    if ([...map.entries.values()].some((w) => w !== map.defaultWorkflowId)) {
+      throw new BoardWorkflowError('per_type_workflows');
+    }
+    return {
+      mapId: map.id,
+      workflowId: map.defaultWorkflowId,
+      sharedWorkflowId: map.defaultWorkflowId,
+    };
+  }
   if (!map || map.ownerTrackId !== trackId) throw new BoardWorkflowError('shared_workflow');
   if ([...map.entries.values()].some((w) => w !== map.defaultWorkflowId)) {
     throw new BoardWorkflowError('per_type_workflows');

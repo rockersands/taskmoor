@@ -675,12 +675,16 @@ export function registerTrackRoutes(
       // The template's board, made as the creator once the track exists (its own event).
       let board: { board?: unknown; boardProblem?: unknown } = {};
       if (recipe?.board && hooks.createBoard) {
-        const made = await hooks.createBoard(request, {
-          name: body.name,
-          kind: recipe.board.kind,
-          trackId: created.track.id,
-          source: { query: recipe.board.query(key.key) },
-        });
+        const made = await hooks.createBoard(
+          request,
+          {
+            name: body.name,
+            kind: recipe.board.kind,
+            trackId: created.track.id,
+            source: { query: recipe.board.query(key.key) },
+          },
+          { forTrack: true },
+        );
         board =
           made.statusCode === 201
             ? { board: (made.payload as { board: unknown }).board }

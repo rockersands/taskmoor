@@ -1523,6 +1523,22 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0088_one_board_per_track': {
+    tables: {
+      board: "name = 'Seed one-track board' AND location_user_id IS NULL",
+    },
+    seed: async (db) => {
+      // A track with no board gets the seed's only board of that query (ADR-116); made after the
+      // migration too, as a track's board, so the rule's own shape is what stays.
+      await sql`INSERT INTO board (workspace_id, name, kind, location_track_id, filter_query,
+          columns, swimlanes, card_rules)
+        SELECT 1, 'Seed one-track board', 'kanban', t.id, 'track = "' || t.key || '"', '[]', '{}', '{}'
+          FROM track t
+         WHERE t.workspace_id = 1
+           AND NOT EXISTS (SELECT 1 FROM board b WHERE b.location_track_id = t.id)
+         ORDER BY t.id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

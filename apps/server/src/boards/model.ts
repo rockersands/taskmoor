@@ -174,9 +174,10 @@ export const createBoardBody = z
     name,
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS),
-    /** A track, or nothing: the board then belongs to the person who creates it. */
+    /** The board's one track (ADR-116); without it, the track its query is confined to. */
     trackId: id.nullable().optional(),
-    source: sourceInput,
+    /** Omitted, the board shows its whole track; a query must stay within the track. */
+    source: sourceInput.optional(),
     subFilter: subFilterInput.nullable().optional(),
     columns: z.array(columnInput).min(1).max(MAX_COLUMNS).optional(),
     swimlanes: swimlanesInput.optional(),
