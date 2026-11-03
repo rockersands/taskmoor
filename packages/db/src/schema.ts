@@ -865,6 +865,8 @@ export interface BoardTable {
   updated_at: DefaultTimestamp;
   /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
   manages_workflow: Generated<boolean>;
+  /** Which column closes tickets: null the rightmost, `none` no column, or a column's id. */
+  closing_column: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 /** A board's sprint (M1-044; AGL-010, AGL-011; ADR-054). */

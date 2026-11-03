@@ -200,6 +200,8 @@ export const updateBoardBody = z
      * by status id; the leftmost column otherwise.
      */
     statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
+    /** Which column closes tickets on a board that manages its workflow; null the rightmost. */
+    closingColumn: z.string().min(1).max(100).nullable().optional(),
     name: name.optional(),
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS).optional(),

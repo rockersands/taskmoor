@@ -84,8 +84,8 @@ export function registerTutorialRoutes(app: FastifyInstance, db: Kysely<Database
       return {
         result: null,
         event: {
-          type: 'tutorial.progress_changed',
-          subject: { type: 'user', id: String(user.id) },
+          type: 'tutorial.progress_changed' as const,
+          subjectId: user.id,
           payload: { section, state, step },
         },
       };

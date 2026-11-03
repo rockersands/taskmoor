@@ -293,6 +293,42 @@ describe('boards (M1-043)', () => {
     expect(named.json().board.location).toMatchObject({ type: 'track' });
   });
 
+  it('[AGL-002] says when a column cannot be reached, and lets an administrator fix it', async () => {
+    const board = await createBoard('admin', { name: 'Reach', kind: 'kanban', trackId: tracks.BC });
+    const current = (await get('admin', `/api/v1/boards/${board.id}`)).json();
+    expect(Object.values(current.reach.columns)).toEqual(['ok', 'ok', 'ok', 'ok']);
+    expect(current.reach.otherTracks).toContain('Track BA');
+    const added = await patch('admin', `/api/v1/boards/${board.id}`, {
+      columns: [...current.board.columns, { id: 'extra', name: 'Parked', statusIds: [] }],
+    });
+    expect(added.statusCode, added.body).toBe(200);
+    // A shared workflow never changes by itself; the read says so at once.
+    const read = (await get('alice', `/api/v1/boards/${board.id}`)).json();
+    expect(read.reach.columns.extra).toBe('no_status');
+    expect(read.board.managesWorkflow).toBe(false);
+    expect(read.reach.mayFix).toBe(false);
+    const refused = await post('alice', `/api/v1/boards/${board.id}/columns/extra/path`, {});
+    expect(refused.statusCode).toBe(403);
+    // An administrator adds the path: a status, a new version, and any card can go there.
+    const fixed = await post('admin', `/api/v1/boards/${board.id}/columns/extra/path`, {});
+    expect(fixed.statusCode, fixed.body).toBe(200);
+    const after = (await get('admin', `/api/v1/boards/${board.id}`)).json();
+    expect(after.reach.columns.extra).toBe('ok');
+    const column = after.board.columns.find((c: { id: string }) => c.id === 'extra');
+    expect(column.statusIds).toHaveLength(1);
+    const ticket = await post('admin', '/api/v1/tickets', { track: 'BC', summary: 'To park' });
+    const moved = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: ticket.json().ticket.id,
+      columnId: 'extra',
+    });
+    expect(moved.statusCode, moved.body).toBe(200);
+    const back = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: ticket.json().ticket.id,
+      columnId: after.board.columns[0].id,
+    });
+    expect(back.statusCode, back.body).toBe(200);
+  });
+
   it('[AGL-001] gives a track its board the first time it is opened, once', async () => {
     await database.db
       .deleteFrom('board')

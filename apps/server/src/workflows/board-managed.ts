@@ -1,5 +1,5 @@
 import type { Database, StatusStage } from '@taskmoor/db';
-import { sql, type Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Column } from '../boards/model';
 import { lockList } from '../tickets/fields';
 import { loadMap, trackMapId } from './maps';
@@ -311,15 +311,25 @@ export async function completedReasonId(trx: Trx, by: Actor): Promise<number> {
   return created.id;
 }
 
+/** The column that closes tickets, or -1. A choice that no longer exists falls to the default. */
+export function closingIndex(columns: readonly { id: string }[], closing: string | null): number {
+  if (closing === 'none') return -1;
+  const chosen = closing === null ? -1 : columns.findIndex((c) => c.id === closing);
+  if (chosen >= 0) return chosen;
+  return columns.length > 1 ? columns.length - 1 : -1;
+}
+
 /** The definition a board's columns make (spec 01a section 3.6). */
 export function boardDefinition(
   boardId: number,
   columns: readonly Column[],
   completedId: number,
   keep?: Pick<WorkflowDefinition, 'onCreate' | 'statusPermissions'>,
+  /** Which column closes tickets: null the rightmost, `none` no column, or a column's id. */
+  closing: string | null = null,
 ): WorkflowDefinition {
   const statusIds = columns.map((c) => c.statusIds[0] as number);
-  const last = statusIds.length - 1;
+  const closes = closingIndex(columns, closing);
   const transitions: Transition[] = columns.map((column, index) => ({
     // The status id names its transition, so it stays the same while the column does.
     id: statusIds[index] as number,
@@ -327,7 +337,7 @@ export function boardDefinition(
     from: 'any',
     to: statusIds[index] as number,
     effects:
-      index === last && last > 0
+      index === closes
         ? [{ type: 'update-system-field', field: 'close-reason', value: String(completedId) }]
         : [{ type: 'clear-field', field: 'close-reason' }],
   }));
@@ -411,6 +421,262 @@ export async function publishBoardVersion(
   return { version, ticketCount, removed };
 }
 
+/** Whether a status appears in a workflow other than this one. */
+async function usedElsewhere(trx: Trx, statusId: number, workflowId: number | null) {
+  const other = await trx
+    .selectFrom('workflow_version_status')
+    .select('workflow_id')
+    .where('status_id', '=', statusId)
+    .where((eb) => (workflowId === null ? eb.val(true) : eb('workflow_id', '!=', workflowId)))
+    .executeTakeFirst();
+  return other !== undefined;
+}
+
+/**
+ * Renames a column's status with it. A status other workflows use keeps its name for them: the
+ * column then takes a status of its own, and its tickets follow.
+ */
+async function renamedStatuses(
+  trx: Trx,
+  by: Actor,
+  workflowId: number | null,
+  columns: readonly Column[],
+): Promise<Column[]> {
+  const out: Column[] = [];
+  for (const column of columns) {
+    const [first, ...rest] = column.statusIds;
+    if (first === undefined || rest.length > 0) {
+      out.push(column);
+      continue;
+    }
+    const status = await trx
+      .selectFrom('status')
+      .select('name')
+      .where('id', '=', first)
+      .where('workspace_id', '=', by.workspaceId)
+      .executeTakeFirst();
+    if (!status || status.name.toLowerCase() === column.name.toLowerCase()) {
+      out.push(column);
+      continue;
+    }
+    const taken = await trx
+      .selectFrom('status')
+      .select('id')
+      .where('workspace_id', '=', by.workspaceId)
+      .where(sql`lower(name)`, '=', column.name.toLowerCase())
+      .executeTakeFirst();
+    if (taken || (await usedElsewhere(trx, first, workflowId))) {
+      out.push({ ...column, statusIds: [] });
+      continue;
+    }
+    await trx
+      .updateTable('status')
+      .set({ name: column.name, updated_at: new Date() })
+      .where('id', '=', first)
+      .execute();
+    out.push(column);
+  }
+  return out;
+}
+
+/**
+ * The closing column's status is a closed one, the others not, for statuses only this workflow
+ * uses. A status other workflows share keeps its stage. Tickets already closed keep their close
+ * reason and history: only moving a ticket out clears a reason.
+ */
+async function settleStages(
+  trx: Trx,
+  by: Actor,
+  workflowId: number,
+  columns: readonly Column[],
+  closing: string | null,
+) {
+  const closes = closingIndex(columns, closing);
+  for (const [index, column] of columns.entries()) {
+    const statusId = column.statusIds[0] as number;
+    if (await usedElsewhere(trx, statusId, workflowId)) continue;
+    const status = await trx
+      .selectFrom('status')
+      .select('stage')
+      .where('id', '=', statusId)
+      .where('workspace_id', '=', by.workspaceId)
+      .executeTakeFirst();
+    const stage: StatusStage | undefined =
+      index === closes
+        ? 'closed'
+        : status?.stage === 'closed'
+          ? index === 0
+            ? 'new'
+            : 'active'
+          : undefined;
+    if (stage && status?.stage !== stage) {
+      await trx
+        .updateTable('status')
+        .set({ stage, updated_at: new Date() })
+        .where('id', '=', statusId)
+        .execute();
+    }
+  }
+}
+
+/** Why a column cannot hold a ticket: no status yet, or no transition leads to its status. */
+export type ColumnReach = 'ok' | 'no_status' | 'no_path';
+
+/**
+ * Whether cards can reach each column of a track's board, and whose workflow decides it. Stated
+ * at once by the settings and the board, so nobody learns of it from a refused drag (ADR-116).
+ */
+export async function columnReach(
+  db: Kysely<Database>,
+  ws: number,
+  trackId: number,
+  columns: readonly Column[],
+) {
+  const mapId = await trackMapId(db as unknown as Trx, ws, trackId);
+  if (mapId === undefined) return null;
+  const map = await db
+    .selectFrom('workflow_map')
+    .select('default_workflow_id')
+    .where('id', '=', mapId)
+    .executeTakeFirst();
+  if (!map) return null;
+  const entries = await db
+    .selectFrom('workflow_map_entry')
+    .select('workflow_id')
+    .where('map_id', '=', mapId)
+    .execute();
+  const ids = [...new Set([map.default_workflow_id, ...entries.map((e) => e.workflow_id)])];
+  const workflows = await db
+    .selectFrom('workflow as w')
+    .innerJoin('workflow_version as v', (join) =>
+      join.onRef('v.workflow_id', '=', 'w.id').onRef('v.version', '=', 'w.published_version'),
+    )
+    .select(['w.id', 'w.name', 'v.definition'])
+    .where('w.id', 'in', ids)
+    .execute();
+  const definitions = workflows.map((w) => w.definition as unknown as WorkflowDefinition);
+  const reaches = (statusId: number) =>
+    definitions.some(
+      (d) =>
+        d.initialStatusId === statusId ||
+        d.transitions.some(
+          (t) =>
+            t.to === statusId && (t.from === 'any' || t.from.some((from) => from !== statusId)),
+        ),
+    );
+  const others = await db
+    .selectFrom('track as t')
+    .select(['t.id', 't.name'])
+    .where('t.workspace_id', '=', ws)
+    .where('t.deleted_at', 'is', null)
+    .where('t.id', '!=', trackId)
+    .where((eb) =>
+      eb.or([
+        eb(
+          't.workflow_map_id',
+          'in',
+          eb.selectFrom('workflow_map').select('id').where('default_workflow_id', 'in', ids),
+        ),
+        ...(workflows.some((w) => w.id === map.default_workflow_id)
+          ? [
+              eb.and([
+                eb('t.workflow_map_id', 'is', null),
+                eb(
+                  eb
+                    .selectFrom('workflow')
+                    .select('is_default')
+                    .where('id', '=', map.default_workflow_id),
+                  '=',
+                  true,
+                ),
+              ]),
+            ]
+          : []),
+      ]),
+    )
+    .orderBy('t.name')
+    .execute();
+  const main = workflows.find((w) => w.id === map.default_workflow_id);
+  return {
+    workflow: main ? { id: main.id, name: main.name } : null,
+    singleWorkflow: ids.length === 1,
+    otherTracks: others.map((t) => t.name),
+    columns: Object.fromEntries(
+      columns.map((c): [string, ColumnReach] => [
+        c.id,
+        c.statusIds.length === 0 ? 'no_status' : c.statusIds.some(reaches) ? 'ok' : 'no_path',
+      ]),
+    ),
+  };
+}
+
+/**
+ * Lets cards reach a column on a workflow that stays an ordinary one: a status for the column if it
+ * has none, a transition from any status to it, and steps out of it to the other columns. A new
+ * version of the workflow; other tracks using it see the new status too, which the page says first.
+ */
+export async function addColumnPath(
+  trx: Trx,
+  by: Actor,
+  workflowId: number,
+  columns: readonly Column[],
+  columnId: string,
+): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
+  const column = columns.find((c) => c.id === columnId);
+  if (!column) throw new BoardWorkflowError('not_a_track_board');
+  const { columns: withStatus, made } = await columnsWithStatuses(trx, by, [column], false);
+  const statusId = withStatus[0]?.statusIds[0] as number;
+  const stored = columns.map((c) => (c.id === columnId ? (withStatus[0] as Column) : c));
+  const row = await trx
+    .selectFrom('workflow')
+    .select('published_version')
+    .where('id', '=', workflowId)
+    .executeTakeFirstOrThrow();
+  const current = await loadDefinition(trx, workflowId, row.published_version);
+  const next = Math.max(0, ...current.transitions.map((t) => t.id)) + 1;
+  const transitions: Transition[] = [...current.transitions];
+  let id = next;
+  if (!transitions.some((t) => t.to === statusId && t.from === 'any')) {
+    transitions.push({
+      id: id++,
+      name: column.name,
+      from: 'any',
+      to: statusId,
+      effects: [{ type: 'clear-field', field: 'close-reason' }],
+    });
+  }
+  // Out again: a global transition already leaves from it; the others get a step each.
+  for (const other of stored) {
+    const target = other.statusIds[0];
+    if (other.id === columnId || target === undefined) continue;
+    const leaves = transitions.some(
+      (t) => t.to === target && (t.from === 'any' || t.from.includes(statusId)),
+    );
+    if (!leaves) {
+      transitions.push({ id: id++, name: other.name, from: [statusId], to: target });
+    }
+  }
+  const definition: WorkflowDefinition = {
+    ...current,
+    statuses: current.statuses.some((s) => s.statusId === statusId)
+      ? current.statuses
+      : [...current.statuses, { statusId }],
+    transitions,
+  };
+  const published = await publishBoardVersion(trx, by, workflowId, definition, new Map());
+  return {
+    columns: stored,
+    change: {
+      workflowId,
+      version: published.version,
+      createdWorkflow: false,
+      createdStatusIds: made,
+      removedStatusIds: [],
+      ticketsMoved: 0,
+    },
+  };
+}
+
 /**
  * Rewrites a managed board's workflow from its columns: statuses made where needed, the next
  * version published. Returns the columns as stored (one status each).
@@ -420,14 +686,21 @@ export async function syncBoardWorkflow(
   by: Actor,
   board: { id: number; trackId: number | null },
   columns: readonly Column[],
-  options: { collapse?: boolean; mapping?: ReadonlyMap<number, number> } = {},
+  options: {
+    collapse?: boolean;
+    mapping?: ReadonlyMap<number, number>;
+    closing?: string | null;
+  } = {},
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
   const track = await trackWorkflow(trx, by.workspaceId, board.trackId);
+  const closing = options.closing ?? null;
+  // A column's name is its status's name (the user's decision, ADR-116).
+  const renamed = await renamedStatuses(trx, by, track.workflowId, columns);
   const {
     columns: stored,
     merged,
     made,
-  } = await columnsWithStatuses(trx, by, columns, options.collapse ?? false);
+  } = await columnsWithStatuses(trx, by, renamed, options.collapse ?? false);
   const completedId = await completedReasonId(trx, by);
   const sourceId = track.workflowId ?? track.sharedWorkflowId;
   const row = await trx
@@ -436,7 +709,7 @@ export async function syncBoardWorkflow(
     .where('id', '=', sourceId)
     .executeTakeFirstOrThrow();
   const current = await loadDefinition(trx, sourceId, row.published_version);
-  const definition = boardDefinition(board.id, stored, completedId, current);
+  const definition = boardDefinition(board.id, stored, completedId, current, closing);
   const mapping = new Map([...merged, ...(options.mapping ?? [])]);
   // Tickets in a status a column held keep its column's place.
   for (const column of columns) {
@@ -454,6 +727,7 @@ export async function syncBoardWorkflow(
       definition,
       mapping,
     );
+    await settleStages(trx, by, adopted.workflowId, stored, closing);
     return {
       columns: stored,
       change: {
@@ -467,6 +741,7 @@ export async function syncBoardWorkflow(
     };
   }
   const published = await publishBoardVersion(trx, by, track.workflowId, definition, mapping);
+  await settleStages(trx, by, track.workflowId, stored, closing);
   return {
     columns: stored,
     change: {

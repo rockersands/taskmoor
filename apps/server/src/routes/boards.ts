@@ -43,8 +43,10 @@ import { findTeam } from '../teams';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
 import {
+  addColumnPath,
   type BoardWorkflowChange,
   BoardWorkflowError,
+  columnReach,
   mayManageWorkflow,
   syncBoardWorkflow,
 } from '../workflows/board-managed';
@@ -141,6 +143,7 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.sub_filter_query',
       'b.columns',
       'b.manages_workflow',
+      'b.closing_column',
       'b.swimlanes',
       'b.board_filters',
       'b.board_filter_display',
@@ -305,6 +308,12 @@ export function registerBoardRoutes(
 
   const adminsOf = (boardId: number) => boardAdmins(db, boardId);
 
+  /** Who changes a track's workflow through its board. */
+  async function mayChangeWorkflow(request: FastifyRequest, trackId: number) {
+    const held = await request.authz.track(trackId);
+    return held.has('administer_track') || isConfigAdmin(request);
+  }
+
   /** Who changes a board (AGL-001 (2)). */
   async function mayConfigure(request: FastifyRequest, row: BoardRow, admins: readonly number[]) {
     const userId = request.user?.id;
@@ -340,6 +349,7 @@ export function registerBoardRoutes(
       columns: row.columns,
       /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
       managesWorkflow: row.manages_workflow,
+      closingColumn: row.closing_column,
       swimlanes: row.swimlanes,
       boardFilters: row.board_filters,
       boardFilterDisplay: row.board_filter_display,
@@ -823,8 +833,18 @@ export function registerBoardRoutes(
     for (const c of row.columns as unknown as Column[]) {
       for (const s of c.statusIds) columnOf.set(s, c.id);
     }
+    const reach =
+      row.location_track_id === null
+        ? null
+        : await columnReach(
+            db,
+            request.workspaceId,
+            row.location_track_id,
+            row.columns as unknown as Column[],
+          );
     return {
       board: view(row, admins, configure),
+      reach: reach && { ...reach, mayFix: await isConfigAdmin(request) },
       statuses: statuses.map((s) => ({
         id: s.id,
         name: s.name,
@@ -886,13 +906,30 @@ export function registerBoardRoutes(
         // A board that manages its track's workflow rewrites it from its columns (M1-126).
         let columns = checked.columns;
         let workflowChange: BoardWorkflowChange | undefined;
-        if (columns && found.row.manages_workflow) {
+        const closing =
+          body.closingColumn !== undefined ? body.closingColumn : found.row.closing_column;
+        // A new column on a track nobody else shares just works: the board takes over the
+        // workflow, as long as the person may administer the track and no rule stands in the way.
+        const takesOver =
+          columns !== undefined &&
+          !found.row.manages_workflow &&
+          found.row.location_track_id !== null &&
+          (columns as Column[]).some((c) => c.statusIds.length === 0) &&
+          (await mayChangeWorkflow(request, found.row.location_track_id)) &&
+          (await mayManageWorkflow(trx, request.workspaceId, found.row.location_track_id));
+        const syncing =
+          found.row.manages_workflow &&
+          (columns !== undefined ||
+            (body.closingColumn !== undefined && body.closingColumn !== found.row.closing_column));
+        if (takesOver || syncing) {
           const synced = await syncBoardWorkflow(
             trx,
             by(request),
             { id: p.data.id, trackId: found.row.location_track_id },
-            columns as Column[],
+            (columns ?? record(found.row).columns) as Column[],
             {
+              closing,
+              collapse: takesOver,
               mapping: new Map(
                 Object.entries(body.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
               ),
@@ -922,6 +959,8 @@ export function registerBoardRoutes(
             ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
             : {}),
           ...(body.teamId !== undefined ? { teamId: body.teamId } : {}),
+          ...(body.closingColumn !== undefined ? { closingColumn: body.closingColumn } : {}),
+          ...(takesOver ? { managesWorkflow: true } : {}),
         };
         // Stored JSON comes back with its keys in another order: compare both sides sorted.
         const changes = diff(
@@ -935,6 +974,8 @@ export function registerBoardRoutes(
         await trx
           .updateTable('board')
           .set({
+            ...(body.closingColumn !== undefined ? { closing_column: body.closingColumn } : {}),
+            ...(takesOver ? { manages_workflow: true } : {}),
             ...(body.name !== undefined ? { name: body.name } : {}),
             ...(body.description !== undefined ? { description: body.description } : {}),
             ...(body.kind !== undefined ? { kind: body.kind } : {}),
@@ -1095,6 +1136,66 @@ export function registerBoardRoutes(
       };
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
+    }
+  });
+
+  // Lets cards reach a column on a workflow the board does not manage (ADR-116): a status, and
+  // the steps in and out, as a new version of the workflow. That workflow may be shared, so this
+  // takes the right to edit workflows; the settings page names the other tracks first.
+  app.post('/api/v1/boards/:id/columns/:columnId/path', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return notFound(reply);
+    const { columnId } = request.params as { columnId: string };
+    const found = await visibleBoard(request, reply, p.data.id);
+    if (!found) return reply;
+    const row = found.row;
+    if (row.location_track_id === null) return notFound(reply);
+    if (!(await isConfigAdmin(request))) {
+      return reply.code(403).send({ error: 'forbidden', permission: 'edit_workflow' });
+    }
+    const columns = row.columns as unknown as Column[];
+    const reach = await columnReach(db, request.workspaceId, row.location_track_id, columns);
+    if (!columns.some((c) => c.id === columnId)) return notFound(reply);
+    if (!reach?.workflow || !reach.singleWorkflow) {
+      return reply.code(409).send({ error: 'per_type_workflows' });
+    }
+    const workflowId = reach.workflow.id;
+    try {
+      const updated = await db.transaction().execute(async (trx) => {
+        await trx.selectFrom('board').select('id').where('id', '=', row.id).forUpdate().execute();
+        const { columns: stored, change } = await addColumnPath(
+          trx,
+          by(request),
+          workflowId,
+          columns,
+          columnId,
+        );
+        await trx
+          .updateTable('board')
+          .set({
+            columns: JSON.stringify(stored),
+            version: row.version + 1,
+            updated_at: new Date(),
+          })
+          .where('id', '=', row.id)
+          .execute();
+        await emit(trx, by(request), {
+          type: 'board.updated',
+          subjectId: row.id,
+          payload: { changes: { columnPath: { from: null, to: columnId } }, workflow: change },
+        });
+        return row.id;
+      });
+      const next = await boardQuery(db, request.workspaceId)
+        .where('b.id', '=', updated)
+        .executeTakeFirstOrThrow();
+      return { board: view(next, found.admins, true) };
+    } catch (error) {
+      if (error instanceof BoardWorkflowError) {
+        return reply.code(409).send({ error: error.problem });
+      }
+      throw error;
     }
   });
 

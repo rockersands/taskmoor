@@ -447,7 +447,8 @@
       "saved_search_id integer",
       "sprint_settings jsonb not null default '{\"estimation\": {\"statistic\": \"originalEstimate\"}, \"timeTracking\": \"remainingEstimate\", \"parallelSprints\": false}'::jsonb",
       "team_id integer",
-      "manages_workflow boolean not null default false"
+      "manages_workflow boolean not null default false",
+      "closing_column text"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX board_manages_workflow_idx ON public.board USING btree (location_track_id) WHERE manages_workflow",

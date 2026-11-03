@@ -11,6 +11,9 @@ import { type Kysely, sql } from 'kysely';
  *   be read but no longer count as the track's.
  *
  * New boards kept by a person are refused by the API, so the location columns stay as they are.
+ *
+ * `closing_column` says which column of a board that manages its workflow closes tickets: null
+ * follows the rightmost column, `none` is no column, otherwise a column's id.
  */
 export async function up(db: Kysely<unknown>): Promise<void> {
   await sql`
@@ -45,6 +48,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
              (SELECT min(u.id) FROM app_user u WHERE u.workspace_id = b.workspace_id))
      WHERE b.location_track_id IS NOT NULL
        AND b.id NOT IN (SELECT id FROM kept)`.execute(db);
+  await sql`ALTER TABLE board ADD COLUMN closing_column text`.execute(db);
   await sql`CREATE UNIQUE INDEX board_one_per_track_idx ON board (location_track_id)
     WHERE location_track_id IS NOT NULL`.execute(db);
 }
