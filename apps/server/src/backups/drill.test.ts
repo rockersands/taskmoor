@@ -232,5 +232,5 @@ describe('the restore drill', () => {
     } finally {
       rmSync(data, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, process.platform === 'win32' ? 180_000 : 60_000);
 });
