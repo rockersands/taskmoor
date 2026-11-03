@@ -3,14 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
+import type { TrackSections } from '../tracks/client';
+import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
 import { fakeSprintClient } from './fixtures';
 import { SprintReportPage } from './SprintReportPage';
 
-function renderBacklog(client = fakeSprintClient()) {
+function renderBacklog(client = fakeSprintClient(), sections: TrackSections | null = null) {
   render(
     <I18nProvider locale="en">
-      <BacklogPage boardId={7} client={client} now={() => new Date('2026-10-29T09:00:00Z')} />
+      <TrackSectionsContext.Provider value={sections}>
+        <BacklogPage boardId={7} client={client} now={() => new Date('2026-10-29T09:00:00Z')} />
+      </TrackSectionsContext.Provider>
     </I18nProvider>,
   );
   return client;
@@ -92,6 +96,31 @@ describe('the backlog with sprint sections (M1-044)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This track has its sprints turned off, so none can start.',
     );
+  });
+
+  it("[AGL-010] offers no Start sprint while the track's sprints are off, and says why", async () => {
+    renderBacklog(fakeSprintClient(), { backlog: true, sprints: false });
+    await screen.findByRole('heading', { name: 'Checkout Sprint 2' });
+    expect(section('Checkout Sprint 2').queryByRole('button', { name: 'Start sprint' })).toBeNull();
+    expect(
+      screen.getByText(
+        'This track has its sprints turned off, so none can start. An administrator turns them on under Administration, Tracks.',
+      ),
+    ).toBeVisible();
+    // The running one can still be completed, and sprints can still be planned.
+    expect(
+      section('Checkout Sprint 1').getByRole('button', { name: 'Complete sprint' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Create sprint' })).toBeVisible();
+  });
+
+  it('[AGL-010] offers Start sprint on a track with sprints on, with no note', async () => {
+    renderBacklog(fakeSprintClient(), { backlog: true, sprints: true });
+    await screen.findByRole('heading', { name: 'Checkout Sprint 2' });
+    expect(
+      section('Checkout Sprint 2').getByRole('button', { name: 'Start sprint' }),
+    ).toBeVisible();
+    expect(screen.queryByText(/sprints turned off/)).toBeNull();
   });
 
   it('[AGL-010] fits a phone: sections stack, nothing scrolls sideways', async () => {

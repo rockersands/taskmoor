@@ -49,6 +49,17 @@ export const SprintRunning: Story = {
   },
 };
 
+/** A track whose board is Kanban has no sprints: no box, and why, with a way to the board's kind. */
+export const SprintsNeedScrum: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track OPS' }));
+    await expect(await canvas.findByText(/^No sprints in OPS: its board is Kanban/)).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Settings of the board of OPS' })).toBeVisible();
+    await expect(canvas.queryByRole('checkbox', { name: 'Sprints in OPS' })).toBeNull();
+  },
+};
+
 /** A map switch that leaves tickets behind is refused with the count. */
 export const MappingNeeded: Story = {
   args: { client: fakeConfigurationClient({ refuseMapping: true }) },

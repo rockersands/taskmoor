@@ -2478,6 +2478,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.sprintRunning':
     'El sprint «{sprint}» sigue en curso en {key}. Complétalo primero y luego desactiva los sprints.',
   'admin.tracks.sprintRunningLink': 'Complétalo en el tablero de {key}',
+  'admin.tracks.sprintsKanban':
+    'No hay sprints en {key}: su tablero es Kanban, y solo un tablero Scrum tiene sprints. Para tenerlos, cambia el tablero a Scrum en su configuración.',
+  'admin.tracks.sprintsKanbanLink': 'Configuración del tablero de {key}',
+  'admin.tracks.sprintsNoBoard':
+    'No hay sprints en {key}: aún no tiene tablero, y solo un tablero Scrum tiene sprints. Su tablero se crea como Kanban la primera vez que alguien lo abre; para tener sprints, cámbialo a Scrum en su configuración.',
+  'admin.tracks.sprintsNoBoardLink': 'Ir al tablero de {key}',
   'admin.tracks.members': 'Quién hace qué en {key}',
   'admin.tracks.noMembers': 'Aún nadie tiene un rol aquí.',
   'admin.tracks.inRole': '{name}: {role}',

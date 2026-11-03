@@ -684,6 +684,50 @@ describe('sprints (M1-044)', () => {
     expect((await sprintsOn(true)).statusCode).toBe(200);
   });
 
+  it("[CORE-002] a track's sprints go on only with a Scrum board, so the setting follows its kind", async () => {
+    const board = await scrumBoard('Kind decides', 'track = SP');
+    // A Scrum board lets them go off and on by hand.
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    expect((await sprintsOn(true)).statusCode).toBe(200);
+    const kanban = await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' });
+    expect(kanban.statusCode, kanban.body).toBe(200);
+    expect(await storedSprints()).toBe(false);
+
+    // A Kanban board has no sprints: turning them on is refused, and nothing is written.
+    let before = await eventCount();
+    const onKanban = await sprintsOn(true);
+    expect(onKanban.statusCode).toBe(409);
+    expect(onKanban.json()).toEqual({ error: 'not_scrum', boardId: board.id });
+    expect(await eventCount()).toBe(before);
+    expect(await storedSprints()).toBe(false);
+    let read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.features.sprints).toBe(false);
+    expect(read.json().track.sections).toEqual({ backlog: false, sprints: false });
+    // Asking for what is already so, and the track's other settings, still save.
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    const other = await patch('admin', `/api/v1/tracks/${tracks.SP}`, { description: 'Kanban' });
+    expect(other.statusCode, other.body).toBe(200);
+
+    // A track with no board yet gets a Kanban one when first opened: refused too.
+    await dropBoard(tracks.SP as number);
+    before = await eventCount();
+    const noBoard = await sprintsOn(true);
+    expect(noBoard.statusCode).toBe(409);
+    expect(noBoard.json()).toEqual({ error: 'not_scrum', boardId: null });
+    expect(await eventCount()).toBe(before);
+    expect(await storedSprints()).toBe(false);
+
+    // With a Scrum board again they are on, and go off and on by hand.
+    await scrumBoard('Kind decides again', 'track = SP');
+    expect(await storedSprints()).toBe(true);
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    const on = await sprintsOn(true);
+    expect(on.statusCode, on.body).toBe(200);
+    expect(on.json().track.features.sprints).toBe(true);
+    read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.sections).toEqual({ backlog: true, sprints: true });
+  });
+
   it('[AGL-010] sprints need a Scrum board the caller sees', async () => {
     await dropBoard(tracks.SP as number);
     const res = await post('alice', '/api/v1/boards', {

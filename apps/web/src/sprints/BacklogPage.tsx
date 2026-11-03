@@ -11,6 +11,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { useTrackSections } from '../tracks/trackSections';
 import { CompleteTargetSelect, completeRefusal, targetOf } from './CompleteSprint';
 import {
   type Backlog,
@@ -68,6 +69,11 @@ export function BacklogPage({
   const t = useT();
   const id = useId();
   const page = useRef<HTMLElement>(null);
+  /**
+   * A track with its sprints turned off starts none (AGL-010; ADR-116): the page offers no Start
+   * and says why, as the track's other pages hide what needs sprints. Unknown outside a track.
+   */
+  const sprintsOff = useTrackSections()?.sprints === false;
   const [data, setData] = useState<Backlog | null>(null);
   const [panels, setPanels] = useState<BacklogPanels | null>(null);
   const [failed, setFailed] = useState(false);
@@ -522,6 +528,9 @@ export function BacklogPage({
                 </button>
               </div>
             )}
+            {data.mayManage && sprintsOff && (
+              <p className="board-hint">{t('sprints.start.sprintsOff')}</p>
+            )}
             {ids.length > 0 && (
               <fieldset className="backlog-selection" aria-label={t('sprints.selection.label')}>
                 <span>{t('sprints.selection.count', { count: ids.length })}</span>
@@ -632,6 +641,7 @@ export function BacklogPage({
                   section={sprint}
                   sections={data.sprints}
                   manage={data.mayManage}
+                  canStart={!sprintsOff}
                   busy={busy}
                   totals={totalsText(sprint.totals)}
                   selectAll={body.selectAll}
@@ -734,6 +744,8 @@ interface SprintPanelProps {
   section: SprintSection;
   sections: SprintSection[];
   manage: boolean;
+  /** False while the track's sprints are turned off: a planned sprint cannot start. */
+  canStart: boolean;
   busy: boolean;
   totals: string;
   selectAll: React.ReactNode;
@@ -753,6 +765,7 @@ function SprintPanel({
   section,
   sections,
   manage,
+  canStart,
   busy,
   totals,
   selectAll,
@@ -781,7 +794,7 @@ function SprintPanel({
         )}
       </div>
       {section.goal && <p className="board-hint">{section.goal}</p>}
-      {manage && section.state === 'future' && (
+      {manage && canStart && section.state === 'future' && (
         <div className="form-actions">
           <button type="button" className="button-primary" disabled={busy} onClick={onStart}>
             {t('sprints.start.submit')}

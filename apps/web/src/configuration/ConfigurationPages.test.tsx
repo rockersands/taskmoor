@@ -179,6 +179,62 @@ describe('track and workflow map administration (M1-053)', () => {
     });
   });
 
+  it("[CORE-002] offers no sprints on a track whose board is Kanban, and says why with a way to the board's kind", async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    await user.click(await screen.findByRole('button', { name: 'Manage track OPS' }));
+    expect(
+      await screen.findByText(
+        'No sprints in OPS: its board is Kanban, and only a Scrum board has sprints. To have them, change the board to Scrum in its settings.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Settings of the board of OPS' })).toHaveAttribute(
+      'href',
+      '#/boards/40/settings',
+    );
+    expect(screen.queryByRole('checkbox', { name: 'Sprints in OPS' })).toBeNull();
+    expect(client.calls.filter((c) => c.action === 'updateTrack')).toEqual([]);
+  });
+
+  it('[CORE-002] offers no sprints on a track with no board yet, and says why', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    client.trackBoard = async () => null;
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    expect(await screen.findByText(/^No sprints in SHOP: it has no board yet/)).toHaveTextContent(
+      'Its board is made as Kanban the first time someone opens it',
+    );
+    expect(screen.getByRole('link', { name: 'Go to the board of SHOP' })).toHaveAttribute(
+      'href',
+      '#/tracks/SHOP/board',
+    );
+    expect(screen.queryByRole('checkbox', { name: 'Sprints in SHOP' })).toBeNull();
+  });
+
+  it('[CORE-002] says why when the board turned Kanban after the page read it', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    // Read as Scrum; the server answers that it is Kanban now.
+    client.trackBoard = async () => ({ id: 40, kind: 'scrum' });
+    await user.click(await screen.findByRole('button', { name: 'Manage track OPS' }));
+    const sprints = await screen.findByRole('checkbox', { name: 'Sprints in OPS' });
+    expect(sprints).not.toBeChecked();
+    await user.click(sprints);
+    expect(await screen.findByText(/^No sprints in OPS: its board is Kanban/)).toBeVisible();
+    expect(screen.queryByRole('checkbox', { name: 'Sprints in OPS' })).toBeNull();
+    expect(screen.queryByText('Track OPS has sprints now.')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('[CORE-002] says why a Kanban track has no sprints on a small phone', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    renderPage('tracks');
+    await user.click(await screen.findByRole('button', { name: 'Manage track OPS' }));
+    expect(await screen.findByText(/^No sprints in OPS/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Settings of the board of OPS' })).toBeVisible();
+  });
+
   it('[AGL-010] shows the refusal and its way to the board on a small phone', async () => {
     setViewportWidth(375);
     const user = userEvent.setup();

@@ -214,8 +214,9 @@ change the board.
 
 - **Create sprint** adds a planned sprint named after the board, such as "Payments Sprint 4".
 - **Start sprint** on a planned sprint makes it active, ending two weeks later. Unless the
-  board allows several active sprints, complete the active one first. A sprint cannot start while
-  the track's sprints are turned off ([Tracks](../admin/tracks.md#details)).
+  board allows several active sprints, complete the active one first. While the track's sprints
+  are turned off ([Tracks](../admin/tracks.md#details)), the backlog offers no **Start sprint** and
+  says so instead; planned sprints can still be made, and an active one completed.
 - An active sprint links to its **Sprint report** (see [Dashboards and
   reports](dashboards-and-reports.md)).
 - To finish an active sprint on the backlog, choose where its unfinished tickets go under **Move
@@ -240,7 +241,9 @@ says why.
 While a sprint is running, the track's sprints cannot be turned off, just as the board cannot change
 to Kanban. **Sprints in** the track, under **Administration**, **Tracks**, **Manage**, stays on and
 names the running sprint, with a link to the track's board to complete it there. With several active
-sprints, each one has to be completed first.
+sprints, each one has to be completed first. Only a Scrum board has sprints, so the box is there only
+for a track whose board is Scrum; for a Kanban board, or a track with no board yet, the page says why
+and links to the board.
 
 ### Sprint settings
 

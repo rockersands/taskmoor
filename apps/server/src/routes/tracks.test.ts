@@ -366,20 +366,21 @@ describe('tracks and track categories (M1-006)', () => {
     const biz = track(res);
     expect(biz.features).toEqual({ ...FEATURE_DEFAULTS.business, development: true });
     // The owner administers the track (the default policy's grant to the track owner).
+    // Sprints follow the board's kind (ADR-116), so another toggle shows the change here.
     const toggled = await patch('bob', biz.id, {
-      features: { sprints: true, calendar: false },
-      description: 'Now with sprints',
+      features: { releases: true, calendar: false },
+      description: 'Now with releases',
     });
     expect(toggled.statusCode, toggled.body).toBe(200);
-    expect(track(toggled).features).toMatchObject({ sprints: true, calendar: false, board: true });
-    expect((await patch('alice', biz.id, { features: { sprints: false } })).statusCode).toBe(404);
+    expect(track(toggled).features).toMatchObject({ releases: true, calendar: false, board: true });
+    expect((await patch('alice', biz.id, { features: { releases: false } })).statusCode).toBe(404);
     expect((await patch('bob', biz.id, { features: { teleport: true } })).statusCode).toBe(400);
     // Changing nothing emits nothing.
     const before = await database.db
       .selectFrom('domain_event')
       .select((eb) => eb.fn.countAll<string>().as('n'))
       .executeTakeFirstOrThrow();
-    expect((await patch('bob', biz.id, { features: { sprints: true } })).statusCode).toBe(200);
+    expect((await patch('bob', biz.id, { features: { releases: true } })).statusCode).toBe(200);
     const after = await database.db
       .selectFrom('domain_event')
       .select((eb) => eb.fn.countAll<string>().as('n'))

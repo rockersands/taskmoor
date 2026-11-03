@@ -11,6 +11,7 @@ import {
   type Named,
   type RoleActors,
   type Track,
+  type TrackBoard,
   type WorkflowMapSummary,
 } from './client';
 import { NewTrackForm, trackRefusal } from './NewTrackForm';
@@ -161,9 +162,21 @@ function runningSprint(error: unknown): string | null {
 }
 
 /**
- * Whether the track has sprints (CORE-002). Turning them off while a sprint runs is refused
- * (AGL-010), as a board cannot go Kanban then: the refusal names the sprint and leads to the
- * track's board, where it can be completed.
+ * The board a refusal to turn sprints on names (ADR-116): Kanban, or none yet (null); undefined for
+ * another error.
+ */
+function notScrum(error: unknown): TrackBoard | null | undefined {
+  if (!(error instanceof ApiError) || error.code !== 'not_scrum') return undefined;
+  const boardId = (error.body as { boardId?: unknown } | null)?.boardId;
+  return typeof boardId === 'number' ? { id: boardId, kind: 'kanban' } : null;
+}
+
+/**
+ * Whether the track has sprints (CORE-002). Only a Scrum board has them (ADR-116), so the box is
+ * there only for a track whose board is Scrum; elsewhere the page says why, with the way to the
+ * board's kind. Turning them off while a sprint runs is refused (AGL-010), as a board cannot go
+ * Kanban then: the refusal names the sprint and leads to the track's board, where it can be
+ * completed.
  */
 function SprintsSetting({
   track,
@@ -182,7 +195,19 @@ function SprintsSetting({
   const id = useId();
   const [on, setOn] = useState(stored);
   const [running, setRunning] = useState<string | null>(null);
+  /** The track's board; 'unread' when it could not be read, and the server alone decides. */
+  const [board, setBoard] = useState<TrackBoard | 'none' | 'reading' | 'unread'>('reading');
   const busy = useRef(false);
+  useEffect(() => {
+    let live = true;
+    client.trackBoard(track.id).then(
+      (read) => live && setBoard(read ?? 'none'),
+      () => live && setBoard('unread'),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, track.id]);
   const turn = async (next: boolean) => {
     if (busy.current) return;
     busy.current = true;
@@ -195,12 +220,39 @@ function SprintsSetting({
       );
     } catch (error) {
       const sprint = runningSprint(error);
-      if (sprint === null) onProblem(error);
+      const kanban = notScrum(error);
+      // The board changed since it was read: say why there are no sprints instead.
+      if (kanban !== undefined) setBoard(kanban ?? 'none');
+      else if (sprint === null) onProblem(error);
       else setRunning(sprint);
     } finally {
       busy.current = false;
     }
   };
+  if (board === 'reading') return null;
+  if (board === 'none' || (board !== 'unread' && board.kind !== 'scrum')) {
+    const none = board === 'none';
+    return (
+      <>
+        <p className="form-hint">
+          {t(none ? 'admin.tracks.sprintsNoBoard' : 'admin.tracks.sprintsKanban', {
+            key: track.key,
+          })}
+        </p>
+        <p className="page-note">
+          <a
+            href={routeHref(
+              board === 'none' ? trackHref(track.key, 'board') : `#/boards/${board.id}/settings`,
+            )}
+          >
+            {t(none ? 'admin.tracks.sprintsNoBoardLink' : 'admin.tracks.sprintsKanbanLink', {
+              key: track.key,
+            })}
+          </a>
+        </p>
+      </>
+    );
+  }
   // The panel lays its parts out on a grid: these join it as they are.
   return (
     <>

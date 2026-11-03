@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
+import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
 import { fakeSprintClient } from './fixtures';
 
@@ -39,6 +40,24 @@ export const ReadOnly: Story = {
         backlog: async () => ({ ...(await client.backlog(7)), mayManage: false }),
       };
     })(),
+  },
+};
+
+/** On a track with its sprints turned off, a planned sprint offers no Start, and the page says why. */
+export const SprintsOff: Story = {
+  args: { client: fakeSprintClient() },
+  decorators: [
+    (Story) => (
+      <TrackSectionsContext.Provider value={{ backlog: true, sprints: false }}>
+        <Story />
+      </TrackSectionsContext.Provider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Checkout Sprint 2' })).toBeVisible();
+    await expect(canvas.getByText(/This track has its sprints turned off/)).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Start sprint' })).toBeNull();
   },
 };
 

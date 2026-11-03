@@ -87,6 +87,11 @@ them.
     off (`sprints_off`). Both sides take the board's lock, the toggle before the track's, the same
     order as a change of kind, so neither slips past the other. Administration > Tracks shows the
     toggle and the refusal in plain words, with a link to the board to complete the sprint (T-192).
+  - The `sprints` toggle does not go on by hand for a track whose board is Kanban or that has no
+    board yet (`409 not_scrum`, with `boardId` or `null`), so the stored toggle never disagrees with
+    the kind. Administration > Tracks offers the toggle only on a track with a Scrum board and says
+    why elsewhere, with a link to the board; the backlog hides **Start sprint** while the track's
+    sprints are off and says why.
 - **Summary** works as a dashboard the track's owner and administrators can customize, using the
   existing widgets, and that everyone else who can see the track reads as it is.
   - A track has at most one customized Summary, in its own table (`track_summary_layout`, migration

@@ -2403,6 +2403,12 @@ export const messagesEn = {
   'admin.tracks.sprintRunning':
     'The sprint “{sprint}” is still running in {key}. Complete it first, then turn sprints off.',
   'admin.tracks.sprintRunningLink': 'Complete it on the board of {key}',
+  'admin.tracks.sprintsKanban':
+    'No sprints in {key}: its board is Kanban, and only a Scrum board has sprints. To have them, change the board to Scrum in its settings.',
+  'admin.tracks.sprintsKanbanLink': 'Settings of the board of {key}',
+  'admin.tracks.sprintsNoBoard':
+    'No sprints in {key}: it has no board yet, and only a Scrum board has sprints. Its board is made as Kanban the first time someone opens it; to have sprints, change it to Scrum in its settings.',
+  'admin.tracks.sprintsNoBoardLink': 'Go to the board of {key}',
   'admin.tracks.members': 'Who does what in {key}',
   'admin.tracks.noMembers': 'Nobody has a role here yet.',
   'admin.tracks.inRole': '{name}: {role}',
