@@ -973,7 +973,7 @@ export interface paths {
         };
         /**
          * List the tracks the caller may browse
-         * @description `member=true` keeps the tracks the caller belongs to: a role given to them or to a group they are in, ownership, or a team of theirs that one of the track’s boards or areas names. A track the caller sees only because it is open to everyone, through a grant of its access policy, or as an administrator is left out.
+         * @description `member=true` keeps the tracks the caller belongs to: a role given to them or to a group they are in, ownership, or a team of theirs that one of the track’s boards or areas names. A track the caller sees only because it is open to everyone, through a grant of its access policy, or as an administrator is left out. `keys` keeps only the tracks with those keys, so a client finds particular tracks of the caller, such as the ones opened lately, without paging through all of them.
          */
         get: operations["listTracks"];
         put?: never;
@@ -7246,6 +7246,8 @@ export interface operations {
                 after?: string;
                 archived?: "exclude" | "include" | "only";
                 categoryId?: number;
+                /** @description Only these tracks, by current key ignoring case, comma separated, at most 50 (`OPS,SHOP`). */
+                keys?: string;
                 limit?: number;
                 member?: "true" | "false";
                 mode?: "shared" | "local";

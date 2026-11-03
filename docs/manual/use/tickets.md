@@ -48,8 +48,9 @@ one of your groups look, or because you are an administrator, is not one of your
 listed here. The **Tracks** page lists every track you can see.
 
 Home shows six of your tracks as cards, the ones you opened most lately first, then by name.
-Which ones you opened lately is remembered **per browser**: another browser or device starts with
-your tracks by name until you open some there. With more than six, **All tracks** leads to the
+However many tracks you belong to, hundreds included, the ones you opened lately still come first
+while you belong to them. Which ones you opened lately is remembered **per browser**: another
+browser or device starts with your tracks by name until you open some there. With more than six, **All tracks** leads to the
 **Tracks** page. If you are in no track yet, the section says so and offers **Go to Tracks**, and
 **New track** too if you may make one.
 

@@ -60,11 +60,18 @@ nothing about one track), and the rights of site and configuration administrator
 track out. A team still grants nothing: it only says who works on a track the person may already
 see, so belonging never shows a hidden track.
 
-- **A filter, not a flag:** the list keeps paging and counting right, and Home reads at most 500
-  (the list's limit), more than anyone belongs to.
+- **A filter, not a flag:** the list keeps paging and counting right. A page holds at most 500,
+  and a person can belong to more: whoever makes a track joins the role that runs it, so an
+  administrator who made 600 shared tracks belongs to all 600. Home therefore never relies on the
+  first page alone for the tracks opened lately.
+- **The tracks opened lately are asked for by key:** Home sends the keys this browser remembers
+  (at most twelve; the list takes 50) as `GET /api/v1/tracks?member=true&keys=…`, and the server
+  answers those the person still belongs to and may see. The first page (`limit=500`, by key)
+  fills the rest of the section. Two requests in parallel, never a walk through every page; a
+  key the browser kept that is no longer theirs simply does not come back.
 - **The order stays in the browser:** the latest opened first (`tracks/recentTracks.ts`, local
-  storage), then by name. Unlike recent tickets it does not follow the person to another browser;
-  the manual says so.
+  storage), then by name among the first page. Unlike recent tickets it does not follow the
+  person to another browser; the manual says so.
 - **In no track,** the section says so and leads to the Tracks page, with New track beside it for
   those who may make one. With more than six, **All tracks** leads there too.
 

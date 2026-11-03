@@ -25,7 +25,9 @@ tracks the caller belongs to, as **Your tracks** on Home does (see
 [Your tracks](../use/tickets.md#your-tracks)): a role given to them or to one of their groups,
 a track they lead, or one whose board or area names a team of theirs. Tracks they see only
 because they are open to everyone, through a grant of the access policy, or as an administrator
-are left out.
+are left out. `keys=OPS,SHOP` (at most 50 keys, ignoring case) keeps only the tracks with those
+keys; Home sends it with the tracks you opened lately, so it finds them however many tracks you
+belong to.
 
 **Tracks** in the sidebar opens the page that lists every track you can see, with a box to find one
 by name or key. It stays marked as the current place while you are inside a track, on a ticket or on a

@@ -261,8 +261,9 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
   const { session } = useSession();
   const mayCreate = newTrackModes(session.status === 'signed-in' ? session.user : null).length > 0;
   const items = list.status === 'loaded' ? list.items : [];
-  // The server answers only the tracks the person belongs to and may see (T-194); the latest
-  // opened in this browser first, then by name.
+  // The server answers only the tracks the person belongs to and may see (T-194): those opened
+  // lately, asked for by key, and the first page. The latest opened in this browser first, then
+  // by name.
   const recent = recentTracks();
   const rank = (key: string) => {
     const at = recent.indexOf(key);

@@ -312,25 +312,36 @@ describe('the tracks a person belongs to (T-194)', () => {
     expect(bad.statusCode).toBe(400);
   });
 
-  // Last: it adds many tracks, which the exact lists above do not expect.
+  /**
+   * A site of 2,000 more tracks, made once: her group holds a role on every fourth, so she
+   * belongs to 505, and the rest she cannot see. The tests that use it come last: the exact
+   * lists above do not expect them.
+   */
+  let bulkMade: Promise<void> | undefined;
+  const bulk = () => {
+    bulkMade ??= (async () => {
+      const policyId = (
+        await database.db
+          .selectFrom('access_policy')
+          .select('id')
+          .where('is_default', '=', true)
+          .executeTakeFirstOrThrow()
+      ).id;
+      await sql`
+        INSERT INTO track (workspace_id, key, name, access_policy_id)
+        SELECT 1, 'BULK' || n, 'Bulk ' || n, ${policyId} FROM generate_series(1, 2000) n`.execute(
+        database.db,
+      );
+      await sql`
+        INSERT INTO track_role_actor (workspace_id, track_id, role_id, group_id)
+        SELECT 1, id, ${roles.Viewers}, ${outer} FROM track
+         WHERE key LIKE 'BULK%' AND substr(key, 5)::int % 4 = 0`.execute(database.db);
+    })();
+    return bulkMade;
+  };
+
   it('[AGL-019] answers Home quickly on a site of 2,000 tracks, a quarter of them hers', async () => {
-    const policyId = (
-      await database.db
-        .selectFrom('access_policy')
-        .select('id')
-        .where('is_default', '=', true)
-        .executeTakeFirstOrThrow()
-    ).id;
-    await sql`
-      INSERT INTO track (workspace_id, key, name, access_policy_id)
-      SELECT 1, 'BULK' || n, 'Bulk ' || n, ${policyId} FROM generate_series(1, 2000) n`.execute(
-      database.db,
-    );
-    // Her group holds a role on every fourth; the rest she cannot see.
-    await sql`
-      INSERT INTO track_role_actor (workspace_id, track_id, role_id, group_id)
-      SELECT 1, id, ${roles.Viewers}, ${outer} FROM track
-       WHERE key LIKE 'BULK%' AND substr(key, 5)::int % 4 = 0`.execute(database.db);
+    await bulk();
     const runs: number[] = [];
     let next = '';
     for (let i = 0; i < 5; i++) {
@@ -346,5 +357,35 @@ describe('the tracks a person belongs to (T-194)', () => {
     expect(rest).toHaveLength(5);
     const median = [...runs].sort((a, b) => a - b)[2] as number;
     expectWithinBudget(median, 150, 'tracks a person belongs to, of 2,000 (ms)');
+  });
+
+  it('[AGL-019] finds a track she opened lately among more than 500 of hers, however late its key sorts', async () => {
+    await bulk();
+    // ROLE sorts after 500 of her tracks, so the first page leaves it out.
+    const first = await keys('mina', '?member=true&limit=500');
+    expect(first).toHaveLength(500);
+    expect(first).not.toContain('ROLE');
+    // Home sends the keys this browser opened lately: hers come back, ignoring case; one she only
+    // sees, one she cannot see and one that does not exist do not.
+    expect(await keys('mina', '?member=true&keys=role,BULK4,OPEN,HIDDEN,NOPE,ROLE')).toEqual([
+      'BULK4',
+      'ROLE',
+    ]);
+    // Without member=true the filter keeps what she may see.
+    expect(await keys('mina', '?keys=ROLE,OPEN,HIDDEN')).toEqual(['OPEN', 'ROLE']);
+  });
+
+  it('[AGL-019] refuses keys that are not track keys, or more than 50 of them', async () => {
+    const status = async (query: string) =>
+      (await as('mina', { method: 'GET', url: `/api/v1/tracks${query}` })).statusCode;
+    expect(
+      await status(`?member=true&keys=${Array.from({ length: 50 }, (_, i) => `K${i}`).join(',')}`),
+    ).toBe(200);
+    expect(
+      await status(`?member=true&keys=${Array.from({ length: 51 }, (_, i) => `K${i}`).join(',')}`),
+    ).toBe(400);
+    for (const bad of ['', 'ROLE,', ',ROLE', 'ROLE,,OPS', '9ROLE', 'RO-LE', 'ROLE%20OPS']) {
+      expect(await status(`?member=true&keys=${bad}`), bad).toBe(400);
+    }
   });
 });

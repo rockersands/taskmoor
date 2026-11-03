@@ -49,7 +49,8 @@ import type { BoardRoutes } from './boards';
  * - Everyone sees the tracks they may browse or administer; archived tracks only through
  *   `?archived=include|only`, which is for site and configuration administrators.
  * - `?member=true` keeps those the caller belongs to (T-194, `tracks/membership.ts`): a role,
- *   ownership or a team, never only the right to see.
+ *   ownership or a team, never only the right to see. `?keys=` keeps the tracks with those
+ *   current keys, so Home finds the ones opened lately among any number of the person's tracks.
  * - A track is found by id or by key, ignoring case; an old key answers with the track and a
  *   redirect to its current key.
  * - Shared-mode tracks are created by site and configuration administrators and use a shared
@@ -158,6 +159,8 @@ const updateBody = z
     features: trackFields.features.optional(),
   })
   .strict();
+/** Up to 50 keys, comma separated, each one the import rule allows (`tracks/model.ts`). */
+const LIST_KEYS = /^[A-Za-z][A-Za-z0-9_]{0,254}(,[A-Za-z][A-Za-z0-9_]{0,254}){0,49}$/;
 export const listQuery = z
   .object({
     archived: z.enum(['exclude', 'include', 'only']).default('exclude'),
@@ -174,6 +177,19 @@ export const listQuery = z
      * belonging (`tracks/membership.ts`).
      */
     member: z.enum(['true', 'false']).optional(),
+    /**
+     * Only these tracks: current keys, ignoring case, comma separated, at most 50. Home sends
+     * the tracks opened lately in the browser with `member=true`, so those the person belongs to
+     * come back however many tracks they are in (T-194).
+     */
+    keys: z
+      .string()
+      .regex(LIST_KEYS)
+      .meta({
+        description:
+          'Only these tracks, by current key ignoring case, comma separated, at most 50 (`OPS,SHOP`).',
+      })
+      .optional(),
   })
   .strict();
 const categoryBody = z
@@ -450,6 +466,10 @@ export function registerTrackRoutes(
     if (q.type !== undefined) query = query.where('t.type', '=', q.type);
     if (q.mode !== undefined) query = query.where('t.mode', '=', q.mode);
     if (q.member === 'true') query = query.where(belongsSql(ws, await request.authz.viewer()));
+    if (q.keys !== undefined) {
+      const wanted = [...new Set(q.keys.split(',').map(normalizeKey))];
+      query = query.where(sql<boolean>`upper(t.key) = ANY(${wanted}::text[])`);
+    }
     if (q.q !== undefined) {
       const pattern = `%${likeEscape(q.q)}%`;
       query = query.where(sql<boolean>`(t.key ILIKE ${pattern} OR t.name ILIKE ${pattern})`);
