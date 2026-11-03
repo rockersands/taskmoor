@@ -56,6 +56,7 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/admin/tokens/revoke']).toBe('admin');
     expect(classes['POST /api/v1/service-accounts/:id/tokens/:tokenId/rotate']).toBe('admin');
     expect(classes['POST /api/v1/account/tokens']).toBe('session');
+    expect(classes['PUT /api/v1/account/tutorial/:section']).toBe('session');
     expect(classes['POST /api/v1/session']).toBe('public');
     expect(classes['POST /api/v1/session/second-factor']).toBe('public');
     expect(classes['GET /api/v1/auth/oidc/callback']).toBe('public');

@@ -66,6 +66,8 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'DELETE /api/v1/sessions/others',
   'DELETE /api/v1/sessions/:id',
   'PUT /api/v1/account/password',
+  'GET /api/v1/account/tutorial',
+  'PUT /api/v1/account/tutorial/:section',
   'GET /api/v1/account/tokens',
   'POST /api/v1/account/tokens',
   'DELETE /api/v1/account/tokens/:id',

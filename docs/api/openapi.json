@@ -4059,6 +4059,72 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/account/tutorial": {
+      "get": {
+        "operationId": "internal-get-account-tutorial",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "session",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/account/tutorial/{section}": {
+      "put": {
+        "operationId": "internal-put-account-tutorial-by-section",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "session",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/account/two-factor": {
       "get": {
         "operationId": "internal-get-account-two-factor",

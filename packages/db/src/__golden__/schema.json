@@ -2651,6 +2651,19 @@
       "CREATE UNIQUE INDEX trash_policy_pkey ON public.trash_policy USING btree (workspace_id)"
     ]
   },
+  "tutorial_progress": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "section text not null",
+      "state text not null",
+      "step integer not null default 0",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX tutorial_progress_pkey ON public.tutorial_progress USING btree (workspace_id, user_id, section)"
+    ]
+  },
   "two_factor_policy": {
     "columns": [
       "workspace_id integer not null",

@@ -2543,6 +2543,16 @@ export interface AiLimitAlertTable {
  * A download of one person's data (ASVS 8.3.2, ADR-111): a ZIP a background job writes into the
  * attachment store, kept for a week. `user_id` is whose data it is, `requested_by` who asked.
  */
+/** Where a person is in the guided tutorial (ADR-115); section `offer` is the first-run offer. */
+export interface TutorialProgressTable {
+  workspace_id: number;
+  user_id: number;
+  section: string;
+  state: 'active' | 'done' | 'skipped' | 'shown' | 'dismissed';
+  step: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
 export interface PersonalExportTable {
   id: Generated<string>;
   workspace_id: number;
@@ -2573,6 +2583,7 @@ export interface Database {
   workspace: WorkspaceTable;
   app_user: AppUserTable;
   personal_export: PersonalExportTable;
+  tutorial_progress: TutorialProgressTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
   team: TeamTable;

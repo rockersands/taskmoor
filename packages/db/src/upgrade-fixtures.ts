@@ -1511,6 +1511,18 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0084_tutorial_progress': {
+    tables: {
+      tutorial_progress:
+        "workspace_id = 1 AND section = 'boards' AND state = 'active' AND step = 3",
+    },
+    seed: async (db) => {
+      // The seed's first person is partway through a section of the tutorial (ADR-115).
+      await sql`INSERT INTO tutorial_progress (workspace_id, user_id, section, state, step)
+        SELECT 1, id, 'boards', 'active', 3
+          FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

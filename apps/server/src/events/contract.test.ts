@@ -556,6 +556,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'POST', url: `/api/v1/users/${state.cy}/reactivate` }),
     },
     {
+      // A person's place in the guided tutorial (ADR-115).
+      route: 'PUT /api/v1/account/tutorial/:section',
+      expect: 'tutorial.progress_changed',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/account/tutorial/boards',
+          payload: { state: 'active', step: 1 },
+        }),
+    },
+    {
       // A person asks for a download of their own data (ASVS 8.3.2, ADR-111).
       route: 'POST /api/v1/account/data-exports',
       expect: 'personal_data.export_requested',
