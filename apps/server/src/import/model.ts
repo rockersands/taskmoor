@@ -68,6 +68,7 @@ export const ENTITY_KINDS = [
   'web_link',
   'time_entry',
   'attachment',
+  'checklist',
   'history',
   // Saved searches, their subscriptions and dashboards (M1-094): queries name everything above.
   'saved_search',
@@ -676,6 +677,25 @@ export interface WebLinkCommand {
   creator: Ref | null;
 }
 
+/** A ticket's checklist with its items, as Taskmoor's own export holds it (CORE-033). */
+export interface ChecklistCommand {
+  kind: 'checklist';
+  ticket: Ref;
+  name: string;
+  position: number;
+  creator: Ref | null;
+  createdAt: string;
+  updatedAt: string;
+  items: {
+    text: string;
+    state: 'open' | 'in_progress' | 'done' | 'rejected';
+    position: number;
+    creator: Ref | null;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+}
+
 export interface HistoryCommand {
   kind: 'history';
   ticket: Ref;
@@ -763,6 +783,7 @@ export type Command =
   | WebLinkCommand
   | TimeEntryCommand
   | AttachmentCommand
+  | ChecklistCommand
   | HistoryCommand
   | SavedSearchCommand
   | SubscriptionCommand

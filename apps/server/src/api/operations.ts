@@ -5,6 +5,13 @@ import { cloneBody } from '../clone/model';
 import { dataQuery as boardDataQuery, listQuery as boardListQuery } from '../routes/boards';
 import { itemsQuery as bulkItemsQuery } from '../routes/bulk';
 import {
+  checklistOrderBody,
+  createChecklistBody,
+  createItemBody,
+  updateChecklistBody,
+  updateItemBody,
+} from '../routes/checklists';
+import {
   createBody as commentCreateBody,
   listQuery as commentListQuery,
   updateBody as commentUpdateBody,
@@ -48,6 +55,8 @@ import * as s from './schemas';
  */
 const ticketParam = { id: 'The ticket: its id or its key, such as `PAY-12`.' };
 const trackParam = { id: 'The track: its id or its key.' };
+const listParam = { ...ticketParam, checklistId: 'The checklist’s id.' };
+const itemParam = { ...listParam, itemId: 'The item’s id.' };
 const format = z
   .object({
     format: z.enum(RICH_TEXT_FORMATS).optional().meta({
@@ -448,7 +457,15 @@ export const OPERATIONS: readonly Operation[] = [
     responses: {
       200: {
         description: 'Its links to the tickets the caller may see.',
-        schema: z.object({ links: z.array(s.link) }).loose(),
+        schema: z
+          .object({
+            links: z.array(s.link),
+            mayLink: z
+              .boolean()
+              .meta({ description: 'May this person add and remove links here.' }),
+            enabled: z.boolean().meta({ description: 'Links are on in the workspace.' }),
+          })
+          .loose(),
       },
     },
   }),
@@ -470,6 +487,141 @@ export const OPERATIONS: readonly Operation[] = [
     summary: 'Remove a link',
     params: { ...ticketParam, linkId: 'The link’s id.' },
     responses: { 204: { description: 'Removed.' } },
+  }),
+
+  // Checklists (CORE-033): every route answers the whole of the ticket's checklists.
+  op({
+    method: 'GET',
+    path: '/api/v1/tickets/:id/checklists',
+    id: 'listChecklists',
+    tag: 'Checklists',
+    summary: 'A ticket’s checklists',
+    params: ticketParam,
+    responses: {
+      200: {
+        description:
+          'Its checklists, with progress for each and overall. A rejected item is left out of the percentage.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/tickets/:id/checklists',
+    id: 'addChecklist',
+    tag: 'Checklists',
+    summary: 'Add a checklist',
+    params: ticketParam,
+    body: createChecklistBody,
+    responses: {
+      201: {
+        description: 'The ticket’s checklists, with the new one.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'PUT',
+    path: '/api/v1/tickets/:id/checklists/order',
+    id: 'orderChecklists',
+    tag: 'Checklists',
+    summary: 'Put a ticket’s checklists in order',
+    params: ticketParam,
+    body: checklistOrderBody,
+    responses: {
+      200: {
+        description: 'The ticket’s checklists, in the new order.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'PATCH',
+    path: '/api/v1/tickets/:id/checklists/:checklistId',
+    id: 'renameChecklist',
+    tag: 'Checklists',
+    summary: 'Rename a checklist',
+    params: listParam,
+    body: updateChecklistBody,
+    responses: {
+      200: {
+        description: 'The ticket’s checklists.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'DELETE',
+    path: '/api/v1/tickets/:id/checklists/:checklistId',
+    id: 'removeChecklist',
+    tag: 'Checklists',
+    summary: 'Remove a checklist',
+    params: listParam,
+    responses: {
+      200: {
+        description: 'The ticket’s remaining checklists.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/tickets/:id/checklists/:checklistId/items',
+    id: 'addChecklistItem',
+    tag: 'Checklists',
+    summary: 'Add an item to a checklist',
+    params: listParam,
+    body: createItemBody,
+    responses: {
+      201: {
+        description: 'The ticket’s checklists, with the new item at the end.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'PUT',
+    path: '/api/v1/tickets/:id/checklists/:checklistId/items/order',
+    id: 'orderChecklistItems',
+    tag: 'Checklists',
+    summary: 'Put a checklist’s items in order',
+    params: listParam,
+    body: checklistOrderBody,
+    responses: {
+      200: {
+        description: 'The ticket’s checklists, in the new order.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'PATCH',
+    path: '/api/v1/tickets/:id/checklists/:checklistId/items/:itemId',
+    id: 'updateChecklistItem',
+    tag: 'Checklists',
+    summary: 'Change an item’s words or state',
+    params: itemParam,
+    body: updateItemBody,
+    responses: {
+      200: {
+        description: 'The ticket’s checklists.',
+        schema: s.checklists,
+      },
+    },
+  }),
+  op({
+    method: 'DELETE',
+    path: '/api/v1/tickets/:id/checklists/:checklistId/items/:itemId',
+    id: 'removeChecklistItem',
+    tag: 'Checklists',
+    summary: 'Remove an item from a checklist',
+    params: itemParam,
+    responses: {
+      200: {
+        description: 'The ticket’s checklists.',
+        schema: s.checklists,
+      },
+    },
   }),
 
   // Entity properties (M1-129; API-013): an integration's JSON under its own key.

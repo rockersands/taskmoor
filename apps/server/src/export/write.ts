@@ -15,6 +15,7 @@ import {
   remapHistoryValue,
   remapStored,
 } from '../import/remap';
+import { itemsOf } from '../tickets/checklists';
 import { canonicalJson } from '../tickets/model';
 import {
   ATTACHMENTS_DIR,
@@ -970,6 +971,55 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
       copied.push({ name: fileName(a.id), sha256: written.sha256 });
       attachmentBytes += written.bytes;
     }
+  });
+
+  await write('checklist', async (out) => {
+    await paged(
+      (after, limit) =>
+        db
+          .selectFrom('ticket_checklist as c')
+          .innerJoin('ticket as k', 'k.id', 'c.ticket_id')
+          .select([
+            'c.id',
+            'c.ticket_id',
+            'c.name',
+            'c.position',
+            'c.created_by',
+            ts('c.created_at').as('created_at'),
+            ts('c.updated_at').as('updated_at'),
+          ])
+          .where('c.workspace_id', '=', ws)
+          .where(inTracks('k.track_id'))
+          .where('c.id', '>', after)
+          .orderBy('c.id')
+          .limit(limit)
+          .execute(),
+      async (rows) => {
+        const items = await itemsOf(
+          db,
+          rows.map((r) => r.id),
+        );
+        for (const c of rows) {
+          await out.record({
+            id: idOf('checklist', c.id),
+            ticket: idOf('ticket', c.ticket_id),
+            name: c.name,
+            position: c.position,
+            creator: ref('user', c.created_by),
+            createdAt: c.created_at,
+            updatedAt: c.updated_at,
+            items: (items.get(c.id) ?? []).map((item) => ({
+              text: item.text,
+              state: item.state,
+              position: item.position,
+              creator: ref('user', item.created_by),
+              createdAt: item.created_at.toISOString(),
+              updatedAt: item.updated_at.toISOString(),
+            })),
+          });
+        }
+      },
+    );
   });
 
   await write('history', async (out) => {

@@ -20,7 +20,8 @@ import { ticketKey } from '../tickets/model';
  * - `preferences.json`: notification and email settings, the person's properties, their saved
  *   searches;
  * - `tickets.ndjson`: tickets the person reported, created or is assigned, with their roles;
- * - `comments.ndjson`, `time-entries.ndjson`: what they wrote and logged;
+ * - `comments.ndjson`, `checklist-items.ndjson`, `time-entries.ndjson`: what they wrote and
+ *   logged;
  * - `attachments.ndjson` and `attachments/`: the files they uploaded that passed the scan;
  * - `audit.ndjson`: audit records they caused or that are about them; the address of a record
  *   someone else caused is left out (it is that person's);
@@ -482,6 +483,45 @@ export async function writePersonalData(
             createdAt: iso(r.created_at),
             editedAt: iso(r.edited_at),
             deletedAt: iso(r.deleted_at),
+          }));
+        }
+      })(),
+    ),
+  );
+  files.push(
+    await writeLines(
+      sink,
+      'checklist-items.ndjson',
+      (async function* () {
+        for await (const rows of keyset((after, limit) =>
+          db
+            .selectFrom('ticket_checklist_item as i')
+            .innerJoin('ticket_checklist as c', 'c.id', 'i.checklist_id')
+            .select([
+              'i.id',
+              'c.ticket_id',
+              'c.name as checklist',
+              'i.text',
+              'i.state',
+              'i.created_at',
+            ])
+            .where('i.workspace_id', '=', ws)
+            .where('i.created_by', '=', userId)
+            .where('i.id', '>', Number(after))
+            .orderBy('i.id')
+            .limit(limit)
+            .execute(),
+        )) {
+          const named = await keys(rows.map((r) => r.ticket_id));
+          options.heartbeat?.();
+          yield rows.map((r) => ({
+            id: r.id,
+            ticketId: r.ticket_id,
+            ticketKey: named.get(r.ticket_id) ?? null,
+            checklist: r.checklist,
+            text: r.text,
+            state: r.state,
+            createdAt: iso(r.created_at),
           }));
         }
       })(),

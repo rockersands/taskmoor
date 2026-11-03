@@ -7,6 +7,7 @@ import {
   visibilityPolicies,
 } from './load-access';
 import { boards, sprints } from './load-agile';
+import { checklists } from './load-checklists';
 import {
   areas,
   closeReasons,
@@ -53,6 +54,7 @@ export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>>
   workflow: workflows,
   workflow_map: workflowMaps,
   attachment: attachments,
+  checklist: checklists,
   web_link: webLinks,
   board: boards,
   sprint: sprints,

@@ -240,6 +240,28 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       .execute();
     await work();
 
+    // [CORE-033] The checklist items they wrote travel with the rest of what they wrote.
+    const checklist = await database.db
+      .insertInto('ticket_checklist')
+      .values({
+        workspace_id: 1,
+        ticket_id: ticket.id,
+        name: 'Printer steps',
+        position: 0,
+        created_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('ticket_checklist_item')
+      .values({
+        workspace_id: 1,
+        checklist_id: checklist.id,
+        text: 'Open the tray',
+        position: 0,
+        created_by: kalo,
+      })
+      .execute();
     const asked = await post('kalo', '/api/v1/account/data-exports');
     expect(asked.statusCode, asked.body).toBe(202);
     const id = asked.json().export.id as string;
@@ -270,6 +292,7 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       'preferences.json',
       'tickets.ndjson',
       'comments.ndjson',
+      'checklist-items.ndjson',
       'time-entries.ndjson',
       'attachments.ndjson',
       expect.stringMatching(/^attachments\/\d+-tray_\.\._photo\.jpg$/),
@@ -303,6 +326,9 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     ]);
     expect(lines(zip['comments.ndjson'])).toMatchObject([
       { ticketKey: ticket.key, restricted: false },
+    ]);
+    expect(lines(zip['checklist-items.ndjson'])).toMatchObject([
+      { ticketKey: ticket.key, checklist: 'Printer steps', text: 'Open the tray', state: 'open' },
     ]);
     expect(lines(zip['time-entries.ndjson'])).toMatchObject([
       { ticketKey: ticket.key, seconds: 1800, description: 'Looked at the tray' },

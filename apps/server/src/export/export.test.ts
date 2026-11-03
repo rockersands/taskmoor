@@ -454,6 +454,35 @@ describe('the full export (M1-098)', () => {
       },
       201,
     );
+    // [CORE-033] A checklist with an item in each state, in its own order.
+    const steps = (
+      await admin(
+        {
+          method: 'POST',
+          url: `/api/v1/tickets/${parent}/checklists`,
+          payload: { name: 'Steps', items: ['First', 'Second', 'Third', 'Fourth'] },
+        },
+        201,
+      )
+    ).json().checklists[0] as { id: number; items: { id: number }[] };
+    for (const [i, state] of ['done', 'in_progress', 'rejected'].entries()) {
+      await admin(
+        {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${parent}/checklists/${steps.id}/items/${steps.items[i]?.id}`,
+          payload: { state },
+        },
+        200,
+      );
+    }
+    await admin(
+      {
+        method: 'PUT',
+        url: `/api/v1/tickets/${parent}/checklists/${steps.id}/items/order`,
+        payload: { ids: [...steps.items.map((item) => item.id)].reverse() },
+      },
+      200,
+    );
     await admin({ method: 'DELETE', url: `/api/v1/tickets/${gone}` }, 204);
   }, 120_000);
 
@@ -516,6 +545,7 @@ describe('the full export (M1-098)', () => {
       link: 1,
       time_entry: 1,
       attachment: 2,
+      checklist: 1,
       workflow_map: 2,
     });
     expect(counts.history).toBeGreaterThan(8);

@@ -75,6 +75,7 @@ import * as m0084 from './0084_tutorial_progress';
 import * as m0088 from './0088_one_board_per_track';
 import * as m0089 from './0089_seamless_default_workflow';
 import * as m0090 from './0090_track_summary_layout';
+import * as m0091 from './0091_ticket_checklists';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -160,4 +161,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0088_one_board_per_track': m0088,
   '0089_seamless_default_workflow': m0089,
   '0090_track_summary_layout': m0090,
+  '0091_ticket_checklists': m0091,
 };

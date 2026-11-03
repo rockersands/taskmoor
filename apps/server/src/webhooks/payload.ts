@@ -64,6 +64,7 @@ const VERBS: Record<string, string> = {
   'ticket.web_link_added': 'added a web link to',
   'ticket.web_link_updated': 'changed a web link of',
   'ticket.web_link_removed': 'removed a web link from',
+  'ticket.checklist_changed': 'changed a checklist of',
   'ticket.property_set': 'set a property of',
   'ticket.property_deleted': 'deleted a property of',
   'comment.created': 'commented on',

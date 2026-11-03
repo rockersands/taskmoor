@@ -23,6 +23,7 @@ import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
+import { ChecklistsPanel } from '../tools/ChecklistsPanel';
 import { type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
 import { SubticketsPanel } from '../tools/SubticketsPanel';
@@ -629,6 +630,14 @@ export function TicketPage({
               {...(ai.client ? { client: ai.client } : {})}
               {...(ai.notice ? { notice: ai.notice } : {})}
               {...(ai.features ? { features: ai.features } : {})}
+            />
+          )}
+          {loaded && (
+            <ChecklistsPanel
+              ticket={loaded}
+              client={toolsClient}
+              revision={revision}
+              onChanged={() => setRevision((r) => r + 1)}
             />
           )}
           {loaded && (

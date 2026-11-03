@@ -8,6 +8,7 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 
 - [Boards](#boards)
 - [Bulk changes](#bulk-changes)
+- [Checklists](#checklists)
 - [Comments](#comments)
 - [Instance](#instance)
 - [Links](#links)
@@ -329,6 +330,205 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
 
+## Checklists
+
+### A ticket’s checklists
+
+`GET /api/v1/tickets/{id}/checklists`, operation `listChecklists`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Responses:
+
+- 200: Its checklists, with progress for each and overall. A rejected item is left out of the percentage. Body: [TicketChecklists](#schema-ticketchecklists).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Add a checklist
+
+`POST /api/v1/tickets/{id}/checklists`, operation `addChecklist`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `name` | string | yes |  |
+| `items` | array of string | no |  |
+
+Responses:
+
+- 201: The ticket’s checklists, with the new one. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Remove a checklist
+
+`DELETE /api/v1/tickets/{id}/checklists/{checklistId}`, operation `removeChecklist`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+
+Responses:
+
+- 200: The ticket’s remaining checklists. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Rename a checklist
+
+`PATCH /api/v1/tickets/{id}/checklists/{checklistId}`, operation `renameChecklist`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `name` | string | yes |  |
+
+Responses:
+
+- 200: The ticket’s checklists. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Add an item to a checklist
+
+`POST /api/v1/tickets/{id}/checklists/{checklistId}/items`, operation `addChecklistItem`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `text` | string | yes |  |
+
+Responses:
+
+- 201: The ticket’s checklists, with the new item at the end. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Remove an item from a checklist
+
+`DELETE /api/v1/tickets/{id}/checklists/{checklistId}/items/{itemId}`, operation `removeChecklistItem`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+| `itemId` | path | string | yes | The item’s id. |
+
+Responses:
+
+- 200: The ticket’s checklists. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Change an item’s words or state
+
+`PATCH /api/v1/tickets/{id}/checklists/{checklistId}/items/{itemId}`, operation `updateChecklistItem`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+| `itemId` | path | string | yes | The item’s id. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `text` | string | no |  |
+| `state` | `"open"`, `"in_progress"`, `"done"`, `"rejected"` | no |  |
+
+Responses:
+
+- 200: The ticket’s checklists. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Put a checklist’s items in order
+
+`PUT /api/v1/tickets/{id}/checklists/{checklistId}/items/order`, operation `orderChecklistItems`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `checklistId` | path | string | yes | The checklist’s id. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `ids` | array of integer | yes |  |
+
+Responses:
+
+- 200: The ticket’s checklists, in the new order. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Put a ticket’s checklists in order
+
+`PUT /api/v1/tickets/{id}/checklists/order`, operation `orderChecklists`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `ids` | array of integer | yes |  |
+
+Responses:
+
+- 200: The ticket’s checklists, in the new order. Body: [TicketChecklists](#schema-ticketchecklists).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
 ## Comments
 
 ### A ticket’s comments, a page at a time
@@ -461,7 +661,7 @@ Responses:
 
 Responses:
 
-- 200: Its links to the tickets the caller may see. Body: `links` (array of [Link](#schema-link)).
+- 200: Its links to the tickets the caller may see. Body: `links` (array of [Link](#schema-link)), `mayLink` (boolean), `enabled` (boolean).
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
@@ -2031,6 +2231,15 @@ A `"new"`, `"active"`, `"closed"`.
 | `updatedAt` | string | yes |  |
 | `trash` | object or null | yes | Set while the ticket is in the trash. |
 
+### Schema: TicketChecklists
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `checklists` | array of object | yes |  |
+| `progress` | object | yes |  |
+| `canEdit` | boolean | yes | May this person change them. |
+| `lock` | any | yes | The status lock that holds editing back, when one does; otherwise null. |
+
 ### Schema: TicketInfo
 
 Read-only info fields, computed from comments and history. Only comments everyone who sees the ticket may read count.
@@ -2094,5 +2303,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 472 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 473 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

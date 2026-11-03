@@ -1,6 +1,8 @@
 // Generated from docs/api/openapi.json by packages/sdk/src/generate.ts. Do not edit.
 /** Each stable operation's method and path, by operation id. */
 export const OPERATIONS = {
+  addChecklist: { method: 'POST', path: '/api/v1/tickets/{id}/checklists', paged: false },
+  addChecklistItem: { method: 'POST', path: '/api/v1/tickets/{id}/checklists/{checklistId}/items', paged: false },
   addComment: { method: 'POST', path: '/api/v1/tickets/{id}/comments', paged: false },
   addLink: { method: 'POST', path: '/api/v1/tickets/{id}/links', paged: false },
   addSprintTickets: { method: 'POST', path: '/api/v1/sprints/{id}/tickets', paged: false },
@@ -45,6 +47,7 @@ export const OPERATIONS = {
   listBoards: { method: 'GET', path: '/api/v1/boards', paged: false },
   listBulkItems: { method: 'GET', path: '/api/v1/bulk-operations/{id}/items', paged: false },
   listBulkOperations: { method: 'GET', path: '/api/v1/bulk-operations', paged: false },
+  listChecklists: { method: 'GET', path: '/api/v1/tickets/{id}/checklists', paged: false },
   listComments: { method: 'GET', path: '/api/v1/tickets/{id}/comments', paged: true },
   listFields: { method: 'GET', path: '/api/v1/fields', paged: false },
   listLinks: { method: 'GET', path: '/api/v1/tickets/{id}/links', paged: false },
@@ -65,8 +68,13 @@ export const OPERATIONS = {
   listTransitions: { method: 'GET', path: '/api/v1/tickets/{id}/transitions', paged: false },
   listUserProperties: { method: 'GET', path: '/api/v1/users/{id}/properties', paged: false },
   logTime: { method: 'POST', path: '/api/v1/tickets/{id}/time-entries', paged: false },
+  orderChecklistItems: { method: 'PUT', path: '/api/v1/tickets/{id}/checklists/{checklistId}/items/order', paged: false },
+  orderChecklists: { method: 'PUT', path: '/api/v1/tickets/{id}/checklists/order', paged: false },
   rankTicket: { method: 'PUT', path: '/api/v1/tickets/{id}/rank', paged: false },
+  removeChecklist: { method: 'DELETE', path: '/api/v1/tickets/{id}/checklists/{checklistId}', paged: false },
+  removeChecklistItem: { method: 'DELETE', path: '/api/v1/tickets/{id}/checklists/{checklistId}/items/{itemId}', paged: false },
   removeLink: { method: 'DELETE', path: '/api/v1/tickets/{id}/links/{linkId}', paged: false },
+  renameChecklist: { method: 'PATCH', path: '/api/v1/tickets/{id}/checklists/{checklistId}', paged: false },
   search: { method: 'GET', path: '/api/v1/search', paged: true },
   searchLong: { method: 'POST', path: '/api/v1/search', paged: true },
   setBoardProperty: { method: 'PUT', path: '/api/v1/boards/{id}/properties/{key}', paged: false },
@@ -80,6 +88,7 @@ export const OPERATIONS = {
   similarToText: { method: 'POST', path: '/api/v1/tickets/similar', paged: false },
   startSprint: { method: 'POST', path: '/api/v1/sprints/{id}/start', paged: false },
   transitionTicket: { method: 'POST', path: '/api/v1/tickets/{id}/transitions', paged: false },
+  updateChecklistItem: { method: 'PATCH', path: '/api/v1/tickets/{id}/checklists/{checklistId}/items/{itemId}', paged: false },
   updateComment: { method: 'PATCH', path: '/api/v1/tickets/{id}/comments/{commentId}', paged: false },
   updateTicket: { method: 'PATCH', path: '/api/v1/tickets/{id}', paged: false },
 } as const;

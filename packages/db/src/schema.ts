@@ -808,6 +808,31 @@ export interface TicketWebLinkTable {
   updated_at: DefaultTimestamp;
 }
 
+/** A named checklist on a ticket (CORE-033; ADR-120). */
+export interface TicketChecklistTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  name: string;
+  position: number;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** One line of a checklist; its state is open, in_progress, done or rejected. */
+export interface TicketChecklistItemTable {
+  id: Generated<number>;
+  workspace_id: number;
+  checklist_id: number;
+  text: string;
+  state: Generated<string>;
+  position: number;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
 /** Someone following, or voting for, a ticket. */
 export interface TicketPersonTable {
   workspace_id: number;
@@ -2656,6 +2681,8 @@ export interface Database {
   trash_policy: TrashPolicyTable;
   backup_run: BackupRunTable;
   ticket_web_link: TicketWebLinkTable;
+  ticket_checklist: TicketChecklistTable;
+  ticket_checklist_item: TicketChecklistItemTable;
   ticket_follower: TicketPersonTable;
   ticket_visit: TicketVisitTable;
   guardrail_limit: GuardrailLimitTable;

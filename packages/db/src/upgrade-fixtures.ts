@@ -1557,6 +1557,20 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM track WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0091_ticket_checklists': {
+    tables: {
+      ticket_checklist: "name = 'Seed checklist' AND position = 0",
+      ticket_checklist_item: "text = 'Seed item' AND state = 'rejected' AND position = 0",
+    },
+    seed: async (db) => {
+      // The seed's ticket has one checklist, with one rejected item (CORE-033).
+      await sql`INSERT INTO ticket_checklist (workspace_id, ticket_id, name, position)
+        SELECT 1, id, 'Seed checklist', 0 FROM ticket WHERE summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO ticket_checklist_item (workspace_id, checklist_id, text, state, position)
+        SELECT 1, id, 'Seed item', 'rejected', 0 FROM ticket_checklist
+         WHERE name = 'Seed checklist'`.execute(db);
+    },
+  },
 };
 
 /**

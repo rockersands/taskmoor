@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-02
 attestation: own-words
 ---
@@ -164,6 +164,28 @@ upload that would pass yours, or the workspace's, is refused with what is used a
 contents of ZIP files; **Download all as ZIP** takes every file at once. Deleting a file asks
 first and is for good. If the server checks files for viruses, a file is held until it passes.
 
+### Checklists
+
+Every ticket type can hold one or several named checklists, separate from the description. Press
+**Add a checklist**, give it a name, and add items with **Add an item**: type, press Enter and go on
+typing the next.
+
+An item is **Open**, **In progress**, **Done** or **Rejected**. Ticking its box makes it done and
+unticking makes it open; the list beside it sets any of the four. Each checklist shows how far along
+it is with a bar and the numbers, such as **3 of 4 done (75%)**, and when a ticket has any, the
+section shows the same for all of them together. **A rejected item is left out of the percentage**,
+because it will never be done: three done, one open and one rejected reads 75%.
+
+**Edit** changes an item's words or a checklist's name, **Move up** and **Move down** change the
+order, with the keyboard as with the pointer, and **Remove** takes it away. Every change shows in the
+ticket's [history](#history) and reaches others who have the ticket open. Changing a checklist needs
+the **Edit tickets** permission; a status that reserves editing to some people holds here too, and
+the section says so. Everyone who can see the ticket can read them.
+
+[Cloning a ticket](#cloning-a-ticket) copies its checklists with every item open again. They travel
+in [exports](../admin/import-export.md), go to the trash with the ticket, and the items you wrote are
+in [your data download](account.md).
+
 ### Subtickets
 
 The **Subtickets** section lists the tickets under this one, each with its status, and how far
@@ -246,7 +268,7 @@ Press **Clone**. The copies are made in the background, parents first, and the d
 many are done. Each copy:
 
 - starts in the first status of its workflow, with the original's type, description, people,
-  dates, priority, labels, estimate and custom fields. In the same track it also keeps the
+  dates, priority, labels, estimate and custom fields, and its checklists with every item open. In the same track it also keeps the
   original's releases, areas and visibility level;
 - is linked to its original with the **copies** link (the original reads **is copied by**);
 - under a deep clone, sits under the copy of its parent, and two copied tickets that were linked

@@ -1,5 +1,15 @@
 import type { TicketLink } from '../view/client';
-import type { ChildTicket, LinkType, PickedTicket, TicketLinks, TicketToolsClient } from './client';
+import type {
+  Checklist,
+  ChecklistItem,
+  ChecklistProgress,
+  ChildTicket,
+  LinkType,
+  PickedTicket,
+  TicketChecklists,
+  TicketLinks,
+  TicketToolsClient,
+} from './client';
 
 export const LINK_TYPES: LinkType[] = [
   { id: 1, name: 'Blocks', outward: 'blocks', inward: 'is blocked by' },
@@ -45,6 +55,35 @@ export const STARTING_CHILDREN: ChildTicket[] = [
   },
 ];
 
+/** As the server works it out (`checklistProgress`): a rejected item is left out. */
+const progressOf = (items: readonly ChecklistItem[]): ChecklistProgress => {
+  const counted = items.filter((item) => item.state !== 'rejected');
+  const done = counted.filter((item) => item.state === 'done').length;
+  return {
+    done,
+    counted: counted.length,
+    percent: counted.length === 0 ? null : Math.round((done / counted.length) * 100),
+  };
+};
+
+const items = (...rows: [string, ChecklistItem['state']][]): ChecklistItem[] =>
+  rows.map(([text, state], i) => ({ id: 300 + i, text, state }));
+
+export const STARTING_CHECKLISTS: Checklist[] = [
+  {
+    id: 30,
+    name: 'Before release',
+    items: items(
+      ['Write the notes', 'done'],
+      ['Tag the build', 'done'],
+      ['Run the upgrade', 'done'],
+      ['Tell the people', 'open'],
+      ['Print it', 'rejected'],
+    ),
+    progress: { done: 3, counted: 4, percent: 75 },
+  },
+];
+
 export interface FakeToolsClient extends TicketToolsClient {
   calls: { action: string; args: unknown[] }[];
 }
@@ -57,12 +96,27 @@ export function fakeToolsClient(
     enabled?: boolean;
     children?: ChildTicket[];
     childTypes?: { id: number; name: string }[];
+    checklists?: Checklist[];
+    canEdit?: boolean;
   } = {},
 ): FakeToolsClient {
   const links = structuredClone(start.links ?? STARTING_LINKS);
   const calls: FakeToolsClient['calls'] = [];
   const children = structuredClone(start.children ?? STARTING_CHILDREN);
   let next = 100;
+  let lists = structuredClone(start.checklists ?? STARTING_CHECKLISTS);
+  const answer = (): TicketChecklists => {
+    for (const list of lists) list.progress = progressOf(list.items);
+    return {
+      checklists: structuredClone(lists),
+      progress: progressOf(lists.flatMap((list) => list.items)),
+      canEdit: start.canEdit ?? true,
+      lock: null,
+    };
+  };
+  const listById = (id: number) => lists.find((list) => list.id === id) as Checklist;
+  const ordered = <T extends { id: number }>(rows: T[], ids: number[]) =>
+    ids.map((id) => rows.find((row) => row.id === id) as T);
   const state = (): TicketLinks => ({
     links: structuredClone(links),
     webLinks: [{ id: 7, url: 'https://example.test/pr/7', title: 'Pull request 7' }],
@@ -92,6 +146,57 @@ export function fakeToolsClient(
         links.findIndex((l) => l.id === linkId),
         1,
       );
+    },
+    checklists: async () => answer(),
+    addChecklist: async (ticketId, name) => {
+      calls.push({ action: 'addChecklist', args: [ticketId, name] });
+      lists.push({
+        id: next++,
+        name,
+        items: [],
+        progress: { done: 0, counted: 0, percent: null },
+      });
+      return answer();
+    },
+    renameChecklist: async (ticketId, id, name) => {
+      calls.push({ action: 'renameChecklist', args: [ticketId, id, name] });
+      listById(id).name = name;
+      return answer();
+    },
+    removeChecklist: async (ticketId, id) => {
+      calls.push({ action: 'removeChecklist', args: [ticketId, id] });
+      lists = lists.filter((list) => list.id !== id);
+      return answer();
+    },
+    orderChecklists: async (ticketId, ids) => {
+      calls.push({ action: 'orderChecklists', args: [ticketId, ids] });
+      lists = ordered(lists, ids);
+      return answer();
+    },
+    addItem: async (ticketId, checklistId, text) => {
+      calls.push({ action: 'addItem', args: [ticketId, checklistId, text] });
+      listById(checklistId).items.push({ id: next++, text, state: 'open' });
+      return answer();
+    },
+    updateItem: async (ticketId, checklistId, itemId, change) => {
+      calls.push({ action: 'updateItem', args: [ticketId, checklistId, itemId, change] });
+      Object.assign(
+        listById(checklistId).items.find((i) => i.id === itemId) as ChecklistItem,
+        change,
+      );
+      return answer();
+    },
+    removeItem: async (ticketId, checklistId, itemId) => {
+      calls.push({ action: 'removeItem', args: [ticketId, checklistId, itemId] });
+      const list = listById(checklistId);
+      list.items = list.items.filter((i) => i.id !== itemId);
+      return answer();
+    },
+    orderItems: async (ticketId, checklistId, ids) => {
+      calls.push({ action: 'orderItems', args: [ticketId, checklistId, ids] });
+      const list = listById(checklistId);
+      list.items = ordered(list.items, ids);
+      return answer();
     },
     subticketProgress: async (ids) => {
       calls.push({ action: 'subticketProgress', args: [ids] });

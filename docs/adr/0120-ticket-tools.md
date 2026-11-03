@@ -37,3 +37,24 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
   where it shows.
 - A ticket above the standard level holds the next level down in the same section, under its own
   title, because the hierarchy has no subtickets under an outcome (spec 01a section 1.2).
+
+### Checklists (CORE-033)
+
+- Two tables, `ticket_checklist` and `ticket_checklist_item` (migration 0091). Item text is plain:
+  a checklist is a list of things to do, not a document, so it has no rich text to convert.
+- The four states are for checklist items only; a subticket's status comes from the track's workflow
+  (the user's answer, 2026-11-03).
+- **A rejected item is left out of the percentage: 3 done, 1 open and 1 rejected reads 75%. Decided
+  by the user on 2026-11-03.** It lives in one small function, `checklistProgress`.
+- Every change needs "Edit tickets" and respects a status's edit lock (WF-007). Every route answers
+  the whole of the ticket's checklists, so the client never works out a change by itself.
+- A change is history with the words it changed, one `ticket.checklist_changed` event with ids only,
+  and it touches the ticket's updated time, not its version, as comments do (ADR-044): the change log
+  brings open pages up to date (ADR-013), and nobody's edit of another field is refused over a ticked
+  box. Followers are not notified of each tick: it would flood them. The event is available to
+  webhooks.
+- Clone copies the lists with every item open, since a copy starts in the first status of its
+  workflow. Export writes one record per checklist with its items; an export from before this has
+  no such file and imports as before. Erasure leaves the items, whose author becomes the placeholder
+  account like any other record; the person's own items are in their data download.
+- Limits: 20 checklists a ticket, 200 items a checklist, 200 and 1,000 characters.

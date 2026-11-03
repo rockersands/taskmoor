@@ -89,10 +89,22 @@ const TICKET_COLUMN: Partial<Record<EntityKind, string>> = {
   history: 'ticket_id',
   attachment: 'ticket_id',
   web_link: 'ticket_id',
+  checklist: 'ticket_id',
 };
 
 /** History fields of a ticket's content, which a source's update of the ticket leaves alone. */
-const CONTENT_FIELDS = ['comment', 'link', 'attachment', 'worklog', 'time', 'web_link'];
+const CONTENT_FIELDS = [
+  'comment',
+  'link',
+  'attachment',
+  'worklog',
+  'time',
+  'web_link',
+  'checklist',
+  'checklistItem',
+  'checklistItemState',
+  'checklistOrder',
+];
 
 /** The warning a delta run gives each record the source no longer holds (M1-096). */
 export const DELETED_IN_SOURCE = 'deleted_in_source';

@@ -111,6 +111,37 @@ export interface ChildType {
   name: string;
 }
 
+export type ItemState = 'open' | 'in_progress' | 'done' | 'rejected';
+
+export interface ChecklistItem {
+  id: number;
+  text: string;
+  state: ItemState;
+}
+
+/** How far along a checklist is; a rejected item is left out of `counted` (CORE-033). */
+export interface ChecklistProgress {
+  done: number;
+  counted: number;
+  percent: number | null;
+}
+
+export interface Checklist {
+  id: number;
+  name: string;
+  items: ChecklistItem[];
+  progress: ChecklistProgress;
+}
+
+/** A ticket's checklists as every checklist route answers them. */
+export interface TicketChecklists {
+  checklists: Checklist[];
+  progress: ChecklistProgress;
+  canEdit: boolean;
+  /** The status lock that holds editing back, when one does (WF-007). */
+  lock: unknown;
+}
+
 /** The endpoints the ticket's tools use. Stories and tests pass their own. */
 export interface TicketToolsClient {
   linkTypes: () => Promise<{ enabled: boolean; linkTypes: LinkType[] }>;
@@ -122,6 +153,20 @@ export interface TicketToolsClient {
   removeLink: (ticketId: number, linkId: number) => Promise<void>;
   /** Tickets for the picker, from a query `pickerQuery` wrote. */
   pick: (query: string) => Promise<PickedTicket[]>;
+  checklists: (ticketId: number) => Promise<TicketChecklists>;
+  addChecklist: (ticketId: number, name: string) => Promise<TicketChecklists>;
+  renameChecklist: (ticketId: number, id: number, name: string) => Promise<TicketChecklists>;
+  removeChecklist: (ticketId: number, id: number) => Promise<TicketChecklists>;
+  orderChecklists: (ticketId: number, ids: number[]) => Promise<TicketChecklists>;
+  addItem: (ticketId: number, checklistId: number, text: string) => Promise<TicketChecklists>;
+  updateItem: (
+    ticketId: number,
+    checklistId: number,
+    itemId: number,
+    change: { text?: string; state?: ItemState },
+  ) => Promise<TicketChecklists>;
+  removeItem: (ticketId: number, checklistId: number, itemId: number) => Promise<TicketChecklists>;
+  orderItems: (ticketId: number, checklistId: number, ids: number[]) => Promise<TicketChecklists>;
   subticketProgress: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
   /** The tickets under a ticket, in rank order; through search, so only what the person sees. */
   children: (
@@ -167,6 +212,43 @@ export const ticketToolsClient: TicketToolsClient = {
         body: { q: query, limit: 8, fields: 'summary,status', count: false },
       })
     ).tickets,
+  checklists: (ticketId) => api<TicketChecklists>(`/tickets/${ticketId}/checklists`),
+  addChecklist: (ticketId, name) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists`, {
+      method: 'POST',
+      body: { name },
+    }),
+  renameChecklist: (ticketId, id, name) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${id}`, {
+      method: 'PATCH',
+      body: { name },
+    }),
+  removeChecklist: (ticketId, id) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${id}`, { method: 'DELETE' }),
+  orderChecklists: (ticketId, ids) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/order`, {
+      method: 'PUT',
+      body: { ids },
+    }),
+  addItem: (ticketId, checklistId, text) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${checklistId}/items`, {
+      method: 'POST',
+      body: { text },
+    }),
+  updateItem: (ticketId, checklistId, itemId, change) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${checklistId}/items/${itemId}`, {
+      method: 'PATCH',
+      body: change,
+    }),
+  removeItem: (ticketId, checklistId, itemId) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${checklistId}/items/${itemId}`, {
+      method: 'DELETE',
+    }),
+  orderItems: (ticketId, checklistId, ids) =>
+    api<TicketChecklists>(`/tickets/${ticketId}/checklists/${checklistId}/items/order`, {
+      method: 'PUT',
+      body: { ids },
+    }),
   subticketProgress: loadSubticketProgress,
   children: async (key, cursor) => {
     const page = await api<{ tickets: ChildTicket[]; next: string | null }>('/search', {

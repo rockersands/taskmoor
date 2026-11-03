@@ -15,6 +15,7 @@ import { bodyKey } from '../fields/layouts';
 import { customFieldViews } from '../fields/values';
 import { linksEnabled } from '../routes/links';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
+import { copyChecklists } from '../tickets/checklists';
 import { type FieldChange, linkChange, recordChanges } from '../tickets/history';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, loadTickets, type TicketRow } from '../tickets/store';
@@ -596,6 +597,17 @@ async function copyRest(
         if (scan === 'pending' || thumbnail) await queueProcessing(trx, ws, row.id);
         changes.push(attachmentChange(copy.id, { id: row.id, name: f.from.name }, true));
         attached += 1;
+      }
+      // The copy's checklists start over: the same lists, every item open (CORE-033).
+      for (const list of await copyChecklists(trx, ws, source.id, copy.id, user.id)) {
+        changes.push({
+          ticketId: copy.id,
+          field: 'checklist',
+          from: null,
+          to: list.name,
+          fromDisplay: null,
+          toDisplay: null,
+        });
       }
       if (changes.length > 0) {
         // Every ticket that gained a link or a file has a new version.
