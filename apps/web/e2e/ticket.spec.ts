@@ -49,6 +49,9 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
   await expect(made).toBeVisible();
   const key = ((await made.textContent()) ?? '').split(' ')[0] as string;
   await page.getByRole('link', { name: `Open ${key}` }).click();
+  // It opens in the pop-up; the rest of this journey is on the ticket's own page.
+  await page.getByRole('dialog').getByRole('link', { name: 'Open full page' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const title = page.getByRole('heading', { level: 1 });
   await expect(title).toHaveText(`${key} Refund fails on ${testInfo.project.name}`);
   await expect(page.getByRole('button', { name: /^Follow \(/ })).toBeVisible();
@@ -77,7 +80,8 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
 
   // A priority, in place.
   const priority = details.getByRole('combobox', { name: 'Priority' });
-  await priority.selectOption({ index: 1 });
+  await priority.click();
+  await details.getByRole('listbox').getByRole('option', { name: 'Urgent' }).click();
   await expect(page.getByText('Saved.')).toBeVisible();
 
   // M: comment.
@@ -100,13 +104,13 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
     page.getByRole('tabpanel', { name: 'Time entries' }).getByText(/^1\.5 h/),
   ).toBeVisible();
 
-  // Through the workflow: started, then closed with a reason.
-  await page.getByRole('button', { name: /^Start, to / }).click();
+  // Through the status control: active, then closed, each at once.
+  const status = page.getByRole('button', { name: /^Status: / });
+  await status.click();
+  await page.getByRole('menuitem', { name: 'Active' }).click();
   await expect(page.getByText(/^Moved to /)).toBeVisible();
-  await page.getByRole('button', { name: /^Close, to / }).click();
-  const closing = page.getByRole('form', { name: 'Close: what it needs' });
-  await expect(closing.getByRole('combobox', { name: 'Close reason' })).toBeVisible();
-  await closing.getByRole('button', { name: 'Close' }).click();
+  await status.click();
+  await page.getByRole('menuitem', { name: 'Closed' }).click();
   await expect(page.locator('.ticket-status')).toHaveAttribute('data-stage', 'closed');
 
   // The history tells the story.

@@ -24,6 +24,8 @@ const ticket = (id: number, summary: string, hours: number, done = false): Backl
   key: `CHK-${id}`,
   summary,
   type: 'Task',
+  typeIcon: null,
+  priority: { id: 1, name: 'High', level: 2 },
   status: done ? { id: 4, name: 'Closed' } : { id: 1, name: 'New' },
   done,
   estimate: hours * HOUR,
@@ -146,6 +148,7 @@ export function fakeSprintClient(): SprintClient & { state: () => Backlog } {
   return {
     state: () => data,
     backlog: async () => structuredClone(data),
+    sprints: async () => structuredClone(data.sprints),
     create: async () => {
       const made = section(++next, `Checkout Sprint ${++named}`, 'future', []);
       data.sprints.push(made);

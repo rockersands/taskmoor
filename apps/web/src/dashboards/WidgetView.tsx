@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { ApiError } from '../api/client';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { DonutChart, MAX_SLICES } from '../reports/DonutChart';
 import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { estimateText } from '../sprints/client';
+import { useTicketChangeCount } from '../tickets/view/ticketChanges';
 import type { DashboardClient, Widget } from './client';
 
 const H = 3600;
 const DAY = 86_400;
-const STATIC = new Set<Widget['kind']>(['introduction', 'quick-links']);
+const STATIC = new Set<Widget['kind']>(['introduction', 'quick-links', 'track-summary']);
 
 interface Value {
   id: string | null;
@@ -24,14 +27,17 @@ interface TicketRow {
   key: string;
   summary: string;
   status: string;
+  type?: string;
+  typeIcon?: string | null;
   priority: string | null;
+  priorityLevel?: number | null;
   assignee: string | null;
 }
 
 export interface WidgetViewProps {
   dashboardId: number;
   widget: Widget;
-  client: DashboardClient;
+  client: Pick<DashboardClient, 'widget'>;
 }
 
 /** Durations in hours, or in days once they pass three. */
@@ -60,20 +66,27 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   const t = useT();
   const intl = useIntl();
   const [data, setData] = useState<unknown>(undefined);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'query' | 'other' | null>(null);
+  const changes = useTicketChangeCount();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again after an edit in the pop-up
   useEffect(() => {
     if (STATIC.has(widget.kind)) return;
     let live = true;
-    setFailed(false);
+    setFailed(null);
     client.widget(dashboardId, widget.id).then(
       (d) => live && setData(d),
-      () => live && setFailed(true),
+      (error) => {
+        if (live)
+          setFailed(
+            error instanceof ApiError && error.code === 'invalid_query' ? 'query' : 'other',
+          );
+      },
     );
     return () => {
       live = false;
     };
-  }, [client, dashboardId, widget.id, widget.kind]);
+  }, [client, dashboardId, widget.id, widget.kind, changes]);
 
   const title = widgetTitle(t, widget);
   const config = widget.config;
@@ -130,7 +143,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   if (failed) {
     return (
       <p className="board-problem" role="alert">
-        {t('dashboards.widget.failed')}
+        {t(failed === 'query' ? 'dashboards.widget.badQuery' : 'dashboards.widget.failed')}
       </p>
     );
   }
@@ -155,7 +168,13 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
           <ul className="widget-tickets">
             {d.tickets.map((x) => (
               <li key={x.id}>
-                <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
+                <span className="widget-ticket-key">
+                  <span className="ticket-icons">
+                    {x.type && <TypeIcon name={x.type} icon={x.typeIcon} />}
+                    {x.priority && <PriorityIcon name={x.priority} level={x.priorityLevel} />}
+                  </span>
+                  <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
+                </span>
                 <span className="widget-ticket-summary">{x.summary}</span>
                 <span className="widget-ticket-status">{x.status}</span>
               </li>

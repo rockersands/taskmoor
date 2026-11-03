@@ -22,6 +22,7 @@ import './styles/people.css';
 import './styles/invitations.css';
 import './styles/inbox.css';
 import './styles/boards.css';
+import './styles/ticket-icons.css';
 import './styles/workflows.css';
 import './styles/richtext.css';
 import './styles/search.css';
@@ -32,6 +33,8 @@ import './styles/ticket-templates.css';
 import './styles/timeline.css';
 import './styles/views.css';
 import './styles/ai.css';
+import './styles/surfaces.css';
+import './styles/motion.css';
 
 async function start() {
   // Back from a backend on another site with a sign-in code (M1-107): trade it and restore the

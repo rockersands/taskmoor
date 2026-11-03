@@ -13,6 +13,7 @@ import {
 import { DEFAULT_COLUMNS } from '../search/columns';
 import { ResultTable, type RowFormat, type Tone } from '../search/ResultTable';
 import { useColumnName } from '../search/useColumnName';
+import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type FormatRule,
   GROUP_FIELDS,
@@ -374,6 +375,18 @@ function GroupSection({
   useEffect(() => {
     if (!other) load();
   }, []);
+  // An edit in the ticket pop-up over this list: the rows shown, read again where they stand.
+  useTicketChanges(() => {
+    if (other) return;
+    readShownPages((after) => search.search(query, after), tickets.length).then(
+      (page) => {
+        setTickets(page.tickets);
+        onTickets(sectionKey, page.tickets);
+        setCursor(page.next);
+      },
+      () => {},
+    );
+  });
 
   const body =
     state === 'invalid' ? (

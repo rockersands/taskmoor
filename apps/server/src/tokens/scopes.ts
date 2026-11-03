@@ -71,6 +71,8 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'DELETE /api/v1/sessions/others',
   'DELETE /api/v1/sessions/:id',
   'PUT /api/v1/account/password',
+  'GET /api/v1/account/tutorial',
+  'PUT /api/v1/account/tutorial/:section',
   'GET /api/v1/account/tokens',
   'POST /api/v1/account/tokens',
   'DELETE /api/v1/account/tokens/:id',
@@ -120,6 +122,7 @@ export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
 export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/admin',
   '/api/v1/users',
+  '/api/v1/people/lookup',
   '/api/v1/groups',
   '/api/v1/roles',
   '/api/v1/access-policies',

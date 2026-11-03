@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Board-managed workflows end to end (M1-126; WF-010): on a local-mode track's board, the
- * settings turn the columns into the track's statuses, an added column becomes a status, a
+ * Board-managed workflows end to end (M1-126; WF-010; ADR-116): a local-mode track's board has
+ * its columns as the track's statuses from the start, an added column becomes a status, a
  * card dragged straight to the rightmost column is closed as Completed, and dragged back it is
  * open again. It uses the attachments database (preview 4174) and its administrator.
  */
@@ -20,26 +20,19 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
     data: { key, name: `Board workflow ${suffix}`, mode: 'local' },
   });
   expect(track.status(), await track.text()).toBe(201);
-  const trackId = (await track.json()).track.id as number;
-  const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Team ${suffix}`, kind: 'kanban', trackId, source: { query: `track = ${key}` } },
-  });
-  expect(made.status(), await made.text()).toBe(201);
+  const made = await page.request.get(`${BASE}/api/v1/tracks/${key}/board`);
+  expect(made.status(), await made.text()).toBe(200);
   const boardId = (await made.json()).board.id as number;
   const ticket = await page.request.post(`${BASE}/api/v1/tickets`, {
     data: { track: key, summary: 'Goes straight to the end' },
   });
   const ticketKey = (await ticket.json()).ticket.key as string;
 
-  // The settings make the columns the statuses, and a new column a status of its own.
+  // The columns are the statuses, and a new column a status of its own.
   await page.goto(`${BASE}/#/boards/${boardId}/settings`);
-  // The switch follows the server: it is checked once the board answers.
-  const managed = page.getByRole('checkbox', {
-    name: 'This board’s columns are its track’s statuses',
-  });
-  await managed.click();
-  await expect(page.getByRole('status')).toHaveText('Saved.');
-  await expect(managed).toBeChecked();
+  await expect(
+    page.getByRole('checkbox', { name: 'This board’s columns are its track’s statuses' }),
+  ).toBeChecked();
   await page.getByRole('button', { name: 'Add a column' }).click();
   const names = page.getByRole('textbox', { name: /^Name of column \d+$/ });
   const added = names.last();
@@ -56,7 +49,7 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
   // Any card to any column: straight to the rightmost, then back to the new one. The card's
   // Move menu offers every column (dragging the same moves is the board-drag test's).
   await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: `Team ${suffix}` });
+  const board = page.getByRole('region', { name: `Board workflow ${suffix}` });
   const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
   await expect(cell('New').getByRole('link')).toHaveCount(1);
   const moveTo = async (label: string) => {

@@ -476,8 +476,20 @@ export function registerTrackRoutes(
       .orderBy('replaced_at')
       .orderBy('id')
       .execute();
+    // A backlog and sprints need a Scrum board and the toggle on (CORE-002 (2); ADR-116). A track
+    // with no board yet gets a Kanban one when it is first opened, so it has neither.
+    const board = await db
+      .selectFrom('board')
+      .select('kind')
+      .where('location_track_id', '=', row.id)
+      .executeTakeFirst();
+    const scrum = board?.kind === 'scrum';
     return {
-      track: { ...trackView(row), previousKeys: history.map((h) => h.key) },
+      track: {
+        ...trackView(row),
+        previousKeys: history.map((h) => h.key),
+        sections: { backlog: scrum && row.feature_backlog, sprints: scrum && row.feature_sprints },
+      },
       ...(found.oldKey ? { redirect: { from: found.oldKey, to: row.key } } : {}),
     };
   });
@@ -675,12 +687,16 @@ export function registerTrackRoutes(
       // The template's board, made as the creator once the track exists (its own event).
       let board: { board?: unknown; boardProblem?: unknown } = {};
       if (recipe?.board && hooks.createBoard) {
-        const made = await hooks.createBoard(request, {
-          name: body.name,
-          kind: recipe.board.kind,
-          trackId: created.track.id,
-          source: { query: recipe.board.query(key.key) },
-        });
+        const made = await hooks.createBoard(
+          request,
+          {
+            name: body.name,
+            kind: recipe.board.kind,
+            trackId: created.track.id,
+            source: { query: recipe.board.query(key.key) },
+          },
+          { forTrack: true },
+        );
         board =
           made.statusCode === 201
             ? { board: (made.payload as { board: unknown }).board }

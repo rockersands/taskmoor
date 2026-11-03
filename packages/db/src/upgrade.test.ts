@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createDatabase, testPgAdminUrl } from '@taskmoor/testkit/pg';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb } from './client';
 import { knownMigrations, migrateTo, migrateToLatest, migrationStatus } from './migrate';
@@ -61,6 +62,72 @@ describe('upgrade from earlier releases', () => {
       });
     });
   }
+
+  describe('the default workflow moves freely (0089)', () => {
+    const atDefault = async (db: ReturnType<typeof createDb>) => {
+      const { rows } = await sql<{
+        published_version: number;
+        id: number;
+        definition: {
+          transitions: { id: number; name: string; from: unknown; layout?: unknown }[];
+        };
+      }>`
+        SELECT w.id, w.published_version, v.definition
+          FROM workflow w
+          JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
+         WHERE w.is_default`.execute(db);
+      return rows[0] as NonNullable<(typeof rows)[0]>;
+    };
+    const atBefore0089 = async () => {
+      const database = await createDatabase(testPgAdminUrl());
+      const db = createDb({ connectionString: database.url, maxConnections: 2 });
+      await migrateTo(db, '0088_one_board_per_track');
+      return { database, db };
+    };
+
+    it('[WF-008] gives a default workflow nobody changed its second version', async () => {
+      const { database, db } = await atBefore0089();
+      try {
+        await migrateToLatest(db);
+        const { published_version, definition } = await atDefault(db);
+        expect(published_version).toBe(2);
+        expect(definition.transitions.map((t) => [t.id, t.name, t.from, t.layout])).toEqual([
+          [5, 'New', 'any', undefined],
+          [1, 'Active', 'any', undefined],
+          [2, 'In Review', 'any', undefined],
+          [4, 'Closed', 'any', undefined],
+        ]);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+
+    it('[WF-008] leaves a default workflow an administrator edited with its own rules', async () => {
+      const { database, db } = await atBefore0089();
+      try {
+        const before = await atDefault(db);
+        await sql`
+          INSERT INTO workflow_version (workspace_id, workflow_id, version, definition, published_at)
+          VALUES (1, ${before.id}, 2, ${JSON.stringify(before.definition)}, now())`.execute(db);
+        await sql`
+          INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
+          SELECT workspace_id, workflow_id, 2, status_id FROM workflow_version_status
+           WHERE workflow_id = ${before.id} AND version = 1`.execute(db);
+        await sql`UPDATE workflow SET published_version = 2 WHERE id = ${before.id}`.execute(db);
+        await migrateToLatest(db);
+        const after = await atDefault(db);
+        expect(after.published_version).toBe(2);
+        expect(after.definition).toEqual(before.definition);
+        expect(after.definition.transitions.find((t) => t.name === 'Close')?.layout).toEqual([
+          'close-reason',
+        ]);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+  });
 
   it('[OPS-006] reports a database migrated by a newer release as unknown', async () => {
     const database = await createDatabase(testPgAdminUrl());

@@ -10,10 +10,12 @@ import {
   sprintDraftOf,
   sprintSettingsOf,
 } from '../sprints/SprintSettingsSection';
+import { trackSectionsChanged } from '../tracks/trackSections';
 import {
   type Board,
   type BoardClient,
   type BoardPatch,
+  type BoardReach,
   type BoardStatus,
   boardClient,
   CARD_FIELDS,
@@ -65,6 +67,10 @@ interface Draft {
   query: string;
   subFilter: string;
   columns: ColumnDraft[];
+  /** Which column closes tickets on a board managing its workflow; null the rightmost. */
+  closingColumn: string | null;
+  /** Where the tickets of removed columns go, by status id. */
+  statusMapping: Record<string, number>;
   lanesMode: Swimlanes['mode'];
   lanes: LaneDraft[];
   unassigned: 'first' | 'last';
@@ -96,6 +102,8 @@ function draftOf(board: Board, timeZone: string): Draft {
       min: c.min === null ? '' : String(c.min),
       max: c.max === null ? '' : String(c.max),
     })),
+    closingColumn: board.closingColumn ?? null,
+    statusMapping: {},
     lanesMode: board.swimlanes.mode,
     lanes: board.swimlanes.lanes.map((l) => ({ key: newKey(), ...l })),
     unassigned: board.swimlanes.unassigned,
@@ -132,6 +140,8 @@ function patchOf(draft: Draft, version: number): BoardPatch {
       min: limit(c.min),
       max: limit(c.max),
     })),
+    closingColumn: draft.closingColumn,
+    ...(Object.keys(draft.statusMapping).length > 0 ? { statusMapping: draft.statusMapping } : {}),
     swimlanes: {
       mode: draft.lanesMode,
       lanes: draft.lanes.map(withoutKey),
@@ -149,6 +159,103 @@ function patchOf(draft: Draft, version: number): BoardPatch {
     // Sprint settings belong to Scrum boards; a board turning Kanban keeps its stored ones.
     ...(draft.kind === 'scrum' ? { sprintSettings: sprintSettingsOf(draft.sprint) } : {}),
   };
+}
+
+/** A column being removed while it holds cards. */
+interface Removing {
+  key: string;
+  count: number;
+}
+
+/** Asks where a removed column's tickets go (the user's decision, ADR-116). */
+function RemoveColumn({
+  column,
+  count,
+  others,
+  onDone,
+  onCancel,
+}: {
+  column: ColumnDraft;
+  count: number;
+  others: ColumnDraft[];
+  onDone: (statusId: number) => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const [target, setTarget] = useState(String(others[0]?.statusIds[0] ?? ''));
+  return (
+    <fieldset className="board-settings-remove">
+      <legend>{t('boards.settings.remove.ask', { column: column.name, count })}</legend>
+      <label htmlFor={`${id}-to`} className="form-label">
+        {t('boards.settings.remove.to')}
+      </label>
+      <select id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)}>
+        {others.map((c) => (
+          <option key={c.key} value={c.statusIds[0]}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      <div className="form-actions">
+        <button type="button" disabled={target === ''} onClick={() => onDone(Number(target))}>
+          {t('boards.settings.remove.confirm')}
+        </button>
+        <button type="button" onClick={onCancel}>
+          {t('boards.choose.cancel')}
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+/** Says at once when no card can reach a column, what fixing it does, and who can. */
+function ColumnReachNote({
+  name,
+  problem,
+  reach,
+  fixing,
+  onFix,
+}: {
+  name: string;
+  problem: 'no_status' | 'no_path';
+  reach: BoardReach;
+  fixing: boolean;
+  onFix: () => void;
+}) {
+  const t = useT();
+  const shared = reach.otherTracks.length > 0;
+  return (
+    <aside className="board-settings-reach">
+      <p>
+        {t(
+          problem === 'no_status'
+            ? 'boards.settings.reach.noStatus'
+            : 'boards.settings.reach.noPath',
+          {
+            column: name,
+          },
+        )}
+      </p>
+      {reach.mayFix && reach.singleWorkflow ? (
+        <>
+          {shared && (
+            <p className="form-hint">
+              {t('boards.settings.reach.shared', {
+                workflow: reach.workflow?.name ?? '',
+                tracks: reach.otherTracks.join(', '),
+              })}
+            </p>
+          )}
+          <button type="button" disabled={fixing} onClick={onFix}>
+            {t('boards.settings.reach.fix', { column: name })}
+          </button>
+        </>
+      ) : (
+        <p className="form-hint">{t('boards.settings.reach.whoCan')}</p>
+      )}
+    </aside>
+  );
 }
 
 /** The list with item `at` moved one place up (-1) or down (1). */
@@ -173,6 +280,7 @@ const MANAGE_PROBLEMS: Record<string, MessageId> = {
 const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
   assignee: 'boards.settings.field.assignee',
   priority: 'boards.settings.field.priority',
+  points: 'boards.settings.field.points',
   dueDate: 'boards.settings.field.dueDate',
   startDate: 'boards.settings.field.startDate',
   labels: 'boards.settings.field.labels',
@@ -206,6 +314,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [numberFields, setNumberFields] = useState<NumberField[]>([]);
   const [teams, setTeams] = useState<{ id: number; name: string }[]>([]);
   const [statuses, setStatuses] = useState<BoardStatus[]>([]);
+  const [reach, setReach] = useState<BoardReach | null>(null);
+  const [removing, setRemoving] = useState<Removing | null>(null);
+  const [fixing, setFixing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [problems, setProblems] = useState<Record<string, string>>({});
@@ -214,12 +325,15 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [manageProblem, setManageProblem] = useState<string | null>(null);
   const noticeRef = useRef<HTMLParagraphElement | null>(null);
 
+  /** Once the person has changed something, a late answer (their time zone, say) leaves it be. */
+  const edited = useRef(false);
   useEffect(() => {
     client.settings(boardId).then(
       (read) => {
         setBoard(read.board);
         setStatuses(read.statuses);
-        setDraft(draftOf(read.board, timeZone));
+        setReach(read.reach ?? null);
+        if (!edited.current) setDraft(draftOf(read.board, timeZone));
         setState('loaded');
       },
       () => setState('failed'),
@@ -254,7 +368,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     );
   }
 
-  const set = (change: Partial<Draft>) => setDraft({ ...draft, ...change });
+  const set = (change: Partial<Draft>) => {
+    edited.current = true;
+    setDraft({ ...draft, ...change });
+  };
   const problem = (path: string) => problems[path];
   const invalid = (path: string, inputId: string) =>
     problem(path)
@@ -265,7 +382,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       <p id={`${inputId}-problem`} className="form-error">
         {problem(path) === 'invalid_query'
           ? t('boards.settings.invalidQuery')
-          : t('boards.settings.invalidValue')}
+          : problem(path) === 'sprint_running'
+            ? t('boards.settings.sprintRunning')
+            : t('boards.settings.invalidValue')}
       </p>
     ) : null;
 
@@ -289,6 +408,41 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     .flatMap((c) => c.statusIds)
     .filter((s) => !known.has(s))
     .map((s) => ({ id: s, name: String(s), stage: '', columnId: null }));
+
+  /** A column holding cards asks where they go; only a board managing its workflow moves them. */
+  async function removeColumn(column: ColumnDraft) {
+    const drop = () =>
+      set({ columns: (draft as Draft).columns.filter((c) => c.key !== column.key) });
+    if (!board?.managesWorkflow || !column.id) {
+      drop();
+      return;
+    }
+    try {
+      const data = await client.data(boardId, []);
+      const count = data.columns.find((c) => c.id === column.id)?.count ?? 0;
+      if (count === 0) drop();
+      else setRemoving({ key: column.key, count });
+    } catch {
+      setRemoving({ key: column.key, count: 0 });
+    }
+  }
+
+  async function fixColumn(columnId: string) {
+    setFixing(columnId);
+    try {
+      await client.addColumnPath(boardId, columnId);
+      const read = await client.settings(boardId);
+      setBoard(read.board);
+      setStatuses(read.statuses);
+      setReach(read.reach ?? null);
+      setDraft(draftOf(read.board, timeZone));
+      setNotice({ kind: 'saved' });
+    } catch {
+      setNotice({ kind: 'failed' });
+    } finally {
+      setFixing(null);
+    }
+  }
 
   async function manage(managed: boolean) {
     if (!board || !client.manageWorkflow) return;
@@ -319,6 +473,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     try {
       const outcome = await client.update(boardId, patchOf(draft, board.version));
       if (outcome.ok) {
+        // The Backlog tab comes or goes at once, without a reload (ADR-116).
+        if (outcome.board.kind !== board.kind && outcome.board.location.type === 'track') {
+          trackSectionsChanged(outcome.board.location.track.key ?? '');
+        }
         setBoard(outcome.board);
         setDraft(draftOf(outcome.board, timeZone));
         setNotice({ kind: 'saved' });
@@ -409,10 +567,12 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               id={`${id}-kind`}
               value={draft.kind}
               onChange={(e) => set({ kind: e.target.value === 'scrum' ? 'scrum' : 'kanban' })}
+              {...invalid('kind', `${id}-kind`)}
             >
               <option value="kanban">{t('boards.kind.kanban')}</option>
               <option value="scrum">{t('boards.kind.scrum')}</option>
             </select>
+            {problemText('kind', `${id}-kind`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-team`} className="form-label">
@@ -558,10 +718,41 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
                     at,
                     draft.columns.length,
                     (step) => set({ columns: moved(draft.columns, at, step) }),
-                    draft.columns.length > 1
-                      ? () => set({ columns: draft.columns.filter((c) => c.key !== column.key) })
-                      : null,
+                    draft.columns.length > 1 ? () => void removeColumn(column) : null,
                   )}
+                  {removing?.key === column.key && (
+                    <RemoveColumn
+                      column={column}
+                      count={removing.count}
+                      others={draft.columns.filter(
+                        (c) => c.key !== column.key && c.statusIds.length === 1,
+                      )}
+                      onDone={(target) => {
+                        const from = column.statusIds[0];
+                        set({
+                          columns: draft.columns.filter((c) => c.key !== column.key),
+                          statusMapping:
+                            from === undefined
+                              ? draft.statusMapping
+                              : { ...draft.statusMapping, [from]: target },
+                        });
+                        setRemoving(null);
+                      }}
+                      onCancel={() => setRemoving(null)}
+                    />
+                  )}
+                  {column.id &&
+                    reach &&
+                    reach.columns[column.id] &&
+                    reach.columns[column.id] !== 'ok' && (
+                      <ColumnReachNote
+                        name={label}
+                        problem={reach.columns[column.id] as 'no_status' | 'no_path'}
+                        reach={reach}
+                        fixing={fixing === column.id}
+                        onFix={() => void fixColumn(column.id as string)}
+                      />
+                    )}
                 </li>
               );
             })}
@@ -579,6 +770,36 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           >
             {t('boards.settings.addColumn')}
           </button>
+          {board.managesWorkflow && (
+            <div className="form-field">
+              <label htmlFor={`${id}-closing`} className="form-label">
+                {t('boards.settings.closing')}
+              </label>
+              <select
+                id={`${id}-closing`}
+                aria-describedby={`${id}-closing-hint`}
+                value={draft.closingColumn ?? ''}
+                onChange={(e) => set({ closingColumn: e.target.value || null })}
+              >
+                <option value="">
+                  {t('boards.settings.closing.rightmost', {
+                    column: draft.columns.at(-1)?.name ?? '',
+                  })}
+                </option>
+                {draft.columns.map((c) =>
+                  c.id ? (
+                    <option key={c.key} value={c.id}>
+                      {c.name}
+                    </option>
+                  ) : null,
+                )}
+                <option value="none">{t('boards.settings.closing.none')}</option>
+              </select>
+              <p id={`${id}-closing-hint`} className="form-hint">
+                {t('boards.settings.closing.hint')}
+              </p>
+            </div>
+          )}
           {problem('columns') && MANAGE_PROBLEMS[problem('columns') as string] ? (
             <p role="alert" className="form-error">
               {t(MANAGE_PROBLEMS[problem('columns') as string] as MessageId)}

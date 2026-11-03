@@ -125,11 +125,7 @@ describe('board flow reports (M1-061)', () => {
     const members = (await database.db.selectFrom('role').select(['id', 'name']).execute()).find(
       (r) => r.name === 'Members',
     )?.id as number;
-    // Bob sees FA only; alice sees both.
-    for (const [key, who] of [
-      ['FA', ['alice', 'bob']],
-      ['FB', ['alice']],
-    ] as const) {
+    for (const [key, who] of [['FA', ['alice', 'bob']]] as const) {
       const res = await call(
         'admin',
         {
@@ -165,14 +161,14 @@ describe('board flow reports (M1-061)', () => {
             name: 'Flow',
             kind: 'kanban',
             trackId: tracks.FA,
-            source: { query: 'track IN (FA, FB) AND summary ~ flow' },
+            source: { query: 'track = FA AND summary ~ flow' },
             columns: [
               { id: 'todo', name: 'To do', statusIds: [status.New] },
               { id: 'doing', name: 'Doing', statusIds: [status.Active] },
               { id: 'review', name: 'Review', statusIds: [status['In Review']] },
               { id: 'done', name: 'Done', statusIds: [status.Closed] },
             ],
-            boardFilters: [{ id: 'fa', name: 'FA only', query: 'track = FA' }],
+            boardFilters: [{ id: 'plain', name: 'No labels', query: 'labels IS EMPTY' }],
           },
         },
         201,
@@ -181,18 +177,47 @@ describe('board flow reports (M1-061)', () => {
     for (const [name, track, summary] of [
       ['a', 'FA', 'flow a'],
       ['b', 'FA', 'flow b'],
-      ['c', 'FB', 'flow c'],
+      ['c', 'FA', 'flow c'],
       ['d', 'FA', 'flow d'],
       ['other', 'FA', 'unrelated'],
     ] as const) {
       t[name] = (
         await call(
           'alice',
-          { method: 'POST', url: '/api/v1/tickets', payload: { track, summary } },
+          {
+            method: 'POST',
+            url: '/api/v1/tickets',
+            payload: { track, summary, labels: name === 'c' ? ['kept'] : [] },
+          },
           201,
         )
       ).ticket;
     }
+    // A visibility level only alice is on: bob browses the track, but not c.
+    const policy = await database.db
+      .insertInto('visibility_policy')
+      .values({ workspace_id: 1, name: 'Private' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const level = await database.db
+      .insertInto('visibility_level')
+      .values({ workspace_id: 1, policy_id: policy.id, name: 'Alice only', position: 0 })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('visibility_member')
+      .values({
+        workspace_id: 1,
+        level_id: level.id,
+        grantee: 'user',
+        user_id: users.alice?.id as number,
+      })
+      .execute();
+    await database.db
+      .updateTable('ticket')
+      .set({ visibility_level_id: level.id })
+      .where('id', '=', t.c?.id as number)
+      .execute();
     await history('a', [
       ['2026-10-01T10:00Z', 'New'],
       ['2026-10-05T09:00Z', 'Active'],
@@ -240,7 +265,7 @@ describe('board flow reports (M1-061)', () => {
       done: [0, 1, 2, 3, 3],
     });
     expect(flow.unmapped).toEqual([0, 0, 0, 0, 0]);
-    // Bob does not see FB: c is not his to count. A board filter narrows the same way.
+    // Bob is not on c's visibility level: c is not his to count. A board filter narrows the same way.
     const bob = columns((await get('bob', `cumulative-flow${WEEK}`)) as Flow);
     expect(bob).toEqual({
       todo: [1, 1, 1, 0, 0],
@@ -248,7 +273,9 @@ describe('board flow reports (M1-061)', () => {
       review: [0, 0, 0, 0, 0],
       done: [0, 1, 2, 2, 2],
     });
-    expect(columns((await get('alice', `cumulative-flow${WEEK}&filters=fa`)) as Flow)).toEqual(bob);
+    expect(columns((await get('alice', `cumulative-flow${WEEK}&filters=plain`)) as Flow)).toEqual(
+      bob,
+    );
   });
 
   it('[RPT-001] uses the viewer’s days: 30 up to today by default, on their time zone', async () => {

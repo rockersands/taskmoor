@@ -2,8 +2,8 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts
-accessed: 2026-10-31
+sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Search and the query language
@@ -16,14 +16,59 @@ format rules and dashboard widgets. A search only ever finds tickets you may see
 
 Press **Basic** at the top of the page and choose:
 
-- **Tracks**: one or more tracks, or none for all of them;
-- **Stage**: **New**, **Active**, **Closed**, or none for all;
+- **Words**: words that must appear in the ticket's text;
 - **Assigned to**: **Anyone or nobody**, **Me** or **Nobody**;
-- **Words**: words that must appear in the ticket's text.
+- **Tracks**: one or more tracks, or none for all of them;
+- **Stage**: **New**, **Active**, **Closed**, or none for all.
 
-Press **Search**. The results are ordered by the latest change. Your choices become a query:
-press **Advanced** to see it and carry on from there. A query that says more than the basic mode
-can show stays in the advanced mode, and the page says so.
+Press **Search**. The results are ordered by the latest change. **Clear all** empties the form.
+
+### More filters
+
+**Add a filter** brings in the rest, one at a time: pick one and press **Add filter**. **Remove
+filter** on a filter's row takes it away.
+
+Dates: **Date created**, **Date updated**, **Due date**, **Start date** and **Date closed**. Under
+**When**, choose **On**, **Before**, **After** or **Between**, then pick the day. **Between**
+includes both days. Days are your own days, in the time zone saved in [your account](account.md):
+**On** covers that whole day where you are. A date filter without its days does not count yet,
+and the form says so.
+
+Fields:
+
+- **Type** and **Priority**: tick the ones you want;
+- **Labels**, **Requester**, **Creator**, **Target release**, **Found in release** and **Area**:
+  type a value and press Enter or **Add**. The box suggests values as you type: labels by how they
+  start, people you may browse, and the releases and areas of the tracks you ticked, or of all your
+  tracks when you ticked none. With more than 20 tracks, tick some to see suggestions; you can
+  always type a name. **Requester** and **Creator** also offer **Me**. Press a chosen value to take
+  it away.
+
+Several values in one filter mean any of them; different filters must all match. Filters never
+show a ticket you may not see, since they all run as the same query.
+
+### From basic to advanced and back
+
+Your choices become a query. Press **Advanced** to see it and carry on from there:
+
+| You chose | The query says |
+|---|---|
+| **Date created**, **On** 31 October 2026 | `created >= 2026-10-31 AND created < 2026-11-01` |
+| **Date updated**, **After** 31 October 2026 | `updated >= 2026-11-01` |
+| **Due date**, **Between** 1 and 31 October 2026 | `due >= 2026-10-01 AND due <= 2026-10-31` |
+| **Type**: Bug and Story | `type IN (Bug, Story)` |
+| **Creator**: **Me** | `creator = currentUser()` |
+
+**Date created**, **Date updated** and **Date closed** hold a moment, so a day runs from its
+midnight to the next one; **Due date** and **Start date** hold a day.
+
+Press **Basic** to read a query back into the form. A query that says more than the basic mode can
+show stays in the advanced mode, and the page says so: `OR`, `NOT`, `!=`, another field or order,
+a date with a time or one relative to now such as `created >= -7d`. `created >= 2026-10-01` reads
+back as **After** 30 September, which finds the same tickets.
+
+The query goes in the page's address when you press **Search**, so a basic search can be bookmarked
+or sent as a link and opens with the same filters.
 
 ## Advanced search
 
@@ -276,6 +321,10 @@ The **Saved searches** bar on the search page keeps queries for later.
 - **Subscribe** emails you its results: **How often** (**Every day**, **Every week** on a chosen
   day, or **Every month** on a day from 1 to 28), **At** an hour, and **Only when something
   matches**. Press **Subscribe by email**; the page says when the first email goes out.
+
+A track's board can stand on a saved search. Its query then has to stay inside that track, so
+**Save** refuses a query that would leave it and names the board and the track. Start the query with
+`track = KEY AND`, or use **Save as new**.
 
 A saved search that came from an import of another tracker keeps its owner, its sharing, its
 stars and its subscriptions, with the query rewritten in Taskmoor's words. When the query could

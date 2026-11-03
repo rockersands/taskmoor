@@ -125,6 +125,10 @@ export const EVENT_TYPES = {
     }),
   },
   /** A download of a person's data was asked for (ASVS 8.3.2): by them, or by an administrator. */
+  'tutorial.progress_changed': {
+    subject: 'user',
+    payload: z.object({ section: z.string(), state: z.string(), step: z.number() }),
+  },
   'personal_data.export_requested': {
     subject: 'user',
     payload: z.object({ exportId: z.string(), by: z.enum(['self', 'admin']) }),
@@ -1466,6 +1470,20 @@ export const EVENT_TYPES = {
   'ticket.property_deleted': {
     subject: 'ticket',
     payload: z.object({ key: z.string(), propertyKey: z.string() }),
+  },
+  /** A track's customized Summary saved, or removed to go back to the default (ADR-116). */
+  'track.summary_layout_set': {
+    subject: 'track',
+    payload: z.object({
+      trackKey: z.string(),
+      layout: z.string(),
+      widgets: z.array(z.string()),
+      created: z.boolean(),
+    }),
+  },
+  'track.summary_layout_removed': {
+    subject: 'track',
+    payload: z.object({ trackKey: z.string() }),
   },
   'track.property_set': {
     subject: 'track',

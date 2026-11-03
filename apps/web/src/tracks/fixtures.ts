@@ -1,4 +1,12 @@
-import type { SummaryItem, TrackClient, TrackSummary } from './client';
+import { BOARD } from '../boards/fixtures';
+import type { Widget } from '../dashboards/client';
+import type {
+  SummaryItem,
+  TrackClient,
+  TrackSections,
+  TrackSummary,
+  TrackSummaryLayout,
+} from './client';
 
 /** A track's summary for stories and tests (M1-064): made up, its parts adding up. */
 const item = (id: string, name: string | null, query: string, count: number): SummaryItem => ({
@@ -39,8 +47,145 @@ export const SHOP_SUMMARY: TrackSummary = {
   ],
 };
 
-export function fakeTrackClient(summary: TrackSummary | null = SHOP_SUMMARY): TrackClient {
+/** What the widgets of a customized Summary and the track's reports read, for stories and tests. */
+const WIDGET_DATA: Record<string, unknown> = {
+  'w-open': {
+    tickets: [
+      {
+        id: 41,
+        key: 'SHOP-41',
+        summary: 'Checkout fails for expired cards',
+        status: 'Active',
+        priority: 'High',
+        assignee: 'Ada Lovelace',
+      },
+    ],
+    total: { count: 1, exact: true },
+  },
+};
+export const CREATED_VS_CLOSED = {
+  timeZone: 'UTC',
+  periods: ['2026-10-26', '2026-10-27', '2026-10-28'],
+  created: [3, 1, 2],
+  closed: [1, 2, 0],
+  cumulative: false,
+};
+export const TWO_DIMENSIONAL = {
+  fields: { x: 'status', y: 'priority' },
+  x: [
+    { id: '1', name: 'New', kind: 'value', total: 3 },
+    { id: '2', name: 'Active', kind: 'value', total: 2 },
+  ],
+  y: [
+    { id: '1', name: 'High', kind: 'value', total: 4 },
+    { id: null, name: null, kind: 'none', total: 1 },
+  ],
+  cells: [
+    [2, 1],
+    [2, 0],
+  ],
+  total: 5,
+};
+
+/** A customized Summary: the numbers, a list and a note. */
+export const CUSTOM_WIDGETS: Widget[] = [
+  { id: 'w-numbers', kind: 'track-summary', column: 0, title: '', config: {} },
+  {
+    id: 'w-open',
+    kind: 'search-results',
+    column: 1,
+    title: 'Open bugs',
+    config: { query: '', limit: 10 },
+  },
+  {
+    id: 'w-note',
+    kind: 'introduction',
+    column: 1,
+    title: '',
+    config: { text: 'Releases go out on Thursdays.' },
+  },
+];
+
+export interface FakeTrackOptions {
+  /** Which sections the track has; a Scrum track's by default. */
+  sections?: TrackSections;
+  /** Whether the person may customize; a viewer otherwise. */
+  mayCustomize?: boolean;
+  /** Starts customized. */
+  custom?: TrackSummaryLayout['custom'];
+  /** What a save answers instead of saving. */
+  saveError?: 'version_conflict' | 'forbidden' | 'invalid';
+}
+
+export type FakeTrackClient = TrackClient & {
+  saved: unknown[];
+  statisticCalls: { kind: string; settings: unknown }[];
+};
+
+export function fakeTrackClient(
+  summary: TrackSummary | null = SHOP_SUMMARY,
+  options: FakeTrackOptions = {},
+): FakeTrackClient {
+  let custom = options.custom ?? null;
+  const read = (): TrackSummaryLayout => {
+    if (!summary) throw new Error('not_found');
+    return {
+      track: summary.track,
+      mayCustomize: options.mayCustomize ?? false,
+      custom,
+    };
+  };
+  const saved: unknown[] = [];
+  const statisticCalls: { kind: string; settings: unknown }[] = [];
   return {
+    saved,
+    statisticCalls,
+    summaryLayout: async () => read(),
+    saveSummaryLayout: async (_key, layout) => {
+      saved.push(layout);
+      if (options.saveError) return { ok: false, error: options.saveError };
+      custom = {
+        layout: layout.layout,
+        version: (custom?.version ?? 0) + 1,
+        widgets: layout.widgets.map((w, i) => ({ ...w, id: w.id ?? `w-saved-${i}` })),
+      };
+      return { ok: true, read: read() };
+    },
+    resetSummaryLayout: async () => {
+      custom = null;
+    },
+    summaryWidget: async (_key, id) => WIDGET_DATA[id] ?? null,
+    statistics: async (_key, kind, settings) => {
+      statisticCalls.push({ kind, settings });
+      return kind === 'two-dimensional' ? TWO_DIMENSIONAL : CREATED_VS_CLOSED;
+    },
+    groupFields: async () => [{ id: 'cf[9]', name: 'Team' }],
+    list: async () => [
+      { key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
+      { key: 'WEB', name: 'Web', owner: null },
+    ],
+    sections: async () => options.sections ?? { backlog: true, sprints: true },
+    board: async () => BOARD,
+    files: async () => ({
+      attachments: [
+        {
+          id: 1,
+          name: 'invoice.pdf',
+          size: 2048,
+          createdAt: '2026-10-01T10:00:00Z',
+          ticket: { key: 'SHOP-41', summary: 'Checkout fails for expired cards' },
+        },
+      ],
+      links: [
+        {
+          id: 1,
+          url: 'https://example.com/design',
+          title: 'Design',
+          ticket: { key: 'SHOP-40', summary: 'Card payments' },
+        },
+      ],
+      truncated: false,
+    }),
     summary: async () => {
       if (!summary) throw new Error('not_found');
       return summary;

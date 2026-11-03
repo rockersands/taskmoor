@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
-import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
   FIELD_TYPES,
@@ -29,13 +29,12 @@ export interface FieldsAdminPageProps {
  */
 export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps) {
   const t = useT();
-  const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
   const nameId = useId();
   const typeId = useId();
   const multipleId = useId();
-  const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
+  const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'loaded'; fields: Field[] }

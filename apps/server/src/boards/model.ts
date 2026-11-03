@@ -42,6 +42,7 @@ export const MAX_CARD_FIELDS = 10;
 export const CARD_FIELDS = [
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'labels',
@@ -174,9 +175,10 @@ export const createBoardBody = z
     name,
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS),
-    /** A track, or nothing: the board then belongs to the person who creates it. */
+    /** The board's one track (ADR-116); without it, the track its query is confined to. */
     trackId: id.nullable().optional(),
-    source: sourceInput,
+    /** Omitted, the board shows its whole track; a query must stay within the track. */
+    source: sourceInput.optional(),
     subFilter: subFilterInput.nullable().optional(),
     columns: z.array(columnInput).min(1).max(MAX_COLUMNS).optional(),
     swimlanes: swimlanesInput.optional(),
@@ -199,6 +201,8 @@ export const updateBoardBody = z
      * by status id; the leftmost column otherwise.
      */
     statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
+    /** Which column closes tickets on a board that manages its workflow; null the rightmost. */
+    closingColumn: z.string().min(1).max(100).nullable().optional(),
     name: name.optional(),
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS).optional(),
@@ -223,15 +227,20 @@ export const DEFAULT_SWIMLANES: Swimlanes = {
   unassigned: 'last',
   otherName: 'Everything else',
 };
+/** No "Only my tickets": the person filter's "Me" finds the same cards and combines (AGL-005). */
 export const DEFAULT_BOARD_FILTERS: BoardFilter[] = [
-  { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()', description: '' },
   { id: 'recent', name: 'Recently updated', query: 'updated >= -1d', description: '' },
 ];
+/**
+ * A new board's cards (AGL-006): the title, the type's and priority's icons, the assignee and the
+ * points where there are any, with nothing else competing. Migration 0093 moved boards still on
+ * the old default (colour by type, `assignee, priority`, days in column) here.
+ */
 export const DEFAULT_CARD_RULES: CardRules = {
-  colourBy: 'type',
+  colourBy: 'none',
   colours: [],
-  fields: ['assignee', 'priority'],
-  daysInColumn: true,
+  fields: ['priority', 'assignee', 'points'],
+  daysInColumn: false,
 };
 
 /**

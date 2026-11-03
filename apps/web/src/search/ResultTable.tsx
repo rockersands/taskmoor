@@ -5,6 +5,9 @@ import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { IconSelect } from '../shell/IconSelect';
+import { priorityName } from '../shell/priorityName';
+import { PriorityGlyph, PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import type { SearchClient, SearchTicket } from './client';
 import {
   type CellEditor,
@@ -56,7 +59,9 @@ export function ResultTable({
 }: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
-  const [priorities, setPriorities] = useState<{ id: number; name: string }[] | null>(null);
+  const [priorities, setPriorities] = useState<
+    { id: number; name: string; level?: number }[] | null
+  >(null);
   const wantsPriorities = columns.includes('priority');
   useEffect(() => {
     if (!wantsPriorities || priorities) return;
@@ -139,7 +144,7 @@ function Cell({
   column: string;
   columnName: string;
   editor: CellEditor | null;
-  priorities: { id: number; name: string }[] | null;
+  priorities: { id: number; name: string; level?: number }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
   tone: Tone | null;
@@ -254,7 +259,9 @@ function Cell({
         </form>
       ) : (
         <span className="search-cell-view">
-          <span className="search-cell-value">{shown}</span>
+          <span className="search-cell-value">
+            <CellPicture column={column} value={value} shown={shown} />
+          </span>
           {editor && (
             <button
               ref={edit}
@@ -286,6 +293,15 @@ function Cell({
   );
 }
 
+/** The type and priority columns show their icon (CORE-005, CORE-014); the rest their text. */
+function CellPicture({ column, value, shown }: { column: string; value: unknown; shown: string }) {
+  const named = value as { name?: unknown; icon?: string | null; level?: number } | null;
+  if (typeof named?.name !== 'string') return shown;
+  if (column === 'ticketType') return <TypeIcon name={named.name} icon={named.icon} />;
+  if (column === 'priority') return <PriorityIcon name={named.name} level={named.level} />;
+  return shown;
+}
+
 function CellInput({
   editor,
   value,
@@ -300,7 +316,7 @@ function CellInput({
   editor: CellEditor;
   value: string;
   label: string;
-  priorities: { id: number; name: string }[] | null;
+  priorities: { id: number; name: string; level?: number }[] | null;
   current: unknown;
   me: { id: number; name: string } | null;
   inputRef: React.RefObject<(HTMLInputElement & HTMLSelectElement) | null>;
@@ -317,16 +333,25 @@ function CellInput({
   } as const;
   switch (editor.kind) {
     case 'priority': {
-      const list = priorities ?? (current ? [current as { id: number; name: string }] : []);
+      const list =
+        priorities ?? (current ? [current as { id: number; name: string; level?: number }] : []);
       return (
-        <select {...common} onChange={(event) => onChange(event.target.value)}>
-          <option value="">{t('search.edit.none')}</option>
-          {list.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <IconSelect
+          // One ref for whichever control the cell shows; only `focus()` is called on it.
+          buttonRef={inputRef as unknown as React.RefObject<HTMLButtonElement | null>}
+          aria-label={label}
+          aria-invalid={describedBy ? true : undefined}
+          aria-describedby={describedBy}
+          value={value}
+          // Only an imported ticket can have none; a ticket's priority cannot be taken away.
+          placeholder={t('priority.choose')}
+          options={list.map((p) => ({
+            value: String(p.id),
+            label: priorityName(t, p.name),
+            icon: <PriorityGlyph level={p.level} />,
+          }))}
+          onChange={onChange}
+        />
       );
     }
     case 'assignee': {

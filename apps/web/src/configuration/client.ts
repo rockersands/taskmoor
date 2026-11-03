@@ -117,12 +117,11 @@ export const configurationClient: ConfigurationClient = {
       method: on ? 'PUT' : 'DELETE',
     });
   },
+  // Name and id only: a configuration administrator gives roles too, and the list of people,
+  // with addresses, is for site administrators (ADR-114).
   findPeople: async (query) =>
-    (
-      await api<{ users: Named[] }>(
-        `/users?status=active&limit=8&query=${encodeURIComponent(query)}`,
-      )
-    ).users,
+    (await api<{ people: Named[] }>(`/people/lookup?limit=8&q=${encodeURIComponent(query)}`))
+      .people,
   groups: async () => (await api<{ groups: Named[] }>('/groups')).groups,
   workflowMaps: async () =>
     (await api<{ workflowMaps: WorkflowMapSummary[] }>('/workflow-maps')).workflowMaps,

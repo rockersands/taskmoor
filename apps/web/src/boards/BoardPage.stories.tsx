@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, manyCards } from './fixtures';
@@ -20,6 +22,23 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  const edge = box.getBoundingClientRect().right;
+  // The columns scroll inside the board, so what is in them may reach beyond it.
+  const out = [...box.querySelectorAll('*')]
+    .filter((el) => !el.parentElement?.closest('.board-scroll'))
+    .filter((el) => el.getBoundingClientRect().right > edge + 0.5)
+    .map((el) => `${el.tagName} ${el.getAttribute('class') ?? ''}`);
+  await expect(out).toEqual([]);
+};
+
 /** Three columns, an Expedite lane above the catch-all; Doing is over its maximum of 2. */
 export const Board: Story = {
   play: async ({ canvasElement }) => {
@@ -30,13 +49,68 @@ export const Board: Story = {
   },
 };
 
-/** "Only my tickets" on: cards narrow, counts stay whole. */
+/** A card's title being edited in place: Enter saves, Escape cancels (AGL-006). */
+export const EditingATitle: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await expect(canvas.getByRole('textbox', { name: 'Title of SHOP-19' })).toHaveFocus();
+  },
+};
+
+/** A title that was refused says why on the card, at a phone's width. */
+export const TitleRefused: Story = {
+  args: {
+    client: fakeBoardClient({
+      retitleRefusal: () => new ApiError(403, { error: 'forbidden' }),
+    }),
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await userEvent.keyboard(' now{Enter}');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'You may not edit this ticket.',
+    );
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A board filter on: cards narrow, counts stay whole, and the chip shows a tick. */
 export const FilterOn: Story = {
   args: { client: fakeBoardClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Only my tickets' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'My work' }));
     await expect(await canvas.findByText('2 hidden by board filters')).toBeVisible();
+  },
+};
+
+/** The person filter: "Me" and a person from the menu; any of them shows (AGL-005 (3)). */
+export const PersonFilter: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await expect(await canvas.findByRole('link', { name: /SHOP-21/ })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Rin Okafor' }));
+    await expect(await canvas.findByRole('link', { name: /SHOP-23/ })).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: /SHOP-19/ })).toBeNull();
+  },
+};
+
+/** Nobody's cards: the board says so and offers to clear the filter. */
+export const PersonFilterEmpty: Story = {
+  args: {
+    client: fakeBoardClient({ cards: CARDS.filter((c) => !c.mine) }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await expect(await canvas.findByText('No cards for these people')).toBeVisible();
   },
 };
 
@@ -81,7 +155,7 @@ function watchBoard() {
       watch.menu = performance.now() - watch.arrival;
       watch.cardsAtMenu = cards;
     }
-    const button = document.querySelector<HTMLButtonElement>('.board-card-move');
+    const button = document.querySelector<HTMLButtonElement>('.board-card-move[aria-expanded]');
     if (!watch.menu && button && button.getAttribute('aria-expanded') !== 'true') button.click();
     if (cards === 5000) {
       watch.all = performance.now() - watch.arrival;
@@ -120,5 +194,18 @@ export const FiveThousandCards: Story = {
     expect(watch.cardsAtMenu).toBeLessThan(5000);
     await expectWithinBudget(watch.menu, 1000, '5,000-card board interactive (ms)');
     await expectWithinBudget(watch.all, 4000, 'all 5,000 cards on the page (ms)');
+  },
+};
+
+/** The person filter at the width of a small phone: only the columns scroll sideways. */
+export const PersonFilterAtPhoneWidth: Story = {
+  args: { client: fakeBoardClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
+    await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

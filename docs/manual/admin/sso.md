@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/sso/draft.ts, apps/web/src/session/SignInForm.tsx, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-11-02
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Single sign-on
@@ -32,7 +32,7 @@ part of this is included in Taskmoor; nothing needs a separate licence.
 
 ## The Single sign-on page
 
-Open **Settings** > **Single sign-on** (`#/admin/identity-providers`). Only site
+Open **Administration** > **Single sign-on** (`#/admin/identity-providers`). Only site
 administrators see it. The page lists the **Identity providers** with a summary of each:
 protocol, issuer or entity ID, domains, whether it creates accounts, the group mapping, and a
 **Disabled** or **Single sign-on enforced** note. **Add an identity provider** opens the form;

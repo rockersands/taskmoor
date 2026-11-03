@@ -158,11 +158,11 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_BOARD)('a large board (M1-043)', () 
     expect(first.body.columns.reduce((sum, c) => sum + c.count, 0)).toBe(TICKETS);
     const filtered: number[] = [];
     for (let i = 0; i < 10; i++) {
-      filtered.push((await time(`/api/v1/boards/${boardId}/data?filters=mine`)).ms);
+      filtered.push((await time(`/api/v1/boards/${boardId}/data?people=me`)).ms);
     }
     const all = await time(`/api/v1/boards/${boardId}/data?limit=50000`);
     expect(all.body.cards).toHaveLength(TICKETS);
-    const line = `M1-043 board at ${TICKETS}: 5,000 cards p95 ${Math.round(p95(samples))} ms; with "Only my tickets" p95 ${Math.round(p95(filtered))} ms; all ${TICKETS} cards ${Math.round(all.ms)} ms`;
+    const line = `M1-043 board at ${TICKETS}: 5,000 cards p95 ${Math.round(p95(samples))} ms; with "Me" p95 ${Math.round(p95(filtered))} ms; all ${TICKETS} cards ${Math.round(all.ms)} ms`;
     process.stdout.write(`${line}\n`);
     if (process.env.TASKMOOR_LARGE_BOARD_REPORT) {
       appendFileSync(process.env.TASKMOOR_LARGE_BOARD_REPORT, `${line}\n`);

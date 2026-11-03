@@ -128,7 +128,11 @@ describe('identity provider administration (M1-080)', () => {
     ]) {
       expect(within(partners).getByText(text)).toBeVisible();
     }
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Administration',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('[IAM-003] copies the redirect URI, or selects it when copying is not possible', async () => {
@@ -364,9 +368,9 @@ describe('identity provider administration (M1-080)', () => {
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ enabled: false });
   });
 
-  it('[IAM-003] is linked from Settings for site administrators only', async () => {
+  it('[IAM-003] is listed in Administration for site administrators only', async () => {
     stubBackend({});
-    window.location.hash = '#/settings';
+    window.location.hash = '#/admin';
     const { unmount } = render(<App session={ADMIN} />);
     expect(await screen.findByRole('link', { name: 'Single sign-on' })).toHaveAttribute(
       'href',
@@ -374,7 +378,7 @@ describe('identity provider administration (M1-080)', () => {
     );
     unmount();
     render(<App session={MEMBER} />);
-    await screen.findByRole('heading', { level: 1, name: 'Settings' });
+    await screen.findByRole('heading', { level: 1, name: 'Administration' });
     expect(screen.queryByRole('link', { name: 'Single sign-on' })).toBeNull();
   });
 
@@ -601,7 +605,7 @@ describe('identity provider administration (M1-080)', () => {
     const errors: Error[] = [];
     render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
     const main = screen.getByRole('main');
-    await within(main).findByRole('list');
+    await within(main).findAllByText(/Contractors/);
     const add = within(main)
       .getAllByRole('button')
       .find((b) => b.getAttribute('aria-expanded') === 'false') as HTMLElement;
@@ -791,7 +795,7 @@ describe('identity provider administration (M1-080)', () => {
     const errors: Error[] = [];
     render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
     const main = screen.getByRole('main');
-    await within(main).findByRole('list');
+    await within(main).findAllByText(/Staff accounts/);
     // Open both the new-provider form and an editor, so every field is on screen.
     const buttons = within(main).getAllByRole('button');
     await user.click(

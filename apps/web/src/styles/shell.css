@@ -14,6 +14,8 @@ body {
   margin: 0;
   background-color: var(--color-canvas);
   background-image: var(--canvas-image);
+  background-position: center;
+  background-size: cover;
   background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -74,9 +76,12 @@ body {
   gap: var(--space-3);
   margin-top: var(--shell-gap);
   padding: 0 var(--space-3) 0 var(--space-4);
-  background: var(--color-surface);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -107,14 +112,39 @@ body {
 .shell-sidebar {
   grid-area: side;
   align-self: start;
-  background: var(--color-surface);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
   padding: var(--space-3);
   position: sticky;
   top: calc(var(--topbar-height) + 2 * var(--shell-gap));
   max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
   overflow-y: auto;
+}
+
+/* Sections of the navigation (ADR-114): a quiet heading over each group. */
+.nav-groups {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.nav-group-title {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shell[data-collapsed="true"] .nav-group-title {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
 }
 
 .nav-list {
@@ -142,7 +172,7 @@ body {
 }
 
 .nav-link:hover {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
 }
 
@@ -263,9 +293,12 @@ body {
   min-width: 14rem;
   max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
   padding: var(--space-2);
-  background: var(--color-surface-raised);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  box-shadow: var(--shadow-3);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
 }
 
 .user-menu-email {
@@ -310,7 +343,11 @@ body {
   color: var(--color-accent);
 }
 
-/* Command palette */
+/* Command palette: over everything, a dialog included, as it opens from anywhere. */
+.palette-backdrop {
+  z-index: 85;
+}
+
 .palette-trigger {
   display: inline-flex;
   min-width: 0;
@@ -337,11 +374,14 @@ body {
 .palette {
   position: fixed;
   top: 12vh;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
+  inset-inline: 0;
+  margin-inline: auto;
+  z-index: 90;
   width: min(92vw, 560px);
-  background: var(--color-surface-raised);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
   box-shadow: var(--shadow-3);
   overflow: hidden;
@@ -399,9 +439,7 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-soft),
-    box-shadow var(--motion-fast) var(--ease-soft);
+  transition: background-color var(--motion-fast) var(--ease-soft);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -473,12 +511,46 @@ body {
   z-index: 50;
   width: min(84vw, 320px);
   padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-3);
-  background: var(--color-surface);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   border-radius: 0;
   border-start-end-radius: var(--radius-3);
   border-end-end-radius: var(--radius-3);
   overflow-y: auto;
   box-shadow: var(--shadow-3);
+}
+
+/*
+ * A small phone: five round controls and the name of the product do not fit in 360 px, and the
+ * person's menu stuck out sideways. The name goes, the gaps tighten, and the search field takes
+ * what is left, shortening its label.
+ */
+@media (max-width: 480px) {
+  .shell-brand {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .shell-topbar {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+
+  .shell-topbar-end {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    gap: var(--space-1);
+  }
+
+  .palette-trigger {
+    flex: 1 1 0;
+    padding-inline: var(--space-2);
+  }
 }
 
 /* Touch screens get larger targets regardless of width. */
@@ -501,38 +573,6 @@ body {
   .icon-button {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0s !important;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .shell-drawer {
-    animation: drawer-in var(--motion-base) var(--ease-soft);
-  }
-
-  @keyframes drawer-in {
-    from {
-      transform: translateX(-16px);
-      opacity: 0;
-    }
-  }
-
-  :root[dir="rtl"] .shell-drawer {
-    animation-name: drawer-in-rtl;
-  }
-
-  @keyframes drawer-in-rtl {
-    from {
-      transform: translateX(16px);
-      opacity: 0;
-    }
   }
 }
 

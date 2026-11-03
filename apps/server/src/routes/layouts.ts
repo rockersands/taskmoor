@@ -19,6 +19,7 @@ import {
 } from '../fields/layouts';
 import { writeLayouts, writeRules } from '../fields/sets';
 import { describeFields } from '../fields/values';
+import { trackPrioritySet } from '../tickets/fields';
 import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tickets/store';
 import {
   fieldLockList,
@@ -556,7 +557,7 @@ export function registerLayoutRoutes(
       .select(['field_rule_set_id', 'layout_set_id'])
       .where('id', '=', trackId)
       .executeTakeFirstOrThrow();
-    return formOf(
+    const form = await formOf(
       request,
       {
         trackId,
@@ -566,6 +567,15 @@ export function registerLayoutRoutes(
       },
       q.data.operation,
     );
+    // What the form preselects and offers, so it shows what a new ticket would get (CORE-014 (2)).
+    const set = await trackPrioritySet(db, ws, trackId);
+    return {
+      ...form,
+      priorities: {
+        defaultId: set?.defaultPriorityId ?? null,
+        offered: [...(set?.priorityIds ?? [])],
+      },
+    };
   });
 
   app.get('/api/v1/tickets/:id/layout', async (request, reply) => {

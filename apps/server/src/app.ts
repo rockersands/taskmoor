@@ -105,6 +105,7 @@ import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
+import { registerTutorialRoutes } from './routes/tutorial';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUpdateCheckRoutes } from './routes/update-check';
 import { registerUserRoutes } from './routes/users';
@@ -440,6 +441,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.accessTokenTtlMs ? { accessTtlMs: deps.accessTokenTtlMs } : {}),
     });
     registerAccountRoutes(app, db, { passwords, directories });
+    registerTutorialRoutes(app, db);
     registerUserRoutes(app, db, {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       passwords,

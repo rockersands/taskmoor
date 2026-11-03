@@ -571,6 +571,13 @@ contract, reviewed on every change.
   query (`basicToQuery`); a query within the subset reads back as its choices (`queryToBasic`),
   in any spelling the parser accepts (aliases, case); anything else stays in the advanced mode
   with a note. A property test checks basic to query and back is the identity.
+- More filters in the basic mode (QRY-014 (4)): "Add a filter" brings in date fields and values of
+  type, priority, labels, requester, creator, the releases and area, still all query text. A day
+  needs no new syntax: date words are already read on the person's clock (QRY-006), so "on" a date
+  and time field is `f >= day AND f < next day` and "after" is `f >= next day`, while due and start
+  hold days and compare directly. Reading back accepts only what means whole days: `created =
+  day`, `created > day` and relative dates stay in the advanced mode. The values offered come from
+  the routes the rest of the app reads; the server still judges every query.
 - The page keeps the query in the address (`#/search?q=`), so a search can be shared and a reload
   runs it again. Results come from `POST /api/v1/search`, a page at a time.
 - Results show as a table in the person's columns, edit in place and export as CSV or JSON

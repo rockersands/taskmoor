@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ADMIN, MEMBER } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
@@ -10,6 +11,7 @@ import { setViewportWidth } from '../test/viewport';
 import { DashboardPage, nextInRotation } from './DashboardPage';
 import { DashboardsPage } from './DashboardsPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
+import { WidgetSettings } from './WidgetSettings';
 
 function open(
   options: {
@@ -31,6 +33,58 @@ function open(
   return { client, errors, container: view.container };
 }
 const widget = (name: string) => screen.getByRole('article', { name });
+
+describe('a widget that cannot load says what it needs (M1-064)', () => {
+  it('[RPT-005] says the query is at fault, not that the widget failed', async () => {
+    const client = fakeDashboardClient();
+    client.widget = async () => {
+      throw new ApiError(400, { error: 'invalid_query', message: 'Expected an operator' });
+    };
+    open({ client });
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts[0]).toHaveTextContent('Taskmoor cannot read the query in this widget');
+  });
+
+  it('[RPT-005] refuses to keep a query that cannot be read, and says what one looks like', async () => {
+    const user = userEvent.setup();
+    const saved: unknown[] = [];
+    render(
+      <I18nProvider locale="en">
+        <WidgetSettings
+          widget={{ id: 'w', kind: 'search-results', column: 0, title: '', config: { query: '' } }}
+          boards={[]}
+          onSave={(title, config) => saved.push({ title, config })}
+          onCancel={() => {}}
+          checkQuery={async (query) => !query.includes('nope')}
+        />
+      </I18nProvider>,
+    );
+    const query = screen.getByRole('textbox', { name: 'Query' });
+    await user.type(query, 'nope nope');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('A query looks like');
+    expect(query).toHaveAttribute('aria-invalid', 'true');
+    expect(saved).toEqual([]);
+    await user.clear(query);
+    await user.type(query, 'track = API');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+  });
+
+  it('[RPT-005] holds back a sprint widget while there is no Scrum board', () => {
+    render(
+      <I18nProvider locale="en">
+        <WidgetSettings
+          widget={{ id: 'w', kind: 'sprint-health', column: 0, title: '', config: {} }}
+          boards={[{ id: 8, name: 'Flow', kind: 'kanban' }]}
+          onSave={() => {}}
+          onCancel={() => {}}
+        />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
+  });
+});
 
 describe('a dashboard (M1-064)', () => {
   it('[RPT-005] draws every kind of widget from its data', async () => {

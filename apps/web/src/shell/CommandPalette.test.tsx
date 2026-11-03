@@ -38,7 +38,7 @@ describe('command palette', () => {
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
     const input = within(dialog).getByRole('combobox');
     expect(input).toHaveFocus();
-    expect(within(dialog).getAllByRole('option')).toHaveLength(7);
+    expect(within(dialog).getAllByRole('option')).toHaveLength(6);
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
@@ -52,6 +52,36 @@ describe('command palette', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Tracks' })).toBeInTheDocument();
   });
 
+  it('[CORE-001] offers New track only to someone the server lets make one', async () => {
+    const user = userEvent.setup();
+    const person = {
+      id: 1,
+      name: 'Kalo',
+      email: 'kalo@example.com',
+      isSiteAdmin: false,
+      isConfigAdmin: false,
+      timeZone: null,
+      locale: null,
+    };
+    window.location.hash = '#/settings';
+    const none = render(<App session={{ status: 'signed-in', user: person }} />);
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('new track');
+    expect(screen.queryByRole('option', { name: 'New track' })).toBeNull();
+    none.unmount();
+
+    render(
+      <App session={{ status: 'signed-in', user: { ...person, mayCreateLocalTracks: true } }} />,
+    );
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('new track');
+    expect(screen.getByRole('option', { name: 'New track' })).toBeVisible();
+    await user.keyboard('{Enter}');
+    expect(window.location.hash).toBe('#/tracks?new');
+    expect(await screen.findByRole('dialog', { name: 'New track' })).toBeVisible();
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
   it('moves with the arrow keys and closes with Escape, returning focus to the trigger', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -63,7 +93,7 @@ describe('command palette', () => {
     const selected = within(dialog)
       .getAllByRole('option')
       .find((o) => o.getAttribute('aria-selected') === 'true');
-    expect(selected?.textContent).toBe('Boards');
+    expect(selected?.textContent).toBe('Search');
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Command palette' })).toBeNull();

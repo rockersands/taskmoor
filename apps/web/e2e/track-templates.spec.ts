@@ -93,7 +93,10 @@ test('[CORE-002] each template makes a working track', async ({ page }, testInfo
     await page.getByRole('link', { name: `Open the board of ${key}` }).click();
     await expect(page).toHaveURL(/#\/boards\/\d+$/);
     if (template.id === 'scrum') {
-      await page.getByRole('link', { name: 'Backlog', exact: true }).click();
+      await page
+        .getByRole('navigation', { name: `Sections of ${key}` })
+        .getByRole('link', { name: 'Backlog', exact: true })
+        .click();
       const backlog = page.getByRole('region', { name: 'Backlog and sprints' });
       await expect(
         backlog.getByRole('region', { name: 'Backlog', exact: true }).getByRole('link', {

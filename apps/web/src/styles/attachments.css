@@ -10,8 +10,10 @@
   padding: var(--space-5);
   border: 2px dashed transparent;
   border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
 }
 
 .attachment-panel[data-dragging] {
@@ -160,6 +162,14 @@ a.attachment-action {
   display: grid;
   place-items: center;
   padding: var(--space-4);
+}
+
+/* Its own layer, as the ticket's dialogs have, so it can fade by itself. */
+.attachment-preview-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--color-backdrop);
 }
 

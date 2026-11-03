@@ -65,7 +65,12 @@ test('[AGL-008] [AGL-009] [AGL-010] tickets planned into a sprint, an outcome an
   });
   expect(release.status(), await release.text()).toBe(201);
   const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Plan ${word}`, kind: 'scrum', trackId, source: { query: `summary ~ ${word}` } },
+    data: {
+      name: `Plan ${word}`,
+      kind: 'scrum',
+      trackId,
+      source: { query: `track = ${key} AND summary ~ ${word}` },
+    },
   });
   expect(made.status(), await made.text()).toBe(201);
   const boardId = (await made.json()).board.id as number;

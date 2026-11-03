@@ -4,7 +4,7 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 
 /**
  * Inviting people into a track (IAM-027, IAM-028, IAM-030): a site administrator lets a track's
- * administrators invite; a manager who is no site administrator finds the track under Settings,
+ * administrators invite; a manager who is no site administrator finds the track in Administration,
  * invites an address with a link to copy (this backend has no mail server, and says so); the
  * invited person chooses a password, lands in that track with that role and sees no other. They
  * use the attachments database (preview 4174), whose site administrator the API server made, on
@@ -100,8 +100,8 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await ok(
     api.post(`${BASE}/api/v1/session`, { data: { email: managerEmail, password: PASSWORD } }),
   );
-  await page.goto(`${BASE}/#/settings`);
-  await page.getByRole('link', { name: 'Tracks you run' }).click();
+  await page.goto(`${BASE}/#/admin`);
+  await page.getByRole('link', { name: 'Tracks you run' }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Tracks you run' })).toBeVisible();
   await page.getByRole('link', { name: `Manage track ${key}` }).click();
   await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();

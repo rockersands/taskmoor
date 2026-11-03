@@ -210,11 +210,11 @@ describe('Cloud REST delta runs (M1-096)', () => {
       },
     });
     const transitions = (await must({ method: 'GET', url: '/api/v1/tickets/ALP-8/transitions' }))
-      .transitions as { id: number }[];
+      .transitions as { id: number; name: string }[];
     await must({
       method: 'POST',
       url: '/api/v1/tickets/ALP-8/transitions',
-      payload: { transitionId: transitions[0]?.id },
+      payload: { transitionId: transitions.find((x) => x.name === 'Active')?.id },
     });
     await must(
       {

@@ -9,11 +9,41 @@ import { runtimeConfig } from '../runtime/config';
  * below the base path (`/boards/7?x=1`); the host sends deep links to index.html, and a hash
  * route such as an older link or an email's `/#/tickets/ABC-1` still opens and is rewritten to
  * its path.
+ *
+ * A ticket over a page (the ticket pop-up, `tickets/view/TicketPopup.tsx`). A plain click on a link
+ * to a ticket pushes the ticket's own address with the page beneath held in that history entry's
+ * state: `{ behind: '#/tracks/FE/board?people=1', depth: 1 }`. So:
+ * - `current()` and `useRoute()` answer the page beneath, the page's own `replace()` rewrites the
+ *   route held in the state, and `address()` is what the address bar says. The page beneath never
+ *   sees a change of route: it stays mounted, keeps its scroll and filters and does not read again.
+ * - A shared link, or a new tab, has no state: the same address is the full page, as it always was.
+ * - A reload keeps the entry's state, so it brings the pop-up back over its page. The page reads
+ *   its data again, as any reload does, and the ticket shows either way.
+ * - Back steps to the entry below: the ticket before, from a link inside the pop-up (`depth` counts
+ *   them), or the page beneath, which closes the pop-up. Closing with Escape, the button or a click
+ *   outside goes back `depth` entries at once, so a later Back does not bring it up again, and
+ *   Forward does. A history that cannot go back that far rewrites the entry to the page instead.
+ *
+ * Which links: `start()` listens for clicks on real links, one place, so a new list gets the pop-up
+ * for free and keeps a real address for Ctrl, Cmd, Shift and middle click. A link, or anything
+ * around it, with the `data-full-page` attribute opts out and leaves the page instead.
  */
 export interface Router {
   readonly mode: RoutingMode;
-  /** The current route, `#/boards/7` in either mode. */
+  /** The current page's route, `#/boards/7` in either mode: with a ticket over it, the page beneath. */
   current(): string;
+  /** The route the address bar shows, which is the ticket's while one shows over a page. */
+  address(): string;
+  /** The route showing over the page, or null. */
+  overlay(): string | null;
+  /** How many tickets opened one from another are stacked in history; 0 with none over the page. */
+  overlayDepth(): number;
+  /** Shows the route over the current page, as a new history entry. */
+  openOverlay(route: string): void;
+  /** Rewrites the address of the route over the page, without a new entry or a change event. */
+  replaceOverlay(route: string): void;
+  /** Back to the page beneath, whatever the number of tickets opened on the way. */
+  closeOverlay(): void;
   /** What a link to the route points at: the route itself, or its path. */
   href(route: string): string;
   /** The route as an absolute address, for copying. */
@@ -41,12 +71,91 @@ function routePath(route: string): string {
   return route.replace(/^#?\/?/, '');
 }
 
+/** What a history entry holds while a ticket shows over a page. */
+interface OverlayState {
+  behind: string;
+  depth: number;
+}
+const OVERLAY = 'taskmoorOverlay';
+
+/** Links in or around such an element leave the page rather than open the pop-up. */
+export const FULL_PAGE_ATTRIBUTE = 'data-full-page';
+
+/** The ticket a route is exactly about, in lower case; null for any other route. */
+function ticketOfRoute(route: string): string | null {
+  return /^#\/tickets\/([^/?#]+)(?:\?[^#]*)?$/.exec(route)?.[1]?.toLowerCase() ?? null;
+}
+
+/** A plain press of a real link, in this tab. Null for anything the browser should handle. */
+export function pressedLink(event: MouseEvent): { anchor: Element; raw: string } | null {
+  if (event.defaultPrevented || event.button !== 0) return null;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
+  // HTML and SVG links alike, so read attributes rather than HTMLAnchorElement properties.
+  const anchor = (event.target as Element | null)?.closest?.('a[href]');
+  if (!anchor) return null;
+  const target = anchor.getAttribute('target');
+  if ((target && target !== '_self') || anchor.hasAttribute('download')) return null;
+  return { anchor, raw: anchor.getAttribute('href') ?? '' };
+}
+
+/** Moves focus to the link pressed: Safari does not, and closing the pop-up returns it here. */
+function holdFocus(anchor: Element) {
+  (anchor as HTMLElement).focus?.({ preventScroll: true });
+}
+
 export function createRouter(
   win: Window,
   config: Pick<RuntimeConfig, 'routing' | 'basePath'>,
 ): Router {
   const base = config.basePath;
   const notify = () => win.dispatchEvent(new Event(CHANGE));
+
+  const overlayState = (): OverlayState | null => {
+    const held = (win.history.state as Record<string, OverlayState> | null)?.[OVERLAY];
+    return held && typeof held.behind === 'string' && held.depth > 0 ? held : null;
+  };
+  /** The page beneath takes a new route: only the state changes, not the address. */
+  const holdBehind = (route: string) =>
+    win.history.replaceState(
+      { ...win.history.state, [OVERLAY]: { ...overlayState(), behind: route } },
+      '',
+    );
+  /** A plain press of a link to a ticket other than the page's own opens it over the page. */
+  const opensOverlay = (route: string, anchor: Element, page: string) => {
+    const ticket = ticketOfRoute(route);
+    if (ticket === null || anchor.closest(`[${FULL_PAGE_ATTRIBUTE}]`)) return false;
+    return overlayState() !== null || ticketOfRoute(page) !== ticket;
+  };
+  /** The parts every mode shares, given what differs: its address and how to write one. */
+  const overlayPart = (address: () => string, write: (route: string) => string) => ({
+    overlay: () => (overlayState() ? address() : null),
+    overlayDepth: () => overlayState()?.depth ?? 0,
+    openOverlay: (route: string) => {
+      const held = overlayState();
+      if (held && route === address()) return;
+      const state: OverlayState = {
+        behind: held?.behind ?? address(),
+        depth: (held?.depth ?? 0) + 1,
+      };
+      win.history.pushState({ [OVERLAY]: state }, '', write(route));
+      notify();
+    },
+    replaceOverlay: (route: string) =>
+      win.history.replaceState(win.history.state, '', write(route)),
+    closeOverlay: () => {
+      const held = overlayState();
+      if (!held) return;
+      // A history restored without its earlier entries goes nowhere: the page takes this entry.
+      const stuck = win.setTimeout(() => {
+        const behind = overlayState()?.behind;
+        if (behind === undefined) return;
+        win.history.replaceState(null, '', write(behind));
+        notify();
+      }, 1000);
+      win.addEventListener('popstate', () => win.clearTimeout(stuck), { once: true });
+      win.history.go(-held.depth);
+    },
+  });
 
   /** The route an address inside the app stands for; null outside it and for the API. */
   const routeOfUrl = (url: URL): string | null => {
@@ -59,42 +168,82 @@ export function createRouter(
   };
 
   if (config.routing === 'hash') {
+    const address = () => win.location.hash;
+    const here = () => `${win.location.pathname}${win.location.search}`;
+    const write = (route: string) => (route ? `${here()}${route}` : here());
+    const part = overlayPart(address, write);
+    const replace = (route: string) => {
+      if (overlayState()) holdBehind(route);
+      else win.history.replaceState(win.history.state, '', write(route));
+    };
+    // Every other link is the browser's own business in this mode: it only moves the fragment.
+    const onClick = (event: MouseEvent) => {
+      const pressed = pressedLink(event);
+      if (!pressed || !pressed.raw.includes('#/')) return;
+      const url = new URL(pressed.raw, win.document.baseURI);
+      if (url.origin !== win.location.origin || url.pathname !== win.location.pathname) return;
+      if (opensOverlay(url.hash, pressed.anchor, current())) {
+        event.preventDefault();
+        holdFocus(pressed.anchor);
+        part.openOverlay(url.hash);
+      } else if (overlayState() && url.hash === address()) {
+        // The way out to the full page: the fragment does not change, so the browser would stay.
+        event.preventDefault();
+        navigate(url.hash);
+      }
+    };
+    const current = () => overlayState()?.behind ?? address();
+    const navigate = (route: string) => {
+      if (overlayState() && route === address()) {
+        win.history.pushState(null, '', write(route));
+        notify();
+      } else {
+        win.location.hash = route;
+      }
+    };
     return {
       mode: 'hash',
-      current: () => win.location.hash,
+      current,
+      address,
+      ...part,
       href: (route) => route,
       url: (route) => `${win.location.origin}${win.location.pathname}${route}`,
-      navigate: (route) => {
-        win.location.hash = route;
-      },
-      replace: (route) => {
-        const here = `${win.location.pathname}${win.location.search}`;
-        win.history.replaceState(win.history.state, '', route ? `${here}${route}` : here);
-      },
+      navigate,
+      replace,
       redirect: (route) => {
-        const here = `${win.location.pathname}${win.location.search}`;
-        win.history.replaceState(win.history.state, '', route ? `${here}${route}` : here);
+        replace(route);
         notify();
       },
       subscribe: (listener) => {
+        win.addEventListener('popstate', listener);
         win.addEventListener('hashchange', listener);
         win.addEventListener(CHANGE, listener);
         return () => {
+          win.removeEventListener('popstate', listener);
           win.removeEventListener('hashchange', listener);
           win.removeEventListener(CHANGE, listener);
         };
       },
-      start: () => () => {},
+      start: () => {
+        win.document.addEventListener('click', onClick);
+        return () => win.document.removeEventListener('click', onClick);
+      },
     };
   }
 
   const href = (route: string) => `${base}${routePath(route)}`;
   const here = () => `${win.location.pathname}${win.location.search}${win.location.hash}`;
-  const current = () => routeOfUrl(new URL(win.location.href)) ?? '';
+  const address = () => routeOfUrl(new URL(win.location.href)) ?? '';
+  const current = () => overlayState()?.behind ?? address();
+  const part = overlayPart(address, href);
   const navigate = (route: string) => {
-    if (href(route) === here()) return;
+    if (href(route) === here() && !overlayState()) return;
     win.history.pushState(null, '', href(route));
     notify();
+  };
+  const replace = (route: string) => {
+    if (overlayState()) holdBehind(route);
+    else win.history.replaceState(win.history.state, '', href(route));
   };
   /** A hash route in the address becomes its path, unless it carries a token. */
   const tidy = () => {
@@ -103,14 +252,9 @@ export function createRouter(
     win.history.replaceState(win.history.state, '', href(hash));
   };
   const onClick = (event: MouseEvent) => {
-    if (event.defaultPrevented || event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    // HTML and SVG links alike, so read attributes rather than HTMLAnchorElement properties.
-    const anchor = (event.target as Element | null)?.closest?.('a[href]');
-    if (!anchor) return;
-    const target = anchor.getAttribute('target');
-    if ((target && target !== '_self') || anchor.hasAttribute('download')) return;
-    const raw = anchor.getAttribute('href') ?? '';
+    const pressed = pressedLink(event);
+    if (!pressed) return;
+    const { anchor, raw } = pressed;
     // An in-page fragment such as the skip link: the base element would otherwise send it to
     // the base path, so move to the element here.
     if (raw.startsWith('#') && !raw.startsWith('#/')) {
@@ -124,18 +268,25 @@ export function createRouter(
     const route = url.origin === win.location.origin ? routeOfUrl(url) : null;
     if (route === null) return;
     event.preventDefault();
-    navigate(route);
+    if (opensOverlay(route, anchor, current())) {
+      holdFocus(anchor);
+      part.openOverlay(route);
+    } else {
+      navigate(route);
+    }
   };
 
   return {
     mode: 'path',
     current,
+    address,
+    ...part,
     href,
     url: (route) => new URL(href(route), win.location.origin).href,
     navigate,
-    replace: (route) => win.history.replaceState(win.history.state, '', href(route)),
+    replace,
     redirect: (route) => {
-      win.history.replaceState(win.history.state, '', href(route));
+      replace(route);
       notify();
     },
     subscribe: (listener) => {
@@ -170,8 +321,19 @@ export const navigate = (route: string): void => router.navigate(route);
 export const replaceRoute = (route: string): void => router.replace(route);
 export const redirectRoute = (route: string): void => router.redirect(route);
 export const onRouteChange = (listener: () => void): (() => void) => router.subscribe(listener);
+export const addressRoute = (): string => router.address();
+export const overlayRoute = (): string | null => router.overlay();
+export const overlayDepth = (): number => router.overlayDepth();
+export const openOverlay = (route: string): void => router.openOverlay(route);
+export const replaceOverlay = (route: string): void => router.replaceOverlay(route);
+export const closeOverlay = (): void => router.closeOverlay();
 
-/** The current route, re-rendered on every change. */
+/** The current page's route, re-rendered on every change. */
 export function useRoute(): string {
   return useSyncExternalStore(onRouteChange, currentRoute, () => '');
+}
+
+/** The route showing over the page, re-rendered on every change; null with none. */
+export function useOverlayRoute(): string | null {
+  return useSyncExternalStore(onRouteChange, overlayRoute, () => null);
 }

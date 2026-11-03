@@ -210,6 +210,9 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
     });
   };
 
+  /** What a key or a track's switch changes, leaving what the person is still editing alone. */
+  const reloadStanding = async () => setView(await client.load());
+
   useEffect(() => {
     if (notAdmin) return;
     let live = true;
@@ -300,7 +303,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
     if (!value) return;
     client.setKey(slot, value).then(
       () =>
-        reload().then(() => {
+        reloadStanding().then(() => {
           setKeys({ ...keys, [slot]: '' });
           done('ai.keySaved');
         }),
@@ -309,7 +312,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
   };
 
   const removeKey = (slot: CredentialSlot) =>
-    client.removeKey(slot).then(() => reload().then(() => done('ai.keyRemoved')), failed);
+    client.removeKey(slot).then(() => reloadStanding().then(() => done('ai.keyRemoved')), failed);
 
   const test = () => {
     setTesting(true);
@@ -346,7 +349,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
       });
     return client.setTrack(trackId, enabled).then(
       () =>
-        reload().then(() => {
+        reloadStanding().then(() => {
           settle();
           done('ai.trackSaved');
         }),

@@ -8,7 +8,7 @@ import { expect, type Page, test } from '@playwright/test';
  * chart with nothing finished yet, and time in status with every ticket, over the period and
  * board filters picked; no serious axe issue and no sideways page scroll, on a phone either.
  * It uses the attachments database (preview 4174), whose administrator (Ada Attach) the API
- * server made with the ATT track.
+ * server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -40,16 +40,27 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `flw${testInfo.project.name}${Date.now().toString(36)}`;
+  const key = `F${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = await page.request.post(`${BASE}/api/v1/tracks`, {
+    data: { key, name: `Flow ${word}`, mode: 'shared' },
+  });
+  expect(track.status(), await track.text()).toBe(201);
+  const trackId = (await track.json()).track.id as number;
   const keys: string[] = [];
   for (const summary of ['Refund totals', 'Coupon stacking', 'Receipt layout']) {
     const res = await page.request.post(`${BASE}/api/v1/tickets`, {
-      data: { track: 'ATT', summary: `${summary} ${word}` },
+      data: { track: key, summary: `${summary} ${word}` },
     });
     expect(res.status(), await res.text()).toBe(201);
     keys.push((await res.json()).ticket.key as string);
   }
   const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Flow ${word}`, kind: 'kanban', source: { query: `summary ~ ${word}` } },
+    data: {
+      name: `Flow ${word}`,
+      kind: 'kanban',
+      trackId,
+      boardFilters: [{ name: 'Assigned to me', query: 'assignee = currentUser()' }],
+    },
   });
   expect(made.status(), await made.text()).toBe(201);
   const boardId = (await made.json()).board.id as number;
@@ -64,7 +75,8 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   await expect(cell('Active').getByRole('link')).toHaveCount(1);
 
   await board.getByRole('link', { name: 'Reports' }).click();
-  const reports = page.getByRole('region', { name: `Reports of Flow ${word}` });
+  // The link goes to the Statistics section of the board's track (ADR-116).
+  const reports = page.getByRole('region', { name: /^Statistics of / });
   const flow = reports.getByRole('figure', { name: 'Cumulative flow' });
   await expect(flow.getByRole('img')).toHaveAttribute(
     'aria-label',
@@ -84,8 +96,8 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
   await reports.getByRole('combobox', { name: 'Period' }).selectOption({ label: 'Last 14 days' });
-  await reports.getByRole('checkbox', { name: 'Only my tickets' }).check();
-  await expect(reports.getByRole('checkbox', { name: 'Only my tickets' })).toBeChecked();
+  await reports.getByRole('checkbox', { name: 'Assigned to me' }).check();
+  await expect(reports.getByRole('checkbox', { name: 'Assigned to me' })).toBeChecked();
   await expect(
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
@@ -96,7 +108,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   await expect(
     reports.getByText('No ticket of this board was in a status in this period.'),
   ).toBeVisible();
-  await reports.getByRole('checkbox', { name: 'Only my tickets' }).uncheck();
+  await reports.getByRole('checkbox', { name: 'Assigned to me' }).uncheck();
   const times = reports.getByRole('figure', { name: 'Average time in status' });
   await expect(times).toBeVisible();
   await expect(reports.getByRole('rowheader', { name: 'Active' }).last()).toBeVisible();

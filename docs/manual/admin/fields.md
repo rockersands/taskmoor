@@ -1,8 +1,8 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Fields, ticket types and layouts
@@ -11,8 +11,8 @@ This page covers the fields a ticket holds, the custom fields you add, formula f
 types and hierarchy levels, and the configuration sets that tell each track which types,
 priorities, rules and forms it uses.
 
-In the web app, site administrators use **Settings**, **Fields** and **Settings**,
-**Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
+In the web app, site and configuration administrators use **Administration**, **Fields** and
+**Administration**, **Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
 changes shared configuration needs the `admin` scope ([API tokens](api-tokens.md)). Everyone
 signed in may read these lists.
 
@@ -33,6 +33,25 @@ labels into one with `POST /api/v1/labels/merge` (`{ "labels": [...], "into": ".
 also renames a label.
 
 ## Custom fields
+
+### The Points field
+
+A workspace starts with a shared number field called **Points**, stored under that name and shown as
+**Puntos** to someone using Taskmoor in Spanish. It covers every track and ticket type, so it is on
+the forms and in search like any custom field you add. Boards of new tracks estimate with it; their
+[sprint settings](../use/boards.md#sprint-settings) choose another statistic if you prefer.
+
+- **Rename it** and it stays the field boards estimate with, including new tracks' boards. Its own
+  name then shows as you wrote it, in every language.
+- **Remove it** once no ticket holds a value, as with any field. Boards that estimated with it go back
+  to the original time estimate, and it does not come back on its own.
+
+On upgrade, a workspace that already has a shared number field named Points or Puntos, or under the
+name an imported one usually has, keeps it and gets no second one (the oldest counts, if it has
+several). The boards that follow are
+those on the default statistic, unless the track's tickets already hold time estimates; a board that
+names a field or counts tickets stays as it is. If a shared field of another type is already called
+Points, no field is made and the boards stay as they are. Tickets keep their values.
 
 ### Field types
 
@@ -67,7 +86,7 @@ area values; set them through the API, a CSV import or bulk changes.
 
 ### Adding and managing fields
 
-On **Settings**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
+On **Administration**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
 that allow it, **Holds several values**. **Manage** on a field offers:
 
 - **Rename**.
@@ -163,7 +182,9 @@ A fresh site has these ticket types:
 There is no web page for ticket types or levels yet. Through the API:
 
 - `/api/v1/ticket-types`: `name`, `description`, `icon`, `color`, `levelId`, and `trackId` for a
-  type a local-mode track owns. A type is deleted only once no type set holds it.
+  type a local-mode track owns. A type is deleted only once no type set holds it. `icon` is a
+  name: `outcome`, `feature`, `bug`, `chore`, `to-do`, `idea` or `subticket` draw that icon, and
+  any other shows a plain hexagon; with none, a type named like one of those draws its icon.
 - `/api/v1/hierarchy-levels`: add levels above Outcome (2, 3 and up), rename any level, move or
   remove the added ones. Removing a level moves its types to the standard level. The three
   built-in levels are renamed but never moved or removed.
@@ -183,7 +204,7 @@ A type set lists the ticket types a track offers, in order, with one preselected
 | Business type set | Outcome, To-do, Subticket | To-do | business and service tracks |
 | Discovery type set | Idea | Idea | discovery tracks |
 
-On **Settings**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
+On **Administration**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
 name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
 **Delete set** (not for a default set, nor one a track uses). The preselected type, the order and
 which track types a set is the default for are set through `/api/v1/type-sets`
@@ -197,7 +218,7 @@ same level, and the tickets change type with the set.
 
 A field rule set says, per field, whether it is required or hidden and what help text it shows.
 
-On **Settings**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
+On **Administration**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
 **Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
 **Save the set** saves them; rules for single ticket types are kept as they are.
 
@@ -247,11 +268,19 @@ Fields asked for on a transition are set on the transition itself; see
 
 ## Priorities and priority sets
 
-Priorities are the site's ordered list: Urgent, High, Normal and Low on a fresh site. There is
+Priorities are the site's ordered list: Urgent, High, Normal, Low and Very low on a fresh site. There is
 no web page for them yet.
 
 - `/api/v1/priorities`: `name`, `description`, `icon`, `color`; `PUT /api/v1/priorities/order`
-  lists every id in the new order. A new priority joins the default priority set.
+  lists every id in the new order. A new priority joins the default priority set. The list, and a
+  ticket's `priority`, also give `level`, from 1 to 6: which icon it shows, from its place in the
+  order. The stored `icon` and `color` of a priority do not change what lists draw.
+- A ticket always has a priority. A new ticket takes its track's set's `defaultPriorityId`; a set
+  with no default gives the middle of what it offers. `priorityId: null` means the same when
+  creating, and an edit that sends it is refused. Only imports leave it empty, as their source
+  did; `priority IS EMPTY` finds those. Upgrading added Very low only to lists that were still
+  the original four by name and order, and gave the default to tickets with none, except imported
+  ones, without a line in their history.
 - `/api/v1/priority-sets`: `priorityIds` and `defaultPriorityId`, the priority new tickets get.
   The **Default priority set** offers every priority, with Normal as the default; `isDefault`
   makes another set the default. Deleting a set sends its tracks back to the default.
@@ -278,12 +307,26 @@ every one of those tracks.
 |---|---|---|---|
 | Type set | `typeSetId` | The track type's default set | **Configuration sets** |
 | Field rule set | `fieldRuleSetId` | Default field rules | **Configuration sets** |
-| Layout set | `layoutSetId` | Default layouts | API only |
-| Priority set | `prioritySetId` | Default priority set | API only |
+| Layout set | `layoutSetId` | Default layouts | Chosen on **Which sets a track uses**; made through the API |
+| Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made through the API |
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
 | Access policy | `accessPolicyId` | Default access policy | **Permissions** |
-| Visibility policy | `visibilityPolicyId` | None | API only |
-| Notification policy | `notificationPolicyId` | The site's default | API only |
+| Visibility policy | `visibilityPolicyId` | None | Chosen on **Which sets a track uses**; made on **Visibility policies** |
+| Notification policy | `notificationPolicyId` | The site's default | Chosen on **Which sets a track uses**; made through the API |
+
+### Which sets a track uses
+
+**Administration** > **Which sets a track uses** (`#/admin/track-sets`), for site and configuration
+administrators, chooses a track's **Layouts**, **Priorities**, **Visibility policy** and
+**Notifications**. Pick the **Track**, change what you want and press **Save**; only what changed is
+sent. Each list holds the shared sets and a local-mode track's own, marked **(its own)**. The first
+choice in each list is the default, which for a visibility policy means none. **Manage** on the
+**Tracks** page has a link here for that track.
+
+Changing the visibility policy moves tickets at a level the new policy lacks to its default level, so
+some may become visible to more people.
+
+### Who changes a set
 
 - A shared set is changed by site and configuration administrators. A local-mode track owns its
   type set, access policy and workflow map, and may own field rule and layout sets (`trackId` on

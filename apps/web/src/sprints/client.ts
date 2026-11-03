@@ -41,6 +41,8 @@ export interface BacklogTicket {
   key: string;
   summary: string;
   type: string;
+  typeIcon?: string | null;
+  priority?: { id: number; name: string; level?: number } | null;
   status: { id: number; name: string };
   done: boolean;
   estimate: number | null;
@@ -176,6 +178,8 @@ export type CompleteTarget =
 
 export interface SprintClient {
   backlog(boardId: number): Promise<Backlog>;
+  /** Every sprint of a board, whatever its state. */
+  sprints(boardId: number): Promise<Sprint[]>;
   create(boardId: number): Promise<Sprint>;
   start(sprintId: number, endAt: string): Promise<{ ok: true } | { ok: false; code: string }>;
   complete(sprintId: number, moveTo: CompleteTarget): Promise<void>;
@@ -210,6 +214,8 @@ const planned = (answer: BatchAnswer): Planned => ({
 
 export const sprintClient: SprintClient = {
   backlog: (boardId) => api<Backlog>(`/boards/${boardId}/backlog`),
+  sprints: async (boardId) =>
+    (await api<{ sprints: Sprint[] }>(`/boards/${boardId}/sprints`)).sprints,
   create: async (boardId) =>
     (await api<{ sprint: Sprint }>(`/boards/${boardId}/sprints`, { method: 'POST', body: {} }))
       .sprint,

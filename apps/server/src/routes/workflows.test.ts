@@ -38,6 +38,9 @@ interface Transition {
   name: string;
   from: number[] | 'any';
   to: number;
+  layout?: string[];
+  checks?: Record<string, unknown>[];
+  effects?: Record<string, unknown>[];
 }
 
 describe('statuses and workflows (M1-023)', () => {
@@ -200,7 +203,7 @@ describe('statuses and workflows (M1-023)', () => {
       ]);
       const ticket = await create('DEF');
       expect(ticket.status).toEqual({ id: status.New, name: 'New', stage: 'new' });
-      expect(await offered('alice', ticket)).toEqual(['Start', 'Close']);
+      expect(await offered('alice', ticket)).toEqual(['New', 'Active', 'In Review', 'Closed']);
     });
 
     it('[CORE-014] lets administrators add, edit, order and delete statuses', async () => {
@@ -283,11 +286,66 @@ describe('statuses and workflows (M1-023)', () => {
       ).toEqual({ error: 'transition_unavailable', transitionId: 4 });
     });
 
-    it('[WF-008] closes with a close reason and the Closed time stamp; reopening clears both', async () => {
+    it('[WF-008] the default workflow moves freely: Closed sets Completed, leaving clears it', async () => {
       const ticket = await create('DEF');
+      // Each move goes straight there, the leftmost status included, and asks for nothing.
+      const closed = await move(ticket, 4);
+      expect([closed.status.name, closed.closeReason?.name]).toEqual(['Closed', 'Completed']);
+      expect(closed.closedAt).not.toBeNull();
+      const reopened = await move(ticket, 5);
+      expect([reopened.status.name, reopened.closeReason, reopened.closedAt]).toEqual([
+        'New',
+        null,
+        null,
+      ]);
+      expect((await move(ticket, 2)).status.name).toBe('In Review');
+      expect((await move(ticket, 4)).status.name).toBe('Closed');
+      const active = await move(ticket, 1);
+      expect([active.status.name, active.closeReason]).toEqual(['Active', null]);
+      const published = (await get('bob', `/api/v1/tracks/${tracks.DEF}/workflow`)).json().workflow
+        .definition as { transitions: Record<string, unknown>[] };
+      expect(
+        published.transitions.map((t) => [t.id, t.name, t.from, t.layout, t.checks, t.guards]),
+      ).toEqual([
+        [5, 'New', 'any', undefined, undefined, undefined],
+        [1, 'Active', 'any', undefined, undefined, undefined],
+        [2, 'In Review', 'any', undefined, undefined, undefined],
+        [4, 'Closed', 'any', undefined, undefined, undefined],
+      ]);
+    });
+
+    it('[WF-008] closes with a close reason and the Closed time stamp; reopening clears both', async () => {
+      // What an administrator can ask for on purpose; the default workflow asks for none of it.
+      const New = statusId('New');
+      const Closed = statusId('Closed');
+      const workflowId = await newWorkflow(
+        'Close asks why',
+        definition(
+          [New, Closed],
+          [
+            {
+              id: 4,
+              name: 'Close',
+              from: 'any',
+              to: Closed,
+              layout: ['close-reason'],
+              checks: [{ type: 'field-required', field: 'close-reason' }],
+            },
+            {
+              id: 5,
+              name: 'Reopen',
+              from: [Closed],
+              to: New,
+              effects: [{ type: 'clear-field', field: 'close-reason' }],
+            },
+          ],
+        ),
+      );
+      await newTrack('WHY', workflowId);
+      const ticket = await create('WHY');
       const reasons = (await get('alice', '/api/v1/close-reasons')).json().closeReasons as Named[];
       const reason = (name: string) => reasons.find((r) => r.name === name)?.id;
-      // The default workflow's Close asks for a close reason on its layout.
+      // This workflow's Close asks for a close reason on its layout.
       const missing = await post('alice', `/api/v1/tickets/${ticket.id}/transitions`, {
         transitionId: 4,
       });
@@ -326,7 +384,7 @@ describe('statuses and workflows (M1-023)', () => {
         'Duplicate',
       ]);
       // A close reason set by hand closes the ticket too; clearing it reopens.
-      const other = await create('DEF');
+      const other = await create('WHY');
       const set = ticketOf(
         await patch('alice', `/api/v1/tickets/${other.id}`, { closeReasonId: duplicate }),
       );
@@ -640,7 +698,7 @@ describe('statuses and workflows (M1-023)', () => {
     it('[WF-002] shows a track its workflow read-only with "View read-only workflow"', async () => {
       const res = await get('bob', `/api/v1/tracks/${tracks.DEF}/workflow`);
       expect(res.statusCode, res.body).toBe(200);
-      expect(res.json().workflow).toMatchObject({ name: 'Default workflow', version: 1 });
+      expect(res.json().workflow).toMatchObject({ name: 'Default workflow', version: 2 });
       expect((await get('bob', '/api/v1/workflows')).statusCode).toBe(403);
     });
   });

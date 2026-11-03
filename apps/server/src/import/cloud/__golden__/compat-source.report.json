@@ -130,9 +130,9 @@
       "fidelity": 1,
       "kind": "field",
       "outcomes": {
-        "created": 8,
+        "created": 7,
         "failed": 0,
-        "linked": 0,
+        "linked": 1,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0
@@ -144,9 +144,9 @@
       "fidelity": 1,
       "kind": "field_context",
       "outcomes": {
-        "created": 8,
+        "created": 7,
         "failed": 0,
-        "linked": 0,
+        "linked": 1,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0

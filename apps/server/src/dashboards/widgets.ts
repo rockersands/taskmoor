@@ -3,6 +3,7 @@ import { knownTimeZone, localDate } from '@taskmoor/query';
 import type { FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
+import { trackBoardQuery } from '../boards/one-per-track';
 import type { FieldCatalogs } from '../fields/catalog';
 import { readStatusChanges } from '../reports/events';
 import { datesBetween, dayEnd, dayStart, timeInStatus } from '../reports/flow';
@@ -26,6 +27,7 @@ import {
   sprintView,
 } from '../routes/sprints';
 import { prepareSearch, readOnly, runPage } from '../search/run';
+import { priorityLevels } from '../tickets/priority-level';
 import type { Widget, WidgetSettings } from './model';
 
 /**
@@ -40,6 +42,11 @@ export interface WidgetContext {
   catalogs: FieldCatalogs;
   timeoutMs: number;
   request: FastifyRequest;
+  /**
+   * The track whose page shows the widget (ADR-116): there an empty query means that track, not
+   * every ticket, and the viewer's own lists stay inside it. The viewer's filter still applies.
+   */
+  track?: { key: string };
 }
 
 export type Unavailable = {
@@ -98,19 +105,25 @@ async function ticketList(ctx: WidgetContext, scope: Scope, q: string, limit: nu
             summary: string;
             status: string;
             priority: string | null;
+            priority_id: number | null;
+            type: string;
+            type_icon: string | null;
             assignee: string | null;
             updated_at: Date;
           }>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, s.name AS status,
-                   p.name AS priority, u.name AS assignee, k.updated_at
+                   p.name AS priority, k.priority_id, y.name AS type, y.icon AS type_icon,
+                   u.name AS assignee, k.updated_at
               FROM ticket k
               JOIN track t ON t.id = k.track_id
               JOIN status s ON s.id = k.status_id
+              JOIN ticket_type y ON y.id = k.ticket_type_id
               LEFT JOIN priority p ON p.id = k.priority_id
               LEFT JOIN app_user u ON u.id = k.assignee_id
              WHERE k.id = ANY(${page.ids}::int[])`.execute(db)
         ).rows;
   const byId = new Map(rows.map((r) => [r.id, r]));
+  const levels = await priorityLevels(db, scope.ws);
   return {
     tickets: page.ids.flatMap((id) => {
       const r = byId.get(id);
@@ -121,7 +134,10 @@ async function ticketList(ctx: WidgetContext, scope: Scope, q: string, limit: nu
               key: r.key,
               summary: r.summary,
               status: r.status,
+              type: r.type,
+              typeIcon: r.type_icon,
               priority: r.priority,
+              priorityLevel: r.priority_id === null ? null : (levels.get(r.priority_id) ?? 4),
               assignee: r.assignee,
               updatedAt: r.updated_at.toISOString(),
             },
@@ -166,7 +182,10 @@ async function widgetSprint(
 export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<unknown> {
   const { db, request, catalogs } = ctx;
   const ws = request.workspaceId;
-  const config = widget.config;
+  const inTrack = ctx.track ? trackBoardQuery(ctx.track.key) : null;
+  const blank = typeof widget.config.query === 'string' && widget.config.query.trim() === '';
+  const config = inTrack && blank ? { ...widget.config, query: inTrack } : widget.config;
+  const within = (q: string) => (inTrack ? `${inTrack} AND ${q}` : q);
   const scope = () => boardScope(db, catalogs, request);
   const where = async (q: string) => compileQuery(db, await scope(), q, new Date());
   // Reads run read-only under the search time limit.
@@ -175,6 +194,7 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
   switch (widget.kind) {
     case 'introduction':
     case 'quick-links':
+    case 'track-summary':
       return null;
     case 'search-results': {
       const c = config as WidgetSettings<'search-results'>;
@@ -184,14 +204,14 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       return ticketList(
         ctx,
         await scope(),
-        ASSIGNED,
+        within(ASSIGNED),
         (config as WidgetSettings<'assigned-to-me'>).limit,
       );
     case 'followed-tickets':
       return ticketList(
         ctx,
         await scope(),
-        FOLLOWED,
+        within(FOLLOWED),
         (config as WidgetSettings<'followed-tickets'>).limit,
       );
     case 'created-vs-closed':

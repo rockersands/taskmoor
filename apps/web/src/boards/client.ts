@@ -1,5 +1,7 @@
 import { ApiError, api } from '../api/client';
 import type { NumberField, SprintSettings } from '../sprints/client';
+import { type Transition as TicketTransition, ticketClient } from '../tickets/view/client';
+import type { TransitionRefusal } from '../workflow/refusal';
 
 /** A board in the list (`GET /api/v1/boards`, M1-043). */
 export interface BoardSummary {
@@ -59,6 +61,7 @@ export interface CardRules {
 export const CARD_FIELDS = [
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'labels',
@@ -91,6 +94,8 @@ export interface Board extends BoardSummary {
   version: number;
   /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
   managesWorkflow?: boolean;
+  /** Which column closes tickets: null the rightmost, `none` no column, or a column's id. */
+  closingColumn?: string | null;
 }
 
 /** A status a column may take: one of the board's workflows' (`GET /api/v1/boards/:id`). */
@@ -115,6 +120,9 @@ export function sourceOf(text: string): BoardSource {
 }
 
 export interface BoardPatch {
+  closingColumn?: string | null;
+  /** Where the tickets of a removed column go, by status id. */
+  statusMapping?: Record<string, number>;
   version: number;
   name?: string;
   kind?: 'scrum' | 'kanban';
@@ -153,6 +161,8 @@ export interface BoardCard {
   colour: string | null;
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  /** The viewer may edit this ticket: the card offers its pencil (AGL-006). */
+  mayEdit?: boolean;
 }
 
 export interface BoardLane {
@@ -161,6 +171,14 @@ export interface BoardLane {
   catchAll: boolean;
   assignee?: { id: number; name: string } | null;
   parent?: { id: number; key: string; summary: string } | null;
+}
+
+/** Who a viewer can filter a board by: those assigned to the tickets they see on it. */
+export interface BoardPeople {
+  viewerId: number | null;
+  assignees: { id: number; name: string }[];
+  unassigned: boolean;
+  more: boolean;
 }
 
 /** What the board shows (`GET /api/v1/boards/:id/data`). */
@@ -172,6 +190,7 @@ export interface BoardData {
   truncated: boolean;
   warnings: string[];
   activeFilters: string[];
+  people: BoardPeople;
 }
 
 export interface Transition {
@@ -180,10 +199,21 @@ export interface Transition {
   to: { id: number; name: string };
 }
 
+/** Whether cards can reach each column, and whose workflow decides it (ADR-116). */
+export interface BoardReach {
+  workflow: { id: number; name: string } | null;
+  singleWorkflow: boolean;
+  otherTracks: string[];
+  columns: Record<string, 'ok' | 'no_status' | 'no_path'>;
+  mayFix: boolean;
+}
+
 export interface MoveRequest {
   ticket: number;
   columnId: string;
   transitionId?: number;
+  /** Values for the fields a transition asks for, such as a close reason. */
+  fields?: Record<string, unknown>;
   before?: number;
   after?: number;
 }
@@ -196,7 +226,7 @@ export type MoveOutcome =
   | { kind: 'moved' }
   | { kind: 'choose'; transitions: Transition[] }
   | { kind: 'no_transition' }
-  | { kind: 'refused'; code: string };
+  | { kind: 'refused'; code: string; refusal?: TransitionRefusal };
 
 export interface NewBoard {
   name: string;
@@ -209,15 +239,37 @@ export interface BoardClient {
   create(board: NewBoard): Promise<BoardSummary>;
   board(id: number): Promise<Board>;
   /** The configuration with the statuses its columns may take. */
-  settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
+  settings(
+    id: number,
+  ): Promise<{ board: Board; statuses: BoardStatus[]; reach?: BoardReach | null }>;
+  /** Adds the status and steps a column needs to the track's workflow (ADR-116). */
+  addColumnPath(id: number, columnId: string): Promise<Board>;
   update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
   /** The number fields the person sees, for the estimation statistic. */
   numberFields(): Promise<NumberField[]>;
   /** The site's teams, for the board's team (M1-123). */
   teams(): Promise<{ id: number; name: string }[]>;
-  /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
-  data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
+  /**
+   * `sprints: 'active'` shows a Scrum board's active sprints only (M1-044); `people` only the
+   * cards of these people, `me`, `none` or ids (AGL-005 (3)).
+   */
+  data(
+    id: number,
+    filters: readonly string[],
+    sprints?: 'active',
+    people?: readonly string[],
+  ): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
+  /** A card's new title, through the ticket route; `version` is the one the person read. */
+  retitle(
+    ticket: number,
+    summary: string,
+    version: number | undefined,
+  ): Promise<{ summary: string; version: number }>;
+  /** What a ticket can do next, to ask for the fields a refused move needs. */
+  transitions(ticket: number): Promise<TicketTransition[]>;
+  closeReasons(): Promise<{ id: number; name: string }[]>;
+  priorities(): Promise<{ id: number; name: string }[]>;
   /** Makes the columns the track's statuses, or stops (M1-126); a problem code when refused. */
   manageWorkflow?(
     id: number,
@@ -226,10 +278,16 @@ export interface BoardClient {
 }
 
 /** The query string of a data request. */
-export function dataPath(id: number, filters: readonly string[], sprints?: 'active'): string {
+export function dataPath(
+  id: number,
+  filters: readonly string[],
+  sprints?: 'active',
+  people: readonly string[] = [],
+): string {
   const params = [
     ...(filters.length > 0 ? [`filters=${encodeURIComponent(filters.join(','))}`] : []),
     ...(sprints ? [`sprints=${sprints}`] : []),
+    ...(people.length > 0 ? [`people=${encodeURIComponent(people.join(','))}`] : []),
   ];
   return params.length === 0 ? `/boards/${id}/data` : `/boards/${id}/data?${params.join('&')}`;
 }
@@ -244,7 +302,15 @@ export const boardClient: BoardClient = {
       })
     ).board,
   board: async (id) => (await api<{ board: Board }>(`/boards/${id}`)).board,
-  settings: (id) => api<{ board: Board; statuses: BoardStatus[] }>(`/boards/${id}`),
+  settings: (id) =>
+    api<{ board: Board; statuses: BoardStatus[]; reach?: BoardReach | null }>(`/boards/${id}`),
+  addColumnPath: async (id, columnId) =>
+    (
+      await api<{ board: Board }>(`/boards/${id}/columns/${encodeURIComponent(columnId)}/path`, {
+        method: 'POST',
+        body: {},
+      })
+    ).board,
   update: async (id, patch) => {
     try {
       const { board } = await api<{ board: Board }>(`/boards/${id}`, {
@@ -257,6 +323,8 @@ export const boardClient: BoardClient = {
       const body = error.body as { fields?: Record<string, string> } | null;
       if (error.code === 'version_conflict') return { ok: false, fields: {}, conflict: true };
       if (error.code === 'invalid_fields') return { ok: false, fields: body?.fields ?? {} };
+      // A sprint is running, so the board cannot go Kanban yet (AGL-010).
+      if (error.code === 'sprint_running') return { ok: false, fields: { kind: error.code } };
       // A managed board's columns that cannot become its workflow (M1-126).
       if (error.status === 409 && error.code) return { ok: false, fields: { columns: error.code } };
       throw error;
@@ -283,14 +351,23 @@ export const boardClient: BoardClient = {
       id: t.id,
       name: t.name,
     })),
-  data: (id, filters, sprints) => api<BoardData>(dataPath(id, filters, sprints)),
+  data: (id, filters, sprints, people) => api<BoardData>(dataPath(id, filters, sprints, people)),
   move: async (id, move) => {
     try {
       await api(`/boards/${id}/moves`, { method: 'POST', body: move });
       return { kind: 'moved' };
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;
-      const body = error.body as { transitions?: Transition[] } | null;
+      const body = error.body as
+        | ({ transitions?: Transition[] } & Partial<TransitionRefusal>)
+        | null;
+      if (error.code === 'transition_refused' && body?.by && body.name) {
+        return {
+          kind: 'refused',
+          code: error.code,
+          refusal: body as unknown as TransitionRefusal,
+        };
+      }
       if (error.code === 'transition_choice') {
         return { kind: 'choose', transitions: body?.transitions ?? [] };
       }
@@ -298,4 +375,14 @@ export const boardClient: BoardClient = {
       return { kind: 'refused', code: error.code ?? String(error.status) };
     }
   },
+  retitle: async (ticket, summary, version) =>
+    (
+      await api<{ ticket: { summary: string; version: number } }>(`/tickets/${ticket}`, {
+        method: 'PATCH',
+        body: { summary, ...(version !== undefined ? { version } : {}) },
+      })
+    ).ticket,
+  transitions: (ticket) => ticketClient.transitions(ticket),
+  closeReasons: () => ticketClient.closeReasons(),
+  priorities: () => ticketClient.priorities(),
 };

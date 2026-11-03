@@ -1,8 +1,8 @@
 ---
 title: "AI usage, spend limits and data controls"
 audience: admins
-sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
-accessed: 2026-11-02
+sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # AI usage, spend limits and data controls
@@ -12,7 +12,9 @@ meters nothing and charges nothing. This page explains how administrators see wh
 stop it at a ceiling, keep sensitive values out of what is sent, and tell people what leaves the
 instance.
 
-Open **Settings → AI usage** (`#/admin/ai-usage`). Only site administrators see the page.
+Open **Administration → AI usage** (`#/admin/ai-usage`) to see it, and **Administration → AI limits
+and prices** (`#/admin/ai-limits`) to change limits and rates. Only site administrators see these
+pages.
 
 ## What the page shows
 
@@ -40,9 +42,12 @@ the price table. A later price change does not rewrite the past.
 - Cache writes and cache reads have their own rates; batch requests cost half; a model with a
   dearer rate above a prompt size (Haiku above 100,000 tokens) has that rate too.
 
-The price table is managed through the API for now (`GET` and `PUT /api/v1/admin/ai/prices`,
-amounts in US dollars per million tokens; `DELETE /api/v1/admin/ai/prices?provider=&model=` goes
-back to the list price). Each change is in the audit log.
+**AI limits and prices** holds the price table, in US dollars per million tokens. Each row says
+**List price: check your bill** or **Your rate**. **Change** sets your rate for a model, with its input,
+output and cache rates, and a dearer rate above a prompt size if the model has one. **Back to the list
+price** drops your rate. **Add a rate** covers a model with no list price: name its **Provider** and
+**Model** as the AI page does. Each change is in the audit log. Through the API: `GET` and
+`PUT /api/v1/admin/ai/prices`, and `DELETE /api/v1/admin/ai/prices?provider=&model=`.
 
 ## Spend limits
 
@@ -57,9 +62,12 @@ AI is available again.
 | Measure | tokens (input, output, cache reads and writes together) or cost in US dollars |
 | Alerts | percentages of the amount, 80% and 100% unless you choose others |
 
-- Limits are managed through the API for now: `POST /api/v1/admin/ai/limits`,
-  `PATCH` and `DELETE /api/v1/admin/ai/limits/:id`. For example, a daily limit of 200,000 tokens
-  for each person is `{"scope": "user", "period": "day", "metric": "tokens", "amount": 200000}`.
+- On **AI limits and prices**, **Add a limit** asks **Who it counts**, the **Period**, the **Measure**, the
+  amount and the percentages to **Alert at**. **Change** and **Delete** act on a limit in the list, which
+  shows what it has used and when it starts again.
+- Through the API: `POST /api/v1/admin/ai/limits`, `PATCH` and `DELETE /api/v1/admin/ai/limits/:id`. For
+  example, a daily limit of 200,000 tokens for each person is
+  `{"scope": "user", "period": "day", "metric": "tokens", "amount": 200000}`.
 - Each threshold raises one alert per period (and per person for a personal limit). The alert is
   an `ai_limit.threshold_reached` record in the audit log, so it also reaches syslog and webhooks
   when you forward those, and every site administrator gets it in their inbox and by email.

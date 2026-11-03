@@ -6,6 +6,7 @@ import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { checkLabels, LABEL_MAX, lockList, rewriteTickets, writeOrder } from '../tickets/fields';
+import { priorityLevel } from '../tickets/priority-level';
 
 /**
  * The workspace's lists of priorities and close reasons, priority sets, and labels (M1-014;
@@ -234,7 +235,13 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
 
   app.get('/api/v1/priorities', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
-    return { priorities: (await priorityRows(db, request.workspaceId)).map(priorityView) };
+    const rows = await priorityRows(db, request.workspaceId);
+    return {
+      priorities: rows.map((r, i) => ({
+        ...priorityView(r),
+        level: priorityLevel(i + 1, rows.length),
+      })),
+    };
   });
 
   app.post('/api/v1/priorities', async (request, reply) => {

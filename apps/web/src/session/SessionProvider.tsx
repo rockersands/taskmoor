@@ -8,6 +8,14 @@ export interface SessionUser {
   name: string;
   email: string;
   isSiteAdmin: boolean;
+  /**
+   * Holds Change configuration (ADR-114). Only `GET /api/v1/session` says so, so it is unknown
+   * for a moment after signing in; the provider asks when it is.
+   */
+  isConfigAdmin?: boolean;
+  managesTracks?: boolean;
+  /** Holds Create tracks with their own configuration; known from the same answer. */
+  mayCreateLocalTracks?: boolean;
   /** IANA time zone the person chose; null follows the device. */
   timeZone: string | null;
   /** BCP 47 locale the person chose; null follows the browser. */
@@ -103,6 +111,35 @@ export function SessionProvider({
     if (appearance !== undefined) applyAppearance(toAppearance(appearance));
   }, [appearance]);
 
+  // Signing in and saving a profile answer with the person but not their configuration right.
+  const askFor = session.status === 'signed-in' && session.user.isConfigAdmin === undefined;
+  useEffect(() => {
+    if (fixed || !askFor) return;
+    let live = true;
+    api<{ user: SessionUser }>('/session').then(
+      ({ user }) => {
+        if (!live) return;
+        setSession((current) =>
+          current.status === 'signed-in' && current.user.id === user.id
+            ? {
+                status: 'signed-in',
+                user: {
+                  ...current.user,
+                  isSiteAdmin: user.isSiteAdmin,
+                  isConfigAdmin: Boolean(user.isConfigAdmin),
+                  mayCreateLocalTracks: Boolean(user.mayCreateLocalTracks),
+                },
+              }
+            : current,
+        );
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [fixed, askFor]);
+
   const signIn = useCallback(async (email: string, password: string): Promise<SignInOutcome> => {
     const answer = await api<SignInOutcome | { status?: undefined; user: SessionUser }>(
       '/session',
@@ -126,7 +163,21 @@ export function SessionProvider({
   }, []);
 
   const setUser = useCallback((user: SessionUser) => {
-    setSession({ status: 'signed-in', user });
+    setSession((current) => {
+      const known =
+        current.status === 'signed-in' && current.user.id === user.id ? current.user : undefined;
+      return {
+        status: 'signed-in',
+        user:
+          user.isConfigAdmin === undefined && known?.isConfigAdmin !== undefined
+            ? {
+                ...user,
+                isConfigAdmin: known.isConfigAdmin,
+                mayCreateLocalTracks: Boolean(known.mayCreateLocalTracks),
+              }
+            : user,
+      };
+    });
   }, []);
 
   return (

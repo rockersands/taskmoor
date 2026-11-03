@@ -557,6 +557,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'POST', url: `/api/v1/users/${state.cy}/reactivate` }),
     },
     {
+      // A person's place in the guided tutorial (ADR-115).
+      route: 'PUT /api/v1/account/tutorial/:section',
+      expect: 'tutorial.progress_changed',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/account/tutorial/boards',
+          payload: { state: 'active', step: 1 },
+        }),
+    },
+    {
       // A person asks for a download of their own data (ASVS 8.3.2, ADR-111).
       route: 'POST /api/v1/account/data-exports',
       expect: 'personal_data.export_requested',
@@ -2790,8 +2801,9 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { event: 'dev.reopened' },
         }),
     },
-    // Boards (M1-043): a board in the ticket's track over its tickets, changed, a card moved along the
-    // one transition into the Active column (the ticket route's own event), and removed.
+    // Boards (M1-043): the board of the ticket's track (a track has one, ADR-116) over its tickets,
+    // changed, a card moved along the one transition into the Active column (the ticket route's own
+    // event), and removed. It is a Scrum board, so the sprints below run on it too.
     {
       route: 'POST /api/v1/boards',
       expect: 'board.created',
@@ -2803,7 +2815,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: '/api/v1/boards',
           payload: {
             name: 'Team board',
-            kind: 'kanban',
+            kind: 'scrum',
             trackId: track.id,
             source: { query: `track = ${track.key}` },
           },
@@ -2819,7 +2831,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         admin({
           method: 'PATCH',
           url: `/api/v1/boards/${state.board}`,
-          payload: { name: 'Team board (kanban)' },
+          payload: { name: 'Team board (renamed)' },
         }),
     },
     {
@@ -2853,6 +2865,46 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/boards/:id/columns/:columnId/path',
+      expect: 'board.updated',
+      // A column no card can reach, on a board of a track on a workflow the board does not manage
+      // (ADR-116): the status and steps it gets are a new version, told in the one event.
+      prepare: async () => {
+        const track = await admin({
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'BPA', name: 'Board path', mode: 'shared' },
+        });
+        const board = await admin({
+          method: 'POST',
+          url: '/api/v1/boards',
+          payload: {
+            name: 'Board with a parked column',
+            kind: 'kanban',
+            trackId: track.json().track.id,
+            source: { query: 'track = BPA' },
+          },
+        });
+        state.pathBoard = board.json().board.id;
+        await admin({
+          method: 'PATCH',
+          url: `/api/v1/boards/${state.pathBoard}`,
+          payload: {
+            columns: [
+              ...board.json().board.columns,
+              { id: 'parked', name: 'Parked', statusIds: [] },
+            ],
+          },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/boards/${state.pathBoard}/columns/parked/path`,
+          payload: {},
+        }),
+    },
+    {
       route: 'POST /api/v1/boards/:id/moves',
       expect: 'ticket.transitioned',
       run: () =>
@@ -2862,25 +2914,13 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { ticket: state.ticket, columnId: 'c2' },
         }),
     },
-    // Sprints (M1-044): on a Scrum board over the ticket's track, two future sprints, one reordered,
+    // Sprints (M1-044): on the Scrum board of the ticket's track, two future sprints, one reordered,
     // the ticket added, removed and added again, started, completed to the backlog and deleted.
     {
       route: 'POST /api/v1/boards/:id/sprints',
       expect: 'sprint.created',
       prepare: async () => {
-        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
-        const track = ticket.json().ticket.track as { id: number; key: string };
-        const res = await call(String(state.bo1b), {
-          method: 'POST',
-          url: '/api/v1/boards',
-          payload: {
-            name: 'Scrum board',
-            kind: 'scrum',
-            trackId: track.id,
-            source: { query: `track = ${track.key}` },
-          },
-        });
-        state.scrumBoard = res.json().board?.id;
+        state.scrumBoard = state.board as number;
         const other = await call(String(state.bo1b), {
           method: 'POST',
           url: `/api/v1/boards/${state.scrumBoard}/sprints`,
@@ -3136,6 +3176,22 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       route: 'DELETE /api/v1/saved-searches/:id',
       expect: 'saved_search.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/saved-searches/${state.savedSearch}` }),
+    },
+    // A track's customized Summary (ADR-116): saved, then removed to go back to the default.
+    {
+      route: 'PUT /api/v1/tracks/:id/summary-layout',
+      expect: 'track.summary_layout_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/tracks/${state.track}/summary-layout`,
+          payload: { layout: 'one', widgets: [{ kind: 'track-summary' }] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tracks/:id/summary-layout',
+      expect: 'track.summary_layout_removed',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/tracks/${state.track}/summary-layout` }),
     },
     // Dashboards (M1-064): made, changed, copied, made the default and removed.
     {

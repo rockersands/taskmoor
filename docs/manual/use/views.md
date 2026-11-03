@@ -1,8 +1,8 @@
 ---
 title: "List, calendar and timeline"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # List, calendar and timeline
@@ -20,12 +20,38 @@ A track's summary is at the address ending in `tracks/` and the track's key, for
 - the tickets **By stage**, and the open ones **Open by priority**, **Open by type** and **Open
   by assignee** (the ten people with most).
 
-Every number is a link to the search that finds exactly those tickets. The summary links to the
-track's **Releases** (see [Boards, sprints and the backlog](boards.md#releases)), **Timeline**,
-**List** and **Calendar**.
+Every number is a link to the search that finds exactly those tickets. The tab bar above it holds
+the track's other sections, such as its [**Releases**](boards.md#releases),
+[**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**, **List** and
+**Calendar**.
 
-The **Tracks** entry of the navigation does not list the tracks yet: go to a track's summary
-by its address.
+### Customizing the summary
+
+The track's owner and its administrators see **Customize**. It starts from the numbers above, as
+one widget called **This track's numbers**, so nothing is lost. They can then choose a **Layout**
+of one to three columns, add any [widget](dashboards-and-reports.md#widgets) with **Widget to
+add**, set each one up, move and remove them, and press **Save the summary**. The numbers can be
+removed and added back. Nobody has to set this up: a track shows its default summary until someone
+does.
+
+Everyone else who can see the track reads the same widgets and has no controls to change them.
+Each widget is read as the person looking at it, through the same permission filter as a search,
+so two people can read different numbers and nobody sees a ticket they could not find themselves.
+
+On a track's summary:
+
+- a widget with an empty query counts the track, not every ticket;
+- **Assigned to me** and **Followed tickets** list only the viewer's tickets in this track;
+- a widget's query that you do write is used as written, so it can count another track, for those
+  who may see that track;
+- the sprint widgets read the track's board, and need it to be a Scrum board.
+
+**Back to the default** removes the customization for everyone, after asking. If someone else saved
+a change while you were editing, saving says so, and nothing is overwritten. An archived track's
+summary cannot be changed until the track is restored.
+
+A customized summary is not a dashboard: it belongs to the track, and it does not appear under
+**Dashboards**.
 
 ## The list view
 
@@ -81,8 +107,8 @@ To reschedule a ticket, drag it to another day:
   first.
 
 With the keyboard, focus an entry and press Alt with the left or right arrow to move it a day,
-or with the up or down arrow to move it a week. Enter opens a panel with **Start date** and **Due
-date**; change them and press **Save dates**. Rescheduling needs the **Set due dates**
+or with the up or down arrow to move it a week. Clicking an entry, or Enter, opens the ticket over the
+calendar, where **Start date** and **Due date** are among its details. Rescheduling needs the **Set due dates**
 permission; without it the calendar says the ticket could not be moved.
 
 On a phone, the calendar becomes a list of the month's days.

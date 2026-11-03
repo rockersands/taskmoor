@@ -1,7 +1,7 @@
 ---
 title: "Concepts and terms"
 audience: everyone
-sources: docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, docs/specs/01b-core-work-tracking.md, docs/adr/0009-configuration-model.md, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0045-workflow-maps.md, docs/adr/0049-boards.md, docs/adr/0053-saved-searches.md, docs/adr/0054-sprints.md, docs/adr/0060-dashboards.md, apps/server/src/tracks/model.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/followers.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/priorities.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0024_workflows.ts, apps/web/src/i18n/messages.en.ts
+sources: docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, docs/specs/01b-core-work-tracking.md, docs/adr/0009-configuration-model.md, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0045-workflow-maps.md, docs/adr/0049-boards.md, docs/adr/0053-saved-searches.md, docs/adr/0054-sprints.md, docs/adr/0060-dashboards.md, apps/server/src/tracks/model.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/followers.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/priorities.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0024_workflows.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/shell/TicketIcons.tsx, apps/server/src/tickets/priority-level.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -69,7 +69,10 @@ other tickets and web links. Every change is kept in its history. See
 
 ## Ticket types and the hierarchy
 
-A **ticket type** says what kind of work a ticket is. Each type sits at a **hierarchy level**,
+A **ticket type** says what kind of work a ticket is. Lists show it as an icon, with its name as
+the tooltip and for screen readers: a flag for Outcome, a spark for Feature, a beetle for Bug, a
+spanner for Chore, a round tick for To-do, a bulb for Idea, a stepped arrow for Subticket, and a
+plain hexagon for a type of your own. Each type sits at a **hierarchy level**,
 and a ticket's parent sits one level above it.
 
 | Level | Default name | Default ticket types |
@@ -107,21 +110,30 @@ where new tickets start. A transition can have:
 - **effects**: what happens after it, such as assigning the ticket.
 
 A **workflow map** says which workflow each ticket type follows in the tracks that use the map.
-The default workflow goes from New to Active to In Review to Closed, with a Reopen back to New.
+The default workflow has the statuses New, Active, In Review and Closed, and a ticket can move
+from any of them to any other at once.
 See [workflows](admin/workflows.md).
 
 ## Close reasons
 
 A **close reason** says why a ticket was closed. The defaults are Completed, Not planned,
 Duplicate and Not reproducible. Setting a close reason stamps the ticket's **Closed** time;
-clearing it clears the stamp. In the default workflow, the Close transition asks for a close
-reason and Reopen clears it.
+clearing it clears the stamp. In the default workflow, moving to Closed sets the reason to
+Completed, moving anywhere else clears it, and nothing asks for one; why a ticket moved goes in a
+comment. An administrator can make a workflow ask for a reason.
 
 ## Priorities
 
-Priorities rank how urgent a ticket is: **Urgent**, **High**, **Normal** and **Low** by default.
+Priorities rank how urgent a ticket is: **Urgent**, **High**, **Normal**, **Low** and **Very low**
+by default.
 The list belongs to the site; a **priority set** chooses which priorities a track offers and
 which one new tickets get. In the default set it is Normal.
+
+Lists show a priority as an icon, with its name as the tooltip and for screen readers. The icon
+comes from the priority's place in the order, never its name: six shapes, from a solid diamond
+with an exclamation mark at the top, through four rising bars with fewer standing, to a row of
+stubs at the bottom. A list of any length is stretched over the six, so the top priority always
+has the diamond and the last always the stubs, and a renamed or added priority still reads sensibly.
 
 ## Areas
 

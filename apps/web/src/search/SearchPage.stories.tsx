@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
@@ -23,12 +24,51 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
 /** The basic mode, before a search. */
 export const Basic: Story = {};
 
+/** Every kind of filter on the basic form, from a query in the address (QRY-014, QRY-006). */
+export const BasicWithFilters: Story = {
+  args: {
+    initialQuery:
+      'type IN (Bug, Story) AND priority = High AND labels = refunds AND requester = currentUser() AND targetRelease = "1.0" AND created >= 2026-10-01 AND created < 2026-11-01 AND due < 2026-12-01 ORDER BY updated DESC',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('group', { name: 'Date created' })).toBeVisible();
+    await expect(canvas.getByRole('group', { name: 'Due date' })).toBeVisible();
+    await expect(await canvas.findByRole('checkbox', { name: 'Bug' })).toBeChecked();
+    await expect(canvas.getByRole('button', { name: 'Remove refunds from Labels' })).toBeVisible();
+  },
+};
+
+/** Adding a date filter with "Add a filter", between two days. */
+export const AddADateFilter: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Add a filter' }), 'closed');
+    await userEvent.click(canvas.getByRole('button', { name: 'Add filter' }));
+    const group = within(canvas.getByRole('group', { name: 'Date closed' }));
+    await expect(group.getByRole('combobox', { name: 'When' })).toHaveFocus();
+    await userEvent.selectOptions(group.getByRole('combobox', { name: 'When' }), 'between');
+    await expect(group.getByLabelText('To')).toBeVisible();
+  },
+};
+
 /** A query from the address, run, with suggestions open at the caret. */
 export const Advanced: Story = {
-  args: { initialQuery: 'priority = High' },
+  args: { initialQuery: 'status = Active' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const query = await canvas.findByRole('combobox', { name: 'Query' });
@@ -62,5 +102,19 @@ export const SavedSearchOpened: Story = {
       await canvas.findByRole('heading', { name: 'Saved search: Shop releases' }),
     ).toBeVisible();
     await expect(await canvas.findByRole('table')).toBeVisible();
+  },
+};
+
+/** The page with filters at the width of a small phone: only the results table scrolls sideways. */
+export const FiltersAtPhoneWidth: Story = {
+  args: {
+    initialQuery:
+      'type = Bug AND labels = refunds AND created >= 2026-10-01 AND created < 2026-11-01 AND due = 2026-12-01 ORDER BY updated DESC',
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('table');
+    await fitsPhoneWidth(canvas);
   },
 };

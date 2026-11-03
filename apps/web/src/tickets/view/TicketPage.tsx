@@ -12,16 +12,33 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
-import { navigate, replaceRoute, routeHref } from '../../routing/router';
+import { boardBehind } from '../../routing/cameFrom';
+import {
+  navigate,
+  openOverlay,
+  replaceOverlay,
+  replaceRoute,
+  routeHref,
+  routeUrl,
+  useOverlayRoute,
+} from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
+import { HelpTip } from '../../shell/HelpTip';
+import { IconSelect } from '../../shell/IconSelect';
+import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
+import { priorityName } from '../../shell/priorityName';
+import { fieldName, typeName } from '../../shell/seededNames';
+import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
 import { useSyncEngine } from '../../sync/SyncProvider';
+import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
+  type NumberField,
   type Priority,
   type TicketClient,
   type TicketDetails,
@@ -32,6 +49,10 @@ import {
   type WebLink,
 } from './client';
 import { InfoPanel } from './InfoPanel';
+import { StatusMenu } from './StatusMenu';
+import { TICKET_SHORTCUTS } from './shortcuts';
+import { TransitionForm } from './TransitionForm';
+import { announceTicketChange } from './ticketChanges';
 
 export interface TicketPageProps {
   /** The ticket key or id from the address (#/tickets/<key>). */
@@ -54,18 +75,18 @@ export interface TicketPageProps {
   };
 }
 
+export interface TicketViewProps extends TicketPageProps {
+  /** Shown in the ticket pop-up (TicketPopup.tsx), which is told what to call itself. */
+  popup?: { onTicket: (ticket: { key: string; summary: string }) => void };
+}
+
 /** Layout fields the page can fill in itself when a transition asks for them (WF-006). */
 const FILLABLE = ['close-reason', 'priority'];
 
-/** Keys pressed outside a field that act on the ticket (AGL-018 (2)). */
-const SHORTCUTS = [
-  ['m', 'ticketView.shortcut.comment'],
-  ['w', 'ticketView.shortcut.follow'],
-  ['a', 'ticketView.shortcut.assign'],
-  ['t', 'ticketView.shortcut.transition'],
-  ['e', 'ticketView.shortcut.edit'],
-  ['?', 'ticketView.shortcut.help'],
-] as const;
+/** The dialog the ticket pop-up is: it is the view's own, not one over it. */
+export const TICKET_POPUP_CLASS = 'ticket-popup';
+
+const NO_COMMANDS: Command[] = [];
 
 const typing = (target: EventTarget | null) => {
   const el = target as HTMLElement | null;
@@ -73,9 +94,15 @@ const typing = (target: EventTarget | null) => {
   return (
     el.isContentEditable ||
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) ||
-    el.closest('[contenteditable="true"], [role="dialog"]') !== null
+    el.closest('[contenteditable="true"]') !== null ||
+    el.closest(`[role="dialog"]:not(.${TICKET_POPUP_CLASS})`) !== null
   );
 };
+
+/** The ticket page: the ticket view, filling the page. */
+export function TicketPage(props: TicketPageProps) {
+  return <TicketView {...props} />;
+}
 
 /**
  * The ticket view (M1-051; CORE-022, AGL-018): the ticket's summary and description, its details
@@ -83,9 +110,10 @@ const typing = (target: EventTarget | null) => {
  * and attachments, and its activity (comments, history, time entries, or all). Keyboard
  * shortcuts act on it (M comment, W follow, A assign to me, T transitions, E edit, ? help).
  * Two columns on wide screens, one on phones. With the local copy (M1-032) the page shows the
- * ticket from it at once, then from the server.
+ * ticket from it at once, then from the server. The ticket page and the ticket pop-up both show
+ * this one view, so whatever joins it here shows in both.
  */
-export function TicketPage({
+export function TicketView({
   ticket,
   client = ticketClient,
   attachments,
@@ -94,7 +122,8 @@ export function TicketPage({
   connect,
   mentions = (ticketId) => mentionSource({ ticket: ticketId }),
   ai = {},
-}: TicketPageProps) {
+  popup,
+}: TicketViewProps) {
   const t = useT();
   const intl = useIntl();
   const titleId = useId();
@@ -122,8 +151,10 @@ export function TicketPage({
   const [cloning, setCloning] = useState(false);
   const [tab, setTab] = useState<ActivityTab>('comments');
   const [revision, setRevision] = useState(0);
-  const transitionsRef = useRef<HTMLFieldSetElement>(null);
+  const statusMenu = useRef<{ focus: () => void }>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
+  const article = useRef<HTMLElement>(null);
+  const overOverlay = useOverlayRoute() !== null;
 
   useEffect(() => {
     let live = true;
@@ -166,6 +197,16 @@ export function TicketPage({
 
   const loaded = state.status === 'loaded' && !state.partial ? state.ticket : null;
   const ticketId = state.status === 'loaded' ? state.ticket.id : null;
+
+  // The pop-up is named after its ticket, whatever the view is showing or editing at the time.
+  const shownKey = state.status === 'loaded' ? state.ticket.key : null;
+  const shownSummary = state.status === 'loaded' ? state.ticket.summary : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: told when the name changes
+  useEffect(() => {
+    if (shownKey !== null && shownSummary !== null) {
+      popup?.onTicket({ key: shownKey, summary: shownSummary });
+    }
+  }, [shownKey, shownSummary]);
 
   // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
   // ticket's row there moves on, the page reads the ticket again, so the open view follows
@@ -248,6 +289,9 @@ export function TicketPage({
         if (error.status === 409 && body?.error === 'version_conflict') {
           return t('ticketView.problem.stale');
         }
+        if (body?.error === 'transition_refused' && (body as Partial<TransitionRefusal>).by) {
+          return refusalMessage(t, body as unknown as TransitionRefusal);
+        }
         if (body?.error === 'transition_refused' || body?.error === 'transition_unavailable') {
           return t('ticketView.problem.transition');
         }
@@ -265,6 +309,8 @@ export function TicketPage({
     setRevision((r) => r + 1);
     setMessage(said);
     setProblem(null);
+    // The page beneath the pop-up shows it at once.
+    if (popup) announceTicketChange();
   };
 
   const edit = async (change: TicketEdit) => {
@@ -319,6 +365,17 @@ export function TicketPage({
       setProblem(refusal(error));
     }
   };
+  /** The ticket's full address, for the clipboard; refused, the page shows it to copy by hand. */
+  const copyLink = async (key: string) => {
+    const link = routeUrl(`#/tickets/${encodeURIComponent(key)}`);
+    setProblem(null);
+    try {
+      await navigator.clipboard.writeText(link);
+      setMessage(t('ticketView.linkCopied', { key }));
+    } catch {
+      setMessage(t('ticketView.linkIs', { link }));
+    }
+  };
   const assignToMe = () => {
     if (loaded && me.id && loaded.assignee?.id !== me.id) {
       void edit({ assigneeId: me.id }).then(
@@ -331,6 +388,9 @@ export function TicketPage({
   const keys = useRef<(event: KeyboardEvent) => void>(() => {});
   keys.current = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
+    // The keys are the top view's: the pop-up's, unless a dialog is over it, and never the page's.
+    const over = document.querySelector(`.${TICKET_POPUP_CLASS}`);
+    if (popup ? over?.querySelector('[role="dialog"], [role="alertdialog"]') : over) return;
     const key = event.key.toLowerCase();
     if (key === '?') {
       event.preventDefault();
@@ -341,7 +401,9 @@ export function TicketPage({
       // The comment editor, once the tab shows it: it may take a few frames to mount.
       let tries = 0;
       const focusEditor = () => {
-        const editor = document.querySelector<HTMLElement>('.comment-composer [contenteditable]');
+        const editor = article.current?.querySelector<HTMLElement>(
+          '.comment-composer [contenteditable]',
+        );
         if (editor) editor.focus();
         else if (++tries < 40) window.setTimeout(focusEditor, 25);
       };
@@ -354,7 +416,7 @@ export function TicketPage({
       assignToMe();
     } else if (key === 't') {
       event.preventDefault();
-      transitionsRef.current?.querySelector('button')?.focus();
+      statusMenu.current?.focus();
     } else if (key === 'e') {
       event.preventDefault();
       setEditingSummary(true);
@@ -368,16 +430,16 @@ export function TicketPage({
 
   // Every action of the view is in the command palette too (AGL-018 (1)). The commands call
   // the latest handlers through a ref, so they change only when what they offer changes.
-  const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit });
-  actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit };
+  const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit, copyLink });
+  actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit, copyLink };
   const key = loaded?.key ?? null;
   // Opened by an earlier key (a moved ticket, a renamed track; M1-128): the address shows the
   // current one, without a new history entry.
   useEffect(() => {
     if (key !== null && !/^\d+$/.test(ticket) && key.toUpperCase() !== ticket.toUpperCase()) {
-      replaceRoute(`#/tickets/${encodeURIComponent(key)}`);
+      (popup ? replaceOverlay : replaceRoute)(`#/tickets/${encodeURIComponent(key)}`);
     }
-  }, [key, ticket]);
+  }, [key, ticket, popup]);
   const assigneeId = loaded?.assignee?.id ?? null;
   const commands = useMemo<Command[]>(() => {
     if (key === null) return [];
@@ -435,7 +497,9 @@ export function TicketPage({
       run: () => {
         setTab('comments');
         window.setTimeout(() => {
-          document.querySelector<HTMLElement>('.comment-composer [contenteditable]')?.focus();
+          article.current
+            ?.querySelector<HTMLElement>('.comment-composer [contenteditable]')
+            ?.focus();
         }, 0);
       },
     });
@@ -454,7 +518,7 @@ export function TicketPage({
       labelId: 'palette.ticket.copyLink',
       values,
       keywords: ['link', 'url', 'share'],
-      run: () => void navigator.clipboard?.writeText(window.location.href).catch(() => {}),
+      run: () => void actions.current.copyLink(key),
     });
     list.push({
       id: 'ticket-shortcuts',
@@ -464,7 +528,11 @@ export function TicketPage({
     });
     return list;
   }, [key, assigneeId, me.id, transitions, following, votes]);
-  usePaletteCommands('ticket-view', commands);
+  // Under a pop-up the palette offers the pop-up's ticket, not this one's too.
+  usePaletteCommands(
+    popup ? 'ticket-popup' : 'ticket-view',
+    popup || !overOverlay ? commands : NO_COMMANDS,
+  );
 
   if (state.status === 'loading') {
     return (
@@ -481,14 +549,31 @@ export function TicketPage({
     );
   }
   const shown = state.ticket;
+  // A pop-up leaves its page where it is; the full page opened from one has the way back.
+  const behind = popup ? null : boardBehind(ticket);
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <article aria-labelledby={titleId} className="ticket-page ticket-view">
+    <article ref={article} aria-labelledby={titleId} className="ticket-page ticket-view">
       <header className="ticket-header">
-        <p className="ticket-crumbs">
-          {shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}
+        {behind && (
+          <a
+            className="ticket-back"
+            href={routeHref(
+              `#/boards/${behind.id}${behind.people ? `?people=${behind.people}` : ''}`,
+            )}
+          >
+            {t('ticketPage.backToBoard', { name: behind.name })}
+          </a>
+        )}
+        <p className="ticket-crumbs page-eyebrow">
+          {shown.track.name && (
+            <TypeGlyph name={shown.ticketType.name} icon={shown.ticketType.icon} />
+          )}
+          <span>
+            {shown.track.name ? `${shown.track.name} · ${typeName(t, shown.ticketType.name)}` : ''}
+          </span>
         </p>
         {editingSummary && loaded ? (
           <SummaryForm
@@ -503,6 +588,7 @@ export function TicketPage({
             <h1 id={titleId} className="page-title">
               {t('ticketPage.title', { key: shown.key, summary: shown.summary })}
             </h1>
+            <HelpTip name={shown.key}>{t('about.ticket')}</HelpTip>
             {loaded && (
               <button
                 type="button"
@@ -516,25 +602,13 @@ export function TicketPage({
         )}
         {loaded && (
           <div className="ticket-toolbar">
-            <span className="ticket-status" data-stage={loaded.status.stage}>
-              {loaded.status.name}
-            </span>
-            {transitions.length > 0 && (
-              <fieldset ref={transitionsRef} className="ticket-transitions">
-                <legend className="visually-hidden">{t('ticketView.transitions')}</legend>
-                {transitions.map((to) => (
-                  <button
-                    key={to.id}
-                    type="button"
-                    className="button-secondary ticket-action"
-                    aria-label={t('ticketView.transitionTo', { name: to.name, status: to.to.name })}
-                    onClick={() => void transition(to)}
-                  >
-                    {to.name}
-                  </button>
-                ))}
-              </fieldset>
-            )}
+            <StatusMenu
+              ref={statusMenu}
+              status={loaded.status}
+              transitions={transitions}
+              onChoose={(to) => void transition(to)}
+            />
+            <span className="ticket-toolbar-gap" aria-hidden="true" />
             {following && (
               <button
                 type="button"
@@ -562,13 +636,23 @@ export function TicketPage({
             >
               {t('clone.action')}
             </button>
+            <button
+              type="button"
+              className="button-secondary ticket-action"
+              onClick={() => void copyLink(loaded.key)}
+            >
+              {t('ticketView.copyLink')}
+            </button>
             <BreakdownAction
               ticket={{ id: loaded.id, key: loaded.key }}
               trackId={loaded.track.id}
               {...(ai.client ? { client: ai.client } : {})}
               {...(ai.notice ? { notice: ai.notice } : {})}
               {...(ai.features ? { features: ai.features } : {})}
-              onCreated={() => setRevision((r) => r + 1)}
+              onCreated={() => {
+                setRevision((r) => r + 1);
+                if (popup) announceTicketChange();
+              }}
             />
             <button
               ref={helpButton}
@@ -667,7 +751,14 @@ export function TicketPage({
           onClose={() => setCloning(false)}
           onCloned={(key) => {
             setCloning(false);
-            navigate(`#/tickets/${encodeURIComponent(key)}`);
+            const copy = `#/tickets/${encodeURIComponent(key)}`;
+            // In the pop-up the copy opens there, and Back returns to the ticket it came from.
+            if (popup) {
+              announceTicketChange();
+              openOverlay(copy);
+            } else {
+              navigate(copy);
+            }
           }}
         />
       )}
@@ -733,6 +824,7 @@ function SummaryForm({
   return (
     <form
       className="ticket-summary-form"
+      data-no-draft={text === value || undefined}
       onSubmit={(event) => {
         event.preventDefault();
         void onSave(text.trim());
@@ -754,94 +846,6 @@ function SummaryForm({
       <div className="form-actions">
         <button type="submit" className="button-primary">
           {t('ticketView.save')}
-        </button>
-        <button type="button" className="button-secondary" onClick={onCancel}>
-          {t('ticketView.cancel')}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/** The fields a transition asks for that the page can fill in: a close reason, a priority. */
-function TransitionForm({
-  transition,
-  client,
-  onRun,
-  onCancel,
-}: {
-  transition: Transition;
-  client: TicketClient;
-  onRun: (fields: Record<string, unknown>) => void;
-  onCancel: () => void;
-}) {
-  const t = useT();
-  const id = useId();
-  const [options, setOptions] = useState<Record<string, Priority[]>>({});
-  const [values, setValues] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let live = true;
-    void Promise.all(
-      transition.layout.map(async (field) => {
-        const list =
-          field === 'close-reason' ? await client.closeReasons() : await client.priorities();
-        return [field, list] as const;
-      }),
-    ).then(
-      (pairs) => {
-        if (!live) return;
-        setOptions(Object.fromEntries(pairs));
-        setValues(Object.fromEntries(pairs.map(([f, list]) => [f, String(list[0]?.id ?? '')])));
-      },
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [transition, client]);
-  const labels: Record<string, Parameters<typeof t>[0]> = {
-    'close-reason': 'workflow.field.closeReason',
-    priority: 'workflow.field.priority',
-  };
-  return (
-    <form
-      className="ticket-transition-form"
-      aria-label={t('ticketView.transitionForm', { name: transition.name })}
-      onSubmit={(event) => {
-        event.preventDefault();
-        onRun(
-          Object.fromEntries(
-            Object.entries(values).map(([field, value]) => [field, value ? Number(value) : null]),
-          ),
-        );
-      }}
-    >
-      {transition.layout.map((field) => (
-        <div key={field} className="form-field">
-          <label htmlFor={`${id}-${field}`} className="form-label">
-            {t(labels[field] ?? 'workflow.field.closeReason')}
-          </label>
-          <select
-            id={`${id}-${field}`}
-            value={values[field] ?? ''}
-            onChange={(event) => setValues((v) => ({ ...v, [field]: event.target.value }))}
-          >
-            {(options[field] ?? []).map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      <div className="form-actions">
-        {/* Ready once every list is in, so the values sent are the ones shown. */}
-        <button
-          type="submit"
-          className="button-primary"
-          disabled={!transition.layout.every((field) => field in options)}
-        >
-          {transition.name}
         </button>
         <button type="button" className="button-secondary" onClick={onCancel}>
           {t('ticketView.cancel')}
@@ -890,6 +894,19 @@ function Details({
         });
   const names = (list: { name: string }[]) =>
     list.length ? list.map((v) => v.name).join(', ') : none;
+  const [numberFields, setNumberFields] = useState<NumberField[]>([]);
+  // The form depends on the ticket's type and its status's edit lock.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when either changes
+  useEffect(() => {
+    let live = true;
+    client.numberFields?.(ticket.id).then(
+      (list) => live && setNumberFields(list),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, ticket.id, ticket.ticketType.id, ticket.status.id]);
 
   return (
     <dl className="ticket-facts">
@@ -932,23 +949,39 @@ function Details({
       </div>
       <div>
         <dt>
-          <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
+          {ticket.mayEdit === false ? (
+            t('workflow.field.priority')
+          ) : (
+            <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
+          )}
         </dt>
         <dd>
-          <select
-            id={`${id}-priority`}
-            value={ticket.priority?.id ?? ''}
-            onChange={(event) =>
-              void onEdit({ priorityId: event.target.value ? Number(event.target.value) : null })
-            }
-          >
-            <option value="">{none}</option>
-            {(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          {ticket.mayEdit === false ? (
+            // Someone who may not edit sees the value, not a control.
+            <span className="ticket-fact-value">
+              {ticket.priority ? (
+                <>
+                  <PriorityGlyph level={ticket.priority.level} />
+                  {priorityName(t, ticket.priority.name)}
+                </>
+              ) : (
+                none
+              )}
+            </span>
+          ) : (
+            <IconSelect
+              id={`${id}-priority`}
+              value={String(ticket.priority?.id ?? '')}
+              // Only an imported ticket can have none; once chosen there is no going back.
+              placeholder={t('priority.choose')}
+              options={(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => ({
+                value: String(p.id),
+                label: priorityName(t, p.name),
+                icon: <PriorityGlyph level={p.level} />,
+              }))}
+              onChange={(next) => void onEdit({ priorityId: Number(next) })}
+            />
+          )}
         </dd>
       </div>
       <div>
@@ -971,6 +1004,7 @@ function Details({
           ) : (
             <form
               className="ticket-inline-form"
+              data-no-draft={labels === ticket.labels.join(' ') || undefined}
               onSubmit={(event) => {
                 event.preventDefault();
                 const next = splitLabels(labels);
@@ -1017,6 +1051,15 @@ function Details({
             />
           </dd>
         </div>
+      ))}
+      {numberFields.map((field) => (
+        <NumberFact
+          key={field.id}
+          field={field}
+          value={ticket.fields?.[String(field.id)]}
+          readOnly={ticket.mayEdit === false || field.locked}
+          onEdit={onEdit}
+        />
       ))}
       <div>
         <dt>{t('workflow.field.originalEstimate')}</dt>
@@ -1065,6 +1108,81 @@ function Details({
         <dd>{when(ticket.updatedAt)}</dd>
       </div>
     </dl>
+  );
+}
+
+/**
+ * A number field on the details, such as Points (AGL-007): typed in place, saved on Enter or on
+ * leaving the box, Escape puts back what is saved. Someone who may not change it reads the value.
+ */
+function NumberFact({
+  field,
+  value,
+  readOnly,
+  onEdit,
+}: {
+  field: NumberField;
+  value: unknown;
+  readOnly: boolean;
+  onEdit: (change: TicketEdit) => Promise<boolean>;
+}) {
+  const t = useT();
+  const intl = useIntl();
+  const id = useId();
+  const saved = typeof value === 'number' ? String(value) : '';
+  const [draft, setDraft] = useState<string | null>(null);
+  const name = fieldName(t, field.name);
+  const save = () => {
+    if (draft === null || draft === saved) {
+      setDraft(null);
+      return;
+    }
+    const next = draft === '' ? null : Number(draft);
+    void onEdit({ fields: { [field.id]: next } }).then((ok) => ok && setDraft(null));
+  };
+  if (readOnly) {
+    return (
+      <div>
+        <dt>{name}</dt>
+        <dd>{typeof value === 'number' ? intl.formatNumber(value) : t('ticketView.none')}</dd>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <dt>
+        <label htmlFor={id}>{name}</label>
+      </dt>
+      <dd>
+        <form
+          className="ticket-inline-form"
+          data-no-draft={draft === null || draft === saved || undefined}
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
+          <input
+            id={id}
+            type="number"
+            step="any"
+            value={draft ?? saved}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={save}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                save();
+              }
+              if (event.key === 'Escape' && draft !== null) {
+                event.stopPropagation();
+                setDraft(null);
+              }
+            }}
+          />
+        </form>
+      </dd>
+    </div>
   );
 }
 
@@ -1132,6 +1250,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="ticket-dialog-backdrop">
       <div
+        ref={leaveMotion}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -1152,7 +1271,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           {t('ticketView.shortcuts')}
         </h2>
         <dl className="ticket-shortcuts">
-          {SHORTCUTS.map(([key, label]) => (
+          {TICKET_SHORTCUTS.map(([key, label]) => (
             <div key={key}>
               <dt>
                 <kbd>{key.toUpperCase()}</kbd>

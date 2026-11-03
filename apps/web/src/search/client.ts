@@ -1,4 +1,5 @@
 import { API_BASE, api } from '../api/client';
+import type { ChoiceField } from './basic';
 
 interface Named {
   id?: number;
@@ -56,17 +57,91 @@ export interface SearchField {
   multiple?: boolean;
 }
 
+/** A track the person sees. */
+export interface SearchTrack {
+  id?: number;
+  key: string;
+  name: string;
+}
+
+/** At most this many tracks are asked for their releases and areas, one request each. */
+const MAX_OPTION_TRACKS = 20;
+
 /** The endpoints the search page uses. Stories and tests pass their own. */
 export interface SearchClient {
   search: (q: string, cursor?: string) => Promise<SearchPage>;
   check: (q: string) => Promise<CheckResult>;
-  tracks: () => Promise<{ key: string; name: string }[]>;
+  tracks: () => Promise<SearchTrack[]>;
+  /**
+   * The values the basic mode offers for a field: what the person may see, from the routes the
+   * rest of the app uses. `typed` narrows those read as someone types; `chosen` are the tracks
+   * picked on the form. Null means there are too many tracks to ask: pick some first.
+   */
+  choiceOptions: (
+    field: ChoiceField,
+    scope: { typed: string; chosen: readonly SearchTrack[]; all: readonly SearchTrack[] },
+  ) => Promise<string[] | null>;
   /** Custom fields the person may see, for suggestions and columns. */
   fields: () => Promise<SearchField[]>;
   /** Changes a ticket through the ticket route (M1-042, inline edit); the ticket as it is now. */
   edit: (id: number, change: object) => Promise<SearchTicket>;
   /** Priorities, for editing a priority cell. */
-  priorities: () => Promise<{ id: number; name: string }[]>;
+  priorities: () => Promise<{ id: number; name: string; level?: number }[]>;
+}
+
+const uniqueNames = (lists: readonly { name: string }[][]) => [
+  ...new Set(lists.flat().map((item) => item.name)),
+];
+
+async function choiceOptions(
+  field: ChoiceField,
+  { typed, chosen, all }: Parameters<SearchClient['choiceOptions']>[1],
+): Promise<string[] | null> {
+  const withIds = (tracks: readonly SearchTrack[]) =>
+    tracks.flatMap((track) => (track.id === undefined ? [] : [track.id]));
+  switch (field) {
+    case 'priority':
+      return (await api<{ priorities: { name: string }[] }>('/priorities')).priorities.map(
+        (p) => p.name,
+      );
+    case 'type': {
+      // The shared types, and each chosen track's own.
+      const ids = withIds(chosen);
+      const paths =
+        ids.length > 0 ? ids.map((id) => `/ticket-types?trackId=${id}`) : ['/ticket-types'];
+      const lists = await Promise.all(
+        paths.map(async (p) => (await api<{ ticketTypes: { name: string }[] }>(p)).ticketTypes),
+      );
+      return uniqueNames(lists);
+    }
+    case 'labels': {
+      const q = encodeURIComponent(typed.trim());
+      return (await api<{ labels: string[] }>(`/labels?limit=50&q=${q}`)).labels;
+    }
+    case 'requester':
+    case 'creator': {
+      // Anyone the person may browse; a track is only what the route needs to ask.
+      const track = chosen[0] ?? all[0];
+      if (!track) return [];
+      const q = encodeURIComponent(typed.trim());
+      const path = `/people/mentionable?track=${encodeURIComponent(track.key)}&limit=20&q=${q}`;
+      return uniqueNames([(await api<{ people: { name: string }[] }>(path)).people]);
+    }
+    case 'targetRelease':
+    case 'foundInRelease':
+    case 'area': {
+      const scope = chosen.length > 0 ? chosen : all;
+      if (scope.length > MAX_OPTION_TRACKS) return null;
+      const lists = await Promise.all(
+        withIds(scope).map(async (id) =>
+          field === 'area'
+            ? (await api<{ areas: { name: string }[] }>(`/tracks/${id}/areas`)).areas
+            : (await api<{ releases: { name: string }[] }>(`/tracks/${id}/releases`)).releases,
+        ),
+      );
+      return uniqueNames(lists);
+    }
+  }
 }
 
 export const searchClient: SearchClient = {
@@ -76,8 +151,8 @@ export const searchClient: SearchClient = {
       body: { q, limit: 50, ...(cursor ? { cursor } : {}) },
     }),
   check: (q) => api<CheckResult>(`/search/check?q=${encodeURIComponent(q)}`),
-  tracks: async () =>
-    (await api<{ tracks: { key: string; name: string }[] }>('/tracks?limit=200')).tracks,
+  tracks: async () => (await api<{ tracks: SearchTrack[] }>('/tracks?limit=200')).tracks,
+  choiceOptions,
   fields: async () =>
     (await api<{ fields: SearchField[] }>('/fields')).fields.map((f) => ({
       id: f.id,
@@ -89,7 +164,8 @@ export const searchClient: SearchClient = {
     (await api<{ ticket: SearchTicket }>(`/tickets/${id}`, { method: 'PATCH', body: change }))
       .ticket,
   priorities: async () =>
-    (await api<{ priorities: { id: number; name: string }[] }>('/priorities')).priorities,
+    (await api<{ priorities: { id: number; name: string; level?: number }[] }>('/priorities'))
+      .priorities,
 };
 
 /** The address of an export of a query's results in the given columns (QRY-015). */

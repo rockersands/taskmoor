@@ -52,7 +52,7 @@ Body:
 | `description` | string | no |  |
 | `kind` | `"scrum"`, `"kanban"` | yes |  |
 | `trackId` | integer or null | no |  |
-| `source` | object or object | yes |  |
+| `source` | object or object | no |  |
 | `subFilter` | object or null | no |  |
 | `columns` | array of object | no |  |
 | `swimlanes` | object | no |  |
@@ -111,6 +111,7 @@ Responses:
 | --- | --- | --- | --- | --- |
 | `id` | path | string | yes | The board’s id. |
 | `filters` | query | string | no |  |
+| `people` | query | string | no |  |
 | `limit` | query | integer | no |  |
 | `sprints` | query | string | no |  |
 
@@ -1684,6 +1685,7 @@ Responses:
 | `lanes` | array of object | yes |  |
 | `cards` | array of object | yes |  |
 | `truncated` | boolean | yes |  |
+| `people` | object | yes |  |
 
 ### Schema: BoardSummary
 
@@ -2092,5 +2094,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 478 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 489 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

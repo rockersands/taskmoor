@@ -1,48 +1,74 @@
-import { useEffect, useId, useState } from 'react';
-import { useIntl } from 'react-intl';
+import { useEffect, useId, useMemo, useState } from 'react';
+import {
+  dashboardClient,
+  type Layout,
+  WIDGET_KINDS,
+  type Widget,
+  type WidgetKind,
+} from '../dashboards/client';
+import {
+  type BoardChoice,
+  fitWidgets,
+  WidgetEditorFields,
+  WidgetGrid,
+} from '../dashboards/WidgetEditor';
+import { defaultConfig, SETTINGS } from '../dashboards/WidgetSettings';
+import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
-import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
-import { type SummaryItem, type TrackClient, type TrackSummary, trackClient } from './client';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
+import { type TrackClient, type TrackSummaryLayout, trackClient } from './client';
+import { TrackNumbers } from './TrackNumbers';
+import { useTrackSections } from './trackSections';
 
 export interface TrackSummaryPageProps {
   trackKey: string;
   client?: TrackClient;
+  /** Checks a widget's query before it is kept; the search's check. */
+  checkQuery?: (query: string) => Promise<boolean>;
 }
 
-const OVERVIEW: Record<string, MessageId> = {
-  open: 'summary.open',
-  created: 'summary.created',
-  closed: 'summary.closed',
-  updated: 'summary.updated',
-  due: 'summary.due',
+/** Today's numbers as the one widget a first customization starts from. */
+const NUMBERS: Widget = {
+  id: 'new-numbers',
+  kind: 'track-summary',
+  column: 0,
+  title: '',
+  config: {},
 };
-const STAGES: Record<string, MessageId> = {
-  new: 'search.stage.new',
-  active: 'search.stage.active',
-  closed: 'search.stage.closed',
-};
-
-/** The search page for a query. */
-const searchHref = (query: string) =>
-  routeHref(`#/search?${new URLSearchParams({ q: query }).toString()}`);
 
 /**
- * A track's summary (M1-064; RPT-006): its open, new, closed, updated and soon-due tickets, and
- * the open ones by stage, priority, type and assignee. Each number links to the search that
- * finds exactly those tickets, and is that search's count.
+ * A track's Summary (M1-064; RPT-006; ADR-116): its numbers until someone customizes it, then the
+ * widgets its owner and administrators chose, which everyone else who sees the track reads as they
+ * are, each through their own permission filter. "Back to the default" removes the customization.
  */
-export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummaryPageProps) {
+export function TrackSummaryPage({
+  trackKey,
+  client = trackClient,
+  checkQuery = dashboardClient.checkQuery,
+}: TrackSummaryPageProps) {
   const t = useT();
-  const intl = useIntl();
-  const id = useId();
-  const [summary, setSummary] = useState<TrackSummary | null>(null);
+  const titleId = useId();
+  const sections = useTrackSections();
+  const [read, setRead] = useState<TrackSummaryLayout | null>(null);
   const [failed, setFailed] = useState(false);
+  const [draft, setDraft] = useState<{ layout: Layout; widgets: Widget[] } | null>(null);
+  const [settingsOf, setSettingsOf] = useState<string | null>(null);
+  const [adding, setAdding] = useState<WidgetKind>('search-results');
+  const [boards, setBoards] = useState<BoardChoice[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const widgetClient = useMemo(
+    () => ({ widget: (_: number, id: string) => client.summaryWidget(trackKey, id) }),
+    [client, trackKey],
+  );
 
   useEffect(() => {
     let live = true;
-    client.summary(trackKey).then(
-      (s) => live && setSummary(s),
+    client.summaryLayout(trackKey).then(
+      (found) => live && setRead(found),
       () => live && setFailed(true),
     );
     return () => {
@@ -59,94 +85,199 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
       </section>
     );
   }
-  if (!summary) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!read) return <p className="report-empty">{t('reports.loading')}</p>;
 
-  const number = (item: SummaryItem) =>
-    item.exact ? intl.formatNumber(item.count) : t('summary.atLeast', { count: item.count });
-  const section = (
-    key: string,
-    title: MessageId,
-    items: SummaryItem[],
-    label: (i: SummaryItem) => string,
-  ) => {
-    const max = Math.max(1, ...items.map((i) => i.count));
-    return (
-      <section className="summary-section" aria-labelledby={`${id}-${key}`}>
-        <h2 id={`${id}-${key}`}>{t(title)}</h2>
-        {items.length === 0 ? (
-          <p className="report-empty">{t('summary.nothingOpen')}</p>
-        ) : (
-          <ul className="summary-list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={searchHref(item.query)}
-                  aria-label={t('summary.linkLabel', { label: label(item), count: number(item) })}
-                >
-                  <span className="summary-label">{label(item)}</span>{' '}
-                  <span className="summary-count">{number(item)}</span>
-                </a>
-                <span className="summary-bar" aria-hidden="true">
-                  <span style={{ width: `${(item.count / max) * 100}%` }} />
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+  const { custom } = read;
+  // A Kanban track has no sprints: their widgets stay in the editor, to take away, and show nowhere.
+  const needsSprints = (w: Widget) => SETTINGS[w.kind].includes('board');
+  const widgets =
+    draft?.widgets ??
+    (custom?.widgets ?? []).filter((w) => !(sections?.sprints === false && needsSprints(w)));
+  const layout = draft?.layout ?? custom?.layout ?? 'one';
+  const kinds: WidgetKind[] = [
+    ...WIDGET_KINDS,
+    ...(widgets.some((w) => w.kind === 'track-summary') ? [] : ['track-summary' as const]),
+  ].filter((k) => !SETTINGS[k].includes('board') || boards.some((b) => b.kind === 'scrum'));
+
+  const customize = () => {
+    setDraft(
+      custom
+        ? { layout: custom.layout, widgets: custom.widgets }
+        : { layout: 'one', widgets: [NUMBERS] },
+    );
+    setStatus(null);
+    setProblem(null);
+    // Sprint widgets read the track's one board, when it is a Scrum board.
+    client.board(trackKey).then(
+      (b) => setBoards([{ id: b.id, name: b.name, kind: b.kind }]),
+      () => setBoards([]),
     );
   };
+  const changeWidgets = (change: (list: Widget[]) => Widget[]) =>
+    setDraft((d) => (d ? { ...d, widgets: change(d.widgets) } : d));
+  const add = () => {
+    const made: Widget = {
+      id: `new-${Date.now().toString(36)}`,
+      kind: adding,
+      column: 0,
+      title: '',
+      config: defaultConfig(adding, boards.find((b) => b.kind === 'scrum')?.id ?? null),
+    };
+    changeWidgets((list) => [made, ...list]);
+    if (adding !== 'track-summary') setSettingsOf(made.id);
+    setAdding('search-results');
+  };
+  const save = async () => {
+    if (!draft) return;
+    const outcome = await client.saveSummaryLayout(trackKey, {
+      layout: draft.layout,
+      // New widgets get their ids from the server.
+      widgets: draft.widgets.map((w) => {
+        const { id, ...rest } = w;
+        return id.startsWith('new-') ? rest : w;
+      }),
+      ...(custom ? { version: custom.version } : {}),
+    });
+    if (outcome.ok) {
+      setRead(outcome.read);
+      setDraft(null);
+      setSettingsOf(null);
+      setProblem(null);
+      setStatus(t('dashboards.saved'));
+      setRefresh((n) => n + 1);
+    } else {
+      setProblem(
+        t(
+          outcome.error === 'version_conflict'
+            ? 'summary.conflict'
+            : outcome.error === 'forbidden'
+              ? 'summary.forbidden'
+              : 'dashboards.invalid',
+        ),
+      );
+    }
+  };
+  const backToDefault = async () => {
+    if (!window.confirm(t('summary.confirmDefault'))) return;
+    try {
+      await client.resetSummaryLayout(trackKey);
+      setRead({ ...read, custom: null });
+      setDraft(null);
+      setSettingsOf(null);
+      setProblem(null);
+      setStatus(t('summary.backToDefaultDone'));
+    } catch {
+      setProblem(t('summary.forbidden'));
+    }
+  };
+
+  const showWidgets = draft !== null || custom !== null;
 
   return (
-    <section className="track-summary" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('summary.title', { name: summary.track.name, key: summary.track.key })}
-        </h1>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/list`)}>
-          {t('summary.list')}
-        </a>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/calendar`)}>
-          {t('summary.calendar')}
-        </a>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/timeline`)}>
-          {t('summary.timeline')}
-        </a>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/releases`)}>
-          {t('summary.releases')}
-        </a>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/templates`)}>
-          {t('summary.templates')}
-        </a>
-      </div>
-      <dl className="report-stats">
-        {summary.overview.map((item) => (
-          <div key={item.id}>
-            <dt>{t(OVERVIEW[item.id] ?? 'summary.open')}</dt>
-            <dd>
-              <a href={searchHref(item.query)}>{number(item)}</a>
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <div className="summary-sections">
-        {section('stages', 'summary.byStage', summary.stages, (i) =>
-          t(STAGES[i.id] ?? 'search.stage.new'),
-        )}
-        {section(
-          'priorities',
-          'summary.byPriority',
-          summary.priorities,
-          (i) => i.name ?? t('summary.noPriority'),
-        )}
-        {section('types', 'summary.byType', summary.types, (i) => i.name ?? '')}
-        {section(
-          'assignees',
-          'summary.byAssignee',
-          summary.assignees,
-          (i) => i.name ?? t('summary.unassigned'),
-        )}
-      </div>
+    <section className="track-summary" aria-labelledby={titleId}>
+      <PageHeader
+        titleId={titleId}
+        title={t('summary.title', { name: read.track.name, key: read.track.key })}
+        purpose={t('summary.purpose')}
+        about={t('summary.about')}
+        actions={
+          !draft && (
+            <>
+              <a href={routeHref(`#/tracks/${encodeURIComponent(read.track.key)}/templates`)}>
+                {t('summary.templates')}
+              </a>
+              {read.mayCustomize && (
+                <button type="button" className="button-primary" onClick={customize}>
+                  {t('summary.customize')}
+                </button>
+              )}
+              {read.mayCustomize && custom && (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => void backToDefault()}
+                >
+                  {t('summary.backToDefault')}
+                </button>
+              )}
+            </>
+          )
+        }
+      />
+      {draft && (
+        <div className="reports-controls dashboard-editor">
+          <WidgetEditorFields
+            idPrefix={titleId}
+            layout={draft.layout}
+            onLayout={(next) =>
+              setDraft({ layout: next, widgets: fitWidgets(draft.widgets, next) })
+            }
+            adding={adding}
+            onAdding={setAdding}
+            kinds={kinds}
+            boards={boards}
+            onAdd={add}
+          />
+          <button type="button" className="button-primary" onClick={() => void save()}>
+            {t('summary.save')}
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => {
+              setDraft(null);
+              setSettingsOf(null);
+              setProblem(null);
+            }}
+          >
+            {t('dashboards.cancel')}
+          </button>
+        </div>
+      )}
+      {status && (
+        <p className="report-note" role="status">
+          {status}
+        </p>
+      )}
+      {problem && (
+        <p className="board-problem" role="alert">
+          {problem}
+        </p>
+      )}
+      {!showWidgets ? (
+        <TrackNumbers trackKey={trackKey} client={client} />
+      ) : widgets.length === 0 ? (
+        <EmptyState title={t('summary.emptyTitle')}>
+          {t(read.mayCustomize ? 'summary.emptyEditable' : 'summary.empty')}
+        </EmptyState>
+      ) : (
+        <WidgetGrid
+          layout={layout}
+          widgets={widgets}
+          editing={draft !== null}
+          settingsOf={settingsOf}
+          onSettingsOf={setSettingsOf}
+          onChange={changeWidgets}
+          boards={boards}
+          checkQuery={checkQuery}
+          queryHint={t('summary.queryHint')}
+          renderWidget={(w) =>
+            w.kind === 'track-summary' ? (
+              <TrackNumbers key={refresh} trackKey={trackKey} client={client} />
+            ) : draft && w.id.startsWith('new-') ? (
+              <p className="report-empty">{t('summary.unsaved')}</p>
+            ) : (
+              <WidgetView
+                // A new key reads the data again after a save.
+                key={`${w.id}-${refresh}`}
+                dashboardId={read.track.id}
+                widget={w}
+                client={widgetClient}
+              />
+            )
+          }
+        />
+      )}
     </section>
   );
 }

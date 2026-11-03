@@ -87,6 +87,7 @@ export function registerTimelineRoutes(
             FROM ticket k
             LEFT JOIN LATERAL (
               SELECT s.start_at, s.end_at FROM sprint_ticket st JOIN sprint s ON s.id = st.sprint_id
+                JOIN board b ON b.id = s.board_id AND b.kind = 'scrum'
                WHERE st.ticket_id = k.id AND s.deleted_at IS NULL
                ORDER BY st.open DESC, s.sequence DESC LIMIT 1) sp ON true
            WHERE ${where}`;
@@ -145,6 +146,7 @@ export function registerTimelineRoutes(
                    (s.end_at AT TIME ZONE 'UTC')::date::text AS end
               FROM sprint s JOIN board b ON b.id = s.board_id
              WHERE s.workspace_id = ${ws}::int AND b.location_track_id = ${track.id}::int
+               AND b.kind = 'scrum'
                AND s.deleted_at IS NULL AND s.start_at IS NOT NULL AND s.end_at IS NOT NULL
              ORDER BY s.start_at, s.id`.execute(trx)
         ).rows;

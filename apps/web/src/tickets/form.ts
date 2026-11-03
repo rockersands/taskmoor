@@ -41,6 +41,8 @@ export interface TicketForm {
   customFields: CustomField[];
   /** What the person may not set here, and why (M1-029); absent in older fixtures. */
   locks?: Lock[];
+  /** The track's priority set: what a new ticket takes, and what it offers (CORE-014 (2)). */
+  priorities?: { defaultId: number | null; offered: number[] };
 }
 
 /** System fields: the key rules and layouts use, and the body key that writes it. */

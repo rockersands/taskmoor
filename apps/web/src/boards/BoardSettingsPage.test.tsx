@@ -1,8 +1,10 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
+import { fakeTrackClient } from '../tracks/fixtures';
+import { TrackLayout } from '../tracks/TrackLayout';
 import { BoardSettingsPage } from './BoardSettingsPage';
 import { BOARD, fakeBoardClient, SCRUM_BOARD } from './fixtures';
 
@@ -15,6 +17,97 @@ function renderSettings(client = fakeBoardClient()) {
   return client;
 }
 const ready = () => screen.findByRole('heading', { level: 1, name: 'Settings of Checkout team' });
+
+describe("changing the board's kind (ADR-116)", () => {
+  it("[CORE-002] tells the track's tab bar at once, so Backlog comes or goes without a reload", async () => {
+    const user = userEvent.setup();
+    const tracks = fakeTrackClient();
+    const sections = vi.fn(async () => ({ backlog: false, sprints: false }));
+    tracks.sections = sections;
+    render(
+      <I18nProvider locale="en">
+        <TrackLayout trackKey="SHOP" section="board" client={tracks}>
+          <BoardSettingsPage boardId={7} client={fakeBoardClient()} />
+        </TrackLayout>
+      </I18nProvider>,
+    );
+    await ready();
+    const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
+    await waitFor(() => expect(sections).toHaveBeenCalledTimes(1));
+    expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull();
+
+    sections.mockResolvedValue({ backlog: true, sprints: true });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Kind' }), 'scrum');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(await within(bar).findByRole('link', { name: 'Backlog' })).toBeVisible();
+
+    // Saving something else does not ask again.
+    const asked = sections.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    await screen.findByRole('status');
+    expect(sections).toHaveBeenCalledTimes(asked);
+  });
+});
+
+describe('a board going Kanban while a sprint runs', () => {
+  it('[AGL-010] says in plain words to complete the sprint first', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient({ board: SCRUM_BOARD });
+    client.update = vi.fn(async () => ({ ok: false as const, fields: { kind: 'sprint_running' } }));
+    renderSettings(client);
+    await ready();
+    const kind = screen.getByRole('combobox', { name: 'Kind' });
+    await user.selectOptions(kind, 'kanban');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(
+      await screen.findByText(
+        'A sprint is running on this board. Complete it first, then change the board to Kanban.',
+      ),
+    ).toBeVisible();
+    expect(kind).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe('columns no card can reach (ADR-116)', () => {
+  const reach = {
+    workflow: { id: 1, name: 'Default workflow' },
+    singleWorkflow: true,
+    otherTracks: ['Web app'],
+    columns: { todo: 'no_status' as const },
+    mayFix: true,
+  };
+
+  it('[AGL-002] says so at once, names who else is affected and offers the fix', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    const read = client.settings;
+    client.settings = async (id) => ({ ...(await read(id)), reach });
+    const fix = vi.spyOn(client, 'addColumnPath');
+    render(
+      <I18nProvider locale="en">
+        <BoardSettingsPage boardId={7} client={client} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/No card can go to To do yet/)).toBeVisible();
+    expect(screen.getByText(/which Web app also use/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Let cards reach To do' }));
+    expect(fix).toHaveBeenCalledWith(7, 'todo');
+  });
+
+  it('[AGL-002] tells others who can fix it instead of offering it', async () => {
+    const client = fakeBoardClient();
+    const read = client.settings;
+    client.settings = async (id) => ({ ...(await read(id)), reach: { ...reach, mayFix: false } });
+    render(
+      <I18nProvider locale="en">
+        <BoardSettingsPage boardId={7} client={client} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/A site or configuration administrator can fix/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Let cards reach/ })).toBeNull();
+  });
+});
 
 describe('board settings (M1-043)', () => {
   it('[AGL-002] [AGL-003] maps statuses to columns and sets WIP limits', async () => {
@@ -113,7 +206,7 @@ describe('board settings (M1-043)', () => {
     await screen.findByRole('status');
     const patch = client.patches[0];
     expect(patch?.swimlanes).toMatchObject({ mode: 'assignees', unassigned: 'first' });
-    expect(patch?.boardFilters?.map((f) => f.name)).toEqual(['Only my tickets', 'Bugs']);
+    expect(patch?.boardFilters?.map((f) => f.name)).toEqual(['My work', 'Bugs']);
     expect(patch?.boardFilterDisplay).toBe('dropdown');
   });
 

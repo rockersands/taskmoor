@@ -1,21 +1,20 @@
-import { type CSSProperties, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import {
-  COLUMNS,
   type Dashboard,
   type DashboardClient,
   type DashboardShare,
   dashboardClient,
-  LAYOUTS,
   type Layout,
   WIDGET_KINDS,
   type Widget,
   type WidgetKind,
 } from './client';
-import { defaultConfig, WidgetSettings } from './WidgetSettings';
-import { WidgetView, widgetTitle } from './WidgetView';
+import { fitWidgets, WidgetEditorFields, WidgetGrid } from './WidgetEditor';
+import { defaultConfig } from './WidgetSettings';
+import { WidgetView } from './WidgetView';
 
 type Visibility = 'private' | 'any_user' | 'public' | 'custom';
 
@@ -118,7 +117,6 @@ export function DashboardPage({
   const editing = draft !== null;
   const layout = draft?.layout ?? dashboard.layout;
   const widgets = draft?.widgets ?? dashboard.widgets;
-  const columns = COLUMNS[layout];
 
   const startEditing = () => {
     setDraft({ name: dashboard.name, layout: dashboard.layout, widgets: dashboard.widgets });
@@ -128,26 +126,6 @@ export function DashboardPage({
   };
   const changeWidgets = (change: (list: Widget[]) => Widget[]) =>
     setDraft((d) => (d ? { ...d, widgets: change(d.widgets) } : d));
-  const move = (widgetId: string, by: { column?: number; place?: number }) =>
-    changeWidgets((list) => {
-      const at = list.findIndex((w) => w.id === widgetId);
-      const w = list[at];
-      if (!w) return list;
-      if (by.column !== undefined) {
-        const column = Math.min(columns - 1, Math.max(0, w.column + by.column));
-        return list.map((x) => (x.id === widgetId ? { ...x, column } : x));
-      }
-      // Up or down among the widgets of its column.
-      const same = list.filter((x) => x.column === w.column);
-      const pos = same.findIndex((x) => x.id === widgetId) + (by.place ?? 0);
-      const other = same[pos];
-      if (!other) return list;
-      const otherAt = list.findIndex((x) => x.id === other.id);
-      const out = [...list];
-      out[at] = other;
-      out[otherAt] = w;
-      return out;
-    });
   const add = () => {
     const made: Widget = {
       id: `new-${Date.now().toString(36)}`,
@@ -209,7 +187,6 @@ export function DashboardPage({
     navigate('#/dashboards');
   };
 
-  const grid = { '--dashboard-columns': columns } as CSSProperties;
   const visibility = visibilityOf(dashboard.shares);
 
   return (
@@ -298,45 +275,18 @@ export function DashboardPage({
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </div>
-          <div className="form-field">
-            <label htmlFor={`${titleId}-layout`}>{t('dashboards.layout')}</label>
-            <select
-              id={`${titleId}-layout`}
-              value={draft.layout}
-              onChange={(e) => {
-                const next = e.target.value as Layout;
-                const last = COLUMNS[next] - 1;
-                setDraft({
-                  ...draft,
-                  layout: next,
-                  widgets: draft.widgets.map((w) => ({ ...w, column: Math.min(w.column, last) })),
-                });
-              }}
-            >
-              {LAYOUTS.map((l) => (
-                <option key={l} value={l}>
-                  {t(`dashboards.layout.${l}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor={`${titleId}-kind`}>{t('dashboards.addKind')}</label>
-            <select
-              id={`${titleId}-kind`}
-              value={adding}
-              onChange={(e) => setAdding(e.target.value as WidgetKind)}
-            >
-              {WIDGET_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {t(`dashboards.kind.${k}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="button" className="button-secondary" onClick={add}>
-            {t('dashboards.add')}
-          </button>
+          <WidgetEditorFields
+            idPrefix={titleId}
+            layout={draft.layout}
+            onLayout={(next) =>
+              setDraft({ ...draft, layout: next, widgets: fitWidgets(draft.widgets, next) })
+            }
+            adding={adding}
+            onAdding={setAdding}
+            kinds={WIDGET_KINDS}
+            boards={boards}
+            onAdd={add}
+          />
           <button type="button" className="button-primary" onClick={() => void save()}>
             {t('dashboards.save')}
           </button>
@@ -370,93 +320,29 @@ export function DashboardPage({
           {dashboard.editable ? t('dashboards.emptyEditable') : t('dashboards.empty')}
         </p>
       ) : (
-        <div className={`dashboard-grid layout-${layout}`} style={grid}>
-          {Array.from({ length: columns }, (_, column) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: columns are positions
-            <div key={column} className="dashboard-column">
-              {widgets
-                .filter((w) => w.column === column)
-                .map((w) => (
-                  <article key={w.id} className="dashboard-widget" aria-label={widgetTitle(t, w)}>
-                    <h2 className="dashboard-widget-title">{widgetTitle(t, w)}</h2>
-                    {editing && (
-                      <div className="dashboard-widget-tools">
-                        <button
-                          aria-label={t('dashboards.tool.settings', { name: widgetTitle(t, w) })}
-                          type="button"
-                          onClick={() => setSettingsOf(w.id)}
-                        >
-                          {t('dashboards.toolShort.settings')}
-                        </button>
-                        <button
-                          aria-label={t('dashboards.tool.up', { name: widgetTitle(t, w) })}
-                          type="button"
-                          onClick={() => move(w.id, { place: -1 })}
-                        >
-                          {t('dashboards.toolShort.up')}
-                        </button>
-                        <button
-                          aria-label={t('dashboards.tool.down', { name: widgetTitle(t, w) })}
-                          type="button"
-                          onClick={() => move(w.id, { place: 1 })}
-                        >
-                          {t('dashboards.toolShort.down')}
-                        </button>
-                        {columns > 1 && (
-                          <>
-                            <button
-                              aria-label={t('dashboards.tool.left', { name: widgetTitle(t, w) })}
-                              type="button"
-                              onClick={() => move(w.id, { column: -1 })}
-                            >
-                              {t('dashboards.toolShort.left')}
-                            </button>
-                            <button
-                              aria-label={t('dashboards.tool.right', { name: widgetTitle(t, w) })}
-                              type="button"
-                              onClick={() => move(w.id, { column: 1 })}
-                            >
-                              {t('dashboards.toolShort.right')}
-                            </button>
-                          </>
-                        )}
-                        <button
-                          aria-label={t('dashboards.tool.remove', { name: widgetTitle(t, w) })}
-                          type="button"
-                          onClick={() => changeWidgets((list) => list.filter((x) => x.id !== w.id))}
-                        >
-                          {t('dashboards.toolShort.remove')}
-                        </button>
-                      </div>
-                    )}
-                    {editing && settingsOf === w.id ? (
-                      <WidgetSettings
-                        widget={w}
-                        boards={boards}
-                        onSave={(title, config) => {
-                          changeWidgets((list) =>
-                            list.map((x) => (x.id === w.id ? { ...x, title, config } : x)),
-                          );
-                          setSettingsOf(null);
-                        }}
-                        onCancel={() => setSettingsOf(null)}
-                      />
-                    ) : editing && w.id.startsWith('new-') ? (
-                      <p className="report-empty">{t('dashboards.unsaved')}</p>
-                    ) : (
-                      <WidgetView
-                        // A new key reads the data again: after a save, and on a wallboard.
-                        key={`${w.id}-${refresh}`}
-                        dashboardId={dashboard.id}
-                        widget={w}
-                        client={client}
-                      />
-                    )}
-                  </article>
-                ))}
-            </div>
-          ))}
-        </div>
+        <WidgetGrid
+          layout={layout}
+          widgets={widgets}
+          editing={editing}
+          settingsOf={settingsOf}
+          onSettingsOf={setSettingsOf}
+          onChange={changeWidgets}
+          boards={boards}
+          checkQuery={(q) => client.checkQuery(q)}
+          renderWidget={(w) =>
+            editing && w.id.startsWith('new-') ? (
+              <p className="report-empty">{t('dashboards.unsaved')}</p>
+            ) : (
+              <WidgetView
+                // A new key reads the data again: after a save, and on a wallboard.
+                key={`${w.id}-${refresh}`}
+                dashboardId={dashboard.id}
+                widget={w}
+                client={client}
+              />
+            )
+          }
+        />
       )}
     </section>
   );

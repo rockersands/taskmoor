@@ -205,7 +205,13 @@ export async function buildCompatSource(db: Kysely<Database>): Promise<CompatSou
     multiple: true,
     context: { options: [{ value: 'alpha' }, { value: 'beta' }, { value: 'gamma' }] },
   });
-  const points = await field({ name: 'Points', type: 'number' });
+  // Every workspace starts with Points (migration 0095).
+  const points = (
+    (await must({ method: 'GET', url: '/api/v1/fields' }, 200)).fields as {
+      id: number;
+      name: string;
+    }[]
+  ).find((f) => f.name === 'Points') as { id: number };
   const reviewer = await field({ name: 'Reviewer', type: 'user' });
   const topics = await field({ name: 'Topics', type: 'labels' });
   const notes = await field({ name: 'Notes', type: 'paragraph' });
@@ -319,13 +325,14 @@ export async function buildCompatSource(db: Kysely<Database>): Promise<CompatSou
   }
   for (const t of made.filter((_, i) => i % 3 === 0)) {
     const transitions = (await must({ method: 'GET', url: `/api/v1/tickets/${t.key}/transitions` }))
-      .transitions as { id: number }[];
-    const first = transitions[0];
-    if (first) {
+      .transitions as { id: number; name: string }[];
+    // The default workflow's first transition leads to New, where these tickets already are.
+    const start = transitions.find((x) => x.name === 'Active');
+    if (start) {
       await must({
         method: 'POST',
         url: `/api/v1/tickets/${t.key}/transitions`,
-        payload: { transitionId: first.id },
+        payload: { transitionId: start.id },
       });
     }
   }

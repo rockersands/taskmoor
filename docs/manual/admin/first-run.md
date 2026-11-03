@@ -104,7 +104,7 @@ See [the operator CLI](cli.md).
 
 ## What to do next
 
-Everything below lives under **Settings**, in the **Administration** section that site
+Everything below lives under **Administration**, the section that site
 administrators see.
 
 1. **Check the server.** **System status** shows the version and roles, the database, the data

@@ -5,10 +5,26 @@ export interface HomeTicket {
   id: number;
   key: string;
   summary: string;
+  ticketType?: { name: string; icon?: string | null };
+  priority?: { name: string; level?: number } | null;
   status: { name: string; stage: 'new' | 'active' | 'closed' };
   track: { key: string; name: string };
   updatedAt: string;
 }
+
+/** A track as the home page lists it (ADR-114). */
+export interface HomeTrack {
+  id: number;
+  key: string;
+  name: string;
+  type: string;
+}
+
+/** The tracks the person can see; a separate call so each list keeps loading on its own. */
+export const homeTracks = async (): Promise<HomeTrack[]> => {
+  const answer = await api<{ tracks?: HomeTrack[] }>('/tracks');
+  return Array.isArray(answer.tracks) ? answer.tracks : [];
+};
 
 /** The endpoints the home page uses. Stories and tests pass their own. */
 export interface HomeClient {

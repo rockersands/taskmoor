@@ -317,6 +317,7 @@ export function fakeDashboardClient(
       for (const d of client.dashboards) d.isDefault = d.id === id;
     },
     widget: async (_dashboard, widgetId) => (widgetId in data ? data[widgetId] : null),
+    checkQuery: async (query) => !query.includes('nope'),
     boards: async () => [
       { id: 7, name: 'Checkout board', kind: 'scrum' },
       { id: 8, name: 'Support flow', kind: 'kanban' },

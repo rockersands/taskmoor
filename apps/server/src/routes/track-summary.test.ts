@@ -167,6 +167,8 @@ describe('track summary (M1-064)', () => {
           created_at: createdAt,
           updated_at: createdAt,
           status_id: status[stage] as number,
+          // Only an import can leave a ticket with no priority (CORE-014).
+          ...(prio === null ? { priority_id: null } : {}),
           ...(closed !== null
             ? { close_reason_id: closeReason, closed_at: new Date(Date.now() - closed * DAY) }
             : {}),

@@ -60,7 +60,7 @@ export interface EvalWorld {
 const DAY = 86_400_000;
 const at = (daysAgo: number) => new Date(EVAL_NOW.getTime() - daysAgo * DAY);
 
-/** The transitions of the default workflow (migration 0024) that reach each status. */
+/** The transitions of the dataset's workflow (`seedEvalDataset`) that reach each status. */
 const PATH: Record<TicketSpec['status'], number[]> = {
   New: [],
   Active: [1],
@@ -204,18 +204,67 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
       }[]
     ).map((r) => [r.name, r.id]),
   );
+  // Every workspace starts with it (migration 0095).
   const points = (
+    (await ok(admin({ method: 'GET', url: '/api/v1/fields' }), 'fields')).fields as {
+      id: number;
+      name: string;
+    }[]
+  ).find((f) => f.name === 'Points')?.id as number;
+
+  // The dataset's tickets close for chosen reasons, so its tracks use a workflow that asks why,
+  // as an administrator can set up. The default workflow always closes as Completed.
+  const statuses = Object.fromEntries(
     (
-      await ok(
-        admin({
-          method: 'POST',
-          url: '/api/v1/fields',
-          payload: { name: 'Points', type: 'number' },
-        }),
-        'Points',
-      )
-    ).field as { id: number }
-  ).id;
+      (await ok(admin({ method: 'GET', url: '/api/v1/statuses' }), 'statuses')).statuses as {
+        id: number;
+        name: string;
+      }[]
+    ).map((s) => [s.name, s.id]),
+  );
+  const [fresh, active, review, closed] = [
+    statuses.New as number,
+    statuses.Active as number,
+    statuses['In Review'] as number,
+    statuses.Closed as number,
+  ];
+  const workflow = await ok(
+    admin({
+      method: 'POST',
+      url: '/api/v1/workflows',
+      payload: {
+        name: 'Eval workflow',
+        definition: {
+          initialStatusId: fresh,
+          statuses: [fresh, active, review, closed].map((statusId) => ({ statusId })),
+          transitions: [
+            { id: 1, name: 'Start', from: [fresh], to: active },
+            { id: 2, name: 'Send to review', from: [active], to: review },
+            {
+              id: 4,
+              name: 'Close',
+              from: 'any',
+              to: closed,
+              layout: ['close-reason'],
+              checks: [{ type: 'field-required', field: 'close-reason' }],
+            },
+          ],
+        },
+      },
+    }),
+    'workflow',
+  );
+  const workflowMap = await ok(
+    admin({
+      method: 'POST',
+      url: '/api/v1/workflow-maps',
+      payload: {
+        name: 'Eval map',
+        defaultWorkflowId: (workflow.workflow as { id: number }).id,
+      },
+    }),
+    'workflow map',
+  );
 
   const tracks: Record<string, number> = {};
   const releases: Record<string, number> = {};
@@ -232,6 +281,14 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     );
     const id = (body.track as { id: number }).id;
     tracks[t.key] = id;
+    await ok(
+      admin({
+        method: 'PATCH',
+        url: `/api/v1/tracks/${id}`,
+        payload: { workflowMapId: (workflowMap.workflowMap as { id: number }).id },
+      }),
+      `map of ${t.key}`,
+    );
     for (const [role, list] of [
       ['Members', t.members],
       ['Viewers', t.viewers],

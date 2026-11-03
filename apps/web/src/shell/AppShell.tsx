@@ -9,7 +9,9 @@ import {
 import { UpdateNotice } from '../admin/UpdateNotice';
 import { useT } from '../i18n/I18nProvider';
 import { UpdateBanner } from '../meta/VersionGate';
+import { startGlassLens } from './glassLens';
 import { MenuIcon } from './icons';
+import { leaveMotion, useLeaveMotion } from './motion';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
 
@@ -34,11 +36,14 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
+  const drawerRef = useLeaveMotion(drawer);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     menuButton.current?.focus();
   }, []);
+
+  useEffect(() => startGlassLens(), []);
 
   // Growing past the compact breakpoint swaps the drawer for the sidebar.
   useEffect(() => {
@@ -119,6 +124,7 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
       {compact && drawerOpen && (
         <>
           <button
+            ref={leaveMotion}
             type="button"
             className="shell-backdrop"
             aria-label={t('shell.closeNavigation')}
@@ -126,7 +132,7 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
             onClick={closeDrawer}
           />
           <div
-            ref={drawer}
+            ref={drawerRef}
             id="shell-drawer"
             className="shell-drawer"
             role="dialog"

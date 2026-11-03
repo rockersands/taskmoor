@@ -1,8 +1,8 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/server/src/authz/track-admins.ts, docs/adr/0118-track-invitations.md, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
-accessed: 2026-10-30
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, docs/adr/0118-track-invitations.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Permissions and access
@@ -19,14 +19,19 @@ Groups and people are managed on [People and groups](people-and-groups.md).
 
 ## Where to find it
 
-- **Settings** > **Permissions** (`#/admin/permissions`) has three parts: **Roles**,
+- **Administration** > **Permissions** (`#/admin/permissions`) has three parts: **Roles**,
   **Access policies** and **Global permissions**.
-- **Settings** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
+- **Administration** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
   groups in each role.
-- Visibility policies and the permission explainer have no page yet; they are in the API.
+- **Administration** > **Visibility policies** (`#/admin/visibility`) manages policies and their
+  levels; see [Visibility levels](#visibility-levels).
+- **Administration** > **Permission explainer** (`#/admin/permission-explainer`) says who can do what
+  and why; see [How Taskmoor decides](#how-taskmoor-decides).
 
-The **Administration** part of **Settings**, and most administration pages, are for site
-administrators only. Configuration administrators do their work through the API for now.
+[Administration](administration.md) is for site administrators. A configuration administrator
+sees its **Tracks and setup** pages and does that work in the web app; the rest of what they may do
+(roles, access policies, visibility policies) has its pages among those of site administrators, and
+stays in the API for them.
 
 ## Site and configuration administrators
 
@@ -78,9 +83,9 @@ policy can take away; see [Inviting people and running a track](invitations.md).
 Under **Roles**, **Add a role** asks for a **Role name** and **What the role does**. **Change**
 renames, **Delete** removes a role no policy uses.
 
-To put people in a role, open **Settings** > **Tracks**, **Manage** the track, choose the
+To put people in a role, open **Administration** > **Tracks**, **Manage** the track, choose the
 **Role**, then **Give the role to a person** or **Give the role to a group**. Anyone with
-**Run the track** in that track may do this, for the roles they may give, from **Settings** >
+**Run the track** in that track may do this, for the roles they may give, from **Administration** >
 **Tracks you run**, without being a site administrator.
 
 ## Access policies
@@ -160,8 +165,32 @@ visibility policy, or none.
   still in use is deleted only with a replacement level (or none).
 - A policy holds up to 50 levels by default (guardrail `visibility_levels_per_track`).
 
-The ticket view shows **Visibility level** ("Everyone" when there is none). Policies and levels
-are managed through the API:
+The ticket view shows **Visibility level** ("Everyone" when there is none).
+
+### Managing policies and levels
+
+Site administrators open **Administration** > **Visibility policies**:
+
+1. **Add a visibility policy** with a **Policy name**.
+2. In the policy's panel, **Add a level** with a **Level name**. **Change** names it and says what it
+   is for; **Up** and **Down** set the order people choose from.
+3. **New tickets take** chooses the default level, or **No level**. A ticket moved into the track takes
+   it too.
+4. On a level, choose **Who** and press **Add** to add a member: a role, a group, a person, the track's
+   owner, the requester, the assignee, anyone signed in, or anyone. **Remove** takes a member away.
+5. **Delete level**: when tickets are at that level, the page says how many and asks where they go,
+   under **Move them to**: another level, or no level, which shows them to everyone who sees the track.
+   The ticket's history records it.
+6. **Delete policy** works only when no track uses it.
+
+A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses), which
+configuration administrators can use too.
+
+People and groups named in a field of the ticket can be members only through the API. So can a
+local-mode track's own policy. A configuration administrator may also change policies through the
+API; the page is for site administrators.
+
+The same through the API:
 
 | Method and path | What it does |
 |---|---|
@@ -214,7 +243,14 @@ administrator flag change, so a removed permission stops working at the next req
 
 ## Asking why: the explainer
 
-A site administrator can ask why someone may or may not do something:
+A site administrator can ask why someone may or may not do something. On **Administration** >
+**Permission explainer**, find the person (empty asks about a visitor who is not signed in), choose
+the **Permission** and the **Track**, or type a **Ticket key**, and press **Explain**. The answer says
+whether they can and what gives it: a role, a group, a grant by name, being the track's owner, being
+an administrator. It also says when an archived or trashed track limits them, which per-ticket grants
+may apply, and for a ticket whether its visibility level lets them in.
+
+The same through the API:
 
 ```http
 GET /api/v1/permissions/explain?userId=42&trackId=7&permission=edit_tickets
@@ -233,7 +269,7 @@ every permission code and grantee kind.
 
 ## Network access: the IP allowlist
 
-**Settings**, **Network access** limits where people may connect from. With **Only allow these
+**Administration**, **Network access** limits where people may connect from. With **Only allow these
 addresses** on, the web app this server serves and every API, administration and MCP included,
 answer only requests from the addresses and ranges listed: one per line, an IPv4 or IPv6
 address or a range such as `203.0.113.0/24` or `2001:db8::/32`, with a note after `#` if you

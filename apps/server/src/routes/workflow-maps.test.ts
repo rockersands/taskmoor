@@ -293,7 +293,7 @@ describe('workflow maps (M1-028)', () => {
     ]);
     expect(await offered(bug)).toEqual(['Triage']);
     expect(await offered(chore)).toEqual(['Pick']);
-    expect(await offered(feature)).toEqual(['Start', 'Close']);
+    expect(await offered(feature)).toEqual(['New', 'Active', 'In Review', 'Closed']);
     // A transition of the other workflow is not this ticket's.
     expect((await transition(bug, 6)).json()).toEqual({
       error: 'transition_unavailable',

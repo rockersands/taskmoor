@@ -69,7 +69,11 @@ describe('directory administration (M1-082)', () => {
     // The first can only go down, the last only up.
     expect(within(office).queryByRole('button', { name: 'Move Head office up' })).toBeNull();
     expect(within(lab).queryByRole('button', { name: 'Move Research lab down' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Administration',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('[IAM-005] adds a directory after testing the connection', async () => {
@@ -318,9 +322,9 @@ describe('directory administration (M1-082)', () => {
     expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(2);
   });
 
-  it('[IAM-005] is linked from Settings for site administrators only', async () => {
+  it('[IAM-005] is listed in Administration for site administrators only', async () => {
     stubBackend({});
-    window.location.hash = '#/settings';
+    window.location.hash = '#/admin';
     const { unmount } = render(<App session={ADMIN} />);
     expect(screen.getByRole('link', { name: 'LDAP and Active Directory' })).toHaveAttribute(
       'href',
@@ -368,7 +372,7 @@ describe('directory administration (M1-082)', () => {
     const errors: Error[] = [];
     render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
     const main = screen.getByRole('main');
-    await within(main).findByRole('list');
+    await within(main).findAllByText(/Head office/);
     const buttons = within(main).getAllByRole('button');
     // The new-directory form, an editor and a history, so every string is on screen.
     await user.click(

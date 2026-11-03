@@ -136,7 +136,7 @@ needs a person at a browser. `/api/v1/tracks/:id/roles` and the role-actor route
 
 ### Web pages
 
-Settings gains **Tracks you run** (`#/manage/tracks`), listing what `allowedTracks('administer_track')`
+Administration (first Settings; moved with ADR-114) gains **Tracks you run** (`#/manage/tracks`), listing what `allowedTracks('administer_track')`
 returns. Each leads to `#/manage/tracks/:id`: who holds which role, giving and taking roles, the
 invite dialog and the waiting invitations. It reads a person's name search from the existing
 `GET /people/mentionable`, so **See people and groups** decides whether a manager can search by name.

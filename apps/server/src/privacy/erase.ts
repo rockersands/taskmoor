@@ -74,6 +74,7 @@ const PERSONAL_TABLES = [
   'password_link',
   'user_identity',
   'user_preference',
+  'tutorial_progress',
   'notification_preference',
   'user_property',
   'saved_search_star',

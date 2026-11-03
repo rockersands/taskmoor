@@ -16,6 +16,8 @@ import { useT } from '../i18n/I18nProvider';
 import { replaceRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
+import { BasicFilters } from './BasicFilters';
 import {
   type BasicQuery,
   basicToQuery,
@@ -32,6 +34,7 @@ import {
   type SearchClient,
   type SearchField,
   type SearchTicket,
+  type SearchTrack,
   searchClient,
 } from './client';
 import { loadColumns, saveColumns } from './columns';
@@ -70,8 +73,8 @@ export function queryFromHash(hash: string): string {
 }
 
 /**
- * Searching tickets (M1-041; QRY-001): a basic mode of tracks, stages, assignment and words, and
- * an advanced mode where the query is typed with suggestions at the caret and errors shown where
+ * Searching tickets (M1-041; QRY-001, QRY-014): a basic mode of tracks, stages, assignment and
+ * words, with dates and other fields brought in as filters, and an advanced mode where the query is typed with suggestions at the caret and errors shown where
  * they are. Basic choices become a query; a query within the basic mode shows as its choices.
  * The results (M1-042; QRY-014, QRY-015) show in the person's columns, edit in place and export
  * as CSV or JSON.
@@ -93,7 +96,7 @@ export function SearchPage({
   const [text, setText] = useState(start || basicToQuery(EMPTY_BASIC));
   const [tooMuch, setTooMuch] = useState(false);
   const [results, setResults] = useState<Results>({ status: 'idle' });
-  const [tracks, setTracks] = useState<{ key: string; name: string }[]>([]);
+  const [tracks, setTracks] = useState<SearchTrack[]>([]);
   const [fields, setFields] = useState<SearchField[]>([]);
   const { session } = useSession();
   const userId = session.status === 'signed-in' ? session.user.id : 0;
@@ -138,6 +141,21 @@ export function SearchPage({
     },
     [client, expired, t],
   );
+
+  // An edit in the ticket pop-up over the results: the rows shown, read again where they stand.
+  useTicketChanges(() => {
+    if (results.status !== 'loaded') return;
+    const { query } = results;
+    readShownPages((cursor) => client.search(query, cursor), results.page.tickets.length).then(
+      (page) =>
+        setResults((current) =>
+          current.status === 'loaded' && current.query === query
+            ? { status: 'loaded', page, more: page.next !== null, query }
+            : current,
+        ),
+      () => {},
+    );
+  });
 
   /** Shows a saved search: its query in the mode that can show it, its columns, its results. */
   const openSaved = (saved: SavedSearch) => {
@@ -229,6 +247,7 @@ export function SearchPage({
         <BasicForm
           basic={basic}
           tracks={tracks}
+          client={client}
           onChange={setBasic}
           onSearch={(next) => searchFor(basicToQuery(next))}
         />
@@ -289,11 +308,13 @@ export function SearchPage({
 function BasicForm({
   basic,
   tracks,
+  client,
   onChange,
   onSearch,
 }: {
   basic: BasicQuery;
-  tracks: { key: string; name: string }[];
+  tracks: SearchTrack[];
+  client: SearchClient;
   onChange: (basic: BasicQuery) => void;
   onSearch: (basic: BasicQuery) => void;
 }) {
@@ -301,15 +322,51 @@ function BasicForm({
   const id = useId();
   const toggle = <T,>(list: T[], value: T, on: boolean) =>
     on ? [...list, value] : list.filter((v) => v !== value);
+  const empty =
+    basic.tracks.length === 0 &&
+    basic.stages.length === 0 &&
+    basic.assignee === 'any' &&
+    basic.text === '' &&
+    basic.choices === undefined &&
+    basic.dates === undefined;
   return (
     <form
-      className="search-basic"
+      className="search-basic glass-card"
       aria-label={t('search.basic')}
       onSubmit={(event) => {
         event.preventDefault();
         onSearch(basic);
       }}
     >
+      <div className="search-basic-common">
+        <div className="form-field">
+          <label htmlFor={`${id}-text`} className="form-label">
+            {t('search.text')}
+          </label>
+          <input
+            id={`${id}-text`}
+            type="search"
+            value={basic.text}
+            onChange={(event) => onChange({ ...basic, text: event.target.value })}
+          />
+        </div>
+        <div className="form-field">
+          <label htmlFor={`${id}-assignee`} className="form-label">
+            {t('search.assignee')}
+          </label>
+          <select
+            id={`${id}-assignee`}
+            value={basic.assignee}
+            onChange={(event) =>
+              onChange({ ...basic, assignee: event.target.value as BasicQuery['assignee'] })
+            }
+          >
+            <option value="any">{t('search.assignee.any')}</option>
+            <option value="me">{t('search.assignee.me')}</option>
+            <option value="none">{t('search.assignee.none')}</option>
+          </select>
+        </div>
+      </div>
       <fieldset className="search-choices">
         <legend>{t('search.tracks')}</legend>
         {tracks.map((track) => (
@@ -350,37 +407,16 @@ function BasicForm({
           </div>
         ))}
       </fieldset>
-      <div className="form-field">
-        <label htmlFor={`${id}-assignee`} className="form-label">
-          {t('search.assignee')}
-        </label>
-        <select
-          id={`${id}-assignee`}
-          value={basic.assignee}
-          onChange={(event) =>
-            onChange({ ...basic, assignee: event.target.value as BasicQuery['assignee'] })
-          }
-        >
-          <option value="any">{t('search.assignee.any')}</option>
-          <option value="me">{t('search.assignee.me')}</option>
-          <option value="none">{t('search.assignee.none')}</option>
-        </select>
-      </div>
-      <div className="form-field">
-        <label htmlFor={`${id}-text`} className="form-label">
-          {t('search.text')}
-        </label>
-        <input
-          id={`${id}-text`}
-          type="search"
-          value={basic.text}
-          onChange={(event) => onChange({ ...basic, text: event.target.value })}
-        />
-      </div>
+      <BasicFilters basic={basic} tracks={tracks} client={client} onChange={onChange} />
       <div className="form-actions">
         <button type="submit" className="button-primary">
           {t('search.run')}
         </button>
+        {!empty && (
+          <button type="button" className="button-quiet" onClick={() => onChange(EMPTY_BASIC)}>
+            {t('search.filter.clearAll')}
+          </button>
+        )}
       </div>
     </form>
   );

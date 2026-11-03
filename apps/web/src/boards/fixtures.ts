@@ -45,7 +45,7 @@ export const BOARD: Board = {
     },
   ],
   boardFilters: [
-    { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()', description: '' },
+    { id: 'mine', name: 'My work', query: 'assignee = currentUser()', description: '' },
     { id: 'recent', name: 'Recently updated', query: 'updated >= -1d', description: '' },
   ],
   boardFilterDisplay: 'buttons',
@@ -153,22 +153,36 @@ const card = (
   colour: '#2f6fdb',
   fields: { assignee: null, priority: { id: 3, name: 'Normal' } },
   daysInColumn: n % 4,
+  mayEdit: true,
   mine: false,
   ...extra,
 });
 
+/** The person looking at the fake board. */
+export const VIEWER_ID = 5;
+
 export const CARDS: FakeCard[] = [
   card(12, 'Checkout fails for expired cards', 'Active', 'expedite', {
     colour: '#c4314b',
-    fields: { assignee: { id: 5, name: 'Kalo Smith' }, priority: { id: 1, name: 'Urgent' } },
+    fields: {
+      assignee: { id: 5, name: 'Kalo Smith' },
+      priority: { id: 1, name: 'Urgent', level: 1 },
+      points: null,
+    },
+    daysInColumn: 4,
     mine: true,
   }),
-  card(19, 'Refunds show the wrong currency', 'New', 'other'),
+  card(19, 'Refunds show the wrong currency', 'New', 'other', {
+    fields: { assignee: null, priority: { id: 3, name: 'Normal', level: 4 }, points: 3 },
+    daysInColumn: 0,
+  }),
   card(21, 'Saved addresses lose the postcode', 'New', 'other', {
     fields: { assignee: { id: 5, name: 'Kalo Smith' }, priority: { id: 3, name: 'Normal' } },
     mine: true,
   }),
-  card(23, 'Gift cards cannot be combined', 'Active', 'other'),
+  card(23, 'Gift cards cannot be combined', 'Active', 'other', {
+    fields: { assignee: { id: 6, name: 'Rin Okafor' }, priority: { id: 3, name: 'Normal' } },
+  }),
   card(24, 'Apple Pay button misaligned on small screens', 'Active', 'other'),
 ];
 
@@ -204,7 +218,10 @@ export const TEAMS = [
 
 export interface FakeBoardClient extends BoardClient {
   moves: MoveRequest[];
+  retitles: { ticket: number; summary: string; version: number | undefined }[];
   dataCalls: string[][];
+  /** The person filter of each data request. */
+  peopleCalls: string[][];
   patches: BoardPatch[];
 }
 
@@ -214,8 +231,12 @@ export function fakeBoardClient(
     board?: Partial<Board>;
     lanes?: BoardLane[];
     numberFields?: NumberField[];
+    /** A column whose transition needs a close reason, as the server's check says. */
+    closeReasonRequired?: string;
     /** Time zones the browser offers that this server refuses (older time zone data). */
     unknownTimeZones?: string[];
+    /** What a new title meets on the server, instead of being saved. */
+    retitleRefusal?: () => Error;
   } = {},
 ): FakeBoardClient {
   let board: Board = { ...BOARD, ...options.board };
@@ -236,7 +257,9 @@ export function fakeBoardClient(
   ];
   const client: FakeBoardClient = {
     moves: [],
+    retitles: [],
     dataCalls: [],
+    peopleCalls: [],
     patches: [],
     list: async () => boards,
     create: async (input) => {
@@ -251,6 +274,7 @@ export function fakeBoardClient(
       return created;
     },
     board: async () => board,
+    addColumnPath: async () => board,
     settings: async () => ({
       board,
       statuses: STATUSES.map((s) => ({
@@ -300,11 +324,31 @@ export function fakeBoardClient(
     },
     numberFields: async () => numberFields,
     teams: async () => TEAMS,
-    data: async (_id, filters): Promise<BoardData> => {
+    data: async (_id, filters, _sprints, people = []): Promise<BoardData> => {
       client.dataCalls.push([...filters]);
+      client.peopleCalls.push([...people]);
       const all = [...cards].sort((a, b) => (a.rank < b.rank ? -1 : 1));
+      const assigneeOf = (c: FakeCard) =>
+        (c.fields.assignee as { id: number; name: string } | null | undefined) ?? null;
+      const forPerson = (c: FakeCard) => {
+        const assignee = assigneeOf(c);
+        return (
+          people.length === 0 ||
+          (assignee === null
+            ? people.includes('none')
+            : people.includes(String(assignee.id)) ||
+              (people.includes('me') && assignee.id === VIEWER_ID))
+        );
+      };
       const shown = all.filter(
-        (c) => columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine),
+        (c) =>
+          columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine) && forPerson(c),
+      );
+      const assigned = new Map(
+        all.flatMap((c) => {
+          const assignee = assigneeOf(c);
+          return assignee ? [[assignee.id, assignee.name] as const] : [];
+        }),
       );
       return {
         columns: board.columns.map((c) => {
@@ -331,6 +375,14 @@ export function fakeBoardClient(
         truncated: false,
         warnings: [],
         activeFilters: [...filters],
+        people: {
+          viewerId: VIEWER_ID,
+          assignees: [...assigned]
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          unassigned: all.some((c) => assigneeOf(c) === null),
+          more: false,
+        },
       };
     },
     manageWorkflow: async (_id, managed) => {
@@ -346,8 +398,43 @@ export function fakeBoardClient(
       };
       return { ok: true, board };
     },
+    transitions: async () => [
+      {
+        id: TRANSITIONS.find((t) => t.to === 'Closed')?.id ?? 0,
+        name: 'Close',
+        to: { id: STATUS.Closed, name: 'Closed', stage: 'closed' },
+        layout: ['close-reason'],
+      },
+    ],
+    closeReasons: async () => [
+      { id: 1, name: 'Fixed' },
+      { id: 2, name: 'Duplicate' },
+    ],
+    priorities: async () => [{ id: 1, name: 'High' }],
+    retitle: async (ticket, summary, version) => {
+      client.retitles.push({ ticket, summary, version });
+      if (options.retitleRefusal) throw options.retitleRefusal();
+      const card = cards.find((c) => c.id === ticket) as FakeCard;
+      card.summary = summary;
+      card.version += 1;
+      return { summary, version: card.version };
+    },
     move: async (_id, move): Promise<MoveOutcome> => {
       client.moves.push(move);
+      if (options.closeReasonRequired && move.columnId === options.closeReasonRequired) {
+        if (!move.fields?.['close-reason']) {
+          return {
+            kind: 'refused',
+            code: 'transition_refused',
+            refusal: {
+              error: 'transition_refused',
+              by: 'check',
+              name: 'field-required',
+              check: { type: 'field-required', field: 'close-reason', configured: false },
+            },
+          };
+        }
+      }
       const target = board.columns.find((c) => c.id === move.columnId);
       const moving = cards.find((c) => c.id === move.ticket);
       if (!target || !moving) return { kind: 'refused', code: 'invalid_fields' };

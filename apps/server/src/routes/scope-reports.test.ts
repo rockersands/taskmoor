@@ -167,7 +167,7 @@ describe('release and outcome reports (M1-062)', () => {
     points = (
       await call(
         'admin',
-        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Points', type: 'number' } },
+        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Pts', type: 'number' } },
         201,
       )
     ).field.id;
@@ -183,7 +183,7 @@ describe('release and outcome reports (M1-062)', () => {
           name: 'Releases',
           kind: 'scrum',
           trackId: tracks.RA,
-          source: { query: 'track IN (RA, RB) AND summary ~ rel' },
+          source: { query: 'track = RA AND summary ~ rel' },
           columns,
           sprintSettings: {
             estimation: { statistic: 'field', fieldId: points },
@@ -197,7 +197,7 @@ describe('release and outcome reports (M1-062)', () => {
     kanban = (
       await post(
         '/api/v1/boards',
-        { name: 'Flow', kind: 'kanban', trackId: tracks.RA, source: { query: 'track = RA' } },
+        { name: 'Flow', kind: 'kanban', trackId: tracks.RB, source: { query: 'track = RB' } },
         201,
       )
     ).board.id;
@@ -225,7 +225,7 @@ describe('release and outcome reports (M1-062)', () => {
     await under('d', 'outcome');
     await under('c', 'outcome');
     const one = (await post(`/api/v1/boards/${board}/sprints`, { name: 'One' }, 201)).sprint.id;
-    await post(`/api/v1/sprints/${one}/tickets`, { tickets: [t.a?.key, t.b?.key, t.c?.key] });
+    await post(`/api/v1/sprints/${one}/tickets`, { tickets: [t.a?.key, t.b?.key] });
     await post(`/api/v1/sprints/${one}/start`, { endAt: '2030-01-15T09:00:00Z' });
     await close('a');
     // d joins the release while the first sprint runs.

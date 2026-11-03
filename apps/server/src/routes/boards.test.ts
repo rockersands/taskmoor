@@ -31,6 +31,7 @@ interface Card {
   status: { id: number; name: string };
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  mayEdit: boolean;
 }
 interface Data {
   columns: { id: string; name: string; count: number; shown: number; wip: string | null }[];
@@ -70,6 +71,11 @@ describe('boards (M1-043)', () => {
   const T = (name: string) => tickets[name] as { id: number; key: string };
 
   async function createBoard(who: string, body: Record<string, unknown>) {
+    // A track has one board (ADR-116): each test starts its track's board afresh.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', body.trackId as number)
+      .execute();
     const res = await post(who, '/api/v1/boards', body);
     expect(res.statusCode, res.body).toBe(201);
     return res.json().board as { id: number; columns: { id: string }[]; version: number };
@@ -114,6 +120,7 @@ describe('boards (M1-043)', () => {
       ['alice', false],
       ['bob', false],
       ['carol', false],
+      ['vera', false],
     ] as const) {
       const row = await database.db
         .insertInto('app_user')
@@ -143,6 +150,7 @@ describe('boards (M1-043)', () => {
           ['alice', 'Members'],
           ['bob', 'Members'],
           ['carol', 'Administrators'],
+          ['vera', 'Viewers'],
         ],
       ],
       [
@@ -181,24 +189,24 @@ describe('boards (M1-043)', () => {
     }
     await ticket('a1', 'BA', { priorityId: priority.Urgent, assigneeId: users.alice?.id });
     await ticket('a2', 'BA', { assigneeId: users.bob?.id });
-    await ticket('b1', 'BB', { labels: ['blue'] });
-    await ticket('b2', 'BB', { labels: ['blue'], assigneeId: users.alice?.id });
-    await ticket('c1', 'BC', { priorityId: priority.Urgent });
-    await ticket('c2', 'BC');
+    await ticket('b1', 'BA', { labels: ['blue'] });
+    await ticket('b2', 'BA', { labels: ['blue'], assigneeId: users.alice?.id });
+    await ticket('c1', 'BA', { priorityId: priority.Urgent, labels: ['far'] });
+    await ticket('c2', 'BA', { labels: ['far'] });
   });
   afterAll(async () => {
     await app.close();
   });
 
-  it('[AGL-001] shows the tickets of every track its query covers, in rank order', async () => {
+  it('[AGL-001] shows the tickets of its track, in rank order', async () => {
     const board = await createBoard('alice', {
       name: 'Three tracks',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
     });
-    // Default columns: one per status stage of the board's workflows.
-    expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+    // Default columns: one per status of the board's workflows, from new to closed.
+    expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);
     const d = await data('alice', board.id);
     expect(d.cards.map((c) => c.key)).toEqual(
       ['a1', 'a2', 'b1', 'b2', 'c1', 'c2'].map((n) => T(n).key),
@@ -206,6 +214,7 @@ describe('boards (M1-043)', () => {
     expect(d.columns.map((c) => [c.name, c.count])).toEqual([
       ['New', 6],
       ['Active', 0],
+      ['In Review', 0],
       ['Closed', 0],
     ]);
     // The board's statuses: those of the default workflow, each in a column.
@@ -227,18 +236,135 @@ describe('boards (M1-043)', () => {
     expect(created.payload).toMatchObject({ name: 'Three tracks', kind: 'kanban' });
   });
 
-  it('[QRY-008] never shows or counts a ticket the viewer may not see', async () => {
+  it('[QRY-008] [AGL-001] never shows a board or a ticket of a track the viewer may not see', async () => {
     const board = await createBoard('alice', {
-      name: 'Shared view',
+      name: 'Hidden',
       kind: 'kanban',
-      trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      trackId: tracks.BC,
     });
-    const d = await data('bob', board.id);
-    expect(d.cards.map((c) => c.key)).toEqual(['a1', 'a2', 'b1', 'b2'].map((n) => T(n).key));
-    expect(d.columns[0]?.count).toBe(4);
-    // Bob does not browse BC: the board still names it, and shows him the rest.
-    expect((await data('alice', board.id)).columns[0]?.count).toBe(6);
+    // Bob does not browse BC: neither the board nor its read answers him.
+    expect((await get('bob', `/api/v1/boards/${board.id}`)).statusCode).toBe(404);
+    expect((await get('bob', `/api/v1/tracks/${tracks.BC}/board`)).statusCode).toBe(404);
+    expect((await get('alice', `/api/v1/boards/${board.id}`)).statusCode).toBe(200);
+  });
+
+  it('[AGL-001] keeps one board per track, inside the track (ADR-116)', async () => {
+    const first = await createBoard('alice', { name: 'One', kind: 'kanban', trackId: tracks.BB });
+    expect(first.columns.length).toBeGreaterThan(0);
+    const second = await post('alice', '/api/v1/boards', {
+      name: 'Two',
+      kind: 'scrum',
+      trackId: tracks.BB,
+    });
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toEqual({ error: 'track_has_board', boardId: first.id });
+    // No track, and a query that names none, is refused.
+    const nowhere = await post('alice', '/api/v1/boards', {
+      name: 'Mine',
+      kind: 'kanban',
+      source: { query: 'assignee = currentUser()' },
+    });
+    expect(nowhere.statusCode).toBe(400);
+    expect(nowhere.json().fields).toEqual({ trackId: 'required' });
+    // Across tracks is refused, at creation and when changed afterwards.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BC as number)
+      .execute();
+    const across = await post('alice', '/api/v1/boards', {
+      name: 'Both',
+      kind: 'kanban',
+      trackId: tracks.BC,
+      source: { query: 'track IN (BB, BC)' },
+    });
+    expect(across.json().fields).toEqual({ source: 'outside_track' });
+    const widened = await patch('alice', `/api/v1/boards/${first.id}`, {
+      source: { query: 'track = BC' },
+    });
+    expect(widened.json().fields).toEqual({ source: 'outside_track' });
+    // A query confined to the track names the track by itself.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BB as number)
+      .execute();
+    const named = await post('alice', '/api/v1/boards', {
+      name: 'Named',
+      kind: 'kanban',
+      source: { query: 'track = BB AND labels = blue' },
+    });
+    expect(named.statusCode, named.body).toBe(201);
+    expect(named.json().board.location).toMatchObject({ type: 'track' });
+  });
+
+  it('[AGL-002] says when a column cannot be reached, and lets an administrator fix it', async () => {
+    const board = await createBoard('admin', { name: 'Reach', kind: 'kanban', trackId: tracks.BC });
+    const current = (await get('admin', `/api/v1/boards/${board.id}`)).json();
+    expect(Object.values(current.reach.columns)).toEqual(['ok', 'ok', 'ok', 'ok']);
+    expect(current.reach.otherTracks).toContain('Track BA');
+    const added = await patch('admin', `/api/v1/boards/${board.id}`, {
+      columns: [...current.board.columns, { id: 'extra', name: 'Parked', statusIds: [] }],
+    });
+    expect(added.statusCode, added.body).toBe(200);
+    // A shared workflow never changes by itself; the read says so at once.
+    const read = (await get('alice', `/api/v1/boards/${board.id}`)).json();
+    expect(read.reach.columns.extra).toBe('no_status');
+    expect(read.board.managesWorkflow).toBe(false);
+    expect(read.reach.mayFix).toBe(false);
+    const refused = await post('alice', `/api/v1/boards/${board.id}/columns/extra/path`, {});
+    expect(refused.statusCode, refused.body).toBe(403);
+    // An administrator adds the path: a status, a new version, and any card can go there.
+    const fixed = await post('admin', `/api/v1/boards/${board.id}/columns/extra/path`, {});
+    expect(fixed.statusCode, fixed.body).toBe(200);
+    const after = (await get('admin', `/api/v1/boards/${board.id}`)).json();
+    expect(after.reach.columns.extra).toBe('ok');
+    const column = after.board.columns.find((c: { id: string }) => c.id === 'extra');
+    expect(column.statusIds).toHaveLength(1);
+    const ticket = await post('admin', '/api/v1/tickets', { track: 'BC', summary: 'To park' });
+    const moved = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: ticket.json().ticket.id,
+      columnId: 'extra',
+    });
+    expect(moved.statusCode, moved.body).toBe(200);
+    const back = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: ticket.json().ticket.id,
+      columnId: after.board.columns[0].id,
+    });
+    expect(back.statusCode, back.body).toBe(200);
+  });
+
+  it("[CORE-001] lists a track's files and links, only on tickets the viewer may see", async () => {
+    const made = await post('alice', '/api/v1/tickets', { track: 'BC', summary: 'With a link' });
+    const id = made.json().ticket.id as number;
+    await database.db
+      .insertInto('ticket_web_link')
+      .values({ workspace_id: 1, ticket_id: id, url: 'https://example.com/a', title: 'A link' })
+      .execute();
+    const read = await get('alice', `/api/v1/tracks/${tracks.BC}/files`);
+    expect(read.statusCode, read.body).toBe(200);
+    expect(read.json().links).toMatchObject([
+      { url: 'https://example.com/a', title: 'A link', ticket: { key: made.json().ticket.key } },
+    ]);
+    expect(read.json().attachments).toEqual([]);
+    // Bob does not browse this track.
+    expect((await get('bob', `/api/v1/tracks/${tracks.BC}/files`)).statusCode).toBe(404);
+  });
+
+  it('[AGL-001] gives a track its board the first time it is opened, once', async () => {
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', tracks.BB as number)
+      .execute();
+    const opened = await get('bob', `/api/v1/tracks/${tracks.BB}/board`);
+    expect(opened.statusCode, opened.body).toBe(200);
+    const board = opened.json().board;
+    expect(board.name).toBe('Track BB');
+    // A person who only opened it gains nothing over it.
+    expect(board.mayConfigure).toBe(false);
+    expect(board.admins).toEqual([]);
+    const byKey = await get('alice', '/api/v1/tracks/bb/board');
+    expect(byKey.json().board.id).toBe(board.id);
+    const data = await get('bob', `/api/v1/boards/${board.id}/data`);
+    expect(data.statusCode, data.body).toBe(200);
   });
 
   it('[AGL-001] only board admins, track admins of the location and administrators configure', async () => {
@@ -278,16 +404,6 @@ describe('boards (M1-043)', () => {
     // A stale version is refused.
     const stale = await patch('alice', `/api/v1/boards/${board.id}`, { name: 'Old', version: 1 });
     expect(stale.statusCode).toBe(409);
-    // A board kept by a person is theirs and their board admins' alone.
-    const own = await createBoard('bob', {
-      name: 'Bob only',
-      kind: 'kanban',
-      source: { query: 'track = BA' },
-    });
-    expect((await get('alice', `/api/v1/boards/${own.id}`)).statusCode).toBe(404);
-    expect((await get('admin', `/api/v1/boards/${own.id}`)).statusCode).toBe(200);
-    const listed = (await get('alice', '/api/v1/boards')).json().boards as { id: number }[];
-    expect(listed.some((b) => b.id === own.id)).toBe(false);
     const removed = await as('carol', { method: 'DELETE', url: `/api/v1/boards/${board.id}` });
     expect(removed.statusCode).toBe(204);
   });
@@ -296,8 +412,8 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'Mapping',
       kind: 'kanban',
-      trackId: tracks.BB,
-      source: { query: 'track = BB' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA AND labels = blue' },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [] },
         { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
@@ -341,9 +457,10 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'WIP',
       kind: 'kanban',
-      trackId: tracks.BC,
-      source: { query: 'track IN (BA, BB, BC)' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
       columns: COLUMNS(),
+      boardFilters: [{ id: 'mine', name: 'Mine', query: 'assignee = currentUser()' }],
     });
     for (const name of ['a1', 'a2', 'b1', 'b2']) await setStatus(name, 'Active');
     await setStatus('c1', 'Closed');
@@ -352,7 +469,7 @@ describe('boards (M1-043)', () => {
     const done = d.columns.find((c) => c.id === 'done');
     expect([doing?.count, doing?.wip]).toEqual([4, 'over']);
     expect([done?.count, done?.wip]).toEqual([1, 'under']);
-    // "Only my tickets" hides cards, never counts.
+    // A board filter hides cards, never counts.
     d = await data('alice', board.id, ['mine']);
     const mine = d.columns.find((c) => c.id === 'doing');
     expect([mine?.count, mine?.shown, mine?.wip]).toEqual([4, 2, 'over']);
@@ -364,7 +481,7 @@ describe('boards (M1-043)', () => {
       name: 'Filters',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       boardFilters: [
         { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()' },
         { id: 'blue', name: 'Blue', query: 'labels = blue' },
@@ -383,7 +500,8 @@ describe('boards (M1-043)', () => {
     ]);
     const unknown = await get('alice', `/api/v1/boards/${board.id}/data?filters=nope`);
     expect(unknown.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
-    // A new board comes with the two default board filters.
+    // A new board comes with the default board filter, and no longer "Only my tickets": the
+    // person filter's "Me" finds the same cards.
     const plain = await createBoard('alice', {
       name: 'Defaults',
       kind: 'kanban',
@@ -392,12 +510,108 @@ describe('boards (M1-043)', () => {
     });
     const read = (await get('alice', `/api/v1/boards/${plain.id}`)).json();
     expect(read.board.boardFilters.map((f: { name: string }) => f.name)).toEqual([
-      'Only my tickets',
       'Recently updated',
     ]);
-    expect((await data('alice', plain.id, ['mine', 'recent'])).cards.map((c) => c.key)).toEqual([
-      T('a1').key,
-    ]);
+    const refused = await get('alice', `/api/v1/boards/${plain.id}/data?filters=mine`);
+    expect(refused.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
+  });
+
+  it('[AGL-005] filters by person as a board filter, for a plain member, with counts whole', async () => {
+    const board = await createBoard('alice', {
+      name: 'People',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      boardFilters: [{ id: 'blue', name: 'Blue', query: 'labels = blue' }],
+    });
+    const shown = async (who: string, query: string) => {
+      const res = await get(who, `/api/v1/boards/${board.id}/data?${query}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return (res.json() as Data).cards.map((c) => c.key).sort();
+    };
+    const keys = (...names: string[]) => names.map((n) => T(n).key).sort();
+    const alice = users.alice?.id as number;
+    const bob = users.bob?.id as number;
+    // Bob is an ordinary member and may not configure this board; he filters it all the same.
+    expect((await get('bob', `/api/v1/boards/${board.id}`)).json().board.mayConfigure).toBe(false);
+    expect(await shown('bob', 'people=me')).toEqual(keys('a2'));
+    expect(await shown('alice', 'people=me')).toEqual(keys('a1', 'b2'));
+    expect(await shown('bob', `people=${alice}`)).toEqual(keys('a1', 'b2'));
+    expect(await shown('bob', 'people=none')).toEqual(keys('b1', 'c1', 'c2'));
+    // Choosing several shows any of them.
+    expect(await shown('bob', `people=${alice},${bob}`)).toEqual(keys('a1', 'a2', 'b2'));
+    expect(await shown('bob', 'people=me,none')).toEqual(keys('a2', 'b1', 'c1', 'c2'));
+    // Together with a board filter both must hold: "any of them" stays inside its parentheses.
+    expect(await shown('bob', 'people=me,none&filters=blue')).toEqual(keys('b1'));
+    // Someone with no tickets here finds nothing, and no error says who exists.
+    expect(await shown('bob', 'people=2147483647')).toEqual([]);
+
+    const res = await get('bob', `/api/v1/boards/${board.id}/data?people=me`);
+    const narrowed = res.json() as Data & {
+      people: {
+        viewerId: number;
+        assignees: { id: number; name: string }[];
+        unassigned: boolean;
+        more: boolean;
+      };
+    };
+    // The list stays whole while the cards narrow, and the column counts stay whole too.
+    expect(narrowed.people).toEqual({
+      viewerId: bob,
+      assignees: [
+        { id: alice, name: 'alice' },
+        { id: bob, name: 'bob' },
+      ],
+      unassigned: true,
+      more: false,
+    });
+    expect(narrowed.columns.reduce((sum, c) => sum + c.count, 0)).toBe(6);
+    expect(narrowed.columns.reduce((sum, c) => sum + c.shown, 0)).toBe(1);
+
+    for (const bad of ['robert', 'me,,none', '12;drop', '99999999999', '3000000000']) {
+      const refused = await get('bob', `/api/v1/boards/${board.id}/data?people=${bad}`);
+      expect(refused.statusCode, bad).toBe(400);
+    }
+  });
+
+  it('[QRY-008] [AGL-005] never widens: no ticket or name from a track the viewer cannot see', async () => {
+    const hidden = await ticket('hidden1', 'BC', { assigneeId: users.alice?.id });
+    await database.db
+      .updateTable('ticket')
+      .set({ assignee_id: users.carol?.id as number })
+      .where('id', '=', hidden.id)
+      .execute();
+    const board = await createBoard('alice', {
+      name: 'Two tracks',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+    });
+    // A board imported from before the one-board rule can still span tracks.
+    await database.db
+      .updateTable('board')
+      .set({ filter_query: 'track IN (BA, BC)' })
+      .where('id', '=', board.id)
+      .execute();
+    const carol = users.carol?.id as number;
+    const read = async (who: string) => {
+      const res = await get(who, `/api/v1/boards/${board.id}/data?people=${carol}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json() as Data & { people: { assignees: { id: number }[] } };
+    };
+    // Alice browses both tracks, so she sees Carol's ticket and Carol in the list.
+    const seen = await read('alice');
+    expect(seen.cards.map((c) => c.key)).toEqual([hidden.key]);
+    expect(seen.people.assignees.map((p) => p.id)).toContain(carol);
+    // Bob does not browse BC: asking for Carol by id shows nothing, and she is not listed.
+    const refused = await read('bob');
+    expect(refused.cards).toEqual([]);
+    expect(refused.people.assignees.map((p) => p.id)).not.toContain(carol);
+    await database.db
+      .updateTable('ticket')
+      .set({ deleted_at: new Date() })
+      .where('id', '=', hidden.id)
+      .execute();
   });
 
   it('[AGL-004] puts a ticket in the first query lane it matches, before the catch-all', async () => {
@@ -405,7 +619,7 @@ describe('boards (M1-043)', () => {
       name: 'Lanes',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       swimlanes: {
         mode: 'queries',
         lanes: [
@@ -446,7 +660,7 @@ describe('boards (M1-043)', () => {
       name: 'People',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA' },
       swimlanes: { mode: 'assignees', unassigned: 'first' },
     });
     let d = await data('alice', board.id);
@@ -460,7 +674,7 @@ describe('boards (M1-043)', () => {
       .where('id', 'in', [T('b1').id, T('b2').id])
       .execute();
     await patch('alice', `/api/v1/boards/${board.id}`, {
-      source: { query: 'track IN (BA, BB, BC)' },
+      source: { query: 'track = BA' },
       swimlanes: { mode: 'parents' },
     });
     await database.db
@@ -471,12 +685,13 @@ describe('boards (M1-043)', () => {
     d = await data('bob', board.id);
     expect(d.lanes.map((l) => [l.id, l.catchAll])).toEqual([
       [`parent-${T('a1').id}`, false],
+      [`parent-${T('c1').id}`, false],
       ['other', true],
     ]);
     const lane = (name: string) => d.cards.find((c) => c.id === T(name).id)?.laneId;
     expect(['a1', 'a2', 'b1', 'b2'].map(lane)).toEqual([
       'other',
-      'other',
+      `parent-${T('c1').id}`,
       `parent-${T('a1').id}`,
       `parent-${T('a1').id}`,
     ]);
@@ -488,12 +703,12 @@ describe('boards (M1-043)', () => {
       name: 'Cards',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA' },
       cardRules: {
         colourBy: 'queries',
         colours: [
           { query: 'priority = Urgent', colour: '#c4314b' },
-          { query: 'track = BA', colour: '#2f6fdb' },
+          { query: 'labels IS EMPTY', colour: '#2f6fdb' },
         ],
         fields: ['assignee', 'labels'],
       },
@@ -518,6 +733,111 @@ describe('boards (M1-043)', () => {
     expect(many.statusCode).toBe(400);
   });
 
+  it('[AGL-006] starts a new board on the default cards, with points only where there is one', async () => {
+    // The field every workspace starts with (migration 0095).
+    const field = (await get('admin', '/api/v1/fields'))
+      .json()
+      .fields.find((f: { name: string }) => f.name === 'Points').id as number;
+    const other = (await post('admin', '/api/v1/fields', { name: 'Value', type: 'number' })).json()
+      .field.id as number;
+    const pointed = await ticket('pointed', 'BA', { fields: { [field]: 5, [other]: 8 } });
+    const made = await createBoard('alice', {
+      name: 'Plain',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    const read = await get('alice', `/api/v1/boards/${made.id}`);
+    expect(read.json().board.cardRules).toEqual({
+      colourBy: 'none',
+      colours: [],
+      fields: ['priority', 'assignee', 'points'],
+      daysInColumn: false,
+    });
+    const pointsOf = async (id: number) =>
+      (await data('alice', id)).cards.find((c) => c.id === pointed.id)?.fields.points;
+    const d = await data('alice', made.id);
+    const card = d.cards.find((c) => c.id === pointed.id) as Card;
+    // Cards read the number field named Points, a priority's level, and no days marker.
+    expect(card.fields).toMatchObject({
+      points: 5,
+      priority: { name: 'Normal', level: 4 },
+    });
+    expect(card.daysInColumn).toBeNull();
+    expect(card.colour).toBeNull();
+    expect(d.cards.find((c) => c.id === T('a1').id)?.fields.points).toBeNull();
+
+    // A board estimating with a number field shows that one.
+    const estimating = await createBoard('alice', {
+      name: 'Estimating',
+      kind: 'scrum',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      sprintSettings: {
+        estimation: { statistic: 'field', fieldId: other },
+        timeTracking: 'none',
+        parallelSprints: false,
+      },
+    });
+    expect(await pointsOf(estimating.id)).toBe(8);
+
+    // The full view reads it too, when another field on the card needs that view.
+    const full = await createBoard('alice', {
+      name: 'Full',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: ['points', 'areas'] },
+    });
+    expect(await pointsOf(full.id)).toBe(5);
+  });
+
+  it('[AGL-006] says per card whether the viewer may edit it', async () => {
+    const board = await createBoard('alice', {
+      name: 'Pencils',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    expect((await data('alice', board.id)).cards.every((c) => c.mayEdit)).toBe(true);
+    const seen = (await data('vera', board.id)).cards;
+    expect(seen.length).toBeGreaterThan(1);
+    expect(seen.some((c) => c.mayEdit)).toBe(false);
+    const target = seen[0] as Card;
+    const refused = await patch('vera', `/api/v1/tickets/${target.id}`, { summary: 'Mine now' });
+    expect(refused.statusCode).toBe(403);
+
+    // A ticket-level grant: the assignee may edit their own, and only those, without a query each.
+    const policy = await database.db
+      .selectFrom('track')
+      .select('access_policy_id')
+      .where('id', '=', tracks.BA as number)
+      .executeTakeFirstOrThrow();
+    const { id: grant } = await database.db
+      .insertInto('access_grant')
+      .values({
+        workspace_id: 1,
+        policy_id: policy.access_policy_id,
+        permission: 'edit_tickets',
+        grantee: 'assignee',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const hers = await ticket('vera holds this', 'BA');
+    await database.db
+      .updateTable('ticket')
+      .set({ assignee_id: users.vera?.id as number })
+      .where('id', '=', hers.id)
+      .execute();
+    const mine = (await data('vera', board.id)).cards.filter((c) => c.mayEdit).map((c) => c.id);
+    await database.db.deleteFrom('access_grant').where('id', '=', grant).execute();
+    expect(mine).toEqual([hers.id]);
+  });
+
   it('[AGL-006] resets days in column only when the card changes column', async () => {
     const board = await createBoard('alice', {
       name: 'Days',
@@ -525,6 +845,7 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
       columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: [], daysInColumn: true },
     });
     const day = 86_400_000;
     const now = Date.now();
@@ -571,8 +892,8 @@ describe('boards (M1-043)', () => {
     const board = await createBoard('alice', {
       name: 'Sub-filter',
       kind: 'kanban',
-      trackId: tracks.BB,
-      source: { query: 'track = BB' },
+      trackId: tracks.BA,
+      source: { query: 'track = BA AND labels = blue' },
       subFilter: { query: 'labels IS EMPTY OR assignee IS NOT EMPTY' },
     });
     const d = await data('alice', board.id);
@@ -585,7 +906,7 @@ describe('boards (M1-043)', () => {
       name: 'Moves',
       kind: 'kanban',
       trackId: tracks.BA,
-      source: { query: 'track IN (BA, BB)' },
+      source: { query: 'track = BA AND (labels IS EMPTY OR labels = blue)' },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [S('New')] },
         { id: 'doing', name: 'Doing', statusIds: [S('Active')] },
@@ -604,7 +925,7 @@ describe('boards (M1-043)', () => {
     });
     const history = (await get('alice', `/api/v1/tickets/${T('a2').id}/history`)).json();
     expect(JSON.stringify(history)).toContain('Active');
-    // From Active, "Send to review" and "Close" both lead into the last column.
+    // From Active, "In Review" and "Closed" both lead into the last column.
     const ask = await move('alice', { ticket: T('a2').id, columnId: 'review' });
     expect(ask.statusCode).toBe(409);
     expect(ask.json().error).toBe('transition_choice');
@@ -613,10 +934,8 @@ describe('boards (M1-043)', () => {
         .json()
         .transitions.map((t: { name: string }) => t.name)
         .sort(),
-    ).toEqual(['Close', 'Send to review']);
-    const chosen = ask
-      .json()
-      .transitions.find((t: { name: string }) => t.name === 'Send to review');
+    ).toEqual(['Closed', 'In Review']);
+    const chosen = ask.json().transitions.find((t: { name: string }) => t.name === 'In Review');
     const reviewed = await move('alice', {
       ticket: T('a2').id,
       columnId: 'review',
@@ -627,9 +946,6 @@ describe('boards (M1-043)', () => {
     expect(reviewed.json()).toMatchObject({ transitioned: true, ranked: true });
     // Ranked before a1: it now leads the board.
     expect((await data('alice', board.id)).cards[0]?.key).toBe(T('a2').key);
-    // No transition leads back to To do from In Review.
-    const none = await move('alice', { ticket: T('a2').id, columnId: 'todo' });
-    expect(none.json()).toEqual({ error: 'no_transition', columnId: 'todo' });
     // Within a column, only the rank changes.
     const rankOnly = await move('alice', {
       ticket: T('a2').id,
@@ -643,5 +959,63 @@ describe('boards (M1-043)', () => {
     const unseen = await move('bob', { ticket: T('c1').id, columnId: 'doing' });
     expect(unseen.json().fields).toEqual({ ticket: 'not_on_board' });
     await setStatus('a2', 'New');
+  });
+
+  it('[AGL-002] refuses a move that no transition of the workflow leads to', async () => {
+    // The default workflow reaches every status from every status; this one goes one way.
+    const workflow = await post('admin', '/api/v1/workflows', {
+      name: 'One way',
+      definition: {
+        initialStatusId: S('New'),
+        statuses: [{ statusId: S('New') }, { statusId: S('Active') }],
+        transitions: [{ id: 1, name: 'Start', from: [S('New')], to: S('Active') }],
+      },
+    });
+    expect(workflow.statusCode, workflow.body).toBe(201);
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: 'One way',
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
+    const track = await post('admin', '/api/v1/tracks', {
+      key: 'BW',
+      name: 'Track BW',
+      mode: 'shared',
+    });
+    expect(track.statusCode, track.body).toBe(201);
+    const trackId = track.json().track.id as number;
+    const set = await patch('admin', `/api/v1/tracks/${trackId}`, {
+      workflowMapId: map.json().workflowMap.id,
+    });
+    expect(set.statusCode, set.body).toBe(200);
+    const members = await database.db
+      .selectFrom('role')
+      .select('id')
+      .where('name', '=', 'Members')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('track_role_actor')
+      .values({
+        workspace_id: 1,
+        track_id: trackId,
+        role_id: members.id,
+        user_id: users.alice?.id as number,
+      })
+      .execute();
+    const card = await ticket('w1', 'BW');
+    const board = await createBoard('alice', {
+      name: 'One way',
+      kind: 'kanban',
+      trackId,
+      source: { query: 'track = BW' },
+      columns: [
+        { id: 'todo', name: 'To do', statusIds: [S('New')] },
+        { id: 'doing', name: 'Doing', statusIds: [S('Active')] },
+      ],
+    });
+    const move = (columnId: string) =>
+      post('alice', `/api/v1/boards/${board.id}/moves`, { ticket: card.id, columnId });
+    expect((await move('doing')).json()).toMatchObject({ transitioned: true });
+    expect((await move('todo')).json()).toEqual({ error: 'no_transition', columnId: 'todo' });
   });
 });

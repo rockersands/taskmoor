@@ -1,13 +1,14 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Dashboards and reports
 
-Dashboards gather widgets on one page. Reports chart how work moves on a board or in a sprint.
+Dashboards gather widgets on one page. Reports chart how a track's work moves, and all of them sit
+in the track's **Statistics** section.
 Both are computed for the person looking at them, so they never count a ticket that person may
 not see.
 
@@ -81,10 +82,46 @@ again every five minutes. **Full screen** takes the whole screen and **Leave the
 goes back. To show several dashboards in turn, tick them on the dashboards list (**Show … on the
 wallboard**), set **Seconds per dashboard**, and press **Start the wallboard**.
 
+## A track's statistics
+
+**Statistics**, in a track's tab bar, holds every report of that track, in four groups:
+
+| Group | Reports |
+|---|---|
+| **Flow** | **Cumulative flow**, **Control chart**, **Cycle time**, **Time in status** |
+| **Sprints** | **Sprint report**, **Velocity** |
+| **Releases** | **Release burndown**, **Outcome burndown**, **Release report** |
+| **Tickets** | **Created vs closed**, **Recently created**, **Average age**, **Time to close**, **Ticket statistics**, **Two-dimensional statistics** |
+
+The **Reports** link on a board opens this section, and moving between reports stays inside the
+track's tabs. Each report counts only the tickets you can see in the track, so two people may read
+different numbers.
+
+Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
+track does not list them. An old link to one says it needs a Scrum board, and those who may change
+the board get a link to its settings. Flow and ticket reports work on any board. On a Kanban track, a
+customized Summary also leaves out sprint widgets: they stay in its editor, to take away.
+
+### Ticket reports
+
+These read the whole track, with no query to write:
+
+- **Created vs closed**, **Recently created**, **Average age** and **Time to close**: choose the
+  **Period** and how to group it (by day, week or month). **Created vs closed** can show **Running
+  totals**.
+- **Ticket statistics**: how many tickets have each value of one **Field**.
+- **Two-dimensional statistics**: a table of two fields against each other, as **Rows** and
+  **Columns**. Custom fields can be chosen too.
+
+To count something narrower or across tracks, use the [widget](#widgets) of the same name on a
+dashboard, where you can write a query.
+
 ## Sprint reports
 
-A Scrum board's backlog links each active sprint's **Sprint report**. It shows three charts,
-each with **Show the numbers** for a table:
+Under **Statistics**, **Sprint report** opens the running sprint, or the latest one, and **Sprint**
+chooses another that has started. A Scrum board's backlog also links each active sprint's
+report. **Velocity** has its own tab too. A sprint report shows three charts, each with **Show the
+numbers** for a table:
 
 - **Burndown**: the work **Remaining** each day, against a **Guideline** that reaches zero on
   the sprint's planned last day.
@@ -104,7 +141,8 @@ completed when it reaches the board's rightmost column. Days end at midnight in 
 
 ## Board reports
 
-Every board has a **Reports** link. The report page has these tabs:
+Every board has a **Reports** link, which opens its track's [Statistics](#a-tracks-statistics).
+A board that an upgrade left outside a track keeps a page of its own with just these reports:
 
 | Report | What it shows |
 |---|---|
@@ -127,7 +165,7 @@ same numbers. Tickets in statuses no column shows are counted apart and named un
 
 ### Release and outcome reports
 
-Scrum boards add three tabs, counted by the board's estimation setting:
+These three follow a Scrum board's sprints, counted by the board's estimation setting:
 
 - **Release burndown**: choose a **Release** of the board's track.
 - **Outcome burndown**: enter an outcome's key under **Outcome** and press **Show**.

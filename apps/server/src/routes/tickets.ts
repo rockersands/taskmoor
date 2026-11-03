@@ -135,8 +135,10 @@ import { insertComment } from './comments';
  *   the link and get it back on restore (CORE-025 (3)). Both need "Delete tickets"; only those
  *   who may restore a ticket see it in the trash.
  * - Priority, close reason, labels, releases and areas (M1-014, CORE-014 to CORE-017): a new
- *   ticket takes its track's default priority, and the assignee its areas' rule names when it
- *   has none. A priority must be one the track's priority set offers; releases and areas must
+ *   ticket takes its track's default priority unless one is given (null is not one: a ticket
+ *   always has a priority, and an edit cannot take it away; only imports leave it empty), and the
+ *   assignee its areas' rule names when it has none. A priority must be one the track's priority
+ *   set offers; releases and areas must
  *   be the track's own and not archived (a ticket keeps one it has). Setting a close reason
  *   needs "Set close reason"; the rest "Edit tickets". Moving drops releases and areas, which
  *   belong to the old track.
@@ -797,8 +799,9 @@ export function ticketRoutes(
       return notFound(reply);
     }
     const ticket = await viewOf(request, found.row);
+    const mayEdit = await request.authz.canTicket('edit_tickets', found.row);
     return {
-      ticket: inFormat(ticket, format),
+      ticket: { ...inFormat(ticket, format), mayEdit },
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
@@ -1054,8 +1057,7 @@ export function ticketRoutes(
       // before any ticket, as their deletions lock them before their tickets.
       const prioritySet = await trackPrioritySet(trx, ws, trackId);
       const pointed = await holdValues(trx, ws, {
-        priorityId:
-          body.priorityId === undefined ? prioritySet?.defaultPriorityId : body.priorityId,
+        priorityId: body.priorityId ?? prioritySet?.defaultPriorityId,
         closeReasonId: body.closeReasonId,
         releaseIds: [...(body.targetReleaseIds ?? []), ...(body.foundInReleaseIds ?? [])],
         areaIds: body.areaIds,
@@ -1064,11 +1066,7 @@ export function ticketRoutes(
       valueProblems(body, pointed, prioritySet, trackId, null, problems);
       if (Object.keys(problems).length > 0) return { fields: problems };
       const priorityId =
-        body.priorityId !== undefined
-          ? body.priorityId
-          : pointed.priority
-            ? (prioritySet?.defaultPriorityId ?? null)
-            : null;
+        body.priorityId ?? (pointed.priority ? (prioritySet?.defaultPriorityId ?? null) : null);
       // Custom values, and the defaults of the fields left out (M1-010).
       const custom = await checkCustomValues(
         trx,
@@ -1472,6 +1470,9 @@ export function ticketRoutes(
       const fieldLocked = fieldLocks(catalog, at, changedKeys, gate.audience);
       if (fieldLocked.size > 0) {
         return { locked: { action: 'edit_field', locks: await fieldLockList(trx, fieldLocked) } };
+      }
+      if (changes.priorityId && body.priorityId == null) {
+        return { fields: { priorityId: 'required' } };
       }
       if (changes.priorityId || changes.closeReasonId || Object.keys(lists).length > 0) {
         const problems: FieldErrors = {};

@@ -1,7 +1,7 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { QueryError } from '@taskmoor/query';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Kysely, Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
@@ -13,7 +13,10 @@ import {
   boardTracks,
   compileBoard,
   editorScope,
+  estimateFieldForNewBoard,
   loadBoardData,
+  type PersonChoice,
+  personFilter,
   type Scope,
   statusesOfTracks,
 } from '../boards/data';
@@ -32,18 +35,22 @@ import {
   updateBoardBody,
   withIds,
 } from '../boards/model';
+import { confinedTrackKey, trackBoardQuery } from '../boards/one-per-track';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { uniqueViolation } from '../scim/store';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
-import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
+import { DEFAULT_SPRINT_SETTINGS, readSprintSettings, type SprintSettings } from '../sprints/model';
 import { findTeam } from '../teams';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
 import {
+  addColumnPath,
   type BoardWorkflowChange,
   BoardWorkflowError,
+  columnReach,
+  mayManageWorkflow,
   syncBoardWorkflow,
 } from '../workflows/board-managed';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
@@ -63,9 +70,10 @@ import { ticketRoutes } from './tickets';
  *   (seen by them and its board admins) until saved searches bring sharing (M1-063). Board
  *   admins, the location track's administrators and site and configuration administrators
  *   change it (AGL-001 (2)).
- * - `GET /api/v1/boards/:id/data?filters=a,b` gives the columns with their counts and WIP
- *   state, the lanes and the cards in rank order, with the given board filters applied
- *   (`boards/data.ts`). Every statement carries the viewer's ticket filter.
+ * - `GET /api/v1/boards/:id/data?filters=a,b&people=me,12` gives the columns with their counts
+ *   and WIP state, the lanes and the cards in rank order, with the given board filters and person
+ *   filter applied, and who the viewer can filter by (`boards/data.ts`). Every statement carries
+ *   the viewer's ticket filter.
  * - `POST /api/v1/boards/:id/moves` moves a card to a column and, with `before` or `after`, to
  *   a place in the rank: it runs the ticket routes themselves (the transition, then the rank),
  *   so every check, event and history row is theirs. Several transitions into the column answer
@@ -87,6 +95,14 @@ export const dataQuery = z
   .object({
     /** Active board filters, by id, comma separated. */
     filters: z.string().max(2000).optional(),
+    /**
+     * Only the cards of these people, any of them: `me`, `none` (nobody assigned) or a person's
+     * id, comma separated (AGL-005 (3)).
+     */
+    people: z
+      .string()
+      .regex(/^(me|none|\d{1,10})(,(me|none|\d{1,10})){0,49}$/)
+      .optional(),
     limit: z.coerce.number().int().min(1).max(50_000).default(5000),
     /** Scrum boards: `active` shows the active sprints' tickets, or sprint ids (M1-044). */
     sprints: z
@@ -139,6 +155,7 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.sub_filter_query',
       'b.columns',
       'b.manages_workflow',
+      'b.closing_column',
       'b.swimlanes',
       'b.board_filters',
       'b.board_filter_display',
@@ -206,8 +223,6 @@ function sortKeys(value: unknown): unknown {
   );
 }
 
-const STAGE_NAMES: Record<string, string> = { new: 'New', active: 'Active', closed: 'Closed' };
-
 function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: string }[]> {
   return db
     .selectFrom('board_admin as a')
@@ -217,6 +232,44 @@ function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: strin
     .orderBy('u.name')
     .orderBy('u.id')
     .execute();
+}
+
+/**
+ * A board's kind decides its track's backlog and sprints toggles (CORE-002; ADR-116): on for Scrum,
+ * off for Kanban, in the same transaction, recorded as a change of the track.
+ */
+async function alignTrackFeatures(
+  trx: Transaction<Database>,
+  actor: Parameters<typeof emit>[1],
+  trackId: number,
+  kind: string,
+): Promise<void> {
+  const on = kind === 'scrum';
+  const track = await trx
+    .selectFrom('track')
+    .select(['feature_backlog', 'feature_sprints'])
+    .where('id', '=', trackId)
+    .executeTakeFirst();
+  if (!track || (track.feature_backlog === on && track.feature_sprints === on)) return;
+  await trx
+    .updateTable('track')
+    .set({ feature_backlog: on, feature_sprints: on, updated_at: new Date() })
+    .where('id', '=', trackId)
+    .execute();
+  await emit(trx, actor, {
+    type: 'track.updated',
+    subjectId: trackId,
+    payload: {
+      changes: {
+        ...(track.feature_backlog !== on
+          ? { 'features.backlog': { from: track.feature_backlog, to: on } }
+          : {}),
+        ...(track.feature_sprints !== on
+          ? { 'features.sprints': { from: track.feature_sprints, to: on } }
+          : {}),
+      },
+    },
+  });
 }
 
 async function isConfigAdmin(request: FastifyRequest): Promise<boolean> {
@@ -276,7 +329,11 @@ export interface RouteAnswer {
 
 /** What other routes may do with boards: make one as the caller (track templates, M1-054). */
 export interface BoardRoutes {
-  createBoard: (request: FastifyRequest, body: unknown) => Promise<RouteAnswer>;
+  createBoard: (
+    request: FastifyRequest,
+    body: unknown,
+    options?: { forTrack?: boolean; system?: boolean },
+  ) => Promise<RouteAnswer>;
 }
 
 export function registerBoardRoutes(
@@ -300,6 +357,12 @@ export function registerBoardRoutes(
   });
 
   const adminsOf = (boardId: number) => boardAdmins(db, boardId);
+
+  /** Who changes a track's workflow through its board. */
+  async function mayChangeWorkflow(request: FastifyRequest, trackId: number) {
+    const held = await request.authz.track(trackId);
+    return held.has('administer_track') || isConfigAdmin(request);
+  }
 
   /** Who changes a board (AGL-001 (2)). */
   async function mayConfigure(request: FastifyRequest, row: BoardRow, admins: readonly number[]) {
@@ -336,6 +399,7 @@ export function registerBoardRoutes(
       columns: row.columns,
       /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
       managesWorkflow: row.manages_workflow,
+      closingColumn: row.closing_column,
       swimlanes: row.swimlanes,
       boardFilters: row.board_filters,
       boardFilterDisplay: row.board_filter_display,
@@ -512,17 +576,21 @@ export function registerBoardRoutes(
     );
     const tracks = await boardTracks(db, compiled, trackId, timeoutMs);
     const statuses = await statusesOfTracks(db, scope.ws, tracks);
-    const columns: Column[] = [];
-    for (const stage of ['new', 'active', 'closed']) {
-      const ids = statuses.filter((s) => s.stage === stage).map((s) => s.id);
-      columns.push({
-        id: `c${columns.length + 1}`,
-        name: STAGE_NAMES[stage] as string,
-        statusIds: ids,
+    // A column is a status (the user's decision; ADR-116): one each, in the workflow's order.
+    const columns: Column[] = statuses
+      .slice()
+      .sort(
+        (a, b) =>
+          ['new', 'active', 'closed'].indexOf(a.stage) -
+          ['new', 'active', 'closed'].indexOf(b.stage),
+      )
+      .map((status, index) => ({
+        id: `c${index + 1}`,
+        name: status.name,
+        statusIds: [status.id],
         min: null,
         max: null,
-      });
-    }
+      }));
     return columns;
   }
 
@@ -576,7 +644,12 @@ export function registerBoardRoutes(
   });
 
   /** Makes a board as the caller: the create route's checks, defaults and event. */
-  async function createBoard(request: FastifyRequest, input: unknown): Promise<RouteAnswer> {
+  async function createBoard(
+    request: FastifyRequest,
+    input: unknown,
+    /** A track's own board, made for it on first use or by its template (ADR-116). */
+    options: { forTrack?: boolean; system?: boolean } = {},
+  ): Promise<RouteAnswer> {
     const user = request.user;
     if (!user) return { statusCode: 401, payload: { error: 'unauthenticated' } };
     const refused = (fields: Record<string, string>) => ({
@@ -587,73 +660,205 @@ export function registerBoardRoutes(
     if (!parsed.success) return refused(shapeErrors(parsed.error));
     const body = parsed.data;
     const ws = request.workspaceId;
-    const trackId = body.trackId ?? null;
-    if (trackId !== null) {
-      const track = await db
-        .selectFrom('track')
-        .select(['id', 'archived_at'])
-        .where('id', '=', trackId)
+    // One board per track, and none outside a track (ADR-116).
+    let givenQuery: string | null = null;
+    if (body.source && 'query' in body.source) givenQuery = body.source.query;
+    if (body.source && 'savedSearchId' in body.source) {
+      const saved = await db
+        .selectFrom('saved_search')
+        .select('query')
+        .where('id', '=', body.source.savedSearchId)
         .where('workspace_id', '=', ws)
-        .where('deleted_at', 'is', null)
         .executeTakeFirst();
-      if (!track) return refused({ trackId: 'not_found' });
+      givenQuery = saved?.query ?? null;
+    }
+    const confined = givenQuery === null ? null : confinedTrackKey(givenQuery);
+    const track = await db
+      .selectFrom('track')
+      .select(['id', 'key', 'archived_at'])
+      .where('workspace_id', '=', ws)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        body.trackId != null
+          ? eb('id', '=', body.trackId)
+          : eb(sql`lower(key)`, '=', (confined ?? '').toLowerCase()),
+      )
+      .executeTakeFirst();
+    if (!track) {
+      return refused({ trackId: body.trackId == null ? 'required' : 'not_found' });
+    }
+    const trackId = track.id;
+    if (!options.system) {
       const held = await request.authz.track(trackId);
       const browses = held.has('browse_track') || held.has('administer_track');
-      if (!browses && !(await isConfigAdmin(request))) return refused({ trackId: 'not_found' });
-      if (track.archived_at) return { statusCode: 409, payload: { error: 'track_archived' } };
+      const configures = await isConfigAdmin(request);
+      if (!browses && !configures) return refused({ trackId: 'not_found' });
     }
+    if (track.archived_at) return { statusCode: 409, payload: { error: 'track_archived' } };
+    const existing = await db
+      .selectFrom('board')
+      .select('id')
+      .where('location_track_id', '=', trackId)
+      .executeTakeFirst();
+    if (existing) {
+      return { statusCode: 409, payload: { error: 'track_has_board', boardId: existing.id } };
+    }
+    const source = body.source ?? { query: trackBoardQuery(track.key) };
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return refused(checked.fields);
+    if (body.source && (confined === null || confined.toLowerCase() !== track.key.toLowerCase())) {
+      return refused({ source: 'outside_track' });
+    }
     const scope = await boardScope(db, catalogs, request);
-    const columns =
-      checked.columns ?? (await defaultColumns(scope, sourceQuery(body.source), trackId));
+    const columns = checked.columns ?? (await defaultColumns(scope, sourceQuery(source), trackId));
     const swimlanes = checked.swimlanes ?? DEFAULT_SWIMLANES;
     const boardFilters = checked.boardFilters ?? DEFAULT_BOARD_FILTERS;
     const cardRules = checked.cardRules ?? DEFAULT_CARD_RULES;
-    const adminIds = [...new Set([user.id, ...(body.adminIds ?? [])])];
-    const created = await db.transaction().execute(async (trx) => {
-      const row = await trx
-        .insertInto('board')
-        .values({
-          workspace_id: ws,
-          name: body.name,
-          description: body.description ?? '',
-          kind: body.kind,
-          location_track_id: trackId,
-          location_user_id: trackId === null ? user.id : null,
-          filter_query: 'query' in body.source ? body.source.query : null,
-          saved_search_id: 'savedSearchId' in body.source ? body.source.savedSearchId : null,
-          sub_filter_query: body.subFilter?.query ?? null,
-          columns: JSON.stringify(columns),
-          swimlanes: JSON.stringify(swimlanes),
-          board_filters: JSON.stringify(boardFilters),
-          ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
-          card_rules: JSON.stringify(cardRules),
-          sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
-          team_id: body.teamId ?? null,
-          created_by: user.id,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await trx
-        .insertInto('board_admin')
-        .values(adminIds.map((userId) => ({ workspace_id: ws, board_id: row.id, user_id: userId })))
-        .execute();
-      await emit(trx, by(request), {
-        type: 'board.created',
-        subjectId: row.id,
-        payload: {
-          name: body.name,
-          kind: body.kind,
-          trackId,
-          query: sourceQuery(body.source),
+    const adminIds = options.system ? [] : [...new Set([user.id, ...(body.adminIds ?? [])])];
+    const estimateField = body.sprintSettings
+      ? null
+      : await estimateFieldForNewBoard(db, ws, trackId);
+    const sprintSettings: SprintSettings =
+      body.sprintSettings ??
+      (estimateField === null
+        ? DEFAULT_SPRINT_SETTINGS
+        : {
+            ...DEFAULT_SPRINT_SETTINGS,
+            estimation: { statistic: 'field', fieldId: estimateField },
+          });
+    const made = await db
+      .transaction()
+      .execute(async (trx) => {
+        const row = await trx
+          .insertInto('board')
+          .values({
+            workspace_id: ws,
+            name: body.name,
+            description: body.description ?? '',
+            kind: body.kind,
+            location_track_id: trackId,
+            location_user_id: null,
+            filter_query: 'query' in source ? source.query : null,
+            saved_search_id: 'savedSearchId' in source ? source.savedSearchId : null,
+            sub_filter_query: body.subFilter?.query ?? null,
+            columns: JSON.stringify(columns),
+            swimlanes: JSON.stringify(swimlanes),
+            board_filters: JSON.stringify(boardFilters),
+            ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
+            card_rules: JSON.stringify(cardRules),
+            sprint_settings: JSON.stringify(sprintSettings),
+            team_id: body.teamId ?? null,
+            created_by: options.system ? null : user.id,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        if (adminIds.length > 0) {
+          await trx
+            .insertInto('board_admin')
+            .values(
+              adminIds.map((userId) => ({ workspace_id: ws, board_id: row.id, user_id: userId })),
+            )
+            .execute();
+        }
+        // A track's own board manages its workflow where nobody else shares it: each column is a
+        // status (the user's decision; ADR-116, ADR-079).
+        let workflow: BoardWorkflowChange | undefined;
+        if (options.forTrack && (await mayManageWorkflow(trx, ws, trackId))) {
+          const synced = await syncBoardWorkflow(
+            trx,
+            by(request),
+            { id: row.id, trackId },
+            columns,
+            {
+              collapse: true,
+            },
+          );
+          workflow = synced.change;
+          await trx
+            .updateTable('board')
+            .set({ manages_workflow: true, columns: JSON.stringify(synced.columns) })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        await emit(trx, by(request), {
+          type: 'board.created',
+          subjectId: row.id,
+          payload: {
+            name: body.name,
+            kind: body.kind,
+            trackId,
+            query: sourceQuery(source),
+            ...(workflow ? { workflow } : {}),
+          },
+        });
+        await alignTrackFeatures(trx, by(request), trackId, body.kind);
+        return row.id;
+      })
+      .then(
+        (id) => ({ id }),
+        (error: unknown) => {
+          // Two people opening a new track at once: the other one's board is the track's.
+          if (uniqueViolation(error) === 'board_one_per_track_idx') return { taken: true as const };
+          throw error;
         },
-      });
-      return row.id;
-    });
-    const row = await boardQuery(db, ws).where('b.id', '=', created).executeTakeFirstOrThrow();
-    return { statusCode: 201, payload: { board: view(row, await adminsOf(created), true) } };
+      );
+    if ('taken' in made) return { statusCode: 409, payload: { error: 'track_has_board' } };
+    const row = await boardQuery(db, ws).where('b.id', '=', made.id).executeTakeFirstOrThrow();
+    return { statusCode: 201, payload: { board: view(row, await adminsOf(made.id), true) } };
   }
+
+  // A track's one board (ADR-116): made the first time anyone who can see the track opens it, so
+  // a Blank track has one too. It belongs to the track, not to who happened to open it first.
+  app.get('/api/v1/tracks/:id/board', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const { id: ref } = request.params as { id: string };
+    const track = await db
+      .selectFrom('track')
+      .select(['id', 'name', 'archived_at'])
+      .where('workspace_id', '=', request.workspaceId)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        /^\d{1,10}$/.test(ref)
+          ? eb('id', '=', Number(ref))
+          : eb(sql`lower(key)`, '=', ref.toLowerCase()),
+      )
+      .executeTakeFirst();
+    if (!track) return notFound(reply);
+    const held = await request.authz.track(track.id);
+    const browses = held.has('browse_track') || held.has('administer_track');
+    if (!browses && !(await isConfigAdmin(request))) return notFound(reply);
+    const find = () =>
+      boardQuery(db, request.workspaceId)
+        .where('b.location_track_id', '=', track.id)
+        .executeTakeFirst();
+    let row = await find();
+    if (!row) {
+      if (track.archived_at) return notFound(reply);
+      const made = await createBoard(
+        request,
+        { name: track.name, kind: 'kanban', trackId: track.id },
+        { forTrack: true, system: true },
+      );
+      const error = (made.payload as { error?: string }).error;
+      if (made.statusCode !== 201 && error !== 'track_has_board') {
+        return reply.code(made.statusCode).send(made.payload);
+      }
+      row = await find();
+      if (!row) return notFound(reply);
+    }
+    const admins = await adminsOf(row.id);
+    return {
+      board: view(
+        row,
+        admins,
+        await mayConfigure(
+          request,
+          row,
+          admins.map((a) => a.id),
+        ),
+      ),
+    };
+  });
 
   app.post('/api/v1/boards', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
@@ -690,8 +895,18 @@ export function registerBoardRoutes(
     for (const c of row.columns as unknown as Column[]) {
       for (const s of c.statusIds) columnOf.set(s, c.id);
     }
+    const reach =
+      row.location_track_id === null
+        ? null
+        : await columnReach(
+            db,
+            request.workspaceId,
+            row.location_track_id,
+            row.columns as unknown as Column[],
+          );
     return {
       board: view(row, admins, configure),
+      reach: reach && { ...reach, mayFix: await isConfigAdmin(request) },
       statuses: statuses.map((s) => ({
         id: s.id,
         name: s.name,
@@ -716,12 +931,33 @@ export function registerBoardRoutes(
     }
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return invalidFields(reply, checked.fields);
+    if (body.source && found.row.location_track_id !== null) {
+      const text =
+        'query' in body.source
+          ? body.source.query
+          : ((
+              await db
+                .selectFrom('saved_search')
+                .select('query')
+                .where('id', '=', body.source.savedSearchId)
+                .where('workspace_id', '=', request.workspaceId)
+                .executeTakeFirst()
+            )?.query ?? '');
+      const own = await db
+        .selectFrom('track')
+        .select('key')
+        .where('id', '=', found.row.location_track_id)
+        .executeTakeFirstOrThrow();
+      if (confinedTrackKey(text)?.toLowerCase() !== own.key.toLowerCase()) {
+        return invalidFields(reply, { source: 'outside_track' });
+      }
+    }
     const outcome = await db
       .transaction()
       .execute(async (trx) => {
         const current = await trx
           .selectFrom('board')
-          .select('version')
+          .select(['version', 'kind'])
           .where('id', '=', p.data.id)
           .forUpdate()
           .executeTakeFirst();
@@ -729,16 +965,45 @@ export function registerBoardRoutes(
         if (body.version !== undefined && body.version !== current.version) {
           return { conflict: current.version };
         }
+        // A Kanban board has no sprints to act on, so a running sprint could never be completed
+        // (AGL-010). It has to end first. Starting one takes this same lock, so neither slips by.
+        if (body.kind === 'kanban' && current.kind === 'scrum') {
+          const running = await trx
+            .selectFrom('sprint')
+            .select(['id', 'name'])
+            .where('board_id', '=', p.data.id)
+            .where('state', '=', 'active')
+            .orderBy('id')
+            .executeTakeFirst();
+          if (running) return { sprintRunning: running };
+        }
         // A board that manages its track's workflow rewrites it from its columns (M1-126).
         let columns = checked.columns;
         let workflowChange: BoardWorkflowChange | undefined;
-        if (columns && found.row.manages_workflow) {
+        const closing =
+          body.closingColumn !== undefined ? body.closingColumn : found.row.closing_column;
+        // A new column on a track nobody else shares just works: the board takes over the
+        // workflow, as long as the person may administer the track and no rule stands in the way.
+        const takesOver =
+          columns !== undefined &&
+          !found.row.manages_workflow &&
+          found.row.location_track_id !== null &&
+          (columns as Column[]).some((c) => c.statusIds.length === 0) &&
+          (await mayChangeWorkflow(request, found.row.location_track_id)) &&
+          (await mayManageWorkflow(trx, request.workspaceId, found.row.location_track_id));
+        const syncing =
+          found.row.manages_workflow &&
+          (columns !== undefined ||
+            (body.closingColumn !== undefined && body.closingColumn !== found.row.closing_column));
+        if (takesOver || syncing) {
           const synced = await syncBoardWorkflow(
             trx,
             by(request),
             { id: p.data.id, trackId: found.row.location_track_id },
-            columns as Column[],
+            (columns ?? record(found.row).columns) as Column[],
             {
+              closing,
+              collapse: takesOver,
               mapping: new Map(
                 Object.entries(body.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
               ),
@@ -768,6 +1033,8 @@ export function registerBoardRoutes(
             ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
             : {}),
           ...(body.teamId !== undefined ? { teamId: body.teamId } : {}),
+          ...(body.closingColumn !== undefined ? { closingColumn: body.closingColumn } : {}),
+          ...(takesOver ? { managesWorkflow: true } : {}),
         };
         // Stored JSON comes back with its keys in another order: compare both sides sorted.
         const changes = diff(
@@ -781,6 +1048,8 @@ export function registerBoardRoutes(
         await trx
           .updateTable('board')
           .set({
+            ...(body.closingColumn !== undefined ? { closing_column: body.closingColumn } : {}),
+            ...(takesOver ? { manages_workflow: true } : {}),
             ...(body.name !== undefined ? { name: body.name } : {}),
             ...(body.description !== undefined ? { description: body.description } : {}),
             ...(body.kind !== undefined ? { kind: body.kind } : {}),
@@ -833,6 +1102,13 @@ export function registerBoardRoutes(
           subjectId: p.data.id,
           payload: { changes, ...(workflowChange ? { workflow: workflowChange } : {}) },
         });
+        if (
+          body.kind !== undefined &&
+          body.kind !== found.row.kind &&
+          found.row.location_track_id !== null
+        ) {
+          await alignTrackFeatures(trx, by(request), found.row.location_track_id, body.kind);
+        }
         return { updated: true as const };
       })
       .catch((error: unknown) => {
@@ -845,6 +1121,13 @@ export function registerBoardRoutes(
     if ('missing' in outcome) return notFound(reply);
     if ('conflict' in outcome) {
       return reply.code(409).send({ error: 'version_conflict', version: outcome.conflict });
+    }
+    if ('sprintRunning' in outcome) {
+      return reply.code(409).send({
+        error: 'sprint_running',
+        sprintId: outcome.sprintRunning.id,
+        sprintName: outcome.sprintRunning.name,
+      });
     }
     const row = await boardQuery(db, request.workspaceId)
       .where('b.id', '=', p.data.id)
@@ -908,6 +1191,10 @@ export function registerBoardRoutes(
       if (!filter) return invalidFields(reply, { filters: 'not_found' });
       active.push(filter);
     }
+    const people = (parsed.data.people?.split(',') ?? []) as PersonChoice[];
+    if (people.some((c) => Number(c) > MAX_INT)) {
+      return invalidFields(reply, { people: 'out_of_range' });
+    }
     const scope = await boardScope(db, catalogs, request);
     let sprintIds: number[] | undefined;
     if (parsed.data.sprints !== undefined) {
@@ -922,15 +1209,18 @@ export function registerBoardRoutes(
           : sprints.where('id', 'in', parsed.data.sprints.split(',').map(Number));
       sprintIds = (await sprints.execute()).map((s) => s.id);
     }
+    const { estimation } = readSprintSettings(found.row.sprint_settings);
     try {
       const data = await loadBoardData({
         ...(sprintIds !== undefined ? { sprintIds } : {}),
+        estimateFieldId: estimation.statistic === 'field' ? (estimation.fieldId ?? null) : null,
         db,
         request,
         catalogs,
         scope,
         board,
-        active,
+        // The person filter is one more board filter: same compiler, same viewer's filter.
+        active: people.length > 0 ? [...active, personFilter(people)] : active,
         limit: parsed.data.limit,
         timeoutMs,
       });
@@ -941,6 +1231,66 @@ export function registerBoardRoutes(
       };
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
+    }
+  });
+
+  // Lets cards reach a column on a workflow the board does not manage (ADR-116): a status, and
+  // the steps in and out, as a new version of the workflow. That workflow may be shared, so this
+  // takes the right to edit workflows; the settings page names the other tracks first.
+  app.post('/api/v1/boards/:id/columns/:columnId/path', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const { id: boardRef, columnId } = request.params as { id: string; columnId: string };
+    const p = idParam.safeParse({ id: boardRef });
+    if (!p.success) return notFound(reply);
+    const found = await visibleBoard(request, reply, p.data.id);
+    if (!found) return reply;
+    const row = found.row;
+    if (row.location_track_id === null) return notFound(reply);
+    if (!(await isConfigAdmin(request))) {
+      return reply.code(403).send({ error: 'forbidden', permission: 'edit_workflow' });
+    }
+    const columns = row.columns as unknown as Column[];
+    const reach = await columnReach(db, request.workspaceId, row.location_track_id, columns);
+    if (!columns.some((c) => c.id === columnId)) return notFound(reply);
+    if (!reach?.workflow || !reach.singleWorkflow) {
+      return reply.code(409).send({ error: 'per_type_workflows' });
+    }
+    const workflowId = reach.workflow.id;
+    try {
+      const updated = await db.transaction().execute(async (trx) => {
+        await trx.selectFrom('board').select('id').where('id', '=', row.id).forUpdate().execute();
+        const { columns: stored, change } = await addColumnPath(
+          trx,
+          by(request),
+          workflowId,
+          columns,
+          columnId,
+        );
+        await trx
+          .updateTable('board')
+          .set({
+            columns: JSON.stringify(stored),
+            version: row.version + 1,
+            updated_at: new Date(),
+          })
+          .where('id', '=', row.id)
+          .execute();
+        await emit(trx, by(request), {
+          type: 'board.updated',
+          subjectId: row.id,
+          payload: { changes: { columnPath: { from: null, to: columnId } }, workflow: change },
+        });
+        return row.id;
+      });
+      const next = await boardQuery(db, request.workspaceId)
+        .where('b.id', '=', updated)
+        .executeTakeFirstOrThrow();
+      return { board: view(next, found.admins, true) };
+    } catch (error) {
+      if (error instanceof BoardWorkflowError) {
+        return reply.code(409).send({ error: error.problem });
+      }
+      throw error;
     }
   });
 

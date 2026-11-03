@@ -130,7 +130,7 @@ describe('search export (M1-042)', () => {
       .execute();
     for (const [name, type, trackId] of [
       ['Customer', 'text', undefined],
-      ['Points', 'number', undefined],
+      ['Pts', 'number', undefined],
       ['Hidden note', 'text', tracks.HID],
     ] as const) {
       const res = await as('admin', {
@@ -151,7 +151,7 @@ describe('search export (M1-042)', () => {
       keys[name] = res.json().ticket.key as string;
     };
     await make('=HYPERLINK("http://example.test")', 'EXP', {
-      fields: { [fields.Customer as number]: '+1 555 0100', [fields.Points as number]: -3 },
+      fields: { [fields.Customer as number]: '+1 555 0100', [fields.Pts as number]: -3 },
       labels: ['urgent', 'web'],
       assigneeId: users.alice.id,
     });
@@ -166,7 +166,7 @@ describe('search export (M1-042)', () => {
       },
     });
     await make('-minus first', 'EXP');
-    await make('Plain words', 'EXP', { fields: { [fields.Points as number]: 8 } });
+    await make('Plain words', 'EXP', { fields: { [fields.Pts as number]: 8 } });
     await make('Secret ticket', 'HID', { fields: { [fields['Hidden note'] as number]: 'x' } });
   });
 
@@ -178,14 +178,14 @@ describe('search export (M1-042)', () => {
     const res = await exported('alice', {
       q: 'track = EXP ORDER BY key ASC',
       format: 'csv',
-      columns: `key,summary,assignee,labels,description,cf[${fields.Customer}],cf[${fields.Points}]`,
+      columns: `key,summary,assignee,labels,description,cf[${fields.Customer}],cf[${fields.Pts}]`,
     });
     expect(res.statusCode, res.body).toBe(200);
     expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
     expect(res.headers['content-disposition']).toMatch(/^attachment; filename="tickets-.*\.csv"$/);
     expect(res.headers['cache-control']).toBe('no-store');
     expect(parseCsv(res.body)).toEqual([
-      ['key', 'summary', 'assignee', 'labels', 'description', 'Customer', 'Points'],
+      ['key', 'summary', 'assignee', 'labels', 'description', 'Customer', 'Pts'],
       [
         keys['=HYPERLINK("http://example.test")'],
         `'=HYPERLINK("http://example.test")`,
@@ -233,9 +233,9 @@ describe('search export (M1-042)', () => {
 
   it('[QRY-015] streams JSON as an array of tickets as the search shows them', async () => {
     const res = await exported('alice', {
-      q: 'track = EXP AND Points IS NOT EMPTY ORDER BY Points DESC',
+      q: 'track = EXP AND Pts IS NOT EMPTY ORDER BY Pts DESC',
       format: 'json',
-      columns: `summary,status,cf[${fields.Points}]`,
+      columns: `summary,status,cf[${fields.Pts}]`,
     });
     expect(res.statusCode, res.body).toBe(200);
     expect(res.headers['content-type']).toBe('application/json; charset=utf-8');
@@ -245,7 +245,7 @@ describe('search export (M1-042)', () => {
       status: { name: string };
       fields: Record<string, unknown>;
     }[];
-    expect(tickets.map((t) => [t.summary, t.fields[String(fields.Points)]])).toEqual([
+    expect(tickets.map((t) => [t.summary, t.fields[String(fields.Pts)]])).toEqual([
       ['Plain words', 8],
       ['=HYPERLINK("http://example.test")', -3],
     ]);

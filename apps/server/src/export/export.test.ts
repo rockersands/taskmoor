@@ -250,7 +250,7 @@ describe('the full export (M1-098)', () => {
       multiple: true,
       context: { options: [{ value: 'a' }, { value: 'b' }] },
     });
-    const points = await field({ name: 'Points', type: 'number' });
+    const points = await field({ name: 'Pts', type: 'number' });
     const reviewer = await field({ name: 'Reviewer', type: 'user' });
     const team = await field({ name: 'Team', type: 'group' });
     const topics = await field({ name: 'Topics', type: 'labels' });
@@ -259,7 +259,7 @@ describe('the full export (M1-098)', () => {
     await field({
       name: 'Double points',
       type: 'formula',
-      config: { expression: '{Points} * 2', output: 'number' },
+      config: { expression: '{Pts} * 2', output: 'number' },
     });
     const optionId = (
       f: {

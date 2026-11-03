@@ -1,0 +1,233 @@
+/*
+ * Motion, "watery" in the user's words (ADR-114, section 11). Our own design: surfaces swell out of
+ * where they came from, go a little past the mark and settle, and what leaves melts away. This is
+ * the default for new work: give a surface one of these classes, or add it to a list below.
+ *
+ * Rules, held by motion.test.ts:
+ * - Durations and easings come from tokens.css. At 0ms (reduced motion, print) all of this is still.
+ * - Only opacity and the transforms move: `scale` and `translate`, which add to any `transform` a
+ *   surface already has. Nothing here repaints or lays out a page, so it stays smooth on big boards.
+ * - No `will-change`: a board card never pays for a move it is not making.
+ */
+
+@keyframes motion-swell {
+  from {
+    opacity: 0;
+    scale: 0.94 0.9;
+  }
+}
+
+@keyframes motion-settle {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    translate: 0 -6px;
+  }
+}
+
+@keyframes motion-slide {
+  from {
+    opacity: 0;
+    translate: calc(var(--motion-side) * -24px) 0;
+    scale: 0.97 1;
+  }
+}
+
+@keyframes motion-dock {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+    scale: 1 0.96;
+  }
+}
+
+@keyframes motion-drop {
+  from {
+    translate: 0 -8px;
+    scale: 1.03 0.92;
+  }
+}
+
+@keyframes motion-bulge {
+  from {
+    scale: 0.94 0.86;
+  }
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-collapse {
+  to {
+    opacity: 0;
+    scale: 0.96 0.9;
+  }
+}
+
+@keyframes motion-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+ * Where each surface swells from: near the thing that opened it. --motion-side turns the start and
+ * the end of the line around when text runs right to left.
+ */
+.popover,
+.help-tip-body,
+.status-menu-popup {
+  --motion-origin: calc(50% - var(--motion-side) * 50%) 0%;
+}
+
+.user-menu-popup:not(.status-menu-popup) {
+  --motion-origin: calc(50% + var(--motion-side) * 50%) 0%;
+}
+
+.ticket-dialog,
+.attachment-preview {
+  --motion-origin: 50% 40%;
+}
+
+.board-choice {
+  --motion-origin: 50% 100%;
+}
+
+/* A floating surface: menus, popovers, dialogs and the command palette. */
+.motion-swell,
+.popover,
+.help-tip-body:not([hidden]),
+.user-menu-popup,
+.palette,
+.create-dialog,
+.ticket-dialog,
+.attachment-preview,
+.board-choice {
+  transform-origin: var(--motion-origin, 50% 0%);
+  animation: motion-swell var(--motion-slow) var(--ease-swell);
+}
+
+/* Something that opens in the page or arrives in it: a section, a form, a notice. */
+.motion-settle,
+.people-panel,
+.people-form,
+.webhook-panel,
+.workflow-panel,
+.saved-panel,
+.sso-editor,
+.search-columns-panel,
+.board-move-menu,
+.update-banner,
+[role="alert"],
+[role="status"]:not(.visually-hidden) {
+  animation: motion-settle var(--motion-base) var(--ease-settle);
+}
+
+/*
+ * A whole region, such as a tab's contents. Transform only, and no overshoot: opacity on it would
+ * cut the glass inside off from the canvas behind, and going past the mark could flash a scroll bar.
+ */
+.motion-rise {
+  animation: motion-rise var(--motion-base) var(--ease-soft);
+}
+
+/* Comes in from the start of the line: the navigation drawer. */
+.motion-slide,
+.shell-drawer {
+  transform-origin: calc(50% - var(--motion-side) * 50%) 50%;
+  animation: motion-slide var(--motion-slow) var(--ease-swell);
+}
+
+/* Comes up from the bottom edge: the phone's docked panel. */
+.motion-dock {
+  transform-origin: 50% 100%;
+  animation: motion-dock var(--motion-slow) var(--ease-swell);
+}
+
+@media (max-width: 767px) {
+  .popover {
+    --motion-origin: 50% 100%;
+    animation-name: motion-dock;
+  }
+}
+
+/* The ticket pop-up on a phone is a sheet, so it comes up from the bottom edge. */
+@media (max-width: 767px) {
+  .create-dialog.ticket-popup {
+    --motion-origin: 50% 100%;
+    animation-name: motion-dock;
+  }
+}
+
+/* One card landing after a move, set by playMotion for that card alone. */
+.motion-drop {
+  transform-origin: 50% 0%;
+  animation: motion-drop var(--motion-slow) var(--ease-swell);
+}
+
+/* The mark of the current place: it swells into place where the person just went. */
+.motion-bulge,
+.nav-link[aria-current="page"],
+.track-tabs a[aria-current="page"],
+.ticket-tab[aria-selected="true"] {
+  animation: motion-bulge var(--motion-slow) var(--ease-swell);
+}
+
+.motion-fade,
+.shell-backdrop,
+.popover-scrim,
+.ticket-dialog-backdrop::before,
+.attachment-preview-backdrop::before {
+  animation: motion-fade var(--motion-base) var(--ease-soft);
+}
+
+/*
+ * A native fold opens and closes with its contents settling. The fold's height changes at once, as
+ * it always has; only the contents move. A browser without this pseudo-element skips the rules.
+ */
+::details-content {
+  opacity: 0;
+  translate: 0 -6px;
+  transition:
+    opacity var(--motion-base) var(--ease-soft),
+    translate var(--motion-base) var(--ease-settle),
+    content-visibility var(--motion-base) allow-discrete;
+}
+
+details[open]::details-content {
+  opacity: 1;
+  translate: none;
+}
+
+/*
+ * What has just left: an empty copy of the surface, made by leaveMotion in shell/motion.ts, melts
+ * for a moment over the page. The real surface is already gone, so nothing waits. Last in this
+ * file, so it wins over the entrances above.
+ */
+.motion-collapse {
+  transform-origin: var(--motion-origin, 50% 0%);
+  animation: motion-collapse var(--motion-fast) var(--ease-soft) forwards;
+}
+
+.motion-fade-out {
+  animation: motion-fade-out var(--motion-fast) var(--ease-soft) forwards;
+}
+
+.motion-fade-out::before {
+  animation: none;
+}
+
+@media print {
+  .motion-collapse,
+  .motion-fade-out {
+    display: none;
+  }
+}

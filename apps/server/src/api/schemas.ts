@@ -432,6 +432,12 @@ export const boardData = z
         .loose(),
     ),
     truncated: z.boolean(),
+    people: z.object({
+      viewerId: id.nullable(),
+      assignees: z.array(z.object({ id, name: z.string() })),
+      unassigned: z.boolean(),
+      more: z.boolean(),
+    }),
   })
   .loose()
   .meta({ id: 'BoardData' });

@@ -139,7 +139,7 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_ROUNDTRIP)(
       ).field;
       const points = (
         await admin(
-          { method: 'POST', url: '/api/v1/fields', payload: { name: 'Points', type: 'number' } },
+          { method: 'POST', url: '/api/v1/fields', payload: { name: 'Pts', type: 'number' } },
           201,
         )
       ).field.id as number;

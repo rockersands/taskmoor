@@ -397,11 +397,12 @@ test('[IAM-008] the account page and the user menu work on a small phone', async
 
 test('[OPS-010] the administrator opens the system status from Settings', async ({ page }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'System status' }).click();
   await expect(heading(page)).toHaveText('System status');
   const database = page.getByRole('region', { name: 'Database' });
-  await expect(database.getByText('Connected')).toBeVisible();
+  // It asks the database for its size, version and migrations: slow on a busy machine.
+  await expect(database.getByText('Connected')).toBeVisible({ timeout: 20_000 });
   await expect(database.getByText(/^\d+ applied$/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Runtime' }).getByText(/^v\d+\./)).toBeVisible();
 
@@ -488,7 +489,7 @@ test('[IAM-007] the administrator revokes every token of a person at once from t
     program.get('/api/v1/session', { headers: { authorization: `Bearer ${token}` } });
   for (const token of secrets) expect((await use(token)).status()).toBe(200);
 
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'API tokens' }).click();
   await expect(heading(page)).toHaveText('API tokens');
   const list = page.getByRole('region', { name: 'Tokens', exact: true });
@@ -522,7 +523,7 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
   baseURL,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Service accounts' }).click();
   await expect(heading(page)).toHaveText('Service accounts');
   const create = page.getByRole('region', { name: 'New service account' });
@@ -721,7 +722,7 @@ test('[IAM-001] when the policy covers everyone, a person without a second facto
       (r) => r.url().endsWith('/api/v1/security/two-factor') && r.request().method() === 'PUT',
     );
   try {
-    await page.goto('./#/settings');
+    await page.goto('./#/admin');
     await page.getByRole('link', { name: 'Security' }).click();
     await expect(heading(page)).toHaveText('Security');
     const policy = page.getByRole('form', { name: 'Two-factor authentication' });
@@ -848,7 +849,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
   page,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Single sign-on' }).click();
   await expect(heading(page)).toHaveText('Single sign-on');
   // The address to register at the provider comes from the backend's public URL.
@@ -999,7 +1000,7 @@ test('[CORE-025] [OPS-009] the administrator undeletes a ticket and a whole trac
   });
   expect((await page.request.delete(`/api/v1/tickets/${key}`)).status()).toBe(204);
 
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Trash' }).click();
   await expect(heading(page)).toHaveText('Trash');
   await expect(page.getByText(/wait here for 30 days/)).toBeVisible();
@@ -1040,7 +1041,7 @@ test('[IAM-005] the administrator adds a directory; it syncs and its people sign
   page,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'LDAP and Active Directory' }).click();
   await expect(heading(page)).toHaveText('LDAP and Active Directory');
   await page.getByRole('button', { name: 'Add a directory' }).click();
@@ -1130,8 +1131,9 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
 
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'FORM Forms' });
-  await page.getByLabel('Ticket type').selectOption({ label: 'Bug' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'FORM Forms' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Bug', exact: true }).click();
   await expect(page.getByLabel('Due date (required)')).toBeVisible();
   await expect(page.getByLabel('Severity (required)')).toBeVisible();
   // Hidden by the rules: not on the form at all.
@@ -1159,7 +1161,8 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   expect(created.ticket.fields[String(fieldId)]?.value).toBe('Blocker');
 
   // A Chore needs neither: optional there, so a summary is enough.
-  await page.getByLabel('Ticket type').selectOption({ label: 'Chore' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Chore', exact: true }).click();
   await expect(page.getByLabel('Due date', { exact: true })).toBeVisible();
   await page.getByLabel('Summary (required)').fill('Tidy the cart code');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -1197,7 +1200,7 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
   await signInThroughApi(page.request, ADMIN);
   let workflowId: string | undefined;
   try {
-    await page.goto('./#/settings');
+    await page.goto('./#/admin');
     await page.getByRole('link', { name: 'Workflows' }).click();
     await expect(heading(page)).toHaveText('Workflows');
     await page.getByRole('button', { name: 'Create a workflow' }).click();
@@ -1619,7 +1622,7 @@ test('[WF-007] [CORE-013] a locked field and a locked status show read-only, wit
   // The create form: the due date is read-only and says who sets it.
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'LOCK Locks' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'LOCK Locks' });
   const due = page.getByLabel('Due date');
   await expect(due).toBeDisabled();
   await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');

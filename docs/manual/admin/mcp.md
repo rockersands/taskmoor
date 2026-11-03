@@ -2,7 +2,7 @@
 title: "The MCP server"
 audience: admins
 sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/oauth.ts, apps/server/src/oauth/clients.ts, apps/server/src/oauth/tokens.ts, apps/web/src/oauth/ConsentPage.tsx, docs/adr/0084-oauth-for-mcp-clients.md
-accessed: 2026-10-31
+accessed: 2026-11-03
 attestation: own-words
 ---
 # The MCP server
@@ -27,7 +27,7 @@ The protocol itself is described at https://modelcontextprotocol.io.
 ## Turning it on and choosing the tools
 
 The server is on by default, with the **Planner** profile and any client allowed. Site
-administrators change this on **Settings**, then **MCP server**:
+administrators change this on **Administration**, then **MCP server**:
 
 - **Let agents connect** turns the server on or off. While it is off, every message is refused
   with "The MCP server is turned off."

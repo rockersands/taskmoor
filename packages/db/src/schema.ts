@@ -865,6 +865,8 @@ export interface BoardTable {
   updated_at: DefaultTimestamp;
   /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
   manages_workflow: Generated<boolean>;
+  /** Which column closes tickets: null the rightmost, `none` no column, or a column's id. */
+  closing_column: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 /** A board's sprint (M1-044; AGL-010, AGL-011; ADR-054). */
@@ -1000,6 +1002,18 @@ export interface DashboardTable {
   widgets: ColumnType<JsonValue, string | undefined, string>;
   /** The administrator's choice for everyone's home; at most one per workspace. */
   is_default: Generated<boolean>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A track's customized Summary, at most one per track; no row is the default (ADR-116). */
+export interface TrackSummaryLayoutTable {
+  track_id: number;
+  workspace_id: number;
+  layout: ColumnType<DashboardLayout, DashboardLayout | undefined, DashboardLayout>;
+  /** The widgets in order, as a dashboard's (checked by the API). */
+  widgets: ColumnType<JsonValue, string | undefined, string>;
   version: Generated<number>;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
@@ -2543,6 +2557,16 @@ export interface AiLimitAlertTable {
  * A download of one person's data (ASVS 8.3.2, ADR-111): a ZIP a background job writes into the
  * attachment store, kept for a week. `user_id` is whose data it is, `requested_by` who asked.
  */
+/** Where a person is in the guided tutorial (ADR-115); section `offer` is the first-run offer. */
+export interface TutorialProgressTable {
+  workspace_id: number;
+  user_id: number;
+  section: string;
+  state: 'active' | 'done' | 'skipped' | 'shown' | 'dismissed';
+  step: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
 export interface PersonalExportTable {
   id: Generated<string>;
   workspace_id: number;
@@ -2621,6 +2645,7 @@ export interface Database {
   workspace: WorkspaceTable;
   app_user: AppUserTable;
   personal_export: PersonalExportTable;
+  tutorial_progress: TutorialProgressTable;
   ticket_template: TicketTemplateTable;
   track_invitation: TrackInvitationTable;
   user_group: UserGroupTable;
@@ -2695,6 +2720,7 @@ export interface Database {
   saved_search_share: SavedSearchShareTable;
   dashboard: DashboardTable;
   dashboard_share: DashboardShareTable;
+  track_summary_layout: TrackSummaryLayoutTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

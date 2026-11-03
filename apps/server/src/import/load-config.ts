@@ -491,6 +491,37 @@ export const fieldContexts: Loader<FieldContextCommand> = {
         .where(sql<string>`lower(name)`, '=', lower(cmd.name))
         .executeTakeFirst();
       if (found) return { action: 'link', targetId: found.id, fingerprint, data };
+      // A field linked by name, such as the Points every workspace starts with (migration 0095),
+      // may already cover this scope under another context name. Two contexts of a field cannot
+      // cover the same pair (CORE-009), so the target's own one stands.
+      const pairs = scopes.filter((s) => s.track !== PENDING && s.type !== PENDING);
+      if (pairs.length > 0) {
+        const covering = await ctx.trx
+          .selectFrom('field_context_scope')
+          .select('context_id')
+          .where('field_id', '=', field)
+          .where((eb) =>
+            eb.or(
+              pairs.map((s) =>
+                eb.and([
+                  eb(sql<number>`coalesce(track_id, 0)`, '=', s.track ?? 0),
+                  eb(sql<number>`coalesce(ticket_type_id, 0)`, '=', s.type ?? 0),
+                ]),
+              ),
+            ),
+          )
+          .orderBy('context_id')
+          .executeTakeFirst();
+        if (covering) {
+          const held = await fieldContexts.read(ctx.trx, ctx.workspaceId, [covering.context_id]);
+          return {
+            action: 'link',
+            targetId: covering.context_id,
+            fingerprint: held.get(covering.context_id) ?? fingerprint,
+            data,
+          };
+        }
+      }
     }
     return { action: 'create', targetId: null, fingerprint, data };
   },

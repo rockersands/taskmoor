@@ -125,7 +125,7 @@
       },
       {
         "name": "Has a reviewer",
-        "query": "cf[11] IS NOT EMPTY"
+        "query": "cf[12] IS NOT EMPTY"
       },
       {
         "name": "Current sprints",
@@ -291,119 +291,6 @@
     "query": "track = FX",
     "subFilter": null,
     "track": "FX"
-  },
-  {
-    "boardFilters": [
-      {
-        "name": "Next release",
-        "query": "targetRelease = \"1.0\""
-      },
-      {
-        "name": "No estimate",
-        "query": "originalEstimate IS EMPTY"
-      },
-      {
-        "name": "Has a reviewer",
-        "query": "cf[11] IS NOT EMPTY"
-      },
-      {
-        "name": "Current sprints",
-        "query": "sprint IN openSprints()"
-      }
-    ],
-    "columns": [
-      {
-        "max": null,
-        "min": null,
-        "name": "To do",
-        "statuses": [
-          "Backlog"
-        ]
-      },
-      {
-        "max": 3,
-        "min": null,
-        "name": "In progress",
-        "statuses": [
-          "Selected",
-          "Working",
-          "In Review"
-        ]
-      },
-      {
-        "max": null,
-        "min": null,
-        "name": "Done",
-        "statuses": [
-          "Finished",
-          "Declined"
-        ]
-      }
-    ],
-    "kind": "scrum",
-    "name": "AX and BX delivery",
-    "query": "track IN (AX, BX)",
-    "subFilter": null,
-    "track": "AX"
-  },
-  {
-    "boardFilters": [
-      {
-        "name": "No estimate",
-        "query": "originalEstimate IS EMPTY"
-      },
-      {
-        "name": "Only my issues",
-        "query": "assignee = currentUser()"
-      }
-    ],
-    "columns": [
-      {
-        "max": null,
-        "min": null,
-        "name": "Backlog",
-        "statuses": [
-          "Backlog"
-        ]
-      },
-      {
-        "max": null,
-        "min": 2,
-        "name": "Selected",
-        "statuses": [
-          "Selected"
-        ]
-      },
-      {
-        "max": 4,
-        "min": null,
-        "name": "Working",
-        "statuses": [
-          "Working"
-        ]
-      },
-      {
-        "max": 4,
-        "min": null,
-        "name": "Review",
-        "statuses": [
-          "In Review"
-        ]
-      },
-      {
-        "max": null,
-        "min": null,
-        "name": "Done",
-        "statuses": [
-          "Finished"
-        ]
-      }
-    ],
-    "kind": "kanban",
-    "name": "AX Cache flow",
-    "query": "track = AX AND area = \"Cache\"",
-    "subFilter": "targetRelease IN upcomingReleases() OR targetRelease IS EMPTY",
-    "track": "AX"
   },
   {
     "boardFilters": [

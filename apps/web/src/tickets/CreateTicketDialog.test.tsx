@@ -35,6 +35,23 @@ function renderApp(handlers: Record<string, Handler> = {}) {
 }
 
 describe('the create dialog (M1-052)', () => {
+  it('[AGL-018] still closes with Escape after focus falls out of it, as when Create is pressed', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const opener = await screen.findByRole('button', { name: 'New ticket' });
+    opener.focus();
+    await user.keyboard('c');
+    const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
+    // What a submit button does when it turns disabled under the pointer.
+    (document.activeElement as HTMLElement).blur();
+    expect(dialog).not.toContainElement(document.activeElement as HTMLElement);
+    await user.keyboard('{Tab}');
+    expect(dialog).toHaveFocus();
+    (document.activeElement as HTMLElement).blur();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Create ticket' })).toBeNull();
+  });
+
   it('[AGL-018] opens with C anywhere outside a field, closes with Escape and gives focus back', async () => {
     const user = userEvent.setup();
     renderApp();
@@ -57,7 +74,8 @@ describe('the create dialog (M1-052)', () => {
     renderApp({ 'POST /tickets': () => jsonResponse(201, { ticket: { key: 'SHOP-9' } }) });
     await user.click(await screen.findByRole('button', { name: 'New ticket' }));
     const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
-    await user.selectOptions(await within(dialog).findByLabelText('Ticket type'), '4');
+    await user.click(await within(dialog).findByRole('combobox', { name: 'Ticket type' }));
+    await user.click(within(dialog).getByRole('option', { name: 'Chore' }));
     await user.type(await within(dialog).findByLabelText('Summary (required)'), 'Clean the cache');
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));
     const open = await within(dialog).findByRole('link', { name: 'Open SHOP-9' });
@@ -87,7 +105,9 @@ describe('the create dialog (M1-052)', () => {
     expect(
       await within(dialog).findByText('The fields of SHOP-7 are filled in: change what differs.'),
     ).toBeVisible();
-    expect(within(dialog).getByLabelText('Ticket type')).toHaveValue('4');
+    expect(within(dialog).getByRole('combobox', { name: 'Ticket type' })).toHaveTextContent(
+      'Chore',
+    );
     expect(await within(dialog).findByLabelText('Summary (required)')).toHaveValue(
       'Rotate the payment keys',
     );

@@ -63,7 +63,7 @@ describe('board reports (M1-061)', () => {
     await screen.findByRole('figure', { name: 'Average time in status' });
     await user.selectOptions(screen.getByRole('combobox', { name: 'Period' }), 'Last 90 days');
     await waitFor(() => expect(client.calls.at(-1)?.params).toEqual({ days: 90, filters: [] }));
-    await user.click(screen.getByRole('checkbox', { name: 'Only my tickets' }));
+    await user.click(screen.getByRole('checkbox', { name: 'My work' }));
     await waitFor(() =>
       expect(client.calls.at(-1)?.params).toEqual({ days: 90, filters: ['mine'] }),
     );

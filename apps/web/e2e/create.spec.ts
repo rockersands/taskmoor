@@ -94,19 +94,24 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   const type = dialog.getByLabel('Ticket type');
 
   // The first type: its tab, Environment required, no due date.
-  await type.selectOption({ label: report.name });
+  const chooseType = async (name: string) => {
+    await type.click();
+    await dialog.getByRole('option', { name, exact: true }).click();
+  };
+  await chooseType(report.name);
   await expect(dialog.getByRole('region', { name: 'What happened' })).toBeVisible();
   await expect(dialog.getByLabel('Environment (required)')).toBeVisible();
   await expect(dialog.getByLabel('Due date')).toHaveCount(0);
   // The second: its tab, a due date, no environment.
-  await type.selectOption({ label: plan.name });
+  await chooseType(plan.name);
   await expect(dialog.getByRole('region', { name: 'When' })).toBeVisible();
   await expect(dialog.getByLabel('Due date')).toBeVisible();
   await expect(dialog.getByLabel(/^Environment/)).toHaveCount(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // Back to the first: refused without its environment, created with it.
-  await type.selectOption({ label: report.name });
+  await chooseType(report.name);
+  await expect(dialog.getByLabel('Environment (required)')).toBeVisible();
   await dialog
     .getByLabel('Summary (required)')
     .fill(`Checkout times out on ${testInfo.project.name}`);
@@ -122,7 +127,12 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   const ticketKey = ((await made.textContent()) ?? '').split(' ')[0] as string;
   await dialog.getByRole('link', { name: `Open ${ticketKey}` }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticketKey);
+  // It opens in the pop-up, over the page the dialog was on.
+  await expect(
+    page.getByRole('dialog', { name: new RegExp(`^${ticketKey} `) }).getByRole('heading', {
+      level: 1,
+    }),
+  ).toContainText(ticketKey);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -164,5 +174,7 @@ test('[AGL-019] the home page lists what is assigned to me, what I opened and wh
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await assigned.getByRole('link', { name: link }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticket.key);
+  await expect(
+    page.getByRole('dialog', { name: link }).getByRole('heading', { level: 1 }),
+  ).toContainText(ticket.key);
 });

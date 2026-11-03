@@ -14,7 +14,7 @@ the people who run a track.
 
 ## Tracks you run
 
-If you run a track you do not need to be a site administrator to manage it. Open **Settings**,
+If you run a track you do not need to be a site administrator to manage it. Open **Administration**,
 then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page shows:
 
 - **Who holds which role**, with **Remove** on the roles you may take away;

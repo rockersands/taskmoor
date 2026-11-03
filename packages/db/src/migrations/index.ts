@@ -71,8 +71,16 @@ import * as m0080 from './0080_session_policy';
 import * as m0081 from './0081_security_events';
 import * as m0082 from './0082_storage_quota';
 import * as m0083 from './0083_personal_data';
+import * as m0084 from './0084_tutorial_progress';
 import * as m0085 from './0085_ticket_templates';
 import * as m0087 from './0087_track_invitations';
+import * as m0088 from './0088_one_board_per_track';
+import * as m0089 from './0089_seamless_default_workflow';
+import * as m0090 from './0090_track_summary_layout';
+import * as m0092 from './0092_very_low_priority';
+import * as m0093 from './0093_board_card_defaults';
+import * as m0094 from './0094_board_kind_decides_backlog';
+import * as m0095 from './0095_points_field';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -154,6 +162,14 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0081_security_events': m0081,
   '0082_storage_quota': m0082,
   '0083_personal_data': m0083,
+  '0084_tutorial_progress': m0084,
   '0085_ticket_templates': m0085,
   '0087_track_invitations': m0087,
+  '0088_one_board_per_track': m0088,
+  '0089_seamless_default_workflow': m0089,
+  '0090_track_summary_layout': m0090,
+  '0092_very_low_priority': m0092,
+  '0093_board_card_defaults': m0093,
+  '0094_board_kind_decides_backlog': m0094,
+  '0095_points_field': m0095,
 };

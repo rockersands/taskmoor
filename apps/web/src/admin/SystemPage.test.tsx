@@ -44,10 +44,10 @@ describe('system status page', () => {
     // An older failure is history once a backup succeeded after it.
     expect(within(section('Scheduled backups')).getByText(/could not connect/).className).toBe('');
     expect(fact('Scheduled backups', 'Restore drill')).toMatch(/restored in 412\.5 s$/);
-    // The settings entry stays highlighted in the navigation.
-    expect(screen.getAllByRole('link', { name: 'Settings' })[0]?.getAttribute('aria-current')).toBe(
-      'page',
-    );
+    // Administration stays highlighted in the navigation.
+    expect(
+      screen.getAllByRole('link', { name: 'Administration' })[0]?.getAttribute('aria-current'),
+    ).toBe('page');
   });
 
   it('[OPS-010] flags an unreachable database and a missing backup', async () => {
@@ -127,16 +127,15 @@ describe('system status page', () => {
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
   });
 
-  it('[OPS-010] links to the status from Settings for administrators only', async () => {
-    window.location.hash = '#/settings';
+  it('[OPS-010] links to the status from Administration for administrators only', async () => {
+    window.location.hash = '#/admin';
     const { unmount } = render(<App session={ADMIN} />);
     expect((await screen.findByRole('link', { name: 'System status' })).getAttribute('href')).toBe(
       '#/admin/system',
     );
     unmount();
     render(<App session={MEMBER} />);
-    expect(await screen.findByRole('link', { name: 'Account' })).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Administration' })).toBeNull();
+    expect(await screen.findByText(/Only site and configuration administrators/)).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'System status' })).toBeNull();
   });
 

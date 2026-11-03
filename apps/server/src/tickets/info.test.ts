@@ -204,8 +204,8 @@ describe('read-only info fields through the API (M1-125)', () => {
 
   it('[CORE-012] (1) answers the time in each status from the change history', async () => {
     const t = await ticket('Moves through the workflow');
-    // Start, send to review, back to active (the default workflow's first transitions).
-    for (const transitionId of [1, 2, 3]) {
+    // To Active, to In Review and back to Active (transitions of the default workflow).
+    for (const transitionId of [1, 2, 1]) {
       const res = await as('alice', {
         method: 'POST',
         url: `/api/v1/tickets/${t.id}/transitions`,

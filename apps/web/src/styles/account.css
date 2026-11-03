@@ -167,6 +167,8 @@
   padding: 8px;
   background-color: var(--color-canvas);
   background-image: var(--canvas-image);
+  background-position: center;
+  background-size: cover;
 }
 
 .skin-preview-bar {

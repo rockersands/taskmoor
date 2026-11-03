@@ -2,7 +2,7 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { requireSiteAdmin } from '../auth';
+import { requireGlobal, requireSiteAdmin } from '../auth';
 import { effectiveMemberIds, nestingWouldCycle, toUserView, USER_COLUMNS } from '../directory';
 import { diff, emit } from '../events/bus';
 import {
@@ -79,8 +79,10 @@ export function registerGroupRoutes(
       .where('workspace_id', '=', workspaceId)
       .executeTakeFirst();
 
+  // Configuration administrators read the list to give a track's roles to a group (ADR-114); only
+  // site administrators change groups.
   app.get('/api/v1/groups', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    if (!(await requireGlobal(request, reply, 'site_admin', 'configuration_admin'))) return reply;
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     let query = db

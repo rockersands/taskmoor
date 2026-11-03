@@ -317,6 +317,12 @@ export async function writePersonalData(
   );
 
   // Preferences ----------------------------------------------------------------------------------
+  const tutorial = await db
+    .selectFrom('tutorial_progress')
+    .select(['section', 'state', 'step', 'updated_at'])
+    .where('user_id', '=', userId)
+    .orderBy('section')
+    .execute();
   const [preference, notificationSettings, properties, savedSearches] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
@@ -350,6 +356,12 @@ export async function writePersonalData(
           ? { start: preference.quiet_start, end: preference.quiet_end }
           : null,
       notifications: notificationSettings,
+      tutorial: tutorial.map((row) => ({
+        section: row.section,
+        state: row.state,
+        step: row.step,
+        updatedAt: iso(row.updated_at),
+      })),
       properties: properties.map((p) => ({
         key: p.key,
         value: p.value,

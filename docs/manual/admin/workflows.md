@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
-accessed: 2026-10-31
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Workflows
@@ -12,7 +12,7 @@ covers statuses and stages, what a transition can do, the workflow editor, publi
 workflow maps, and how tickets move when their workflow changes.
 
 Site and configuration administrators manage shared workflows. In the web app they are under
-**Settings**, **Workflows** and **Settings**, **Workflow maps**; everything is also in the
+**Administration**, **Workflows** and **Administration**, **Workflow maps**; everything is also in the
 [REST API](rest-api.md) under `/api/v1/statuses`, `/api/v1/workflows` and
 `/api/v1/workflow-maps`.
 
@@ -30,7 +30,7 @@ A fresh site has these statuses: Open, New, Backlog, Selected for Development an
 Active, In Review and Under review (active); Approved, Rejected, Cancelled, Published and Closed
 (closed).
 
-The **Statuses** section of **Settings**, **Workflows** manages them: **Add a status** (with
+The **Statuses** section of **Administration**, **Workflows** manages them: **Add a status** (with
 **Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**.
 
 - A status keeps its stage while tickets are in it.
@@ -44,17 +44,23 @@ Each workflow has a **published version**, which tickets move through, and at mo
 every ticket uses it, with no downtime. Earlier versions stay, and any of them can be restored
 as the draft.
 
-A fresh site has one **Default workflow**:
+A fresh site has one **Default workflow**. It moves freely: a ticket can go from any status to
+any other at once, and nothing asks for a field. Each transition is named after the status it
+goes to:
 
 | Transition | From | To | What it does |
 |---|---|---|---|
-| Start | New | Active | |
-| Send to review | Active | In Review | |
-| Back to active | In Review | Active | |
-| Close | Any status | Closed | Asks for a close reason, which is required |
-| Reopen | Closed | New | Clears the close reason |
+| New | Any status | New | Clears the close reason |
+| Active | Any status | Active | Clears the close reason |
+| In Review | Any status | In Review | Clears the close reason |
+| Closed | Any status | Closed | Sets the close reason to Completed |
 
-New tickets start in New. The default workflow cannot be deleted.
+The status says where a ticket stands; why it moved goes in a comment. New tickets start in New.
+The default workflow cannot be deleted.
+
+These are only the defaults. To require a field, a guard or a check, edit the workflow or make
+your own (below): a rule you add stays. A site that had already changed its default workflow
+before this version keeps its own rules, and so does every imported workflow.
 
 ## Transitions
 
@@ -184,7 +190,7 @@ status 7 only role 1 may edit and only group 4 may run transitions (ids are your
 
 ## The workflow editor
 
-**Settings**, **Workflows** lists the workflows with their published version, any draft and how
+**Administration**, **Workflows** lists the workflows with their published version, any draft and how
 many tracks use them. **Create a workflow** asks for a **Name**, a **Description**, **Start
 from** (**An empty workflow** or **A copy of** another one) and an **Initial status**.
 **Delete** removes an unused workflow with all its versions; a workflow that a workflow map
@@ -264,7 +270,7 @@ A workflow map says which workflow each ticket type follows in the tracks that u
 map does not name follow its default workflow. A fresh site has the **Default workflow map**,
 where every type uses the default workflow; tracks without a map of their own use it.
 
-On **Settings**, **Workflow maps**:
+On **Administration**, **Workflow maps**:
 
 - **Add a workflow map** with a **Map name** and a **Default workflow**.
 - **Manage** a map to change the **Workflow for every other type**, to **Give a type its own
@@ -272,7 +278,7 @@ On **Settings**, **Workflow maps**:
 - **Delete map** removes a map no track uses. The default map cannot be deleted.
 
 A map holds at most 150 workflows by default ([guardrails](tracks.md#configuration-guardrails)).
-A shared-mode track chooses its map under **Settings**, **Tracks**, **Manage**, **Workflow map**.
+A shared-mode track chooses its map under **Administration**, **Tracks**, **Manage**, **Workflow map**.
 
 A local-mode track owns one map, named after its key, made with the track. Its administrators
 change it through the API, and may create workflows the track owns (`POST /api/v1/workflows`

@@ -1,8 +1,8 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md
-accessed: 2026-11-02
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Tracks
@@ -14,31 +14,36 @@ tracks, see [concepts and terms](../concepts.md).
 
 ## Where tracks are managed
 
-Site administrators manage tracks in the web app under **Settings**, **Tracks**. The page adds
+Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, gives roles to people and groups, and archives
 and restores them.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
-`GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. Configuration administrators who are not
-site administrators work through the API. A token that changes shared configuration needs the
+`GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
 `admin` scope; see [API tokens](api-tokens.md).
 
-Taskmoor does not yet have a page that lists every track for everyone; the **Tracks** entry of
-the navigation is not finished.
+**Tracks** in the sidebar opens the page that lists every track you can see, with a box to find one
+by name or key. It stays marked as the current place while you are inside a track, on a ticket or on a
+board.
 
 ## Creating a track
 
 ### In the web app
 
-1. Go to **Settings**, **Tracks**.
-2. Under **Add a track**, fill in **Key** and **Track name**.
+Anyone who may make a track, see [Who may create one](#who-may-create-one), finds **New track** on the
+**Tracks** page and in the command palette. Others do not see it. If no track exists yet, the empty
+page offers it too.
+
+1. Press **New track**.
+2. Fill in **Key** and **Track name**.
 3. Choose **Configuration**: **Shared configuration** (shared mode) or **Its own
-   configuration** (local mode).
+   configuration** (local mode). Only the ones you may make are listed.
 4. Choose **Start from**: one of the **Templates**, or, for a shared track, **The configuration
    of another track**.
-5. Press **Add a track**.
+5. Press **Create track**. You land in the new track.
 
-When the template makes a board, the page shows a link, **Open the board of** and the key.
+Administrators can also use **Administration**, **Tracks**, with the same form under **Add a track**.
+There, when the template makes a board, the page shows a link, **Open the board of** and the key.
 
 ### Keys
 
@@ -61,7 +66,7 @@ configuration sets are the defaults of the track type, as for any new track.
 | Kanban | software | backlog, sprints | A Kanban board of every ticket in the track |
 | Bug tracking | software | backlog, sprints, forms, timeline | A Kanban board of the track's bugs (`type = Bug`) |
 | Business | business | as the business type | A Kanban board of every ticket in the track |
-| Blank | software | none | None |
+| Blank | software | none, until its first board | None; a Kanban board the first time it is opened, which turns backlog and sprints off |
 
 The board is named after the track. Bug tracking relies on a ticket type called Bug in the track's
 type set; without one, its board stays empty until someone edits the board's query.
@@ -93,7 +98,8 @@ track, and the template's board when one was made.
 
 - Shared-mode tracks: site and configuration administrators.
 - Local-mode tracks: people with the global permission **Create tracks with their own
-  configuration**.
+  configuration**. A new site grants it to every signed-in person; change that under
+  [permissions and access](permissions.md).
 
 The person who creates the track becomes its owner unless another owner is named, and joins the
 role that the track's access policy lets run the track (Administrators in the default policy).
@@ -132,8 +138,11 @@ These are changed by the track's administrators (the permission **Run the track*
 | Icon and colour | `icon`, `color` | An icon name; a colour as `#rrggbb` |
 | Features | `features` | `board`, `backlog`, `sprints`, `releases`, `development`, `forms`, `approvals`, `calendar`, `timeline`, each `true` or `false` |
 
-Turning a feature off deletes nothing. Taskmoor stores the features today, but the web app and the
-API do not yet hide the parts a track has turned off.
+Turning a feature off deletes nothing. The board's kind decides **backlog** and **sprints**: a
+Scrum board turns both on and a Kanban board turns both off, also when the kind changes, recorded as
+a change of the track. The web app shows a Backlog and reports that follow sprints only on a track
+with a Scrum board and those features on. For the other features, Taskmoor stores the choice, but the
+web app and the API do not yet hide the parts a track has turned off.
 
 ### People and roles
 
@@ -146,13 +155,14 @@ track's access policy; see [permissions and access](permissions.md). Through the
 administrators read `GET /api/v1/tracks/:id/role-actors` and change roles with
 `PUT` or `DELETE /api/v1/tracks/:id/roles/:roleId/users/:userId` (or `groups/:groupId`).
 
-A track's administrators manage its roles from **Settings** > **Tracks you run**, and may be allowed
+A track's administrators manage its roles from **Administration** > **Tracks you run**, and may be allowed
 to invite people; see [Inviting people and running a track](invitations.md). A role that runs the
 track needs a further permission, and the track's last administrator cannot be removed.
 
 ### Configuration sets
 
-A track names the configuration sets it uses. `null` means the site's default.
+A track names the configuration sets it uses. `null` means the site's default. Layouts, priorities,
+visibility policy and notifications are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
 
 | API field | What it chooses | Who may change it |
 |---|---|---|
@@ -251,7 +261,7 @@ category leaves its tracks without one.
 
 ## Archiving a track
 
-On **Settings**, **Tracks**, open **Manage** and press **Archive track**, then **Yes**. **Restore
+On **Administration**, **Tracks**, open **Manage** and press **Archive track**, then **Yes**. **Restore
 track** brings it back. Only site and configuration administrators archive and restore
 (`POST /api/v1/tracks/:id/archive` and `/restore`).
 
@@ -267,7 +277,7 @@ While it is there:
 
 - nobody else sees the track or anything in it;
 - it keeps its keys, so no new track can take them;
-- site administrators restore it on **Settings**, **Trash**, under **Tracks**, with **Restore
+- site administrators restore it on **Administration**, **Trash**, under **Tracks**, with **Restore
   track** (or `POST /api/v1/tracks/:id/undelete`).
 
 The trash keeps tracks and tickets for 30 days by default. Site administrators change this under
@@ -280,7 +290,7 @@ free again. See also [backups and restore](backups.md).
 ## Configuration guardrails
 
 Guardrails limit how much configuration one track, field, policy, map, set or workflow may hold.
-Site administrators see and change them on **Settings**, **Guardrails**: each shows where it is
+Site administrators see and change them on **Administration**, **Guardrails**: each shows where it is
 used most, marks usage **Above the limit**, and takes a new **Limit** with **Save the limit**.
 
 | Guardrail | Default |

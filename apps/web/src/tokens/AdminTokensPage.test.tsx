@@ -252,10 +252,10 @@ describe('admin token inventory', () => {
     expect(screen.queryByRole('region', { name: 'Revoke in bulk' })).toBeNull();
   });
 
-  it('[IAM-007] is reachable from Settings and the command palette', async () => {
+  it('[IAM-007] is reachable from Administration and the command palette', async () => {
     const user = userEvent.setup();
     inventoryBackend();
-    window.location.hash = '#/settings';
+    window.location.hash = '#/admin';
     render(<App session={ADMIN} />);
     expect(await screen.findByRole('link', { name: 'API tokens' })).toHaveAttribute(
       'href',

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -150,6 +151,75 @@ describe('track templates (M1-054)', () => {
     expect(events.filter((e) => e.type === 'board.created')).toHaveLength(4);
   });
 
+  describe('the Points field (migration 0095)', () => {
+    const fieldsNamed = async (name: string) =>
+      ((await call('GET', '/api/v1/fields')).fields as { id: number; name: string }[]).filter(
+        (f) => f.name === name,
+      );
+    const estimation = async (board: number) =>
+      (await call('GET', `/api/v1/boards/${board}`)).board.sprintSettings.estimation;
+
+    it("[AGL-007] new tracks' boards estimate with it, and it is on the forms to set", async () => {
+      const [points] = await fieldsNamed('Points');
+      const fieldId = points?.id as number;
+      for (const template of ['scrum', 'kanban', 'business']) {
+        const key = `P${template.slice(0, 2).toUpperCase()}`;
+        const { board } = await make({ key, name: template, template });
+        expect(await estimation(board.id), template).toEqual({ statistic: 'field', fieldId });
+      }
+      const tracked = await ticket('PSC', 'Sized');
+      const form = await call('GET', `/api/v1/tickets/${tracked}/layout?operation=edit`);
+      expect(
+        form.layout.tabs.flatMap((t: { sections: { fields: { key: string }[] }[] }) =>
+          t.sections.flatMap((s) => s.fields.map((f) => f.key)),
+        ),
+      ).toContain(`cf[${fieldId}]`);
+      expect(form.customFields.map((f: { id: number }) => f.id)).toContain(fieldId);
+      const set = await call('PATCH', `/api/v1/tickets/${tracked}`, {
+        fields: { [fieldId]: 5 },
+      });
+      expect(set.ticket.fields[String(fieldId)]).toBe(5);
+      const hits = await call('POST', '/api/v1/search', { q: 'track = PSC AND Points = 5' });
+      expect(hits.tickets.map((x: { key: string }) => x.key)).toEqual([tracked]);
+    });
+
+    it('[AGL-007] a rename keeps it, and removing it leaves boards on the default', async () => {
+      const { board: before } = await make({ key: 'RNA', name: 'Before', template: 'kanban' });
+      const [points] = await fieldsNamed('Points');
+      const fieldId = points?.id as number;
+      await call('PATCH', `/api/v1/fields/${fieldId}`, { name: 'Effort' });
+      const { board: renamed } = await make({ key: 'RNB', name: 'Renamed', template: 'scrum' });
+      expect(await estimation(renamed.id)).toEqual({ statistic: 'field', fieldId });
+      // Removed once no ticket holds a value (as for any field), and not brought back.
+      const holders = await database.db
+        .selectFrom('ticket')
+        .select('id')
+        .where(sql<boolean>`fields ? ${String(fieldId)}`)
+        .execute();
+      for (const { id } of holders) {
+        await call('PATCH', `/api/v1/tickets/${id}`, { fields: { [fieldId]: null } });
+      }
+      const gone = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/fields/${fieldId}`,
+        remoteAddress: nextAddress(),
+        headers: { cookie },
+      });
+      expect(gone.statusCode, gone.body).toBe(204);
+      expect(await estimation(before.id)).toEqual({ statistic: 'originalEstimate' });
+      const saved = await call('PATCH', `/api/v1/boards/${renamed.id}`, {
+        sprintSettings: (await call('GET', `/api/v1/boards/${renamed.id}`)).board.sprintSettings,
+      });
+      expect(saved.board.sprintSettings.estimation).toEqual({ statistic: 'originalEstimate' });
+      const { board: after } = await make({ key: 'RNC', name: 'After', template: 'kanban' });
+      expect(await estimation(after.id)).toEqual({ statistic: 'originalEstimate' });
+      expect(await fieldsNamed('Points')).toEqual([]);
+      // The tests after this one still start from the seeded field.
+      const again = await call('POST', '/api/v1/fields', { name: 'Points', type: 'number' }, 201);
+      expect(again.field.name).toBe('Points');
+    });
+  });
+
   it('[CORE-002] refuses a template with another type, or with a track to copy', async () => {
     await make({ key: 'BAD', name: 'Bad', template: 'business', type: 'software' }, 400);
     await make({ key: 'BAD', name: 'Bad', template: 'scrum', copyFrom: 1 }, 400);
@@ -196,5 +266,104 @@ describe('track templates (M1-054)', () => {
       'source_not_shared',
     );
     await make({ key: 'CP3', name: 'Copy 3', copyFrom: 999_999 }, 400);
+  });
+
+  describe("a board's kind and its track's backlog (ADR-116)", () => {
+    const sections = async (key: string) =>
+      (await call('GET', `/api/v1/tracks/${key}`)).track as {
+        features: { backlog: boolean; sprints: boolean };
+        sections: { backlog: boolean; sprints: boolean };
+      };
+    const kind = (board: number, to: 'scrum' | 'kanban') =>
+      call('PATCH', `/api/v1/boards/${board}`, { kind: to });
+
+    it('[CORE-002] a template says which sections a track has', async () => {
+      await make({ key: 'SSC', name: 'Scrum one', template: 'scrum' });
+      expect((await sections('SSC')).sections).toEqual({ backlog: true, sprints: true });
+      await make({ key: 'SKA', name: 'Kanban one', template: 'kanban' });
+      expect((await sections('SKA')).sections).toEqual({ backlog: false, sprints: false });
+    });
+
+    it('[CORE-002] a Blank track has no backlog before or after its Kanban board is made', async () => {
+      await make({ key: 'SBL', name: 'Blank one', template: 'blank' });
+      const before = await sections('SBL');
+      expect(before.features).toMatchObject({ backlog: true, sprints: true });
+      expect(before.sections).toEqual({ backlog: false, sprints: false });
+      expect((await call('GET', '/api/v1/tracks/SBL/board')).board.kind).toBe('kanban');
+      const after = await sections('SBL');
+      expect(after.features).toMatchObject({ backlog: false, sprints: false });
+      expect(after.sections).toEqual({ backlog: false, sprints: false });
+    });
+
+    it("[CORE-002] changing the board's kind moves the toggles both ways, as a change of the track", async () => {
+      const { board, track } = await make({ key: 'SCH', name: 'Changing', template: 'kanban' });
+      await kind(board.id, 'scrum');
+      expect(await sections('SCH')).toMatchObject({
+        features: { backlog: true, sprints: true },
+        sections: { backlog: true, sprints: true },
+      });
+      await kind(board.id, 'kanban');
+      expect(await sections('SCH')).toMatchObject({
+        features: { backlog: false, sprints: false },
+        sections: { backlog: false, sprints: false },
+      });
+      const events = await database.db
+        .selectFrom('domain_event')
+        .select('payload')
+        .where('type', '=', 'track.updated')
+        .where('subject_id', '=', String(track.id))
+        .execute();
+      expect(events).toHaveLength(2);
+    });
+
+    it('[CORE-002] a toggle turned on by hand does not give a Kanban track a backlog', async () => {
+      const { track } = await make({ key: 'SHA', name: 'By hand', template: 'kanban' });
+      await call('PATCH', `/api/v1/tracks/${track.id}`, { features: { backlog: true } });
+      const read = await sections('SHA');
+      expect(read.features.backlog).toBe(true);
+      expect(read.sections.backlog).toBe(false);
+    });
+
+    it('[AGL-002] tickets of a Scrum backlog and of its sprints stay on the board as Kanban', async () => {
+      const { board } = await make({ key: 'SMV', name: 'Moving', template: 'scrum' });
+      const inBacklog = await ticket('SMV', 'Waiting in the backlog');
+      const inFuture = await ticket('SMV', 'In a planned sprint');
+      const running = await ticket('SMV', 'In the running sprint');
+      const planned = (
+        await call('POST', `/api/v1/boards/${board.id}/sprints`, { name: 'Later' }, 201)
+      ).sprint.id;
+      const active = (
+        await call('POST', `/api/v1/boards/${board.id}/sprints`, { name: 'Now' }, 201)
+      ).sprint.id;
+      await call('POST', `/api/v1/sprints/${planned}/tickets`, { tickets: [inFuture] });
+      await call('POST', `/api/v1/sprints/${active}/tickets`, { tickets: [running] });
+      await call('POST', `/api/v1/sprints/${active}/start`, {
+        startAt: '2026-11-01T00:00:00.000Z',
+        endAt: '2026-11-15T00:00:00.000Z',
+      });
+      const shownAsScrum = (await call('GET', `/api/v1/boards/${board.id}/data?sprints=active`))
+        .cards as Card[];
+      expect(shownAsScrum.map((c) => c.key)).toEqual([running]);
+
+      const timeline = () => call('GET', '/api/v1/tracks/SMV/timeline');
+      const calendar = () =>
+        call('GET', '/api/v1/tracks/SMV/calendar?from=2026-11-01&to=2026-11-30');
+      expect((await timeline()).markers.sprints).toHaveLength(1);
+      expect((await calendar()).sprints).toHaveLength(1);
+
+      // A running sprint has to end first (`sprints.test.ts` covers the refusal).
+      await call('POST', `/api/v1/sprints/${active}/complete`, { moveTo: { type: 'backlog' } });
+      await kind(board.id, 'kanban');
+      expect((await cards(board.id)).sort()).toEqual([inBacklog, inFuture, running].sort());
+      // Its sprints do not show elsewhere on the track either.
+      expect((await timeline()).markers.sprints).toEqual([]);
+      expect((await calendar()).sprints).toEqual([]);
+      // Nothing about the sprints was lost: back on Scrum they are where they were.
+      await kind(board.id, 'scrum');
+      const back = await call('GET', `/api/v1/boards/${board.id}/backlog`);
+      expect(back.backlog.tickets.map((x: Card) => x.key).sort()).toEqual(
+        [inBacklog, running].sort(),
+      );
+    });
   });
 });

@@ -144,6 +144,7 @@ export function fakeTicketClient(
         record('summary', ticket.summary, change.summary);
         next.summary = change.summary;
       }
+      if (change.fields !== undefined) next.fields = { ...ticket.fields, ...change.fields };
       if (change.assigneeId !== undefined) {
         next.assignee =
           change.assigneeId === null ? null : change.assigneeId === ADA.id ? ADA : GRACE;
@@ -221,6 +222,7 @@ export function fakeTicketClient(
     }),
     info: async () => structuredClone(INFO),
     priorities: async () => structuredClone(PRIORITIES),
+    numberFields: async () => [{ id: 31, name: 'Points', locked: false }],
     closeReasons: async () => [
       { id: 1, name: 'Done' },
       { id: 2, name: "Won't do" },

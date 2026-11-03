@@ -42,10 +42,15 @@ test('[OPS-013] [OPS-017] clean URLs: deep links, links, history and old hash li
   await expect(page).toHaveURL(`${PATH}/home`);
 
   // A deep link straight to a page, then links inside the app, all as paths.
-  await page.goto(`${PATH}/boards`);
-  await expect(page.getByRole('heading', { name: 'Boards', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Routes board' }).click();
-  await expect(page).toHaveURL(new RegExp(`^${PATH}/boards/\\d+$`));
+  await page.goto(`${PATH}/tracks`);
+  await expect(page.getByRole('heading', { name: 'Tracks', level: 1 })).toBeVisible();
+  await page
+    .getByRole('link', { name: /Routes/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(`${PATH}/tracks/RT`);
+  await page.getByRole('link', { name: 'Board', exact: true }).click();
+  await expect(page).toHaveURL(`${PATH}/tracks/RT/board`);
   const boardUrl = page.url();
   await page.getByRole('link', { name: /^RT-1\b/ }).click();
   await expect(page).toHaveURL(`${PATH}/tickets/RT-1`);
@@ -83,11 +88,16 @@ test('[OPS-013] [OPS-017] hash routing: routes in the fragment, clean links redi
   await expect(page).toHaveURL(`${HASH}/#/home`);
 
   // A clean link reaches its page through the server's redirect to the hash route.
-  await page.goto(`${HASH}/boards`);
-  await expect(page).toHaveURL(`${HASH}/#/boards`);
-  await expect(page.getByRole('heading', { name: 'Boards', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Routes board' }).click();
-  await expect(page).toHaveURL(new RegExp(`^${HASH}/#/boards/\\d+$`));
+  await page.goto(`${HASH}/tracks`);
+  await expect(page).toHaveURL(`${HASH}/#/tracks`);
+  await expect(page.getByRole('heading', { name: 'Tracks', level: 1 })).toBeVisible();
+  await page
+    .getByRole('link', { name: /Routes/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(`${HASH}/#/tracks/RT`);
+  await page.getByRole('link', { name: 'Board', exact: true }).click();
+  await expect(page).toHaveURL(`${HASH}/#/tracks/RT/board`);
   const boardUrl = page.url();
   await page.getByRole('link', { name: /^RT-1\b/ }).click();
   await expect(page).toHaveURL(`${HASH}/#/tickets/RT-1`);

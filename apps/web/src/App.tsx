@@ -1,9 +1,14 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { AdminGroupPage } from './admin/AdminGroupPage';
+import { AdminLayout } from './admin/AdminLayout';
+import { AdminOverviewPage } from './admin/AdminOverviewPage';
+import { AiLimitsPage } from './admin/AiLimitsPage';
 import { AiSettingsPage } from './admin/AiSettingsPage';
 import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
+import { adminAccessOf } from './admin/access';
 import { AuditPage } from './admin/audit/AuditPage';
 import { FrontendsPage } from './admin/FrontendsPage';
 import { ImportsPage } from './admin/imports/ImportsPage';
@@ -12,12 +17,13 @@ import { NetworkAccessPage } from './admin/NetworkAccessPage';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
+import { ADMIN_HOME, adminGroupOf, groupsFor } from './admin/sections';
 import { TrashPage } from './admin/TrashPage';
 import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
-import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { CalendarPage } from './calendar/CalendarPage';
+import { TrackSetsPage } from './configuration/TrackSetsPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DashboardPage } from './dashboards/DashboardPage';
@@ -43,7 +49,9 @@ import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
 import { TeamsPage } from './people/TeamsPage';
 import { UsersPage } from './people/UsersPage';
+import { PermissionExplainerPage } from './permissions/PermissionExplainerPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
+import { VisibilityPage } from './permissions/VisibilityPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
@@ -61,8 +69,9 @@ import { ConfigurationSetsPage } from './sets/ConfigurationSetsPage';
 import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
+import { HelpMenu } from './shell/HelpMenu';
 import {
-  BoardsIcon,
+  AdministrationIcon,
   DashboardsIcon,
   HomeIcon,
   InboxIcon,
@@ -72,8 +81,8 @@ import {
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
+import { ThemeToggle } from './shell/ThemeToggle';
 import { type Appearance, applyAppearance } from './skins/skins';
-import { BacklogPage } from './sprints/BacklogPage';
 import { SprintReportPage } from './sprints/SprintReportPage';
 import { continuation } from './sso/client';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
@@ -82,29 +91,52 @@ import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
+import { TicketPopup } from './tickets/view/TicketPopup';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 import { InvitationPage } from './trackpeople/InvitationPage';
 import { ManagedTracksPage } from './trackpeople/ManagedTracksPage';
 import { TrackPeoplePage } from './trackpeople/TrackPeoplePage';
+import {
+  BacklogOfBoard,
+  BacklogOfTrack,
+  BoardInTrack,
+  Redirect,
+  StatisticsOfBoard,
+} from './tracks/BoardInTrack';
+import { TrackBoardSection } from './tracks/TrackBoardSection';
+import { TrackFilesPage } from './tracks/TrackFilesPage';
+import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
+import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
+import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
+import { newTrackModes } from './tracks/trackAccess';
+import { TutorialsPage } from './tutorial/TutorialsPage';
+import { WebhooksPage } from './webhooks/WebhooksPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
-  { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
+  { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon, group: 'you' },
   // Mentions and changes to followed tickets (M1-058).
-  { id: 'inbox', labelId: 'nav.inbox', href: '#/inbox', icon: InboxIcon, requiresSession: true },
-  { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon },
-  { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon },
-  { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon },
+  {
+    id: 'inbox',
+    labelId: 'nav.inbox',
+    href: '#/inbox',
+    icon: InboxIcon,
+    requiresSession: true,
+    group: 'you',
+  },
+  { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon, group: 'work' },
+  { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon, group: 'work' },
   {
     id: 'dashboards',
     labelId: 'nav.dashboards',
     href: '#/dashboards',
     icon: DashboardsIcon,
     requiresSession: true,
+    group: 'work',
   },
   {
     id: 'settings',
@@ -112,8 +144,19 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
     href: '#/settings',
     icon: SettingsIcon,
     requiresSession: true,
+    group: 'manage',
   },
 ];
+
+/** Under Manage for those who may see any of Administration (ADR-114); the only item not for all. */
+const ADMIN_NAV_ITEM: NavItem & { requiresSession: true } = {
+  id: 'administration',
+  labelId: 'nav.administration',
+  href: ADMIN_HOME,
+  icon: AdministrationIcon,
+  requiresSession: true,
+  group: 'manage',
+};
 
 /** Current page id from the hash (#/tracks -> "tracks"). */
 function routeFromHash(hash: string, fallback: string): string {
@@ -136,10 +179,12 @@ const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_MCP = '#/admin/mcp';
 const ADMIN_API_USAGE = '#/admin/api-usage';
 const ADMIN_AI_USAGE = '#/admin/ai-usage';
+const ADMIN_AI_LIMITS = '#/admin/ai-limits';
 const ADMIN_AUDIT = '#/admin/audit';
 const ADMIN_NETWORK = '#/admin/network-access';
 const ADMIN_FRONTENDS = '#/admin/frontends';
 const ADMIN_AI = '#/admin/ai';
+const ADMIN_WEBHOOKS = '#/admin/webhooks';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
@@ -150,18 +195,29 @@ const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
+const ADMIN_VISIBILITY = '#/admin/visibility';
+const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
+const ADMIN_TRACK_SETS = '#/admin/track-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
+/** Every section of the guided tutorial, to start or do again (ADR-115). */
+const TUTORIALS = '#/settings/tutorials';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
 const BULK = '#/bulk';
-/** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
+/** A board by id (#/boards/7), which goes to its track's Board tab; #/boards itself goes to Tracks. */
 const BOARDS = '#/boards';
-/** A track's summary by key (M1-064); the list of tracks itself is still to come. */
+/** The directory of tracks, and a track's summary by key (M1-064). */
+const TRACKS = '#/tracks';
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
+/** A track's files and web links. */
+const TRACK_FILES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/files(?:[/?]|$)/;
+/** A track's board, backlog and statistics, which read its one board. */
+const TRACK_BOARD_SECTION =
+  /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/(board|backlog|statistics)(?:\/([a-z-]{1,40}))?(?:[/?]|$)/;
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
@@ -216,6 +272,7 @@ function Pages() {
   const { session, signOut, setUser } = useSession();
   const signedIn = session.status === 'signed-in';
   const admin = signedIn && session.user.isSiteAdmin;
+  const access = adminAccessOf(signedIn ? session.user : null);
   const showSignIn = useCallback(() => {
     navigate(SIGN_IN);
   }, []);
@@ -253,6 +310,7 @@ function Pages() {
     },
     [setUser],
   );
+  const mayMakeTrack = newTrackModes(signedIn ? session.user : null).length > 0;
   const commands = useMemo<Command[]>(
     () => [
       ...NAV_ITEMS.map((item) => ({
@@ -262,6 +320,19 @@ function Pages() {
           navigate(item.href);
         },
       })),
+      // Making a track, for those the server lets (CORE-001).
+      ...(mayMakeTrack
+        ? [
+            {
+              id: 'new-track',
+              labelId: 'tracks.new' as const,
+              keywords: ['create', 'add'],
+              run: () => {
+                navigate(NEW_TRACK_ROUTE);
+              },
+            },
+          ]
+        : []),
       // The person's own account, once there is one to show.
       ...(signedIn
         ? [
@@ -307,7 +378,31 @@ function Pages() {
             },
           ]
         : []),
-      // Administration commands are offered to site administrators only.
+      ...(access === 'none'
+        ? []
+        : [
+            {
+              id: 'go-administration',
+              labelId: 'nav.administration' as const,
+              keywords: ['admin', 'site', 'configuration'],
+              run: () => {
+                navigate(ADMIN_HOME);
+              },
+            },
+          ]),
+      // A configuration administrator or a track's manager is offered their pages (ADR-114).
+      ...(access === 'setup' || access === 'tracks'
+        ? groupsFor(access).flatMap((group) =>
+            group.pages.map((page) => ({
+              id: `go-setup-${page.id}`,
+              labelId: page.labelId,
+              run: () => {
+                navigate(page.href);
+              },
+            })),
+          )
+        : []),
+      // The other administration commands are offered to site administrators only.
       ...(admin
         ? [
             {
@@ -414,6 +509,38 @@ function Pages() {
               },
             },
             {
+              id: 'go-ai-limits',
+              labelId: 'settings.aiLimits' as const,
+              keywords: ['ai', 'limit', 'spend', 'budget', 'price', 'rate', 'cost', 'tokens'],
+              run: () => {
+                navigate(ADMIN_AI_LIMITS);
+              },
+            },
+            {
+              id: 'go-webhooks',
+              labelId: 'settings.webhooks' as const,
+              keywords: ['webhook', 'events', 'deliveries', 'integration', 'callback'],
+              run: () => {
+                navigate(ADMIN_WEBHOOKS);
+              },
+            },
+            {
+              id: 'go-visibility',
+              labelId: 'settings.visibility' as const,
+              keywords: ['visibility', 'level', 'security level', 'scheme', 'hide'],
+              run: () => {
+                navigate(ADMIN_VISIBILITY);
+              },
+            },
+            {
+              id: 'go-permission-explainer',
+              labelId: 'settings.explainer' as const,
+              keywords: ['why', 'explain', 'permission', 'access', 'cannot'],
+              run: () => {
+                navigate(ADMIN_EXPLAINER);
+              },
+            },
+            {
               id: 'go-ticket-templates',
               labelId: 'tickets.templates.adminTitle' as const,
               keywords: ['template', 'ticket template', 'subtickets', 'outline'],
@@ -464,7 +591,7 @@ function Pages() {
           ]
         : []),
     ],
-    [signedIn, admin, appear, showSignIn, signOut],
+    [signedIn, admin, access, mayMakeTrack, appear, showSignIn, signOut],
   );
 
   // First-run setup and password links stand alone: no shell before someone can sign in.
@@ -502,6 +629,8 @@ function Pages() {
     content = <ApiUsagePage />;
   } else if (isRoute(hash, ADMIN_AI_USAGE)) {
     content = <AiUsagePage />;
+  } else if (isRoute(hash, ADMIN_AI_LIMITS)) {
+    content = <AiLimitsPage />;
   } else if (isRoute(hash, ADMIN_AUDIT)) {
     content = <AuditPage />;
   } else if (isRoute(hash, ADMIN_NETWORK)) {
@@ -510,6 +639,8 @@ function Pages() {
     content = <FrontendsPage />;
   } else if (isRoute(hash, ADMIN_AI)) {
     content = <AiSettingsPage />;
+  } else if (isRoute(hash, ADMIN_WEBHOOKS)) {
+    content = <WebhooksPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
   } else if (isRoute(hash, ADMIN_USERS)) {
@@ -533,12 +664,24 @@ function Pages() {
     content = <FieldsAdminPage />;
   } else if (isRoute(hash, ADMIN_PERMISSIONS)) {
     content = <PermissionsPage />;
+  } else if (isRoute(hash, ADMIN_VISIBILITY)) {
+    content = <VisibilityPage />;
+  } else if (isRoute(hash, ADMIN_EXPLAINER)) {
+    content = <PermissionExplainerPage />;
+  } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
+    const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
+    content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
   } else if (isRoute(hash, ADMIN_IMPORTS)) {
     content = <ImportsPage />;
   } else if (isRoute(hash, ADMIN_GUARDRAILS)) {
     content = <GuardrailsPage />;
+  } else if (hash === ADMIN_HOME || hash.startsWith(`${ADMIN_HOME}?`)) {
+    content = <AdminOverviewPage />;
+  } else if (adminGroupOf(hash)) {
+    const group = adminGroupOf(hash);
+    content = group ? <AdminGroupPage group={group} /> : null;
   } else if (isRoute(hash, ADMIN_TICKET_TEMPLATES)) {
     content = <TicketTemplatesPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
@@ -553,12 +696,14 @@ function Pages() {
     );
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
+  } else if (isRoute(hash, TUTORIALS)) {
+    content = <TutorialsPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
-    active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
+    active = 'tracks';
     content = <TicketPage key={ticket} ticket={ticket} />;
   } else if (isRoute(hash, BOARDS)) {
-    active = 'boards';
+    active = 'tracks';
     guarded = true;
     const boardId = /^#\/boards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
     const settings = /^#\/boards\/\d{1,10}\/settings(?:[/?]|$)/.test(hash);
@@ -568,22 +713,40 @@ function Pages() {
     // Flow reports (M1-061): #/boards/7/reports and #/boards/7/reports/<report>.
     const reports = /^#\/boards\/\d{1,10}\/reports(?:\/([a-z-]{1,40}))?(?:[/?]|$)/.exec(hash);
     const flowReport = BOARD_REPORTS.find((r) => r === reports?.[1]) ?? 'cumulative-flow';
-    content = !boardId ? (
-      <BoardsPage />
+    const inner = !boardId ? (
+      <Redirect to={TRACKS} />
     ) : backlog ? (
-      <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
+      <BacklogOfBoard key={`${boardId}-backlog`} boardId={Number(boardId)} />
     ) : report ? (
-      <SprintReportPage
-        key={`${boardId}-report-${report}`}
-        boardId={Number(boardId)}
-        sprintId={Number(report)}
-      />
+      <StatisticsOfBoard boardId={Number(boardId)} path={`/sprint-report/${report}`}>
+        <SprintReportPage
+          key={`${boardId}-report-${report}`}
+          boardId={Number(boardId)}
+          sprintId={Number(report)}
+        />
+      </StatisticsOfBoard>
     ) : reports ? (
-      <BoardReportsPage key={`${boardId}-reports`} boardId={Number(boardId)} report={flowReport} />
+      <StatisticsOfBoard boardId={Number(boardId)} path={`/${flowReport}`}>
+        <BoardReportsPage
+          key={`${boardId}-reports`}
+          boardId={Number(boardId)}
+          report={flowReport}
+        />
+      </StatisticsOfBoard>
     ) : settings ? (
       <BoardSettingsPage key={`${boardId}-settings`} boardId={Number(boardId)} />
     ) : (
       <BoardPage key={boardId} boardId={Number(boardId)} />
+    );
+    content = boardId ? (
+      <BoardInTrack
+        boardId={Number(boardId)}
+        section={backlog ? 'backlog' : reports || report ? 'statistics' : 'board'}
+      >
+        {inner}
+      </BoardInTrack>
+    ) : (
+      inner
     );
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
     active = 'tracks';
@@ -593,22 +756,38 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_CALENDAR.exec(hash)?.[1] ?? '';
-    content = <CalendarPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="calendar">
+        <CalendarPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_LIST.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_LIST.exec(hash)?.[1] ?? '';
-    content = <ListPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="list">
+        <ListPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_TIMELINE.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_TIMELINE.exec(hash)?.[1] ?? '';
-    content = <TimelinePage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="timeline">
+        <TimelinePage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_RELEASES.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_RELEASES.exec(hash)?.[1] ?? '';
-    content = <ReleasesPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="releases">
+        <ReleasesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_TEMPLATES.test(hash)) {
     active = 'tracks';
     guarded = true;
@@ -619,11 +798,57 @@ function Pages() {
     guarded = true;
     const releaseId = Number(RELEASE.exec(hash)?.[1]);
     content = <ReleasePage key={releaseId} releaseId={releaseId} />;
+  } else if (TRACK_FILES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_FILES.exec(hash)?.[1] ?? '';
+    content = (
+      <TrackLayout trackKey={key} section="files">
+        <TrackFilesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (TRACK_BOARD_SECTION.test(hash)) {
+    // The sections that read the track's one board (ADR-116).
+    active = 'tracks';
+    guarded = true;
+    const [, key = '', section = 'board', report] = TRACK_BOARD_SECTION.exec(hash) ?? [];
+    const statisticsReport = TRACK_REPORTS.find((r) => r === report) ?? 'cumulative-flow';
+    const statisticsSprint = /\/statistics\/sprint-report\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = (
+      <TrackLayout key={key} trackKey={key} section={section as TrackSection}>
+        <TrackBoardSection trackKey={key}>
+          {(board) =>
+            section === 'backlog' ? (
+              <BacklogOfTrack board={board} />
+            ) : section === 'statistics' ? (
+              <TrackStatisticsPage
+                key={board.id}
+                trackKey={key}
+                board={board}
+                report={statisticsReport}
+                sprintId={statisticsSprint ? Number(statisticsSprint) : null}
+              />
+            ) : (
+              <BoardPage key={board.id} boardId={board.id} />
+            )
+          }
+        </TrackBoardSection>
+      </TrackLayout>
+    );
   } else if (TRACK_SUMMARY.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_SUMMARY.exec(hash)?.[1] ?? '';
-    content = <TrackSummaryPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="summary">
+        <TrackSummaryPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (hash === TRACKS || hash.startsWith(`${TRACKS}?`)) {
+    active = 'tracks';
+    // Public like the rest of the sidebar: a track the visitor may see, if any, shows.
+    guarded = false;
+    content = <TracksPage />;
   } else if (isRoute(hash, DASHBOARDS)) {
     active = 'dashboards';
     guarded = true;
@@ -683,18 +908,25 @@ function Pages() {
       );
   }
 
+  // Administration has its own navigation; each page keeps its route and its guard (ADR-114).
+  if (isRoute(hash, ADMIN_HOME) || isRoute(hash, MANAGED_TRACKS)) {
+    if (access !== 'none') active = ADMIN_NAV_ITEM.id;
+    content = <AdminLayout hash={hash}>{content}</AdminLayout>;
+  }
+
   // A wallboard fills the window: no navigation, no top bar (RPT-004 (2)).
   if (wallboard) {
     return (
       <main className="wallboard-shell">
         <RequireSession>{content}</RequireSession>
+        <TicketPopup />
       </main>
     );
   }
 
   return (
     <AppShell
-      items={NAV_ITEMS}
+      items={access === 'none' ? NAV_ITEMS : [...NAV_ITEMS, ADMIN_NAV_ITEM]}
       activeId={active}
       topbarEnd={
         <>
@@ -713,12 +945,15 @@ function Pages() {
             </button>
           )}
           <CommandPalette commands={[...commands, ...registered]} />
+          {signedIn && <HelpMenu />}
+          {signedIn && <ThemeToggle onChoose={appear} />}
           <UserMenu onSignedOut={showSignIn} />
         </>
       }
     >
       {guarded ? <RequireSession>{content}</RequireSession> : content}
       {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
+      <TicketPopup />
     </AppShell>
   );
 }

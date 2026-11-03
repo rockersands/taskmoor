@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { leaveMotion } from './motion';
 
 export interface Command {
   id: string;
@@ -131,13 +132,20 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
       {open && (
         <>
           <button
+            ref={leaveMotion}
             type="button"
-            className="shell-backdrop"
+            className="shell-backdrop palette-backdrop"
             aria-label={t('palette.close')}
             tabIndex={-1}
             onClick={close}
           />
-          <div className="palette" role="dialog" aria-modal="true" aria-label={t('palette.title')}>
+          <div
+            ref={leaveMotion}
+            className="palette"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('palette.title')}
+          >
             <input
               ref={input}
               className="palette-input"

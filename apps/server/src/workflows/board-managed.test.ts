@@ -214,7 +214,7 @@ describe('board-managed workflows (M1-126)', () => {
     );
   });
 
-  it('[WF-010] refuses a board of a shared-mode track, and a second managing board', async () => {
+  it('[WF-010] refuses a board of a shared-mode track, and a second board on the track', async () => {
     const shared = await call('admin', 'POST', '/api/v1/tracks', {
       key: 'SH',
       name: 'Shared',
@@ -233,17 +233,51 @@ describe('board-managed workflows (M1-126)', () => {
       { managed: true },
     );
     expect(refused.json()).toEqual({ error: 'shared_mode_track' });
+    // A track has one board (ADR-116), so no second board can come to manage its workflow.
     const second = await call('admin', 'POST', '/api/v1/boards', {
       name: 'Second board',
       kind: 'kanban',
       trackId,
       source: { query: 'track = BM' },
     });
-    const again = await call('admin', 'PUT', `/api/v1/boards/${second.json().board.id}/workflow`, {
-      managed: true,
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toEqual({ error: 'track_has_board', boardId: board.id });
+  });
+
+  it("[WF-010] renames a column's status with it, and lets people choose the closing column", async () => {
+    const read = (await call('admin', 'GET', `/api/v1/boards/${board.id}`)).json();
+    const columns = read.board.columns as { id: string; name: string; statusIds: number[] }[];
+    const [first, , last] = columns as [
+      (typeof columns)[number],
+      (typeof columns)[number],
+      (typeof columns)[number],
+    ];
+    const renamed = await call('admin', 'PATCH', `/api/v1/boards/${board.id}`, {
+      columns: columns.map((c) => (c.id === first.id ? { ...c, name: 'Backlog items' } : c)),
     });
-    expect(again.statusCode).toBe(409);
-    expect(again.json()).toEqual({ error: 'another_board_manages' });
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    const status = await database.db
+      .selectFrom('status')
+      .select('name')
+      .where(
+        'id',
+        '=',
+        renamed.json().board.columns.find((c: { id: string }) => c.id === first.id).statusIds[0],
+      )
+      .executeTakeFirstOrThrow();
+    expect(status.name).toBe('Backlog items');
+
+    // The rightmost closes by default; a person's choice stays with its column.
+    expect(renamed.json().board.closingColumn).toBeNull();
+    const chosen = await call('admin', 'PATCH', `/api/v1/boards/${board.id}`, {
+      closingColumn: 'none',
+    });
+    expect(chosen.statusCode, chosen.body).toBe(200);
+    expect(chosen.json().board.closingColumn).toBe('none');
+    const { definition } = await workflow();
+    const closing = definition.transitions.find((t) => t.to === last.statusIds[0]);
+    expect(JSON.stringify(closing)).not.toContain('update-system-field');
+    await call('admin', 'PATCH', `/api/v1/boards/${board.id}`, { closingColumn: null });
   });
 
   it('[WF-010] stops managing and leaves the workflow as it was', async () => {

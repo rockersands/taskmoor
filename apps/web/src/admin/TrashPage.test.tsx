@@ -151,9 +151,9 @@ describe('the trash page (M1-101)', () => {
     );
   });
 
-  it('[CORE-025] is linked from Settings and the command palette for administrators', async () => {
+  it('[CORE-025] is listed in Administration and the command palette for administrators', async () => {
     stubBackend({});
-    window.location.hash = '#/settings';
+    window.location.hash = '#/admin';
     render(<App session={ADMIN} />);
     expect(await screen.findByRole('link', { name: 'Trash' })).toHaveAttribute(
       'href',

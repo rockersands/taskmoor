@@ -104,7 +104,11 @@ describe('sprints (M1-044)', () => {
       .where('id', '=', T(name).id)
       .execute();
   }
+  // A track has one board (ADR-116): each test starts the track's board afresh.
+  const dropBoard = (trackId: number) =>
+    database.db.deleteFrom('board').where('location_track_id', '=', trackId).execute();
   async function scrumBoard(name: string, query: string, extra: Record<string, unknown> = {}) {
+    await dropBoard(tracks.SP as number);
     const res = await post('alice', '/api/v1/boards', {
       name,
       kind: 'scrum',
@@ -115,6 +119,12 @@ describe('sprints (M1-044)', () => {
         { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
         { id: 'done', name: 'Done', statusIds: [S('Closed')] },
       ],
+      // These tests estimate in time; a new board otherwise estimates with Points (AGL-007).
+      sprintSettings: {
+        estimation: { statistic: 'originalEstimate' },
+        timeTracking: 'remainingEstimate',
+        parallelSprints: false,
+      },
       ...extra,
     });
     expect(res.statusCode, res.body).toBe(201);
@@ -430,15 +440,15 @@ describe('sprints (M1-044)', () => {
 
   it("[AGL-011] completing a shared sprint carries over only the completing board's tickets", async () => {
     await ticket('x1', 'SP', 1);
-    await ticket('x2', 'SQ', 1);
-    const board = await scrumBoard('Shared board', 'track IN (SP, SQ) AND summary ~ grpx');
+    await ticket('x2', 'SP', 1);
+    const board = await scrumBoard('Shared board', 'track = SP AND summary ~ grpx');
     const one = await sprint(board.id);
     const two = await sprint(board.id);
     await add(one.id, ['x1', 'x2']);
     expect((await start(one.id)).statusCode).toBe(200);
-    // The board narrows to its own track: x2 now belongs to another board's tickets.
+    // The board narrows: x2 is no longer one of the completing board's tickets.
     const res0 = await patch('alice', `/api/v1/boards/${board.id}`, {
-      source: { query: 'track = SP AND summary ~ grpx' },
+      source: { query: 'track = SP AND summary ~ x1' },
     });
     expect(res0.statusCode, res0.body).toBe(200);
     const res = await post('alice', `/api/v1/sprints/${one.id}/complete`, {
@@ -526,7 +536,55 @@ describe('sprints (M1-044)', () => {
     expect((await report(one.id)).totals.remaining).toBe(4 * HOUR);
   });
 
+  it('[AGL-010] a board cannot go Kanban while a sprint runs, and can once it is complete', async () => {
+    const board = await scrumBoard('Going Kanban', 'track = SP');
+    const one = await sprint(board.id);
+    // A planned sprint does not stand in the way, so this goes there and back.
+    expect(
+      (await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode,
+    ).toBe(200);
+    // Nor can a planned sprint start on a Kanban board: nothing could complete it there.
+    const planned = await post('alice', `/api/v1/sprints/${one.id}/start`, {
+      endAt: '2030-01-15T09:00:00Z',
+    });
+    expect(planned.statusCode).toBe(409);
+    expect(planned.json()).toEqual({ error: 'not_scrum' });
+    expect((await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'scrum' })).statusCode).toBe(
+      200,
+    );
+
+    const started = await post('alice', `/api/v1/sprints/${one.id}/start`, {
+      endAt: '2030-01-15T09:00:00Z',
+    });
+    expect(started.statusCode, started.body).toBe(200);
+    const refused = await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({ error: 'sprint_running', sprintId: one.id });
+    // Nothing moved: still Scrum, and the track keeps its backlog and sprints.
+    const read = await get('alice', `/api/v1/boards/${board.id}`);
+    expect(read.json().board.kind).toBe('scrum');
+    const track = await database.db
+      .selectFrom('track')
+      .select(['feature_backlog', 'feature_sprints'])
+      .where('id', '=', tracks.SP as number)
+      .executeTakeFirstOrThrow();
+    expect(track).toEqual({ feature_backlog: true, feature_sprints: true });
+    // Other settings still save while it runs.
+    expect(
+      (await patch('alice', `/api/v1/boards/${board.id}`, { name: 'Still Scrum' })).statusCode,
+    ).toBe(200);
+
+    const done = await post('alice', `/api/v1/sprints/${one.id}/complete`, {
+      moveTo: { type: 'backlog' },
+    });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(
+      (await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode,
+    ).toBe(200);
+  });
+
   it('[AGL-010] sprints need a Scrum board the caller sees', async () => {
+    await dropBoard(tracks.SP as number);
     const res = await post('alice', '/api/v1/boards', {
       name: 'Flow',
       kind: 'kanban',

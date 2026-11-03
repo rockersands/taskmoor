@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
+import { useLeaveMotion } from '../shell/motion';
 import type { Attachment, AttachmentClient, ZipListing } from './client';
 import { formatSize } from './format';
 import { useMediaUrl } from './media';
@@ -34,6 +35,7 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
   const intl = useIntl();
   const titleId = useId();
   const dialog = useRef<HTMLDivElement>(null);
+  const dialogRef = useLeaveMotion(dialog);
   const close = useRef<HTMLButtonElement>(null);
   const [loaded, setLoaded] = useState<Loaded>(
     a.kind === 'text' || a.kind === 'zip' ? { status: 'loading' } : { status: 'ready' },
@@ -185,7 +187,7 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
   return (
     <div className="attachment-preview-backdrop">
       <div
-        ref={dialog}
+        ref={dialogRef}
         className="attachment-preview"
         role="dialog"
         aria-modal="true"

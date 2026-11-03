@@ -47,7 +47,7 @@ test('[AI-001] test connection lists the fixture models; switches and strict mod
     if (res.url().includes('/api/')) answers.push(await res.text().catch(() => ''));
   });
 
-  await page.goto(`${BASE}/#/settings`);
+  await page.goto(`${BASE}/#/admin`);
   await page.getByRole('link', { name: 'AI', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'AI', level: 1 })).toBeVisible();
 

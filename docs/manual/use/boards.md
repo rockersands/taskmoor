@@ -1,57 +1,83 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: apps/web/src/boards/BoardsPage.tsx, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
-accessed: 2026-10-30
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Boards, sprints and the backlog
 
-A board shows tickets as cards in columns, one column per step of the work. Its tickets are the
-ones a query finds, so a board can cover one track or several. Kanban boards show the flow of
-all their tickets; Scrum boards add a backlog and sprints.
+Each track has one board: its tickets as cards in columns, with one column per status. A column's
+name is the status itself. Kanban or Scrum is a setting of the board: Kanban shows the flow of all
+the track's tickets, and Scrum adds a backlog and sprints. A Kanban track shows no **Backlog** at
+all, and changing the board's kind brings it back or takes it away at once.
 
-## Finding and making boards
+## A track's board
 
-**Boards** in the navigation lists the boards you can see. Each says whether it is a Scrum
-board or a Kanban board, and whether it sits in a track ("in Payments") or is kept by a person.
-A board in a track is seen by everyone who can browse that track.
+Open a track and choose **Board** in its tab bar. There is no list of boards and no form to make
+one. A track gets its board from its template, or the first time anyone who can see the track opens
+it, and everyone who can browse the track sees that board. A board made that way has no board
+administrators of its own: the track's administrators configure it. A track cannot have a second
+board, and a board cannot sit outside a track or cross tracks. For a view across tracks, use a saved
+search or a dashboard.
 
-To make a board, fill in **New board** at the bottom of the list:
+A new board starts with one column per status of the track's workflow, named after the status and
+ordered from new to closed, the board filter "Recently updated" (changed in the last day), and cards
+that show the priority, the assignee and the points, with no colour strip and no days marker. Change
+any of it in the board's settings.
 
-1. **Name**, and **Kind**: **Kanban board** or **Scrum board**.
-2. **Tickets (a query)**: the tickets it shows, written in [the query
-   language](search.md#the-query-language), for example `track = PAY`.
-3. Press **Create board**.
+Upgrading moved boards still on the old default fields (assignee, then priority) to these; a board
+whose card fields are anything else keeps them. If its colour and days were still the old default
+too, they changed with it; a colour or days setting someone changed stays. Choosing the same two
+fields on purpose looks the same as never choosing, so those boards moved as well: choose again.
 
-A board you make here is kept by you. It starts with one column per stage (new, active and
-closed) holding the statuses of its tracks' workflows, the board filters "Only my tickets" and
-"Recently updated" (changed in the last day), cards coloured by ticket type, and the assignee and priority on each card.
-Change any of it in the board's settings.
+A site upgraded from before this rule keeps its older boards. A board whose query was exactly one
+track became that track's board, if the track had none; the others stay readable, kept by a person.
 
 ## Using a board
 
-The board's header names its kind and location and links to the **Backlog** (Scrum boards),
-**Reports** and **Board settings** (when you may change the board). The columns scroll sideways
-inside the board, never the whole page.
+The board's header names its kind and location and links to **Board settings** (when you may change
+the board). The track's tab bar holds its **Backlog** (Scrum boards only) and its
+[**Statistics**](dashboards-and-reports.md#a-tracks-statistics). The columns scroll sideways inside
+the board, never the whole page.
 
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
 above its maximum says **Over the maximum**; below its minimum, **Under the minimum**.
 
-Each card shows the key, the summary, the assignee (or **Unassigned**), the due date, the
-fields the board chooses and, if the board shows it, how many days the ticket has been in its
-column. Cards are in rank order.
+Each card shows the key and the title, the ticket
+type's icon and the fields the board chooses: by default the priority's icon, the points where a
+ticket has them, and the assignee as a small round mark with their initials, or a dashed circle for
+nobody. Each icon and mark has its name as a tooltip and for screen readers, and the words appear
+beside the icons while the keyboard is on the card.
 
-A Scrum board shows the tickets of its active sprints; a Kanban board shows every ticket its
-query finds. A board shows the first 5,000 cards in rank order and says when it shows only part.
+Points are a number field: the one the board estimates with (see [Sprint settings](#sprint-settings)),
+else a number field named Points or Puntos (an imported one under its source's usual name counts
+too). Every workspace starts with a number field called **Points** (**Puntos** in Spanish), and a new
+track's board estimates with it. Set a ticket's points in its details, on the create form or in a
+search result's cell. A card with no value shows nothing. An administrator may rename the field or
+remove it ([Fields](../admin/fields.md#the-points-field)).
+
+If you may edit a ticket, its card has a pencil at the corner (on a touch screen, in a row under the
+card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be
+saved the card says why. A card does not move or drag while its title is being edited.
+
+If the board shows days in column, a card that has waited a day or more shows a small clock with the
+number, and a card that has just arrived shows nothing. Cards are in rank order.
+
+A Scrum board shows the tickets of its active sprints; a Kanban board shows every ticket of its
+track, so tickets that waited in a backlog are on the board after a change to Kanban. Sprints are kept,
+and are there again on a change back to Scrum, but a Kanban track's timeline and calendar do not show
+them. While a sprint is running a board cannot change to Kanban: the settings page asks you to complete
+the sprint first, and a planned sprint cannot start on a Kanban board. A board shows the first 5,000 cards in rank order and says when it shows only part.
 
 If some tickets are in statuses that no column shows, the board names those statuses and how
-many tickets are in them. A board administrator can give them a column.
+many tickets are in them. Someone who may change the board can give them a column.
 
 ### Moving cards
 
-Moving a card to another column runs the ticket's transition into one of that column's
-statuses, with every check the workflow has. There are three ways:
+Moving a card to another column changes the ticket's status to that column's. On the workflow a new
+site starts with, a move asks for nothing: any card goes to any column. If you want to give a reason,
+write it in a comment. There are three ways to move a card:
 
 - drag the card to a place in another column, or up and down in its own column;
 - open the card's **Move PAY-42** menu and choose **Forward to Done**, **Back to To do**, **Up in
@@ -59,8 +85,9 @@ statuses, with every check the workflow has. There are three ways:
 - focus the card and press Alt with the left or right arrow (to the next column) or the up or
   down arrow (within the column).
 
-When several transitions lead into the column, the board asks which one. When none does, it
-says **No transition leads PAY-42 into Done.** On phones, use the menu or the keyboard.
+Only a rule someone put on the workflow, or one that came with an import, can ask for more. Then a
+move brings up a form, or a refusal in plain words, such as **PAY-42 cannot go to Done: its workflow
+has no step there from To do.** On phones, use the menu or the keyboard.
 
 ### Board filters
 
@@ -68,6 +95,32 @@ Board filters are buttons above the columns (or a **Board filters** menu, if the
 that way). Press one to narrow the cards; press it again to drop it. Several filters together
 must all match. Column counts still include the hidden cards, and a column says how many of
 its cards the filters hide.
+
+### Filtering by person
+
+Anyone who can see a board can filter it to see one person's work, or several people's. It takes
+no administrator rights and no access to the board's settings, and it changes the board only for
+you. Above the columns:
+
+- **Me** shows the cards assigned to you;
+- **Unassigned** shows the cards nobody has;
+- **People** opens a list over the board, or at the bottom of the screen on a phone, of the people
+  assigned to tickets on this board, and only to tickets you can see. Tick a name to add that
+  person. In a long list, **Find a person** narrows it. Escape or a click elsewhere closes it.
+
+A filter that is on shows a tick and a heavier label. Boards used to start with a board filter called
+"Only my tickets". It finds the same cards as **Me**, and **Me** combines with other people, so the
+filter row no longer shows it, and new boards do not get it. A filter of that kind that someone
+renamed or wrote themselves stays, and a board's reports still list the old one.
+
+Choosing several shows the cards of any of them, and the names you chose stay on show beside the
+menu: press one to take it away, or **Clear people** to take them all away. The filter works with
+board filters: a card must match both. It never shows you a ticket you could not already see, and
+column counts still cover every card.
+
+The people you chose are part of the page's address, so you can send the link to someone and they
+see the same people's cards, as far as they may see them. **Me** in a shared link means whoever
+opens it.
 
 ### Swimlanes
 
@@ -82,21 +135,54 @@ has these sections, saved together with **Save settings**:
 
 | Section | What you set |
 |---|---|
-| **Board** | **Name**, **Kind**, **Team** (the team whose board this is, or **No team**), **Tickets (a query)** and **Sub-filter (optional)**, a second query that tickets must also match, for example to hide shipped work |
-| **Columns** | Each column's name, **Minimum** and **Maximum**; **Add a column**; move or remove columns |
-| **This board's columns are its track's statuses** | On a local-mode track: each column is a status, any card goes to any column, and the rightmost closes tickets as Completed ([board-managed workflows](../admin/workflows.md#board-managed-workflows)) |
-| **Which column shows each status** | A column for each status, or **None (unmapped)** |
+| **Board** | **Name**, **Kind**, **Team** (the team whose board this is, or **No team**), **Tickets (a query)**, which can narrow within the track, and **Sub-filter (optional)**, a second query that tickets must also match, for example to hide shipped work |
+| **Columns** | Each column's name, **Minimum** and **Maximum**; **Add a column**; move or remove columns; **Column that closes tickets** |
+| **This board's columns are its track's statuses** | Whether the board manages its track's workflow; see [Columns and statuses](#columns-and-statuses) |
+| **Which column shows each status** | On a board that does not manage its workflow: a column for each status, or **None (unmapped)** |
 | **Swimlanes** | **Group cards**: **Not at all**, **By queries**, **By assignee** or **By parent**; for assignee lanes, whether **Unassigned tickets** come **First** or **Last**; for query lanes, each lane's name and query and the name of the lane for everything else |
 | **Board filters** | Each filter's name, query and description; **Show board filters as** **Buttons** or **A menu** |
-| **Cards** | **Colour cards by** **Nothing**, **Ticket type**, **Priority**, **Assignee** or **Queries (the first that matches)**; up to 10 **Fields on cards**; **Show days in column** |
+| **Cards** | **Colour cards by** **Nothing**, **Ticket type**, **Priority**, **Assignee** or **Queries (the first that matches)**; up to 10 **Fields on cards**, such as **Priority**, **Assignee** and **Points**; **Show days in column** |
 | **Sprints** | Scrum boards only; see [Sprint settings](#sprint-settings) |
 
-The server checks every query when you save, and a problem shows next to its field. If someone
-else saved the board meanwhile, the page asks you to open the settings again.
+The server checks every query when you save, and a problem shows next to its field. A query that
+would leave the track is refused, as a board never
+shows another track's tickets. If someone else saved the board meanwhile, the page asks you to open
+the settings again.
+
+### Columns and statuses
+
+Where nobody else shares the track's workflow and nobody has put guards, checks or rules on it, the
+board [manages the workflow](../admin/workflows.md#board-managed-workflows): a column is a status.
+
+- **A new column** makes a status of its own when you save.
+- **Renaming a column** renames its status. If other workflows use that status, the column gets a
+  status of its own instead, so they do not change.
+- **Removing a column that holds cards** asks where they should go first: under **Move them to**,
+  choose a column, then **Remove the column**.
+
+**Column that closes tickets** is the rightmost column by default, and it follows that place as you
+reorder the columns. You can choose another column, or **No column closes tickets**, and a column you
+chose stays chosen when columns move. Reaching this column closes a ticket as Completed, and leaving
+it reopens the ticket. Tickets already closed keep their close reason and history when you change it.
+
+### A column no card can reach
+
+A workflow other tracks share never changes by itself. On such a board, a new column can have no
+status yet, or nothing in the workflow may lead to it. The settings say so at once, **No card can go
+to Parked yet** or **No card can reach Parked**, and the column on the board says so too.
+
+A site or configuration administrator sees **Let cards reach Parked**. It adds the status and the
+steps in and out as a new version of the workflow. When other tracks use that workflow, the settings
+name them first, as they see the new status too. Anyone else sees who can fix it. A track whose
+ticket types follow different workflows cannot be fixed this way: give every type the same workflow
+first.
+
+Mapping several statuses to one column remains for boards that do not manage their workflow, in
+**Which column shows each status**, and imported boards rely on it.
 
 ## The backlog
 
-A Scrum board's **Backlog** link opens **Backlog and sprints**: the active and planned sprints,
+A Scrum board's **Backlog**, in the track's tab bar, opens **Backlog and sprints**: the active and planned sprints,
 then the backlog, each with its tickets in rank order and their totals (count, estimate and,
 when time tracking is on, the remaining estimate).
 
@@ -111,7 +197,7 @@ when time tracking is on, the remaining estimate).
   release…** and **Clear selection**. A selection moves as one block and keeps its order.
 
 The **Outcomes** and **Releases** panels list the open outcomes and the unshipped releases of
-the board's tracks. Drop tickets on one to put them under that outcome or into that release.
+the board's track. Drop tickets on one to put them under that outcome or into that release.
 Choose one to show only its tickets; **Show all tickets** brings the rest back.
 
 To add a ticket, type its summary in **New ticket…** at the end of any section and press **Add
@@ -150,8 +236,7 @@ time, so it cannot be combined with several active sprints.
 
 ## Releases
 
-Each track has a releases hub, linked from its summary as **Releases** (see [the track
-summary](views.md#the-track-summary)). It lists **Upcoming** releases in the track's order and
+Each track has a releases hub, **Releases** in its tab bar. It lists **Upcoming** releases in the track's order and
 **Shipped** ones, latest first, with archived releases folded away. Each release shows its date,
 a state (**Upcoming**, **Overdue**, **Shipped** or **Archived**) and how many of its tickets are
 closed. The track's administrators add releases with **New release**: a **Name** and an

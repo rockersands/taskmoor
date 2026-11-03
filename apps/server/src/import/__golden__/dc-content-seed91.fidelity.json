@@ -267,9 +267,9 @@
     {
       "kind": "board",
       "outcomes": {
-        "created": 8,
+        "created": 6,
         "failed": 0,
-        "linked": 0,
+        "linked": 2,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0
@@ -509,6 +509,18 @@
       "kind": "access_policy"
     },
     {
+      "code": "board_became_saved_search",
+      "count": 1,
+      "detail": "AX and BX delivery",
+      "kind": "board"
+    },
+    {
+      "code": "board_became_saved_search",
+      "count": 1,
+      "detail": "AX Quarry flow",
+      "kind": "board"
+    },
+    {
       "code": "board_filter_not_imported",
       "count": 4,
       "detail": "Commented (app): Unknown field \"issueFunction\"",
@@ -643,7 +655,7 @@
     {
       "code": "query_not_translated",
       "count": 1,
-      "detail": "refused: \"Rating\" (cf[18]) cannot be compared with >; its values have no order",
+      "detail": "refused: \"Rating\" (cf[19]) cannot be compared with >; its values have no order",
       "kind": "saved_search"
     },
     {

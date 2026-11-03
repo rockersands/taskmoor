@@ -61,7 +61,11 @@ describe('security settings: two-factor policy', () => {
       body: { required: 'everyone', groupIds: [3], organizationDomains: [] },
     });
     // Settings stays highlighted in the navigation.
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Administration',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('[IAM-004] names the organization’s domains, so people at others are external', async () => {
@@ -88,9 +92,9 @@ describe('security settings: two-factor policy', () => {
     });
   });
 
-  it('[IAM-001] is linked from Settings for site administrators only', async () => {
+  it('[IAM-001] is listed in Administration for site administrators only', async () => {
     stubBackend({});
-    window.location.hash = '#/settings';
+    window.location.hash = '#/admin';
     const { unmount } = render(<App session={ADMIN} />);
     expect(await screen.findByRole('link', { name: 'Security' })).toHaveAttribute(
       'href',
@@ -98,7 +102,7 @@ describe('security settings: two-factor policy', () => {
     );
     unmount();
     render(<App session={MEMBER} />);
-    await screen.findByRole('heading', { level: 1, name: 'Settings' });
+    await screen.findByRole('heading', { level: 1, name: 'Administration' });
     expect(screen.queryByRole('link', { name: 'Security' })).toBeNull();
   });
 

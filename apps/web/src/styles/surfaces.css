@@ -1,0 +1,1225 @@
+/*
+ * Shared pieces of the glass visual language (ADR-114, on ADR-036): glass cards, the page header
+ * with its purpose line, the "what is this for" button, explaining empty states and tiles.
+ */
+
+/* A translucent card over the canvas: blur, a hairline edge that catches the light, depth. */
+.glass-card {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+}
+
+/* Page header: where the page sits, its name, what it is for, and its actions. */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-2);
+}
+
+.page-header-text {
+  min-width: 0;
+  max-width: 52rem;
+}
+
+.page-eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  font-weight: 500;
+}
+
+.page-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page-header .page-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.page-purpose {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-300);
+  line-height: 1.45;
+}
+
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* A panel's heading row: its name, the help button and a count. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: var(--font-size-300);
+  font-weight: 650;
+}
+
+.panel-count {
+  margin-inline-start: auto;
+  min-width: 1.75rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* "What is this for?": a round button and the explanation it shows under the heading. */
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.help-tip-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    color var(--motion-fast) var(--ease-soft);
+}
+
+.help-tip-button:hover,
+.help-tip-button[aria-expanded="true"] {
+  background: var(--glass-tint-accent);
+  color: var(--color-accent);
+}
+
+.help-tip-body {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  inset-inline-start: calc(-1 * var(--space-2));
+  z-index: 25;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.help-tip-body[hidden] {
+  display: none;
+}
+
+/* Help at the top bar: the same round glass button as the theme switch. */
+.help-menu-button {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.help-shortcuts-group {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-200);
+}
+
+.help-shortcuts {
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+
+/* A track's sections: one tab bar shared by all its pages; it scrolls inside itself on a phone. */
+.track-tabs {
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.track-tabs ul {
+  display: flex;
+  gap: var(--space-1);
+  width: max-content;
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+}
+
+.track-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.track-tabs a:hover {
+  background: var(--glass-surface-sunken);
+}
+
+.track-tabs a[aria-current="page"] {
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  font-weight: 600;
+}
+
+@media (pointer: coarse) {
+  .track-tabs a {
+    min-height: var(--hit-target-touch);
+  }
+}
+
+/* A track's files and links. */
+.track-files-group {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+}
+
+.track-files-group ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-files-group li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  overflow-wrap: anywhere;
+}
+
+.track-files-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+/* The directory of tracks. */
+.tracks-find {
+  max-width: 24rem;
+  margin-block: var(--space-3);
+}
+
+.tracks-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracks-item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+}
+
+.tracks-item a {
+  display: grid;
+  gap: 2px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tracks-item-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.tracks-item-name {
+  font-weight: 650;
+}
+
+.tracks-item-owner {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+/* Empty states say what would be here, how it gets here, and offer the next step. */
+.empty-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  padding: var(--space-3) 0 var(--space-1);
+}
+
+/* The illustration (the user's choice, ADR-114) stands in for each caller's small icon. */
+.empty-state-icon {
+  display: block;
+  width: 88px;
+  height: 112px;
+  margin-bottom: var(--space-1);
+  background: url("../assets/glass/empty-cards.webp") center / contain no-repeat;
+}
+
+.empty-state-icon svg {
+  display: none;
+}
+
+.empty-state-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.empty-state-body {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.5;
+}
+
+.empty-state-action {
+  margin-top: var(--space-2);
+}
+
+/*
+ * Shared controls for filters (ADR-114): a chip that says when it is on, a popover that floats
+ * over the page (a panel docked at the bottom on a phone), a check box and a thin scroll bar.
+ * Any page can use them; the behaviour of the popover is in shell/Popover.tsx.
+ */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+/* A row of groups of chips, read as one row. */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+  margin-block: var(--space-3);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat), var(--shadow-1);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-200);
+  font-weight: 550;
+  text-align: start;
+  cursor: pointer;
+  /* A control, not text: a double click does not select its label. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    border-color var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-settle);
+}
+
+.filter-chip:hover {
+  background: var(--glass-surface-strong);
+  transform: translateY(var(--lift-small));
+}
+
+/* On: the tint and the edge, a tick and a heavier label, so it is never colour alone. */
+.filter-chip[aria-pressed="true"],
+.filter-chip[data-on="true"] {
+  border-color: var(--color-accent);
+  background: var(--glass-tint-accent);
+  font-weight: 700;
+}
+
+.filter-chip[aria-pressed="true"]::before,
+.filter-chip[data-on="true"]::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: calc(-1 * var(--space-1));
+  background: var(--color-accent);
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
+}
+
+/* A chip that opens a list: a small chevron that turns while the list is open. */
+.filter-chip-menu::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: var(--space-1);
+  margin-block-start: -3px;
+  border-inline-end: 2px solid currentcolor;
+  border-block-end: 2px solid currentcolor;
+  transform: rotate(45deg);
+  transition: transform var(--motion-fast) var(--ease-settle);
+}
+
+.filter-chip-menu[aria-expanded="true"]::after {
+  margin-block-start: 3px;
+  transform: rotate(225deg);
+}
+
+.popover-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Over the content, so nothing moves; --popover-shift keeps it inside its row (Popover.tsx). */
+.popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  inset-inline-start: var(--popover-shift, 0px);
+  z-index: 25;
+  display: grid;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: min(20rem, var(--popover-room, 100vw));
+  padding: var(--space-3);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  color: var(--color-text);
+  isolation: isolate;
+}
+
+.popover-head {
+  display: none;
+}
+
+.popover-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.popover-scrim {
+  display: none;
+}
+
+/* A phone: the same panel docked at the bottom of the screen, over a dimmed page. */
+@media (max-width: 767px) {
+  .popover {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 120;
+    width: auto;
+    max-height: 80dvh;
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border-radius: var(--radius-3) var(--radius-3) 0 0;
+  }
+
+  .popover-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .popover-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    border: 0;
+    padding: 0;
+    background: var(--color-backdrop);
+    cursor: pointer;
+  }
+}
+
+/* A check box on glass: a tick on the accent when on, so it is never colour alone. */
+.glass-check {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--color-field-border);
+  border-radius: 6px;
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--shadow-inset);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    border-color var(--motion-fast) var(--ease-soft);
+}
+
+.glass-check::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: var(--color-on-accent);
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
+  opacity: 0;
+}
+
+.glass-check:hover {
+  border-color: var(--color-accent);
+}
+
+.glass-check:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.glass-check:checked::before {
+  opacity: 1;
+}
+
+/* A list inside a popover: it scrolls by itself, so the popover keeps its place. */
+.popover-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(16rem, 45dvh);
+  overflow-y: auto;
+}
+
+/* A row with a check box and its label: the whole row is the target. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-1);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.check-row:hover {
+  background: var(--glass-surface-sunken);
+}
+
+/* A scroll bar that stays out of the way inside a small panel. */
+.thin-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-field-border) transparent;
+}
+
+@supports not (scrollbar-width: thin) {
+  .thin-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    background: var(--color-field-border) content-box;
+  }
+
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (pointer: coarse) {
+  .filter-chip,
+  .check-row {
+    min-height: var(--hit-target-touch);
+  }
+
+  .glass-check {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (forced-colors: active) {
+  .filter-chip[aria-pressed="true"],
+  .filter-chip[data-on="true"] {
+    border-color: Highlight;
+    border-width: 2px;
+  }
+
+  .filter-chip[aria-pressed="true"]::before,
+  .filter-chip[data-on="true"]::before {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* The system's own check box: masks and fills do not survive forced colours. */
+  .glass-check {
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
+
+  .glass-check::before {
+    display: none;
+  }
+}
+
+/* A quiet secondary action: a glass pill. */
+.button-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-200);
+  font-weight: 550;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-settle);
+}
+
+.button-quiet:hover {
+  background: var(--glass-tint-accent);
+}
+
+/* Home (ADR-114): ways to start, then the lists, then the tracks. */
+.home-page {
+  gap: var(--space-6);
+}
+
+.home-start {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.home-start-list,
+.home-track-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-tile,
+.track-tile {
+  display: grid;
+  gap: var(--space-1);
+  height: 100%;
+  padding: var(--space-4);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform var(--motion-base) var(--ease-settle);
+}
+
+.start-tile:hover,
+.track-tile:hover {
+  box-shadow: var(--glass-highlight), var(--shadow-2);
+  transform: translateY(var(--lift));
+}
+
+.start-tile-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-2);
+  background: var(--glass-tint-accent);
+  color: var(--color-accent);
+}
+
+.start-tile-title,
+.track-tile-name {
+  font-weight: 650;
+}
+
+.start-tile-hint,
+.track-tile-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.45;
+}
+
+.track-tile {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.track-tile-badge {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-2);
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+  font-size: var(--font-size-100);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.home-tracks {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.home-list {
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+}
+
+.home-ticket {
+  padding: var(--space-2) var(--space-3);
+  margin-inline: calc(-1 * var(--space-3));
+  border-radius: var(--radius-1);
+}
+
+.home-ticket:hover {
+  background: var(--glass-surface-sunken);
+}
+
+.home-ticket-link {
+  display: grid;
+  gap: 2px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.home-ticket-link:hover .home-ticket-summary {
+  text-decoration: underline;
+}
+
+.home-ticket-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  letter-spacing: 0.02em;
+}
+
+.home-ticket {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.home-ticket-status {
+  flex: none;
+}
+
+.home-ticket-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.home-ticket-status[data-stage="active"] {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.home-ticket-status[data-stage="closed"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+@media (pointer: coarse) {
+  .help-tip-button {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
+  .button-quiet {
+    min-height: var(--hit-target-touch);
+  }
+}
+
+@media (forced-colors: active) {
+  .glass-card,
+  .help-tip-body,
+  .button-quiet {
+    border-color: CanvasText;
+  }
+}
+
+/* Phones: the start tiles put the icon beside the words, so four fit on a screen. */
+@media (max-width: 640px) {
+  .home-start-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .start-tile {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .start-tile-icon {
+    grid-row: span 2;
+    margin: 0;
+  }
+}
+
+/* The tutorial's sections (ADR-115): one card per section, ticked to start several in a row. */
+.tutorials-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.tutorial-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tutorial-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "pick text"
+    "pick start";
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  transition: background-color var(--motion-base) var(--ease-soft);
+}
+
+.tutorial-card[data-checked="true"] {
+  background: var(--glass-tint-accent);
+  box-shadow:
+    inset 0 0 0 2px var(--color-accent),
+    var(--shadow-1);
+}
+
+.tutorial-card-pick {
+  grid-area: pick;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.tutorial-card-pick input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.tutorial-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  color: var(--color-accent);
+}
+
+.tutorial-card-text {
+  grid-area: text;
+  min-width: 0;
+}
+
+.tutorial-card-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.tutorial-card-hint {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.5;
+}
+
+.tutorial-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.tutorial-card-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.tutorial-card-status[data-status="active"] {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.tutorial-card-status[data-status="done"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.tutorial-card-start {
+  grid-area: start;
+  justify-self: start;
+}
+
+@media (pointer: coarse) {
+  .tutorial-card-pick input {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/*
+ * Liquid glass details (ADR-114): a rim that catches the light, drawn as a 1px gradient ring
+ * masked out of the middle, on the floating surfaces. Purely decorative: no pointer events, gone
+ * in forced colours and where glass falls back to opaque.
+ */
+/* Already placed (sticky, fixed or absolute): only a stacking context for the rim. */
+.shell-topbar,
+.shell-sidebar,
+.shell-drawer,
+.help-tip-body,
+.user-menu-popup,
+.palette {
+  isolation: isolate;
+}
+
+.glass-card,
+.home-list,
+.board-column-head,
+.board-card,
+.ticket-text,
+.ticket-details,
+.ticket-info,
+.ticket-links,
+.ticket-activity,
+.attachment-panel {
+  position: relative;
+  isolation: isolate;
+}
+
+.shell-topbar::before,
+.shell-sidebar::before,
+.shell-drawer::before,
+.glass-card::before,
+.home-list::before,
+.board-column-head::before,
+.board-card::after,
+.ticket-text::before,
+.ticket-details::before,
+.ticket-info::before,
+.ticket-links::before,
+.ticket-activity::before,
+.attachment-panel::before,
+.help-tip-body::before,
+.user-menu-popup::before,
+.popover::before,
+.palette::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/*
+ * Thick glass: every slab is raised on a contact shadow, with light on the edge facing it and a
+ * darker inner edge opposite. The rim's ring is a little wider than a hairline.
+ */
+.shell-topbar,
+.shell-sidebar,
+.glass-card,
+.home-list,
+.board-column-head,
+.ticket-text,
+.ticket-details,
+.ticket-info,
+.ticket-links,
+.ticket-activity,
+.attachment-panel {
+  box-shadow: var(--glass-highlight), var(--glass-contact);
+}
+
+.shell-topbar,
+.shell-sidebar,
+.shell-drawer {
+  background: var(--glass-fill-chrome);
+}
+
+/* The rim stays inside a surface that scrolls, or it would give it scroll bars of its own. */
+.shell-sidebar::before {
+  inset: 0;
+}
+
+.shell-sidebar {
+  overflow-x: hidden;
+}
+
+/* Surfaces that refract: --glass-lens is set per surface by shell/glassLens.ts, where it works. */
+.shell-topbar {
+  -webkit-backdrop-filter: blur(var(--glass-blur-chrome)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-chrome)) var(--glass-lens,) saturate(var(--glass-saturate));
+}
+
+.shell-drawer,
+.help-tip-body,
+.user-menu-popup,
+.popover,
+.palette,
+.ticket-dialog {
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) var(--glass-lens,) saturate(var(--glass-saturate));
+}
+
+/* A board's cards stay cheap: no blur, no glow, only flat edges and one shadow. */
+.board-card {
+  box-shadow: var(--glass-highlight-flat), var(--shadow-1);
+}
+
+.button-quiet,
+.theme-toggle {
+  box-shadow: var(--glass-highlight-flat);
+}
+
+/* The search field in the top bar is clear glass. */
+.palette-trigger {
+  border-color: var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
+}
+
+/*
+ * Glass over colour: in a control, a coloured part sits under a clear part, so the glass has
+ * something to bend. The current place in the sidebar, the selected tab and the light and dark
+ * switch. The clear part sits under the label, so text never falls on the colour.
+ */
+.nav-link[aria-current="page"],
+.ticket-tab[aria-selected="true"],
+.theme-toggle {
+  position: relative;
+  isolation: isolate;
+}
+
+.nav-link[aria-current="page"] {
+  background: none;
+  color: var(--color-text);
+}
+
+.nav-link[aria-current="page"] svg {
+  color: var(--color-on-primary);
+}
+
+.ticket-tab[aria-selected="true"] {
+  border-bottom-color: transparent;
+  border-radius: var(--radius-pill);
+}
+
+.nav-link[aria-current="page"]::before,
+.ticket-tab[aria-selected="true"]::before,
+.theme-toggle::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* The colour under the current place: only as wide as the icon, the label stays on clear glass. */
+.nav-link[aria-current="page"]::before {
+  inset-block: 4px;
+  inset-inline-start: 8px;
+  width: 36px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(120deg, var(--color-primary), var(--color-primary-hover));
+}
+
+.shell[data-collapsed="true"] .nav-link[aria-current="page"]::before {
+  inset-inline-start: calc(50% - 18px);
+}
+
+/* The bar under the selected tab, shorter than the tab, so the rim bends its ends. */
+.ticket-tab[aria-selected="true"]::before {
+  inset-block-end: 2px;
+  inset-inline: 10px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+}
+
+.theme-toggle::before {
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--glass-tint-accent);
+}
+
+.nav-link[aria-current="page"]::after,
+.ticket-tab[aria-selected="true"]::after,
+.theme-toggle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass-lens-fill);
+  -webkit-backdrop-filter: blur(0.5px);
+  backdrop-filter: blur(0.5px);
+  box-shadow:
+    var(--glass-highlight-flat),
+    0 2px 6px rgb(40 30 60 / 14%);
+  pointer-events: none;
+}
+
+/*
+ * A filled pill is a dome of clear glass over its colour: a bright line where light strikes, a
+ * pool of light low down where it gathers, and a darker inner edge. The text stays dark on a
+ * fill that only gets lighter under it (contrast.test.ts).
+ */
+.button-primary,
+.create-open {
+  background-image:
+    radial-gradient(90% 70% at 50% 118%, rgb(255 255 255 / 42%), rgb(255 255 255 / 0%) 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 34%), rgb(255 255 255 / 4%) 50%, rgb(0 0 0 / 5%));
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / 85%),
+    inset 0 0 0 1px rgb(255 255 255 / 18%),
+    inset 0 -1.5px 0 rgb(120 50 20 / 28%),
+    0 1px 2px rgb(120 60 30 / 24%),
+    0 6px 14px -4px rgb(220 120 80 / 45%);
+}
+
+[data-skin="dark"] .button-primary,
+[data-skin="dark"] .create-open {
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / 75%),
+    inset 0 0 0 1px rgb(255 255 255 / 14%),
+    inset 0 -1.5px 0 rgb(120 50 20 / 40%),
+    0 1px 2px rgb(0 0 0 / 50%),
+    0 8px 16px -6px rgb(0 0 0 / 60%);
+}
+
+@media (forced-colors: active) {
+  .ticket-tab[aria-selected="true"] {
+    border-bottom-color: Highlight;
+  }
+
+  .nav-link[aria-current="page"]::before,
+  .nav-link[aria-current="page"]::after,
+  .ticket-tab[aria-selected="true"]::before,
+  .ticket-tab[aria-selected="true"]::after,
+  .theme-toggle::before,
+  .theme-toggle::after {
+    display: none;
+  }
+
+  .shell-topbar::before,
+  .shell-sidebar::before,
+  .shell-drawer::before,
+  .glass-card::before,
+  .home-list::before,
+  .board-column-head::before,
+  .board-card::after,
+  .ticket-text::before,
+  .ticket-details::before,
+  .ticket-info::before,
+  .ticket-links::before,
+  .ticket-activity::before,
+  .attachment-panel::before,
+  .help-tip-body::before,
+  .user-menu-popup::before,
+  .popover::before,
+  .palette::before {
+    display: none;
+  }
+}

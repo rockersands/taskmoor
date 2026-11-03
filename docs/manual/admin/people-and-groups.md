@@ -2,7 +2,7 @@
 title: "People, groups and teams"
 audience: admins
 sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # People, groups and teams
@@ -14,7 +14,7 @@ deactivation, sessions, groups and teams. Permissions given to people and groups
 
 ## Where to find it
 
-Open **Settings**. The **Administration** part of the page appears only for site
+Open **Administration**. It appears only for site
 administrators.
 
 | Page | Address | What it does |
@@ -171,7 +171,7 @@ and `user.erased`).
 People set up their own second factors on their Account page: an authenticator app, security
 keys and passkeys, and ten single-use recovery codes. See [your account](../use/account.md).
 
-On **Settings** > **Security**, under **Two-factor authentication**, choose who must use one:
+On **Administration** > **Security**, under **Two-factor authentication**, choose who must use one:
 
 | Choice | Meaning |
 |---|---|
@@ -200,7 +200,7 @@ accounts are never external. Select **Save policy**.
 
 ## Sessions
 
-By default a session lasts 14 days, and ends earlier after 3 days without use. On **Settings** >
+By default a session lasts 14 days, and ends earlier after 3 days without use. On **Administration** >
 **Security**, under **Sign-in sessions**, set **A sign-in lasts (hours)** and **Sign out after this
 many minutes unused**, then select **Save session settings**. The security checklist (ASVS level
 2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
@@ -236,7 +236,7 @@ an account or address is locked are not recorded, so a flood cannot fill the log
 audit log gets one `access.refused_repeatedly` record when the refusals in the window reach 10,
 and one more at 100, 1,000 and so on, with the count and the last route.
 
-**Alerts.** On **Settings** > **Security**, under **Security alerts**, each rule has **Alert on
+**Alerts.** On **Administration** > **Security**, under **Security alerts**, each rule has **Alert on
 this**, **Alert after this many** and **Within this many minutes**:
 
 | Rule | Counts | Default |
@@ -304,7 +304,7 @@ They all point at the team itself, not at its name, so renaming a team renames i
 once: on tickets, boards, areas, and in the queries that name it (a query that used the old name
 must use the new one).
 
-On **Settings** > **Teams**:
+On **Administration** > **Teams**:
 
 - **Add a team** asks for a **Team name** and a **Description (optional)**. Names are unique,
   ignoring case: "There is a team with that name already."

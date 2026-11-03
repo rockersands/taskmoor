@@ -186,6 +186,47 @@ code, docs, screenshots, icons or assets; never open an Atlassian site or produc
 - Test names cite requirement IDs; stories and axe; en and es strings; phones.
 - Never put an API key, token, password or other secret in any file, commit or message.
 - No Atlassian products or connections. Push only to your own branch.
+## Side session 2026-11-02 to 03 (cloud, branch `claude/ui-overhaul`): interface overhaul and tutorial
+
+The user asked for the whole web interface to be reworked (clear sections, every panel saying
+what it is for, translucent "Liquid Glass" surfaces, drag and drop, light and dark) and a
+sectioned guided tutorial (offered at first sign-in, skippable, every section again under
+Settings, Tutorials). On 2026-11-03 they accepted the direction (closer to Liquid Glass), kept
+"Manage" as the sidebar heading, approved the Tracks directory and the Settings hub, and added
+a layout editor and easier board columns; then asked to wrap up.
+- **Decisions:** ADR-114 (interface) and ADR-115 (tutorial), both Accepted.
+- **Tasks:** `docs/plan/ui-overhaul-tasks.md`, UI-T01 to UI-T16, with a "Next session: start
+  here" list. This branch does not edit `backlog.csv` or `progress.csv` (the main session's).
+- **Numbers:** ADR-114, ADR-115 (ADR-116 spare); migration **0084** exactly for
+  `tutorial_progress` (0085 and ADR-113 belong to the ticket-templates session; ADR-112 to the
+  Flutter mobile session).
+- **On the branch:** glass tokens with sheen, rim and highlight plus opaque fallbacks
+  (`tokens.css`, `--glass-fill`); rims, the navigation lens and glossy pills in
+  `styles/surfaces.css`; the shell in glass with grouped navigation (`NAV_GROUPS` in
+  `shell/NavList.tsx`); `PageHeader`, `HelpTip`, `EmptyState`, `ThemeToggle` (tests and
+  stories); Home reworked (ways to start, explaining lists, the person's tracks); the board
+  (purpose line, column colour ramp, quieter cards with a round Move button, an empty Scrum
+  board pointing to the backlog); the ticket header (workflow moves as primary actions, help);
+  `tutorial/` (sections, picker with test and story, Settings, Tutorials page at
+  `#/settings/tutorials` without storage).
+- **Not started:** the server storage (a helper began it and was stopped before committing),
+  the layout editor, the Help menu, the Tracks directory, the Settings hub, the other pages,
+  widget and column drag, the coach card and first-run offer, the manual pages.
+- **Gate (not complete), pushed as WIP at the user's request to wrap up:** passed on this branch: `pnpm verify --only=lint,types`; the web
+  component tests (`--project=web`, 782 passed); the stories and tests of `shell`, `home`,
+  `tutorial`, `boards` and `tickets` in both skins (190 passed); `docs-check` and `next-task`
+  tests; `pnpm i18n:check`; `pnpm run docs`. Not run to the end: the full `pnpm verify --e2e`. It
+  started on fe9066d and the cloud container was killed partway (exit 137, likely memory), so
+  the database suites, the other stories and Playwright e2e are unverified. Run the full gate
+  first in the local session, before anything goes to `main`.
+- **Running the demo here (root container):** `service postgresql start`, a password for the
+  `postgres` user, `TASKMOOR_TEST_DATABASE_URL` pointed at it, then `pnpm demo`. The demo
+  caches the built frontend: rebuild (`pnpm --filter @taskmoor/web build`) and restart it to see
+  changes. Stories need `PLAYWRIGHT_BROWSERS_PATH` pointing at a folder that links the
+  container's Chromium build under Playwright's expected names (see "Notes for cloud sessions").
+- **Chrome and Gemini:** this cloud session had no Claude in Chrome tools and no linked
+  computer, so no generated artwork was used. A session linked to the user's PC can make
+  tutorial illustrations there; record their source if they are added.
 
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 

@@ -111,4 +111,5 @@ export const TYPES = [
 export const PRIORITIES = [
   { id: 1, name: 'Urgent' },
   { id: 2, name: 'Normal' },
+  { id: 3, name: 'Very low' },
 ];
