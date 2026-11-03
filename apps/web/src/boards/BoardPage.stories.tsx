@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, manyCards } from './fixtures';
@@ -45,6 +46,35 @@ export const Board: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Checkout team' })).toBeVisible();
     await expect(canvas.getByText('Over the maximum')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: /^Expedite/ })).toBeVisible();
+  },
+};
+
+/** A card's title being edited in place: Enter saves, Escape cancels (AGL-006). */
+export const EditingATitle: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await expect(canvas.getByRole('textbox', { name: 'Title of SHOP-19' })).toHaveFocus();
+  },
+};
+
+/** A title that was refused says why on the card, at a phone's width. */
+export const TitleRefused: Story = {
+  args: {
+    client: fakeBoardClient({
+      retitleRefusal: () => new ApiError(403, { error: 'forbidden' }),
+    }),
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await userEvent.keyboard(' now{Enter}');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'You may not edit this ticket.',
+    );
+    await fitsPhoneWidth(canvas);
   },
 };
 
@@ -125,7 +155,7 @@ function watchBoard() {
       watch.menu = performance.now() - watch.arrival;
       watch.cardsAtMenu = cards;
     }
-    const button = document.querySelector<HTMLButtonElement>('.board-card-move');
+    const button = document.querySelector<HTMLButtonElement>('.board-card-move[aria-expanded]');
     if (!watch.menu && button && button.getAttribute('aria-expanded') !== 'true') button.click();
     if (cards === 5000) {
       watch.all = performance.now() - watch.arrival;

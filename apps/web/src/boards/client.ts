@@ -161,6 +161,8 @@ export interface BoardCard {
   colour: string | null;
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  /** The viewer may edit this ticket: the card offers its pencil (AGL-006). */
+  mayEdit?: boolean;
 }
 
 export interface BoardLane {
@@ -258,6 +260,12 @@ export interface BoardClient {
     people?: readonly string[],
   ): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
+  /** A card's new title, through the ticket route; `version` is the one the person read. */
+  retitle(
+    ticket: number,
+    summary: string,
+    version: number | undefined,
+  ): Promise<{ summary: string; version: number }>;
   /** What a ticket can do next, to ask for the fields a refused move needs. */
   transitions(ticket: number): Promise<TicketTransition[]>;
   closeReasons(): Promise<{ id: number; name: string }[]>;
@@ -365,6 +373,13 @@ export const boardClient: BoardClient = {
       return { kind: 'refused', code: error.code ?? String(error.status) };
     }
   },
+  retitle: async (ticket, summary, version) =>
+    (
+      await api<{ ticket: { summary: string; version: number } }>(`/tickets/${ticket}`, {
+        method: 'PATCH',
+        body: { summary, ...(version !== undefined ? { version } : {}) },
+      })
+    ).ticket,
   transitions: (ticket) => ticketClient.transitions(ticket),
   closeReasons: () => ticketClient.closeReasons(),
   priorities: () => ticketClient.priorities(),

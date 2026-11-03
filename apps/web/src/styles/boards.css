@@ -204,7 +204,6 @@
 
 .board-card-link {
   display: block;
-  padding-inline-end: var(--space-8);
   min-height: var(--hit-target);
   color: var(--color-text);
   text-decoration: none;
@@ -269,10 +268,51 @@
   color: var(--color-text-muted);
 }
 
-.board-card-move {
+/* A card's pencil and menu: at its corner while the pointer or keyboard is on it, over the end of
+   the title. On a touch screen there is no hover, so they keep a row of their own. */
+.board-card-actions {
   position: absolute;
-  top: var(--space-2);
-  inset-inline-end: var(--space-2);
+  top: var(--space-1);
+  inset-inline-end: var(--space-1);
+  display: inline-flex;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-soft);
+}
+
+.board-card:hover .board-card-actions,
+.board-card:focus-within .board-card-actions {
+  opacity: 1;
+}
+
+.board-card-title-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.board-card-title-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-1);
+  font: inherit;
+}
+
+.board-card-title-problem {
+  margin: 0;
+}
+
+.board-card-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.board-card-move {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -826,6 +866,18 @@
   .board-card-move {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
+  }
+
+  .board-card-actions {
+    position: static;
+    justify-content: flex-end;
+    background: transparent;
+    opacity: 1;
+  }
+
+  .board-card-title-actions button,
+  .board-card-title-form input {
+    min-height: var(--hit-target-touch);
   }
 }
 

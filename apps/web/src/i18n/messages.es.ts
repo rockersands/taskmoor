@@ -3578,6 +3578,19 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.lane.count': '{count, plural, one {# ticket} other {# tickets}}',
   'boards.cell': '{column} en {lane}',
   'boards.card.unassigned': 'Sin asignar',
+  'boards.card.editTitle': 'Editar el título de {key}',
+  'boards.card.titleLabel': 'Título de {key}',
+  'boards.card.saveTitle': 'Guardar',
+  'boards.card.cancelTitle': 'Cancelar',
+  'boards.card.titleSaved': 'Título de {key} guardado.',
+  'boards.card.titleEmpty': 'El título no puede estar vacío.',
+  'boards.card.titleTooLong': 'Ese título es demasiado largo. Acórtalo y vuelve a intentarlo.',
+  'boards.card.titleForbidden': 'No puedes editar este ticket.',
+  'boards.card.titleArchived':
+    'Este ticket está en un track archivado, así que no se puede editar.',
+  'boards.card.titleStale':
+    'Alguien cambió este ticket mientras escribías. Guarda otra vez para poner tu título sobre el suyo, o cancela para dejar el suyo.',
+  'boards.card.titleOther': 'El título no se guardó. Inténtalo de nuevo en un momento.',
   'boards.card.due': 'Vence {date}',
   'boards.card.days':
     '{days, plural, =0 {nuevo en esta columna} one {# día en esta columna} other {# días en esta columna}}',

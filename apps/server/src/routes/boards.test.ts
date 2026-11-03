@@ -31,6 +31,7 @@ interface Card {
   status: { id: number; name: string };
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  mayEdit: boolean;
 }
 interface Data {
   columns: { id: string; name: string; count: number; shown: number; wip: string | null }[];
@@ -119,6 +120,7 @@ describe('boards (M1-043)', () => {
       ['alice', false],
       ['bob', false],
       ['carol', false],
+      ['vera', false],
     ] as const) {
       const row = await database.db
         .insertInto('app_user')
@@ -148,6 +150,7 @@ describe('boards (M1-043)', () => {
           ['alice', 'Members'],
           ['bob', 'Members'],
           ['carol', 'Administrators'],
+          ['vera', 'Viewers'],
         ],
       ],
       [
@@ -788,6 +791,49 @@ describe('boards (M1-043)', () => {
       cardRules: { colourBy: 'none', fields: ['points', 'areas'] },
     });
     expect(await pointsOf(full.id)).toBe(5);
+  });
+
+  it('[AGL-006] says per card whether the viewer may edit it', async () => {
+    const board = await createBoard('alice', {
+      name: 'Pencils',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    expect((await data('alice', board.id)).cards.every((c) => c.mayEdit)).toBe(true);
+    const seen = (await data('vera', board.id)).cards;
+    expect(seen.length).toBeGreaterThan(1);
+    expect(seen.some((c) => c.mayEdit)).toBe(false);
+    const target = seen[0] as Card;
+    const refused = await patch('vera', `/api/v1/tickets/${target.id}`, { summary: 'Mine now' });
+    expect(refused.statusCode).toBe(403);
+
+    // A ticket-level grant: the assignee may edit their own, and only those, without a query each.
+    const policy = await database.db
+      .selectFrom('track')
+      .select('access_policy_id')
+      .where('id', '=', tracks.BA as number)
+      .executeTakeFirstOrThrow();
+    const { id: grant } = await database.db
+      .insertInto('access_grant')
+      .values({
+        workspace_id: 1,
+        policy_id: policy.access_policy_id,
+        permission: 'edit_tickets',
+        grantee: 'assignee',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const hers = await ticket('vera holds this', 'BA');
+    await database.db
+      .updateTable('ticket')
+      .set({ assignee_id: users.vera?.id as number })
+      .where('id', '=', hers.id)
+      .execute();
+    const mine = (await data('vera', board.id)).cards.filter((c) => c.mayEdit).map((c) => c.id);
+    await database.db.deleteFrom('access_grant').where('id', '=', grant).execute();
+    expect(mine).toEqual([hers.id]);
   });
 
   it('[AGL-006] resets days in column only when the card changes column', async () => {

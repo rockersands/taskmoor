@@ -3482,6 +3482,18 @@ export const messagesEn = {
   'boards.card.due': 'Due {date}',
   'boards.card.days':
     '{days, plural, =0 {new in this column} one {# day in this column} other {# days in this column}}',
+  'boards.card.editTitle': 'Edit the title of {key}',
+  'boards.card.titleLabel': 'Title of {key}',
+  'boards.card.saveTitle': 'Save',
+  'boards.card.cancelTitle': 'Cancel',
+  'boards.card.titleSaved': 'Title of {key} saved.',
+  'boards.card.titleEmpty': 'A title cannot be empty.',
+  'boards.card.titleTooLong': 'That title is too long. Make it shorter and try again.',
+  'boards.card.titleForbidden': 'You may not edit this ticket.',
+  'boards.card.titleArchived': 'This ticket is in an archived track, so it cannot be edited.',
+  'boards.card.titleStale':
+    'Someone changed this ticket while you were writing. Save again to put your title over theirs, or cancel to keep theirs.',
+  'boards.card.titleOther': 'The title was not saved. Try again in a moment.',
   'boards.card.move': 'Move {key}',
   'boards.card.moveTo': 'Forward to {column}',
   'boards.card.moveBack': 'Back to {column}',

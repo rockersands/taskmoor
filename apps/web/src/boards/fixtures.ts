@@ -153,6 +153,7 @@ const card = (
   colour: '#2f6fdb',
   fields: { assignee: null, priority: { id: 3, name: 'Normal' } },
   daysInColumn: n % 4,
+  mayEdit: true,
   mine: false,
   ...extra,
 });
@@ -217,6 +218,7 @@ export const TEAMS = [
 
 export interface FakeBoardClient extends BoardClient {
   moves: MoveRequest[];
+  retitles: { ticket: number; summary: string; version: number | undefined }[];
   dataCalls: string[][];
   /** The person filter of each data request. */
   peopleCalls: string[][];
@@ -233,6 +235,8 @@ export function fakeBoardClient(
     closeReasonRequired?: string;
     /** Time zones the browser offers that this server refuses (older time zone data). */
     unknownTimeZones?: string[];
+    /** What a new title meets on the server, instead of being saved. */
+    retitleRefusal?: () => Error;
   } = {},
 ): FakeBoardClient {
   let board: Board = { ...BOARD, ...options.board };
@@ -253,6 +257,7 @@ export function fakeBoardClient(
   ];
   const client: FakeBoardClient = {
     moves: [],
+    retitles: [],
     dataCalls: [],
     peopleCalls: [],
     patches: [],
@@ -406,6 +411,14 @@ export function fakeBoardClient(
       { id: 2, name: 'Duplicate' },
     ],
     priorities: async () => [{ id: 1, name: 'High' }],
+    retitle: async (ticket, summary, version) => {
+      client.retitles.push({ ticket, summary, version });
+      if (options.retitleRefusal) throw options.retitleRefusal();
+      const card = cards.find((c) => c.id === ticket) as FakeCard;
+      card.summary = summary;
+      card.version += 1;
+      return { summary, version: card.version };
+    },
     move: async (_id, move): Promise<MoveOutcome> => {
       client.moves.push(move);
       if (options.closeReasonRequired && move.columnId === options.closeReasonRequired) {

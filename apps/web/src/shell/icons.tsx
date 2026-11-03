@@ -252,6 +252,12 @@ export const NobodyIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const PencilIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />
+  </Icon>
+);
+
 export const ChevronDownIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m6 9.5 6 6 6-6" />

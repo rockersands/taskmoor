@@ -383,6 +383,8 @@ export interface CardView {
   /** The extra fields the card rules ask for, by name. */
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  /** The viewer holds the right to edit this ticket: the card offers its pencil. */
+  mayEdit: boolean;
 }
 
 export interface LaneView {
@@ -659,6 +661,43 @@ async function cardSources(
   return out;
 }
 
+/**
+ * The cards their viewer may edit (AGL-006): a track's answer is one cached lookup, and holds for
+ * every card in it. Only where the track does not grant it, a ticket-level grant (requester,
+ * assignee, a person field) might, so those tickets take one more statement, not one each; the
+ * answers come from what the authorizer has cached. What an edit may still meet (a status's lock,
+ * a field only some may set) is the ticket route's to refuse, in words, when it is tried.
+ */
+async function editableCards(
+  db: Db,
+  request: FastifyRequest,
+  rows: readonly { id: number; track_id: number }[],
+): Promise<Set<number>> {
+  const editable = new Set<number>();
+  const byTrack = new Map<number, boolean>();
+  const rest: number[] = [];
+  for (const row of rows) {
+    let holds = byTrack.get(row.track_id);
+    if (holds === undefined) {
+      holds = await request.authz.can('edit_tickets', row.track_id);
+      byTrack.set(row.track_id, holds);
+    }
+    if (holds) editable.add(row.id);
+    else rest.push(row.id);
+  }
+  if (rest.length === 0) return editable;
+  const tickets = await db
+    .selectFrom('ticket')
+    .select(['id', 'track_id', 'requester_id', 'assignee_id', 'visibility_level_id', 'fields'])
+    .where(sql<boolean>`id = ANY(${rest}::int[])`)
+    .execute();
+  for (const ticket of tickets) {
+    const row = { ...ticket, fields: ticket.fields as Record<string, unknown> };
+    if (await request.authz.canTicket('edit_tickets', row)) editable.add(ticket.id);
+  }
+  return editable;
+}
+
 /** A stable colour for an id (type, priority or person), from a fixed palette of tokens. */
 const PALETTE = ['#2f6fdb', '#1f8a5b', '#b25e09', '#8a3ffc', '#c4314b', '#00828a', '#5c6b7a'];
 const paletteColour = (n: number) => PALETTE[n % PALETTE.length] as string;
@@ -701,6 +740,7 @@ export async function loadBoardData(input: {
   }
   interface CardRow {
     id: number;
+    track_id: number;
     status_id: number;
     parent_id: number | null;
     assignee_id: number | null;
@@ -721,7 +761,7 @@ export async function loadBoardData(input: {
           mapped.length === 0
             ? { rows: [] as CardRow[] }
             : await sql<CardRow>`
-          SELECT k.id, k.status_id, k.parent_id, k.assignee_id,
+          SELECT k.id, k.track_id, k.status_id, k.parent_id, k.assignee_id,
                  ${firstMatch(compiled.lanes)} AS lane, ${firstMatch(compiled.colours)} AS colour
             FROM ticket k
            WHERE ${compiled.scope} AND ${compiled.filters}
@@ -890,6 +930,7 @@ export async function loadBoardData(input: {
     }
   }
 
+  const editable = await editableCards(db, request, shownRows);
   const cards: CardView[] = [];
   const shownPerColumn = new Map<string, number>();
   for (const r of shownRows) {
@@ -930,6 +971,7 @@ export async function loadBoardData(input: {
       daysInColumn: since
         ? Math.max(0, Math.floor((now.getTime() - since.getTime()) / 86_400_000))
         : null,
+      mayEdit: editable.has(r.id),
     });
   }
 

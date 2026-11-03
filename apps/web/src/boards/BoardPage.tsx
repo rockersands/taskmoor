@@ -9,11 +9,13 @@ import {
   useRef,
   useState,
 } from 'react';
+import { ApiError } from '../api/client';
 import { type Translate, useT } from '../i18n/I18nProvider';
+import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon, ClockIcon, MoreIcon, NobodyIcon } from '../shell/icons';
+import { BoardsIcon, ClockIcon, MoreIcon, NobodyIcon, PencilIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
@@ -24,6 +26,7 @@ import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm'
 import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
+import { CardTitleEditor } from './CardTitleEditor';
 import {
   type Board,
   type BoardCard,
@@ -188,6 +191,7 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  */
 export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const t = useT();
+  const lockText = useLockText();
   const sections = useTrackSections();
   const titleId = useId();
   const hintId = useId();
@@ -203,6 +207,8 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
+  /** The card whose title is being edited, with the version the person read. */
+  const [editing, setEditing] = useState<{ id: number; version: number | undefined } | null>(null);
   const [busy, setBusy] = useState(false);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
   const [dragging, setDragging] = useState<number | null>(null);
@@ -221,6 +227,11 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   }, [data, complete]);
   const focusAfter = useRef<number | null>(null);
   const links = useRef(new Map<number, HTMLAnchorElement>());
+  const pencils = useRef(new Map<number, HTMLButtonElement>());
+  /** The pencil that gets focus back once its editor has closed. */
+  const pencilAfter = useRef<number | null>(null);
+  /** A press that began on a card's button: a drag from there would not be meant. */
+  const pressedButton = useRef(false);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
 
@@ -316,6 +327,12 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   useEffect(() => {
     if (choice) firstChoice.current?.focus();
   }, [choice]);
+
+  useEffect(() => {
+    if (editing !== null || pencilAfter.current === null) return;
+    pencils.current.get(pencilAfter.current)?.focus();
+    pencilAfter.current = null;
+  }, [editing]);
 
   if (state === 'loading' && !data) {
     return (
@@ -511,12 +528,56 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   }
 
   function onCardKey(event: KeyboardEvent, card: BoardCard) {
-    if (!event.altKey || busy) return;
+    if (!event.altKey || busy || editing?.id === card.id) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[event.key];
     if (step === undefined) return;
     event.preventDefault();
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') toColumn(card, step as -1 | 1);
     else inColumn(card, step as -1 | 1);
+  }
+
+  const closeEditor = (cardId: number) => {
+    pencilAfter.current = cardId;
+    setEditing(null);
+  };
+
+  /** Saves a card's title; the refusal in plain words, or null once it is saved. */
+  async function saveTitle(card: BoardCard, summary: string): Promise<string | null> {
+    try {
+      const saved = await client.retitle(card.id, summary, editing?.version);
+      setData(
+        (current) =>
+          current && {
+            ...current,
+            cards: current.cards.map((c) =>
+              c.id === card.id ? { ...c, summary: saved.summary, version: saved.version } : c,
+            ),
+          },
+      );
+      setAnnouncement(t('boards.card.titleSaved', { key: card.key }));
+      closeEditor(card.id);
+      return null;
+    } catch (error) {
+      if (!(error instanceof ApiError)) return t('boards.card.titleOther');
+      const body = error.body as {
+        error?: string;
+        locks?: Lock[];
+        fields?: Record<string, string>;
+      } | null;
+      const lock = body?.locks?.[0];
+      if (error.status === 403) {
+        return lock ? lockText(lock, 'edit') : t('boards.card.titleForbidden');
+      }
+      if (body?.error === 'version_conflict') {
+        // They have been told: the next Enter saves over the other person's change.
+        setEditing({ id: card.id, version: undefined });
+        return t('boards.card.titleStale');
+      }
+      if (body?.error === 'track_archived') return t('boards.card.titleArchived');
+      if (body?.fields?.summary === 'required') return t('boards.card.titleEmpty');
+      if (body?.fields?.summary === 'too_long') return t('boards.card.titleTooLong');
+      return t('boards.card.titleOther');
+    }
   }
 
   function toggleFilter(id: string) {
@@ -558,14 +619,23 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     const cell = cardsIn(card.columnId, card.laneId);
     const position = placeOf.get(card.id) ?? 0;
     const menuOpen = menuFor === card.id;
+    const titleOpen = editing?.id === card.id;
     const priority = card.fields.priority as { name: string; level?: number } | null | undefined;
     return (
       <li
         key={card.id}
         className={`board-card${dragging === card.id ? ' is-dragging' : ''}${dropAt?.before === card.id ? ' is-drop-before' : ''}`}
         data-card-id={card.id}
-        draggable={!busy}
+        draggable={!busy && !titleOpen}
+        onPointerDownCapture={() => {
+          pressedButton.current = false;
+        }}
         onDragStart={(event) => {
+          if (pressedButton.current) {
+            pressedButton.current = false;
+            event.preventDefault();
+            return;
+          }
           event.dataTransfer.setData('text/plain', card.key);
           event.dataTransfer.effectAllowed = 'move';
           setDragging(card.id);
@@ -578,27 +648,36 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         style={card.colour ? ({ '--card-colour': card.colour } as CSSProperties) : undefined}
         onKeyDown={(event) => onCardKey(event, card)}
       >
-        <a
-          className="board-card-link"
-          href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-          onClick={() =>
-            rememberBoard(card.key, {
-              id: boardId,
-              name: board.name,
-              ...(people.length > 0 ? { people: people.join(',') } : {}),
-            })
-          }
-          aria-describedby={hintId}
-          title={`${card.key} ${card.summary}`}
-          ref={(el) => {
-            if (el) links.current.set(card.id, el);
-            else links.current.delete(card.id);
-          }}
-        >
-          {/* The key is for the tooltip and for those who hear the card: the title is the card. */}
-          <span className="visually-hidden">{card.key}</span>{' '}
-          <span className="board-card-summary">{card.summary}</span>
-        </a>
+        {titleOpen ? (
+          <CardTitleEditor
+            ticketKey={card.key}
+            title={card.summary}
+            onSave={(summary) => saveTitle(card, summary)}
+            onCancel={() => closeEditor(card.id)}
+          />
+        ) : (
+          <a
+            className="board-card-link"
+            href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
+            onClick={() =>
+              rememberBoard(card.key, {
+                id: boardId,
+                name: board.name,
+                ...(people.length > 0 ? { people: people.join(',') } : {}),
+              })
+            }
+            aria-describedby={hintId}
+            title={`${card.key} ${card.summary}`}
+            ref={(el) => {
+              if (el) links.current.set(card.id, el);
+              else links.current.delete(card.id);
+            }}
+          >
+            {/* The key is for the tooltip and for those who hear the card: the title is the card. */}
+            <span className="visually-hidden">{card.key}</span>{' '}
+            <span className="board-card-summary">{card.summary}</span>
+          </a>
+        )}
         <p className="board-card-meta">
           <span className="ticket-icons">
             <TypeIcon name={card.ticketType.name} icon={card.ticketType.icon} />
@@ -634,17 +713,46 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             <CardPerson name={nameOf(card.fields.assignee)} nobody={t('boards.card.unassigned')} />
           )}
         </p>
-        <button
-          type="button"
-          className="board-card-move"
-          aria-expanded={menuOpen}
-          aria-label={t('boards.card.move', { key: card.key })}
-          title={t('boards.card.move', { key: card.key })}
-          disabled={busy}
-          onClick={() => setMenuFor(menuOpen ? null : card.id)}
-        >
-          <MoreIcon width={18} height={18} />
-        </button>
+        {!titleOpen && (
+          <span className="board-card-actions">
+            {card.mayEdit && (
+              <button
+                type="button"
+                className="board-card-move"
+                aria-label={t('boards.card.editTitle', { key: card.key })}
+                title={t('boards.card.editTitle', { key: card.key })}
+                disabled={busy}
+                ref={(el) => {
+                  if (el) pencils.current.set(card.id, el);
+                  else pencils.current.delete(card.id);
+                }}
+                onPointerDown={() => {
+                  pressedButton.current = true;
+                }}
+                onClick={() => {
+                  setMenuFor(null);
+                  setEditing({ id: card.id, version: card.version });
+                }}
+              >
+                <PencilIcon width={18} height={18} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="board-card-move"
+              aria-expanded={menuOpen}
+              aria-label={t('boards.card.move', { key: card.key })}
+              title={t('boards.card.move', { key: card.key })}
+              disabled={busy}
+              onPointerDown={() => {
+                pressedButton.current = true;
+              }}
+              onClick={() => setMenuFor(menuOpen ? null : card.id)}
+            >
+              <MoreIcon width={18} height={18} />
+            </button>
+          </span>
+        )}
         {menuOpen && (
           <ul className="board-move-menu">
             {columns.map((target, i) =>

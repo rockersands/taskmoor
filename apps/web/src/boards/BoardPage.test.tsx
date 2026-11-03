@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
@@ -24,6 +25,162 @@ const keysIn = (name: string) =>
   cell(name)
     .queryAllByRole('link')
     .map((a) => a.textContent?.split(' ')[0]);
+
+describe('a card’s title in place', () => {
+  const cardOf = (key: string) =>
+    screen.getByRole('link', { name: new RegExp(`^${key} `) }).closest('li') as HTMLElement;
+  const openEditor = async (user: ReturnType<typeof userEvent.setup>, key: string) => {
+    await user.click(screen.getByRole('button', { name: `Edit the title of ${key}` }));
+    return screen.getByRole('textbox', { name: `Title of ${key}` });
+  };
+
+  it('[AGL-006] Enter saves through the ticket route, with the version read, and focus returns', async () => {
+    const user = userEvent.setup();
+    const client = renderBoard();
+    await page();
+    const input = await openEditor(user, 'SHOP-19');
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('Refunds show the wrong currency');
+    await user.clear(input);
+    await user.type(input, 'Refunds in the right currency{Enter}');
+    expect(
+      await screen.findByRole('link', { name: 'SHOP-19 Refunds in the right currency' }),
+    ).toBeVisible();
+    expect(client.retitles).toEqual([
+      { ticket: 119, summary: 'Refunds in the right currency', version: 1 },
+    ]);
+    expect(screen.getByRole('button', { name: 'Edit the title of SHOP-19' })).toHaveFocus();
+    expect(await screen.findByText('Title of SHOP-19 saved.')).toBeInTheDocument();
+  });
+
+  it('[AGL-006] Escape cancels, and nothing is saved', async () => {
+    const user = userEvent.setup();
+    const client = renderBoard();
+    await page();
+    const input = await openEditor(user, 'SHOP-19');
+    await user.type(input, ' but not this{Escape}');
+    expect(screen.queryByRole('textbox', { name: 'Title of SHOP-19' })).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'SHOP-19 Refunds show the wrong currency' }),
+    ).toBeVisible();
+    expect(client.retitles).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Edit the title of SHOP-19' })).toHaveFocus();
+  });
+
+  it('[AGL-006] the same title saves nothing, and an empty one is refused in words', async () => {
+    const user = userEvent.setup();
+    const client = renderBoard();
+    await page();
+    const input = await openEditor(user, 'SHOP-19');
+    await user.clear(input);
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('alert')).toHaveTextContent('A title cannot be empty.');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    await user.type(input, 'Refunds show the wrong currency{Enter}');
+    expect(screen.queryByRole('textbox', { name: 'Title of SHOP-19' })).toBeNull();
+    expect(client.retitles).toEqual([]);
+  });
+
+  it.each<[() => Error, string | RegExp]>([
+    [() => new ApiError(403, { error: 'forbidden' }), 'You may not edit this ticket.'],
+    [
+      () =>
+        new ApiError(403, {
+          error: 'locked',
+          action: 'edit',
+          locks: [{ by: 'status', statusId: 1, statusName: 'Closed', allowed: [] }],
+        }),
+      /Closed/,
+    ],
+    [() => new ApiError(409, { error: 'track_archived' }), /archived track/],
+    [
+      () => new ApiError(400, { error: 'invalid_fields', fields: { summary: 'too_long' } }),
+      /too long/,
+    ],
+    [() => new Error('offline'), 'The title was not saved. Try again in a moment.'],
+  ])(
+    '[AGL-006] shows a refusal in plain words and keeps what was written',
+    async (refusal, words) => {
+      const user = userEvent.setup();
+      renderBoard(fakeBoardClient({ retitleRefusal: refusal }));
+      await page();
+      const input = await openEditor(user, 'SHOP-19');
+      await user.type(input, ' now{Enter}');
+      expect(await screen.findByRole('alert')).toHaveTextContent(words);
+      expect(input).toHaveValue('Refunds show the wrong currency now');
+      expect(input).toBeEnabled();
+    },
+  );
+
+  it('[AGL-006] after a conflict says so, and the next Enter saves over the other change', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient({
+      retitleRefusal: () => new ApiError(409, { error: 'version_conflict' }),
+    });
+    renderBoard(client);
+    await page();
+    const input = await openEditor(user, 'SHOP-19');
+    await user.type(input, ' now{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Someone changed this ticket');
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(client.retitles).toHaveLength(2));
+    expect(client.retitles.map((r) => r.version)).toEqual([1, undefined]);
+  });
+
+  it('[AGL-006] offers the pencil only on a ticket the person may edit', async () => {
+    const cards = CARDS.map((c) => (c.key === 'SHOP-19' ? { ...c, mayEdit: false } : c));
+    renderBoard(fakeBoardClient({ cards }));
+    await page();
+    expect(screen.queryByRole('button', { name: 'Edit the title of SHOP-19' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit the title of SHOP-21' })).toBeVisible();
+    // The menu to move it stays.
+    expect(screen.getByRole('button', { name: 'Move SHOP-19' })).toBeVisible();
+  });
+
+  it('[AGL-006] the pencil neither starts a drag nor opens the ticket', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    const hash = window.location.hash;
+    const pencil = screen.getByRole('button', { name: 'Edit the title of SHOP-19' });
+    expect(pencil.closest('a')).toBeNull();
+    fireEvent.pointerDown(pencil);
+    // A press on the pencil that turns into a drag does not take the card along.
+    expect(fireEvent.dragStart(cardOf('SHOP-19'))).toBe(false);
+    expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
+    fireEvent.pointerUp(pencil);
+    await user.click(pencil);
+    expect(window.location.hash).toBe(hash);
+    expect(screen.getByRole('textbox', { name: 'Title of SHOP-19' })).toBeVisible();
+  });
+
+  it('[AGL-006] while editing the card cannot be dragged and its move keys do not fire', async () => {
+    const user = userEvent.setup();
+    const client = renderBoard();
+    await page();
+    const card = cardOf('SHOP-19');
+    expect(card).toHaveAttribute('draggable', 'true');
+    const input = await openEditor(user, 'SHOP-19');
+    expect(card).toHaveAttribute('draggable', 'false');
+    expect(screen.queryByRole('button', { name: 'Move SHOP-19' })).toBeNull();
+    await user.keyboard('{Alt>}{ArrowRight}{ArrowDown}{/Alt}');
+    expect(client.moves).toEqual([]);
+    expect(input).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(card).toHaveAttribute('draggable', 'true');
+  });
+
+  it('[AGL-006] reaches the pencil from the keyboard', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    screen.getByRole('link', { name: /^SHOP-19 / }).focus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Edit the title of SHOP-19' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('textbox', { name: 'Title of SHOP-19' })).toHaveFocus();
+  });
+});
 
 describe('the board page (M1-043)', () => {
   it('[AGL-004] shows columns per lane, the query lane before the catch-all, in rank order', async () => {
