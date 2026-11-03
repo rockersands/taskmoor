@@ -176,3 +176,4 @@ M1-141,in-progress,2026-11-03,"First version on claude/ui-overhaul: section, ove
 M1-142,in-progress,2026-11-03,"Progress on the server (migration 0084), picker and help menu built; the steps are not."
 M1-143,in-progress,2026-11-03,"Being built on claude/ticket-tools, migration 0091."
 M1-144,done,2026-11-03,"On main at 3ad14a3; job clock fix included. The gate passed with one e2e test (AI settings, Strict mode) needing its retry; that test is still to look at."
+M1-145,in-progress,2026-11-03,"Being built on claude/multi-track: the first views, then the rest in stages. ADR-122. The user moved it into 1.0."

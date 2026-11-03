@@ -120,7 +120,8 @@ reported, and the coordinator checked that it was pushed.
 | T-086 | Share a whole group, or set it on another person | To do | With the front sub chat |
 | T-087 | Sharing a group gives access to its tracks | To do | Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | In progress | `claude/multi-track`; decided by the user for 1.0 |
-| T-089 | Multi-track: capacity, program board, scenarios, auto-scheduling, cross-track releases | Later | 2.0, M2-005 |
+| T-089 | Multi-track in full: dependencies, teams and capacity, cross-track releases, program board, scenarios, auto-scheduler, duplicate and export | In progress | `claude/multi-track`; decided by the user for 1.0 |
+| T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 
 ## Boards and moving tickets
 
