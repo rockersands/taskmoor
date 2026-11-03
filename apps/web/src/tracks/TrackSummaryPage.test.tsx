@@ -8,6 +8,7 @@ import { setViewportWidth } from '../test/viewport';
 import type { FakeTrackClient } from './fixtures';
 import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
 import { TrackSummaryPage } from './TrackSummaryPage';
+import { TrackSectionsContext } from './trackSections';
 
 function open(locale: Locale = 'en', client: FakeTrackClient = fakeTrackClient()) {
   const errors: Error[] = [];
@@ -19,6 +20,42 @@ function open(locale: Locale = 'en', client: FakeTrackClient = fakeTrackClient()
   return { client, errors, container: view.container };
 }
 const CUSTOM = { layout: 'two' as const, version: 3, widgets: CUSTOM_WIDGETS };
+
+describe('a Summary on a Kanban track (ADR-116)', () => {
+  const sprintWidget = {
+    id: 'sb',
+    kind: 'sprint-burndown' as const,
+    column: 0,
+    title: 'Our burndown',
+    config: {},
+  };
+  const KANBAN = { backlog: false, sprints: false };
+
+  it('[CORE-002] leaves out sprint widgets, and keeps them in the editor to take away', async () => {
+    const user = userEvent.setup();
+    const client = fakeTrackClient(SHOP_SUMMARY, {
+      mayCustomize: true,
+      custom: { layout: 'two', version: 1, widgets: [...CUSTOM_WIDGETS, sprintWidget] },
+    });
+    render(
+      <I18nProvider locale="en">
+        <TrackSectionsContext.Provider value={KANBAN}>
+          <TrackSummaryPage trackKey="SHOP" client={client} checkQuery={async () => true} />
+        </TrackSectionsContext.Provider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('Open bugs')).toBeVisible();
+    expect(screen.queryByText('Our burndown')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    expect(await screen.findByText('Our burndown')).toBeVisible();
+    const offered = within(screen.getByRole('combobox', { name: 'Widget to add' }))
+      .getAllByRole('option')
+      .map((o) => o.textContent)
+      .join();
+    expect(offered).toContain('Created vs closed');
+    expect(offered).not.toMatch(/Scrum|Sprint/);
+  });
+});
 
 describe('track summary page (M1-064)', () => {
   it('[RPT-006] every number opens the search that counts it', async () => {

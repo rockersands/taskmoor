@@ -1,6 +1,12 @@
 import { BOARD } from '../boards/fixtures';
 import type { Widget } from '../dashboards/client';
-import type { SummaryItem, TrackClient, TrackSummary, TrackSummaryLayout } from './client';
+import type {
+  SummaryItem,
+  TrackClient,
+  TrackSections,
+  TrackSummary,
+  TrackSummaryLayout,
+} from './client';
 
 /** A track's summary for stories and tests (M1-064): made up, its parts adding up. */
 const item = (id: string, name: string | null, query: string, count: number): SummaryItem => ({
@@ -101,6 +107,8 @@ export const CUSTOM_WIDGETS: Widget[] = [
 ];
 
 export interface FakeTrackOptions {
+  /** Which sections the track has; a Scrum track's by default. */
+  sections?: TrackSections;
   /** Whether the person may customize; a viewer otherwise. */
   mayCustomize?: boolean;
   /** Starts customized. */
@@ -156,6 +164,7 @@ export function fakeTrackClient(
       { key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
       { key: 'WEB', name: 'Web', owner: null },
     ],
+    sections: async () => options.sections ?? { backlog: true, sprints: true },
     board: async () => BOARD,
     files: async () => ({
       attachments: [

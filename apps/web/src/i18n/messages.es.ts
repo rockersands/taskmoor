@@ -54,9 +54,10 @@ export const messagesEs: Record<MessageId, string> = {
   'track.section.statistics': 'Estadísticas',
   'track.boardFailed':
     'No se pudo cargar el tablero de este track. Inténtalo de nuevo en un momento.',
-  'track.backlog.kanbanTitle': 'Este tablero no tiene backlog',
-  'track.backlog.kanban':
-    'Un backlog planifica el trabajo en sprints, que tienen los tableros Scrum. El tablero de este track es Kanban: su primera columna es donde espera el trabajo nuevo.',
+  'track.backlog.noneTitle': 'Este track no tiene backlog',
+  'track.backlog.none':
+    'Un backlog planifica el trabajo en sprints, y solo un tablero Scrum los tiene. En este track, todos los tickets están en el tablero: su primera columna es donde espera el trabajo nuevo.',
+  'track.backlog.openBoard': 'Abrir el tablero',
   'track.backlog.kanbanAction': 'Cambiar el tipo de tablero',
   'track.files.title': 'Archivos y enlaces',
   'track.files.purpose':

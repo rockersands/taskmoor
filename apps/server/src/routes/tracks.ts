@@ -476,8 +476,20 @@ export function registerTrackRoutes(
       .orderBy('replaced_at')
       .orderBy('id')
       .execute();
+    // A backlog and sprints need a Scrum board and the toggle on (CORE-002 (2); ADR-116). A track
+    // with no board yet gets a Kanban one when it is first opened, so it has neither.
+    const board = await db
+      .selectFrom('board')
+      .select('kind')
+      .where('location_track_id', '=', row.id)
+      .executeTakeFirst();
+    const scrum = board?.kind === 'scrum';
     return {
-      track: { ...trackView(row), previousKeys: history.map((h) => h.key) },
+      track: {
+        ...trackView(row),
+        previousKeys: history.map((h) => h.key),
+        sections: { backlog: scrum && row.feature_backlog, sprints: scrum && row.feature_sprints },
+      },
       ...(found.oldKey ? { redirect: { from: found.oldKey, to: row.key } } : {}),
     };
   });

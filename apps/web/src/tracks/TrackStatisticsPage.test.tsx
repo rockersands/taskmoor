@@ -41,8 +41,32 @@ function open(
 }
 
 describe('a track’s statistics (ADR-116)', () => {
+  it('[CORE-002] lists nothing that follows sprints on a Kanban track', async () => {
+    open('cumulative-flow', KANBAN);
+    await screen.findByRole('heading', { level: 1, name: 'Statistics of Shop' });
+    const nav = screen.getByRole('navigation', { name: 'Reports' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual([
+      'Cumulative flow',
+      'Control chart',
+      'Cycle time',
+      'Time in status',
+      'Created vs closed',
+      'Recently created',
+      'Average age',
+      'Time to close',
+      'Ticket statistics',
+      'Two-dimensional statistics',
+    ]);
+    expect(within(nav).queryByRole('group', { name: 'Sprints' })).toBeNull();
+    expect(within(nav).queryByRole('group', { name: 'Releases' })).toBeNull();
+  });
+
   it('[RPT-001] [RPT-002] lists every report of the track, each link inside its tabs', async () => {
-    open('cumulative-flow');
+    open('cumulative-flow', SCRUM);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Statistics of Shop' }),
     ).toBeVisible();

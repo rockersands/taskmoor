@@ -10,6 +10,7 @@ import {
   sprintDraftOf,
   sprintSettingsOf,
 } from '../sprints/SprintSettingsSection';
+import { trackSectionsChanged } from '../tracks/trackSections';
 import {
   type Board,
   type BoardClient,
@@ -464,6 +465,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     try {
       const outcome = await client.update(boardId, patchOf(draft, board.version));
       if (outcome.ok) {
+        // The Backlog tab comes or goes at once, without a reload (ADR-116).
+        if (outcome.board.kind !== board.kind && outcome.board.location.type === 'track') {
+          trackSectionsChanged(outcome.board.location.track.key ?? '');
+        }
         setBoard(outcome.board);
         setDraft(draftOf(outcome.board, timeZone));
         setNotice({ kind: 'saved' });

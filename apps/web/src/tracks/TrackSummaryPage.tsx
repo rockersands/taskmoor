@@ -12,6 +12,7 @@ import {
   WidgetEditorFields,
   WidgetGrid,
 } from '../dashboards/WidgetEditor';
+import { SETTINGS } from '../dashboards/WidgetSettings';
 import { defaultConfig } from '../dashboards/WidgetSettings';
 import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
@@ -19,6 +20,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type TrackClient, type TrackSummaryLayout, trackClient } from './client';
 import { TrackNumbers } from './TrackNumbers';
+import { useTrackSections } from './trackSections';
 
 export interface TrackSummaryPageProps {
   trackKey: string;
@@ -48,6 +50,7 @@ export function TrackSummaryPage({
 }: TrackSummaryPageProps) {
   const t = useT();
   const titleId = useId();
+  const sections = useTrackSections();
   const [read, setRead] = useState<TrackSummaryLayout | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<{ layout: Layout; widgets: Widget[] } | null>(null);
@@ -85,12 +88,16 @@ export function TrackSummaryPage({
   if (!read) return <p className="report-empty">{t('reports.loading')}</p>;
 
   const { custom } = read;
-  const widgets = draft?.widgets ?? custom?.widgets ?? [];
+  // A Kanban track has no sprints: their widgets stay in the editor, to take away, and show nowhere.
+  const needsSprints = (w: Widget) => SETTINGS[w.kind].includes('board');
+  const widgets =
+    draft?.widgets ??
+    (custom?.widgets ?? []).filter((w) => !(sections?.sprints === false && needsSprints(w)));
   const layout = draft?.layout ?? custom?.layout ?? 'one';
   const kinds: WidgetKind[] = [
     ...WIDGET_KINDS,
     ...(widgets.some((w) => w.kind === 'track-summary') ? [] : ['track-summary' as const]),
-  ];
+  ].filter((k) => !SETTINGS[k].includes('board') || boards.some((b) => b.kind === 'scrum'));
 
   const customize = () => {
     setDraft(

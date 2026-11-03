@@ -97,9 +97,10 @@ The **Reports** link on a board opens this section, and moving between reports s
 track's tabs. Each report counts only the tickets you can see in the track, so two people may read
 different numbers.
 
-Sprint and release reports follow sprints, so they need the track's board to be a Scrum board. On a
-Kanban board they say so, and those who may change the board get a link to its settings. Flow and
-ticket reports work on any board.
+Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
+track does not list them. An old link to one says it needs a Scrum board, and those who may change
+the board get a link to its settings. Flow and ticket reports work on any board. On a Kanban track, a
+customized Summary also leaves out sprint widgets: they stay in its editor, to take away.
 
 ### Ticket reports
 

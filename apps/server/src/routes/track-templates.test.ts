@@ -197,4 +197,99 @@ describe('track templates (M1-054)', () => {
     );
     await make({ key: 'CP3', name: 'Copy 3', copyFrom: 999_999 }, 400);
   });
+
+  describe("a board's kind and its track's backlog (ADR-116)", () => {
+    const sections = async (key: string) =>
+      (await call('GET', `/api/v1/tracks/${key}`)).track as {
+        features: { backlog: boolean; sprints: boolean };
+        sections: { backlog: boolean; sprints: boolean };
+      };
+    const kind = (board: number, to: 'scrum' | 'kanban') =>
+      call('PATCH', `/api/v1/boards/${board}`, { kind: to });
+
+    it('[CORE-002] a template says which sections a track has', async () => {
+      await make({ key: 'SSC', name: 'Scrum one', template: 'scrum' });
+      expect((await sections('SSC')).sections).toEqual({ backlog: true, sprints: true });
+      await make({ key: 'SKA', name: 'Kanban one', template: 'kanban' });
+      expect((await sections('SKA')).sections).toEqual({ backlog: false, sprints: false });
+    });
+
+    it('[CORE-002] a Blank track has no backlog before or after its Kanban board is made', async () => {
+      await make({ key: 'SBL', name: 'Blank one', template: 'blank' });
+      const before = await sections('SBL');
+      expect(before.features).toMatchObject({ backlog: true, sprints: true });
+      expect(before.sections).toEqual({ backlog: false, sprints: false });
+      expect((await call('GET', '/api/v1/tracks/SBL/board')).board.kind).toBe('kanban');
+      const after = await sections('SBL');
+      expect(after.features).toMatchObject({ backlog: false, sprints: false });
+      expect(after.sections).toEqual({ backlog: false, sprints: false });
+    });
+
+    it("[CORE-002] changing the board's kind moves the toggles both ways, as a change of the track", async () => {
+      const { board, track } = await make({ key: 'SCH', name: 'Changing', template: 'kanban' });
+      await kind(board.id, 'scrum');
+      expect(await sections('SCH')).toMatchObject({
+        features: { backlog: true, sprints: true },
+        sections: { backlog: true, sprints: true },
+      });
+      await kind(board.id, 'kanban');
+      expect(await sections('SCH')).toMatchObject({
+        features: { backlog: false, sprints: false },
+        sections: { backlog: false, sprints: false },
+      });
+      const events = await database.db
+        .selectFrom('domain_event')
+        .select('payload')
+        .where('type', '=', 'track.updated')
+        .where('subject_id', '=', String(track.id))
+        .execute();
+      expect(events).toHaveLength(2);
+    });
+
+    it('[CORE-002] a toggle turned on by hand does not give a Kanban track a backlog', async () => {
+      const { track } = await make({ key: 'SHA', name: 'By hand', template: 'kanban' });
+      await call('PATCH', `/api/v1/tracks/${track.id}`, { features: { backlog: true } });
+      const read = await sections('SHA');
+      expect(read.features.backlog).toBe(true);
+      expect(read.sections.backlog).toBe(false);
+    });
+
+    it('[AGL-002] tickets of a Scrum backlog and of its sprints stay on the board as Kanban', async () => {
+      const { board } = await make({ key: 'SMV', name: 'Moving', template: 'scrum' });
+      const inBacklog = await ticket('SMV', 'Waiting in the backlog');
+      const inFuture = await ticket('SMV', 'In a planned sprint');
+      const running = await ticket('SMV', 'In the running sprint');
+      const planned = (
+        await call('POST', `/api/v1/boards/${board.id}/sprints`, { name: 'Later' }, 201)
+      ).sprint.id;
+      const active = (
+        await call('POST', `/api/v1/boards/${board.id}/sprints`, { name: 'Now' }, 201)
+      ).sprint.id;
+      await call('POST', `/api/v1/sprints/${planned}/tickets`, { tickets: [inFuture] });
+      await call('POST', `/api/v1/sprints/${active}/tickets`, { tickets: [running] });
+      await call('POST', `/api/v1/sprints/${active}/start`, {
+        startAt: '2026-11-01T00:00:00.000Z',
+        endAt: '2026-11-15T00:00:00.000Z',
+      });
+      const shownAsScrum = (await call('GET', `/api/v1/boards/${board.id}/data?sprints=active`))
+        .cards as Card[];
+      expect(shownAsScrum.map((c) => c.key)).toEqual([running]);
+
+      const timeline = () => call('GET', '/api/v1/tracks/SMV/timeline');
+      const calendar = () =>
+        call('GET', '/api/v1/tracks/SMV/calendar?from=2026-11-01&to=2026-11-30');
+      expect((await timeline()).markers.sprints).toHaveLength(1);
+      expect((await calendar()).sprints).toHaveLength(1);
+
+      await kind(board.id, 'kanban');
+      expect((await cards(board.id)).sort()).toEqual([inBacklog, inFuture, running].sort());
+      // Its sprints do not show elsewhere on the track either.
+      expect((await timeline()).markers.sprints).toEqual([]);
+      expect((await calendar()).sprints).toEqual([]);
+      // Nothing about the sprints was lost: back on Scrum they are where they were.
+      await kind(board.id, 'scrum');
+      const back = await call('GET', `/api/v1/boards/${board.id}/backlog`);
+      expect(back.backlog.tickets.map((x: Card) => x.key)).toEqual([inBacklog]);
+    });
+  });
 });

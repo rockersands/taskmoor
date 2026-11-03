@@ -1,23 +1,27 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeTrackClient } from './fixtures';
+import { NoBacklog } from './BoardInTrack';
 import { TrackFilesPage } from './TrackFilesPage';
 import { TrackLayout } from './TrackLayout';
 import { TrackNavList } from './TrackNavList';
 import { TracksPage } from './TracksPage';
+import { trackSectionsChanged } from './trackSections';
 
 const inEnglish = (node: React.ReactNode) =>
   render(<I18nProvider locale="en">{node}</I18nProvider>);
 
 describe('a track is one place with its sections (ADR-116)', () => {
-  it('[CORE-001] shares one tab bar, with the current section marked', () => {
+  it('[CORE-001] shares one tab bar, with the current section marked', async () => {
     inEnglish(
-      <TrackLayout trackKey="SHOP" section="timeline">
+      <TrackLayout trackKey="SHOP" section="timeline" client={fakeTrackClient()}>
         <p>page</p>
       </TrackLayout>,
     );
     const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
+    await within(bar).findByRole('link', { name: 'Backlog' });
     const names = within(bar)
       .getAllByRole('link')
       .map((link) => link.textContent);
@@ -39,6 +43,68 @@ describe('a track is one place with its sections (ADR-116)', () => {
     expect(within(bar).getByRole('link', { name: 'Board' })).toHaveAttribute(
       'href',
       '#/tracks/SHOP/board',
+    );
+  });
+
+  it('[CORE-002] shows no Backlog tab on a Kanban track, not even while it finds out', async () => {
+    let answer: (sections: { backlog: boolean; sprints: boolean }) => void = () => {};
+    const client = fakeTrackClient();
+    client.sections = () =>
+      new Promise((resolve) => {
+        answer = resolve;
+      });
+    inEnglish(
+      <TrackLayout trackKey="KAN" section="board" client={client}>
+        <p>page</p>
+      </TrackLayout>,
+    );
+    const bar = screen.getByRole('navigation', { name: 'Sections of KAN' });
+    expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull();
+    await act(async () => answer({ backlog: false, sprints: false }));
+    expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull();
+    expect(within(bar).getByRole('link', { name: 'Board' })).toBeVisible();
+  });
+
+  it("[CORE-002] brings Backlog back or takes it away at once when the board's kind changes", async () => {
+    const client = fakeTrackClient(undefined, { sections: { backlog: false, sprints: false } });
+    const sections = vi.fn(async () => ({ backlog: false, sprints: false }));
+    client.sections = sections;
+    inEnglish(
+      <TrackLayout trackKey="CHG" section="board" client={client}>
+        <p>page</p>
+      </TrackLayout>,
+    );
+    const bar = screen.getByRole('navigation', { name: 'Sections of CHG' });
+    await waitFor(() => expect(sections).toHaveBeenCalledTimes(1));
+    expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull();
+
+    sections.mockResolvedValue({ backlog: true, sprints: true });
+    act(() => trackSectionsChanged('CHG'));
+    expect(await within(bar).findByRole('link', { name: 'Backlog' })).toHaveAttribute(
+      'href',
+      '#/tracks/CHG/backlog',
+    );
+
+    sections.mockResolvedValue({ backlog: false, sprints: false });
+    act(() => trackSectionsChanged('chg'));
+    await waitFor(() => expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull());
+  });
+
+  it("[CORE-002] says plainly that a track has no backlog at the backlog's address", () => {
+    inEnglish(<NoBacklog board={{ ...BOARD, mayConfigure: false }} />);
+    expect(screen.getByText('This track has no backlog')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open the board' })).toHaveAttribute(
+      'href',
+      '#/tracks/SHOP/board',
+    );
+    expect(screen.queryByRole('link', { name: "Change the board's kind" })).toBeNull();
+  });
+
+  it('[CORE-002] offers those who may configure the board to change its kind', () => {
+    inEnglish(<NoBacklog board={{ ...BOARD, mayConfigure: true }} />);
+    expect(screen.getByRole('link', { name: "Change the board's kind" })).toHaveAttribute(
+      'href',
+      `#/boards/${BOARD.id}/settings`,
     );
   });
 

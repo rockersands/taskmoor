@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
+import { TrackSectionsContext } from '../tracks/trackSections';
 import { BoardPage, boardFilterName, offeredBoardFilters } from './BoardPage';
 import { peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import { dataPath } from './client';
@@ -349,6 +350,34 @@ describe('a card leads to its ticket and back (ADR-114)', () => {
     await user.click(screen.getByRole('link', { name: /SHOP-21/ }));
     expect(boardBehind('SHOP-21')).toEqual({ id: 7, name: 'Checkout team', people: 'me' });
     window.history.replaceState(null, '', window.location.pathname);
+  });
+});
+
+describe('a link to the backlog (ADR-116)', () => {
+  const openWith = (kind: 'scrum' | 'kanban', backlog: boolean | null) =>
+    render(
+      <I18nProvider locale="en">
+        <TrackSectionsContext.Provider
+          value={backlog === null ? null : { backlog, sprints: backlog }}
+        >
+          <BoardPage boardId={7} client={fakeBoardClient({ board: { ...BOARD, kind } })} />
+        </TrackSectionsContext.Provider>
+      </I18nProvider>,
+    );
+
+  it('[CORE-002] is on a Scrum board', async () => {
+    openWith('scrum', true);
+    expect((await page()).getByRole('link', { name: 'Backlog' })).toBeVisible();
+  });
+
+  it('[CORE-002] is not on a Kanban board', async () => {
+    openWith('kanban', false);
+    expect((await page()).queryByRole('link', { name: 'Backlog' })).toBeNull();
+  });
+
+  it('[CORE-002] is not on a Scrum board whose track turned its backlog off', async () => {
+    openWith('scrum', false);
+    expect((await page()).queryByRole('link', { name: 'Backlog' })).toBeNull();
   });
 });
 

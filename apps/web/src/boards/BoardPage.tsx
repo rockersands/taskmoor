@@ -17,6 +17,7 @@ import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { useSyncEngine } from '../sync/SyncProvider';
+import { useTrackSections } from '../tracks/trackSections';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { refusalMessage } from '../workflow/refusal';
@@ -166,6 +167,7 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  */
 export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const t = useT();
+  const sections = useTrackSections();
   const titleId = useId();
   const hintId = useId();
   const choiceTitleId = useId();
@@ -509,6 +511,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     board.location.type === 'track'
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
       : t('boards.location.user', { name: board.location.user.name ?? '' });
+  const hasBacklog = board.kind === 'scrum' && sections?.backlog !== false;
   const showLanes = data.lanes.length > 1 || data.lanes.some((l) => !l.catchAll);
   const offered = offeredBoardFilters(board.boardFilters);
   const filterButtons = offered.map((f) => (
@@ -644,7 +647,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         about={t('about.board')}
         actions={
           <>
-            {board.kind === 'scrum' && (
+            {hasBacklog && (
               <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
                 {t('sprints.backlog.link')}
               </a>
@@ -723,7 +726,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           >
             {t('boards.people.emptyBody')}
           </EmptyState>
-        ) : board.kind === 'scrum' && filters.length === 0 ? (
+        ) : hasBacklog && filters.length === 0 ? (
           <EmptyState
             icon={BoardsIcon}
             title={t('boards.emptyScrumTitle')}

@@ -233,6 +233,44 @@ function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: strin
     .execute();
 }
 
+/**
+ * A board's kind decides its track's backlog and sprints toggles (CORE-002; ADR-116): on for Scrum,
+ * off for Kanban, in the same transaction, recorded as a change of the track.
+ */
+async function alignTrackFeatures(
+  trx: Transaction<Database>,
+  actor: Parameters<typeof emit>[1],
+  trackId: number,
+  kind: string,
+): Promise<void> {
+  const on = kind === 'scrum';
+  const track = await trx
+    .selectFrom('track')
+    .select(['feature_backlog', 'feature_sprints'])
+    .where('id', '=', trackId)
+    .executeTakeFirst();
+  if (!track || (track.feature_backlog === on && track.feature_sprints === on)) return;
+  await trx
+    .updateTable('track')
+    .set({ feature_backlog: on, feature_sprints: on, updated_at: new Date() })
+    .where('id', '=', trackId)
+    .execute();
+  await emit(trx, actor, {
+    type: 'track.updated',
+    subjectId: trackId,
+    payload: {
+      changes: {
+        ...(track.feature_backlog !== on
+          ? { 'features.backlog': { from: track.feature_backlog, to: on } }
+          : {}),
+        ...(track.feature_sprints !== on
+          ? { 'features.sprints': { from: track.feature_sprints, to: on } }
+          : {}),
+      },
+    },
+  });
+}
+
 async function isConfigAdmin(request: FastifyRequest): Promise<boolean> {
   const global = await request.authz.global();
   return global.has('site_admin') || global.has('configuration_admin');
@@ -741,6 +779,7 @@ export function registerBoardRoutes(
             ...(workflow ? { workflow } : {}),
           },
         });
+        await alignTrackFeatures(trx, by(request), trackId, body.kind);
         return row.id;
       })
       .then(
@@ -1039,6 +1078,13 @@ export function registerBoardRoutes(
           subjectId: p.data.id,
           payload: { changes, ...(workflowChange ? { workflow: workflowChange } : {}) },
         });
+        if (
+          body.kind !== undefined &&
+          body.kind !== found.row.kind &&
+          found.row.location_track_id !== null
+        ) {
+          await alignTrackFeatures(trx, by(request), found.row.location_track_id, body.kind);
+        }
         return { updated: true as const };
       })
       .catch((error: unknown) => {

@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { type TrackClient, trackClient } from './client';
+import { TrackSectionsContext, useLoadedTrackSections } from './trackSections';
 
 /** A track's sections, in the order of their tab bar (ADR-116). */
 export const TRACK_SECTIONS = [
@@ -25,19 +27,28 @@ interface TrackLayoutProps {
   trackKey: string;
   section: TrackSection;
   children: ReactNode;
+  client?: TrackClient;
 }
 
 /**
  * One place per track (the user's decision, ADR-116): every page of a track shares this tab bar.
- * On a phone the bar scrolls inside itself, so the page never scrolls sideways.
+ * On a phone the bar scrolls inside itself, so the page never scrolls sideways. A Backlog tab shows
+ * only on a track that has a backlog: never on a Kanban one, not even greyed out.
  */
-export function TrackLayout({ trackKey, section, children }: TrackLayoutProps) {
+export function TrackLayout({
+  trackKey,
+  section,
+  children,
+  client = trackClient,
+}: TrackLayoutProps) {
   const t = useT();
+  const sections = useLoadedTrackSections(trackKey, client, section);
+  const tabs = TRACK_SECTIONS.filter((s) => s.id !== 'backlog' || sections?.backlog === true);
   return (
-    <>
+    <TrackSectionsContext.Provider value={sections}>
       <nav className="track-tabs" aria-label={t('track.sections', { key: trackKey })}>
         <ul>
-          {TRACK_SECTIONS.map((s) => (
+          {tabs.map((s) => (
             <li key={s.id}>
               <a
                 href={routeHref(trackHref(trackKey, s.id))}
@@ -50,6 +61,6 @@ export function TrackLayout({ trackKey, section, children }: TrackLayoutProps) {
         </ul>
       </nav>
       {children}
-    </>
+    </TrackSectionsContext.Provider>
   );
 }

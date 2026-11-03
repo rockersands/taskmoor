@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -9,7 +9,8 @@ attestation: own-words
 
 Each track has one board: its tickets as cards in columns, with one column per status. A column's
 name is the status itself. Kanban or Scrum is a setting of the board: Kanban shows the flow of all
-the track's tickets, and Scrum adds a backlog and sprints.
+the track's tickets, and Scrum adds a backlog and sprints. A Kanban track shows no **Backlog** at
+all, and changing the board's kind brings it back or takes it away at once.
 
 ## A track's board
 
@@ -31,7 +32,7 @@ track became that track's board, if the track had none; the others stay readable
 ## Using a board
 
 The board's header names its kind and location and links to **Board settings** (when you may change
-the board). The track's tab bar holds its **Backlog** (Scrum boards) and its
+the board). The track's tab bar holds its **Backlog** (Scrum boards only) and its
 [**Statistics**](dashboards-and-reports.md#a-tracks-statistics). The columns scroll sideways inside
 the board, never the whole page.
 
@@ -43,7 +44,9 @@ fields the board chooses and, if the board shows it, how many days the ticket ha
 column. Cards are in rank order.
 
 A Scrum board shows the tickets of its active sprints; a Kanban board shows every ticket of its
-track. A board shows the first 5,000 cards in rank order and says when it shows only part.
+track, so tickets that waited in a backlog are on the board after a change to Kanban. Sprints are kept,
+and are there again on a change back to Scrum, but a Kanban track's timeline and calendar do not show
+them. A board shows the first 5,000 cards in rank order and says when it shows only part.
 
 If some tickets are in statuses that no column shows, the board names those statuses and how
 many tickets are in them. Someone who may change the board can give them a column.

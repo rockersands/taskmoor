@@ -60,7 +60,7 @@ configuration sets are the defaults of the track type, as for any new track.
 | Kanban | software | backlog, sprints | A Kanban board of every ticket in the track |
 | Bug tracking | software | backlog, sprints, forms, timeline | A Kanban board of the track's bugs (`type = Bug`) |
 | Business | business | as the business type | A Kanban board of every ticket in the track |
-| Blank | software | none | None |
+| Blank | software | none, until its first board | None; a Kanban board the first time it is opened, which turns backlog and sprints off |
 
 The board is named after the track. Bug tracking relies on a ticket type called Bug in the track's
 type set; without one, its board stays empty until someone edits the board's query.
@@ -131,8 +131,11 @@ These are changed by the track's administrators (the permission **Run the track*
 | Icon and colour | `icon`, `color` | An icon name; a colour as `#rrggbb` |
 | Features | `features` | `board`, `backlog`, `sprints`, `releases`, `development`, `forms`, `approvals`, `calendar`, `timeline`, each `true` or `false` |
 
-Turning a feature off deletes nothing. Taskmoor stores the features today, but the web app and the
-API do not yet hide the parts a track has turned off.
+Turning a feature off deletes nothing. The board's kind decides **backlog** and **sprints**: a
+Scrum board turns both on and a Kanban board turns both off, also when the kind changes, recorded as
+a change of the track. The web app shows a Backlog and reports that follow sprints only on a track
+with a Scrum board and those features on. For the other features, Taskmoor stores the choice, but the
+web app and the API do not yet hide the parts a track has turned off.
 
 ### People and roles
 

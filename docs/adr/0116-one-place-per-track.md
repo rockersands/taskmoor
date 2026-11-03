@@ -55,9 +55,27 @@ them.
 - **Statistics** is every report of the track in one place: flow, sprints, releases and outcomes,
   and its tickets. The ticket reports reuse the dashboard widgets' data and views through
   `GET /api/v1/tracks/:id/statistics/:kind`, which takes no query: it is the track, read through the
-  viewer's filter. A board's report addresses lead into the track's tabs. Reports that follow sprints
-  say on a Kanban board that they need a Scrum board. A board an upgrade left outside a track keeps
-  the page at its own address.
+  viewer's filter. A board's report addresses lead into the track's tabs. A board an upgrade left
+  outside a track keeps the page at its own address.
+- **A Kanban track has no Backlog at all** (the user, 2026-11-03: it must not show, not greyed out).
+  This replaces AGL-014 (1), the optional Kanban backlog, which was never built.
+  - The track's `backlog` and `sprints` toggles (CORE-002) fit this and are what the rule uses, with
+    one addition. Until now nothing read them, and a change of kind left them as they were. Now a
+    board's kind sets both, when the board is made and when its kind changes, in the same transaction
+    (`track.updated`); migration 0091 aligned existing tracks.
+  - `GET /api/v1/tracks/:id` answers `sections: { backlog, sprints }`: a Scrum board and the toggle on.
+    The board's kind is still checked there because a Blank track's toggles are on before its first
+    board, which will be Kanban, and because someone can set a toggle by hand through the API.
+  - On such a track the Backlog tab and links are gone, and so are the Sprints and Releases groups of
+    Statistics (all five reports answer `not_scrum` on the server), sprint widgets on a customized
+    Summary and in its editor, and sprint bands and dates on the timeline and calendar. The backlog's
+    address says the track has none and leads to the board. An old link to a sprint report says what
+    it needs. Sprints are kept and come back with Scrum.
+  - The web app's tab bar reads the sections on each change of section, and the board's settings tell
+    it at once when the kind changes. Someone else's change reaches a person's next page, not their
+    open one.
+  - Tickets that were in a Scrum backlog stay on the board as Kanban, as a Kanban board reads every
+    ticket of its query and no sprint.
 - **Summary** works as a dashboard the track's owner and administrators can customize, using the
   existing widgets, and that everyone else who can see the track reads as it is.
   - A track has at most one customized Summary, in its own table (`track_summary_layout`, migration

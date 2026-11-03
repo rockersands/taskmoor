@@ -42,9 +42,10 @@ export const messagesEn = {
   'track.section.files': 'Files and links',
   'track.section.statistics': 'Statistics',
   'track.boardFailed': "This track's board could not be loaded. Try again in a moment.",
-  'track.backlog.kanbanTitle': 'This board has no backlog',
-  'track.backlog.kanban':
-    "A backlog plans work in sprints, which Scrum boards have. This track's board is Kanban: its first column is where new work waits.",
+  'track.backlog.noneTitle': 'This track has no backlog',
+  'track.backlog.none':
+    "A backlog plans work in sprints, which only a Scrum board has. On this track, every ticket is on the board: its first column is where new work waits.",
+  'track.backlog.openBoard': 'Open the board',
   'track.backlog.kanbanAction': "Change the board's kind",
   'track.files.title': 'Files and links',
   'track.files.purpose':

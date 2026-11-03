@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
+import { fakeTrackClient } from '../tracks/fixtures';
+import { TrackLayout } from '../tracks/TrackLayout';
 import { BoardSettingsPage } from './BoardSettingsPage';
 import { BOARD, fakeBoardClient, SCRUM_BOARD } from './fixtures';
 
@@ -15,6 +17,37 @@ function renderSettings(client = fakeBoardClient()) {
   return client;
 }
 const ready = () => screen.findByRole('heading', { level: 1, name: 'Settings of Checkout team' });
+
+describe("changing the board's kind (ADR-116)", () => {
+  it("[CORE-002] tells the track's tab bar at once, so Backlog comes or goes without a reload", async () => {
+    const user = userEvent.setup();
+    const tracks = fakeTrackClient();
+    const sections = vi.fn(async () => ({ backlog: false, sprints: false }));
+    tracks.sections = sections;
+    render(
+      <I18nProvider locale="en">
+        <TrackLayout trackKey="SHOP" section="board" client={tracks}>
+          <BoardSettingsPage boardId={7} client={fakeBoardClient()} />
+        </TrackLayout>
+      </I18nProvider>,
+    );
+    await ready();
+    const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
+    await waitFor(() => expect(sections).toHaveBeenCalledTimes(1));
+    expect(within(bar).queryByRole('link', { name: 'Backlog' })).toBeNull();
+
+    sections.mockResolvedValue({ backlog: true, sprints: true });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Kind' }), 'scrum');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(await within(bar).findByRole('link', { name: 'Backlog' })).toBeVisible();
+
+    // Saving something else does not ask again.
+    const asked = sections.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    await screen.findByRole('status');
+    expect(sections).toHaveBeenCalledTimes(asked);
+  });
+});
 
 describe('columns no card can reach (ADR-116)', () => {
   const reach = {

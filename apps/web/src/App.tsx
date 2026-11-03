@@ -83,7 +83,6 @@ import type { NavItem } from './shell/NavList';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
 import { ThemeToggle } from './shell/ThemeToggle';
 import { type Appearance, applyAppearance } from './skins/skins';
-import { BacklogPage } from './sprints/BacklogPage';
 import { SprintReportPage } from './sprints/SprintReportPage';
 import { continuation } from './sso/client';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
@@ -95,8 +94,9 @@ import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 import {
+  BacklogOfBoard,
+  BacklogOfTrack,
   BoardInTrack,
-  KanbanHasNoBacklog,
   Redirect,
   StatisticsOfBoard,
 } from './tracks/BoardInTrack';
@@ -673,7 +673,7 @@ function Pages() {
     const inner = !boardId ? (
       <Redirect to={TRACKS} />
     ) : backlog ? (
-      <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
+      <BacklogOfBoard key={`${boardId}-backlog`} boardId={Number(boardId)} />
     ) : report ? (
       <StatisticsOfBoard boardId={Number(boardId)} path={`/sprint-report/${report}`}>
         <SprintReportPage
@@ -771,11 +771,7 @@ function Pages() {
         <TrackBoardSection trackKey={key}>
           {(board) =>
             section === 'backlog' ? (
-              board.kind === 'scrum' ? (
-                <BacklogPage key={board.id} boardId={board.id} />
-              ) : (
-                <KanbanHasNoBacklog boardId={board.id} />
-              )
+              <BacklogOfTrack board={board} />
             ) : section === 'statistics' ? (
               <TrackStatisticsPage
                 key={board.id}
