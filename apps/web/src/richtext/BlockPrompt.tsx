@@ -106,7 +106,7 @@ function CodePrompt({
     onApply(value === '' ? null : value);
   };
   return (
-    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
+    <fieldset className="rt-prompt-form" onKeyDown={onEnter(submit)}>
       <label htmlFor={id} className="form-label">
         {t('richtext.prompt.language')}
       </label>
@@ -132,7 +132,7 @@ function CodePrompt({
           {t('richtext.prompt.languageInvalid')}
         </p>
       )}
-    </div>
+    </fieldset>
   );
 }
 
@@ -147,7 +147,7 @@ function DatePrompt({ onInsert, onCancel }: PartProps) {
     }
   };
   return (
-    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
+    <fieldset className="rt-prompt-form" onKeyDown={onEnter(submit)}>
       <label htmlFor={id} className="form-label">
         {t('richtext.slash.date')}
       </label>
@@ -163,7 +163,7 @@ function DatePrompt({ onInsert, onCancel }: PartProps) {
         {t('richtext.prompt.insert')}
       </button>
       <Cancel onCancel={onCancel} />
-    </div>
+    </fieldset>
   );
 }
 
@@ -179,7 +179,7 @@ function StatusPrompt({ onInsert, onCancel }: PartProps) {
     }
   };
   return (
-    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
+    <fieldset className="rt-prompt-form" onKeyDown={onEnter(submit)}>
       <label htmlFor={textId} className="form-label">
         {t('richtext.slash.status')}
       </label>
@@ -211,7 +211,7 @@ function StatusPrompt({ onInsert, onCancel }: PartProps) {
         {t('richtext.prompt.insert')}
       </button>
       <Cancel onCancel={onCancel} />
-    </div>
+    </fieldset>
   );
 }
 

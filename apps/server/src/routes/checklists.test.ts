@@ -90,8 +90,9 @@ describe('checklists on tickets (CORE-033)', () => {
   };
   const history = async (ticket: number) =>
     (
-      (await as('alice', { method: 'GET', url: `/api/v1/tickets/${ticket}/history?order=asc` }))
-        .json().changes as {
+      (
+        await as('alice', { method: 'GET', url: `/api/v1/tickets/${ticket}/history?order=asc` })
+      ).json().changes as {
         field: string;
         from: { value: string | null; display: string | null };
         to: { value: string | null; display: string | null };
@@ -375,9 +376,9 @@ describe('checklists on tickets (CORE-033)', () => {
   it('[CORE-033] leaves a ticket in the trash alone, and goes when the ticket is purged', async () => {
     const ticket = await newTicket();
     await addList(ticket.id, 'Plan', ['Alpha']);
-    expect((await as('admin', { method: 'DELETE', url: `/api/v1/tickets/${ticket.id}` })).statusCode).toBe(
-      204,
-    );
+    expect(
+      (await as('admin', { method: 'DELETE', url: `/api/v1/tickets/${ticket.id}` })).statusCode,
+    ).toBe(204);
     expect((await as('alice', { method: 'GET', url: lists(ticket.id) })).statusCode).toBe(404);
     await database.db.deleteFrom('ticket_change').where('ticket_id', '=', ticket.id).execute();
     await database.db.deleteFrom('ticket').where('id', '=', ticket.id).execute();

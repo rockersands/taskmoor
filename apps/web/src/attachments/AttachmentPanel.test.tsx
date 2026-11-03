@@ -42,6 +42,9 @@ function openTicket(
 }
 
 const panel = () => screen.getByRole('region', { name: 'Attachments' });
+// Uploads only: the page's other panels also post, to read (the subtickets' search and progress).
+const isUpload = (c: { method: string; path: string }) =>
+  c.method === 'POST' && c.path === '/tickets/41/attachments';
 const uploaded = (name: string, id = 99): Attachment => ({
   ...(ATTACHMENTS[2] as Attachment),
   id,
@@ -115,7 +118,7 @@ describe('the attachment panel (M1-016)', () => {
       await screen.findByText(/^pasted-\d{4}-\d\d-\d\d-\d\d-\d\d-\d\d\.png attached\.$/),
     ).toBeVisible();
 
-    const posts = calls.filter((c) => c.method === 'POST');
+    const posts = calls.filter(isUpload);
     expect(posts.map((c) => ((c.body as FormData).get('file') as File).name)).toEqual([
       'a.txt',
       'b.txt',
@@ -139,7 +142,7 @@ describe('the attachment panel (M1-016)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'big.iso is larger than the 10 B limit for one file.',
     );
-    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+    expect(calls.some(isUpload)).toBe(false);
     // The server has the last word (its limit may have changed since the page loaded).
     await user.upload(input, new File(['tiny'], 'tiny.bin'));
     expect(await screen.findByRole('alert')).toHaveTextContent(

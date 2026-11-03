@@ -263,6 +263,7 @@ describe('the slash menu (NTF-013)', () => {
     await user.clear(field);
     await user.keyboard('sql{Enter}');
     expect(screen.queryByRole('textbox', { name: 'Code language (optional)' })).toBeNull();
+    await waitFor(() => expect(textbox).toHaveFocus());
     await user.keyboard('SELECT 1');
     expect(changes.at(-1)?.content?.[0]).toMatchObject({
       type: 'codeBlock',

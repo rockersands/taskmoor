@@ -5299,7 +5299,7 @@ export const messagesEn = {
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
-  'ticketTools.links.archived': 'That ticket\'s track is archived, so its links cannot change.',
+  'ticketTools.links.archived': "That ticket's track is archived, so its links cannot change.",
   'ticketTools.subtickets.title': 'Subtickets',
   'ticketTools.children.title': 'Tickets under this',
   'ticketTools.subtickets.empty': 'None yet.',

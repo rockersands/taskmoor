@@ -542,6 +542,11 @@
 }
 
 .rt-prompt-form {
+  /* A fieldset groups a prompt's controls without the form the editor may sit inside. */
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
