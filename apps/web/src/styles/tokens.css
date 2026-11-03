@@ -52,17 +52,16 @@
   --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
 }
 
-/* Soft daylight: cream, peach, blush and powder blue on a warm lavender-grey canvas. */
+/* Soft daylight: cream, peach, blush and powder blue on a pale dawn canvas. */
 :root,
 [data-skin="light"] {
   --color-canvas: #ece8f0;
+  /* A dim layer over the picture keeps text directly on the canvas at WCAG AA
+     (contrast.test.ts composites both); do not lower it without running that test. */
+  --canvas-dim: rgb(255 255 255 / 15%);
   --canvas-image:
-    radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
-    radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
-    radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
-    radial-gradient(ellipse 40% 35% at 20% 95%, rgb(251 210 222 / 80%), transparent 70%),
-    radial-gradient(ellipse 35% 30% at 45% 45%, var(--canvas-glow-4), transparent 70%),
-    linear-gradient(160deg, #ebe6f2 0%, #f3ebe4 100%);
+    linear-gradient(var(--canvas-dim), var(--canvas-dim)),
+    url("../assets/glass/bg-dawn.webp");
   --color-surface: #fcfaf7;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f3efea;
@@ -146,11 +145,6 @@
     rgb(255 255 255 / 55%)
   );
   --glass-tint-accent: rgb(253 222 205 / 70%);
-  /* The canvas glows that glass picks up: warm, cool, lilac and mint. */
-  --canvas-glow-1: rgb(255 190 160 / 95%);
-  --canvas-glow-2: rgb(170 205 250 / 100%);
-  --canvas-glow-3: rgb(210 186 248 / 90%);
-  --canvas-glow-4: rgb(186 236 216 / 80%);
 
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
@@ -158,15 +152,13 @@
   color-scheme: light;
 }
 
-/* Soft night: the same pastels, glowing on a deep plum canvas. */
+/* Soft night: the same pastels, glowing on a dusk canvas of ink blue and plum. */
 [data-skin="dark"] {
   --color-canvas: #1b1922;
+  --canvas-dim: rgb(16 14 22 / 25%);
   --canvas-image:
-    radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
-    radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
-    radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
-    radial-gradient(ellipse 35% 30% at 45% 45%, var(--canvas-glow-4), transparent 70%),
-    linear-gradient(160deg, #18161f 0%, #211b23 100%);
+    linear-gradient(var(--canvas-dim), var(--canvas-dim)),
+    url("../assets/glass/bg-dusk.webp");
   --color-surface: #26222e;
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
@@ -230,7 +222,7 @@
     inset 0 0 20px rgb(255 255 255 / 4%);
   --glass-sheen: linear-gradient(
     160deg,
-    rgb(255 255 255 / 12%) 0%,
+    rgb(255 255 255 / 9%) 0%,
     rgb(255 255 255 / 3%) 36%,
     rgb(255 255 255 / 0%) 62%,
     rgb(255 255 255 / 5%) 100%
@@ -243,10 +235,6 @@
     rgb(255 255 255 / 18%)
   );
   --glass-tint-accent: rgb(90 60 50 / 62%);
-  --canvas-glow-1: rgb(170 84 60 / 50%);
-  --canvas-glow-2: rgb(40 96 170 / 55%);
-  --canvas-glow-3: rgb(110 60 170 / 50%);
-  --canvas-glow-4: rgb(30 120 110 / 35%);
 
   --color-bg: var(--color-canvas);
 

@@ -155,15 +155,17 @@
   padding: var(--space-3) 0 var(--space-1);
 }
 
+/* The illustration (the user's choice, ADR-114) stands in for each caller's small icon. */
 .empty-state-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+  display: block;
+  width: 88px;
+  height: 112px;
   margin-bottom: var(--space-1);
-  border-radius: var(--radius-2);
-  background: var(--glass-tint-accent);
-  color: var(--color-accent);
+  background: url("../assets/glass/empty-cards.webp") center / contain no-repeat;
+}
+
+.empty-state-icon svg {
+  display: none;
 }
 
 .empty-state-title {

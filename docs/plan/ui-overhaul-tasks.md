@@ -3,26 +3,24 @@
 ## Review of the closer pass (2026-11-02, local session)
 
 The closer Liquid Glass pass was shown in the user's Chrome on the home page, a board and a ticket,
-light and dark. **Waiting on the user's answer; nothing big is built until then.**
+light and dark. The user has not said the look is close enough: **nothing big is built until they
+do.**
 
-- **The one real choice left is the canvas behind the glass.** A small preview: `?canvas=base`,
-  `soft` or `vivid` and `?art=on` or `off` in the address, then a switch at the bottom of the page.
-  The choice stays in the browser. `base` is the pass as written, in CSS. `soft` and `vivid` use
-  generated pictures (`docs/plan/ui-assets-provenance.md`). `art` swaps the small icon in an empty
-  state for a generated illustration.
-- **To remove after the choice:** `apps/web/public/glass/preview.js`, the `<script>` for it in
-  `apps/web/index.html`, `apps/web/src/styles/glass-preview.css` and its import in `main.tsx`,
-  and the pictures not chosen.
-- **New on the page:** `<meta name="darkreader-lock">` in `apps/web/index.html` (ADR-114, section
-  4). The Dark Reader extension in the user's Chrome was repainting every colour, so what a person
-  with that extension saw was not the design.
+- **The user's choice (2026-11-02): the Soft canvas and the illustration stay,** in both skins. The
+  preview switch and the pictures not chosen are gone. **The generated images still need the
+  user's check of Gemini's terms** (`docs/plan/ui-assets-provenance.md`).
+- **Unanswered:** `<meta name="darkreader-lock">` in `apps/web/index.html` (ADR-114, section 4).
+  The Dark Reader extension in the user's Chrome was repainting every colour, so what a person with
+  that extension saw was not the design. Whether it stays is the user's call.
+- **To fix later:** in the create dialog, Escape stops working after Create, because the disabled
+  submit button drops focus (`tickets/CreateTicketDialog.tsx`; found by the ticket templates work).
+- **An empty state's own icon is hidden:** callers still pass one and the illustration stands in
+  for all of them. Clean up the prop in UI-T06 if the one picture stays.
 - **Still unclear after the pass, for later tasks:** a ticket opened from a board lights up Tracks
   in the sidebar and has no link back to the board (UI-T04); a board's columns stop well short of
   the page's width at 1920 px (UI-T07, UI-T16); the keyboard hint under a board's title competes
   with its purpose line (UI-T07); the ticket's side panel still has Details and Information with
   no word on the difference (UI-T07); a ticket's content stops short of the right of a wide screen.
-- **For UI-T02's test:** the values measured so far are one-off calculations, not a test. Muted
-  text directly on the canvas is the tightest pair.
 
 ## Handoff (2026-11-03, from the cloud session)
 
@@ -86,7 +84,7 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | ID | Title | State | Done when | Commits |
 |---|---|---|---|---|
 | UI-T01 | Direction: ADR drafts and a prototype of Home, a board and a ticket, with screenshots for the user | done | The user agrees the direction or names changes; ADR-114 and ADR-115 move to Accepted | 265af8b, c4e6b60 |
-| UI-T02 | Glass tokens and fallbacks in both skins; composited contrast test | in progress (Liquid Glass tokens done; composited contrast test to do) | Glass tokens in `tokens.css` with the opaque fallbacks; `contrast.test.ts` composites each glass token over the canvas and its glows at WCAG AA in both skins | 265af8b (tokens only) |
+| UI-T02 | Glass tokens and fallbacks in both skins; composited contrast test | done (the test found dark muted text at 4.36 under the sheen's brightest corner; the sheen went from 12 % to 9 %) | Glass tokens in `tokens.css` with the opaque fallbacks; `contrast.test.ts` composites each glass token over the canvas and its glows at WCAG AA in both skins | 265af8b (tokens only) |
 | UI-T03 | Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu | in progress (PageHeader, HelpTip, EmptyState, ThemeToggle with tests and stories; Help menu to do) | Each has a story (axe in both skins) and tests by role and name; Help menu built as an APG menu button like the person's menu | 265af8b (components, no stories yet) |
 | UI-T04 | Navigation in sections, Tracks directory and track tabs | in progress | Sidebar grouped (done in the prototype); Tracks lists every visible track; a track's pages share one tab bar; NavList and AppShell tests and stories updated | 265af8b (groups only) |
 | UI-T05 | Settings hub in groups, breadcrumbs on admin pages | todo | Settings shows the six groups of ADR-114 as cards with one line each; every admin page links back to its group; e2e that open admin pages still pass | |

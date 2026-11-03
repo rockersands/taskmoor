@@ -30,7 +30,6 @@ import './styles/releases.css';
 import './styles/timeline.css';
 import './styles/views.css';
 import './styles/ai.css';
-import './styles/glass-preview.css';
 import './styles/surfaces.css';
 
 async function start() {

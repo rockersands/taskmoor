@@ -94,16 +94,20 @@ become **translucent glass**:
   - `--glass-edge` (a hairline that catches the light), `--glass-highlight` (an inner top
     highlight) and `--glass-tint-accent`.
   - `--glass-blur` (22 px), `--glass-blur-strong` (32 px) and `--glass-saturate`.
-- **The canvas** gets richer glows (`--canvas-glow-1..3`, warm, cool and lilac) so the glass
-  has colour to pick up. These are original gradients, not artwork.
+- **The canvas** is a soft generated picture per skin (the user's choice, 2026-11-02): pale
+  dawn in light, dusk in dark, under a dim layer (`--canvas-dim`), so the glass has colour to pick
+  up. The two pictures and the empty-state illustration are listed with their prompts in
+  `docs/plan/ui-assets-provenance.md`. **They still need the user's check of Gemini's terms**
+  before a release; if that fails, the CSS glows in the history of `tokens.css` come back.
 - **Depth** has three levels: the canvas; glass panels (top bar, sidebar, cards); and floating
   glass (menus, popovers, dialogs, the tutorial's coach card) with the strongest blur and
   shadow-3.
 - **Contrast is kept:**
   - Glass alphas are chosen so text over the darkest point of the canvas still meets ADR-036's
     ratios.
-  - `contrast.test.ts` will composite each glass token over the canvas and its glows and hold
-    them to WCAG AA.
+  - `contrast.test.ts` composites each glass token, with its sheen, over pixels measured from
+    the canvas picture, and text directly on the canvas against each area's lightest and darkest
+    pixel, and holds them to WCAG AA. Replacing a picture without measuring it fails the test.
   - Without `backdrop-filter`, or under `prefers-reduced-transparency: reduce`, every glass
     token falls back to the skin's opaque surface. Under `forced-colors` the edges become
     system colours.
@@ -116,11 +120,10 @@ become **translucent glass**:
   - `--glass-highlight`: inner light on the top, sides and inside.
   - The current navigation item is a lens of brighter glass; filled pills carry a gloss that
     fades halfway down; the search field and quiet pills are clear glass.
-  - The canvas has four glows (warm, cool, lilac, mint) so the glass has colour to bend.
   - Sheen and rim turn off with the opaque fallbacks and in forced colours.
   - No real refraction filter: SVG displacement in `backdrop-filter` works in one engine only.
-  - Generated artwork (for example tutorial illustrations made with an image model) may be
-    added later as original assets with their source recorded; none is used now.
+  - An empty state shows one generated illustration of stacked cards (the user's choice,
+    2026-11-02) in place of its small icon.
 - **Geometry:** radii 10, 16, 24 and 32 px and pills, as ADR-036.
 - **Motion:**
   - A settling curve (`--ease-settle`) at 120, 180 or 280 ms: cards lift 1 to 2 px on hover,

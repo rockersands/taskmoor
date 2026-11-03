@@ -15,6 +15,9 @@ export default defineConfig({
   plugins: [react(), taskmoorArtefact({ root: fileURLToPath(new URL('../../', import.meta.url)) })],
   // Relative asset URLs, so the built frontend works from any folder on any web host.
   base: './',
+  // The canvas and the illustration (under 10 KB each) go inside the stylesheet, so the
+  // single-file kit, which inlines only the script and the stylesheet, keeps them.
+  build: { assetsInlineLimit: 32 * 1024 },
   server: { port: 5173, proxy },
   // The preview sends the app's content security policy (M1-107), so the end-to-end suite
   // runs under it; the attachments previews also load files from the fake S3 bucket (8793).

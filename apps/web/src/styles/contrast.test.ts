@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -86,6 +87,133 @@ describe('design token contrast (M1-115)', () => {
       };
       check(TEXT, 4.5);
       check(NON_TEXT, 3);
+      expect(short).toEqual([]);
+    });
+  }
+});
+
+/**
+ * Text over the canvas picture and over glass (UI-T02, ADR-114). Glass makes a surface's colour
+ * depend on what is behind it, so these composite the real layers at every cell of a grid over
+ * the picture (`canvas-samples.json`, from `build/canvas-samples.mjs`): the dim layer, then for
+ * glass the blurred and saturated backdrop, the tint and the sheen at its weakest and strongest.
+ * Text directly on the canvas is held against the lightest and darkest pixel of each cell.
+ */
+type Rgb = [number, number, number];
+type Layer = { colour: Rgb; alpha: number };
+
+const samplesFile = [
+  'apps/web/src/styles/canvas-samples.json',
+  'src/styles/canvas-samples.json',
+].find((f) => existsSync(f));
+const samples = JSON.parse(samplesFile ? readFileSync(samplesFile, 'utf8') : '{}') as {
+  skins: Record<
+    'light' | 'dark',
+    {
+      file: string;
+      sha256: string;
+      cells: { mean: Rgb; lightest: Rgb; darkest: Rgb }[];
+    }
+  >;
+};
+
+function block(name: 'light' | 'dark'): string {
+  return new RegExp(String.raw`\[data-skin="${name}"\]\s*\{([\s\S]*?)\n\}`).exec(css)?.[1] ?? '';
+}
+
+function layer(name: 'light' | 'dark', token: string): Layer {
+  const m = new RegExp(String.raw`--${token}:\s*rgb\((\d+) (\d+) (\d+) / (\d+)%\)`).exec(
+    block(name),
+  );
+  if (!m) throw new Error(`${token} is not an rgb() with an alpha in the ${name} skin`);
+  return {
+    colour: [Number(m[1]), Number(m[2]), Number(m[3])],
+    alpha: Number(m[4]) / 100,
+  };
+}
+
+/** The strongest stop of a white gradient token, such as the sheen. */
+function strongestWhite(name: 'light' | 'dark', token: string): number {
+  const value = new RegExp(String.raw`--${token}:([\s\S]*?);`).exec(block(name))?.[1] ?? '';
+  const stops = [...value.matchAll(/rgb\(255 255 255 \/ (\d+)%\)/g)].map((m) => Number(m[1]));
+  if (stops.length === 0) throw new Error(`${token} has no white stops in the ${name} skin`);
+  return Math.max(...stops) / 100;
+}
+
+const over = (top: Layer, under: Rgb): Rgb =>
+  under.map((v, i) => (top.colour[i] as number) * top.alpha + v * (1 - top.alpha)) as Rgb;
+
+/** The saturate() filter, as CSS defines it, for a backdrop. */
+function saturate([r, g, b]: Rgb, s: number): Rgb {
+  const clamp = (v: number) => Math.min(255, Math.max(0, v));
+  return [
+    clamp((0.213 + 0.787 * s) * r + (0.715 - 0.715 * s) * g + (0.072 - 0.072 * s) * b),
+    clamp((0.213 - 0.213 * s) * r + (0.715 + 0.285 * s) * g + (0.072 - 0.072 * s) * b),
+    clamp((0.213 - 0.213 * s) * r + (0.715 - 0.715 * s) * g + (0.072 + 0.928 * s) * b),
+  ];
+}
+
+const luminanceOf = ([r, g, b]: Rgb) =>
+  0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+const ratioOf = (a: Rgb, b: Rgb) => {
+  const [x, y] = [luminanceOf(a), luminanceOf(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+};
+const hexToRgb = (hex: string): Rgb => {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const saturation = Number(/--glass-saturate:\s*(\d+)%/.exec(css)?.[1] ?? '100') / 100;
+
+describe('text on the canvas picture and on glass (UI-T02)', () => {
+  for (const name of ['light', 'dark'] as const) {
+    const sample = samples.skins[name];
+    const tokens = skin(name);
+    const dim = layer(name, 'canvas-dim');
+
+    it(`[NFR-005] measures the picture the ${name} skin really uses`, () => {
+      const picture = ['apps/web/src/assets/glass/', 'src/assets/glass/']
+        .map((dir) => `${dir}${sample.file}`)
+        .find((f) => existsSync(f));
+      const bytes = readFileSync(picture ?? sample.file);
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(sample.sha256);
+      expect(block(name)).toContain(`assets/glass/${sample.file}`);
+    });
+
+    it(`[NFR-005] keeps text directly on the canvas at AA in the ${name} skin`, () => {
+      const short: string[] = [];
+      for (const fore of ['color-text', 'color-text-muted', 'color-accent', 'color-danger']) {
+        const text = hexToRgb(tokens[fore] as string);
+        let worst = Number.POSITIVE_INFINITY;
+        for (const cell of sample.cells) {
+          for (const pixel of [cell.lightest, cell.darkest]) {
+            worst = Math.min(worst, ratioOf(text, over(dim, pixel)));
+          }
+        }
+        if (worst < 4.5) short.push(`${fore} on the canvas: ${worst.toFixed(2)} < 4.5`);
+      }
+      expect(short).toEqual([]);
+    });
+
+    it(`[NFR-005] keeps text on glass at AA over the whole canvas in the ${name} skin`, () => {
+      const sheen = strongestWhite(name, 'glass-sheen');
+      const short: string[] = [];
+      for (const surface of ['glass-surface', 'glass-surface-sunken', 'glass-surface-strong']) {
+        const tint = layer(name, surface);
+        for (const fore of ['color-text', 'color-text-muted', 'color-accent']) {
+          const text = hexToRgb(tokens[fore] as string);
+          let worst = Number.POSITIVE_INFINITY;
+          for (const cell of sample.cells) {
+            const glass = over(tint, saturate(over(dim, cell.mean), saturation));
+            worst = Math.min(
+              worst,
+              ratioOf(text, glass),
+              ratioOf(text, over({ colour: [255, 255, 255], alpha: sheen }, glass)),
+            );
+          }
+          if (worst < 4.5) short.push(`${fore} on ${surface}: ${worst.toFixed(2)} < 4.5`);
+        }
+      }
       expect(short).toEqual([]);
     });
   }
