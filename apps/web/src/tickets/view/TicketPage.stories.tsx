@@ -1,15 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { writeDocToYDoc } from '@taskmoor/richtext';
+import { type ReactNode, useEffect } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
 import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
+import { router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
-import { fakeTicketClient, SHOP_41 } from './fixtures';
+import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
 import { TicketPage } from './TicketPage';
 
 /** The description's shared document, kept in the page. */
@@ -19,6 +21,19 @@ const inPage: Connect = (_name, onStatus) => {
   queueMicrotask(() => onStatus('live'));
   return { document, provider: null, destroy: () => document.destroy() };
 };
+
+/** The app's links, taken over by the router as the app does, with a way out of the page. */
+function InTheApp({ children }: { children: ReactNode }) {
+  useEffect(() => router.start(), []);
+  return (
+    <>
+      <nav>
+        <a href="#/boards">Boards</a>
+      </nav>
+      {children}
+    </>
+  );
+}
 
 const meta = {
   title: 'Tickets/TicketPage',
@@ -93,6 +108,51 @@ export const MayNotEdit: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Copy link' }));
     await expect(
       await canvas.findByText(/The (link to SHOP-41 is copied|browser did not allow)/),
+    ).toBeVisible();
+  },
+};
+
+/** A member who may change the labels, the due date and Points: controls there, values elsewhere. */
+export const SomeFieldsOnly: Story = {
+  args: { client: fakeTicketClient({ ticket: SHOP_41_SOME_FIELDS }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const facts = within(await canvas.findByRole('region', { name: 'Details' }));
+    await expect(await facts.findByRole('button', { name: 'Edit labels' })).toBeVisible();
+    await expect(facts.getByLabelText('Due date')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Edit summary' })).toBeNull();
+    await expect(facts.queryByRole('button', { name: 'Unassign' })).toBeNull();
+    await expect(facts.queryByRole('combobox', { name: 'Priority' })).toBeNull();
+    await expect(facts.queryByLabelText('Start date')).toBeNull();
+  },
+};
+
+/** The same on a phone. */
+export const SomeFieldsOnlyOnAPhone: Story = {
+  ...SomeFieldsOnly,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** Unsaved labels, and a link out of the page: it asks first (NFR-005). */
+export const AsksBeforeLeaving: Story = {
+  args: { client: fakeTicketClient() },
+  decorators: [
+    (Story) => (
+      <InTheApp>
+        <Story />
+      </InTheApp>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const facts = within(await canvas.findByRole('region', { name: 'Details' }));
+    await userEvent.click(await facts.findByRole('button', { name: 'Edit labels' }));
+    await userEvent.type(facts.getByRole('textbox', { name: 'Labels' }), ' typed');
+    await userEvent.click(canvas.getByRole('link', { name: 'Boards' }));
+    await expect(
+      await within(document.body).findByRole('alertdialog', {
+        name: 'Discard what you have not saved?',
+      }),
     ).toBeVisible();
   },
 };

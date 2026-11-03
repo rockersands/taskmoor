@@ -1631,6 +1631,8 @@ export interface components {
             /** @description Rich text, in the format the request asked for. */
             description?: unknown;
             dueDate?: string | null;
+            /** @description Reading one ticket, and the answer to an edit or a transition: the fields the caller may change now, as the change left the ticket, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track. */
+            editableFields?: string[];
             environment?: unknown;
             /** @description Custom field values by field id. */
             fields?: {
@@ -1641,6 +1643,8 @@ export interface components {
             id: number;
             key: string;
             labels?: string[];
+            /** @description Reading one ticket, and the answer to an edit or a transition: whether the caller holds Edit tickets for it, as the change left it. */
+            mayEdit?: boolean;
             number?: number;
             parent?: ({
                 id: number;
@@ -1814,6 +1818,8 @@ export interface components {
             /** @description Rich text, in the format the request asked for. */
             description: unknown;
             dueDate: string | null;
+            /** @description Reading one ticket, and the answer to an edit or a transition: the fields the caller may change now, as the change left the ticket, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track. */
+            editableFields?: string[];
             environment: unknown;
             /** @description Custom field values by field id. */
             fields: {
@@ -1825,6 +1831,8 @@ export interface components {
             /** @description The track key and the number, such as `PAY-12`. */
             key: string;
             labels: string[];
+            /** @description Reading one ticket, and the answer to an edit or a transition: whether the caller holds Edit tickets for it, as the change left it. */
+            mayEdit?: boolean;
             number: number;
             parent: ({
                 id: number;

@@ -44,6 +44,13 @@ export const SHOP_41: TicketDetails = {
   updatedAt: '2026-10-21T15:30:00Z',
 };
 
+/** SHOP-41 for a member who may change its labels, due date and Points, and nothing else. */
+export const SHOP_41_SOME_FIELDS: TicketDetails = {
+  ...SHOP_41,
+  mayEdit: true,
+  editableFields: ['labels', 'dueDate', 'cf[31]'],
+};
+
 export const TRANSITIONS: Transition[] = [
   { id: 2, name: 'Send to review', to: { id: 3, name: 'In review', stage: 'active' }, layout: [] },
   {
@@ -109,11 +116,31 @@ export interface FakeTicketClient extends TicketClient {
   calls: { action: string; args: unknown[] }[];
 }
 
-/** An in-memory backend for stories and tests: it answers as the API would. */
+/** What the reader may change on a ticket, as the API says it (T-191). */
+export type TicketAccess = Pick<TicketDetails, 'mayEdit' | 'editableFields'>;
+
+/**
+ * An in-memory backend for stories and tests: it answers as the API would. Reading the ticket,
+ * an edit and a transition all answer what the reader may change, for the ticket as it then is:
+ * `access` says it, else it stays what the starting ticket says.
+ */
 export function fakeTicketClient(
-  start: { ticket?: TicketDetails; transitions?: Transition[]; missing?: boolean } = {},
+  start: {
+    ticket?: TicketDetails;
+    transitions?: Transition[];
+    missing?: boolean;
+    access?: (ticket: TicketDetails) => TicketAccess;
+  } = {},
 ): FakeTicketClient {
-  let ticket = structuredClone(start.ticket ?? SHOP_41);
+  const { mayEdit, editableFields, ...stored } = structuredClone(start.ticket ?? SHOP_41);
+  let ticket: TicketDetails = stored;
+  const said: TicketAccess = {
+    ...(mayEdit === undefined ? {} : { mayEdit }),
+    ...(editableFields === undefined ? {} : { editableFields }),
+  };
+  const access = start.access ?? (() => said);
+  /** The ticket as an answer carries it: as it now is, with what the reader may change. */
+  const answer = () => structuredClone({ ...ticket, ...access(ticket) });
   const history = structuredClone(HISTORY);
   const time = structuredClone(TIME);
   const follow = { count: 2, mine: false };
@@ -135,7 +162,7 @@ export function fakeTicketClient(
     get: async (key) => {
       calls.push({ action: 'get', args: [key] });
       if (start.missing) throw new ApiError(404, { error: 'not_found' });
-      return structuredClone(ticket);
+      return answer();
     },
     edit: async (id, change: TicketEdit) => {
       calls.push({ action: 'edit', args: [id, change] });
@@ -158,7 +185,7 @@ export function fakeTicketClient(
       if (change.dueDate !== undefined) next.dueDate = change.dueDate;
       if (change.startDate !== undefined) next.startDate = change.startDate;
       ticket = { ...next, version: ticket.version + 1, updatedAt: at };
-      return structuredClone(ticket);
+      return answer();
     },
     transitions: async () => structuredClone(start.transitions ?? TRANSITIONS),
     transition: async (id, transitionId, fields) => {
@@ -176,7 +203,7 @@ export function fakeTicketClient(
         closeReason: fields?.['close-reason'] ? { id: 1, name: 'Done' } : ticket.closeReason,
         version: ticket.version + 1,
       };
-      return structuredClone(ticket);
+      return answer();
     },
     following: async () => ({ ...follow }),
     follow: async (_id, on) => {

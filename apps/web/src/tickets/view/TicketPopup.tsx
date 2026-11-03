@@ -11,7 +11,7 @@ import {
 } from '../../routing/router';
 import { RequireSession } from '../../session/RequireSession';
 import { ModalDialog } from '../../shell/ModalDialog';
-import { leaveMotion } from '../../shell/motion';
+import { DraftDialog, hasDraft } from './drafts';
 import { TICKET_POPUP_CLASS, TicketView, type TicketViewProps } from './TicketPage';
 
 export type TicketPopupProps = Omit<TicketViewProps, 'ticket' | 'popup'>;
@@ -24,29 +24,6 @@ function ticketOf(route: string): string {
   } catch {
     return segment;
   }
-}
-
-/**
- * Whether the pop-up holds something a person typed and has not saved: text in a form of the ticket
- * view, in the view itself and not in a dialog over it. It reads the page rather than asking each
- * part, so a form added to the ticket view is covered with no second edit. A form that holds only
- * what is already saved says so with `data-no-draft`. The description is not a draft: it saves as
- * it is typed.
- */
-export function hasDraft(root: Element | null): boolean {
-  if (!root) return false;
-  const dialog = root.closest('[role="dialog"]');
-  for (const form of root.querySelectorAll('form:not([data-no-draft])')) {
-    if (form.closest('[role="dialog"]') !== dialog) continue;
-    const fields = form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
-      'textarea, input:not([type]), input[type="text"], input[type="search"], input[type="url"], input[type="number"]',
-    );
-    for (const field of fields) if (field.value.trim() !== '') return true;
-    for (const editor of form.querySelectorAll('[contenteditable="true"]')) {
-      if (editor.textContent?.trim() || editor.querySelector('img')) return true;
-    }
-  }
-  return false;
 }
 
 /** Something inside the pop-up that an Escape belongs to: a dialog, a menu, a list, a tip. */
@@ -258,54 +235,5 @@ function TicketPopupFrame({
         />
       )}
     </ModalDialog>
-  );
-}
-
-/** Asks before unsaved text goes. Keeping it is the first choice and the Escape. */
-function DraftDialog({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: () => void }) {
-  const t = useT();
-  const titleId = useId();
-  const textId = useId();
-  const keep = useRef<HTMLButtonElement>(null);
-  const discard = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    keep.current?.focus();
-    return () => opener?.focus();
-  }, []);
-  return (
-    <div className="ticket-dialog-backdrop">
-      <div
-        ref={leaveMotion}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={textId}
-        className="ticket-dialog"
-        onKeyDown={(event) => {
-          event.stopPropagation();
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onKeep();
-          } else if (event.key === 'Tab') {
-            event.preventDefault();
-            (document.activeElement === keep.current ? discard : keep).current?.focus();
-          }
-        }}
-      >
-        <h2 id={titleId} className="ticket-section-title">
-          {t('ticketPopup.draft.title')}
-        </h2>
-        <p id={textId}>{t('ticketPopup.draft.text')}</p>
-        <div className="form-actions">
-          <button ref={keep} type="button" className="button-primary" onClick={onKeep}>
-            {t('ticketPopup.draft.keep')}
-          </button>
-          <button ref={discard} type="button" className="button-secondary" onClick={onDiscard}>
-            {t('ticketPopup.draft.discard')}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

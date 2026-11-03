@@ -351,6 +351,11 @@
   padding: var(--space-4);
 }
 
+/* The full page's question about its unsaved text, which may come while a pop-up is over it. */
+.ticket-dialog-over {
+  z-index: 90;
+}
+
 /* Its own layer: fading the backdrop itself would cut the dialog's glass off from the page. */
 .ticket-dialog-backdrop::before {
   content: "";

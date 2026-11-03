@@ -10,12 +10,14 @@ import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
+import { setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
 import type { TicketClient, TicketDetails } from './client';
-import { fakeTicketClient, SHOP_41 } from './fixtures';
+import { hasDraft } from './drafts';
+import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
 import { TicketPage } from './TicketPage';
-import { hasDraft, TicketPopup } from './TicketPopup';
+import { TicketPopup } from './TicketPopup';
 import { useTicketChanges } from './ticketChanges';
 
 const inPage: Connect = (_name, onStatus) => {
@@ -271,6 +273,27 @@ describe('the ticket pop-up', () => {
     expect(addressRoute()).toBe('#/tickets/SHOP-41');
     expect(currentRoute()).toBe('#/tracks/SHOP/board?people=7');
   });
+
+  it.each([
+    ['desktop', 1440],
+    ['phone', 375],
+  ])(
+    '[IAM-010] [WF-007] the same view: controls only for the fields the reader may change (%s)',
+    async (_name, width) => {
+      setViewportWidth(width);
+      const user = userEvent.setup();
+      renderPopup(fakeTicketClient({ ticket: SHOP_41_SOME_FIELDS }));
+      await user.click(screen.getByRole('link', { name: 'The card' }));
+      const dialog = await opened();
+      const facts = within(within(dialog).getByRole('region', { name: 'Details' }));
+      expect(facts.getByRole('button', { name: 'Edit labels' })).toBeVisible();
+      expect(facts.getByLabelText('Due date')).toBeVisible();
+      expect(within(dialog).queryByRole('button', { name: 'Edit summary' })).toBeNull();
+      expect(facts.queryByRole('button', { name: 'Unassign' })).toBeNull();
+      expect(facts.queryByRole('combobox', { name: 'Priority' })).toBeNull();
+      expect(facts.queryByLabelText('Start date')).toBeNull();
+    },
+  );
 
   it('[AGL-018] shows its frame at once, with the ticket still on its way', async () => {
     const user = userEvent.setup();

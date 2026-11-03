@@ -40,10 +40,26 @@ export interface TicketDetails {
   version: number;
   createdAt: string;
   updatedAt: string;
-  /** Whether the reader may edit it, said when the ticket is read. An answer to an edit omits it. */
+  /**
+   * Whether the reader may edit it: said when the ticket is read, and in the answer to an edit or
+   * a transition, for the ticket as the change left it.
+   */
   mayEdit?: boolean;
+  /**
+   * The fields the reader may change now (`summary`, `assignee`, `cf[12]`), said with `mayEdit`:
+   * permissions, the status's locks, field rules and the edit layout all allow it.
+   */
+  editableFields?: string[];
   /** Custom values, keyed by field id. */
   fields?: Record<string, unknown>;
+}
+
+/**
+ * Whether the reader may change a field (T-191): as reading the ticket said, else, from a server
+ * that does not say per field, whether they may edit the ticket. The server checks again.
+ */
+export function mayChange(ticket: TicketDetails, key: string): boolean {
+  return ticket.editableFields ? ticket.editableFields.includes(key) : ticket.mayEdit !== false;
 }
 
 /** A number field on the ticket's edit form, such as Points (AGL-007). */
