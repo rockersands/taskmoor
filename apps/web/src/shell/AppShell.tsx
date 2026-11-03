@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { UpdateBanner } from '../meta/VersionGate';
+import { startGlassLens } from './glassLens';
 import { MenuIcon } from './icons';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
@@ -38,6 +39,8 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
     setDrawerOpen(false);
     menuButton.current?.focus();
   }, []);
+
+  useEffect(() => startGlassLens(), []);
 
   // Growing past the compact breakpoint swaps the drawer for the sidebar.
   useEffect(() => {

@@ -10,6 +10,7 @@
     "includes": [
       "**",
       "!**/__golden__",
+      "!apps/web/src/styles/canvas-samples.json",
       "!**/pnpm-lock.yaml",
       "!docs/**/*.csv",
       "!docs/api/**/*.json",

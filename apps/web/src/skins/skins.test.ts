@@ -53,3 +53,61 @@ describe('skins (M1-122, ADR-036)', () => {
     expect(boot).toContain(APPEARANCE_STORAGE_KEY);
   });
 });
+
+describe('a page repainted by the Dark Reader extension (ADR-114)', () => {
+  const root = document.documentElement;
+  const lock = () => document.querySelector('meta[name="darkreader-lock"]');
+  const runBoot = () => new Function(boot)();
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    root.removeAttribute('data-skin');
+    root.removeAttribute('data-dark-extension');
+    root.removeAttribute('data-darkreader-mode');
+    root.removeAttribute('data-darkreader-scheme');
+    for (const node of document.head.querySelectorAll('meta, style')) node.remove();
+  });
+
+  it('[NFR-005] takes over with the dark skin and tells the extension to stop', () => {
+    root.setAttribute('data-darkreader-mode', 'dynamic');
+    runBoot();
+    expect(root.dataset.skin).toBe('dark');
+    expect(root.dataset.darkExtension).toBe('true');
+    expect(lock()).not.toBeNull();
+  });
+
+  it('[NFR-005] keeps a skin the person chose, and still tells the extension to stop', () => {
+    window.localStorage.setItem(APPEARANCE_STORAGE_KEY, 'light');
+    root.setAttribute('data-darkreader-mode', 'dynamic');
+    runBoot();
+    expect(root.dataset.skin).toBe('light');
+    expect(root.dataset.darkExtension).toBeUndefined();
+    expect(lock()).not.toBeNull();
+  });
+
+  it('[NFR-005] notices an extension that starts after the boot script', async () => {
+    runBoot();
+    expect(lock()).toBeNull();
+    const style = document.createElement('style');
+    style.className = 'darkreader';
+    document.head.append(style);
+    await new Promise((done) => setTimeout(done, 0));
+    expect(root.dataset.skin).toBe('dark');
+    expect(lock()).not.toBeNull();
+  });
+
+  it('[NFR-005] does nothing without the extension', () => {
+    runBoot();
+    expect(root.dataset.darkExtension).toBeUndefined();
+    expect(lock()).toBeNull();
+  });
+
+  it('[NFR-005] keeps System on the dark skin for this page once it took over', () => {
+    root.setAttribute('data-darkreader-mode', 'dynamic');
+    runBoot();
+    applyAppearance('system');
+    expect(root.dataset.skin).toBe('dark');
+    applyAppearance('light');
+    expect(root.dataset.skin).toBe('light');
+  });
+});

@@ -39,6 +39,10 @@ export function resolveSkin(appearance: Appearance, prefersDark: boolean): SkinI
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 function prefersDark(): boolean {
+  // The boot script found a dark-theme extension: "system" means dark for this page (ADR-114).
+  if (typeof document !== 'undefined' && document.documentElement.dataset.darkExtension) {
+    return true;
+  }
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia(DARK_QUERY).matches
     : false;
@@ -74,7 +78,7 @@ export function applyAppearance(
   if (appearance === 'system' && typeof window.matchMedia === 'function') {
     const query = window.matchMedia(DARK_QUERY);
     const follow = () => {
-      root.dataset.skin = resolveSkin('system', query.matches);
+      root.dataset.skin = resolveSkin('system', prefersDark());
     };
     query.addEventListener('change', follow);
     unwatch = () => query.removeEventListener('change', follow);

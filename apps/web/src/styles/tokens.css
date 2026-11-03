@@ -43,12 +43,15 @@
   /* A settling curve for things that lift, land or slide in (ADR-114). */
   --ease-settle: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. */
-  --glass-blur: 26px;
-  --glass-saturate: 185%;
-  --glass-blur-strong: 40px;
+  /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. Low,
+     so a slab reads as clear glass rather than frost. */
+  --glass-blur: 8px;
+  --glass-blur-chrome: 8px;
+  --glass-blur-strong: 16px;
+  --glass-saturate: 150%;
   /* A surface's fill: the sheen of light across it over its tint (ADR-114). */
   --glass-fill: var(--glass-sheen), var(--glass-surface);
+  --glass-fill-chrome: var(--glass-sheen), var(--glass-surface-chrome);
   --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
 }
 
@@ -60,8 +63,7 @@
      (contrast.test.ts composites both); do not lower it without running that test. */
   --canvas-dim: rgb(255 255 255 / 15%);
   --canvas-image:
-    linear-gradient(var(--canvas-dim), var(--canvas-dim)),
-    url("../assets/glass/bg-dawn.webp");
+    linear-gradient(var(--canvas-dim), var(--canvas-dim)), url("../assets/glass/bg-dawn.webp");
   --color-surface: #fcfaf7;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f3efea;
@@ -120,29 +122,45 @@
 
   /* Glass (ADR-114): translucent surfaces over the canvas. Opaque enough that text keeps the
      ADR-036 ratios over the darkest point of the canvas (contrast.test.ts composites them). */
-  --glass-surface: rgb(255 255 255 / 52%);
-  --glass-surface-strong: rgb(255 255 255 / 78%);
-  --glass-surface-sunken: rgb(255 255 255 / 34%);
-  --glass-edge: rgb(255 255 255 / 62%);
-  /* The rim catches light at the top and fades along the sides; a soft glow inside. */
+  --glass-surface: rgb(255 255 255 / 40%);
+  --glass-surface-chrome: rgb(255 255 255 / 58%);
+  --glass-surface-strong: rgb(255 255 255 / 74%);
+  --glass-surface-sunken: rgb(255 255 255 / 26%);
+  /* The clear part of a control, over the colour under it. */
+  --glass-lens-fill: rgb(255 255 255 / 26%);
+  --glass-edge: rgb(255 255 255 / 55%);
+  /* Thickness, cheap enough for many small things: light on the top and left, a darker inner
+     edge on the bottom, opposite the light. */
+  --glass-highlight-flat:
+    inset 0 1.5px 0 rgb(255 255 255 / 92%), inset 1px 0 0 rgb(255 255 255 / 40%),
+    inset -1px 0 0 rgb(255 255 255 / 14%), inset 0 -1.5px 0 rgb(76 58 110 / 16%);
+  /* The same with the glow inside a slab's edges, for the few large surfaces. */
   --glass-highlight:
-    inset 0 1px 0 rgb(255 255 255 / 95%), inset 0 -1px 0 rgb(255 255 255 / 35%),
-    inset 1px 0 0 rgb(255 255 255 / 45%), inset -1px 0 0 rgb(255 255 255 / 25%),
-    inset 0 0 20px rgb(255 255 255 / 22%);
+    var(--glass-highlight-flat), inset 0 -10px 14px -12px rgb(76 58 110 / 22%),
+    inset 0 10px 16px -12px rgb(255 255 255 / 70%);
+  /* The soft shadow where a raised slab meets the canvas, offset away from the light. */
+  --glass-contact:
+    0 1px 2px rgb(60 44 90 / 14%), 0 8px 14px -6px rgb(60 44 90 / 22%),
+    0 22px 36px -18px rgb(60 44 90 / 30%);
   --glass-sheen: linear-gradient(
     160deg,
-    rgb(255 255 255 / 55%) 0%,
-    rgb(255 255 255 / 10%) 36%,
+    rgb(255 255 255 / 34%) 0%,
+    rgb(255 255 255 / 6%) 30%,
     rgb(255 255 255 / 0%) 62%,
-    rgb(255 255 255 / 16%) 100%
+    rgb(255 255 255 / 12%) 100%
   );
-  /* The rim's gradient: bright where the light falls, nearly gone on the far side. */
-  --glass-rim: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 95%),
-    rgb(255 255 255 / 20%) 35%,
-    rgb(255 255 255 / 5%) 60%,
-    rgb(255 255 255 / 55%)
+  /* The rim: strong where the light strikes, almost gone on the far side, with a faint tint at
+     two places. Refraction, where the browser has it, adds colour from what is really behind. */
+  --glass-rim: conic-gradient(
+    from 225deg,
+    rgb(255 255 255 / 100%) 0deg,
+    rgb(255 255 255 / 60%) 50deg,
+    rgb(150 205 255 / 45%) 85deg,
+    rgb(255 255 255 / 10%) 140deg,
+    rgb(120 96 160 / 22%) 200deg,
+    rgb(255 190 170 / 40%) 262deg,
+    rgb(255 255 255 / 70%) 320deg,
+    rgb(255 255 255 / 100%) 360deg
   );
   --glass-tint-accent: rgb(253 222 205 / 70%);
 
@@ -157,15 +175,14 @@
   --color-canvas: #1b1922;
   --canvas-dim: rgb(16 14 22 / 25%);
   --canvas-image:
-    linear-gradient(var(--canvas-dim), var(--canvas-dim)),
-    url("../assets/glass/bg-dusk.webp");
+    linear-gradient(var(--canvas-dim), var(--canvas-dim)), url("../assets/glass/bg-dusk.webp");
   --color-surface: #26222e;
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
   --color-border: #3d3747;
   --color-field-border: #8a8096;
   --color-text: #f2edf5;
-  --color-text-muted: #bbb2c6;
+  --color-text-muted: #c6bed0;
 
   --color-primary: #f5b593;
   --color-primary-hover: #f8c6aa;
@@ -212,27 +229,37 @@
   --color-flow-first: #1c5cab;
   --color-flow-last: #b7d3f6;
 
-  --glass-surface: rgb(38 34 48 / 52%);
-  --glass-surface-strong: rgb(38 34 48 / 80%);
-  --glass-surface-sunken: rgb(16 14 22 / 38%);
+  --glass-surface: rgb(38 34 48 / 44%);
+  --glass-surface-chrome: rgb(38 34 48 / 62%);
+  --glass-surface-strong: rgb(38 34 48 / 78%);
+  --glass-surface-sunken: rgb(16 14 22 / 30%);
+  --glass-lens-fill: rgb(255 255 255 / 7%);
   --glass-edge: rgb(255 255 255 / 12%);
+  --glass-highlight-flat:
+    inset 0 1.5px 0 rgb(255 255 255 / 30%), inset 1px 0 0 rgb(255 255 255 / 12%),
+    inset -1px 0 0 rgb(255 255 255 / 4%), inset 0 -1.5px 0 rgb(0 0 0 / 45%);
   --glass-highlight:
-    inset 0 1px 0 rgb(255 255 255 / 20%), inset 0 -1px 0 rgb(255 255 255 / 5%),
-    inset 1px 0 0 rgb(255 255 255 / 8%), inset -1px 0 0 rgb(255 255 255 / 4%),
-    inset 0 0 20px rgb(255 255 255 / 4%);
+    var(--glass-highlight-flat), inset 0 -10px 14px -12px rgb(0 0 0 / 60%),
+    inset 0 10px 16px -12px rgb(255 255 255 / 12%);
+  --glass-contact:
+    0 1px 2px rgb(0 0 0 / 50%), 0 8px 14px -6px rgb(0 0 0 / 55%), 0 24px 40px -18px rgb(0 0 0 / 70%);
   --glass-sheen: linear-gradient(
     160deg,
     rgb(255 255 255 / 9%) 0%,
-    rgb(255 255 255 / 3%) 36%,
+    rgb(255 255 255 / 2%) 30%,
     rgb(255 255 255 / 0%) 62%,
-    rgb(255 255 255 / 5%) 100%
+    rgb(255 255 255 / 4%) 100%
   );
-  --glass-rim: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 35%),
-    rgb(255 255 255 / 6%) 35%,
-    rgb(255 255 255 / 2%) 60%,
-    rgb(255 255 255 / 18%)
+  --glass-rim: conic-gradient(
+    from 225deg,
+    rgb(255 255 255 / 55%) 0deg,
+    rgb(255 255 255 / 24%) 50deg,
+    rgb(120 180 255 / 30%) 85deg,
+    rgb(255 255 255 / 3%) 140deg,
+    rgb(0 0 0 / 30%) 200deg,
+    rgb(255 170 140 / 26%) 262deg,
+    rgb(255 255 255 / 26%) 320deg,
+    rgb(255 255 255 / 55%) 360deg
   );
   --glass-tint-accent: rgb(90 60 50 / 62%);
 
@@ -249,7 +276,9 @@
   :root,
   [data-skin] {
     --glass-surface: var(--color-surface);
+    --glass-surface-chrome: var(--color-surface);
     --glass-surface-strong: var(--color-surface-raised);
+    --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-sheen: linear-gradient(transparent, transparent);
@@ -261,7 +290,9 @@
   :root,
   [data-skin] {
     --glass-surface: var(--color-surface);
+    --glass-surface-chrome: var(--color-surface);
     --glass-surface-strong: var(--color-surface-raised);
+    --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-blur: 0px;
@@ -269,4 +300,29 @@
     --glass-sheen: linear-gradient(transparent, transparent);
     --glass-rim: linear-gradient(var(--color-border), var(--color-border));
   }
+}
+
+/*
+ * The stronger level of glass, for the user's review only; goes with shell/glassLevelPreview.ts
+ * once the choice is made. contrast.test.ts holds it to the same ratios.
+ */
+[data-glass-level="deep"] {
+  --glass-blur: 4px;
+  --glass-blur-chrome: 5px;
+  --glass-blur-strong: 12px;
+  --glass-saturate: 170%;
+}
+
+[data-glass-level="deep"][data-skin="light"] {
+  --glass-surface: rgb(255 255 255 / 26%);
+  --glass-surface-chrome: rgb(255 255 255 / 46%);
+  --glass-surface-strong: rgb(255 255 255 / 66%);
+  --glass-surface-sunken: rgb(255 255 255 / 18%);
+}
+
+[data-glass-level="deep"][data-skin="dark"] {
+  --glass-surface: rgb(38 34 48 / 30%);
+  --glass-surface-chrome: rgb(38 34 48 / 54%);
+  --glass-surface-strong: rgb(38 34 48 / 70%);
+  --glass-surface-sunken: rgb(16 14 22 / 22%);
 }

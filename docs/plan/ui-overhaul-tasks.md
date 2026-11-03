@@ -9,9 +9,19 @@ do.**
 - **The user's choice (2026-11-02): the Soft canvas and the illustration stay,** in both skins. The
   preview switch and the pictures not chosen are gone. **The generated images still need the
   user's check of Gemini's terms** (`docs/plan/ui-assets-provenance.md`).
-- **Unanswered:** `<meta name="darkreader-lock">` in `apps/web/index.html` (ADR-114, section 4).
-  The Dark Reader extension in the user's Chrome was repainting every colour, so what a person with
-  that extension saw was not the design. Whether it stays is the user's call.
+- **Thick glass pass (ADR-114), shown to the user; waiting on their answer.** Two strengths with a
+  temporary switch: `?glass=clear` or `?glass=deep`, then the switch at the bottom of the page.
+  **To remove after the choice:** `shell/glassLevelPreview.ts` and its call in `main.tsx`,
+  `.glass-level-preview` in `surfaces.css`, the `[data-glass-level]` blocks in `tokens.css`, the
+  deep cases in `contrast.test.ts` and `STRENGTH` in `shell/glassLens.ts`.
+- **Dark Reader (the user's decision):** detected in `public/skin-boot.js`, which adds the lock and
+  takes over with the dark skin unless the person chose one (ADR-114, section 4). The static lock
+  is gone.
+- **Waiting on the user's approval, not started: the board create form's query field.** "Tickets
+  (una consulta)" on `#/boards` confused the user, who did not know what to put in it or why it is
+  required. Its hint's example, `track = SHOP`, names a track the demo does not have (it has API,
+  MOB, OPS and WEB). Proposed: a track picker by default that fills in the query, and the raw query
+  only under an "advanced" choice.
 - **To fix later:** in the create dialog, Escape stops working after Create, because the disabled
   submit button drops focus (`tickets/CreateTicketDialog.tsx`; found by the ticket templates work).
 - **An empty state's own icon is hidden:** callers still pass one and the illustration stands in

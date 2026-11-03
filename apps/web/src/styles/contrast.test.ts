@@ -165,11 +165,44 @@ const hexToRgb = (hex: string): Rgb => {
 };
 const saturation = Number(/--glass-saturate:\s*(\d+)%/.exec(css)?.[1] ?? '100') / 100;
 
+/** A token of the stronger level under review; see shell/glassLevelPreview.ts. */
+function deepLayer(name: 'light' | 'dark', token: string): Layer {
+  const scope =
+    new RegExp(
+      String.raw`\[data-glass-level="deep"\]\[data-skin="${name}"\]\s*\{([\s\S]*?)\n\}`,
+    ).exec(css)?.[1] ?? '';
+  const m = new RegExp(String.raw`--${token}:\s*rgb\((\d+) (\d+) (\d+) / (\d+)%\)`).exec(scope);
+  if (!m) throw new Error(`${token} is missing from the deep level of the ${name} skin`);
+  return { colour: [Number(m[1]), Number(m[2]), Number(m[3])], alpha: Number(m[4]) / 100 };
+}
+const deepSaturation =
+  Number(
+    /\[data-glass-level="deep"\]\s*\{[\s\S]*?--glass-saturate:\s*(\d+)%/.exec(css)?.[1] ?? '100',
+  ) / 100;
+
 describe('text on the canvas picture and on glass (UI-T02)', () => {
   for (const name of ['light', 'dark'] as const) {
     const sample = samples.skins[name];
     const tokens = skin(name);
     const dim = layer(name, 'canvas-dim');
+    const sheen = strongestWhite(name, 'glass-sheen');
+    const textOf = (token: string) => hexToRgb(tokens[token] as string);
+    /** The worst ratio of a text colour on a tint over the whole canvas, sheen off and on. */
+    const worstOnGlass = (fore: string, tint: Layer, saturation: number) => {
+      let worst = Number.POSITIVE_INFINITY;
+      for (const cell of sample.cells) {
+        // The blur is low now, so a cell's extremes count, not only its average.
+        for (const pixel of [cell.mean, cell.lightest, cell.darkest]) {
+          const glass = over(tint, saturate(over(dim, pixel), saturation));
+          worst = Math.min(
+            worst,
+            ratioOf(textOf(fore), glass),
+            ratioOf(textOf(fore), over({ colour: [255, 255, 255], alpha: sheen }, glass)),
+          );
+        }
+      }
+      return worst;
+    };
 
     it(`[NFR-005] measures the picture the ${name} skin really uses`, () => {
       const picture = ['apps/web/src/assets/glass/', 'src/assets/glass/']
@@ -183,11 +216,10 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
     it(`[NFR-005] keeps text directly on the canvas at AA in the ${name} skin`, () => {
       const short: string[] = [];
       for (const fore of ['color-text', 'color-text-muted', 'color-accent', 'color-danger']) {
-        const text = hexToRgb(tokens[fore] as string);
         let worst = Number.POSITIVE_INFINITY;
         for (const cell of sample.cells) {
           for (const pixel of [cell.lightest, cell.darkest]) {
-            worst = Math.min(worst, ratioOf(text, over(dim, pixel)));
+            worst = Math.min(worst, ratioOf(textOf(fore), over(dim, pixel)));
           }
         }
         if (worst < 4.5) short.push(`${fore} on the canvas: ${worst.toFixed(2)} < 4.5`);
@@ -195,26 +227,68 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(short).toEqual([]);
     });
 
-    it(`[NFR-005] keeps text on glass at AA over the whole canvas in the ${name} skin`, () => {
-      const sheen = strongestWhite(name, 'glass-sheen');
+    for (const level of ['clear', 'deep'] as const) {
+      const tintOf = (token: string) =>
+        level === 'deep' ? deepLayer(name, token) : layer(name, token);
+      const amount = level === 'deep' ? deepSaturation : saturation;
+
+      it(`[NFR-005] keeps text on ${level} glass at AA over the whole canvas in the ${name} skin`, () => {
+        const short: string[] = [];
+        for (const surface of [
+          'glass-surface',
+          'glass-surface-chrome',
+          'glass-surface-sunken',
+          'glass-surface-strong',
+        ]) {
+          for (const fore of ['color-text', 'color-text-muted', 'color-accent']) {
+            const worst = worstOnGlass(fore, tintOf(surface), amount);
+            if (worst < 4.5) short.push(`${fore} on ${surface}: ${worst.toFixed(2)} < 4.5`);
+          }
+        }
+        expect(short).toEqual([]);
+      });
+
+      it(`[NFR-005] keeps the top bar's text at AA over what scrolls under it, ${level}, ${name}`, () => {
+        // The strongest fill that passes under it, at full strength, as if the blur mixed nothing.
+        const chrome = tintOf('glass-surface-chrome');
+        const short: string[] = [];
+        for (const under of ['color-primary', 'color-surface-raised']) {
+          const back = over(chrome, saturate(textOf(under), amount));
+          // The top bar's labels and its search field use the full text colour for this reason.
+          const ratio = ratioOf(textOf('color-text'), back);
+          if (ratio < 4.5) short.push(`color-text over ${under}: ${ratio.toFixed(2)} < 4.5`);
+        }
+        expect(short).toEqual([]);
+      });
+    }
+
+    it(`[NFR-005] keeps a label on the clear part of a control at AA in the ${name} skin`, () => {
+      // The current place and the selected tab: their label on the clear part, on chrome or a card.
+      const lens = layer(name, 'glass-lens-fill');
       const short: string[] = [];
-      for (const surface of ['glass-surface', 'glass-surface-sunken', 'glass-surface-strong']) {
-        const tint = layer(name, surface);
-        for (const fore of ['color-text', 'color-text-muted', 'color-accent']) {
-          const text = hexToRgb(tokens[fore] as string);
+      for (const surface of ['glass-surface-chrome', 'glass-surface']) {
+        for (const fore of ['color-text', 'color-accent']) {
           let worst = Number.POSITIVE_INFINITY;
           for (const cell of sample.cells) {
-            const glass = over(tint, saturate(over(dim, cell.mean), saturation));
-            worst = Math.min(
-              worst,
-              ratioOf(text, glass),
-              ratioOf(text, over({ colour: [255, 255, 255], alpha: sheen }, glass)),
-            );
+            for (const pixel of [cell.lightest, cell.darkest]) {
+              const glass = over(layer(name, surface), saturate(over(dim, pixel), saturation));
+              worst = Math.min(worst, ratioOf(textOf(fore), over(lens, glass)));
+            }
           }
-          if (worst < 4.5) short.push(`${fore} on ${surface}: ${worst.toFixed(2)} < 4.5`);
+          if (worst < 4.5) short.push(`${fore} on the lens over ${surface}: ${worst.toFixed(2)}`);
         }
       }
       expect(short).toEqual([]);
+    });
+
+    it(`[NFR-005] keeps a filled pill's text at AA under its gloss in the ${name} skin`, () => {
+      const fill = textOf('color-primary');
+      const text = textOf('color-on-primary');
+      // The dome's lightest and darkest layers, from `.button-primary` in surfaces.css.
+      const lightest = over({ colour: [255, 255, 255], alpha: 0.6 }, fill);
+      const darkest = over({ colour: [0, 0, 0], alpha: 0.05 }, fill);
+      expect(ratioOf(text, lightest)).toBeGreaterThanOrEqual(4.5);
+      expect(ratioOf(text, darkest)).toBeGreaterThanOrEqual(4.5);
     });
   }
 });
