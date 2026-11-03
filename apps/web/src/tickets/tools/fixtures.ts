@@ -119,7 +119,9 @@ export function fakeToolsClient(
     ids.map((id) => rows.find((row) => row.id === id) as T);
   const state = (): TicketLinks => ({
     links: structuredClone(links),
-    webLinks: [{ id: 7, url: 'https://example.test/pr/7', title: 'Pull request 7' }],
+    webLinks: start.links
+      ? []
+      : [{ id: 7, url: 'https://example.test/pr/7', title: 'Pull request 7' }],
     mayLink: start.mayLink ?? true,
     enabled: start.enabled ?? true,
   });
