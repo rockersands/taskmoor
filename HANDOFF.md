@@ -60,6 +60,8 @@ Track invitations are merged (ADR-118, IAM-027 to IAM-030, migration 0087). Invi
 default; a site administrator gives Invite people in an access policy. Managers appoint other managers
 by default, through a removable permission.
 
+Google sign-in is merged (ADR-119, IAM-031, IAM-032; no migration), a preset of OIDC on each operator's own client: gmail.com, no account creation, not enforced. Tested only against a fake. A provider sign-in gets no Taskmoor second factor, the user's decision, and the guide says so.
+
 Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
 `docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
 merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the

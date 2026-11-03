@@ -44,6 +44,8 @@ reported, and the coordinator checked that it was pushed.
 | T-011 | Fix the flaky keyboard e2e test | Done | Passed 20 of 20 |
 | T-012 | Fix the flaky MCP consent e2e test | Done | Passed 10 of 10 |
 | T-013 | Look into the AI settings Strict mode test that needed its retry | To do | Failed in two gates, passed alone |
+| T-013a | Look into the boards and sprints e2e tests that need their retry in full gates | To do | Passed alone; may be the proxy losing connections, may be a real race |
+| T-013b | Rerun the 1M import after the two fixes | To do | Optional; those fixes have only quick tests so far |
 | T-014 | 500k-issue import | Done | 100% of sampled entities in 1 h 58 min; ADR-092 |
 | T-015 | Find out why records failed in the large imports | Done | Reserved words as generated keys, and sprints too large for one statement; both fixed; the seven at 500k fit the first cause, as the key BY appears by then, though that run did not capture reasons |
 | T-016 | Try the 1M-issue import on this PC | Done | 3 h 58 min, 100% of sampled entities; ADR-092 |
@@ -75,24 +77,24 @@ reported, and the coordinator checked that it was pushed.
 | T-040 | People download the Builder from the releases page | To do | Part of the release |
 | T-041 | The Builder is the one-file HTML page for 1.0 | Done | Decision recorded; no `.exe` or `.dmg` for now |
 | T-042 | Anyone can host their own copy with complete admin control | Done | Decision recorded; nothing may depend on a central service |
-| T-043 | One update command, signed releases only | On branch | `claude/easy-updates` |
-| T-044 | New-version notice for site administrators, with an off switch | On branch | `claude/easy-updates`; off in the air-gap bundle |
-| T-045 | Refuse a release with only a checksum | On branch | Decided by the user |
-| T-046 | All-in-one image named `ghcr.io/rockersands/taskmoor-allinone` | On branch | Decided by the user |
+| T-043 | One update command, signed releases only | Done | `claude/easy-updates` |
+| T-044 | New-version notice for site administrators, with an off switch | Done | `claude/easy-updates`; off in the air-gap bundle |
+| T-045 | Refuse a release with only a checksum | Done | Decided by the user |
+| T-046 | All-in-one image named `ghcr.io/rockersands/taskmoor-allinone` | Done | Decided by the user |
 | T-047 | A desktop wrapper for the Builder | Later | Only if people ask |
 
 ## People, access and sign-in
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-050 | Sign in with any email, personal or company | On branch | `claude/track-invites`; no open sign-up |
-| T-051 | Invite by email with a set role | On branch | `claude/track-invites`; real email not yet tested |
-| T-052 | A link to copy when a site has no mail server | On branch | `claude/track-invites` |
+| T-050 | Sign in with any email, personal or company | Done | `claude/track-invites`; no open sign-up |
+| T-051 | Invite by email with a set role | Done | `claude/track-invites`; real email not yet tested |
+| T-052 | A link to copy when a site has no mail server | Done | `claude/track-invites` |
 | T-053 | Should managers copy links where email works? | You | Today every inviter can; recommended: only site administrators there |
 | T-054 | Is it fine that a manager can tell an account exists? | You | Recommended: accept it |
-| T-055 | Site administrators give track administrators permission to invite | On branch | Off by default |
-| T-056 | Managers appoint managers by default, through a removable permission | On branch | Decided by the user |
-| T-057 | Track managers' web pages | On branch | Settings > Tracks you run; moves into the panel on merge |
+| T-055 | Site administrators give track administrators permission to invite | Done | Off by default |
+| T-056 | Managers appoint managers by default, through a removable permission | Done | Decided by the user |
+| T-057 | Track managers' web pages | Done | Settings > Tracks you run; moves into the panel on merge |
 | T-058 | Google sign-in option, invited people only | On branch | `claude/google-signin`; tested against a fake provider |
 | T-059 | Real Google test | You | Create the client and enter the secret on a demo; the user said later |
 | T-060 | A provider sign-in does not need Taskmoor's second factor | On branch | Decided by the user; the guide says so plainly |
@@ -164,7 +166,7 @@ reported, and the coordinator checked that it was pushed.
 | T-110 | One status dropdown on the ticket, not a row of buttons | On branch | `claude/ui-overhaul` |
 | T-111 | A way back from a ticket to its board | On branch | `claude/ui-overhaul` |
 | T-112 | Fix Escape after Create in the create dialog | On branch | `claude/ui-overhaul` |
-| T-113 | Ticket templates | On branch | `claude/ticket-templates`; form limits accepted by the user |
+| T-113 | Ticket templates | Done | `claude/ticket-templates`; form limits accepted by the user |
 | T-114 | Links with categories, on every ticket type | On branch | `claude/ticket-tools` |
 | T-115 | Link picker searches by number or name, same track only | On branch | `claude/ticket-tools` |
 | T-116 | Subtickets on the ticket page, with a completion percentage | On branch | `claude/ticket-tools`; normal ticket statuses |
