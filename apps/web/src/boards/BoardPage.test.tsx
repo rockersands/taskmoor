@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
+import { announceTicketChange } from '../tickets/view/ticketChanges';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BoardPage, boardFilterName, offeredBoardFilters } from './BoardPage';
 import { peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
@@ -201,6 +202,21 @@ describe('a card’s title in place', () => {
 });
 
 describe('the board page (M1-043)', () => {
+  it('[AGL-006] keeps its first read when a ticket changes before the board has arrived', async () => {
+    const client = fakeBoardClient();
+    const board = await client.board(1);
+    let arrive: (b: typeof board) => void = () => {};
+    client.board = () =>
+      new Promise((resolve) => {
+        arrive = resolve;
+      });
+    renderBoard(client);
+    act(() => announceTicketChange());
+    await act(async () => arrive(board));
+    expect(await screen.findByRole('region', { name: board.name })).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('[AGL-004] shows columns per lane, the query lane before the catch-all, in rank order', async () => {
     renderBoard();
     const board = await page();

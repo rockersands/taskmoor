@@ -1621,7 +1621,7 @@ test('[WF-007] [CORE-013] a locked field and a locked status show read-only, wit
   // The create form: the due date is read-only and says who sets it.
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'LOCK Locks' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'LOCK Locks' });
   const due = page.getByLabel('Due date');
   await expect(due).toBeDisabled();
   await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');

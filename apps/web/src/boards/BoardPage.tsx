@@ -294,6 +294,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   boardRef.current = board;
   const readCards = useCallback(() => {
     if (moving.current) return;
+    // The first read is still on its way and brings the cards with the board; a read here would
+    // take its place and leave the page with no board at all.
+    if (!boardRef.current) return;
     // Only the cards: the board itself (columns, kind) does not move with a ticket.
     const mine = ++generation.current;
     const kind = boardRef.current?.kind;
