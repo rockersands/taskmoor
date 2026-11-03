@@ -60,6 +60,35 @@ export const PROVIDER_COLUMNS = [
   'updated_at',
 ] as const;
 
+/** Google's issuer, which the Google choice of the Single sign-on page fills in (ADR-119). */
+export const GOOGLE_ISSUER = 'https://accounts.google.com';
+
+function isGoogleIssuer(issuer: string): boolean {
+  try {
+    return new URL(issuer).origin === GOOGLE_ISSUER;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether a provider vouches for the address in its claims (`email_verified`). Google alone needs
+ * one more check, and this is why it is named here (IAM-032, ADR-119): anyone can open a Google
+ * account with an address at someone else's domain, and Google keeps calling it verified after the
+ * person has lost that mailbox, say on leaving a company. Google says it speaks for an address
+ * only for Gmail and for an account of a Google hosted domain (the `hd` claim). So a first sign-in
+ * cannot take over the account of `person@example.com` through a Google account nobody at
+ * example.com controls.
+ */
+export function addressVouched(issuer: string, claims: Record<string, unknown>): boolean {
+  const verified = claims.email_verified === true || claims.email_verified === 'true';
+  if (!verified || !isGoogleIssuer(issuer)) return verified;
+  if (typeof claims.email !== 'string') return false;
+  return (
+    emailDomain(claims.email) === 'gmail.com' || (typeof claims.hd === 'string' && claims.hd !== '')
+  );
+}
+
 /** Plain HTTP issuers are refused except on the loopback interface (development and tests). */
 export function insecureIssuerAllowed(issuer: URL): boolean {
   if (issuer.protocol === 'https:') return true;
@@ -121,6 +150,9 @@ export async function startAuthorization(
     code_challenge_method: 'S256',
     state,
     nonce,
+    // Google otherwise goes on with the account the browser last used, so someone refused for the
+    // wrong account would be refused again at every try, with no way to choose another (ADR-119).
+    ...(isGoogleIssuer(provider.issuer) ? { prompt: 'select_account' } : {}),
   });
   return { url, state, nonce, verifier };
 }
@@ -163,7 +195,7 @@ export async function finishAuthorization(
   return {
     subject,
     email: typeof claims.email === 'string' ? claims.email.toLowerCase() : null,
-    emailVerified: claims.email_verified === true || claims.email_verified === 'true',
+    emailVerified: addressVouched(provider.issuer, claims),
     name: typeof claims.name === 'string' ? claims.name : null,
     groups,
   };
