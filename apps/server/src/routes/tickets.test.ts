@@ -39,6 +39,8 @@ interface TicketJson {
   dueDate: string | null;
   rank: string;
   version: number;
+  mayEdit?: boolean;
+  editableFields?: string[];
   trash: {
     deletedAt: string;
     deletedBy: { id: number; name: string } | null;
@@ -450,12 +452,17 @@ describe('tickets (M1-008)', () => {
   });
 
   describe('editing', () => {
-    it('[CORE-014] says when reading a ticket whether the reader may edit it', async () => {
+    it('[CORE-014] [IAM-010] says when reading a ticket whether the reader may edit it, and which fields', async () => {
       const ticket = await create('alice', { track: 'ABC', summary: 'Who may' });
       const read = async (who: string) =>
         (await get(who, `/api/v1/tickets/${ticket.key}`)).json().ticket;
       expect((await read('alice')).mayEdit).toBe(true);
       expect((await read('bob')).mayEdit).toBe(false);
+      // And which fields, so the page offers controls only there (T-191).
+      expect((await read('alice')).editableFields).toEqual(
+        expect.arrayContaining(['summary', 'assignee', 'priority', 'labels', 'dueDate']),
+      );
+      expect((await read('bob')).editableFields).toEqual([]);
     });
 
     it("[CORE-008] saves only what changed, and refuses a write over someone else's", async () => {
@@ -707,6 +714,8 @@ describe('tickets (M1-008)', () => {
       // Gone for the people who cannot restore it; the administrator sees it in the trash.
       expect((await get('alice', `/api/v1/tickets/${sub.key}`)).statusCode).toBe(404);
       const trashed = await view('admin', feature.key);
+      // Nothing on it changes until it is restored (T-191).
+      expect(trashed.editableFields).toEqual([]);
       expect(trashed.trash).toMatchObject({
         deletedBy: { id: users.admin?.id },
         deletedWith: null,

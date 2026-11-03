@@ -2132,6 +2132,8 @@ A object or object.
 | `createdAt` | string | no |  |
 | `updatedAt` | string | no |  |
 | `trash` | object or null | no | Set while the ticket is in the trash. |
+| `mayEdit` | boolean | no | Reading one ticket only: whether the caller holds Edit tickets for it. |
+| `editableFields` | array of string | no | Reading one ticket only: the fields the caller may change now, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track. |
 
 ### Schema: SearchTotal
 
@@ -2230,6 +2232,8 @@ A `"new"`, `"active"`, `"closed"`.
 | `createdAt` | string | yes |  |
 | `updatedAt` | string | yes |  |
 | `trash` | object or null | yes | Set while the ticket is in the trash. |
+| `mayEdit` | boolean | no | Reading one ticket only: whether the caller holds Edit tickets for it. |
+| `editableFields` | array of string | no | Reading one ticket only: the fields the caller may change now, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track. |
 
 ### Schema: TicketChecklists
 

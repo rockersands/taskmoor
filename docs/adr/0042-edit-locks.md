@@ -42,7 +42,12 @@ which fields are required or hidden, so they are where a field's editors belong.
   status, then each field lock); the attachment list carries `locked`. The client words a lock
   in the reader's language from those parts ("In status Approved, only the Approvers group can
   add or remove files"; "Only the Approvers group can set this field") and shows the control
-  read-only with that sentence as its description.
+  read-only with that sentence as its description. Reading one ticket also answers
+  `editableFields` (T-191): the fields the person may change now, from the same checks as an
+  edit (the permission each field needs, the status's edit or assign lock, field rules, the
+  edit layout, computed fields), so the ticket page and pop-up show controls only there and
+  values elsewhere. An answer to a change leaves it out; the view keeps the one it read and
+  reads the ticket again after a transition, whose new status may lock other fields.
 
 ## Options considered
 

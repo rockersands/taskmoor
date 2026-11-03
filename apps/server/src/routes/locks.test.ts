@@ -68,6 +68,9 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
       ...multipartFile(name, 'text/plain', 'some notes'),
     });
   const S = (name: string) => status[name] as number;
+  /** The fields the ticket view says the person may change now (T-191). */
+  const editable = async (who: Who, ticket: TicketJson) =>
+    (await get(who, `/api/v1/tickets/${ticket.id}`)).json().ticket.editableFields as string[];
 
   /** A track whose workflow is `definition`; Alice, Dave and Erin work in it. */
   async function trackWith(definition: Record<string, unknown>, extra = {}) {
@@ -263,6 +266,31 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
     expect((await run.move('alice', open)).statusCode).toBe(200);
   });
 
+  it('[WF-007] [IAM-010] reading a ticket says which fields each person may change in its status', async () => {
+    // Out of the locked status: what the role lets each set, in the edit form's order.
+    const open = await create('alice', locked);
+    const free = await editable('alice', open);
+    expect(free).toEqual(
+      expect.arrayContaining(['summary', 'assignee', 'priority', 'labels', 'startDate', 'dueDate']),
+    );
+    expect(free.indexOf('summary')).toBeLessThan(free.indexOf('dueDate'));
+    expect(await editable('dave', open)).toEqual(free);
+    // Approved: Alice may change nothing, Dave (an approver) all but the assignee, Erin all.
+    const ticket = await approved();
+    expect(await editable('alice', ticket)).toEqual([]);
+    expect(await editable('dave', ticket)).toEqual(free.filter((key) => key !== 'assignee'));
+    expect(await editable('erin', ticket)).toEqual(
+      expect.arrayContaining(['summary', 'assignee', 'dueDate']),
+    );
+    // What it says agrees with an edit: offered passes, not offered is refused.
+    const url = `/api/v1/tickets/${ticket.id}`;
+    expect((await patch('dave', url, { labels: ['checked'] })).statusCode).toBe(200);
+    expect((await patch('dave', url, { assigneeId: users.dave?.id as number })).statusCode).toBe(
+      403,
+    );
+    expect((await patch('alice', url, { labels: ['refused'] })).statusCode).toBe(403);
+  });
+
   it('[WF-007] a refusal changes nothing, and a file is removed only by the attach list', async () => {
     const ticket = await approved();
     expect(
@@ -368,11 +396,14 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
     const ticket = await create('alice', track.key);
     await create('dave', track.key, { dueDate: '2026-12-01' });
 
-    // Edit: the field alone is locked.
+    // Edit: the field alone is locked, and the ticket view offers it to Dave only (T-191).
     const url = `/api/v1/tickets/${ticket.id}`;
     expect((await patch('alice', url, { dueDate: '2026-12-02' })).statusCode).toBe(403);
     expect((await patch('alice', url, { summary: 'Renamed' })).statusCode).toBe(200);
     expect((await patch('dave', url, { dueDate: '2026-12-02' })).statusCode).toBe(200);
+    const byDave = await editable('dave', ticket);
+    expect(byDave).toContain('dueDate');
+    expect(await editable('alice', ticket)).toEqual(byDave.filter((key) => key !== 'dueDate'));
 
     // A transition layout: the value entered needs the field's editors too.
     const viaLayout = (who: Who) =>

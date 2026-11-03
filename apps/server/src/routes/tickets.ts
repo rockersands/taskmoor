@@ -10,6 +10,8 @@ import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { refreshFormulas } from '../fields/formulas';
 import {
+  bodyKey,
+  customFieldId,
   customKey,
   type FormPlacement,
   fieldLocks,
@@ -523,6 +525,31 @@ function uniqueViolation(error: unknown): string | null {
   return e.code === '23505' ? (e.constraint ?? '') : null;
 }
 
+/**
+ * The permission each change of an edit needs, by the name the edit's changes use: an edit
+ * checks it, and the ticket view says from it which fields the reader may change (T-191).
+ */
+const EDIT_PERMISSIONS: readonly (readonly [string, TrackPermission])[] = [
+  ['summary', 'edit_tickets'],
+  ['description', 'edit_tickets'],
+  ['environment', 'edit_tickets'],
+  ['ticketTypeId', 'edit_tickets'],
+  ['parentId', 'edit_tickets'],
+  ['assigneeId', 'assign_tickets'],
+  ['requesterId', 'modify_requester'],
+  ['startDate', 'schedule_tickets'],
+  ['dueDate', 'schedule_tickets'],
+  ['priorityId', 'edit_tickets'],
+  ['closeReasonId', 'set_close_reason'],
+  ['visibilityLevelId', 'set_visibility_level'],
+  ['labels', 'edit_tickets'],
+  ['targetReleaseIds', 'edit_tickets'],
+  ['foundInReleaseIds', 'edit_tickets'],
+  ['areaIds', 'edit_tickets'],
+  ['originalEstimate', 'edit_tickets'],
+  ['remainingEstimate', 'edit_tickets'],
+];
+
 type Outcome =
   /** With the mentions the write added, for the answer's warnings (M1-058). */
   | { ticket: TicketRow | undefined; mentions?: Mentions }
@@ -789,6 +816,60 @@ export function ticketRoutes(
     };
   });
 
+  /**
+   * The fields the caller may change on a ticket now, by field key (`summary`, `assignee`,
+   * `cf[12]`) in the order of its edit form, so the ticket view offers controls only where an
+   * edit would pass (T-191). The same checks as an edit (`PATCH` below): the field is on the
+   * edit layout and not hidden, the caller holds the permission it needs, the status does not
+   * lock it (its assign list for the assignee, its edit list for the rest), no field rule keeps
+   * the caller from it, and it is not computed. None for a ticket in the trash or an archived
+   * track. A value can still be refused (a person who may not be assigned, say).
+   */
+  async function editableFields(
+    request: Caller,
+    row: TicketRow,
+    held: ReadonlySet<TrackPermission>,
+  ): Promise<string[]> {
+    if (row.deleted_at || row.track_archived_at) return [];
+    if (!EDIT_PERMISSIONS.some(([, permission]) => held.has(permission))) return [];
+    const ws = request.workspaceId;
+    const [catalog, gate, time] = await Promise.all([
+      catalogs.get(ws),
+      statusGate(db, request, row.track_id, row.ticket_type_id),
+      timeSettings(db, ws),
+    ]);
+    const at: FormPlacement = {
+      trackId: row.track_id,
+      ticketTypeId: row.ticket_type_id,
+      ruleSetId: row.rule_set_id,
+      layoutSetId: row.layout_set_id,
+    };
+    const shown = [...formFields(resolveLayout(catalog, at, 'edit')).shown];
+    const fieldLocked = fieldLocks(catalog, at, shown, gate.audience);
+    const statusLocked = {
+      edit: gate.check(row.status_id, 'edit') !== null,
+      assign: gate.check(row.status_id, 'assign') !== null,
+    };
+    const channel = channelOf(request);
+    const needs = new Map(EDIT_PERMISSIONS);
+    return shown.filter((key) => {
+      if (fieldLocked.has(key) || statusLocked[key === 'assignee' ? 'assign' : 'edit']) {
+        return false;
+      }
+      const fieldId = customFieldId(key);
+      if (fieldId !== null) {
+        const type = catalog.fields.get(fieldId)?.type;
+        if (type === 'formula' || (type === 'read-only-text' && channel === 'ui')) return false;
+        return held.has('edit_tickets');
+      }
+      if ((key === 'originalEstimate' || key === 'remainingEstimate') && !time.enabled) {
+        return false;
+      }
+      const permission = needs.get(key === 'parent' ? 'parentId' : bodyKey(key));
+      return permission !== undefined && held.has(permission);
+    });
+  }
+
   route('GET', '/api/v1/tickets/:id', async (request, reply) => {
     const p = params.safeParse(request.params);
     const format = requestedFormat(request.query);
@@ -799,9 +880,13 @@ export function ticketRoutes(
       return notFound(reply);
     }
     const ticket = await viewOf(request, found.row);
-    const mayEdit = await request.authz.canTicket('edit_tickets', found.row);
+    const held = await request.authz.ticket(found.row);
     return {
-      ticket: { ...inFormat(ticket, format), mayEdit },
+      ticket: {
+        ...inFormat(ticket, format),
+        mayEdit: held.has('edit_tickets'),
+        editableFields: await editableFields(request, found.row, held),
+      },
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
@@ -1430,27 +1515,7 @@ export function ticketRoutes(
       if (placed) return { fields: placed };
 
       // Each changed field needs its own permission.
-      const needs: [string, TrackPermission][] = [
-        ['summary', 'edit_tickets'],
-        ['description', 'edit_tickets'],
-        ['environment', 'edit_tickets'],
-        ['ticketTypeId', 'edit_tickets'],
-        ['parentId', 'edit_tickets'],
-        ['assigneeId', 'assign_tickets'],
-        ['requesterId', 'modify_requester'],
-        ['startDate', 'schedule_tickets'],
-        ['dueDate', 'schedule_tickets'],
-        ['priorityId', 'edit_tickets'],
-        ['closeReasonId', 'set_close_reason'],
-        ['visibilityLevelId', 'set_visibility_level'],
-        ['labels', 'edit_tickets'],
-        ['targetReleaseIds', 'edit_tickets'],
-        ['foundInReleaseIds', 'edit_tickets'],
-        ['areaIds', 'edit_tickets'],
-        ['originalEstimate', 'edit_tickets'],
-        ['remainingEstimate', 'edit_tickets'],
-      ];
-      for (const [field, permission] of needs) {
+      for (const [field, permission] of EDIT_PERMISSIONS) {
         if (changes[field] && !held.has(permission)) return { denied: permission };
       }
       // Per-status locks (WF-007), for the status the locked row has: an assignee change needs

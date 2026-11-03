@@ -27,7 +27,21 @@ import { runtimeConfig } from '../runtime/config';
  * Which links: `start()` listens for clicks on real links, one place, so a new list gets the pop-up
  * for free and keeps a real address for Ctrl, Cmd, Shift and middle click. A link, or anything
  * around it, with the `data-full-page` attribute opts out and leaves the page instead.
+ *
+ * Leaving a page that holds unsaved text (NFR-005; the full ticket page, `TicketPage.tsx`): the
+ * page sets a `LeaveGuard`, and a link inside the app that would leave it asks first, then goes
+ * on. Back and Forward cannot be refused: the page's entry comes back at once as a new entry
+ * (with the entry the person went to just behind it), the page beneath never changes, and
+ * discarding steps back to it. Opening a ticket over the page does not leave it. A link out of
+ * the app, a reload or closing the tab are the browser's own `beforeunload` question.
  */
+export interface LeaveGuard {
+  /** Whether going to `route` (the page's route, as `current()` says it) would lose something. */
+  holds(route: string): boolean;
+  /** Asks the person; `proceed` goes on to where they were going. */
+  ask(proceed: () => void): void;
+}
+
 export interface Router {
   readonly mode: RoutingMode;
   /** The current page's route, `#/boards/7` in either mode: with a ticket over it, the page beneath. */
@@ -56,6 +70,8 @@ export interface Router {
   redirect(route: string): void;
   /** Calls the listener after every route change; returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
+  /** Asks before a link or Back leaves the page while the guard holds; returns the release. */
+  guardLeave(guard: LeaveGuard): () => void;
   /** Clean URLs: rewrites a hash route in the address and takes over links. Returns the stop. */
   start(): () => void;
 }
@@ -157,6 +173,57 @@ export function createRouter(
     },
   });
 
+  /**
+   * The guard on leaving the page (see the comment above `LeaveGuard`), given how the mode reads
+   * the page's route. It keeps the entry on show, to bring back when Back or Forward would lose
+   * what the page holds; its listener comes before any of `subscribe`'s, so they read the page's
+   * route again rather than the one left.
+   */
+  const leavePart = (current: () => string) => {
+    let guard: LeaveGuard | null = null;
+    let seen: { url: string; state: unknown } = {
+      url: win.location.href,
+      state: win.history.state,
+    };
+    const remember = () => {
+      seen = { url: win.location.href, state: win.history.state };
+    };
+    /** Asks the guard; going on lets the page go, and it is gone by then. */
+    const ask = (held: LeaveGuard, go: () => void) =>
+      held.ask(() => {
+        if (guard === held) guard = null;
+        go();
+      });
+    win.addEventListener('popstate', () => {
+      const held = guard;
+      if (held?.holds(current())) {
+        win.history.pushState(seen.state, '', seen.url);
+        ask(held, () => win.history.back());
+        return;
+      }
+      remember();
+    });
+    win.addEventListener('hashchange', remember);
+    win.addEventListener(CHANGE, remember);
+    return {
+      remember,
+      /** A link to `route` would leave the page while the guard holds: asked, then `go`. */
+      asked: (route: string, go: () => void) => {
+        const held = guard;
+        if (!held?.holds(route)) return false;
+        ask(held, go);
+        return true;
+      },
+      guardLeave: (next: LeaveGuard) => {
+        guard = next;
+        remember();
+        return () => {
+          if (guard === next) guard = null;
+        };
+      },
+    };
+  };
+
   /** The route an address inside the app stands for; null outside it and for the API. */
   const routeOfUrl = (url: URL): string | null => {
     if (url.hash.startsWith('#/')) return url.hash;
@@ -175,8 +242,10 @@ export function createRouter(
     const replace = (route: string) => {
       if (overlayState()) holdBehind(route);
       else win.history.replaceState(win.history.state, '', write(route));
+      leave.remember();
     };
-    // Every other link is the browser's own business in this mode: it only moves the fragment.
+    // Every other link is the browser's own business in this mode (it only moves the fragment),
+    // unless it leaves a page that asks first.
     const onClick = (event: MouseEvent) => {
       const pressed = pressedLink(event);
       if (!pressed || !pressed.raw.includes('#/')) return;
@@ -186,6 +255,8 @@ export function createRouter(
         event.preventDefault();
         holdFocus(pressed.anchor);
         part.openOverlay(url.hash);
+      } else if (leave.asked(url.hash, () => navigate(url.hash))) {
+        event.preventDefault();
       } else if (overlayState() && url.hash === address()) {
         // The way out to the full page: the fragment does not change, so the browser would stay.
         event.preventDefault();
@@ -193,6 +264,7 @@ export function createRouter(
       }
     };
     const current = () => overlayState()?.behind ?? address();
+    const leave = leavePart(current);
     const navigate = (route: string) => {
       if (overlayState() && route === address()) {
         win.history.pushState(null, '', write(route));
@@ -206,6 +278,11 @@ export function createRouter(
       current,
       address,
       ...part,
+      replaceOverlay: (route) => {
+        part.replaceOverlay(route);
+        leave.remember();
+      },
+      guardLeave: leave.guardLeave,
       href: (route) => route,
       url: (route) => `${win.location.origin}${win.location.pathname}${route}`,
       navigate,
@@ -236,6 +313,7 @@ export function createRouter(
   const address = () => routeOfUrl(new URL(win.location.href)) ?? '';
   const current = () => overlayState()?.behind ?? address();
   const part = overlayPart(address, href);
+  const leave = leavePart(current);
   const navigate = (route: string) => {
     if (href(route) === here() && !overlayState()) return;
     win.history.pushState(null, '', href(route));
@@ -244,12 +322,14 @@ export function createRouter(
   const replace = (route: string) => {
     if (overlayState()) holdBehind(route);
     else win.history.replaceState(win.history.state, '', href(route));
+    leave.remember();
   };
   /** A hash route in the address becomes its path, unless it carries a token. */
   const tidy = () => {
     const hash = win.location.hash;
     if (!hash.startsWith('#/') || TOKEN.test(hash)) return;
     win.history.replaceState(win.history.state, '', href(hash));
+    leave.remember();
   };
   const onClick = (event: MouseEvent) => {
     const pressed = pressedLink(event);
@@ -271,7 +351,7 @@ export function createRouter(
     if (opensOverlay(route, anchor, current())) {
       holdFocus(anchor);
       part.openOverlay(route);
-    } else {
+    } else if (!leave.asked(route, () => navigate(route))) {
       navigate(route);
     }
   };
@@ -281,6 +361,11 @@ export function createRouter(
     current,
     address,
     ...part,
+    replaceOverlay: (route) => {
+      part.replaceOverlay(route);
+      leave.remember();
+    },
+    guardLeave: leave.guardLeave,
     href,
     url: (route) => new URL(href(route), win.location.origin).href,
     navigate,
@@ -327,6 +412,7 @@ export const overlayDepth = (): number => router.overlayDepth();
 export const openOverlay = (route: string): void => router.openOverlay(route);
 export const replaceOverlay = (route: string): void => router.replaceOverlay(route);
 export const closeOverlay = (): void => router.closeOverlay();
+export const guardLeave = (guard: LeaveGuard): (() => void) => router.guardLeave(guard);
 
 /** The current page's route, re-rendered on every change. */
 export function useRoute(): string {

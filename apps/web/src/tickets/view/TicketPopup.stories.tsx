@@ -10,7 +10,7 @@ import { openOverlay } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketDetails } from './client';
-import { fakeTicketClient, SHOP_41 } from './fixtures';
+import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
 import { TicketPopup } from './TicketPopup';
 
 const inPage: Connect = (_name, onStatus) => {
@@ -88,6 +88,17 @@ export const AskingAboutADraft: Story = {
     await expect(
       await canvas.findByRole('alertdialog', { name: 'Discard what you have not saved?' }),
     ).toBeVisible();
+  },
+};
+
+/** The same view: a member who may change some fields gets controls only there. */
+export const SomeFieldsOnly: Story = {
+  args: { client: fakeTicketClient({ ticket: SHOP_41_SOME_FIELDS }) },
+  play: async ({ canvasElement }) => {
+    const dialog = within(await within(canvasElement).findByRole('dialog', { name: NAME }));
+    await expect(await dialog.findByRole('button', { name: 'Edit labels' })).toBeVisible();
+    await expect(dialog.queryByRole('button', { name: 'Edit summary' })).toBeNull();
+    await expect(dialog.queryByRole('combobox', { name: 'Priority' })).toBeNull();
   },
 };
 

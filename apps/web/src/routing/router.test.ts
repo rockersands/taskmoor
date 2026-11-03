@@ -290,6 +290,66 @@ describe.each([
     expect(router.current()).toBe('#/tracks/FE/board?people=8');
   });
 
+  describe('a page that holds unsaved text (T-190)', () => {
+    /** The full ticket page, guarded: anything but its own ticket would lose a draft. */
+    function guarded(holding = true) {
+      window.history.pushState(null, '', addressOf(TICKET));
+      const ask = vi.fn<(proceed: () => void) => void>();
+      const release = router.guardLeave({
+        holds: (route) => holding && !route.startsWith(TICKET),
+        ask,
+      });
+      return { ask, release, proceed: () => ask.mock.calls.at(-1)?.[0]() };
+    }
+
+    it('[NFR-005] a link out of the page asks first, and goes when told', async () => {
+      const { ask, release, proceed } = guarded();
+      expect(click(link('#/boards/7'))).toBe(true);
+      expect(ask).toHaveBeenCalledTimes(1);
+      expect(router.current()).toBe(TICKET);
+      proceed();
+      await vi.waitFor(() => expect(router.current()).toBe('#/boards/7'));
+      release();
+    });
+
+    it('[NFR-005] a comment of the page, a ticket over it, or nothing held, do not ask', () => {
+      const { ask, release } = guarded();
+      click(link(`${TICKET}?comment=3`));
+      click(link('#/tickets/FE-13'));
+      expect(router.overlay()).toBe('#/tickets/FE-13');
+      expect(ask).not.toHaveBeenCalled();
+      release();
+      const free = guarded(false);
+      expect(click(link('#/boards/7'))).toBe(mode === 'path');
+      expect(free.ask).not.toHaveBeenCalled();
+      free.release();
+    });
+
+    it('[NFR-005] Back comes back to the page at once and asks; going on steps back', async () => {
+      const { ask, release, proceed } = guarded();
+      const heard = vi.fn(() => router.current());
+      const unsubscribe = router.subscribe(heard);
+      window.history.back();
+      await vi.waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
+      expect(address()).toBe(addressOf(TICKET));
+      expect(router.current()).toBe(TICKET);
+      // Whoever listens reads the page's route, never the one left.
+      for (const result of heard.mock.results) expect(result.value).toBe(TICKET);
+      proceed();
+      await vi.waitFor(() => expect(address()).toBe(page));
+      expect(router.current()).toBe(BOARD);
+      unsubscribe();
+      release();
+    });
+
+    it('[NFR-005] once released, Back goes at once', async () => {
+      const { ask, release } = guarded();
+      release();
+      await back(page);
+      expect(ask).not.toHaveBeenCalled();
+    });
+  });
+
   it('[AGL-018] on a ticket’s own page, a link to a comment there stays on that page', () => {
     window.history.pushState(null, '', addressOf(TICKET));
     click(link(`${TICKET}?comment=3`));

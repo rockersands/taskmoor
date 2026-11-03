@@ -42,8 +42,32 @@ export interface TicketDetails {
   updatedAt: string;
   /** Whether the reader may edit it, said when the ticket is read. An answer to an edit omits it. */
   mayEdit?: boolean;
+  /**
+   * The fields the reader may change now (`summary`, `assignee`, `cf[12]`), said when the ticket
+   * is read: permissions, the status's locks, field rules and the edit layout all allow it.
+   */
+  editableFields?: string[];
   /** Custom values, keyed by field id. */
   fields?: Record<string, unknown>;
+}
+
+/**
+ * Whether the reader may change a field (T-191): as reading the ticket said, else, from a server
+ * that does not say per field, whether they may edit the ticket. The server checks again.
+ */
+export function mayChange(ticket: TicketDetails, key: string): boolean {
+  return ticket.editableFields ? ticket.editableFields.includes(key) : ticket.mayEdit !== false;
+}
+
+/**
+ * What reading the ticket said the reader may change, alone. An answer to a change omits it, so
+ * the view keeps it from the read: `{ ...accessOf(read), ...answer }`.
+ */
+export function accessOf(ticket: TicketDetails): Pick<TicketDetails, 'mayEdit' | 'editableFields'> {
+  return {
+    ...(ticket.mayEdit === undefined ? {} : { mayEdit: ticket.mayEdit }),
+    ...(ticket.editableFields === undefined ? {} : { editableFields: ticket.editableFields }),
+  };
 }
 
 /** A number field on the ticket's edit form, such as Points (AGL-007). */

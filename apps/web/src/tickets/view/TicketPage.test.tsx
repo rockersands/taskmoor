@@ -1,7 +1,7 @@
 import { writeDocToYDoc } from '@taskmoor/richtext';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
 import { ApiError } from '../../api/client';
@@ -11,12 +11,13 @@ import { I18nProvider } from '../../i18n/I18nProvider';
 import { type Locale, messagesFor } from '../../i18n/locale';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { rememberBoard } from '../../routing/cameFrom';
+import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/router';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketDetails } from './client';
-import { fakeTicketClient, SHOP_41 } from './fixtures';
+import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
 import { TicketPage, ticketEditorTools } from './TicketPage';
 
 const member = MEMBER as Extract<Session, { status: 'signed-in' }>;
@@ -32,12 +33,18 @@ const inPage: Connect = (_name, onStatus) => {
   return { document, provider: null, destroy: () => document.destroy() };
 };
 
-function renderPage(start: Parameters<typeof fakeTicketClient>[0] = {}, locale: Locale = 'en') {
+function renderPage(
+  start: Parameters<typeof fakeTicketClient>[0] = {},
+  locale: Locale = 'en',
+  /** The app around the page, such as its navigation. */
+  around: React.ReactNode = null,
+) {
   const client = fakeTicketClient(start);
   const comments = fakeCommentClient();
   render(
     <I18nProvider locale={locale}>
       <SessionProvider session={ADA_SESSION}>
+        {around}
         <main>
           <TicketPage
             ticket="SHOP-41"
@@ -414,5 +421,169 @@ describe('what the ticket offers the editors in it (NTF-014)', () => {
     expect(list).toHaveBeenCalledTimes(2);
     await tools.attachments?.(true);
     expect(list).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('controls follow what the reader may change (T-191)', () => {
+  it.each([
+    ['desktop', 1440],
+    ['phone', 375],
+  ])(
+    '[IAM-010] [WF-007] a member who may change only some fields sees controls only there (%s)',
+    async (_name, width) => {
+      setViewportWidth(width);
+      const user = userEvent.setup();
+      const { client } = renderPage({ ticket: SHOP_41_SOME_FIELDS });
+      await heading();
+      const facts = details();
+      // Offered: labels, the due date and Points.
+      expect(within(facts).getByRole('button', { name: 'Edit labels' })).toBeVisible();
+      expect(within(facts).getByLabelText('Due date')).toHaveValue('2026-11-02');
+      expect(await within(facts).findByRole('spinbutton', { name: 'Points' })).toBeVisible();
+      // Read only: the summary, the assignee, the priority and the start date show their values.
+      expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull();
+      expect(within(facts).queryByRole('button', { name: 'Assign to me' })).toBeNull();
+      expect(within(facts).queryByRole('button', { name: 'Unassign' })).toBeNull();
+      expect(within(facts).getByText('Grace Hopper')).toBeVisible();
+      expect(within(facts).queryByRole('combobox', { name: 'Priority' })).toBeNull();
+      expect(within(facts).getByText('High')).toBeVisible();
+      expect(within(facts).queryByLabelText('Start date')).toBeNull();
+      expect(within(facts).getByText('Oct 20, 2026')).toBeVisible();
+      // Nor do their keys: E and A change nothing.
+      await user.keyboard('e');
+      await user.keyboard('a');
+      expect(screen.queryByRole('textbox', { name: 'Summary' })).toBeNull();
+      // What is offered works.
+      await user.click(within(facts).getByRole('button', { name: 'Edit labels' }));
+      await user.type(within(facts).getByRole('textbox', { name: 'Labels' }), ' urgent');
+      await user.click(within(facts).getByRole('button', { name: 'Save' }));
+      await vi.waitFor(() =>
+        expect(client.calls.filter((c) => c.action === 'edit').map((c) => c.args[1])).toEqual([
+          { labels: ['payments', 'checkout', 'urgent'] },
+        ]),
+      );
+      // An answer to an edit does not say what may change: the page keeps what reading said.
+      expect(await within(facts).findByText('payments, checkout, urgent')).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull();
+    },
+  );
+
+  it('[WF-007] a transition into a locked status reads again what may change', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage({
+      ticket: { ...SHOP_41, editableFields: ['summary', 'labels'] },
+    });
+    expect(await screen.findByRole('button', { name: 'Edit summary' })).toBeVisible();
+    // In review, the ticket is locked: reading it again says so.
+    const get = client.get;
+    client.get = async (key) => ({ ...(await get(key)), editableFields: [] });
+    await user.click(await screen.findByRole('button', { name: /^Status: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'In review' }));
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull(),
+    );
+    expect(within(details()).queryByRole('button', { name: 'Edit labels' })).toBeNull();
+  });
+});
+
+describe('unsaved text on the full page (T-190)', () => {
+  let stop = () => {};
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/#/tracks/SHOP/board');
+    window.history.pushState(null, '', '/#/tickets/SHOP-41');
+    stop = router.start();
+  });
+  afterEach(() => {
+    stop();
+    cleanup();
+  });
+
+  const NAV = (
+    <nav>
+      <a href="#/boards">Boards</a>
+    </nav>
+  );
+  const asked = () =>
+    screen.findByRole('alertdialog', { name: 'Discard what you have not saved?' });
+  /** Types labels on the page and leaves them unsaved. */
+  async function typeLabels() {
+    const user = userEvent.setup();
+    renderPage({}, 'en', NAV);
+    await heading();
+    await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
+    const labels = within(details()).getByRole('textbox', { name: 'Labels' });
+    await user.type(labels, ' typed');
+    return { user, labels };
+  }
+  /** Whether closing or reloading the tab would make the browser ask. */
+  const unloadAsks = () => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+
+  it('[NFR-005] a link inside the app asks first; keeping loses nothing and discarding leaves', async () => {
+    const { user, labels } = await typeLabels();
+    await user.click(screen.getByRole('link', { name: 'Boards' }));
+    await user.click(within(await asked()).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(labels).toHaveValue('payments checkout typed');
+    expect(currentRoute()).toBe('#/tickets/SHOP-41');
+
+    await user.click(screen.getByRole('link', { name: 'Boards' }));
+    await user.click(within(await asked()).getByRole('button', { name: 'Discard it' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/boards'));
+  });
+
+  it('[NFR-005] with nothing typed a link leaves at once', async () => {
+    const user = userEvent.setup();
+    renderPage({}, 'en', NAV);
+    await heading();
+    // A form opened with nothing changed in it is no draft.
+    await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
+    await user.click(screen.getByRole('link', { name: 'Boards' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/boards'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('[NFR-005] a ticket opened over the page does not leave it, and Back from it does not ask', async () => {
+    const { user, labels } = await typeLabels();
+    await user.click(within(details()).getByRole('link', { name: 'SHOP-40 Card payments' }));
+    expect(overlayRoute()).toBe('#/tickets/SHOP-40');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    window.history.back();
+    await waitFor(() => expect(addressRoute()).toBe('#/tickets/SHOP-41'));
+    expect(overlayRoute()).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(labels).toHaveValue('payments checkout typed');
+  });
+
+  it('[NFR-005] Back with a draft comes back at once and asks; discarding goes back', async () => {
+    const { user, labels } = await typeLabels();
+    window.history.back();
+    await asked();
+    await waitFor(() => expect(addressRoute()).toBe('#/tickets/SHOP-41'));
+    expect(labels).toHaveValue('payments checkout typed');
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(labels).toHaveValue('payments checkout typed');
+
+    window.history.back();
+    await user.click(within(await asked()).getByRole('button', { name: 'Discard it' }));
+    await waitFor(() => expect(addressRoute()).toBe('#/tracks/SHOP/board'));
+  });
+
+  it('[NFR-005] closing or reloading the tab asks only while there is a draft', async () => {
+    const user = userEvent.setup();
+    renderPage({}, 'en', NAV);
+    await heading();
+    expect(unloadAsks()).toBe(false);
+    await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
+    const labels = within(details()).getByRole('textbox', { name: 'Labels' });
+    expect(unloadAsks()).toBe(false);
+    await user.type(labels, ' typed');
+    expect(unloadAsks()).toBe(true);
+    await user.click(within(details()).getByRole('button', { name: 'Save' }));
+    await within(details()).findByText('payments, checkout, typed');
+    expect(unloadAsks()).toBe(false);
   });
 });

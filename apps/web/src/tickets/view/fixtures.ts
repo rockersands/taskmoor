@@ -44,6 +44,13 @@ export const SHOP_41: TicketDetails = {
   updatedAt: '2026-10-21T15:30:00Z',
 };
 
+/** SHOP-41 for a member who may change its labels, due date and Points, and nothing else. */
+export const SHOP_41_SOME_FIELDS: TicketDetails = {
+  ...SHOP_41,
+  mayEdit: true,
+  editableFields: ['labels', 'dueDate', 'cf[31]'],
+};
+
 export const TRANSITIONS: Transition[] = [
   { id: 2, name: 'Send to review', to: { id: 3, name: 'In review', stage: 'active' }, layout: [] },
   {

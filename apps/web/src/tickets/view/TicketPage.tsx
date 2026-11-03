@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useIntl } from 'react-intl';
 import type { AiFeatures } from '../../ai/AiFeature';
 import type { AiNoticeClient } from '../../ai/AiNotice';
@@ -19,6 +20,7 @@ import {
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { boardBehind } from '../../routing/cameFrom';
 import {
+  guardLeave,
   navigate,
   openOverlay,
   replaceOverlay,
@@ -47,6 +49,8 @@ import { LinksPanel } from '../tools/LinksPanel';
 import { SubticketsPanel } from '../tools/SubticketsPanel';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
+  accessOf,
+  mayChange,
   type NumberField,
   type Priority,
   type TicketClient,
@@ -55,6 +59,7 @@ import {
   type Transition,
   ticketClient,
 } from './client';
+import { DraftDialog, hasDraft } from './drafts';
 import { InfoPanel } from './InfoPanel';
 import { StatusMenu } from './StatusMenu';
 import { TICKET_SHORTCUTS } from './shortcuts';
@@ -144,9 +149,65 @@ const typing = (target: EventTarget | null) => {
   );
 };
 
-/** The ticket page: the ticket view, filling the page. */
+/** The ticket an address is the full page of (`#/tickets/<key>?comment=1`), decoded; else null. */
+function pageTicket(route: string): string | null {
+  if (!route.startsWith('#/tickets/')) return null;
+  const segment = route.slice('#/tickets/'.length).split(/[/?]/)[0] ?? '';
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/**
+ * The ticket page: the ticket view, filling the page. Unsaved text is never lost in silence, by
+ * the pop-up's rule and with its question (NFR-005; `drafts.tsx`): a link inside the app that
+ * leaves the page, and Back or Forward, ask first (the router holds the page meanwhile), and
+ * closing or reloading the tab gets the browser's own question, only while there is a draft.
+ * A link to the same ticket (a comment's) and a ticket opened over the page do not leave it.
+ */
 export function TicketPage(props: TicketPageProps) {
-  return <TicketView {...props} />;
+  const root = useRef<HTMLDivElement>(null);
+  const [asking, setAsking] = useState<(() => void) | null>(null);
+  const { ticket } = props;
+
+  useEffect(
+    () =>
+      guardLeave({
+        holds: (route) => pageTicket(route) !== ticket && hasDraft(root.current),
+        ask: (proceed) => setAsking(() => proceed),
+      }),
+    [ticket],
+  );
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!hasDraft(root.current)) return;
+      event.preventDefault();
+      // Older browsers ask only when a value is set.
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
+
+  return (
+    <div ref={root}>
+      <TicketView {...props} />
+      {asking &&
+        createPortal(
+          <DraftDialog
+            over
+            onKeep={() => setAsking(null)}
+            onDiscard={() => {
+              setAsking(null);
+              asking();
+            }}
+          />,
+          document.body,
+        )}
+    </div>
+  );
 }
 
 /**
@@ -365,7 +426,10 @@ export function TicketView({
   );
 
   const changed = (next: TicketDetails, said: string) => {
-    setState({ status: 'loaded', ticket: next });
+    setState((s) => ({
+      status: 'loaded',
+      ticket: s.status === 'loaded' ? { ...accessOf(s.ticket), ...next } : next,
+    }));
     setRevision((r) => r + 1);
     setMessage(said);
     setProblem(null);
@@ -405,6 +469,16 @@ export function TicketView({
       setAsking(null);
       changed(next, t('ticketView.moved', { status: next.status.name }));
       void refreshAround(next.id);
+      // The new status may lock other fields: what the reader may change is read again.
+      client.get(ticket).then(
+        (found) =>
+          setState((s) =>
+            s.status === 'loaded' && s.ticket.id === found.id
+              ? { status: 'loaded', ticket: { ...s.ticket, ...accessOf(found) } }
+              : s,
+          ),
+        () => {},
+      );
     } catch (error) {
       setProblem(refusal(error));
     }
@@ -443,7 +517,7 @@ export function TicketView({
     }
   };
   const assignToMe = () => {
-    if (loaded && me.id && loaded.assignee?.id !== me.id) {
+    if (loaded && mayChange(loaded, 'assignee') && me.id && loaded.assignee?.id !== me.id) {
       void edit({ assigneeId: me.id }).then(
         (ok) => ok && setMessage(t('ticketView.assignedToYou')),
       );
@@ -483,7 +557,7 @@ export function TicketView({
     } else if (key === 't') {
       event.preventDefault();
       statusMenu.current?.focus();
-    } else if (key === 'e') {
+    } else if (key === 'e' && loaded && mayChange(loaded, 'summary')) {
       event.preventDefault();
       setEditingSummary(true);
     }
@@ -507,6 +581,9 @@ export function TicketView({
     }
   }, [key, ticket, popup]);
   const assigneeId = loaded?.assignee?.id ?? null;
+  // Commands only for what the reader may change (T-191).
+  const mayAssign = loaded !== null && mayChange(loaded, 'assignee');
+  const mayRename = loaded !== null && mayChange(loaded, 'summary');
   const commands = useMemo<Command[]>(() => {
     if (key === null) return [];
     const values = { key };
@@ -517,7 +594,7 @@ export function TicketView({
       keywords: ['transition', 'move', 'status'],
       run: () => void actions.current.transition(to),
     }));
-    if (me.id && assigneeId !== me.id) {
+    if (mayAssign && me.id && assigneeId !== me.id) {
       list.push({
         id: 'ticket-assign-to-me',
         labelId: 'palette.ticket.assignToMe',
@@ -526,7 +603,7 @@ export function TicketView({
         run: () => actions.current.assignToMe(),
       });
     }
-    if (assigneeId !== null) {
+    if (mayAssign && assigneeId !== null) {
       list.push({
         id: 'ticket-unassign',
         labelId: 'palette.ticket.unassign',
@@ -569,13 +646,15 @@ export function TicketView({
         }, 0);
       },
     });
-    list.push({
-      id: 'ticket-edit-summary',
-      labelId: 'palette.ticket.editSummary',
-      values,
-      keywords: ['edit', 'rename', 'title'],
-      run: () => setEditingSummary(true),
-    });
+    if (mayRename) {
+      list.push({
+        id: 'ticket-edit-summary',
+        labelId: 'palette.ticket.editSummary',
+        values,
+        keywords: ['edit', 'rename', 'title'],
+        run: () => setEditingSummary(true),
+      });
+    }
     showTab('ticket-history', 'history', 'palette.ticket.history');
     showTab('ticket-time', 'time', 'palette.ticket.time');
     showTab('ticket-all-activity', 'all', 'palette.ticket.all');
@@ -593,7 +672,7 @@ export function TicketView({
       run: () => setHelping(true),
     });
     return list;
-  }, [key, assigneeId, me.id, transitions, following, votes]);
+  }, [key, assigneeId, me.id, transitions, following, votes, mayAssign, mayRename]);
   // Under a pop-up the palette offers the pop-up's ticket, not this one's too.
   usePaletteCommands(
     popup ? 'ticket-popup' : 'ticket-view',
@@ -655,7 +734,7 @@ export function TicketView({
               {t('ticketPage.title', { key: shown.key, summary: shown.summary })}
             </h1>
             <HelpTip name={shown.key}>{t('about.ticket')}</HelpTip>
-            {loaded && (
+            {loaded && mayChange(loaded, 'summary') && (
               <button
                 type="button"
                 className="button-secondary ticket-action"
@@ -985,6 +1064,13 @@ function Details({
         });
   const names = (list: { name: string }[]) =>
     list.length ? list.map((v) => v.name).join(', ') : none;
+  /** A field the reader may change has its control; any other shows its value (T-191). */
+  const may = (key: string) => mayChange(ticket, key);
+  /** A calendar day (YYYY-MM-DD), the same wherever the reader is. */
+  const day = (value: string | null) =>
+    value
+      ? intl.formatDate(new Date(`${value}T00:00:00Z`), { dateStyle: 'medium', timeZone: 'UTC' })
+      : none;
   const [numberFields, setNumberFields] = useState<NumberField[]>([]);
   // The form depends on the ticket's type and its status's edit lock.
   // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when either changes
@@ -1013,7 +1099,7 @@ function Details({
         <dd>
           <span>{ticket.assignee?.name ?? t('ticketView.unassigned')}</span>
           <span className="ticket-fact-actions">
-            {me.id !== 0 && ticket.assignee?.id !== me.id && (
+            {may('assignee') && me.id !== 0 && ticket.assignee?.id !== me.id && (
               <button
                 type="button"
                 className="button-secondary ticket-action"
@@ -1022,7 +1108,7 @@ function Details({
                 {t('ticketView.assignToMe')}
               </button>
             )}
-            {ticket.assignee && (
+            {may('assignee') && ticket.assignee && (
               <button
                 type="button"
                 className="button-secondary ticket-action"
@@ -1040,15 +1126,15 @@ function Details({
       </div>
       <div>
         <dt>
-          {ticket.mayEdit === false ? (
-            t('workflow.field.priority')
-          ) : (
+          {may('priority') ? (
             <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
+          ) : (
+            t('workflow.field.priority')
           )}
         </dt>
         <dd>
-          {ticket.mayEdit === false ? (
-            // Someone who may not edit sees the value, not a control.
+          {!may('priority') ? (
+            // Someone who may not change it sees the value, not a control.
             <span className="ticket-fact-value">
               {ticket.priority ? (
                 <>
@@ -1077,20 +1163,26 @@ function Details({
       </div>
       <div>
         <dt>
-          <label htmlFor={`${id}-labels`}>{t('workflow.field.labels')}</label>
+          {may('labels') ? (
+            <label htmlFor={`${id}-labels`}>{t('workflow.field.labels')}</label>
+          ) : (
+            t('workflow.field.labels')
+          )}
         </dt>
         <dd>
-          {labels === null ? (
+          {labels === null || !may('labels') ? (
             <span className="ticket-fact-actions">
               <span>{ticket.labels.length ? ticket.labels.join(', ') : none}</span>
-              <button
-                type="button"
-                className="button-secondary ticket-action"
-                aria-label={t('ticketView.editLabels')}
-                onClick={() => setLabels(ticket.labels.join(' '))}
-              >
-                {t('ticketView.edit')}
-              </button>
+              {may('labels') && (
+                <button
+                  type="button"
+                  className="button-secondary ticket-action"
+                  aria-label={t('ticketView.editLabels')}
+                  onClick={() => setLabels(ticket.labels.join(' '))}
+                >
+                  {t('ticketView.edit')}
+                </button>
+              )}
             </span>
           ) : (
             <form
@@ -1128,27 +1220,34 @@ function Details({
           )}
         </dd>
       </div>
-      {(['startDate', 'dueDate'] as const).map((field) => (
-        <div key={field}>
-          <dt>
-            <label htmlFor={`${id}-${field}`}>{t(`workflow.field.${field}`)}</label>
-          </dt>
-          <dd>
-            <input
-              id={`${id}-${field}`}
-              type="date"
-              value={ticket[field] ?? ''}
-              onChange={(event) => void onEdit({ [field]: event.target.value || null })}
-            />
-          </dd>
-        </div>
-      ))}
+      {(['startDate', 'dueDate'] as const).map((field) =>
+        may(field) ? (
+          <div key={field}>
+            <dt>
+              <label htmlFor={`${id}-${field}`}>{t(`workflow.field.${field}`)}</label>
+            </dt>
+            <dd>
+              <input
+                id={`${id}-${field}`}
+                type="date"
+                value={ticket[field] ?? ''}
+                onChange={(event) => void onEdit({ [field]: event.target.value || null })}
+              />
+            </dd>
+          </div>
+        ) : (
+          <div key={field}>
+            <dt>{t(`workflow.field.${field}`)}</dt>
+            <dd>{day(ticket[field])}</dd>
+          </div>
+        ),
+      )}
       {numberFields.map((field) => (
         <NumberFact
           key={field.id}
           field={field}
           value={ticket.fields?.[String(field.id)]}
-          readOnly={ticket.mayEdit === false || field.locked}
+          readOnly={!may(`cf[${field.id}]`) || field.locked}
           onEdit={onEdit}
         />
       ))}
