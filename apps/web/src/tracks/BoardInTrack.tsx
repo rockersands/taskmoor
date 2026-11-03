@@ -76,11 +76,7 @@ export function StatisticsOfBoard({
     };
   }, [boardId]);
   if (key === undefined) return null;
-  return key ? (
-    <Redirect to={`#/tracks/${encodeURIComponent(key)}/statistics${path}`} />
-  ) : (
-    children
-  );
+  return key ? <Redirect to={`#/tracks/${encodeURIComponent(key)}/statistics${path}`} /> : children;
 }
 
 /** A Kanban board has no backlog: says so, and where to change it. */
