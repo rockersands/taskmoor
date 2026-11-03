@@ -86,16 +86,18 @@ from its brief.
      `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
      `corepack pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`;
    - the Spanish review, once every M1 task is finished (`docs/review-spanish.md`, `corepack pnpm demo`);
-   - the private address for security reports in `SECURITY.md`;
-   - publishing images: whether to publish at all while the repository is private. If so, the user
-     runs `gh auth refresh -h github.com -s write:packages`, then
+   - making the repository public for 1.0 (the user's decision: fully open source, AGPL-3.0-only).
+     First: a secret scan of the whole history, the name check in `docs/decisions/name.md`, and the
+     counsel review deferred to the first public release. The user confirms the switch itself;
+   - publishing images on ghcr.io, public with the repository: the user runs
+     `gh auth refresh -h github.com -s write:packages`, then
      `gh auth token | docker login ghcr.io -u rockersands --password-stdin`, so no token is stored;
    - permanently deleting `_taskmoor-old` on `C:`, `E:` and `G:` (old copies, moved there on
      2026-11-03). Claude does not delete permanently: send them to the Recycle Bin once the gate is
      green, checking first that they fit, and the user empties it.
 
-   The repository is private and renamed to `Rockersands/taskmoor`. The user allows using the
-   release signing key from Drive at step 6.
+   The repository is renamed to `Rockersands/taskmoor`. People will download the Builder from its
+   releases. The user allows using the release signing key from Drive at step 6.
 
 ### Brief for workstream 2: ticket templates
 
