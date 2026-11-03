@@ -164,7 +164,15 @@ export function SubticketsPanel({
         // In the pop-up the new ticket opens there, as a link inside it does: the page beneath
         // stays and hears of it, and Back returns to this ticket.
         const over = overlayRoute() !== null;
-        if (over) onChanged?.();
+        if (over) {
+          onChanged?.();
+        } else {
+          // The full page may ask about another draft first; if the person stays, the list
+          // already shows the new subticket.
+          setSaid(t('ticketTools.subtickets.added', { key: made.key }));
+          void load();
+          onChanged?.();
+        }
         // The summary is saved: its field is empty before the pop-up, or the full page as it
         // is left, looks for drafts (NFR-005), so neither asks about it.
         flushSync(() => setSummary(''));

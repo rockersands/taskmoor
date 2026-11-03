@@ -632,6 +632,26 @@ describe('unsaved text on the full page (T-190)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
+  it('[NFR-005] [CORE-032] Add and open with another draft open asks; staying shows the new subticket', async () => {
+    const user = userEvent.setup();
+    renderPage({}, 'en', NAV, fakeToolsClient());
+    await heading();
+    await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
+    const labels = within(details()).getByRole('textbox', { name: 'Labels' });
+    await user.type(labels, ' typed');
+    const subs = await screen.findByRole('region', { name: 'Subtickets' });
+    await user.type(
+      await within(subs).findByRole('textbox', { name: 'New subticket' }),
+      'Write tests',
+    );
+    await user.click(within(subs).getByRole('button', { name: 'Add and open' }));
+    await user.click(within(await asked()).getByRole('button', { name: 'Keep editing' }));
+    expect(currentRoute()).toBe('#/tickets/SHOP-41');
+    expect(labels).toHaveValue('payments checkout typed');
+    expect(await within(subs).findByText('Write tests')).toBeVisible();
+    expect(within(subs).getByText(/was added\./)).toBeVisible();
+  });
+
   it('[NFR-005] closing or reloading the tab asks only while there is a draft', async () => {
     const user = userEvent.setup();
     renderPage({}, 'en', NAV);
