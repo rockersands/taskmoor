@@ -90,6 +90,22 @@ export function fakeSearchClient(): FakeSearchClient {
       { key: 'SHOP', name: 'Shop' },
       { key: 'OPS', name: 'Operations' },
     ],
+    choiceOptions: async (field, { typed, chosen }) => {
+      if ((field === 'targetRelease' || field === 'area') && chosen.length === 0) return null;
+      const offered: Record<string, string[]> = {
+        type: ['Bug', 'Story', 'Task'],
+        priority: PRIORITIES.map((p) => p.name),
+        labels: ['payments', 'refunds', 'urgent'],
+        requester: ['Kalo Moana', 'Rin Okafor'],
+        creator: ['Kalo Moana', 'Rin Okafor'],
+        targetRelease: ['1.0', '1.1'],
+        foundInRelease: ['1.0'],
+        area: ['Checkout', 'Receipts'],
+      };
+      return (offered[field] ?? []).filter((o) =>
+        o.toLowerCase().startsWith(typed.trim().toLowerCase()),
+      );
+    },
     fields: async () => [
       { id: 40, name: 'Customer', type: 'text' },
       { id: 41, name: 'Points', type: 'number' },

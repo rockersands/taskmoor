@@ -9,6 +9,132 @@
   max-width: 100%;
 }
 
+/*
+ * The basic form (QRY-014): the common filters first, the rest added one by one. Rows wrap, and a
+ * control takes the whole width on a phone, so nothing scrolls sideways.
+ */
+.search-basic {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-4);
+  box-sizing: border-box;
+}
+
+.search-basic-common {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.search-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.search-basic > .search-choices {
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
+.search-choices > legend,
+.search-filter > legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.search-filters {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.search-filters:empty {
+  display: none;
+}
+
+.search-filter {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) 0 0;
+}
+
+.search-filter-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.search-filter-body > .form-field {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.search-filter-value-box {
+  flex: 1 1 18rem;
+}
+
+.search-filter-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.search-filter-add-row > :is(input, select) {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.search-filter-button,
+.search-filter-remove {
+  min-height: var(--hit-target);
+}
+
+.search-filter-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-filter-value {
+  min-height: var(--hit-target);
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font: inherit;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.search-filter-add {
+  max-width: 28rem;
+}
+
+@media (pointer: coarse) {
+  .search-filter-button,
+  .search-filter-remove,
+  .search-filter-value {
+    min-height: var(--hit-target-touch);
+  }
+}
+
 .search-results-bar {
   display: flex;
   flex-wrap: wrap;

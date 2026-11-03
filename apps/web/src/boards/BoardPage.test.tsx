@@ -426,6 +426,17 @@ describe('a card leads to its ticket and back (ADR-114)', () => {
     expect(boardBehind('PAY-1')).toEqual({ id: 7, name: 'Checkout team' });
     expect(boardBehind('PAY-2')).toBeNull();
   });
+
+  it('[AGL-005] carries the person filter along, so the way back shows the same cards', async () => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, '', '#/boards/7?people=me');
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    await user.click(screen.getByRole('link', { name: /SHOP-21/ }));
+    expect(boardBehind('SHOP-21')).toEqual({ id: 7, name: 'Checkout team', people: 'me' });
+    window.history.replaceState(null, '', window.location.pathname);
+  });
 });
 
 describe("a new board's filters in the person's language", () => {

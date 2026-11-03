@@ -112,3 +112,18 @@ backlog column and estimation (AGL-007, AGL-014 (1)) and the full board UI with 
   of filtering the list per card. 5,000 cards render in 455 to 458 ms after the data arrives
   (Chromium, `FiveThousandCards` story, two runs in each skin; budget 1 s), so no virtualised
   list was needed; revisit at the 50,000-card load of AGL-013 (2).
+
+## Filtering by person (AGL-005 (3))
+
+- **One way of filtering:** `GET /api/v1/boards/:id/data?people=me,none,12` becomes one more board
+  filter, `assignee IN (currentUser(), 12) OR assignee IS EMPTY`, and runs in the same compiler with
+  the viewer's ticket filter. Filtering in the browser would miss cards past the 5,000 limit, and
+  a second code path could widen what someone sees. Column counts stay whole, as for any board
+  filter.
+- **Who to offer** comes with the data read, one statement over the viewer's tickets in a mapped
+  status, before any filter, so choosing a person does not empty the list. Up to 500 names; the
+  answer says when there are more. Reading the cards instead would miss those past the limit, and a
+  card only carries its assignee when the card rules ask for it.
+- **The address** holds the choice (`?people=`), per viewer, so a filtered board can be shared.
+  `me` means whoever opens the link. An id with no tickets the viewer sees shows no name: nothing
+  says who that id is.
