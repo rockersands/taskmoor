@@ -29,10 +29,9 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 - **Ticket tools are on `main`** (M1-143, merged on the Mac on 2026-11-03 after a full gate): links,
   subtickets, checklists and the slash menu, migration 0096, plus the fixes from an independent review
   (25 findings, each with a test). `claude/ticket-tools` is merged and can be ignored.
-- **Wave branches waiting to merge, each with its own full gate, in this order:**
-  `claude/t106-complete-sprint-board-6e1530` (T-106), `claude/t087a-create-tracks-box-1c6ead`
-  (T-087a, migration 0097, IAM-033) and `claude/t079-outcomes-tab-dfd7e1` (T-079, AGL-024). Each has a
-  hand-over note in the coordinator's shared notes folder; they live only in this Mac's worktrees.
+- **The first wave is on `main`** (2026-11-03, each after its own full gate): completing a sprint from
+  the board (T-106), who may create tracks (T-087a, migration 0097, IAM-033) and the Outcomes section
+  (T-079, AGL-024). The backlog's outcome panel now counts the closed stage as done, as subtickets do.
 - **Numbers held for the next wave:** migration 0099 (T-075 and T-076), 0100 and ADR-121 (track
   groups), 0101 to 0103, ADR-122 and PLN-012 (Multi-track); ADR-123 spare. 0098 and ADR-124 are free
   again (T-079 needed neither). Never merge a number below one already on `main`: renumber instead.
@@ -63,9 +62,7 @@ corepack pnpm install
 
 ### Next, in order
 
-1. Merge the three wave branches above, one at a time, each with a full gate and a fast-forward of
-   `main`. Their notes list the conflict spots (`messages.*.ts`, `App.tsx`, `tracks/client.ts`,
-   `routes/subtickets.ts`, the migration index and upgrade seeds).
+1. Nothing waits to merge.
 2. Start the waiting tickets a few at a time in side sessions, merging each as it finishes rather
    than letting branches drift (the user's decision; the user reminded on 2026-11-03 that several
    parallel sessions are welcome). Proposed and waiting for the user to start: Multi-track first stage

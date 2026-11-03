@@ -115,7 +115,7 @@ reported, and the coordinator checked that it was pushed.
 | T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
 | T-077 | Files and links section | Done | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
-| T-079 | An Objetivos tab listing outcomes with progress | On branch | `claude/t079-outcomes-tab-dfd7e1` (AGL-024); merging next |
+| T-079 | An Objetivos tab listing outcomes with progress | Done | On `main` (AGL-024, ADR-116): the Outcomes section, with one definition of done shared by subtickets and the backlog's outcome panel |
 | T-080 | A New track button on the Tracks page | Done | `claude/ui-overhaul` |
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | Done | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
