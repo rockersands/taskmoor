@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -31,7 +31,7 @@ describe('bundled models', () => {
           }),
       );
       const present = files(dir)
-        .map((path) => relative(dir, path))
+        .map((path) => relative(dir, path).replaceAll(sep, '/'))
         .filter((path) => path !== 'SHA256SUMS' && path !== 'SOURCE.md')
         .sort();
       expect(present).toEqual([...sums.keys()].sort());

@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { sql } from 'kysely';
@@ -202,7 +203,7 @@ describe('the restore drill', () => {
     const data = mkdtempSync(join(tmpdir(), 'taskmoor-cli-'));
     try {
       const tsx = createRequire(import.meta.url).resolve('tsx/cli');
-      const cli = new URL('../cli.ts', import.meta.url).pathname;
+      const cli = fileURLToPath(new URL('../cli.ts', import.meta.url));
       const env = {
         ...process.env,
         DATABASE_URL: database.url,

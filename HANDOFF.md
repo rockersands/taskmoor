@@ -2,6 +2,163 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: ONE local session runs everything (2026-11-03)
+
+The user moves all work to **one local Claude Code session** on their PC (Ryzen 7 3700X, 16
+threads, 64 GB, Windows, Claude in Chrome enabled). That session coordinates
+and starts its own subagents for the parallel workstreams. The cloud sessions stop. This
+section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
+
+### How to run it
+
+- **Where (the user's decision, 2026-11-03):** everything is on `G:` (NVMe) and runs on native
+  Windows with Git Bash; this PC has no WSL Ubuntu. The clone is `G:\taskmoor`, the workstream
+  worktrees are `G:\tm-ticket-templates`, `G:\tm-ui-overhaul` and `G:\tm-flutter-mobile-app`.
+  Older notes below that name `E:` or `C:` copies are out of date. The bash image and kit scripts
+  (`tools/image`, `tools/airgap`) have not been run here and may still need Linux.
+- **Coordinator:** this session works on `claude/api-key-upload-prevention-9ucz4x` (M1) and is
+  the only one that fast-forwards `main`, after a green `corepack pnpm verify --e2e`, by
+  fast-forward only.
+- **Workstreams:** one subagent per workstream (the Agent tool, background), each in its own
+  git worktree and branch (`git worktree add ../tm-<name> <branch>`), so none touches another's
+  files. Brief each subagent with its row below plus the rules at the end. Subagents never push
+  to `main`; they commit on their branch and report. The coordinator merges a workstream into
+  `main` with a full gate, joining both sides of conflicts in shared docs (HANDOFF, STATUS,
+  progress, decisions, the ADR index, the ASVS counts).
+- **Load:** run at most two heavy jobs at once (a full gate, the 500k import, the fuzz stages),
+  so the timings stay honest. Subagents run targeted tests; the coordinator runs the full gates.
+- **Tracking:** `docs/plan/backlog.csv` and `progress.csv` (coordinator only), plus one task
+  file per workstream (named below). Never Jira or any Atlassian product or connection
+  (`docs/legal/clean-room.md`).
+
+### Workstreams
+
+| # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
+|---|---|---|---|---|---|
+| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` at `ee70282`; the branch is a few doc commits ahead. Fast-forward `main` after your first gate. |
+| 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | Finished on the branch at `f6b8a5a`: targeted tests pass, the full gate has not run on it. Merge it after the fuzz stages. |
+| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | The user chose the Soft canvas and the generated illustration, and on 2026-11-03 asked for a pass that looks more like real glass before anything else is built. Nothing large is built until the user approves that pass. |
+| 4 | **Flutter mobile app** (stopped) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Stopped by the user on 2026-11-03, pushed at `8540a0a`. Do not resume it unless the user asks; merge after M1. |
+
+Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates claude/ui-overhaul
+claude/flutter-mobile-app`. A branch that is missing was never pushed: start that workstream
+from its brief.
+
+### Workstream 1: finishing M1 (in order)
+
+1. `corepack pnpm verify --e2e`, then fast-forward `main`. The e2e suite needs `127.0.0.1
+   api.taskmoor.localhost app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost`
+   in the hosts file (on this PC, `C:\Windows\System32\drivers\etc\hosts`; it is there). Database
+   tests time out when the machine is busy, so hold the subagents' builds and test runs during a
+   gate.
+2. **Flaky e2e:** `e2e/a11y-keyboard.spec.ts:37` ("Skip to content" not focused) fails 4 of 8
+   runs on `main` with `--repeat-each=8` (measured by the Flutter session). It is not only a
+   cold-server problem: find why the first Tab sometimes misses the skip link (focus still in
+   the address bar, or a late re-render after sign-in), fix it, and prove it with
+   `--repeat-each=20` green.
+3. **M1-091, the 500k-issue import** (the user's decision: 500k measured, 1M as an estimate).
+   The cloud run was started 2026-11-02 23:30 UTC; if `progress.csv` has no result, run:
+   `TASKMOOR_LARGE_DC_IMPORT=1 TASKMOOR_LARGE_DC_IMPORT_ISSUES=500000
+   TASKMOOR_LARGE_DC_IMPORT_DIR=.cache/dc-large-500k
+   TASKMOOR_LARGE_DC_IMPORT_REPORT=.cache/dc-import-500k.jsonl corepack pnpm verify --only=tests
+   -- apps/server/src/import/dc-import.large.test.ts` (about 15 GB of disk). Every entity kind
+   must match at 99.9% or more. Record the JSON line in M1-091's progress row and ADR-092, and
+   write the 1M estimate (time grows linearly; 2.9 ms a record with one worker in the cloud).
+   With this PC's cores, the 1M run is worth trying too.
+4. **M1-118, fuzzing:** `bash tools/fuzz/staged.sh` (stages of 1, 2, 4 and 8 hours, every target
+   clean at each; about 15 hours). Any failure: reproduce alone with its seed, fix it with a
+   regression test (as in 6b0522c), delete that stage's folder, run again. Then copy the 8-hour
+   reports into `docs/security/fuzz-results.json` (`pnpm gate M1` reads it).
+5. **Merge workstream 2** (ticket templates) when its gate is green.
+6. **M1-120, the release:** 1.0 is LTS (24 months).
+   - Add 1.0.0 to `RELEASES` in `packages/db/src/releases.ts` with `lts: true`.
+   - Date `CHANGELOG.md` and add the templates and anything else merged.
+   - `SECURITY.md`: drop "pre-release". If the repository stays private, give a private email
+     for reports (the user decides public or private).
+   - Sign the air-gap bundle (`tools/airgap/bundle.sh`) with the release key from the user's
+     Google Drive (folder "Taskmoor release signing key"). Never commit it, and delete the local
+     copy afterwards. This closes ASVS 1.14.2, the last open checklist gap.
+   - `pnpm gate M1` all green; the user's acceptance in `decisions.csv`.
+   - Images on ghcr.io only with a package-write token the user gives as an environment secret.
+7. **Waiting on the user, not on you:**
+   - an AI key (not yet, the user said on 2026-11-03), for M1-073, M1-074 and M1-079's thresholds
+     and the live injection run: `TASKMOOR_AI_EVAL_KEY` with
+     `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
+     `corepack pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`;
+   - the Spanish review, once every M1 task is finished (`docs/review-spanish.md`, `corepack pnpm demo`);
+   - making the repository public for 1.0 (the user's decision: fully open source, AGPL-3.0-only).
+     First: a secret scan of the whole history, the name check in `docs/decisions/name.md`, and the
+     counsel review deferred to the first public release. The user confirms the switch itself;
+   - publishing images on ghcr.io, public with the repository: the user runs
+     `gh auth refresh -h github.com -s write:packages`, then
+     `gh auth token | docker login ghcr.io -u rockersands --password-stdin`, so no token is stored;
+   - permanently deleting `_taskmoor-old` on `C:`, `E:` and `G:` (old copies, moved there on
+     2026-11-03). Claude does not delete permanently: send them to the Recycle Bin once the gate is
+     green, checking first that they fit, and the user empties it.
+
+   The repository is renamed to `Rockersands/taskmoor`. People will download the Builder from its
+   releases. The user allows using the release signing key from Drive at step 6.
+
+### Brief for workstream 2: ticket templates
+
+Named starting points for new tickets, per track or for every track, optionally for some ticket
+types: a summary pattern, a description outline (rich text), default values for any field
+(custom fields included; a due date as an offset such as "in 7 days"), optional subtickets.
+
+- People pick a template in the create dialog (`apps/web/src/tickets/CreateTicketDialog.tsx`)
+  and can still edit everything. Track administrators manage templates on a settings page.
+- Applying a template never sets a field the person may not set or a field rule hides.
+- Deliver:
+  - spec text with new CORE IDs, and ADR-113;
+  - migration 0085, with its type in `schema.ts`, an upgrade seed and the schema golden;
+  - routes for listing, reading, creating, updating and deleting templates, and "create a
+    ticket from a template"; each mutating route gets an event, a contract scenario, an audit
+    decision and a scope class;
+  - the web UI with en and es strings, stories and tests;
+  - the manual (`docs/manual/use/tickets.md`, `docs/manual/admin/tracks.md`), STATUS and
+    HANDOFF.
+- For 1.0.
+
+### Brief for workstream 3: UI overhaul and guided tutorial
+
+The user's words: "The whole UI needs an overhaul: way more understandable and usable,
+inspiration from Jira and from Liquid Glass on iOS, drag and drop, light and dark mode; sections
+are not clear; explain what a panel does; a full tutorial that navigates the tool and shows how it
+works through the user making one of everything, in sections offered on first use, where you
+choose the sections you want to learn."
+
+1. **Design direction first, agreed with the user before large changes:** ADR-114. Show the
+   user the home page, a board and a ticket, on `corepack pnpm demo`, in their own Chrome
+   (Claude in Chrome, local) or as screenshots.
+2. **Every page reworked** on the tokens (`apps/web/src/styles/tokens.css`):
+   - clear sections, each with a one-line purpose and inline help ("what is this panel for");
+   - translucent glass surfaces that keep contrast;
+   - light and dark;
+   - empty states that explain;
+   - motion that respects `prefers-reduced-motion`.
+3. **Drag and drop with a keyboard path for each:** board cards and columns, the backlog,
+   dashboard widgets, files onto tickets.
+4. **A layout editor page** for layout sets (UI-T15): drag fields into tabs and sections, a live
+   preview per ticket type and operation.
+5. **Board columns** (UI-T16): add, rename, reorder and set the minimum and maximum; the limit
+   stays 30.
+6. **The tutorial:** ADR-115, with its progress per person in migration 0084 and a route.
+   - It's offered on first sign-in and later from the help menu, in sections the person picks
+     (tracks and tickets, workflows, boards and sprints, search, dashboards, releases,
+     administration, import).
+   - It makes one of everything in their own instance, and it can be skipped, paused and
+     resumed.
+
+Clean room: "inspiration" means general patterns in our own design. Never Atlassian or Apple
+code, docs, screenshots, icons or assets; never open an Atlassian site or product.
+
+### Rules every workstream keeps
+
+- `CLAUDE.md` in full: commit as `Rockersands <42122514+rockersands@users.noreply.github.com>` in the repository's own git
+  config, with the DCO sign-off (`git config core.hooksPath .githooks`).
+- Test names cite requirement IDs; stories and axe; en and es strings; phones.
+- Never put an API key, token, password or other secret in any file, commit or message.
+- No Atlassian products or connections. Push only to your own branch.
 ## Side session 2026-11-02 to 03 (cloud, branch `claude/ui-overhaul`): interface overhaul and tutorial
 
 The user asked for the whole web interface to be reworked (clear sections, every panel saying

@@ -221,16 +221,18 @@ describe('the server-code guard', () => {
     }
     expect(code.dirs.some((d) => d.endsWith('/apps/server/'))).toBe(true);
     expect(code.dirs.some((d) => d.endsWith('/apps/web/'))).toBe(false);
+    // Module ids use forward slashes on every system.
+    const root = ROOT.replaceAll('\\', '/');
     const ids = [
-      `${ROOT}packages/query/src/index.ts`,
-      `${ROOT}node_modules/.pnpm/fastify@5.12.5/node_modules/fastify/fastify.js?commonjs-module`,
-      `\0${ROOT}node_modules/.pnpm/@fastify+static@10/node_modules/@fastify/static/index.js`,
+      `${root}packages/query/src/index.ts`,
+      `${root}node_modules/.pnpm/fastify@5.12.5/node_modules/fastify/fastify.js?commonjs-module`,
+      `\0${root}node_modules/.pnpm/@fastify+static@10/node_modules/@fastify/static/index.js`,
       '__vite-browser-external:node:net',
-      `${ROOT}node_modules/.pnpm/react@19/node_modules/react/index.js`,
+      `${root}node_modules/.pnpm/react@19/node_modules/react/index.js`,
     ];
     expect(serverModules(ids, code)).toEqual([
-      `${ROOT}node_modules/.pnpm/fastify@5.12.5/node_modules/fastify/fastify.js`,
-      `${ROOT}node_modules/.pnpm/@fastify+static@10/node_modules/@fastify/static/index.js`,
+      `${root}node_modules/.pnpm/fastify@5.12.5/node_modules/fastify/fastify.js`,
+      `${root}node_modules/.pnpm/@fastify+static@10/node_modules/@fastify/static/index.js`,
       '__vite-browser-external:node:net',
     ]);
   });

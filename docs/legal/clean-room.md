@@ -59,3 +59,27 @@ with a product. The protocol keeps the work on the safe side and leaves a record
 2. Remove or quarantine the material in a separate commit that says why.
 3. Rewrite the affected code from the spec in a fresh session that has not seen the material.
 4. Add a row to `docs/plan/decisions.csv` if the user or counsel needs to decide anything.
+
+## Atlassian products are not used to build or run this project
+
+Checked on 2026-11-02, when an Atlassian (Jira and Confluence) connection was offered for
+tracking our own work. Atlassian's terms forbid that use, so the connection is not used, by
+this session or by any other working on Taskmoor:
+
+- The Atlassian Customer Agreement, section 2.2 (Restrictions), forbids customers to use the
+  Products to develop a similar or competing product or service, beside reverse engineering
+  and access to non-public APIs (atlassian.com/legal/atlassian-customer-agreement).
+- The Atlassian Developer Terms, which cover their APIs and platform (an MCP connection
+  included), forbid using the Atlassian Platform to build a competitive product without
+  Atlassian's written authorisation (developer.atlassian.com, Atlassian Developer Terms).
+- Taskmoor is a competing product by design (Jira-compatible, with an importer). Using Jira to
+  track its development would be close to a literal breach, and would weaken the independence
+  this clean room documents (independent creation from specs in our own words; Phoenix BIOS,
+  Sega v. Accolade, Sony v. Connectix, Google v. Oracle).
+
+The text above was read through search results and archived copies, because Atlassian's sites
+were not reachable from the build environment: check the current wording before relying on it.
+Our work is tracked in `docs/plan` (backlog, progress) and in task files per session
+(`docs/plan/*-tasks.md`), and in Taskmoor itself once an instance every session can reach
+exists. The question goes to the legal review M1 plans (`docs/plan/decisions.csv`).
+

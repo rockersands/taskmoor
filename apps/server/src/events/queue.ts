@@ -27,18 +27,22 @@ export interface ClaimedJob {
   maxAttempts: number;
 }
 
-/** Inserts jobs in one statement. Returns how many were new. */
+/**
+ * Inserts jobs in one statement. Returns how many were new. A job with no `runAt` is due by the
+ * database's clock, the one `claim` compares with: this server's may run ahead of it.
+ */
 export async function enqueue(db: Db, jobs: readonly NewJob[]): Promise<number> {
   if (jobs.length === 0) return 0;
   const result = await sql`
     INSERT INTO job (workspace_id, task, payload, key, max_attempts, run_at)
-    SELECT * FROM unnest(
+    SELECT workspace_id, task, payload, key, max_attempts, COALESCE(run_at, now()) FROM unnest(
       ${jobs.map((j) => j.workspaceId)}::int[],
       ${jobs.map((j) => j.task)}::text[],
       ${jobs.map((j) => JSON.stringify(j.payload ?? {}))}::jsonb[],
       ${jobs.map((j) => j.key ?? null)}::text[],
       ${jobs.map((j) => j.maxAttempts ?? 25)}::int[],
-      ${jobs.map((j) => (j.runAt ?? new Date()).toISOString())}::timestamptz[])
+      ${jobs.map((j) => j.runAt?.toISOString() ?? null)}::timestamptz[])
+      AS new_job(workspace_id, task, payload, key, max_attempts, run_at)
     ON CONFLICT (key) DO NOTHING`.execute(db);
   return Number(result.numAffectedRows ?? 0);
 }

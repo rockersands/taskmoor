@@ -51,6 +51,8 @@ test('[API-002] a person approves an MCP client on the consent page', async ({ p
   const approved = new URL(landed[0] as string);
   expect(approved.searchParams.get('state')).toBe('first');
   expect(approved.searchParams.get('code')).toBeTruthy();
+  // The route sees the request before the page gets there; going on sooner interrupts it.
+  await page.waitForURL(`${CALLBACK}?**`);
 
   await page.goto(authorize('second'));
   await page.getByRole('button', { name: 'Don’t allow' }).click();

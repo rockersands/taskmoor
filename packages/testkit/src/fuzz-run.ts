@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 import { type FuzzReport, type FuzzTarget, inputAt, runFuzz } from './fuzz';
 
@@ -35,7 +36,10 @@ type WorkerMessage =
   | { kind: 'error'; message: string };
 
 async function loadTarget(module: string, name: string): Promise<FuzzTarget<unknown>> {
-  const loaded = (await import(module)) as { FUZZ_TARGETS?: readonly FuzzTarget<unknown>[] };
+  // A URL, not the path: import() reads a Windows path's drive as a URL scheme.
+  const loaded = (await import(pathToFileURL(module).href)) as {
+    FUZZ_TARGETS?: readonly FuzzTarget<unknown>[];
+  };
   const target = loaded.FUZZ_TARGETS?.find((t) => t.name === name);
   if (!target) throw new Error(`${module} has no fuzz target "${name}"`);
   return target;

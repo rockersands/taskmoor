@@ -17,7 +17,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const COMPOSE = readFileSync(join(ROOT, 'deploy/compose/docker-compose.yml'), 'utf8');
 const IMAGE = '${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg16-trixie}';
-const hasOpenssl = spawnSync('openssl', ['version']).status === 0;
+const hasTools =
+  spawnSync('openssl', ['version']).status === 0 && spawnSync('sh', ['-c', 'exit 0']).status === 0;
 
 /** One service's block of the Compose file, up to the next service or section. */
 function service(name: string): string {
@@ -62,7 +63,7 @@ describe('TLS to the bundled PostgreSQL of the Compose kit (ASVS 1.9.1, ADR-111)
     expect(script).not.toMatch(/(?<!\$)\$(?!\$)/);
   });
 
-  describe.skipIf(!hasOpenssl)('the certificate it makes', () => {
+  describe.skipIf(!hasTools)('the certificate it makes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'taskmoor-pg-tls-'));
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
     const ca = join(dir, 'ca');
@@ -74,6 +75,8 @@ describe('TLS to the bundled PostgreSQL of the Compose kit (ASVS 1.9.1, ADR-111)
           TLS_CA_DIR: ca,
           TLS_DIR: out,
           TLS_KEY_OWNER: `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
+          // Git for Windows' shell would otherwise rewrite openssl's "/CN=..." as a file path.
+          MSYS_NO_PATHCONV: '1',
         },
         encoding: 'utf8',
       });
@@ -101,9 +104,12 @@ describe('TLS to the bundled PostgreSQL of the Compose kit (ASVS 1.9.1, ADR-111)
         readFileSync(join(ca, 'ca.crt'), 'utf8'),
       );
       // PostgreSQL refuses a key others can read; nothing but the key's owner reads either key.
-      expect(statSync(join(out, 'server.key')).mode & 0o777).toBe(0o600);
-      expect(statSync(join(ca, 'ca.key')).mode & 0o777).toBe(0o600);
-      expect(statSync(join(out, 'server.crt')).mode & 0o777).toBe(0o644);
+      // Windows has no such modes to read back; the kit's containers run this on Linux.
+      if (process.platform !== 'win32') {
+        expect(statSync(join(out, 'server.key')).mode & 0o777).toBe(0o600);
+        expect(statSync(join(ca, 'ca.key')).mode & 0o777).toBe(0o600);
+        expect(statSync(join(out, 'server.crt')).mode & 0o777).toBe(0o644);
+      }
       const hba = readFileSync(join(out, 'pg_hba.conf'), 'utf8')
         .split('\n')
         .filter((l) => l && !l.startsWith('#'))

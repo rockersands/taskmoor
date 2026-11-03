@@ -14,8 +14,8 @@ code; the user decides product questions. Start every session by reading `HANDOF
 - Every commit carries `Signed-off-by: Rockersands <42122514+rockersands@users.noreply.github.com>` (DCO, ADR-002). The
   hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
   The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
-- Remote: `https://github.com/Rockersands/tracksmith` (private; it keeps the codename until the
-  user renames the repository; free GitHub plan, so there is no branch protection).
+- Remote: `https://github.com/Rockersands/taskmoor` (private until the user makes it public for
+  1.0, their decision of 2026-11-03; free GitHub plan, so there is no branch protection).
 - **The gate is local:** run the whole `pnpm verify --e2e` before every push to `main`. GitHub
   Actions is not used until M1 is finished (the user's decision, 2026-10-30): every workflow
   runs only by hand, and nobody runs them. Never dispatch a workflow or treat a red or missing
@@ -49,6 +49,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm conformance <workflow \| query \| formula \| compat>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`); `compat` runs the Jira-compatible API's cases against a running Taskmoor (`--url`, `--project`, token in `TASKMOOR_TOKEN`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
+| `bash tools/fuzz/staged.sh` | The M1 fuzzing bar: every target clean for 1, 2, 4 and then 8 hours, in parallel at low priority; resumes after an interruption (`.cache/fuzz-stages`) |
 | `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`), the offline Builder page that carries it (`apps/web/dist-builder/index.html`, ADR-088) and the bundled server (`apps/server/dist/server.mjs`), all stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
@@ -146,5 +147,5 @@ on another disk (for example while a benchmark saturates this one).
 
 ## Open decisions owned by the user
 
-- Release publishing (images on ghcr.io, the release signing key) and the GitHub repository
-  rename: see `docs/plan/decisions.csv` and HANDOFF.
+- Release publishing (images on ghcr.io, the release signing key): see
+  `docs/plan/decisions.csv` and HANDOFF.
