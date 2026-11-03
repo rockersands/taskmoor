@@ -64,7 +64,8 @@ number, and a card that has just arrived shows nothing. Cards are in rank order.
 A Scrum board shows the tickets of its active sprints; a Kanban board shows every ticket of its
 track, so tickets that waited in a backlog are on the board after a change to Kanban. Sprints are kept,
 and are there again on a change back to Scrum, but a Kanban track's timeline and calendar do not show
-them. A board shows the first 5,000 cards in rank order and says when it shows only part.
+them. While a sprint is running a board cannot change to Kanban: the settings page asks you to complete
+the sprint first, and a planned sprint cannot start on a Kanban board. A board shows the first 5,000 cards in rank order and says when it shows only part.
 
 If some tickets are in statuses that no column shows, the board names those statuses and how
 many tickets are in them. Someone who may change the board can give them a column.

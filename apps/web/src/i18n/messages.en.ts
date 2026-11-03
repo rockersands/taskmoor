@@ -3656,6 +3656,8 @@ export const messagesEn = {
   'boards.settings.save': 'Save settings',
   'boards.settings.saved': 'Saved.',
   'boards.settings.failed': 'Not saved. Check the marked fields.',
+  'boards.settings.sprintRunning':
+    'A sprint is running on this board. Complete it first, then change the board to Kanban.',
   'boards.settings.conflict':
     'Someone changed this board meanwhile. Open the settings again to see their change.',
   // Sprints (M1-044): a Scrum board's backlog with sprint sections, and a sprint's report.

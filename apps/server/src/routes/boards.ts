@@ -945,13 +945,25 @@ export function registerBoardRoutes(
       .execute(async (trx) => {
         const current = await trx
           .selectFrom('board')
-          .select('version')
+          .select(['version', 'kind'])
           .where('id', '=', p.data.id)
           .forUpdate()
           .executeTakeFirst();
         if (!current) return { missing: true as const };
         if (body.version !== undefined && body.version !== current.version) {
           return { conflict: current.version };
+        }
+        // A Kanban board has no sprints to act on, so a running sprint could never be completed
+        // (AGL-010). It has to end first. Starting one takes this same lock, so neither slips by.
+        if (body.kind === 'kanban' && current.kind === 'scrum') {
+          const running = await trx
+            .selectFrom('sprint')
+            .select(['id', 'name'])
+            .where('board_id', '=', p.data.id)
+            .where('state', '=', 'active')
+            .orderBy('id')
+            .executeTakeFirst();
+          if (running) return { sprintRunning: running };
         }
         // A board that manages its track's workflow rewrites it from its columns (M1-126).
         let columns = checked.columns;
@@ -1097,6 +1109,13 @@ export function registerBoardRoutes(
     if ('missing' in outcome) return notFound(reply);
     if ('conflict' in outcome) {
       return reply.code(409).send({ error: 'version_conflict', version: outcome.conflict });
+    }
+    if ('sprintRunning' in outcome) {
+      return reply.code(409).send({
+        error: 'sprint_running',
+        sprintId: outcome.sprintRunning.id,
+        sprintName: outcome.sprintRunning.name,
+      });
     }
     const row = await boardQuery(db, request.workspaceId)
       .where('b.id', '=', p.data.id)

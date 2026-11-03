@@ -49,6 +49,26 @@ describe("changing the board's kind (ADR-116)", () => {
   });
 });
 
+describe('a board going Kanban while a sprint runs', () => {
+  it('[AGL-010] says in plain words to complete the sprint first', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient({ board: SCRUM_BOARD });
+    client.update = vi.fn(async () => ({ ok: false as const, fields: { kind: 'sprint_running' } }));
+    renderSettings(client);
+    await ready();
+    const kind = screen.getByRole('combobox', { name: 'Kind' });
+    await user.selectOptions(kind, 'kanban');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(
+      await screen.findByText(
+        'A sprint is running on this board. Complete it first, then change the board to Kanban.',
+      ),
+    ).toBeVisible();
+    expect(kind).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
 describe('columns no card can reach (ADR-116)', () => {
   const reach = {
     workflow: { id: 1, name: 'Default workflow' },

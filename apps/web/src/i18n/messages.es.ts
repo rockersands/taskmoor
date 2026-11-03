@@ -3761,6 +3761,8 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.settings.save': 'Guardar la configuración',
   'boards.settings.saved': 'Guardado.',
   'boards.settings.failed': 'No se guardó. Revisa los campos marcados.',
+  'boards.settings.sprintRunning':
+    'Hay un sprint en curso en este tablero. Complétalo primero y luego cambia el tablero a Kanban.',
   'boards.settings.conflict':
     'Alguien cambió este tablero mientras tanto. Vuelve a abrir la configuración para ver su cambio.',
   'sprints.backlog.link': 'Backlog',

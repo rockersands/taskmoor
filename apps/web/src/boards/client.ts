@@ -323,6 +323,8 @@ export const boardClient: BoardClient = {
       const body = error.body as { fields?: Record<string, string> } | null;
       if (error.code === 'version_conflict') return { ok: false, fields: {}, conflict: true };
       if (error.code === 'invalid_fields') return { ok: false, fields: body?.fields ?? {} };
+      // A sprint is running, so the board cannot go Kanban yet (AGL-010).
+      if (error.code === 'sprint_running') return { ok: false, fields: { kind: error.code } };
       // A managed board's columns that cannot become its workflow (M1-126).
       if (error.status === 409 && error.code) return { ok: false, fields: { columns: error.code } };
       throw error;

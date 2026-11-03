@@ -113,6 +113,6 @@ them.
   person sets another reason by hand.
 - Filters on `stage = closed` follow the column's status: when the closing column moves, tickets
   closed before keep their reason but leave that filter. Revisit if that surprises people.
-- RPT-006 asks for several insight dashboards per track; a track has one customized Summary, as the
-  user decided. Dashboards shared with a track remain for more.
+- RPT-006 now asks for one customizable Summary per track, as the user decided (the wording is still
+  being confirmed with them). Dashboards shared with a track remain for more.
 - Revisit if teams ask for a board across tracks again; a saved search or dashboard covers that now.

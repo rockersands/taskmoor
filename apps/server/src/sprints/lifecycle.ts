@@ -162,9 +162,19 @@ export async function startSprint(
   sprint: { id: number; name: string; goal: string; version: number },
   input: { name?: string; goal?: string; startAt: Date; endAt: Date; now?: Date },
 ): Promise<
-  { error: 'sprint_not_future' } | { error: 'sprint_active'; sprintId: number } | { started: true }
+  | { error: 'not_scrum' }
+  | { error: 'sprint_not_future' }
+  | { error: 'sprint_active'; sprintId: number }
+  | { started: true }
 > {
   await lockBoard(trx, board.id);
+  // A Kanban board keeps its planned sprints, but one cannot start there: nothing could end it.
+  const kind = await trx
+    .selectFrom('board')
+    .select('kind')
+    .where('id', '=', board.id)
+    .executeTakeFirst();
+  if (kind?.kind !== 'scrum') return { error: 'not_scrum' };
   const current = await trx
     .selectFrom('sprint')
     .select('state')

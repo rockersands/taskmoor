@@ -70,7 +70,7 @@ AGL-010,AGL,Sprint lifecycle,M1,Must,Jira Free
 AGL-011,AGL,Parallel and shared sprints,M1,Must,Jira Free; exceeds Jira
 AGL-012,AGL,Auto-rolling cycles,M1,Should,Linear
 AGL-013,AGL,Board scale,M1,Must,"exceeds Jira (5,000 cap on multi-space boards)"
-AGL-014,AGL,Kanban backlog and sub-filter,M1,Must,Jira Free
+AGL-014,AGL,"Kanban without a backlog, and a sub-filter",M1,Must,Jira Free
 AGL-015,AGL,Timeline,M1,Must,"Jira Free; exceeds Jira (roll-ups disabled above 10,000)"
 AGL-016,AGL,List view and format rules,M1,Must,Jira Free
 AGL-017,AGL,Calendar view,M1,Must,Jira Free; Vikunja (CalDAV-style feed)
@@ -85,7 +85,7 @@ RPT-002,RPT,General reports,M1,Must,Jira Free
 RPT-003,RPT,Report data foundation,M1,Must,Jira Free
 RPT-004,RPT,Dashboards,M1,Must,Jira Free; exceeds Jira (import)
 RPT-005,RPT,Widget catalog,M1,Must,Jira Free
-RPT-006,RPT,Track insight dashboards,M1,Must,Jira Free; exceeds Jira (5 per space)
+RPT-006,RPT,Track Summary,M1,Must,Jira Free
 RPT-007,RPT,Summary work pulse,M2,Should,Jira Free
 RPT-008,RPT,Analytics store and BI access,M2,Must,Azure DevOps Analytics; Power BI Connector app; exceeds Jira
 RPT-009,RPT,Report export and scheduling,M2,Should,Better Excel Exporter app

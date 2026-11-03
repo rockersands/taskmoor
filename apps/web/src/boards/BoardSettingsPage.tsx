@@ -377,7 +377,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       <p id={`${inputId}-problem`} className="form-error">
         {problem(path) === 'invalid_query'
           ? t('boards.settings.invalidQuery')
-          : t('boards.settings.invalidValue')}
+          : problem(path) === 'sprint_running'
+            ? t('boards.settings.sprintRunning')
+            : t('boards.settings.invalidValue')}
       </p>
     ) : null;
 
@@ -560,10 +562,12 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               id={`${id}-kind`}
               value={draft.kind}
               onChange={(e) => set({ kind: e.target.value === 'scrum' ? 'scrum' : 'kanban' })}
+              {...invalid('kind', `${id}-kind`)}
             >
               <option value="kanban">{t('boards.kind.kanban')}</option>
               <option value="scrum">{t('boards.kind.scrum')}</option>
             </select>
+            {problemText('kind', `${id}-kind`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-team`} className="form-label">
