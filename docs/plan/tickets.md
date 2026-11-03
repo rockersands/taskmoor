@@ -33,6 +33,7 @@ reported, and the coordinator checked that it was pushed.
 | T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed |
 | T-006 | Tests run on native Windows | Done | M1-144, on `main` |
 | T-007 | Job queue uses the database's clock | Done | On `main` |
+| T-009 | A leftover test process (vitest, PIDs 40468 and 30628) that a sub chat could not stop | You | Close it, or allow it to be closed |
 | T-008 | Keep every request as a ticket, here and in the tool itself | In progress | This file, and tracks BE, FE and FL on the demo |
 
 ## Getting to 1.0
@@ -117,7 +118,7 @@ reported, and the coordinator checked that it was pushed.
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | On branch | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | In progress | Part of T-088 |
-| T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; private to the person |
+| T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; takes the next free migration number at the start; private to the person |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
 | T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
@@ -178,11 +179,13 @@ reported, and the coordinator checked that it was pushed.
 | T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
 | T-123 | Copy a link to a ticket | To do | With the front sub chat |
 | T-124 | Set a ticket's priority from the pop-up | To do | With the front sub chat |
-| T-125 | Board cards show title, priority, assignee and points | To do | With the front sub chat; points only where set |
-| T-126 | Edit a ticket's title from the card, with a pencil button | To do | With the front sub chat |
-| T-127 | The ticket's type shows as an icon on the card, not a word | To do | With the front sub chat; our own icons; the name stays for screen readers |
-| T-128 | Priority shows as an icon, not a word | To do | With the front sub chat; shape as well as colour; custom priorities too |
-| T-129 | Add a Very low priority and remove the None choice | To do | With the front sub chat; new tickets take the default priority |
+| T-125 | Board cards show title, priority, assignee and points | On branch | points only where set |
+| T-126 | Edit a ticket's title from the card, with a pencil button | On branch | `claude/ui-overhaul` |
+| T-127 | The ticket's type shows as an icon on the card, not a word | On branch | our own icons; the name stays for screen readers |
+| T-128 | Priority shows as an icon, not a word | On branch | shape as well as colour; custom priorities too |
+| T-129 | Add a Very low priority and remove the None choice | On branch | new tickets take the default priority |
+| T-129a | A seeded Points field, so points can show on cards | In progress | Migration 0095; the coordinator's choice while the user was away |
+| T-129b | The ticket key no longer shows on a card, only in its tooltip | You | Front's choice, since it was not on the user's list of card items |
 
 ## Search and dashboards
 
