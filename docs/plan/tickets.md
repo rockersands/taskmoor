@@ -152,6 +152,13 @@ reported, and the coordinator checked that it was pushed.
 | T-118 | A `/` menu in descriptions and comments | In progress | `claude/ticket-tools`; our own list, no Atlassian site opened |
 | T-119 | Mention someone with `@` to notify them | Done | Already built |
 | T-120 | Add any tool the `/` menu is missing | You | Describe it in words, no screenshots |
+| T-121 | Open a ticket in a pop-up from the board or any section, instead of leaving the page | To do | With the front sub chat |
+| T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
+| T-123 | Copy a link to a ticket | To do | With the front sub chat |
+| T-124 | Set a ticket's priority from the pop-up | To do | With the front sub chat |
+| T-125 | Board cards show title, priority, assignee and points | To do | With the front sub chat; points only where set |
+| T-126 | Edit a ticket's title from the card, with a pencil button | To do | With the front sub chat |
+| T-127 | The ticket's type shows as an icon on the card, not a word | To do | With the front sub chat; our own icons; the name stays for screen readers |
 
 ## Search and dashboards
 
