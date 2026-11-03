@@ -14,12 +14,13 @@ import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
+import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { useSyncEngine } from '../sync/SyncProvider';
-import { useTrackSections } from '../tracks/trackSections';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
+import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import {
@@ -284,7 +285,11 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;
-    links.current.get(focusAfter.current)?.focus();
+    const moved = links.current.get(focusAfter.current);
+    moved?.focus();
+    // Only the card that has just dropped animates: a board can hold thousands.
+    const card = moved?.closest('li');
+    if (card) playMotion(card, 'motion-drop');
     focusAfter.current = null;
   }, [data]);
 

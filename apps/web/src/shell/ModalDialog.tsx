@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
+import { leaveMotion, useLeaveMotion } from './motion';
 
 export interface ModalDialogProps {
   onClose: () => void;
@@ -26,6 +27,7 @@ export function ModalDialog({
   children,
 }: ModalDialogProps) {
   const box = useRef<HTMLDivElement>(null);
+  const boxRef = useLeaveMotion(box);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: where focus starts is decided once
   useEffect(() => {
@@ -80,6 +82,7 @@ export function ModalDialog({
   return (
     <>
       <button
+        ref={leaveMotion}
         type="button"
         className="shell-backdrop create-backdrop"
         aria-label={closeLabel}
@@ -87,7 +90,7 @@ export function ModalDialog({
         onClick={onClose}
       />
       <div
-        ref={box}
+        ref={boxRef}
         className="create-dialog"
         role="dialog"
         aria-modal="true"

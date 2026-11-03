@@ -17,6 +17,7 @@ import { navigate, replaceRoute, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { HelpTip } from '../../shell/HelpTip';
+import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
@@ -1043,6 +1044,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="ticket-dialog-backdrop">
       <div
+        ref={leaveMotion}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

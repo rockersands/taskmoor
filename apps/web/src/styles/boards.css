@@ -171,12 +171,12 @@
   cursor: grab;
   transition:
     transform var(--motion-base) var(--ease-settle),
-    box-shadow var(--motion-base) var(--ease-settle),
     opacity var(--motion-fast) var(--ease-soft);
 }
 
 .board-card:hover {
   box-shadow: var(--glass-highlight), var(--shadow-2);
+  transform: translateY(var(--lift-small));
 }
 
 .board-card::before {
@@ -621,12 +621,6 @@
     0 -4px 0 -1px var(--color-accent),
     var(--glass-highlight),
     var(--shadow-1);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .board-card:hover {
-    transform: translateY(-1px);
-  }
 }
 
 /*

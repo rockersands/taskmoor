@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { useMotionOnChange } from '../shell/motion';
 import { type TrackClient, trackClient } from './client';
 import { TrackSectionsContext, useLoadedTrackSections } from './trackSections';
 
@@ -44,6 +45,7 @@ export function TrackLayout({
   const t = useT();
   const sections = useLoadedTrackSections(trackKey, client, section);
   const tabs = TRACK_SECTIONS.filter((s) => s.id !== 'backlog' || sections?.backlog === true);
+  const body = useMotionOnChange<HTMLDivElement>('motion-rise', `${trackKey}/${section}`);
   return (
     <TrackSectionsContext.Provider value={sections}>
       <nav className="track-tabs" aria-label={t('track.sections', { key: trackKey })}>
@@ -60,7 +62,7 @@ export function TrackLayout({
           ))}
         </ul>
       </nav>
-      {children}
+      <div ref={body}>{children}</div>
     </TrackSectionsContext.Provider>
   );
 }

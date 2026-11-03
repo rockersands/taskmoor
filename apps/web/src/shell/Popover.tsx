@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { leaveMotion, useLeaveMotion } from './motion';
 
 /** A click here keeps its own focus when it closes a popover: the person meant that control. */
 const CONTROL =
@@ -38,6 +39,7 @@ export function Popover({ label, title, on = false, children }: PopoverProps) {
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const panelRef = useLeaveMotion(panel);
 
   const close = useCallback((focusButton: boolean) => {
     setOpen(false);
@@ -106,6 +108,7 @@ export function Popover({ label, title, on = false, children }: PopoverProps) {
       {open && (
         <>
           <button
+            ref={leaveMotion}
             type="button"
             className="popover-scrim"
             tabIndex={-1}
@@ -113,7 +116,7 @@ export function Popover({ label, title, on = false, children }: PopoverProps) {
             onClick={() => close(true)}
           />
           {/* biome-ignore lint/a11y/useSemanticElements: it holds any content, not only one set of fields */}
-          <div ref={panel} id={panelId} className="popover" role="group" aria-label={title}>
+          <div ref={panelRef} id={panelId} className="popover" role="group" aria-label={title}>
             <div className="popover-head">
               <p className="popover-title">{title}</p>
               <button type="button" className="button-quiet" onClick={() => close(true)}>

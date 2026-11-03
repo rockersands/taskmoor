@@ -27,6 +27,7 @@ import '../src/styles/timeline.css';
 import '../src/styles/views.css';
 import '../src/styles/ai.css';
 import '../src/styles/surfaces.css';
+import '../src/styles/motion.css';
 import '../src/builder/builder.css';
 
 const preview: Preview = {

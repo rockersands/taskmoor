@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
 import { TICKET_SHORTCUTS } from '../tickets/view/shortcuts';
+import { leaveMotion } from './motion';
 import { useMenuButton } from './useMenuButton';
 
 /**
@@ -42,7 +43,7 @@ export function HelpMenu() {
         <span aria-hidden="true">?</span>
       </button>
       {open && (
-        <div className="user-menu-popup">
+        <div ref={leaveMotion} className="user-menu-popup">
           <div
             ref={menu}
             id={menuId}
@@ -107,6 +108,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="ticket-dialog-backdrop">
       <div
+        ref={leaveMotion}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

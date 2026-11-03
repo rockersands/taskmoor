@@ -31,6 +31,7 @@ import './styles/timeline.css';
 import './styles/views.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
+import './styles/motion.css';
 
 async function start() {
   // Back from a backend on another site with a sign-in code (M1-107): trade it and restore the

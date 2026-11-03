@@ -370,8 +370,8 @@ body {
 .palette {
   position: fixed;
   top: 12vh;
-  left: 50%;
-  transform: translateX(-50%);
+  inset-inline: 0;
+  margin-inline: auto;
   z-index: 60;
   width: min(92vw, 560px);
   background: var(--glass-fill-strong);
@@ -435,9 +435,7 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-soft),
-    box-shadow var(--motion-fast) var(--ease-soft);
+  transition: background-color var(--motion-fast) var(--ease-soft);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -571,38 +569,6 @@ body {
   .icon-button {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0s !important;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .shell-drawer {
-    animation: drawer-in var(--motion-base) var(--ease-soft);
-  }
-
-  @keyframes drawer-in {
-    from {
-      transform: translateX(-16px);
-      opacity: 0;
-    }
-  }
-
-  :root[dir="rtl"] .shell-drawer {
-    animation-name: drawer-in-rtl;
-  }
-
-  @keyframes drawer-in-rtl {
-    from {
-      transform: translateX(16px);
-      opacity: 0;
-    }
   }
 }
 

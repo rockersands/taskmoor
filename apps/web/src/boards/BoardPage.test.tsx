@@ -231,6 +231,20 @@ describe('the board page (M1-043)', () => {
     expect(screen.getByText('SHOP-19 moved to Doing.')).toBeInTheDocument();
   });
 
+  it('[AGL-002] lets only the card that moved drop into place', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    screen.getByRole('link', { name: /SHOP-19/ }).focus();
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    await waitFor(() => expect(keysIn('Doing in Everything else')).toContain('SHOP-19'));
+    const card = screen.getByRole('link', { name: /SHOP-19/ }).closest('li');
+    expect(card).toHaveClass('motion-drop');
+    expect(document.querySelectorAll('.motion-drop')).toHaveLength(1);
+    if (card) fireEvent.animationEnd(card);
+    expect(document.querySelectorAll('.motion-drop')).toHaveLength(0);
+  });
+
   it('[AGL-009] moves a card up and down within its column with Alt+Up and Alt+Down', async () => {
     const user = userEvent.setup();
     const client = renderBoard();

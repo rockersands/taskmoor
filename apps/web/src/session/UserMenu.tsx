@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
+import { leaveMotion } from '../shell/motion';
 import { useMenuButton } from '../shell/useMenuButton';
 import { useSession } from './SessionProvider';
 
@@ -83,7 +84,7 @@ export function UserMenu({ onSignedOut }: UserMenuProps) {
         <span className="user-menu-name">{t('common.value', { value: user.name })}</span>
       </button>
       {open && (
-        <div className="user-menu-popup">
+        <div ref={leaveMotion} className="user-menu-popup">
           <p className="user-menu-email">{t('userMenu.signedInAs', { email: user.email })}</p>
           {failed && (
             <p className="form-error user-menu-error" role="alert">

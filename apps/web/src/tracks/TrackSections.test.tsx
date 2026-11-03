@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -105,6 +105,26 @@ describe('a track is one place with its sections (ADR-116)', () => {
       'href',
       `#/boards/${BOARD.id}/settings`,
     );
+  });
+
+  it("[CORE-001] plays a section's entry each time the section changes, keeping its contents", async () => {
+    const show = (section: 'board' | 'backlog') => (
+      <I18nProvider locale="en">
+        <TrackLayout trackKey="SHOP" section={section} client={fakeTrackClient()}>
+          <input aria-label="Kept while the tab changes" />
+        </TrackLayout>
+      </I18nProvider>
+    );
+    const { rerender } = render(show('board'));
+    const field = screen.getByRole('textbox', { name: 'Kept while the tab changes' });
+    const region = field.parentElement as HTMLElement;
+    expect(region).toHaveClass('motion-rise');
+    fireEvent.animationEnd(region);
+    expect(region).not.toHaveClass('motion-rise');
+    rerender(show('backlog'));
+    expect(screen.getByRole('textbox', { name: 'Kept while the tab changes' })).toBe(field);
+    expect(region).toHaveClass('motion-rise');
+    await screen.findByRole('navigation', { name: /SHOP/ });
   });
 
   it('[CORE-001] lists the tracks the person can see and finds them by name or key', async () => {

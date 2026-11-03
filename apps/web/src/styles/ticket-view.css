@@ -335,6 +335,14 @@
   display: grid;
   place-items: center;
   padding: var(--space-4);
+}
+
+/* Its own layer: fading the backdrop itself would cut the dialog's glass off from the page. */
+.ticket-dialog-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: rgb(0 0 0 / 35%);
 }
 

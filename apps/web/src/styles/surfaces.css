@@ -377,6 +377,7 @@
 
 .filter-chip:hover {
   background: var(--glass-surface-strong);
+  transform: translateY(var(--lift-small));
 }
 
 /* On: the tint and the edge, a tick and a heavier label, so it is never colour alone. */
@@ -455,23 +456,6 @@
 
 .popover-scrim {
   display: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .popover {
-    animation: popover-in var(--motion-base) var(--ease-settle);
-  }
-
-  .filter-chip:hover {
-    transform: translateY(-1px);
-  }
-}
-
-@keyframes popover-in {
-  from {
-    opacity: 0.01;
-    translate: 0 4px;
-  }
 }
 
 /* A phone: the same panel docked at the bottom of the screen, over a dimmed page. */
@@ -690,14 +674,13 @@
   padding: var(--space-4);
   color: var(--color-text);
   text-decoration: none;
-  transition:
-    transform var(--motion-base) var(--ease-settle),
-    box-shadow var(--motion-base) var(--ease-settle);
+  transition: transform var(--motion-base) var(--ease-settle);
 }
 
 .start-tile:hover,
 .track-tile:hover {
   box-shadow: var(--glass-highlight), var(--shadow-2);
+  transform: translateY(var(--lift));
 }
 
 .start-tile-icon {
@@ -822,24 +805,6 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .start-tile:hover,
-  .track-tile:hover {
-    transform: translateY(-2px);
-  }
-
-  .help-tip-body:not([hidden]) {
-    animation: glass-in var(--motion-base) var(--ease-settle);
-  }
-
-  @keyframes glass-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px) scale(0.98);
-    }
-  }
-}
-
 @media (forced-colors: active) {
   .glass-card,
   .help-tip-body,
@@ -891,9 +856,7 @@
     "pick start";
   gap: var(--space-2) var(--space-4);
   padding: var(--space-4) var(--space-5);
-  transition:
-    box-shadow var(--motion-base) var(--ease-settle),
-    background-color var(--motion-base) var(--ease-settle);
+  transition: background-color var(--motion-base) var(--ease-soft);
 }
 
 .tutorial-card[data-checked="true"] {
