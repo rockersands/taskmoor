@@ -48,6 +48,29 @@ them.
   leaving it clears the reason. A workflow an administrator edited, and any imported one, keeps its
   rules. Only such a rule brings up a form or a refusal, in plain words. A ticket's status is one
   control on its page.
+- **A board stays inside its track** after it is made. A saved search a track's board stands on
+  cannot be changed to a query that leaves the track (`409 board_outside_track`, naming the boards).
+  An import writes a track's board only with a query confined to it: anything else becomes
+  `track = KEY`, with the warning `board_query_narrowed_to_track` holding the source's query.
+- **Statistics** is every report of the track in one place: flow, sprints, releases and outcomes,
+  and its tickets. The ticket reports reuse the dashboard widgets' data and views through
+  `GET /api/v1/tracks/:id/statistics/:kind`, which takes no query: it is the track, read through the
+  viewer's filter. A board's report addresses lead into the track's tabs. Reports that follow sprints
+  say on a Kanban board that they need a Scrum board. A board an upgrade left outside a track keeps
+  the page at its own address.
+- **Summary** works as a dashboard the track's owner and administrators can customize, using the
+  existing widgets, and that everyone else who can see the track reads as it is.
+  - A track has at most one customized Summary, in its own table (`track_summary_layout`, migration
+    0090), not a dashboard: a dashboard has an owner and shares, while this belongs to the track, and
+    no rule about owners, sharing or the Dashboards list has to make an exception for it.
+  - Until someone customizes it the page shows the default numbers; `Customize` starts from them as
+    a widget (`track-summary`, allowed nowhere else). `Back to the default` removes the row.
+  - The server holds the rule: only those who may administer the track and its owner change it, and
+    not while the track is archived. A site administrator holds every track's rights; a configuration
+    administrator does not, by that alone.
+  - Each widget is read as the viewer. An empty query means the track, and the viewer's own lists
+    (assigned, followed) stay inside it. A query someone wrote is used as written and still goes
+    through the viewer's filter, so it never shows what they may not see.
 - **The closing column** of a board that manages its workflow is the rightmost by default, and
   follows it as columns move. The people who manage the board can choose another or none, and a
   choice stays with its column. Tickets already closed keep their close reason and history. A
@@ -69,4 +92,6 @@ them.
   person sets another reason by hand.
 - Filters on `stage = closed` follow the column's status: when the closing column moves, tickets
   closed before keep their reason but leave that filter. Revisit if that surprises people.
+- RPT-006 asks for several insight dashboards per track; a track has one customized Summary, as the
+  user decided. Dashboards shared with a track remain for more.
 - Revisit if teams ask for a board across tracks again; a saved search or dashboard covers that now.

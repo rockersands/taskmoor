@@ -9,19 +9,17 @@ Done and on the branch: Deep glass, Soft canvas, illustration (UI-T02); Help men
 storage (UI-T10, migration 0084); one board per track (migration 0088); the free-moving default
 workflow (migration 0089); one column per status; column reach and fix, closing column, removing a
 column that holds cards (UI-T16, most of it); the ticket's one status control; track tab bar, directory
-and sidebar (UI-T04); Files and links; board person filter; search basic filters.
+and sidebar (UI-T04); Files and links; board person filter; search basic filters; Statistics, every
+report of a track in its tabs; a customizable Summary (migration 0090, `track_summary_layout`).
 
 Known gaps from that work:
 
-- A saved search a board uses can be edited to another track (`PATCH /api/v1/saved-searches/:id` is
-  not checked), and an import can write a cross-track query on a track's first board.
 - An import can put sprints on a Kanban board when a track's first source board is Kanban.
 - `apps/web/e2e` specs that make boards through the old page or POST free boards, and those clicking
   the old transition buttons, need updating; `person-and-basic-filters.spec.ts` has not passed yet.
 - Running e2e rebuilds `apps/web/dist`: restart the demo straight after, or its page breaks.
 
-Next, in order: Statistics (created vs closed, two-dimensional) and a customizable Summary; the
-Administration panel (UI-T05, UI-T17 to UI-T20; UI-T21's list stays for the user); every page on
+Next, in order: the Administration panel (UI-T05, UI-T17 to UI-T20; UI-T21's list stays for the user); every page on
 PageHeader (UI-T06); column and widget drag (UI-T08, rest of UI-T16); layout editor (UI-T15); tutorial
 (UI-T11 to UI-T13); phones and accessibility (UI-T09); manual (UI-T14).
 

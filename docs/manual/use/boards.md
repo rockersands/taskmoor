@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: apps/web/src/boards/BoardsPage.tsx, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -32,7 +32,8 @@ Change any of it in the board's settings.
 ## Using a board
 
 The board's header names its kind and location and links to the **Backlog** (Scrum boards),
-**Reports** and **Board settings** (when you may change the board). The columns scroll sideways
+**Reports**, which opens the [track's statistics](dashboards-and-reports.md#a-tracks-statistics),
+and **Board settings** (when you may change the board). The columns scroll sideways
 inside the board, never the whole page.
 
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
@@ -170,8 +171,7 @@ time, so it cannot be combined with several active sprints.
 
 ## Releases
 
-Each track has a releases hub, linked from its summary as **Releases** (see [the track
-summary](views.md#the-track-summary)). It lists **Upcoming** releases in the track's order and
+Each track has a releases hub, **Releases** in its tab bar. It lists **Upcoming** releases in the track's order and
 **Shipped** ones, latest first, with archived releases folded away. Each release shows its date,
 a state (**Upcoming**, **Overdue**, **Shipped** or **Archived**) and how many of its tickets are
 closed. The track's administrators add releases with **New release**: a **Name** and an

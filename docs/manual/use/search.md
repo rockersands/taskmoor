@@ -2,7 +2,7 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts
+sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -321,6 +321,10 @@ The **Saved searches** bar on the search page keeps queries for later.
 - **Subscribe** emails you its results: **How often** (**Every day**, **Every week** on a chosen
   day, or **Every month** on a day from 1 to 28), **At** an hour, and **Only when something
   matches**. Press **Subscribe by email**; the page says when the first email goes out.
+
+A track's board can stand on a saved search. Its query then has to stay inside that track, so
+**Save** refuses a query that would leave it and names the board and the track. Start the query with
+`track = KEY AND`, or use **Save as new**.
 
 A saved search that came from an import of another tracker keeps its owner, its sharing, its
 stars and its subscriptions, with the query rewritten in Taskmoor's words. When the query could
