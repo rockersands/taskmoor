@@ -73,6 +73,7 @@ import * as m0082 from './0082_storage_quota';
 import * as m0083 from './0083_personal_data';
 import * as m0084 from './0084_tutorial_progress';
 import * as m0088 from './0088_one_board_per_track';
+import * as m0089 from './0089_seamless_default_workflow';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -156,4 +157,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0083_personal_data': m0083,
   '0084_tutorial_progress': m0084,
   '0088_one_board_per_track': m0088,
+  '0089_seamless_default_workflow': m0089,
 };

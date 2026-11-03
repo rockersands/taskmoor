@@ -518,17 +518,21 @@ export function registerBoardRoutes(
     );
     const tracks = await boardTracks(db, compiled, trackId, timeoutMs);
     const statuses = await statusesOfTracks(db, scope.ws, tracks);
-    const columns: Column[] = [];
-    for (const stage of ['new', 'active', 'closed']) {
-      const ids = statuses.filter((s) => s.stage === stage).map((s) => s.id);
-      columns.push({
-        id: `c${columns.length + 1}`,
-        name: STAGE_NAMES[stage] as string,
-        statusIds: ids,
+    // A column is a status (the user's decision; ADR-116): one each, in the workflow's order.
+    const columns: Column[] = statuses
+      .slice()
+      .sort(
+        (a, b) =>
+          ['new', 'active', 'closed'].indexOf(a.stage) -
+          ['new', 'active', 'closed'].indexOf(b.stage),
+      )
+      .map((status, index) => ({
+        id: `c${index + 1}`,
+        name: status.name,
+        statusIds: [status.id],
         min: null,
         max: null,
-      });
-    }
+      }));
     return columns;
   }
 

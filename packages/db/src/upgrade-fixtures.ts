@@ -1539,6 +1539,12 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          ORDER BY t.id LIMIT 1`.execute(db);
     },
   },
+  '0089_seamless_default_workflow': {
+    tables: {
+      workflow: 'is_default AND workspace_id = 1',
+    },
+    seed: async () => {},
+  },
 };
 
 /**
