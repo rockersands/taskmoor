@@ -886,7 +886,7 @@
     {
       "code": "query_not_translated",
       "count": 1,
-      "detail": "refused: \"Rating\" (cf[18]) cannot be compared with >; its values have no order",
+      "detail": "refused: \"Rating\" (cf[19]) cannot be compared with >; its values have no order",
       "kind": "saved_search"
     },
     {

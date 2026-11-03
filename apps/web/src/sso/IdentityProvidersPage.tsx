@@ -158,6 +158,7 @@ export function IdentityProvidersPage({
                 <div className="sso-editor">
                   <ProviderForm
                     groups={state.groups}
+                    redirectUri={state.redirectUri}
                     onSave={(input) => save(null, input)}
                     onCancel={() => {
                       setEditing(null);
@@ -186,6 +187,7 @@ export function IdentityProvidersPage({
                         key={provider.id}
                         provider={provider}
                         groups={state.groups}
+                        redirectUri={state.redirectUri}
                         editing={editing === provider.id}
                         onEdit={() => {
                           setDone('');
@@ -213,6 +215,7 @@ export function IdentityProvidersPage({
 function ProviderItem({
   provider,
   groups,
+  redirectUri,
   editing,
   onEdit,
   onCancelEdit,
@@ -222,6 +225,7 @@ function ProviderItem({
 }: {
   provider: IdentityProvider;
   groups: GroupSummary[] | null;
+  redirectUri: string;
   editing: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
@@ -385,6 +389,7 @@ function ProviderItem({
           <ProviderForm
             provider={provider}
             groups={groups}
+            redirectUri={redirectUri}
             onSave={onSave}
             onCancel={() => {
               onCancelEdit();

@@ -1,7 +1,7 @@
 ---
 title: "The Builder's kits"
 audience: admins
-sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/routes/frontends.ts, apps/server/src/network/frontends.ts, apps/web/src/admin/FrontendsPage.tsx, docs/adr/0087-registered-frontend-origins.md
+sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/routes/frontends.ts, apps/server/src/network/frontends.ts, apps/web/src/admin/FrontendsPage.tsx, docs/adr/0087-registered-frontend-origins.md, packages/builder-core/src/kit-scripts.ts, deploy/compose/update.sh
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -170,6 +170,14 @@ forwarded client address.
 
 The backend also serves the web app itself. When the frontend address is the backend's
 address, the backend kit is all you need.
+
+### Updating the backend kit
+
+The kit also holds `update.sh`, `upgrade.sh` and `taskmoor-release.pub`, the public half of the
+release key. Run `bash update.sh` in the kit's folder: it finds the newest release, checks its
+signature and upgrades, with a backup and a rollback. See [Updating to the newest
+release](upgrades.md#updating-to-the-newest-release). A frontend on another host is rebuilt in the
+new Builder from your saved project file, and `update.sh` ends by saying so.
 
 ### The Helm target
 

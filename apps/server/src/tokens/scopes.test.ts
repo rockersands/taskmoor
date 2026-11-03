@@ -75,6 +75,13 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/directories/:id/sync']).toBe('admin');
     expect(classes['POST /api/v1/directories/test']).toBe('admin');
     expect(classes['POST /api/v1/tracks']).toBe('write');
+    // Ticket templates (ADR-113): track configuration and ticket creation, read and write.
+    expect(classes['GET /api/v1/ticket-templates']).toBe('read');
+    expect(classes['GET /api/v1/ticket-templates/:id']).toBe('read');
+    expect(classes['POST /api/v1/ticket-templates']).toBe('write');
+    expect(classes['PATCH /api/v1/ticket-templates/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/ticket-templates/:id']).toBe('write');
+    expect(classes['POST /api/v1/ticket-templates/:id/tickets']).toBe('write');
     // Searching (M1-037): POST carries long queries and changes nothing; explain is admin.
     expect(classes['GET /api/v1/search']).toBe('read');
     expect(classes['POST /api/v1/search']).toBe('read');
@@ -135,6 +142,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/admin/frontends']).toBe('admin');
     expect(classes['PATCH /api/v1/admin/frontends/:id']).toBe('admin');
     expect(classes['DELETE /api/v1/admin/frontends/:id']).toBe('admin');
+    // The new-version notice (OPS-026).
+    expect(classes['GET /api/v1/admin/update-check']).toBe('admin');
+    expect(classes['PUT /api/v1/admin/update-check']).toBe('admin');
     // AI provider settings and write-only credentials (M1-075).
     expect(classes['GET /api/v1/admin/ai']).toBe('admin');
     expect(classes['PUT /api/v1/admin/ai/credentials/:slot']).toBe('admin');

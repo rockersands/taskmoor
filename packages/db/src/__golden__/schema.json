@@ -2409,6 +2409,29 @@
       "CREATE INDEX ticket_release_release_idx ON public.ticket_release USING btree (release_id, role)"
     ]
   },
+  "ticket_template": {
+    "columns": [
+      "id integer not null",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "purpose text not null default ''::text",
+      "ticket_type_ids ARRAY not null default '{}'::integer[]",
+      "summary text not null default ''::text",
+      "description jsonb",
+      "defaults jsonb not null default '{}'::jsonb",
+      "subtickets jsonb not null default '[]'::jsonb",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "version integer not null default 1"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_template_name_idx ON public.ticket_template USING btree (workspace_id, track_id, lower(name)) NULLS NOT DISTINCT",
+      "CREATE UNIQUE INDEX ticket_template_pkey ON public.ticket_template USING btree (id)",
+      "CREATE INDEX ticket_template_track_idx ON public.ticket_template USING btree (track_id)"
+    ]
+  },
   "ticket_text_original": {
     "columns": [
       "ticket_id integer not null",
@@ -2630,6 +2653,32 @@
     "indexes": [
       "CREATE UNIQUE INDEX track_category_pkey ON public.track_category USING btree (id)",
       "CREATE UNIQUE INDEX track_category_workspace_name_idx ON public.track_category USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "track_invitation": {
+    "columns": [
+      "id integer not null default nextval('track_invitation_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "role_id integer not null",
+      "email text not null",
+      "token_hash text not null",
+      "invited_by integer",
+      "granted_user_id integer",
+      "delivery text not null",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()",
+      "last_sent_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "accepted_at timestamp with time zone",
+      "revoked_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX track_invitation_email_idx ON public.track_invitation USING btree (workspace_id, email)",
+      "CREATE INDEX track_invitation_expiry_idx ON public.track_invitation USING btree (expires_at)",
+      "CREATE UNIQUE INDEX track_invitation_open_idx ON public.track_invitation USING btree (track_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL))",
+      "CREATE UNIQUE INDEX track_invitation_pkey ON public.track_invitation USING btree (id)",
+      "CREATE UNIQUE INDEX track_invitation_token_hash_key ON public.track_invitation USING btree (token_hash)"
     ]
   },
   "track_key_history": {

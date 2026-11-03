@@ -95,7 +95,7 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_EXPORT)('a large export (M1-042)', (
       method: 'POST',
       url: '/api/v1/fields',
       headers: { cookie: admin },
-      payload: { name: 'Points', type: 'number' },
+      payload: { name: 'Pts', type: 'number' },
     });
     expect(points.statusCode, points.body).toBe(201);
     pointsId = points.json().field.id as number;

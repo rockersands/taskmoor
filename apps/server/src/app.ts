@@ -22,7 +22,9 @@ import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
 import { registerJiraCompat } from './compat/register';
-import type { Role, ServerConfig } from './config';
+import type { Role, ServerConfig, SmtpConfig } from './config';
+import { effectiveSmtp } from './email/smtp';
+import { smtpTransport } from './email/transport';
 import { EmbeddingService, sharedLocalEmbedder } from './embeddings/service';
 import type { VectorSearch } from './embeddings/vector';
 import { FieldCatalogs } from './fields/catalog';
@@ -63,6 +65,7 @@ import { registerHomeRoutes } from './routes/home';
 import { registerImportedLinkRoutes } from './routes/imported-links';
 import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
+import { type InvitationMail, registerInvitationRoutes } from './routes/invitations';
 import { registerAllowlist, registerAllowlistRoutes } from './routes/ip-allowlist';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
@@ -95,6 +98,7 @@ import { registerChecklistRoutes } from './routes/checklists';
 import { registerSubticketRoutes } from './routes/subtickets';
 import { registerSyncRoutes } from './routes/sync';
 import { registerTeamRoutes } from './routes/teams';
+import { registerTicketTemplateRoutes } from './routes/ticket-templates';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
@@ -105,6 +109,7 @@ import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
 import { registerTutorialRoutes } from './routes/tutorial';
 import { registerTwoFactorRoutes } from './routes/two-factor';
+import { registerUpdateCheckRoutes } from './routes/update-check';
 import { registerUserRoutes } from './routes/users';
 import { registerVisibilityRoutes } from './routes/visibility';
 import { registerWebhookRoutes } from './routes/webhooks';
@@ -155,6 +160,8 @@ export interface AppDeps {
   publicUrl?: string;
   /** Serve the Jira-compatible API under /rest (M1-069; on unless false). */
   jiraCompat?: boolean;
+  /** The new-version notice (OPS-026, ADR-117): TASKMOOR_UPDATE_CHECK and its command. */
+  updateCheck?: { environmentOff: boolean; command?: string | undefined };
   /**
    * Frontends on other origins (M1-107, ADR-080): CORS, WebSockets and OAuth sign-in are
    * open to these exact origins besides this instance's own.
@@ -213,6 +220,10 @@ export interface AppDeps {
   smtpConfigured?: boolean;
   /** TASKMOOR_SMTP_PASSWORD, for the setup form's mail server when it names a user. */
   smtpPassword?: string;
+  /** The SMTP server the environment names (TASKMOOR_SMTP_URL), for invitation emails. */
+  smtp?: SmtpConfig;
+  /** How invitation emails leave (IAM-027); tests pass their own, the server the SMTP server. */
+  invitationMail?: InvitationMail;
   /** Quiet time before collaborative edits are saved (M1-017); tests shorten it. */
   collabDebounceMs?: number;
   /** How long a search statement may run, in milliseconds (QRY-010; default 30 s). */
@@ -443,6 +454,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
+    registerInvitationRoutes(app, db, {
+      authorizer,
+      passwords,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      mail:
+        deps.invitationMail ??
+        (async () => {
+          const smtp = await effectiveSmtp(db, deps.smtp, deps.smtpPassword);
+          return smtp ? { transport: smtpTransport(smtp), from: smtp.from } : null;
+        }),
+    });
     registerSecurityAlertRoutes(app, db);
     registerTwoFactorRoutes(app, db, {
       ...cookieOptions,
@@ -452,6 +474,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerSsoRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
+      authorizer,
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       origins,
@@ -459,6 +482,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     await registerSamlRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
+      authorizer,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       origins,
     });
@@ -504,6 +528,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerCloneRoutes(app, db);
+    registerTicketTemplateRoutes(app, db, authorizer, fieldCatalogs);
     registerImportRoutes(app, db, {
       peppers: deps.peppers,
       ...(deps.importDir !== undefined ? { importDir: deps.importDir } : {}),
@@ -599,6 +624,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       servesFrontend: roles.includes('web') && deps.webDir !== undefined,
     });
     registerBackupRoutes(app, db);
+    // What the worker's look at the public releases found, for site administrators (OPS-026).
+    registerUpdateCheckRoutes(app, db, {
+      version: deps.version,
+      environmentOff: deps.updateCheck?.environmentOff ?? false,
+      command: deps.updateCheck?.command,
+    });
     // AI provider settings and sealed credentials (M1-075; IAM-020; ADR-098), with spend
     // limits, the usage dashboard, the AI audit log and data controls (M1-077; ADR-100).
     const aiKeys = deps.aiKeys ?? aiKeyRing({ peppers: deps.peppers });

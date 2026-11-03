@@ -1,6 +1,6 @@
 import type { PmJson } from '@taskmoor/richtext';
 import type { Editor } from '@tiptap/core';
-import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { TicketPicker } from '../tickets/tools/TicketPicker';
 import { useEditorTools } from './EditorTools';
@@ -18,6 +18,17 @@ const LANGUAGE = /^[A-Za-z0-9_+#.-]{1,40}$/;
 
 /** Today, as a date field holds it. */
 const today = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * Enter in a prompt's field applies it. These are not forms: the editor they open from often sits
+ * inside a comment's or a new ticket's form, which Enter must not send.
+ */
+const onEnter = (apply: () => void) => (event: KeyboardEvent<HTMLDivElement>) => {
+  if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') {
+    event.preventDefault();
+    apply();
+  }
+};
 
 /**
  * What a block asks for before it goes in at the caret (NTF-013): a code block's language, a status
@@ -86,8 +97,7 @@ function CodePrompt({
   const id = useId();
   const [language, setLanguage] = useState('');
   const [bad, setBad] = useState(false);
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const submit = () => {
     const value = language.trim();
     if (value !== '' && !LANGUAGE.test(value)) {
       setBad(true);
@@ -96,7 +106,7 @@ function CodePrompt({
     onApply(value === '' ? null : value);
   };
   return (
-    <form className="rt-prompt-form" onSubmit={submit}>
+    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
       <label htmlFor={id} className="form-label">
         {t('richtext.prompt.language')}
       </label>
@@ -113,7 +123,7 @@ function CodePrompt({
           setBad(false);
         }}
       />
-      <button type="submit" className="button-secondary">
+      <button type="button" className="button-secondary" onClick={submit}>
         {t('richtext.prompt.insert')}
       </button>
       <Cancel onCancel={onCancel} />
@@ -122,7 +132,7 @@ function CodePrompt({
           {t('richtext.prompt.languageInvalid')}
         </p>
       )}
-    </form>
+    </div>
   );
 }
 
@@ -130,15 +140,14 @@ function DatePrompt({ onInsert, onCancel }: PartProps) {
   const t = useT();
   const id = useId();
   const [day, setDay] = useState(today);
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const submit = () => {
     const ms = Date.parse(`${day}T00:00:00Z`);
     if (Number.isFinite(ms)) {
       onInsert({ type: 'date', attrs: { timestamp: String(ms) } });
     }
   };
   return (
-    <form className="rt-prompt-form" onSubmit={submit}>
+    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
       <label htmlFor={id} className="form-label">
         {t('richtext.slash.date')}
       </label>
@@ -150,11 +159,11 @@ function DatePrompt({ onInsert, onCancel }: PartProps) {
         value={day}
         onChange={(event) => setDay(event.target.value)}
       />
-      <button type="submit" className="button-secondary" disabled={day === ''}>
+      <button type="button" className="button-secondary" disabled={day === ''} onClick={submit}>
         {t('richtext.prompt.insert')}
       </button>
       <Cancel onCancel={onCancel} />
-    </form>
+    </div>
   );
 }
 
@@ -164,14 +173,13 @@ function StatusPrompt({ onInsert, onCancel }: PartProps) {
   const colorId = useId();
   const [text, setText] = useState('');
   const [color, setColor] = useState('neutral');
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const submit = () => {
     if (text.trim() !== '') {
       onInsert({ type: 'status', attrs: { text: text.trim().slice(0, 60), color } });
     }
   };
   return (
-    <form className="rt-prompt-form" onSubmit={submit}>
+    <div className="rt-prompt-form" role="group" onKeyDown={onEnter(submit)}>
       <label htmlFor={textId} className="form-label">
         {t('richtext.slash.status')}
       </label>
@@ -194,11 +202,16 @@ function StatusPrompt({ onInsert, onCancel }: PartProps) {
           </option>
         ))}
       </select>
-      <button type="submit" className="button-secondary" disabled={text.trim() === ''}>
+      <button
+        type="button"
+        className="button-secondary"
+        disabled={text.trim() === ''}
+        onClick={submit}
+      >
         {t('richtext.prompt.insert')}
       </button>
       <Cancel onCancel={onCancel} />
-    </form>
+    </div>
   );
 }
 

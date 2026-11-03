@@ -116,7 +116,7 @@ check and effects.
 | **effect** (what happens after it) | post function |
 | transition layout | transition screen |
 | default statuses **New**, **Active**, **Closed** | To Do, In Progress, Done |
-| default priorities **Urgent**, **High**, **Normal**, **Low** | Highest, High, Medium, Low, Lowest |
+| default priorities **Urgent**, **High**, **Normal**, **Low**, **Very low** | Highest, High, Medium, Low, Lowest |
 | default close reasons **Completed**, **Not planned**, **Duplicate**, **Not reproducible** | Done, Won't Do, Duplicate, Cannot Reproduce |
 
 ## Search, reports and dashboards

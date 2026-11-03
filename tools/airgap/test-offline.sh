@@ -70,6 +70,8 @@ if COMPOSE_PROJECT_NAME=$PROJECT docker compose exec -T taskmoor node -e \
   exit 1
 fi
 echo "the running instance has no route to the internet"
+grep -qx 'TASKMOOR_UPDATE_CHECK=off' .env || { echo "the new-version check is not off in .env"; exit 1; }
+echo "the new-version check is off (OPS-026)"
 
 echo "== embeddings offline (M1-078)"
 # The bundled model embeds new tickets and finds a similar one, with no AI key and no route out.

@@ -1,16 +1,18 @@
 import { useSession } from '../session/SessionProvider';
 
 /**
- * What a person sees of Administration (ADR-114): everything, only the setup pages, or nothing.
- * It decides what the web app offers; the server decides what it answers.
+ * What a person sees of Administration (ADR-114): everything, the setup pages and the tracks they
+ * run, only the tracks they run, or nothing. It decides what the web app offers; the server decides
+ * what it answers.
  */
-export type AdminAccess = 'site' | 'setup' | 'none';
+export type AdminAccess = 'site' | 'setup' | 'tracks' | 'none';
 
 export function adminAccessOf(
-  user: { isSiteAdmin: boolean; isConfigAdmin?: boolean } | null,
+  user: { isSiteAdmin: boolean; isConfigAdmin?: boolean; managesTracks?: boolean } | null,
 ): AdminAccess {
   if (user?.isSiteAdmin) return 'site';
-  return user?.isConfigAdmin ? 'setup' : 'none';
+  if (user?.isConfigAdmin) return 'setup';
+  return user?.managesTracks ? 'tracks' : 'none';
 }
 
 /** Null while the session is not known: pages that wait for it should not refuse yet. */

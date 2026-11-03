@@ -178,6 +178,7 @@ describe('tracks and track categories (M1-006)', () => {
     ]);
     expect((await myPermissions('alice', track(res).id)).track).toEqual([
       'administer_track',
+      'appoint_track_admins',
       'browse_track',
     ]);
     expect((await myPermissions('config', track(res).id)).track).toContain('edit_tickets');
@@ -555,6 +556,7 @@ describe('tracks and track categories (M1-006)', () => {
     expect((await list('bob')).keys).toContain('OLD');
     expect((await myPermissions('bob', old.id)).track).toEqual([
       'administer_track',
+      'appoint_track_admins',
       'browse_track',
     ]);
     expect((await patch('bob', old.id, { name: 'Renamed' })).statusCode).toBe(200);

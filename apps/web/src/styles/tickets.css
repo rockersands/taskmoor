@@ -73,14 +73,14 @@
 .create-dialog {
   position: fixed;
   top: 6vh;
-  left: 50%;
+  inset-inline: 0;
   z-index: 80;
   box-sizing: border-box;
   width: min(94vw, 720px);
   max-height: 88vh;
+  margin-inline: auto;
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
-  transform: translateX(-50%);
   border-radius: var(--radius-3);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-3);
@@ -219,4 +219,9 @@
     align-items: center;
     min-height: var(--hit-target-touch);
   }
+}
+
+/* A dialog's line under its title, with room before its form. */
+.create-dialog > .page-note {
+  margin-block: var(--space-1) var(--space-4);
 }

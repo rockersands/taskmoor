@@ -1,8 +1,8 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-02
+sources: apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Working with tickets
@@ -67,6 +67,27 @@ To start from an existing ticket, enter its key under **Start from a ticket (its
 press **Copy its fields**. The form takes that ticket's track, type, summary, description,
 environment, priority, labels and dates. People, releases and custom fields are not copied.
 
+### Starting from a template
+
+When a track has ticket templates that fit the chosen ticket type, the form offers **Start from a
+template**. Choosing one fills in the form: nothing is created until you press **Create**, so
+change anything that differs. Clearing a value leaves it off the ticket. Choosing **No template**
+clears what it filled in, and changing the ticket type lets go of the template and keeps what is
+in the form.
+
+A template's summary can hold today's date, the track's key and your name, and its dates count from
+today. What the form cannot edit, such as the assignee, shows under **Also from this template**
+with a checkbox, as do its subtickets (**Create its 2 subtickets**).
+
+A template never gets round what you may do. Fields that are hidden for this type or that you may
+not set do not show, and they stay off the ticket. After **Create** the form names them: **Left
+out, because they cannot be set here: Labels.** A value you enter yourself is treated as yours, and
+is refused with a message if you may not set it. Subtickets are made one by one; if one fails the
+form lists it, and the ticket stays.
+
+Administrators keep templates: see [ticket templates](../admin/tracks.md#ticket-templates). A
+track's summary page links to its templates, under **Ticket templates**, for anyone to read.
+
 When the server refuses a value, the message shows next to the field, for example **This field
 is required.** If there is no track you may create tickets in, the form says so.
 
@@ -79,6 +100,24 @@ Each ticket has its own page, at an address ending in `tickets/PAY-42`. Its titl
 and the summary; above it are the track and the ticket type. On a wide screen the details sit
 in a column on the right; on a phone everything is in one column.
 
+Clicking a ticket on a board, in a list, a backlog, the calendar, search results, the inbox or
+anywhere else opens it in a pop-up over the page, with everything the ticket's page has. The page
+beneath stays as it is, with its scroll and filters, and shows your edits at once.
+
+- **To close it**: Escape, **Close** or a click outside. Focus goes back to the card or row you
+  opened it from. Escape closes a menu, a dialog or a field first, when one is open.
+- **The address** changes to the ticket's while it is open, so you can copy it from the address
+  bar. Back closes the pop-up, or returns to the ticket before if you followed a link inside it.
+  Reloading brings the pop-up back over its page.
+- **A shared link** opens the ticket's full page. **Open full page** in the pop-up does the same, and
+  so do Ctrl click, Cmd click and a middle click, in a new tab.
+- **Text you have not saved**, such as a comment you are writing, is safe: closing the pop-up, a
+  link inside it and Back all ask before it goes.
+- On a phone the pop-up fills the screen.
+
+The timeline's bars still open their days panel, and links inside a comment or description open in a
+new tab.
+
 A ticket also opens by a key it had before: after a move to another track, or when it came from
 another tracker under a key that changed there. The address then shows its current key. Links
 kept from that tracker, such as `.../browse/PAY-42` or an old filter or board link, open the
@@ -87,7 +126,9 @@ ticket, saved search or board the import made of them (see
 
 The header holds the ticket's status, which also moves it (see
 [Moving a ticket through its workflow](#moving-a-ticket-through-its-workflow)), **Follow** and
-**Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)) and
+**Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)), **Copy link**
+(the ticket's full address; if the browser refuses the clipboard, the page shows the link to copy by
+hand) and
 **Keyboard shortcuts**. **Edit summary** changes the summary: press Save, or Escape to cancel.
 
 ### Details
@@ -99,7 +140,7 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Status** | Read the status, and the close reason once the ticket is closed |
 | **Assignee** | **Assign to me** or **Unassign** |
 | **Requester** | Read |
-| **Priority** | Choose from the list, or **None** |
+| **Priority** | Choose from the list, each with its icon and name. A ticket always has one: a new ticket starts with its track's default, and there is no empty choice. Only an imported ticket can have none, until someone chooses. If you may not edit the ticket you see the value only |
 | **Labels** | **Edit**, then type labels separated by spaces or commas and press **Save**; a label has no spaces |
 | **Start date**, **Due date** | Pick a date, or clear it |
 | **Original estimate**, **Time spent**, **Remaining estimate** | Read, in hours |
@@ -109,8 +150,12 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Created**, **Updated** | Read |
 
 Each change saves at once and the page says **Saved.** If someone changed the ticket since you
-opened it, the page says so: read it again and retry. The ticket view does not yet show custom
-fields; they can be shown as columns in [search results](search.md#search-results).
+opened it, the page says so: read it again and retry.
+
+Number fields on the ticket's edit form, such as **Points**, show in the details too: type a value
+and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
+saved. Someone who may not change it reads the value. The ticket view does not yet show other
+custom fields; they can be shown as columns in [search results](search.md#search-results).
 
 ### Info
 
@@ -274,7 +319,8 @@ Tickets also move by dragging their cards on a [board](boards.md).
 
 ## Cloning a ticket
 
-**Clone** in a ticket's header makes a copy of it. The dialog asks for:
+**Clone** in a ticket's header, on its page or in its pop-up, makes a copy of it. The copy opens where
+you are: in the pop-up over the same page, with Back returning to the original. The dialog asks for:
 
 - **Summary of the copy**: the original's, until you change it.
 - **Track**: where the copy goes, the ticket's own track by default. You need permission to
@@ -327,7 +373,7 @@ does not yet have a screen to start a bulk change.
 
 ## Keyboard shortcuts
 
-On a ticket's page, outside text fields:
+On a ticket's page or in its pop-up, outside text fields:
 
 | Key | Action |
 |---|---|

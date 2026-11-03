@@ -3,6 +3,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
 import { DEFAULT_TRASH_RETENTION_DAYS, parseTicketKey, purgeAfter, ticketKey } from './model';
+import { priorityLevel } from './priority-level';
 import { sequenceKey } from './rank';
 
 /**
@@ -180,6 +181,13 @@ export function ticketQuery(db: Db, workspaceId: number) {
       one<string | null>('SELECT color FROM priority WHERE id = k.priority_id').as(
         'priority_color',
       ),
+      one<number | null>('SELECT sort_order FROM priority WHERE id = k.priority_id').as(
+        'priority_order',
+      ),
+      // Not correlated with the row: the planner runs it once per statement.
+      sql<number>`(SELECT count(*)::int FROM priority WHERE workspace_id = ${workspaceId})`.as(
+        'priority_total',
+      ),
       'k.close_reason_id',
       one<string | null>('SELECT name FROM close_reason WHERE id = k.close_reason_id').as(
         'close_reason_name',
@@ -298,6 +306,7 @@ export function ticketView(
             name: row.priority_name ?? '',
             icon: row.priority_icon,
             color: row.priority_color,
+            level: priorityLevel(row.priority_order ?? 1, row.priority_total),
           },
     closeReason:
       row.close_reason_id === null

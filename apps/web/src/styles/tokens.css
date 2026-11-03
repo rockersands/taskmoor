@@ -36,12 +36,28 @@
   --hit-target: 38px;
   --hit-target-touch: 44px;
 
+  /*
+   * Motion, "watery" in the user's words (ADR-114, section 11). Every animation and transition reads
+   * these, and the shared classes are in motion.css. Reduced motion and print set the durations to
+   * 0ms at the end of this file; nothing else turns motion off.
+   */
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 280ms;
-  --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
-  /* A settling curve for things that lift, land or slide in (ADR-114). */
-  --ease-settle: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Fluid, with no overshoot: colours, fades and what leaves. */
+  --ease-soft: cubic-bezier(0.22, 0.8, 0.24, 1);
+  /* Things that lift or land: a little past the mark, then back. Refined with linear() below. */
+  --ease-settle: cubic-bezier(0.3, 1.25, 0.5, 1);
+  /* Surfaces that swell: past the mark, a small rebound, then still. Refined below. */
+  --ease-swell: cubic-bezier(0.3, 1.45, 0.5, 1);
+  /* How far a card lifts under the pointer. */
+  --lift-small: -1px;
+  --lift: -2px;
+  /* Which way "in from the start of the line" is: 1, or -1 right to left. */
+  --motion-side: 1;
+  /* The rich text editor's gap caret blinks like a caret: it is not part of the watery look. */
+  --motion-caret: 1100ms;
+  --ease-blink: steps(2, start);
 
   /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. Low,
      so a slab reads as clear glass rather than frost. */
@@ -53,6 +69,8 @@
   --glass-fill: var(--glass-sheen), var(--glass-surface);
   --glass-fill-chrome: var(--glass-sheen), var(--glass-surface-chrome);
   --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
+  /* The tick of a selected chip or check box: an original drawing, used as a mask. */
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Soft daylight: cream, peach, blush and powder blue on a pale dawn canvas. */
@@ -69,7 +87,7 @@
   --color-surface-sunken: #f3efea;
   --color-border: #e6e0e8;
   /* Edges of fields and other controls: 3:1 against the surfaces. */
-  --color-field-border: #8e8599;
+  --color-field-border: #7c7387;
   --color-text: #2a2532;
   --color-text-muted: #5f5869;
 
@@ -126,6 +144,8 @@
   --glass-surface-chrome: rgb(255 255 255 / 46%);
   --glass-surface-strong: rgb(255 255 255 / 66%);
   --glass-surface-sunken: rgb(255 255 255 / 18%);
+  /* Fields: clear glass that reads as a place to type, on the canvas and on any surface. */
+  --field-surface: rgb(255 255 255 / 58%);
   /* The clear part of a control, over the colour under it. */
   --glass-lens-fill: rgb(255 255 255 / 26%);
   --glass-edge: rgb(255 255 255 / 55%);
@@ -180,7 +200,7 @@
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
   --color-border: #3d3747;
-  --color-field-border: #8a8096;
+  --color-field-border: #9c92a8;
   --color-text: #f2edf5;
   --color-text-muted: #c6bed0;
 
@@ -233,6 +253,7 @@
   --glass-surface-chrome: rgb(38 34 48 / 54%);
   --glass-surface-strong: rgb(38 34 48 / 70%);
   --glass-surface-sunken: rgb(16 14 22 / 22%);
+  --field-surface: rgb(16 14 22 / 42%);
   --glass-lens-fill: rgb(255 255 255 / 7%);
   --glass-edge: rgb(255 255 255 / 12%);
   --glass-highlight-flat:
@@ -280,6 +301,7 @@
     --glass-surface-strong: var(--color-surface-raised);
     --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
+    --field-surface: var(--color-surface-raised);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-sheen: linear-gradient(transparent, transparent);
     --glass-rim: linear-gradient(var(--color-border), var(--color-border));
@@ -294,10 +316,78 @@
     --glass-surface-strong: var(--color-surface-raised);
     --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
+    --field-surface: var(--color-surface-raised);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-blur: 0px;
     --glass-blur-strong: 0px;
     --glass-sheen: linear-gradient(transparent, transparent);
     --glass-rim: linear-gradient(var(--color-border), var(--color-border));
+  }
+}
+
+/* A damped spring, sampled: linear() draws the overshoot and settle where a browser has it. */
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --ease-settle: linear(
+      0,
+      0.31,
+      0.597,
+      0.823,
+      0.976,
+      1.065,
+      1.102,
+      1.106,
+      1.09,
+      1.066,
+      1.041,
+      1.021,
+      1.006,
+      0.997,
+      0.993,
+      0.991,
+      1
+    );
+    --ease-swell: linear(
+      0,
+      0.302,
+      0.621,
+      0.886,
+      1.066,
+      1.16,
+      1.184,
+      1.162,
+      1.116,
+      1.066,
+      1.023,
+      0.993,
+      0.976,
+      0.971,
+      0.974,
+      0.981,
+      0.989,
+      0.996,
+      1.001,
+      1.003,
+      1
+    );
+  }
+}
+
+:root[dir="rtl"] {
+  --motion-side: -1;
+}
+
+/*
+ * The one switch for motion (ADR-114, NFR-005): at 0ms every animation and transition ends where it
+ * would have rested, so the app works the same with nothing moving. Printing takes the same path.
+ */
+@media (prefers-reduced-motion: reduce), print {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-caret: 0ms;
+    --lift-small: 0px;
+    --lift: 0px;
   }
 }

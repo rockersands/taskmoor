@@ -33,6 +33,7 @@
       "pages": [
         "admin/administration.md",
         "admin/people-and-groups.md",
+        "admin/invitations.md",
         "admin/permissions.md",
         "admin/sso.md",
         "admin/ldap.md",

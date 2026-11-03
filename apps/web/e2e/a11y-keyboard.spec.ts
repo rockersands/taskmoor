@@ -129,6 +129,9 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   await page.keyboard.press('t');
   const transition = page.locator(':focus');
   await expect(transition).toHaveText(/./);
+  // The one status control: Enter opens its menu on the first status, Enter again moves there.
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem').first()).toBeFocused();
   await page.keyboard.press('Enter');
   await expect
     .poll(
@@ -151,7 +154,7 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
 
   // A calendar entry a week later.
   await page.goto(`${BASE}/#/tracks/${key}/calendar`);
-  await tabTo(page, page.getByRole('button', { name: new RegExp(`^${key}-1 .*, due this day$`) }));
+  await tabTo(page, page.getByRole('link', { name: new RegExp(`^${key}-1 .*, due this day$`) }));
   await page.keyboard.press('Alt+ArrowDown');
   await expect(page.getByRole('status')).toContainText(`${key}-1 is now due on`);
   await api.dispose();

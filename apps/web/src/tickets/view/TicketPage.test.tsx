@@ -1,14 +1,14 @@
 import { writeDocToYDoc } from '@taskmoor/richtext';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
 import { ApiError } from '../../api/client';
 import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import { I18nProvider } from '../../i18n/I18nProvider';
-import type { Locale } from '../../i18n/locale';
+import { type Locale, messagesFor } from '../../i18n/locale';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { rememberBoard } from '../../routing/cameFrom';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
@@ -59,13 +59,31 @@ const details = () => screen.getByRole('region', { name: 'Details' });
 const heading = () => screen.findByRole('heading', { level: 1 });
 
 describe('the ticket view (M1-051)', () => {
+  it('[CORE-014] offers no empty priority; an imported ticket with none asks for one', async () => {
+    renderPage();
+    await heading();
+    const user = userEvent.setup();
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    expect(
+      within(screen.getByRole('listbox'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Highest', 'High', 'Medium']);
+    cleanup();
+    renderPage({ ticket: { ...SHOP_41, priority: null } });
+    await heading();
+    expect(within(details()).getByRole('combobox', { name: 'Priority' })).toHaveTextContent(
+      'Choose a priority',
+    );
+  });
+
   it('[CORE-022] shows the ticket: summary, details, links, attachments and comments', async () => {
     renderPage();
     expect(await heading()).toHaveTextContent('SHOP-41 Checkout fails for expired cards');
     expect(screen.getByText('Shop · Bug')).toBeVisible();
     const facts = details();
     expect(within(facts).getByText('Grace Hopper')).toBeVisible();
-    expect(within(facts).getByRole('combobox', { name: 'Priority' })).toHaveValue('2');
+    expect(within(facts).getByRole('combobox', { name: 'Priority' })).toHaveTextContent('High');
     expect(within(facts).getByText('payments, checkout')).toBeVisible();
     expect(within(facts).getByLabelText('Due date')).toHaveValue('2026-11-02');
     expect(within(facts).getByRole('link', { name: 'SHOP-40 Card payments' })).toHaveAttribute(
@@ -110,7 +128,8 @@ describe('the ticket view (M1-051)', () => {
     await user.clear(summary);
     await user.type(summary, 'Expired cards fail silently{Enter}');
     expect(await heading()).toHaveTextContent('SHOP-41 Expired cards fail silently');
-    await user.selectOptions(within(details()).getByRole('combobox', { name: 'Priority' }), '1');
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
     await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
     const labels = within(details()).getByRole('textbox', { name: 'Labels' });
     await user.clear(labels);
@@ -241,6 +260,70 @@ describe('the ticket view (M1-051)', () => {
     expect(screen.getByRole('textbox', { name: 'Summary' })).toHaveFocus();
   });
 
+  it('[AGL-018] copies the ticket’s full address, and says so in words', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Copy link' }));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/#/tickets/SHOP-41`);
+    expect(await screen.findByText('The link to SHOP-41 is copied.')).toBeVisible();
+  });
+
+  it('[AGL-018] shows the link to copy by hand when the clipboard is refused', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {
+      throw new Error('denied');
+    });
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Copy link' }));
+    expect(
+      await screen.findByText(
+        `The browser did not allow copying. The link is ${window.location.origin}/#/tickets/SHOP-41`,
+      ),
+    ).toBeVisible();
+  });
+
+  it("[AGL-007] sets Points in place, in the person's language; someone who may not edit reads it", async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage({}, 'es');
+    const points = await screen.findByRole('spinbutton', { name: 'Puntos' });
+    await user.type(points, '5');
+    await user.keyboard('{Enter}');
+    const edits = () => client.calls.filter((c) => c.action === 'edit').map((c) => c.args[1]);
+    await vi.waitFor(() => expect(edits()).toEqual([{ fields: { 31: 5 } }]));
+    await vi.waitFor(() => expect(points).toHaveValue(5));
+    await user.clear(points);
+    await user.tab();
+    await vi.waitFor(() => expect(edits().at(-1)).toEqual({ fields: { 31: null } }));
+    cleanup();
+    renderPage({ ticket: { ...SHOP_41, mayEdit: false, fields: { 31: 8 } } });
+    expect(await screen.findByText('Points')).toBeInTheDocument();
+    expect(screen.getByText('8')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Points' })).toBeNull();
+  });
+
+  it('[CORE-014] sets the priority with icon and name; someone who may not edit sees the value', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    const picker = await within(await screen.findByRole('region', { name: 'Details' })).findByRole(
+      'combobox',
+      { name: 'Priority' },
+    );
+    await user.click(picker);
+    const option = await screen.findByRole('option', { name: /Highest/ });
+    expect(option.querySelector('svg')).not.toBeNull();
+    await user.click(option);
+    expect(client.calls.some((c) => c.action === 'edit')).toBe(true);
+    cleanup();
+
+    renderPage({ ticket: { ...SHOP_41, mayEdit: false } });
+    const facts = await screen.findByRole('region', { name: 'Details' });
+    expect(within(facts).queryByRole('combobox', { name: 'Priority' })).toBeNull();
+    expect(within(facts).getByText('High')).toBeVisible();
+  });
+
   it('[CORE-023] opens the clone dialog from the Clone action, and Escape closes it', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -279,7 +362,7 @@ describe('the ticket view (M1-051)', () => {
     const data = new Set<string>([
       ticket.summary,
       `${ticket.key} ${ticket.summary}`,
-      `${ticket.track.name} · ${ticket.ticketType.name}`,
+      `${ticket.track.name} · ${messagesFor('en-XA')['ticketType.name.bug']}`,
       ticket.status.name,
       ...['Grace Hopper', 'Ada Lovelace', 'High', 'Highest', 'Medium', '2.4', 'Payments'],
       'payments, checkout',

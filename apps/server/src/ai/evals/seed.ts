@@ -204,18 +204,13 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
       }[]
     ).map((r) => [r.name, r.id]),
   );
+  // Every workspace starts with it (migration 0095).
   const points = (
-    (
-      await ok(
-        admin({
-          method: 'POST',
-          url: '/api/v1/fields',
-          payload: { name: 'Points', type: 'number' },
-        }),
-        'Points',
-      )
-    ).field as { id: number }
-  ).id;
+    (await ok(admin({ method: 'GET', url: '/api/v1/fields' }), 'fields')).fields as {
+      id: number;
+      name: string;
+    }[]
+  ).find((f) => f.name === 'Points')?.id as number;
 
   // The dataset's tickets close for chosen reasons, so its tracks use a workflow that asks why,
   // as an administrator can set up. The default workflow always closes as Completed.
@@ -360,6 +355,11 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     );
     const t = body.ticket as { id: number; key: string };
     tickets[spec.name] = { id: t.id, key: t.key, spec, comments: {} };
+    // A new ticket always takes a priority; one with none is what an import can leave (CORE-014),
+    // and `priority IS EMPTY` still has to find it.
+    if (!spec.priority) {
+      await db.updateTable('ticket').set({ priority_id: null }).where('id', '=', t.id).execute();
+    }
     const actor = spec.assignee ?? spec.creator;
     for (const transitionId of PATH[spec.status]) {
       await ok(

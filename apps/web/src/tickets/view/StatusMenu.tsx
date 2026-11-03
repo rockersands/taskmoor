@@ -1,5 +1,6 @@
 import { type Ref, useImperativeHandle } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { leaveMotion } from '../../shell/motion';
 import { useMenuButton } from '../../shell/useMenuButton';
 import type { Transition } from './client';
 
@@ -52,7 +53,7 @@ export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuPro
         <span className="status-menu-caret" aria-hidden="true" />
       </button>
       {open && (
-        <div className="user-menu-popup status-menu-popup">
+        <div ref={leaveMotion} className="user-menu-popup status-menu-popup">
           <div
             ref={menu}
             id={menuId}

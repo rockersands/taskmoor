@@ -7,6 +7,8 @@ const ticket = (key: string, summary: string, id: number) => ({
   id,
   key,
   summary,
+  ticketType: { name: 'Bug', icon: 'bug' },
+  priority: { name: 'Urgent', level: 1 },
   track: { id: 1, key: key.split('-')[0] as string },
 });
 

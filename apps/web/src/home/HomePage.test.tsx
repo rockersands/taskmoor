@@ -6,6 +6,7 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
+import { rememberTrack } from '../tracks/recentTracks';
 import { fakeHomeClient, fakeHomeTracks } from './fixtures';
 import { HomePage } from './HomePage';
 
@@ -20,6 +21,76 @@ function renderPage(client = fakeHomeClient(), locale: Locale = 'en') {
     </I18nProvider>,
   );
 }
+
+describe('your tracks on the home page', () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    key: `T${i}`,
+    name: `Track ${i}`,
+    type: 'software',
+  }));
+  const renderWith = (tracks: typeof many, mayCreate = false) =>
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider
+          session={
+            mayCreate
+              ? {
+                  status: 'signed-in',
+                  user: {
+                    id: 7,
+                    name: 'Mina',
+                    email: 'mina@example.com',
+                    isSiteAdmin: false,
+                    mayCreateLocalTracks: true,
+                    timeZone: null,
+                    locale: null,
+                  },
+                }
+              : MEMBER
+          }
+        >
+          <main>
+            <HomePage client={fakeHomeClient()} tracks={async () => tracks} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+
+  it('[AGL-019] comes first, keeps to six with the latest opened first, and leads to all', async () => {
+    rememberTrack('T7');
+    renderWith(many);
+    const section = screen.getByRole('region', { name: 'Your tracks' });
+    const page = screen.getByRole('main');
+    expect(
+      section.compareDocumentPosition(
+        within(page).getByRole('region', { name: 'Assigned to you' }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const all = await within(section).findByRole('link', { name: 'All tracks (8)' });
+    expect(all).toHaveAttribute('href', '#/tracks');
+    const cards = within(section).getAllByRole('listitem');
+    expect(cards).toHaveLength(6);
+    expect(within(cards[0] as HTMLElement).getByRole('link')).toHaveAttribute(
+      'href',
+      '#/tracks/T7',
+    );
+  });
+
+  it('[CORE-001] explains itself with no tracks, and offers New track only to those who may', async () => {
+    const { unmount } = renderWith([], true);
+    const section = screen.getByRole('region', { name: 'Your tracks' });
+    expect(await within(section).findByRole('link', { name: 'New track' })).toHaveAttribute(
+      'href',
+      '#/tracks?new',
+    );
+    unmount();
+    renderWith([]);
+    const plain = screen.getByRole('region', { name: 'Your tracks' });
+    expect(await within(plain).findByText('No tracks yet')).toBeVisible();
+    expect(within(plain).queryByRole('link', { name: 'New track' })).toBeNull();
+  });
+});
 
 describe('the home page (M1-052)', () => {
   it('[AGL-019] lists assigned, recently opened and followed tickets, each linking its ticket', async () => {

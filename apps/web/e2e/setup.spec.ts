@@ -401,7 +401,8 @@ test('[OPS-010] the administrator opens the system status from Settings', async 
   await page.getByRole('link', { name: 'System status' }).click();
   await expect(heading(page)).toHaveText('System status');
   const database = page.getByRole('region', { name: 'Database' });
-  await expect(database.getByText('Connected')).toBeVisible();
+  // It asks the database for its size, version and migrations: slow on a busy machine.
+  await expect(database.getByText('Connected')).toBeVisible({ timeout: 20_000 });
   await expect(database.getByText(/^\d+ applied$/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Runtime' }).getByText(/^v\d+\./)).toBeVisible();
 
@@ -876,7 +877,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await signOutThroughMenu(page, ADMIN.name);
     await page.getByRole('button', { name: 'Sign in with Staff accounts' }).click();
     await expect(page.getByRole('alert')).toHaveText(
-      'There is no account for you here yet. Ask your administrator to create one.',
+      'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
     await expect.poll(() => new URL(page.url()).hash).toBe('#/sign-in');
 
@@ -902,7 +903,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await signOutThroughMenu(page, ADMIN.name);
     await page.getByLabel('Email').fill(SAM.email);
     await page.getByLabel('Email').blur();
-    await expect(page.getByText('Your organisation signs in with Staff accounts.')).toBeVisible();
+    await expect(page.getByText('This address signs in with Staff accounts.')).toBeVisible();
     await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0);
     const refused = await page.request.post('/api/v1/session', {
       data: { email: SAM.email, password: 'any password at all' },
@@ -1130,8 +1131,9 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
 
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'FORM Forms' });
-  await page.getByLabel('Ticket type').selectOption({ label: 'Bug' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'FORM Forms' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Bug', exact: true }).click();
   await expect(page.getByLabel('Due date (required)')).toBeVisible();
   await expect(page.getByLabel('Severity (required)')).toBeVisible();
   // Hidden by the rules: not on the form at all.
@@ -1159,7 +1161,8 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   expect(created.ticket.fields[String(fieldId)]?.value).toBe('Blocker');
 
   // A Chore needs neither: optional there, so a summary is enough.
-  await page.getByLabel('Ticket type').selectOption({ label: 'Chore' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Chore', exact: true }).click();
   await expect(page.getByLabel('Due date', { exact: true })).toBeVisible();
   await page.getByLabel('Summary (required)').fill('Tidy the cart code');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -1619,7 +1622,7 @@ test('[WF-007] [CORE-013] a locked field and a locked status show read-only, wit
   // The create form: the due date is read-only and says who sets it.
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'LOCK Locks' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'LOCK Locks' });
   const due = page.getByLabel('Due date');
   await expect(due).toBeDisabled();
   await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');

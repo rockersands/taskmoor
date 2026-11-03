@@ -15,6 +15,11 @@ import {
   TracksIcon,
 } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useTicketChangeCount } from '../tickets/view/ticketChanges';
+import { recentTracks } from '../tracks/recentTracks';
+import { NEW_TRACK_ROUTE } from '../tracks/TracksPage';
+import { newTrackModes } from '../tracks/trackAccess';
 import { type HomeClient, type HomeTicket, type HomeTrack, homeClient, homeTracks } from './client';
 
 export interface HomePageProps {
@@ -98,7 +103,9 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
     followed: { status: 'loading' },
   });
   const [trackList, setTrackList] = useState<Loaded<HomeTrack>>({ status: 'loading' });
+  const changes = useTicketChangeCount();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again after an edit in the pop-up
   useEffect(() => {
     let live = true;
     for (const { id } of SECTIONS) {
@@ -114,7 +121,7 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
     return () => {
       live = false;
     };
-  }, [client, tracks]);
+  }, [client, tracks, changes]);
 
   return (
     <section aria-labelledby={titleId} className="home-page">
@@ -125,6 +132,8 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
         purpose={t('purpose.home')}
         about={t('about.home')}
       />
+
+      <HomeTracks list={trackList} />
 
       <section aria-labelledby={startId} className="home-start">
         <h2 id={startId} className="section-title">
@@ -158,8 +167,6 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
           />
         ))}
       </div>
-
-      <HomeTracks list={trackList} />
     </section>
   );
 }
@@ -225,6 +232,14 @@ function HomeList({
                 <span className="home-ticket-key">{ticket.key}</span>{' '}
                 <span className="home-ticket-summary">{ticket.summary}</span>
               </a>
+              <span className="ticket-icons">
+                {ticket.ticketType && (
+                  <TypeIcon name={ticket.ticketType.name} icon={ticket.ticketType.icon} />
+                )}
+                {ticket.priority && (
+                  <PriorityIcon name={ticket.priority.name} level={ticket.priority.level} />
+                )}
+              </span>
               <span className="home-ticket-status" data-stage={ticket.status.stage}>
                 {ticket.status.name}
               </span>
@@ -236,10 +251,25 @@ function HomeList({
   );
 }
 
+/** How many tracks the Home page shows before leading to the directory. */
+const TRACKS_SHOWN = 6;
+
 function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
   const t = useT();
   const headingId = useId();
   const title = t('home.tracks');
+  const { session } = useSession();
+  const mayCreate = newTrackModes(session.status === 'signed-in' ? session.user : null).length > 0;
+  const items = list.status === 'loaded' ? list.items : [];
+  // The latest opened first, then by name; the server has already left out what is hidden.
+  const recent = recentTracks();
+  const rank = (key: string) => {
+    const at = recent.indexOf(key);
+    return at === -1 ? recent.length : at;
+  };
+  const shown = [...items]
+    .sort((a, b) => rank(a.key) - rank(b.key) || a.name.localeCompare(b.name))
+    .slice(0, TRACKS_SHOWN);
   return (
     <section aria-labelledby={headingId} className="home-tracks">
       <div className="panel-head">
@@ -247,14 +277,33 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
           {title}
         </h2>
         <HelpTip name={title}>{t('home.tracksHelp')}</HelpTip>
+        {items.length > TRACKS_SHOWN && (
+          <a className="panel-count" href={routeHref('#/tracks')}>
+            {t('home.tracksAll', { count: items.length })}
+          </a>
+        )}
       </div>
       <ListStatus list={list} />
       {list.status === 'loaded' && list.items.length === 0 && (
-        <EmptyState icon={TracksIcon} title={t('home.tracksEmpty')} />
+        <EmptyState
+          icon={TracksIcon}
+          title={t('home.tracksEmpty')}
+          {...(mayCreate
+            ? {
+                action: (
+                  <a className="button-primary" href={routeHref(NEW_TRACK_ROUTE)}>
+                    {t('tracks.new')}
+                  </a>
+                ),
+              }
+            : {})}
+        >
+          {t(mayCreate ? 'tracks.emptyMayCreate' : 'tracks.empty')}
+        </EmptyState>
       )}
       {list.status === 'loaded' && list.items.length > 0 && (
         <ul className="home-track-list">
-          {list.items.map((track) => (
+          {shown.map((track) => (
             <li key={track.id}>
               <a
                 className="track-tile glass-card"

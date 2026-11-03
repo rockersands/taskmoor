@@ -138,7 +138,7 @@ export function registerListViewRoutes(
             SELECT s.id, s.name, s.state,
                    (s.start_at AT TIME ZONE 'UTC')::date::text AS start,
                    (s.end_at AT TIME ZONE 'UTC')::date::text AS end
-              FROM sprint s JOIN board b ON b.id = s.board_id
+              FROM sprint s JOIN board b ON b.id = s.board_id AND b.kind = 'scrum'
              WHERE s.workspace_id = ${request.workspaceId}::int
                AND b.location_track_id = ${track.id}::int AND s.deleted_at IS NULL
                AND s.start_at IS NOT NULL AND s.end_at IS NOT NULL

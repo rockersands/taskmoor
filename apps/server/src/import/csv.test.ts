@@ -208,7 +208,7 @@ describe('CSV import (M1-098)', () => {
         context: { options: [{ value: 'S1' }, { value: 'S2' }] },
       })
     ).field.id;
-    points = (await post('/api/v1/fields', { name: 'Points', type: 'number' })).field.id;
+    points = (await post('/api/v1/fields', { name: 'Pts', type: 'number' })).field.id;
     topics = (await post('/api/v1/fields', { name: 'Topics', type: 'labels' })).field.id;
   });
 
@@ -230,7 +230,7 @@ describe('CSV import (M1-098)', () => {
       { column: 'Labels', to: 'labels' },
       { column: 'Fix version', to: 'targetRelease' },
       { column: 'Severity', to: 'field', field: severity },
-      { column: 'Points', to: 'field', field: points },
+      { column: 'Pts', to: 'field', field: points },
       { column: 'Topics', to: 'field', field: topics },
       { column: 'Created', to: 'createdAt' },
       { column: 'Notes', to: 'ignore' },
@@ -240,7 +240,7 @@ describe('CSV import (M1-098)', () => {
   // The child comes before its parent in the file; one label column repeats.
   const file = (summary2 = 'Child of the first') =>
     [
-      'Key,Type,Summary,Description,Status,Assignee,Parent,Labels,Labels,Fix version,Severity,Points,Topics,Created,Notes',
+      'Key,Type,Summary,Description,Status,Assignee,Parent,Labels,Labels,Fix version,Severity,Pts,Topics,Created,Notes',
       `CSV-2,Subticket,"${summary2}",,Active,Dana Doe,CSV-1,one,two,1.0; 2.0,S2,3,x y,2026-01-02 10:00,ignored`,
       'CSV-1,,"First, with a comma","Some **bold** text",New,dana@example.com,,,,2.0,S1,5,,2026-01-01,',
       'CSV-7,,A gap in numbers,,New,ghost@example.com,,,,,S9,lots,,yesterday,',

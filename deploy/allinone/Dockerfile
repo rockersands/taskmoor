@@ -23,6 +23,9 @@ RUN chmod 755 /usr/local/bin/taskmoor-allinone
 ENV TASKMOOR_DATA=/data
 # Clean URLs (M1-134, ADR-066); `-e TASKMOOR_WEB_ROUTING=hash` brings hash routing back.
 ENV TASKMOOR_WEB_ROUTING=path
+# What the new-version notice tells an administrator to run (OPS-026): the all-in-one image
+# upgrades itself when it starts on the same volume.
+ENV TASKMOOR_UPDATE_COMMAND="docker stop taskmoor && docker rm taskmoor && docker run -d --name taskmoor -p 8080:8080 -v taskmoor-data:/data ghcr.io/rockersands/taskmoor-allinone:{version}"
 VOLUME ["/data"]
 EXPOSE 8080
 ENTRYPOINT ["taskmoor-allinone"]

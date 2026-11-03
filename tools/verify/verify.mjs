@@ -93,7 +93,12 @@ const steps = [
       '--reporter=line',
     ],
     cwd: join(ROOT, 'apps', 'web'),
-    env: flag('browsers') ? { TASKMOOR_E2E_BROWSERS: 'all' } : {},
+    // CI so Playwright starts its own servers: reusing one on the same port, say from another
+    // worktree's run, would test that code instead of this code.
+    env: {
+      CI: process.env.CI ?? '1',
+      ...(flag('browsers') ? { TASKMOOR_E2E_BROWSERS: 'all' } : {}),
+    },
     summarize: summarizeE2e,
   },
 ].filter((step) => wants(step.id));

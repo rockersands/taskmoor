@@ -125,7 +125,7 @@
       },
       {
         "name": "Has a reviewer",
-        "query": "cf[11] IS NOT EMPTY"
+        "query": "cf[12] IS NOT EMPTY"
       },
       {
         "name": "Current sprints",

@@ -27,6 +27,7 @@ import {
   sprintView,
 } from '../routes/sprints';
 import { prepareSearch, readOnly, runPage } from '../search/run';
+import { priorityLevels } from '../tickets/priority-level';
 import type { Widget, WidgetSettings } from './model';
 
 /**
@@ -104,19 +105,25 @@ async function ticketList(ctx: WidgetContext, scope: Scope, q: string, limit: nu
             summary: string;
             status: string;
             priority: string | null;
+            priority_id: number | null;
+            type: string;
+            type_icon: string | null;
             assignee: string | null;
             updated_at: Date;
           }>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, s.name AS status,
-                   p.name AS priority, u.name AS assignee, k.updated_at
+                   p.name AS priority, k.priority_id, y.name AS type, y.icon AS type_icon,
+                   u.name AS assignee, k.updated_at
               FROM ticket k
               JOIN track t ON t.id = k.track_id
               JOIN status s ON s.id = k.status_id
+              JOIN ticket_type y ON y.id = k.ticket_type_id
               LEFT JOIN priority p ON p.id = k.priority_id
               LEFT JOIN app_user u ON u.id = k.assignee_id
              WHERE k.id = ANY(${page.ids}::int[])`.execute(db)
         ).rows;
   const byId = new Map(rows.map((r) => [r.id, r]));
+  const levels = await priorityLevels(db, scope.ws);
   return {
     tickets: page.ids.flatMap((id) => {
       const r = byId.get(id);
@@ -127,7 +134,10 @@ async function ticketList(ctx: WidgetContext, scope: Scope, q: string, limit: nu
               key: r.key,
               summary: r.summary,
               status: r.status,
+              type: r.type,
+              typeIcon: r.type_icon,
               priority: r.priority,
+              priorityLevel: r.priority_id === null ? null : (levels.get(r.priority_id) ?? 4),
               assignee: r.assignee,
               updatedAt: r.updated_at.toISOString(),
             },

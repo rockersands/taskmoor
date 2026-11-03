@@ -66,7 +66,7 @@ Published sizing (estimate until M1 load tests replace it): up to 50 users on 2 
 
 ### Where things live
 
-- **Code:** a local git repo at `E:\programing\Projects\Web\Tracksmith`, pushed to `github.com/Rockersands/taskmoor` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@taskmoor/*`.
+- **Code:** a local git repo, pushed to `github.com/Rockersands/taskmoor` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@taskmoor/*`.
 - **Docs for the user, weekly reports and milestone release packages:** the user's Google Drive folder, written through the Drive connector or a folder synced by Google Drive for desktop. Engineering docs stay in the repo.
 - **Local environment:** the user's machine has Node 22 and git but no Docker, so local tests use an embedded Postgres (PGlite or embedded-postgres). Container builds and tests run on GitHub runners and the benchmark host. Docker Desktop or a Linux VM/VPS is needed before the M1 install and cross-origin gates.
 

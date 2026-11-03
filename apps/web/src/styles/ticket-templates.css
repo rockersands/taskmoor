@@ -1,0 +1,52 @@
+/* Ticket templates (CORE-029, CORE-030): the create form's picker and the templates page. */
+.ticket-template-picker {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ticket-template-form {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.ticket-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ticket-template-fields {
+  display: grid;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.ticket-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.ticket-template-row > .form-field {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.ticket-template-found {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -27,85 +27,6 @@
   margin: var(--space-2) 0;
 }
 
-.board-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  min-width: 0;
-  margin: var(--space-3) 0;
-  border: 0;
-  padding: 0;
-}
-
-.board-filters-menu summary {
-  min-height: var(--hit-target);
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.board-filter {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-field-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.board-filter[aria-pressed="true"] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  font-weight: 600;
-}
-
-.board-people {
-  align-items: flex-start;
-}
-
-.board-people-menu {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.board-people-menu summary {
-  min-height: var(--hit-target);
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-field-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  cursor: pointer;
-}
-
-.board-people-panel {
-  margin-top: var(--space-2);
-  padding: var(--space-3);
-  width: min(22rem, 100%);
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.board-people-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-height: 16rem;
-  overflow-y: auto;
-}
-
-.board-people-choice {
-  min-height: var(--hit-target);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-
 .board-people-clear {
   min-height: var(--hit-target);
 }
@@ -250,12 +171,12 @@
   cursor: grab;
   transition:
     transform var(--motion-base) var(--ease-settle),
-    box-shadow var(--motion-base) var(--ease-settle),
     opacity var(--motion-fast) var(--ease-soft);
 }
 
 .board-card:hover {
   box-shadow: var(--glass-highlight), var(--shadow-2);
+  transform: translateY(var(--lift-small));
 }
 
 .board-card::before {
@@ -283,7 +204,6 @@
 
 .board-card-link {
   display: block;
-  padding-inline-end: var(--space-8);
   min-height: var(--hit-target);
   color: var(--color-text);
   text-decoration: none;
@@ -294,24 +214,111 @@
 }
 
 .board-card-key {
+  display: block;
+  font-size: var(--font-size-100);
   color: var(--color-text-muted);
-  font-size: var(--font-size-200);
-  font-weight: 600;
+}
+
+.board-card-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .board-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: 24px;
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
 }
 
-.board-card-move {
+.board-card-points {
+  min-width: 1.25rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: center;
+}
+
+.board-card-age {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The assignee sits at the card's far corner, the same place on every card. */
+.board-card-person {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: var(--color-blush-soft);
+  color: var(--color-blush);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.board-card-person.is-nobody {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+/* A card's pencil and menu: at its corner while the pointer or keyboard is on it, over the end of
+   the title. On a touch screen there is no hover, so they keep a row of their own. */
+.board-card-actions {
   position: absolute;
-  top: var(--space-2);
-  inset-inline-end: var(--space-2);
+  top: var(--space-1);
+  inset-inline-end: var(--space-1);
+  display: inline-flex;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-soft);
+}
+
+.board-card:hover .board-card-actions,
+.board-card:focus-within .board-card-actions {
+  opacity: 1;
+}
+
+.board-card-title-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.board-card-title-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-1);
+  font: inherit;
+}
+
+.board-card-title-problem {
+  margin: 0;
+}
+
+.board-card-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.board-card-move {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -342,7 +349,7 @@
   padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-1);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
   font: inherit;
   text-align: start;
@@ -459,7 +466,7 @@
 .board-settings-item {
   padding: var(--space-3);
   border-radius: var(--radius-1);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .board-settings-limits {
@@ -547,13 +554,9 @@
 }
 
 @media (pointer: coarse) {
-  .board-filter,
   .board-card-link,
   .board-card-move,
   .board-move-menu button,
-  .board-filters-menu summary,
-  .board-people-menu summary,
-  .board-people-choice,
   .board-people-clear,
   .boards-item,
   .board-settings-link,
@@ -704,12 +707,6 @@
     0 -4px 0 -1px var(--color-accent),
     var(--glass-highlight),
     var(--shadow-1);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .board-card:hover {
-    transform: translateY(-1px);
-  }
 }
 
 /*
@@ -875,6 +872,18 @@
   .board-card-move {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
+  }
+
+  .board-card-actions {
+    position: static;
+    justify-content: flex-end;
+    background: transparent;
+    opacity: 1;
+  }
+
+  .board-card-title-actions button,
+  .board-card-title-form input {
+    min-height: var(--hit-target-touch);
   }
 }
 

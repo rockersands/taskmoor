@@ -42,8 +42,7 @@ under its title.
 |---|---|---|
 | Your work | Home | Your work in one place: what is assigned to you, what you opened lately and what you follow. |
 | | Inbox | Mentions of you and changes to the tickets you follow, newest first. |
-| Plan and track | Tracks | Every track you can see: open one for its summary, list, board, calendar, timeline and releases. |
-| | Boards | A board shows tickets as cards in columns, one column per step of the work. |
+| Plan and track | Tracks | Every track you can see: open one for its summary, list, board, calendar, timeline and releases. A board has no sidebar link of its own: each track has one, in its tabs (ADR-116). |
 | | Search | Find tickets with filters or the query language, and save the searches you reuse. |
 | | Dashboards | Charts and lists that sum up the work at a glance, for you or a team. |
 | Manage | Settings | Your own account, how Taskmoor looks for you and your tutorials. |
@@ -52,6 +51,9 @@ under its title.
 - **Tracks** becomes a real page: a directory of tracks (key, name, type, owner) with a search
   box. Inside a track, a tab bar holds Summary, List, Board, Backlog, Calendar, Timeline and
   Releases, so a track's pages read as one place.
+  It offers **New track** (a dialog with the form Administration uses) to those the server lets make
+  one: shared configuration for site and configuration administrators, local for
+  `create_local_tracks`, which the session reports. A person with neither sees no button.
 - **Settings** is personal: Account, Appearance and Tutorials.
 - **Administration** is a section of its own, separate from Settings, with its own navigation (the
   user's decision, 2026-11-03: a full panel in 1.0; it replaces the Settings hub first planned
@@ -160,11 +162,15 @@ become **translucent glass**:
   - An empty state shows one generated illustration of stacked cards (the user's choice,
     2026-11-02) in place of its small icon.
 - **Geometry:** radii 10, 16, 24 and 32 px and pills, as ADR-036.
-- **Motion:**
-  - A settling curve (`--ease-settle`) at 120, 180 or 280 ms: cards lift 1 to 2 px on hover,
-    popovers fade and rise 4 px, a dragged card's column tints and a line marks the drop place.
-  - Under `prefers-reduced-motion` nothing moves; state changes still show by colour and
-    outline.
+- **Motion:** see section 11. A dragged card's column tints and a line marks the drop place; under
+  `prefers-reduced-motion` nothing moves, and state changes still show by colour and outline.
+- **Shared filter controls** (the user, 2026-11-03, after testing the demo): `filter-chip` (a tick
+  and a heavier label when on, never colour alone), `Popover` (`shell/Popover.tsx`: over the content,
+  closed by Escape or a click outside with focus back on its button, docked at the bottom of the
+  screen below 768 px), `glass-check` and `thin-scroll`, for any page to reuse.
+- **Fields** (the user, 2026-11-03: no more flat beige) are one rule in `forms.css` on the token
+  `--field-surface`: clear glass, opaque where glass falls back, with `--color-field-border` at 3:1
+  beside the canvas, any glass and any opaque surface. `contrast.test.ts` holds it.
 - **Own assets only.** Icons are original line drawings on a 24 px grid (`shell/icons.tsx`).
   Nothing is taken from Apple's or Atlassian's assets, screenshots, colours or layouts. The
   translucent depth is the idea we borrow, not any asset.
@@ -246,6 +252,40 @@ left and Move right) and given a minimum and a maximum. The limit stays 30 per b
   get stories (axe in both skins) and tests by role and name.
 - e2e specs change only where names or roles change, never weakened.
 - The manual gains a "Getting around" page. Pages that change are updated in the same task.
+
+### 11. Motion: watery (the user, 2026-11-03)
+
+The user asked for a "watery" look across the whole app, always when animating. This is our own
+design from general ideas: fluid easing, a slight overshoot and settle, surfaces that swell and melt
+as if liquid. It is the default for new work.
+
+- **Tokens** (`styles/tokens.css`): the durations `--motion-fast`, `--motion-base` and `--motion-slow`
+  (120, 180 and 280 ms, so it never delays work); `--ease-soft` (fluid, for colours, fades and what
+  leaves), `--ease-settle` (a little past the mark and back) and `--ease-swell` (past the mark, a small
+  rebound, then still). The last two are a damped spring sampled in CSS `linear()`, with a plain
+  `cubic-bezier()` where a browser lacks it. `--lift` and `--lift-small` are how far a card lifts.
+- **Classes** (`styles/motion.css`): `motion-swell`, `motion-settle`, `motion-rise`, `motion-slide`,
+  `motion-dock`, `motion-drop`, `motion-bulge`, `motion-fade` and `motion-collapse`. New work uses a
+  class or joins a list in that file, and `shell/Motion.stories.tsx` shows them all.
+- **Transforms and opacity only.** No animating of height, width, top, left, filter, backdrop-filter
+  or box-shadow. A surface swells by `scale` and `translate`, from slightly under 1, with its
+  transform origin near what opened it. A small control or a column may still fade a colour: that is
+  paint on one element. A fold's height changes at once; only its contents move.
+- **Cheap on a big board.** No `will-change` anywhere. Only the one card that has just dropped
+  animates, and its class goes when it ends.
+- **Leaving never waits.** `leaveMotion` (`shell/motion.ts`) removes the real surface at once, for
+  focus, screen readers and tests, and lets an empty copy of its box melt for 120 ms.
+- **Off under reduced motion.** One rule at the end of `tokens.css` sets the durations to 0 ms and the
+  lifts to nothing under `prefers-reduced-motion: reduce` and in print. There are no per-page rules. The
+  glass's `prefers-reduced-transparency` handling is separate and unchanged.
+- **Glass:** a region holding glass (a tab's contents) moves by transform with no fade, and a
+  dialog's backdrop fades on a layer of its own, because opacity on an ancestor cuts glass off from what
+  lies behind it, and Chromium then paints a lens filter solid grey.
+- **Tests run still.** Story tests and Playwright ask for reduced motion: axe measures colour as it
+  is at that moment, and a test measuring a surface mid-swell would get a scaled box.
+- **The check:** `styles/motion.test.ts` fails on a duration or easing that is not a token, on another
+  property being animated, on `will-change` and on a second reduced-motion rule. Its exceptions are a
+  short named list, each with a reason, and its header says what it does not catch.
 
 ## Options considered
 

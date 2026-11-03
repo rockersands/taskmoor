@@ -343,7 +343,11 @@ body {
   color: var(--color-accent);
 }
 
-/* Command palette */
+/* Command palette: over everything, a dialog included, as it opens from anywhere. */
+.palette-backdrop {
+  z-index: 85;
+}
+
 .palette-trigger {
   display: inline-flex;
   min-width: 0;
@@ -370,9 +374,9 @@ body {
 .palette {
   position: fixed;
   top: 12vh;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
+  inset-inline: 0;
+  margin-inline: auto;
+  z-index: 90;
   width: min(92vw, 560px);
   background: var(--glass-fill-strong);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
@@ -435,9 +439,7 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-soft),
-    box-shadow var(--motion-fast) var(--ease-soft);
+  transition: background-color var(--motion-fast) var(--ease-soft);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -519,6 +521,38 @@ body {
   box-shadow: var(--shadow-3);
 }
 
+/*
+ * A small phone: five round controls and the name of the product do not fit in 360 px, and the
+ * person's menu stuck out sideways. The name goes, the gaps tighten, and the search field takes
+ * what is left, shortening its label.
+ */
+@media (max-width: 480px) {
+  .shell-brand {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .shell-topbar {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+
+  .shell-topbar-end {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    gap: var(--space-1);
+  }
+
+  .palette-trigger {
+    flex: 1 1 0;
+    padding-inline: var(--space-2);
+  }
+}
+
 /* Touch screens get larger targets regardless of width. */
 @media (pointer: coarse) {
   .icon-button,
@@ -539,38 +573,6 @@ body {
   .icon-button {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0s !important;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .shell-drawer {
-    animation: drawer-in var(--motion-base) var(--ease-soft);
-  }
-
-  @keyframes drawer-in {
-    from {
-      transform: translateX(-16px);
-      opacity: 0;
-    }
-  }
-
-  :root[dir="rtl"] .shell-drawer {
-    animation-name: drawer-in-rtl;
-  }
-
-  @keyframes drawer-in-rtl {
-    from {
-      transform: translateX(16px);
-      opacity: 0;
-    }
   }
 }
 
@@ -597,6 +599,57 @@ body {
 .update-banner-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+/* A newer release, for a site administrator (OPS-026): the command wraps on a phone. */
+.update-notice {
+  align-items: flex-start;
+}
+
+.update-notice-text {
+  display: grid;
+  gap: var(--space-2);
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.update-banner-actions a {
+  text-decoration: none;
+}
+
+.update-command {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.update-command code {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-1);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.update-card-command {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-3);
+}
+
+.update-card-command p {
+  margin: 0;
+}
+
+.update-card-switch {
+  margin-top: var(--space-2);
 }
 
 /* The frontend is older than the backend serves: this page instead of the app. */

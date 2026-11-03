@@ -51,6 +51,7 @@ const EXEMPT: Record<string, string> = {
     'sends one test message to a syslog receiver; stores nothing and moves no position',
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',
   'POST /api/v1/password-links/inspect': 'reads only: shows who a link is for',
+  'POST /api/v1/invitations/inspect': 'reads only: shows what an invitation is for',
   'POST /api/v1/account/two-factor/totp': 'reads only: proposes a secret, stored at confirmation',
   'POST /api/v1/account/two-factor/webauthn/options': 'reads only: registration options',
   'POST /api/v1/session/enroll/totp': 'reads only: proposes a secret, stored at confirmation',
@@ -830,6 +831,104 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/groups/${state.parent}`,
         }),
     },
+    // Invitations into a track (IAM-027): a new person's link, then a signed-in person's.
+    {
+      route: 'POST /api/v1/tracks/:id/invitations',
+      expect: 'track_invitation.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${state.track}/invitations`,
+          payload: {
+            addresses: ['invited@example.com'],
+            roleId: state.role,
+            delivery: 'link',
+          },
+        });
+        state.invitation = res.json().results[0].invitationId;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/invitations/:invitationId/resend',
+      expect: 'track_invitation.resent',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${state.track}/invitations/${state.invitation}/resend`,
+          payload: { delivery: 'link' },
+        });
+        state.invitationLink =
+          new URL(String(res.json().link).replace('/#/', '/')).searchParams.get('token') ?? '';
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/invitations/redeem',
+      expect: 'track_invitation.accepted',
+      run: () =>
+        call(undefined, {
+          method: 'POST',
+          url: '/api/v1/invitations/redeem',
+          payload: {
+            token: state.invitationLink,
+            name: 'Invited',
+            password: 'another otter lantern',
+          },
+        }),
+    },
+    {
+      route: 'POST /api/v1/invitations/accept',
+      expect: 'track_invitation.accepted',
+      prepare: async () => {
+        const session = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session',
+          payload: { email: 'invited@example.com', password: 'another otter lantern' },
+        });
+        state.invited = sessionCookie(session);
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${state.track}/invitations`,
+          payload: {
+            addresses: ['invited@example.com'],
+            roleId: state.role,
+            delivery: 'link',
+          },
+        });
+        state.invitationLink =
+          new URL(String(res.json().results[0].link).replace('/#/', '/')).searchParams.get(
+            'token',
+          ) ?? '';
+      },
+      run: () =>
+        call(String(state.invited), {
+          method: 'POST',
+          url: '/api/v1/invitations/accept',
+          payload: { token: state.invitationLink },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tracks/:id/invitations/:invitationId',
+      expect: 'track_invitation.revoked',
+      prepare: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${state.track}/invitations`,
+          payload: {
+            addresses: ['revoked@example.com'],
+            roleId: state.role,
+            delivery: 'link',
+          },
+        });
+        state.invitation = res.json().results[0].invitationId;
+      },
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/tracks/${state.track}/invitations/${state.invitation}`,
+        }),
+    },
     {
       route: 'POST /api/v1/account/tokens',
       expect: 'token.created',
@@ -1119,6 +1218,47 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       route: 'POST /api/v1/tracks/:id/restore',
       expect: 'track.restored',
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/restore` }),
+    },
+    // Ticket templates (CORE-029, CORE-030; ADR-113): kept, changed, used and removed. A
+    // ticket made from one is the create route's own event, naming the template.
+    {
+      route: 'POST /api/v1/ticket-templates',
+      expect: 'ticket_template.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/ticket-templates',
+          payload: { track: state.newTrack, name: 'Contract template', summary: 'From {date}' },
+        });
+        state.ticketTemplate = res.json().template?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/ticket-templates/:id',
+      expect: 'ticket_template.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/ticket-templates/${state.ticketTemplate}`,
+          payload: { defaults: { labels: ['contract'] } },
+        }),
+    },
+    {
+      route: 'POST /api/v1/ticket-templates/:id/tickets',
+      expect: 'ticket.created',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/ticket-templates/${state.ticketTemplate}/tickets`,
+          payload: {},
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/ticket-templates/:id',
+      expect: 'ticket_template.deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/ticket-templates/${state.ticketTemplate}` }),
     },
     {
       route: 'POST /api/v1/tickets',
@@ -2519,6 +2659,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         call(String(state.bo1b), {
           method: 'DELETE',
           url: `/api/v1/tickets/${state.ticket}/attachments/${state.attachment}`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/admin/update-check',
+      expect: 'update_check.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/update-check',
+          payload: { enabled: false },
         }),
     },
     {

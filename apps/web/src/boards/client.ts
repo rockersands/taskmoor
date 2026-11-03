@@ -62,6 +62,7 @@ export interface CardRules {
 export const CARD_FIELDS = [
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'labels',
@@ -161,6 +162,8 @@ export interface BoardCard {
   colour: string | null;
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  /** The viewer may edit this ticket: the card offers its pencil (AGL-006). */
+  mayEdit?: boolean;
 }
 
 export interface BoardLane {
@@ -260,6 +263,12 @@ export interface BoardClient {
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
   /** How far along the tickets under these cards are (CORE-032); left out, cards show none. */
   subticketProgress?: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
+  /** A card's new title, through the ticket route; `version` is the one the person read. */
+  retitle(
+    ticket: number,
+    summary: string,
+    version: number | undefined,
+  ): Promise<{ summary: string; version: number }>;
   /** What a ticket can do next, to ask for the fields a refused move needs. */
   transitions(ticket: number): Promise<TicketTransition[]>;
   closeReasons(): Promise<{ id: number; name: string }[]>;
@@ -318,6 +327,8 @@ export const boardClient: BoardClient = {
       const body = error.body as { fields?: Record<string, string> } | null;
       if (error.code === 'version_conflict') return { ok: false, fields: {}, conflict: true };
       if (error.code === 'invalid_fields') return { ok: false, fields: body?.fields ?? {} };
+      // A sprint is running, so the board cannot go Kanban yet (AGL-010).
+      if (error.code === 'sprint_running') return { ok: false, fields: { kind: error.code } };
       // A managed board's columns that cannot become its workflow (M1-126).
       if (error.status === 409 && error.code) return { ok: false, fields: { columns: error.code } };
       throw error;
@@ -368,6 +379,13 @@ export const boardClient: BoardClient = {
       return { kind: 'refused', code: error.code ?? String(error.status) };
     }
   },
+  retitle: async (ticket, summary, version) =>
+    (
+      await api<{ ticket: { summary: string; version: number } }>(`/tickets/${ticket}`, {
+        method: 'PATCH',
+        body: { summary, ...(version !== undefined ? { version } : {}) },
+      })
+    ).ticket,
   transitions: (ticket) => ticketClient.transitions(ticket),
   closeReasons: () => ticketClient.closeReasons(),
   priorities: () => ticketClient.priorities(),

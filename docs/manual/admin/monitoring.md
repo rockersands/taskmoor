@@ -1,7 +1,7 @@
 ---
 title: "Monitoring and logs"
 audience: admins
-sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md
+sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -36,6 +36,7 @@ Site administrators open **Administration**, **System status** to see whether th
 | Section | Shows |
 |---|---|
 | **Instance** | **Version**, **Roles**, **Started**, **Uptime** |
+| **Updates** | **Running**, **Newest version**, **Last looked**, the command when a newer version exists, and the switch (see [The new-version notice](upgrades.md#the-new-version-notice)) |
 | **Database** | **Connection** (**Connected** or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
 | **Storage** | **Data directory**, **Free space**, **Last backup** (with a warning once it is older than a day) |
 | **Scheduled backups** | **Schedule**, **Next backup**, **Last success**, **Last failure**, **Restore drill** |

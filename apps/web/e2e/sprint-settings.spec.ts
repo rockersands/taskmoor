@@ -8,7 +8,7 @@ import { expect, type Page, test } from '@playwright/test';
  * with ticket count as the statistic, saves it with the rest of the board, and reads it back
  * after a reload and from the API; no serious axe issue and no sideways page scroll, on a
  * phone either. It uses the attachments database (preview 4174), whose administrator (Ada
- * Attach) the API server made with the ATT track.
+ * Attach) the API server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -40,8 +40,13 @@ test('[AGL-012] [AGL-007] a cycle turned on in the board settings and read back'
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `cyc${testInfo.project.name}${Date.now().toString(36)}`;
+  const key = `C${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = await page.request.post(`${BASE}/api/v1/tracks`, {
+    data: { key, name: `Cycle ${word}`, mode: 'shared' },
+  });
+  expect(track.status(), await track.text()).toBe(201);
   const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Cycle ${word}`, kind: 'scrum', source: { query: `summary ~ ${word}` } },
+    data: { name: `Cycle ${word}`, kind: 'scrum', trackId: (await track.json()).track.id },
   });
   expect(made.status(), await made.text()).toBe(201);
   const boardId = (await made.json()).board.id as number;

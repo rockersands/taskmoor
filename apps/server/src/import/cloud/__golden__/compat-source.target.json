@@ -171,11 +171,13 @@
       ],
       "key": "ALP-1",
       "labels": [],
+      "mayEdit": true,
       "number": 1,
       "parent": null,
       "priority": {
         "color": "#e0803a",
         "icon": "priority-high",
+        "level": 2,
         "name": "High"
       },
       "requester": {
@@ -274,11 +276,13 @@
         "synthetic",
         "wave-1"
       ],
+      "mayEdit": true,
       "number": 10,
       "parent": null,
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -362,11 +366,13 @@
       "history": [],
       "key": "ALP-11",
       "labels": [],
+      "mayEdit": true,
       "number": 11,
       "parent": null,
       "priority": {
         "color": "#8a9bb0",
         "icon": "priority-low",
+        "level": 5,
         "name": "Low"
       },
       "requester": {
@@ -489,11 +495,13 @@
         "synthetic",
         "wave-0"
       ],
+      "mayEdit": true,
       "number": 12,
       "parent": null,
       "priority": {
         "color": "#d9534f",
         "icon": "priority-urgent",
+        "level": 1,
         "name": "Urgent"
       },
       "requester": {
@@ -588,11 +596,13 @@
       ],
       "key": "ALP-13",
       "labels": [],
+      "mayEdit": true,
       "number": 13,
       "parent": "ALP-1",
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -647,11 +657,13 @@
       "history": [],
       "key": "ALP-14",
       "labels": [],
+      "mayEdit": true,
       "number": 14,
       "parent": "ALP-1",
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -737,11 +749,13 @@
       "history": [],
       "key": "ALP-15",
       "labels": [],
+      "mayEdit": true,
       "number": 15,
       "parent": "ALP-5",
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -819,11 +833,13 @@
         "synthetic",
         "wave-2"
       ],
+      "mayEdit": true,
       "number": 2,
       "parent": null,
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -961,11 +977,13 @@
       ],
       "key": "ALP-3",
       "labels": [],
+      "mayEdit": true,
       "number": 3,
       "parent": null,
       "priority": {
         "color": "#8a9bb0",
         "icon": "priority-low",
+        "level": 5,
         "name": "Low"
       },
       "requester": {
@@ -1083,11 +1101,13 @@
         "synthetic",
         "wave-1"
       ],
+      "mayEdit": true,
       "number": 4,
       "parent": null,
       "priority": {
         "color": "#d9534f",
         "icon": "priority-urgent",
+        "level": 1,
         "name": "Urgent"
       },
       "requester": {
@@ -1183,11 +1203,13 @@
       ],
       "key": "ALP-5",
       "labels": [],
+      "mayEdit": true,
       "number": 5,
       "parent": null,
       "priority": {
         "color": "#e0803a",
         "icon": "priority-high",
+        "level": 2,
         "name": "High"
       },
       "requester": {
@@ -1321,11 +1343,13 @@
         "synthetic",
         "wave-0"
       ],
+      "mayEdit": true,
       "number": 6,
       "parent": null,
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -1447,11 +1471,13 @@
       ],
       "key": "ALP-7",
       "labels": [],
+      "mayEdit": true,
       "number": 7,
       "parent": null,
       "priority": {
         "color": "#8a9bb0",
         "icon": "priority-low",
+        "level": 5,
         "name": "Low"
       },
       "requester": {
@@ -1526,11 +1552,13 @@
         "synthetic",
         "wave-2"
       ],
+      "mayEdit": true,
       "number": 8,
       "parent": null,
       "priority": {
         "color": "#d9534f",
         "icon": "priority-urgent",
+        "level": 1,
         "name": "Urgent"
       },
       "requester": {
@@ -1650,11 +1678,13 @@
       "history": [],
       "key": "ALP-9",
       "labels": [],
+      "mayEdit": true,
       "number": 9,
       "parent": null,
       "priority": {
         "color": "#e0803a",
         "icon": "priority-high",
+        "level": 2,
         "name": "High"
       },
       "requester": {
@@ -1772,11 +1802,13 @@
       ],
       "key": "BET-1",
       "labels": [],
+      "mayEdit": true,
       "number": 1,
       "parent": null,
       "priority": {
         "color": "#e0803a",
         "icon": "priority-high",
+        "level": 2,
         "name": "High"
       },
       "requester": {
@@ -1839,11 +1871,13 @@
         "synthetic",
         "wave-2"
       ],
+      "mayEdit": true,
       "number": 2,
       "parent": null,
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -1962,11 +1996,13 @@
       "history": [],
       "key": "BET-3",
       "labels": [],
+      "mayEdit": true,
       "number": 3,
       "parent": null,
       "priority": {
         "color": "#8a9bb0",
         "icon": "priority-low",
+        "level": 5,
         "name": "Low"
       },
       "requester": {
@@ -2060,11 +2096,13 @@
         "synthetic",
         "wave-1"
       ],
+      "mayEdit": true,
       "number": 4,
       "parent": null,
       "priority": {
         "color": "#d9534f",
         "icon": "priority-urgent",
+        "level": 1,
         "name": "Urgent"
       },
       "requester": {
@@ -2146,11 +2184,13 @@
       "history": [],
       "key": "BET-5",
       "labels": [],
+      "mayEdit": true,
       "number": 5,
       "parent": null,
       "priority": {
         "color": "#e0803a",
         "icon": "priority-high",
+        "level": 2,
         "name": "High"
       },
       "requester": {
@@ -2269,11 +2309,13 @@
         "synthetic",
         "wave-0"
       ],
+      "mayEdit": true,
       "number": 6,
       "parent": null,
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {
@@ -2336,11 +2378,13 @@
       ],
       "key": "BET-7",
       "labels": [],
+      "mayEdit": true,
       "number": 7,
       "parent": "BET-2",
       "priority": {
         "color": "#5b8def",
         "icon": "priority-normal",
+        "level": 4,
         "name": "Normal"
       },
       "requester": {

@@ -23,7 +23,12 @@ package on some distributions) and every managed service. The migrations create 
 trusted extension, so the database's owner may, and a role without the `CREATE` privilege on
 the database needs an administrator to run `CREATE EXTENSION pg_trgm` first (ADR-069).
 
-Upgrade: `bash upgrade.sh <image>` (for example `ghcr.io/rockersands/taskmoor:1.4.0`; add
+Update: `bash update.sh` finds the newest release, checks its signature against
+`taskmoor-release.pub` and runs `upgrade.sh` with the signed image (`bash update.sh 1.4.0` for
+a given version, `--dry-run` to see what it would do first; `../README.md`, Upgrades). A release
+it cannot verify is not installed.
+
+Upgrade to an image you name: `bash upgrade.sh <image>` (for example `ghcr.io/rockersands/taskmoor:1.4.0`; add
 `--dry-run` to see the checks and the plan first). It first gives the bundled PostgreSQL its
 TLS certificate when it has none (an install from an earlier kit), stops the backend, runs the new image's
 `node cli.mjs upgrade` (checks, a backup under `/data/backups/pre-upgrade-<time>`, the

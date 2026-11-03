@@ -16,6 +16,8 @@ export interface Caller {
   params: unknown;
   query: unknown;
   body: unknown;
+  /** Set when a ticket template starts the create (ADR-113): its `ticket.created` names it. */
+  ticketTemplateId?: number;
 }
 
 /** What a route answers with: a Fastify reply, or a recording of one. */

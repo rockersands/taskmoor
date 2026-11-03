@@ -93,20 +93,45 @@ test('[AGL-005] a board filtered by person, by keyboard and from a shared addres
   await expect(links).toHaveCount(1);
   await expect(links).toContainText(nobodys);
 
-  // The menu with the real keyboard: Enter opens, Escape closes and comes back to it.
-  const summary = filter.getByText(/^People/);
-  await summary.focus();
+  // The popover with the real keyboard: Enter opens it over the board, which stays where it is;
+  // Escape closes it and comes back to its button.
+  const columns = board.getByRole('region', { name: 'Columns', exact: true });
+  const opener = filter.getByRole('button', { name: /^People/ });
+  const panel = filter.getByRole('group', { name: 'People on this board' });
+  const top = async () => (await columns.boundingBox())?.y;
+  const before = await top();
+  await opener.focus();
   await page.keyboard.press('Enter');
-  const panel = filter.locator('.board-people-panel');
   await expect(panel).toBeVisible();
+  expect(await top()).toBe(before);
   expect(await seriousAxeViolations(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(panel).toBeHidden();
-  await expect(summary).toBeFocused();
+  await expect(opener).toBeFocused();
 
-  // A phone: nothing scrolls sideways.
+  // A click outside closes it too, and focus comes back: the corner of the screen is no control,
+  // and on a phone it is the dimmed page around the panel.
+  await opener.click();
+  await expect(panel).toBeVisible();
+  await page.mouse.click(4, 4);
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+
+  // A phone: nothing scrolls sideways, and the popover docks at the bottom of the screen.
   await page.setViewportSize({ width: 360, height: 700 });
   await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
+  await opener.click();
+  await expect(panel).toBeVisible();
+  // It rises into place, so its edges are read once it has landed.
+  await expect
+    .poll(async () => {
+      const docked = await panel.boundingBox();
+      return [docked?.x, docked?.width, Math.round((docked?.y ?? 0) + (docked?.height ?? 0))];
+    })
+    .toEqual([0, 360, 700]);
+  await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
+  await panel.getByRole('button', { name: 'Done' }).click();
+  await expect(panel).toBeHidden();
   await filter.getByRole('button', { name: 'Clear people' }).click();
   await expect(links).toHaveCount(2);
   await expect(page).not.toHaveURL(/people=/);
@@ -222,6 +247,8 @@ test('[QRY-014] [QRY-006] basic date and field filters run on the server and sur
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // Releases and areas: a real name is taken and finds nothing here; the values are offered.
+  // A site with many tracks offers values only for the tracks chosen, and this run makes many.
+  await basic.getByRole('group', { name: 'Tracks' }).getByRole('checkbox', { name: /ATT/ }).check();
   const target = await addFilter('Target release');
   await expect(target.locator(`datalist option[value="${release}"]`)).toHaveCount(1);
   await target.getByRole('combobox', { name: 'Value for Target release' }).fill(release);

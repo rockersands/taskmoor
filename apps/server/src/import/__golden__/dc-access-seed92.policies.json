@@ -3,6 +3,7 @@
     "grants": [
       "add_comments any_user",
       "administer_track role role:Managers",
+      "appoint_track_admins role role:Managers",
       "assign_tickets role role:Managers",
       "assignable_user role role:Contributors",
       "browse_track anyone",
@@ -28,6 +29,7 @@
     "grants": [
       "add_comments any_user",
       "administer_track role role:Managers",
+      "appoint_track_admins role role:Managers",
       "assign_tickets role role:Managers",
       "assignable_user role role:Contributors",
       "browse_track assignee",
@@ -53,6 +55,7 @@
     "grants": [
       "add_comments any_user",
       "administer_track role role:Managers",
+      "appoint_track_admins role role:Managers",
       "assign_tickets role role:Managers",
       "assignable_user role role:Contributors",
       "browse_track requester",

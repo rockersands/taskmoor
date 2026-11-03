@@ -13,6 +13,7 @@ import {
   boardTracks,
   compileBoard,
   editorScope,
+  estimateFieldForNewBoard,
   loadBoardData,
   type PersonChoice,
   personFilter,
@@ -40,7 +41,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { uniqueViolation } from '../scim/store';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
-import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
+import { DEFAULT_SPRINT_SETTINGS, readSprintSettings, type SprintSettings } from '../sprints/model';
 import { findTeam } from '../teams';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
@@ -231,6 +232,44 @@ function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: strin
     .orderBy('u.name')
     .orderBy('u.id')
     .execute();
+}
+
+/**
+ * A board's kind decides its track's backlog and sprints toggles (CORE-002; ADR-116): on for Scrum,
+ * off for Kanban, in the same transaction, recorded as a change of the track.
+ */
+async function alignTrackFeatures(
+  trx: Transaction<Database>,
+  actor: Parameters<typeof emit>[1],
+  trackId: number,
+  kind: string,
+): Promise<void> {
+  const on = kind === 'scrum';
+  const track = await trx
+    .selectFrom('track')
+    .select(['feature_backlog', 'feature_sprints'])
+    .where('id', '=', trackId)
+    .executeTakeFirst();
+  if (!track || (track.feature_backlog === on && track.feature_sprints === on)) return;
+  await trx
+    .updateTable('track')
+    .set({ feature_backlog: on, feature_sprints: on, updated_at: new Date() })
+    .where('id', '=', trackId)
+    .execute();
+  await emit(trx, actor, {
+    type: 'track.updated',
+    subjectId: trackId,
+    payload: {
+      changes: {
+        ...(track.feature_backlog !== on
+          ? { 'features.backlog': { from: track.feature_backlog, to: on } }
+          : {}),
+        ...(track.feature_sprints !== on
+          ? { 'features.sprints': { from: track.feature_sprints, to: on } }
+          : {}),
+      },
+    },
+  });
 }
 
 async function isConfigAdmin(request: FastifyRequest): Promise<boolean> {
@@ -676,6 +715,17 @@ export function registerBoardRoutes(
     const boardFilters = checked.boardFilters ?? DEFAULT_BOARD_FILTERS;
     const cardRules = checked.cardRules ?? DEFAULT_CARD_RULES;
     const adminIds = options.system ? [] : [...new Set([user.id, ...(body.adminIds ?? [])])];
+    const estimateField = body.sprintSettings
+      ? null
+      : await estimateFieldForNewBoard(db, ws, trackId);
+    const sprintSettings: SprintSettings =
+      body.sprintSettings ??
+      (estimateField === null
+        ? DEFAULT_SPRINT_SETTINGS
+        : {
+            ...DEFAULT_SPRINT_SETTINGS,
+            estimation: { statistic: 'field', fieldId: estimateField },
+          });
     const made = await db
       .transaction()
       .execute(async (trx) => {
@@ -696,7 +746,7 @@ export function registerBoardRoutes(
             board_filters: JSON.stringify(boardFilters),
             ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
             card_rules: JSON.stringify(cardRules),
-            sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
+            sprint_settings: JSON.stringify(sprintSettings),
             team_id: body.teamId ?? null,
             created_by: options.system ? null : user.id,
           })
@@ -741,6 +791,7 @@ export function registerBoardRoutes(
             ...(workflow ? { workflow } : {}),
           },
         });
+        await alignTrackFeatures(trx, by(request), trackId, body.kind);
         return row.id;
       })
       .then(
@@ -906,13 +957,25 @@ export function registerBoardRoutes(
       .execute(async (trx) => {
         const current = await trx
           .selectFrom('board')
-          .select('version')
+          .select(['version', 'kind'])
           .where('id', '=', p.data.id)
           .forUpdate()
           .executeTakeFirst();
         if (!current) return { missing: true as const };
         if (body.version !== undefined && body.version !== current.version) {
           return { conflict: current.version };
+        }
+        // A Kanban board has no sprints to act on, so a running sprint could never be completed
+        // (AGL-010). It has to end first. Starting one takes this same lock, so neither slips by.
+        if (body.kind === 'kanban' && current.kind === 'scrum') {
+          const running = await trx
+            .selectFrom('sprint')
+            .select(['id', 'name'])
+            .where('board_id', '=', p.data.id)
+            .where('state', '=', 'active')
+            .orderBy('id')
+            .executeTakeFirst();
+          if (running) return { sprintRunning: running };
         }
         // A board that manages its track's workflow rewrites it from its columns (M1-126).
         let columns = checked.columns;
@@ -1039,6 +1102,13 @@ export function registerBoardRoutes(
           subjectId: p.data.id,
           payload: { changes, ...(workflowChange ? { workflow: workflowChange } : {}) },
         });
+        if (
+          body.kind !== undefined &&
+          body.kind !== found.row.kind &&
+          found.row.location_track_id !== null
+        ) {
+          await alignTrackFeatures(trx, by(request), found.row.location_track_id, body.kind);
+        }
         return { updated: true as const };
       })
       .catch((error: unknown) => {
@@ -1051,6 +1121,13 @@ export function registerBoardRoutes(
     if ('missing' in outcome) return notFound(reply);
     if ('conflict' in outcome) {
       return reply.code(409).send({ error: 'version_conflict', version: outcome.conflict });
+    }
+    if ('sprintRunning' in outcome) {
+      return reply.code(409).send({
+        error: 'sprint_running',
+        sprintId: outcome.sprintRunning.id,
+        sprintName: outcome.sprintRunning.name,
+      });
     }
     const row = await boardQuery(db, request.workspaceId)
       .where('b.id', '=', p.data.id)
@@ -1132,9 +1209,11 @@ export function registerBoardRoutes(
           : sprints.where('id', 'in', parsed.data.sprints.split(',').map(Number));
       sprintIds = (await sprints.execute()).map((s) => s.id);
     }
+    const { estimation } = readSprintSettings(found.row.sprint_settings);
     try {
       const data = await loadBoardData({
         ...(sprintIds !== undefined ? { sprintIds } : {}),
+        estimateFieldId: estimation.statistic === 'field' ? (estimation.fieldId ?? null) : null,
         db,
         request,
         catalogs,

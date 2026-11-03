@@ -40,10 +40,10 @@ describe('a track’s calendar (M1-049)', () => {
     expect(await screen.findByRole('heading', { name: 'Calendar of Launch' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'November 2026' })).toBeVisible();
     const tenth = within(day(/^Nov 10, 2026, 1 ticket/));
-    expect(tenth.getByRole('button', { name: 'CAL-1 Build the site, due this day' })).toBeVisible();
+    expect(tenth.getByRole('link', { name: 'CAL-1 Build the site, due this day' })).toBeVisible();
     expect(within(day(/^Nov 9, 2026/)).getByText('Launch Sprint 1')).toBeVisible();
     expect(
-      within(day(/^Nov 4, 2026/)).getByRole('button', {
+      within(day(/^Nov 4, 2026/)).getByRole('link', {
         name: 'CAL-1 Build the site, starts this day',
       }),
     ).toBeVisible();
@@ -52,7 +52,7 @@ describe('a track’s calendar (M1-049)', () => {
 
   it('[AGL-017] moves a ticket dragged to another day: due there, its start along', async () => {
     const client = renderCalendar();
-    const chip = await screen.findByRole('button', { name: 'CAL-1 Build the site, due this day' });
+    const chip = await screen.findByRole('link', { name: 'CAL-1 Build the site, due this day' });
     const t = transfer();
     fireEvent.dragStart(chip, { dataTransfer: t });
     const target = day(/^Nov 13, 2026/);
@@ -67,28 +67,23 @@ describe('a track’s calendar (M1-049)', () => {
   it('[AGL-017] moves a focused ticket with Alt and the arrows', async () => {
     const user = userEvent.setup();
     const client = renderCalendar();
-    (await screen.findByRole('button', { name: 'CAL-2 Press kit, due this day' })).focus();
+    (await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' })).focus();
     await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
     await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-19'));
     expect(ticketOf(client, 'CAL-2')?.start).toBeNull();
   });
 
-  it('[AGL-017] edits both days in a panel, and says when a move is refused', async () => {
-    const user = userEvent.setup();
-    const client = renderCalendar();
-    await user.click(await screen.findByRole('button', { name: 'CAL-2 Press kit, due this day' }));
-    const panel = within(screen.getByRole('complementary', { name: 'Days of CAL-2' }));
-    await user.type(panel.getByLabelText('Start date'), '2026-11-09');
-    await user.click(panel.getByRole('button', { name: 'Save dates' }));
-    await waitFor(() =>
-      expect(ticketOf(client, 'CAL-2')).toMatchObject({ start: '2026-11-09', due: '2026-11-12' }),
-    );
+  it('[AGL-017] an entry is a real link to the ticket, which opens over the page', async () => {
+    renderCalendar();
+    const chip = await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    expect(chip).toHaveAttribute('href', '#/tickets/CAL-2');
+    expect(chip).toHaveAttribute('draggable', 'true');
   });
 
   it('[AGL-017] says a refused move, and turns the months', async () => {
     const user = userEvent.setup();
     renderCalendar(fakeCalendarClient({ refuse: true }));
-    (await screen.findByRole('button', { name: 'CAL-2 Press kit, due this day' })).focus();
+    (await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' })).focus();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
     expect(await screen.findByRole('alert')).toHaveTextContent('CAL-2 could not be moved');
     await user.click(screen.getByRole('button', { name: 'Next month' }));

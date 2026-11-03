@@ -3,6 +3,8 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { priorityName } from '../shell/priorityName';
+import { typeName } from '../shell/seededNames';
 import { type SummaryItem, type TrackClient, type TrackSummary, trackClient } from './client';
 
 const OVERVIEW: Record<string, MessageId> = {
@@ -112,13 +114,12 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
         {section('stages', 'summary.byStage', summary.stages, (i) =>
           t(STAGES[i.id] ?? 'search.stage.new'),
         )}
-        {section(
-          'priorities',
-          'summary.byPriority',
-          summary.priorities,
-          (i) => i.name ?? t('summary.noPriority'),
+        {section('priorities', 'summary.byPriority', summary.priorities, (i) =>
+          i.name ? priorityName(t, i.name) : t('summary.noPriority'),
         )}
-        {section('types', 'summary.byType', summary.types, (i) => i.name ?? '')}
+        {section('types', 'summary.byType', summary.types, (i) =>
+          i.name ? typeName(t, i.name) : '',
+        )}
         {section(
           'assignees',
           'summary.byAssignee',

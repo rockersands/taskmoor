@@ -166,6 +166,17 @@ describe('the AI settings page (M1-076)', () => {
     expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible();
   });
 
+  it('[AI-001] a track switch leaves an unsaved change alone', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const track = await screen.findByRole('checkbox', { name: /WEB Website/ });
+    const strict = screen.getByRole('checkbox', { name: 'Strict mode' });
+    await user.click(track);
+    await user.click(strict);
+    expect(await screen.findByText('The track’s AI switch was saved.')).toBeVisible();
+    expect(strict).toBeChecked();
+  });
+
   it('[IAM-019] in strict mode, AI runs only in the tracks turned on', async () => {
     const user = userEvent.setup();
     renderPage(fakeAiClient(aiView({ strict: true })));

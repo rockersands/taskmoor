@@ -40,7 +40,7 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
 
 ### Checklists (CORE-033)
 
-- Two tables, `ticket_checklist` and `ticket_checklist_item` (migration 0091). Item text is plain:
+- Two tables, `ticket_checklist` and `ticket_checklist_item` (migration 0096). Item text is plain:
   a checklist is a list of things to do, not a document, so it has no rich text to convert.
 - The four states are for checklist items only; a subticket's status comes from the track's workflow
   (the user's answer, 2026-11-03).

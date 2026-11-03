@@ -82,13 +82,18 @@ export async function trackPrioritySet(
     .executeTakeFirst();
   if (!set) return null;
   const members = await db
-    .selectFrom('priority_set_member')
-    .select('priority_id')
-    .where('priority_set_id', '=', set.id)
+    .selectFrom('priority_set_member as m')
+    .innerJoin('priority as p', 'p.id', 'm.priority_id')
+    .select('m.priority_id')
+    .where('m.priority_set_id', '=', set.id)
+    .orderBy('p.sort_order')
     .execute();
   return {
     id: set.id,
-    defaultPriorityId: set.default_priority_id,
+    // A ticket always has a priority: a set with no default of its own gives the middle of what
+    // it offers (the same rule as migration 0092).
+    defaultPriorityId:
+      set.default_priority_id ?? members[Math.floor(members.length / 2)]?.priority_id ?? null,
     priorityIds: new Set(members.map((m) => m.priority_id)),
   };
 }

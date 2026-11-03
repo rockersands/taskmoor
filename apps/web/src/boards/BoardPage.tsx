@@ -9,20 +9,27 @@ import {
   useRef,
   useState,
 } from 'react';
-
+import { ApiError } from '../api/client';
 import { type Translate, useT } from '../i18n/I18nProvider';
+import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon, MoreIcon } from '../shell/icons';
+import { BoardsIcon, ClockIcon, MoreIcon, NobodyIcon, PencilIcon } from '../shell/icons';
+import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
+import { Popover } from '../shell/Popover';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useSyncEngine } from '../sync/SyncProvider';
 import type { SubticketProgress } from '../tickets/tools/client';
 import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
+import { CardTitleEditor } from './CardTitleEditor';
 import {
   type Board,
   type BoardCard,
@@ -65,13 +72,9 @@ const nameOf = (value: unknown): string | null =>
 /** How many cards of a cell are drawn before the rest: more than a screen holds. */
 const FIRST_CELL = 50;
 
+/** What a card says in words, beyond its icons: only the fields someone added. */
 function cardMeta(t: Translate, card: BoardCard): string[] {
-  const out: string[] = [card.ticketType.name];
-  if ('assignee' in card.fields) {
-    out.push(nameOf(card.fields.assignee) ?? t('boards.card.unassigned'));
-  }
-  const priority = nameOf(card.fields.priority);
-  if (priority) out.push(priority);
+  const out: string[] = [];
   if (typeof card.fields.dueDate === 'string') {
     out.push(t('boards.card.due', { date: card.fields.dueDate }));
   }
@@ -79,6 +82,29 @@ function cardMeta(t: Translate, card: BoardCard): string[] {
     out.push(card.fields.labels.join(', '));
   }
   return out;
+}
+
+/** Up to two letters for a person's small round mark on a card. */
+const initialsOf = (name: string): string =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.slice(0, 1).toLocaleUpperCase())
+    .join('');
+
+/** The assignee as a small mark, with the name as its accessible name and tooltip (AGL-006). */
+function CardPerson({ name, nobody }: { name: string | null; nobody: string }) {
+  return (
+    <span
+      className={name ? 'board-card-person' : 'board-card-person is-nobody'}
+      role="img"
+      aria-label={name ?? nobody}
+      title={name ?? nobody}
+    >
+      {name ? initialsOf(name) : <NobodyIcon width={20} height={20} />}
+    </span>
+  );
 }
 
 /** The column's count, limits and breach, as its header reads them (AGL-003). */
@@ -133,11 +159,24 @@ function refusedText(
 }
 
 /**
- * A new board's two filters come from the server in English and stay as they are until someone
- * renames them; shown here in the person's language. A renamed filter shows its own name.
+ * "Only my tickets", which boards used to start with, finds the same cards as "Me" in the person
+ * filter, and "Me" combines with other people, so a board no longer offers it (AGL-005). A filter
+ * someone renamed or wrote, whatever its query, stays.
+ */
+export function offeredBoardFilters<T extends { id: string; name: string; query: string }>(
+  filters: readonly T[],
+): T[] {
+  return filters.filter(
+    (f) =>
+      !(f.id === 'mine' && f.name === 'Only my tickets' && f.query === 'assignee = currentUser()'),
+  );
+}
+
+/**
+ * A new board's filter comes from the server in English and stays as it is until someone renames
+ * it; shown here in the person's language. A renamed filter shows its own name.
  */
 export function boardFilterName(t: Translate, filter: { id: string; name: string }): string {
-  if (filter.id === 'mine' && filter.name === 'Only my tickets') return t('boards.filter.mine');
   if (filter.id === 'recent' && filter.name === 'Recently updated') {
     return t('boards.filter.recent');
   }
@@ -155,6 +194,8 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  */
 export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const t = useT();
+  const lockText = useLockText();
+  const sections = useTrackSections();
   const titleId = useId();
   const hintId = useId();
   const choiceTitleId = useId();
@@ -170,6 +211,8 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
+  /** The card whose title is being edited, with the version the person read. */
+  const [editing, setEditing] = useState<{ id: number; version: number | undefined } | null>(null);
   const [busy, setBusy] = useState(false);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
   const [dragging, setDragging] = useState<number | null>(null);
@@ -188,6 +231,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   }, [data, complete]);
   const focusAfter = useRef<number | null>(null);
   const links = useRef(new Map<number, HTMLAnchorElement>());
+  const pencils = useRef(new Map<number, HTMLButtonElement>());
+  /** The pencil that gets focus back once its editor has closed. */
+  const pencilAfter = useRef<number | null>(null);
+  /** A press that began on a card's button: a drag from there would not be meant. */
+  const pressedButton = useRef(false);
+  /** When a drag last ended: a click that follows at once is the drag's, and opens nothing. */
+  const dragEndedAt = useRef(Number.NEGATIVE_INFINITY);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
 
@@ -245,6 +295,21 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   moving.current = busy || dragging !== null;
   const boardRef = useRef(board);
   boardRef.current = board;
+  const readCards = useCallback(() => {
+    if (moving.current) return;
+    // The first read is still on its way and brings the cards with the board; a read here would
+    // take its place and leave the page with no board at all.
+    if (!boardRef.current) return;
+    // Only the cards: the board itself (columns, kind) does not move with a ticket.
+    const mine = ++generation.current;
+    const kind = boardRef.current?.kind;
+    client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
+      (d) => {
+        if (mine === generation.current) setData(d);
+      },
+      () => {},
+    );
+  }, [client, boardId, filters, people]);
   useEffect(() => {
     if (!engine) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -252,33 +317,36 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
-        if (moving.current) return;
-        // Only the cards: the board itself (columns, kind) does not move with a ticket.
-        const mine = ++generation.current;
-        const kind = boardRef.current?.kind;
-        client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
-          (d) => {
-            if (mine === generation.current) setData(d);
-          },
-          () => {},
-        );
+        readCards();
       }, 100);
     });
     return () => {
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [engine, client, boardId, filters, people]);
+  }, [engine, readCards]);
+  // An edit in the ticket pop-up over this board shows at once, socket or no socket.
+  useTicketChanges(readCards);
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;
-    links.current.get(focusAfter.current)?.focus();
+    const moved = links.current.get(focusAfter.current);
+    moved?.focus();
+    // Only the card that has just dropped animates: a board can hold thousands.
+    const card = moved?.closest('li');
+    if (card) playMotion(card, 'motion-drop');
     focusAfter.current = null;
   }, [data]);
 
   useEffect(() => {
     if (choice) firstChoice.current?.focus();
   }, [choice]);
+
+  useEffect(() => {
+    if (editing !== null || pencilAfter.current === null) return;
+    pencils.current.get(pencilAfter.current)?.focus();
+    pencilAfter.current = null;
+  }, [editing]);
 
   if (state === 'loading' && !data) {
     return (
@@ -474,12 +542,56 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   }
 
   function onCardKey(event: KeyboardEvent, card: BoardCard) {
-    if (!event.altKey || busy) return;
+    if (!event.altKey || busy || editing?.id === card.id) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[event.key];
     if (step === undefined) return;
     event.preventDefault();
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') toColumn(card, step as -1 | 1);
     else inColumn(card, step as -1 | 1);
+  }
+
+  const closeEditor = (cardId: number) => {
+    pencilAfter.current = cardId;
+    setEditing(null);
+  };
+
+  /** Saves a card's title; the refusal in plain words, or null once it is saved. */
+  async function saveTitle(card: BoardCard, summary: string): Promise<string | null> {
+    try {
+      const saved = await client.retitle(card.id, summary, editing?.version);
+      setData(
+        (current) =>
+          current && {
+            ...current,
+            cards: current.cards.map((c) =>
+              c.id === card.id ? { ...c, summary: saved.summary, version: saved.version } : c,
+            ),
+          },
+      );
+      setAnnouncement(t('boards.card.titleSaved', { key: card.key }));
+      closeEditor(card.id);
+      return null;
+    } catch (error) {
+      if (!(error instanceof ApiError)) return t('boards.card.titleOther');
+      const body = error.body as {
+        error?: string;
+        locks?: Lock[];
+        fields?: Record<string, string>;
+      } | null;
+      const lock = body?.locks?.[0];
+      if (error.status === 403) {
+        return lock ? lockText(lock, 'edit') : t('boards.card.titleForbidden');
+      }
+      if (body?.error === 'version_conflict') {
+        // They have been told: the next Enter saves over the other person's change.
+        setEditing({ id: card.id, version: undefined });
+        return t('boards.card.titleStale');
+      }
+      if (body?.error === 'track_archived') return t('boards.card.titleArchived');
+      if (body?.fields?.summary === 'required') return t('boards.card.titleEmpty');
+      if (body?.fields?.summary === 'too_long') return t('boards.card.titleTooLong');
+      return t('boards.card.titleOther');
+    }
   }
 
   function toggleFilter(id: string) {
@@ -499,12 +611,14 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     board.location.type === 'track'
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
       : t('boards.location.user', { name: board.location.user.name ?? '' });
+  const hasBacklog = board.kind === 'scrum' && sections?.backlog !== false;
   const showLanes = data.lanes.length > 1 || data.lanes.some((l) => !l.catchAll);
-  const filterButtons = board.boardFilters.map((f) => (
+  const offered = offeredBoardFilters(board.boardFilters);
+  const filterButtons = offered.map((f) => (
     <button
       key={f.id}
       type="button"
-      className="board-filter"
+      className="filter-chip"
       aria-pressed={filters.includes(f.id)}
       title={f.description || f.query}
       onClick={() => toggleFilter(f.id)}
@@ -519,67 +633,147 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     const cell = cardsIn(card.columnId, card.laneId);
     const position = placeOf.get(card.id) ?? 0;
     const menuOpen = menuFor === card.id;
+    const titleOpen = editing?.id === card.id;
+    const priority = card.fields.priority as { name: string; level?: number } | null | undefined;
     return (
       <li
         key={card.id}
         className={`board-card${dragging === card.id ? ' is-dragging' : ''}${dropAt?.before === card.id ? ' is-drop-before' : ''}`}
         data-card-id={card.id}
-        draggable={!busy}
+        draggable={!busy && !titleOpen}
+        onPointerDownCapture={() => {
+          pressedButton.current = false;
+        }}
         onDragStart={(event) => {
+          if (pressedButton.current) {
+            pressedButton.current = false;
+            event.preventDefault();
+            return;
+          }
           event.dataTransfer.setData('text/plain', card.key);
           event.dataTransfer.effectAllowed = 'move';
           setDragging(card.id);
           setMenuFor(null);
         }}
         onDragEnd={() => {
+          dragEndedAt.current = performance.now();
           setDragging(null);
           setDropAt(null);
         }}
         style={card.colour ? ({ '--card-colour': card.colour } as CSSProperties) : undefined}
         onKeyDown={(event) => onCardKey(event, card)}
       >
-        <a
-          className="board-card-link"
-          href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-          onClick={() =>
-            rememberBoard(card.key, {
-              id: boardId,
-              name: board.name,
-              ...(people.length > 0 ? { people: people.join(',') } : {}),
-            })
-          }
-          aria-describedby={hintId}
-          ref={(el) => {
-            if (el) links.current.set(card.id, el);
-            else links.current.delete(card.id);
-          }}
-        >
-          <span className="board-card-key">{card.key}</span>{' '}
-          <span className="board-card-summary">{card.summary}</span>
-        </a>
+        {titleOpen ? (
+          <CardTitleEditor
+            ticketKey={card.key}
+            title={card.summary}
+            onSave={(summary) => saveTitle(card, summary)}
+            onCancel={() => closeEditor(card.id)}
+          />
+        ) : (
+          <a
+            className="board-card-link"
+            href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
+            onClick={(event) => {
+              if (performance.now() - dragEndedAt.current < 300) {
+                event.preventDefault();
+                return;
+              }
+              rememberBoard(card.key, {
+                id: boardId,
+                name: board.name,
+                ...(people.length > 0 ? { people: people.join(',') } : {}),
+              });
+            }}
+            aria-describedby={hintId}
+            title={`${card.key} ${card.summary}`}
+            ref={(el) => {
+              if (el) links.current.set(card.id, el);
+              else links.current.delete(card.id);
+            }}
+          >
+            <span className="board-card-key">{card.key}</span>{' '}
+            <span className="board-card-summary">{card.summary}</span>
+          </a>
+        )}
         <p className="board-card-meta">
+          <span className="ticket-icons">
+            <TypeIcon name={card.ticketType.name} icon={card.ticketType.icon} />
+            {priority && <PriorityIcon name={priority.name} level={priority.level} />}
+          </span>
+          {typeof card.fields.points === 'number' && (
+            <span
+              className="board-card-points"
+              role="img"
+              aria-label={t('boards.card.points', { points: card.fields.points })}
+              title={t('boards.card.points', { points: card.fields.points })}
+            >
+              {card.fields.points}
+            </span>
+          )}
           {cardMeta(t, card).map((part, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: parts are fixed in order per card
             <span key={i}>{part}</span>
           ))}
-          {card.daysInColumn !== null && (
-            <span>{t('boards.card.days', { days: card.daysInColumn })}</span>
+          {/* Saying a card just arrived tells nothing on a column of them: only waiting shows. */}
+          {card.daysInColumn !== null && card.daysInColumn > 0 && (
+            <span
+              className="board-card-age"
+              role="img"
+              aria-label={t('boards.card.days', { days: card.daysInColumn })}
+              title={t('boards.card.days', { days: card.daysInColumn })}
+            >
+              <ClockIcon width={14} height={14} />
+              {card.daysInColumn}
+            </span>
           )}
           {progress[card.id] && (
             <SubticketProgressMini progress={progress[card.id] as SubticketProgress} />
           )}
+          {'assignee' in card.fields && (
+            <CardPerson name={nameOf(card.fields.assignee)} nobody={t('boards.card.unassigned')} />
+          )}
         </p>
-        <button
-          type="button"
-          className="board-card-move"
-          aria-expanded={menuOpen}
-          aria-label={t('boards.card.move', { key: card.key })}
-          title={t('boards.card.move', { key: card.key })}
-          disabled={busy}
-          onClick={() => setMenuFor(menuOpen ? null : card.id)}
-        >
-          <MoreIcon width={18} height={18} />
-        </button>
+        {!titleOpen && (
+          <span className="board-card-actions">
+            {card.mayEdit && (
+              <button
+                type="button"
+                className="board-card-move"
+                aria-label={t('boards.card.editTitle', { key: card.key })}
+                title={t('boards.card.editTitle', { key: card.key })}
+                disabled={busy}
+                ref={(el) => {
+                  if (el) pencils.current.set(card.id, el);
+                  else pencils.current.delete(card.id);
+                }}
+                onPointerDown={() => {
+                  pressedButton.current = true;
+                }}
+                onClick={() => {
+                  setMenuFor(null);
+                  setEditing({ id: card.id, version: card.version });
+                }}
+              >
+                <PencilIcon width={18} height={18} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="board-card-move"
+              aria-expanded={menuOpen}
+              aria-label={t('boards.card.move', { key: card.key })}
+              title={t('boards.card.move', { key: card.key })}
+              disabled={busy}
+              onPointerDown={() => {
+                pressedButton.current = true;
+              }}
+              onClick={() => setMenuFor(menuOpen ? null : card.id)}
+            >
+              <MoreIcon width={18} height={18} />
+            </button>
+          </span>
+        )}
         {menuOpen && (
           <ul className="board-move-menu">
             {columns.map((target, i) =>
@@ -636,7 +830,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         about={t('about.board')}
         actions={
           <>
-            {board.kind === 'scrum' && (
+            {hasBacklog && (
               <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
                 {t('sprints.backlog.link')}
               </a>
@@ -659,22 +853,27 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           </>
         }
       />
-      {board.boardFilters.length > 0 &&
-        (board.boardFilterDisplay === 'dropdown' ? (
-          <details className="board-filters-menu">
-            <summary>{t('boards.filters.summary', { count: filters.length })}</summary>
-            <fieldset className="board-filters">
+      <div className="filter-row">
+        {offered.length > 0 &&
+          (board.boardFilterDisplay === 'dropdown' ? (
+            <Popover
+              label={t('boards.filters.summary', { count: filters.length })}
+              title={t('boards.filters')}
+              on={filters.length > 0}
+            >
+              <fieldset className="filter-chips">
+                <legend className="visually-hidden">{t('boards.filters')}</legend>
+                {filterButtons}
+              </fieldset>
+            </Popover>
+          ) : (
+            <fieldset className="filter-chips">
               <legend className="visually-hidden">{t('boards.filters')}</legend>
               {filterButtons}
             </fieldset>
-          </details>
-        ) : (
-          <fieldset className="board-filters">
-            <legend className="visually-hidden">{t('boards.filters')}</legend>
-            {filterButtons}
-          </fieldset>
-        ))}
-      <BoardPeopleFilter people={data.people} chosen={people} onChange={choosePeople} />
+          ))}
+        <BoardPeopleFilter people={data.people} chosen={people} onChange={choosePeople} />
+      </div>
       {data.unmapped.count > 0 && (
         <p className="board-unmapped">
           {t('boards.unmapped', {
@@ -710,7 +909,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           >
             {t('boards.people.emptyBody')}
           </EmptyState>
-        ) : board.kind === 'scrum' && filters.length === 0 ? (
+        ) : hasBacklog && filters.length === 0 ? (
           <EmptyState
             icon={BoardsIcon}
             title={t('boards.emptyScrumTitle')}
@@ -802,7 +1001,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             }
           }}
           ref={(el) => {
-            if (el && !el.contains(document.activeElement)) el.querySelector('select')?.focus();
+            if (el && !el.contains(document.activeElement)) {
+              el.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
+            }
           }}
         >
           <h2 id={askingTitleId}>

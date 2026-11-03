@@ -1,4 +1,26 @@
 /* Forms: setup, sign-in and, later, every editor. Desktop first; 44px targets on touch. */
+
+/*
+ * Every field, wherever it is: clear glass with an edge of 3:1 (contrast.test.ts holds both, in
+ * both skins). No specificity, so a page's own placement of a field still applies; a field that
+ * is meant to look different, such as the command palette's, says so itself.
+ */
+:where(
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+  select,
+  textarea
+) {
+  border: 1px solid var(--color-field-border);
+  background: var(--field-surface);
+  color: var(--color-text);
+}
+
+/* A list's popup is the browser's: a solid surface, as glass cannot show through it. */
+:where(option, optgroup) {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
 .form {
   display: grid;
   gap: var(--space-4);
@@ -38,11 +60,8 @@
   min-height: var(--hit-target);
   box-sizing: border-box;
   padding: 0 var(--space-4);
-  border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
   box-shadow: var(--shadow-inset);
-  color: var(--color-text);
   font: inherit;
 }
 
@@ -50,20 +69,14 @@
   min-height: var(--hit-target);
   max-width: 100%;
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-  color: var(--color-text);
   font: inherit;
 }
 
 .form-field textarea {
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-field-border);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
   box-shadow: var(--shadow-inset);
-  color: var(--color-text);
   font: inherit;
 }
 
@@ -112,7 +125,7 @@
   border-radius: 0;
   border-start-end-radius: var(--radius-pill);
   border-end-end-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
+  background: var(--field-surface);
   color: var(--color-text-muted);
   cursor: pointer;
 }

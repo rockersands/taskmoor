@@ -10,6 +10,7 @@ import {
   sprintDraftOf,
   sprintSettingsOf,
 } from '../sprints/SprintSettingsSection';
+import { trackSectionsChanged } from '../tracks/trackSections';
 import {
   type Board,
   type BoardClient,
@@ -279,6 +280,7 @@ const MANAGE_PROBLEMS: Record<string, MessageId> = {
 const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
   assignee: 'boards.settings.field.assignee',
   priority: 'boards.settings.field.priority',
+  points: 'boards.settings.field.points',
   dueDate: 'boards.settings.field.dueDate',
   startDate: 'boards.settings.field.startDate',
   labels: 'boards.settings.field.labels',
@@ -323,13 +325,15 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [manageProblem, setManageProblem] = useState<string | null>(null);
   const noticeRef = useRef<HTMLParagraphElement | null>(null);
 
+  /** Once the person has changed something, a late answer (their time zone, say) leaves it be. */
+  const edited = useRef(false);
   useEffect(() => {
     client.settings(boardId).then(
       (read) => {
         setBoard(read.board);
         setStatuses(read.statuses);
         setReach(read.reach ?? null);
-        setDraft(draftOf(read.board, timeZone));
+        if (!edited.current) setDraft(draftOf(read.board, timeZone));
         setState('loaded');
       },
       () => setState('failed'),
@@ -364,7 +368,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     );
   }
 
-  const set = (change: Partial<Draft>) => setDraft({ ...draft, ...change });
+  const set = (change: Partial<Draft>) => {
+    edited.current = true;
+    setDraft({ ...draft, ...change });
+  };
   const problem = (path: string) => problems[path];
   const invalid = (path: string, inputId: string) =>
     problem(path)
@@ -375,7 +382,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       <p id={`${inputId}-problem`} className="form-error">
         {problem(path) === 'invalid_query'
           ? t('boards.settings.invalidQuery')
-          : t('boards.settings.invalidValue')}
+          : problem(path) === 'sprint_running'
+            ? t('boards.settings.sprintRunning')
+            : t('boards.settings.invalidValue')}
       </p>
     ) : null;
 
@@ -464,6 +473,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     try {
       const outcome = await client.update(boardId, patchOf(draft, board.version));
       if (outcome.ok) {
+        // The Backlog tab comes or goes at once, without a reload (ADR-116).
+        if (outcome.board.kind !== board.kind && outcome.board.location.type === 'track') {
+          trackSectionsChanged(outcome.board.location.track.key ?? '');
+        }
         setBoard(outcome.board);
         setDraft(draftOf(outcome.board, timeZone));
         setNotice({ kind: 'saved' });
@@ -554,10 +567,12 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               id={`${id}-kind`}
               value={draft.kind}
               onChange={(e) => set({ kind: e.target.value === 'scrum' ? 'scrum' : 'kanban' })}
+              {...invalid('kind', `${id}-kind`)}
             >
               <option value="kanban">{t('boards.kind.kanban')}</option>
               <option value="scrum">{t('boards.kind.scrum')}</option>
             </select>
+            {problemText('kind', `${id}-kind`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-team`} className="form-label">

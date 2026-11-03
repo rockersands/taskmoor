@@ -143,10 +143,34 @@ describe('Administration (ADR-114)', () => {
     ]);
   });
 
+  it('[IAM-030] shows a track manager only the tracks they run', () => {
+    renderOverview({
+      status: 'signed-in',
+      user: {
+        id: 3,
+        name: 'Mina',
+        email: 'mina@example.com',
+        isSiteAdmin: false,
+        isConfigAdmin: false,
+        managesTracks: true,
+        timeZone: null,
+        locale: null,
+      },
+    });
+    expect(within(pagesNav()).getByRole('link', { name: 'Tracks you run' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks',
+    );
+    expect(within(pagesNav()).queryByRole('list', { name: 'Tracks and setup' })).toBeNull();
+    expect(within(pagesNav()).queryByRole('link', { name: 'Workflow maps' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
+  });
+
   it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', () => {
     renderOverview(CONFIG_ADMIN);
     expect(within(pagesNav()).getByRole('list', { name: 'Tracks and setup' })).toBeVisible();
-    expect(within(pagesNav()).getAllByRole('list')).toHaveLength(2);
+    expect(within(pagesNav()).getByRole('list', { name: 'Your tracks' })).toBeVisible();
+    expect(within(pagesNav()).getAllByRole('list')).toHaveLength(3);
     expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'System status' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();

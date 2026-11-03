@@ -150,7 +150,6 @@ describe('query compiler (M1-037)', () => {
       await post('/api/v1/tracks', { key, name: key, mode: 'shared' });
     }
     const opts = (values: string[]) => values.map((value) => ({ value }));
-    await post('/api/v1/fields', { name: 'Points', type: 'number' });
     await post('/api/v1/fields', { name: 'Review day', type: 'date' });
     await post('/api/v1/fields', { name: 'Deadline', type: 'datetime' });
     await post('/api/v1/fields', {

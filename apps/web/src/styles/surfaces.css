@@ -204,48 +204,8 @@
   font-weight: 600;
 }
 
-/* The tracks under "Tracks": its own scroll, so a long list never pushes the sidebar away. */
-.nav-sublist {
-  display: grid;
-  gap: 2px;
-  max-height: 16rem;
-  margin: 2px 0 0;
-  padding: 0 0 0 var(--space-6);
-  overflow-y: auto;
-  list-style: none;
-}
-
-.nav-sublink {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-100);
-  overflow-wrap: anywhere;
-  text-decoration: none;
-}
-
-.nav-sublink:hover {
-  background: var(--glass-surface-sunken);
-  color: var(--color-text);
-}
-
-.nav-sublink[aria-current="page"] {
-  background: var(--glass-lens-fill);
-  box-shadow: var(--glass-highlight-flat);
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.nav-sublink-all {
-  margin-inline-start: var(--space-6);
-}
-
 @media (pointer: coarse) {
-  .track-tabs a,
-  .nav-sublink {
+  .track-tabs a {
     min-height: var(--hit-target-touch);
   }
 }
@@ -360,6 +320,306 @@
   margin-top: var(--space-2);
 }
 
+/*
+ * Shared controls for filters (ADR-114): a chip that says when it is on, a popover that floats
+ * over the page (a panel docked at the bottom on a phone), a check box and a thin scroll bar.
+ * Any page can use them; the behaviour of the popover is in shell/Popover.tsx.
+ */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+/* A row of groups of chips, read as one row. */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+  margin-block: var(--space-3);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat), var(--shadow-1);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-200);
+  font-weight: 550;
+  text-align: start;
+  cursor: pointer;
+  /* A control, not text: a double click does not select its label. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    border-color var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-settle);
+}
+
+.filter-chip:hover {
+  background: var(--glass-surface-strong);
+  transform: translateY(var(--lift-small));
+}
+
+/* On: the tint and the edge, a tick and a heavier label, so it is never colour alone. */
+.filter-chip[aria-pressed="true"],
+.filter-chip[data-on="true"] {
+  border-color: var(--color-accent);
+  background: var(--glass-tint-accent);
+  font-weight: 700;
+}
+
+.filter-chip[aria-pressed="true"]::before,
+.filter-chip[data-on="true"]::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: calc(-1 * var(--space-1));
+  background: var(--color-accent);
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
+}
+
+/* A chip that opens a list: a small chevron that turns while the list is open. */
+.filter-chip-menu::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: var(--space-1);
+  margin-block-start: -3px;
+  border-inline-end: 2px solid currentcolor;
+  border-block-end: 2px solid currentcolor;
+  transform: rotate(45deg);
+  transition: transform var(--motion-fast) var(--ease-settle);
+}
+
+.filter-chip-menu[aria-expanded="true"]::after {
+  margin-block-start: 3px;
+  transform: rotate(225deg);
+}
+
+.popover-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Over the content, so nothing moves; --popover-shift keeps it inside its row (Popover.tsx). */
+.popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  inset-inline-start: var(--popover-shift, 0px);
+  z-index: 25;
+  display: grid;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: min(20rem, var(--popover-room, 100vw));
+  padding: var(--space-3);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  color: var(--color-text);
+  isolation: isolate;
+}
+
+.popover-head {
+  display: none;
+}
+
+.popover-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.popover-scrim {
+  display: none;
+}
+
+/* A phone: the same panel docked at the bottom of the screen, over a dimmed page. */
+@media (max-width: 767px) {
+  .popover {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 120;
+    width: auto;
+    max-height: 80dvh;
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border-radius: var(--radius-3) var(--radius-3) 0 0;
+  }
+
+  .popover-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .popover-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    border: 0;
+    padding: 0;
+    background: var(--color-backdrop);
+    cursor: pointer;
+  }
+}
+
+/* A check box on glass: a tick on the accent when on, so it is never colour alone. */
+.glass-check {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--color-field-border);
+  border-radius: 6px;
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--shadow-inset);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    border-color var(--motion-fast) var(--ease-soft);
+}
+
+.glass-check::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: var(--color-on-accent);
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
+  opacity: 0;
+}
+
+.glass-check:hover {
+  border-color: var(--color-accent);
+}
+
+.glass-check:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.glass-check:checked::before {
+  opacity: 1;
+}
+
+/* A list inside a popover: it scrolls by itself, so the popover keeps its place. */
+.popover-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(16rem, 45dvh);
+  overflow-y: auto;
+}
+
+/* A row with a check box and its label: the whole row is the target. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-1);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.check-row:hover {
+  background: var(--glass-surface-sunken);
+}
+
+/* A scroll bar that stays out of the way inside a small panel. */
+.thin-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-field-border) transparent;
+}
+
+@supports not (scrollbar-width: thin) {
+  .thin-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    background: var(--color-field-border) content-box;
+  }
+
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (pointer: coarse) {
+  .filter-chip,
+  .check-row {
+    min-height: var(--hit-target-touch);
+  }
+
+  .glass-check {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (forced-colors: active) {
+  .filter-chip[aria-pressed="true"],
+  .filter-chip[data-on="true"] {
+    border-color: Highlight;
+    border-width: 2px;
+  }
+
+  .filter-chip[aria-pressed="true"]::before,
+  .filter-chip[data-on="true"]::before {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* The system's own check box: masks and fills do not survive forced colours. */
+  .glass-check {
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
+
+  .glass-check::before {
+    display: none;
+  }
+}
+
 /* A quiet secondary action: a glass pill. */
 .button-quiet {
   display: inline-flex;
@@ -414,14 +674,13 @@
   padding: var(--space-4);
   color: var(--color-text);
   text-decoration: none;
-  transition:
-    transform var(--motion-base) var(--ease-settle),
-    box-shadow var(--motion-base) var(--ease-settle);
+  transition: transform var(--motion-base) var(--ease-settle);
 }
 
 .start-tile:hover,
 .track-tile:hover {
   box-shadow: var(--glass-highlight), var(--shadow-2);
+  transform: translateY(var(--lift));
 }
 
 .start-tile-icon {
@@ -546,24 +805,6 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .start-tile:hover,
-  .track-tile:hover {
-    transform: translateY(-2px);
-  }
-
-  .help-tip-body:not([hidden]) {
-    animation: glass-in var(--motion-base) var(--ease-settle);
-  }
-
-  @keyframes glass-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px) scale(0.98);
-    }
-  }
-}
-
 @media (forced-colors: active) {
   .glass-card,
   .help-tip-body,
@@ -615,9 +856,7 @@
     "pick start";
   gap: var(--space-2) var(--space-4);
   padding: var(--space-4) var(--space-5);
-  transition:
-    box-shadow var(--motion-base) var(--ease-settle),
-    background-color var(--motion-base) var(--ease-settle);
+  transition: background-color var(--motion-base) var(--ease-soft);
 }
 
 .tutorial-card[data-checked="true"] {
@@ -756,6 +995,7 @@
 .attachment-panel::before,
 .help-tip-body::before,
 .user-menu-popup::before,
+.popover::before,
 .palette::before {
   content: "";
   position: absolute;
@@ -816,6 +1056,7 @@
 .shell-drawer,
 .help-tip-body,
 .user-menu-popup,
+.popover,
 .palette,
 .ticket-dialog {
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
@@ -977,6 +1218,7 @@
   .attachment-panel::before,
   .help-tip-body::before,
   .user-menu-popup::before,
+  .popover::before,
   .palette::before {
     display: none;
   }

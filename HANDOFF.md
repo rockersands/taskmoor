@@ -11,10 +11,9 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 
 ### How to run it
 
-- **Where (the user's decision, 2026-11-03):** everything is on `G:` (NVMe) and runs on native
-  Windows with Git Bash; this PC has no WSL Ubuntu. The clone is `G:\taskmoor`, the workstream
-  worktrees are `G:\tm-ticket-templates`, `G:\tm-ui-overhaul` and `G:\tm-flutter-mobile-app`.
-  Older notes below that name `E:` or `C:` copies are out of date. The bash image and kit scripts
+- **Where (the user's decision, 2026-11-03):** everything is on one NVMe drive and runs on native
+  Windows with Git Bash; this PC has no WSL Ubuntu. The workstream worktrees sit beside the clone
+  as `tm-<name>`. Older notes below that name other drives are out of date. The bash image and kit scripts
   (`tools/image`, `tools/airgap`) have not been run here and may still need Linux.
 - **Coordinator:** this session works on `claude/api-key-upload-prevention-9ucz4x` (M1) and is
   the only one that fast-forwards `main`, after a green `corepack pnpm verify --e2e`, by
@@ -35,7 +34,7 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 
 | # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
 |---|---|---|---|---|---|
-| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` at `ee70282`; the branch is a few doc commits ahead. Fast-forward `main` after your first gate. |
+| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` was fast-forwarded to `3ad14a3` on 2026-11-03 after a green gate, with one e2e test (AI settings, Strict mode) passing only on its retry. |
 | 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | Finished on the branch at `f6b8a5a`: targeted tests pass, the full gate has not run on it. Merge it after the fuzz stages. |
 | 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | The user chose the Soft canvas and the generated illustration, and on 2026-11-03 asked for a pass that looks more like real glass before anything else is built. Nothing large is built until the user approves that pass. |
 | 4 | **Flutter mobile app** (stopped) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Stopped by the user on 2026-11-03, pushed at `8540a0a`. Do not resume it unless the user asks; merge after M1. |
@@ -43,6 +42,32 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates claude/ui-overhaul
 claude/flutter-mobile-app`. A branch that is missing was never pushed: start that workstream
 from its brief.
+
+### What changed on 2026-11-03
+
+Ticket templates are merged (ADR-113, migration 0085, CORE-029, CORE-030): server, picker in the
+create form, management pages, e2e spec, manual. Details are in `docs/plan/ticket-templates-tasks.md`.
+Custom fields of types the form has no control for, and an assignee on an every-track template, are
+API-only, and a save keeps them.
+
+Easier updates are merged (OPS-025, OPS-026, ADR-117). `bash update.sh` installs only a signed
+release; site administrators get a notice with the command. Every release must now attach
+`taskmoor-release.txt` and `.sig` (`tools/release/sign-update-manifest.sh`, see `docs/ops/releases.md`)
+or `update.sh` refuses it. After editing `deploy/compose/update.sh` or `upgrade.sh`, run
+`node tools/compose/kit-scripts.mjs`.
+
+Track invitations are merged (ADR-118, IAM-027 to IAM-030, migration 0087). Inviting is off by
+default; a site administrator gives Invite people in an access policy. Managers appoint other managers
+by default, through a removable permission.
+
+Google sign-in is merged (ADR-119, IAM-031, IAM-032; no migration), a preset of OIDC on each operator's own client: gmail.com, no account creation, not enforced. Tested only against a fake. A provider sign-in gets no Taskmoor second factor, the user's decision, and the guide says so.
+
+Migration numbers: until 1.0 is released only fresh installs matter, because the migrator refuses a number below one already run, and the merge order has put 0084 after 0087. Do not keep a database across these merges except the demo, which is fixed by hand. From now on, never add a number below one already on main.
+
+Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
+`docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
+merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the
+final code (the user's decision).
 
 ### Workstream 1: finishing M1 (in order)
 
@@ -92,9 +117,11 @@ from its brief.
    - publishing images on ghcr.io, public with the repository: the user runs
      `gh auth refresh -h github.com -s write:packages`, then
      `gh auth token | docker login ghcr.io -u rockersands --password-stdin`, so no token is stored;
-   - permanently deleting `_taskmoor-old` on `C:`, `E:` and `G:` (old copies, moved there on
-     2026-11-03). Claude does not delete permanently: send them to the Recycle Bin once the gate is
-     green, checking first that they fit, and the user empties it.
+   - emptying the Recycle Bin, which holds the old copies of the repository (sent there on
+     2026-11-03; Claude does not delete permanently);
+   - before going public: confirming one rewrite of the git history, with a backup first. It
+     replaces the user's old address in every commit and removes old local paths, and needs one
+     force-push to `main`. New commits already use the GitHub no-reply address.
 
    The repository is renamed to `Rockersands/taskmoor`. People will download the Builder from its
    releases. The user allows using the release signing key from Drive at step 6.
@@ -2702,7 +2729,7 @@ agent's worktree under `.claude/worktrees/` (locked by the agent tool; its branc
   images `taskmoor` and `taskmoor-allinone`, the chart in `deploy/helm/taskmoor`, metrics
   `taskmoor_*`, UI and docs. Kept on purpose: the GitHub URL (until the repository is renamed),
   the local folder, dated reports, recorded benchmark data and historical codename mentions.
-  The cluster folders moved with it: `G:/taskmoor-pg` (bench) and `G:/taskmoor-pg-test`.
+  The cluster folders moved with it: `<nvme>/taskmoor-pg` (bench) and `<nvme>/taskmoor-pg-test`.
 - **M0 accepted by the user (2026-10-12).** `pnpm gate M0 --ci` is all green; the counsel
   review is deferred to the first public release (`docs/plan/decisions.csv`). The local demo
   runs on port 8080 (see Local demo).
@@ -2785,12 +2812,12 @@ agent's worktree under `.claude/worktrees/` (locked by the agent tool; its branc
 
 ### Local demo
 
-The demo runs from a copy of the Compose kit in `G:/taskmoor-demo` with the locally built
+The demo runs from a copy of the Compose kit in `<nvme>/taskmoor-demo` with the locally built
 image (`docker build -t taskmoor:dev .` from the repository). Its `.env` pins the project
 name, image, port 8080 and `PUBLIC_URL=http://localhost:8080`. Start or update it with
 `bash install.sh` in that folder (it prints the one-time setup link until an administrator
 exists; each restart issues a new link, so use the latest one); stop it with
-`docker compose down` (add `-v` to delete its data). The old `G:/tracksmith-demo` folder is
+`docker compose down` (add `-v` to delete its data). The old `<nvme>/tracksmith-demo` folder is
 unused and can be deleted by the user. What it shows today:
 first-run setup, sign-in, the app shell with the command palette, Settings and the admin System
 status page. Boards, items and queries arrive with M1.
@@ -2824,18 +2851,12 @@ status page. Boards, items and queries arrive with M1.
   (`git config --local credential.helper`); Git Credential Manager would otherwise open a
   sign-in window. The CLI is signed in as rockersands; its token has the `workflow` scope, so
   pushes that change `.github/workflows/*` go through.
-- Bench datasets live in `G:/taskmoor-pg/bench` as UNLOGGED tables: stop that cluster cleanly
+- Bench datasets live in `<nvme>/taskmoor-pg/bench` as UNLOGGED tables: stop that cluster cleanly
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
   stops it (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
-- **Disks on this machine (measured 2026-10-12 with Get-PhysicalDisk):** E: is a Seagate
-  ST4000DM004, a 5,400 rpm hard disk (random 8 KB reads 13 ms p50), and holds the repository
-  and `.cache/pg-test` (the default place for test clusters). C: (Kingston NV1, 342 GB free) and G: (XPG
-  S40G, 86 GB free) are NVMe; D: is another hard disk. The user confirmed this and said C:
-  and G: are free to use: database clusters and benchmarks go there through
-  `TASKMOOR_PG_CACHE_DIR`, the source tree stays on E:. Benchmarks on E: measure seeks, not
-  the design. Run the gate with the test clusters on an NVMe drive:
-  `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg-test pnpm verify`
+- **Disks:** keep the clone and the test clusters on an NVMe drive; benchmarks on a 5,400 rpm hard
+  disk measure seeks, not the design. `TASKMOOR_PG_CACHE_DIR` puts the clusters on another drive.
   (and `PLAYWRIGHT_BROWSERS_PATH=<empty dir>` skips the browser stories; CI runs them).
   Each Vitest project sets its own timeouts; the root config's are not inherited.
 - The OpenFGA server binary for the permission spike is in `.cache/tools/openfga` (v1.22.0,
@@ -2843,7 +2864,7 @@ status page. Boards, items and queries arrive with M1.
   needs it. CI has no binary, so that candidate and its test are skipped there. Its metrics
   port is disabled in the spike; an orphaned instance otherwise blocks the next one.
 - `pnpm spike xml` writes its synthetic file under `.cache/xml` unless `--dir` says otherwise
-  (use `--dir G:/taskmoor-xml` while E: is busy; the 5 GB file takes two minutes to make).
+  (use `--dir <nvme>/taskmoor-xml` while E: is busy; the 5 GB file takes two minutes to make).
 - In `pnpm verify ... | grep`, use `set -o pipefail` before chaining a commit, or the grep
   status hides a failure. Editing TypeScript through `node -e` string replacement mangles
   `\n` escapes inside quoted strings; use the Edit tool for source edits.
@@ -2869,8 +2890,8 @@ status page. Boards, items and queries arrive with M1.
   `/usr/libexec/postgresql<major>` and `clientBinary()` in `apps/server/src/backup.ts` picks the
   server's major; `TASKMOOR_PG_BIN` points at another directory. The round-trip test
   (`backup.roundtrip.test.ts`) skips when no matching client is on this machine; PostgreSQL
-  16.14 client tools are at `G:/tools/pgsql/bin`, so run it with
-  `TASKMOOR_PG_BIN=G:/tools/pgsql/bin` after schema or backup changes. The CI image job runs the
+  16.14 client tools are at `<nvme>/tools/pgsql/bin`, so run it with
+  `TASKMOOR_PG_BIN=<nvme>/tools/pgsql/bin` after schema or backup changes. The CI image job runs the
   real drill.
 - Python's `Path.write_text` on Windows writes CRLF: Biome's format check then fails and git
   shows whole-file diffs. Open files with `newline='\n'` or run `sed -i 's/\r$//'` afterwards.

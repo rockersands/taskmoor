@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, manyCards } from './fixtures';
@@ -48,12 +49,41 @@ export const Board: Story = {
   },
 };
 
-/** "Only my tickets" on: cards narrow, counts stay whole. */
+/** A card's title being edited in place: Enter saves, Escape cancels (AGL-006). */
+export const EditingATitle: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await expect(canvas.getByRole('textbox', { name: 'Title of SHOP-19' })).toHaveFocus();
+  },
+};
+
+/** A title that was refused says why on the card, at a phone's width. */
+export const TitleRefused: Story = {
+  args: {
+    client: fakeBoardClient({
+      retitleRefusal: () => new ApiError(403, { error: 'forbidden' }),
+    }),
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit the title of SHOP-19' }));
+    await userEvent.keyboard(' now{Enter}');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'You may not edit this ticket.',
+    );
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A board filter on: cards narrow, counts stay whole, and the chip shows a tick. */
 export const FilterOn: Story = {
   args: { client: fakeBoardClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Only my tickets' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'My work' }));
     await expect(await canvas.findByText('2 hidden by board filters')).toBeVisible();
   },
 };
@@ -65,7 +95,7 @@ export const PersonFilter: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
     await expect(await canvas.findByRole('link', { name: /SHOP-21/ })).toBeVisible();
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Rin Okafor' }));
     await expect(await canvas.findByRole('link', { name: /SHOP-23/ })).toBeVisible();
     await expect(canvas.queryByRole('link', { name: /SHOP-19/ })).toBeNull();
@@ -125,7 +155,7 @@ function watchBoard() {
       watch.menu = performance.now() - watch.arrival;
       watch.cardsAtMenu = cards;
     }
-    const button = document.querySelector<HTMLButtonElement>('.board-card-move');
+    const button = document.querySelector<HTMLButtonElement>('.board-card-move[aria-expanded]');
     if (!watch.menu && button && button.getAttribute('aria-expanded') !== 'true') button.click();
     if (cards === 5000) {
       watch.all = performance.now() - watch.arrival;
@@ -174,7 +204,7 @@ export const PersonFilterAtPhoneWidth: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },

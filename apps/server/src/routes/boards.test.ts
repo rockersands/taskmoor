@@ -31,6 +31,7 @@ interface Card {
   status: { id: number; name: string };
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  mayEdit: boolean;
 }
 interface Data {
   columns: { id: string; name: string; count: number; shown: number; wip: string | null }[];
@@ -119,6 +120,7 @@ describe('boards (M1-043)', () => {
       ['alice', false],
       ['bob', false],
       ['carol', false],
+      ['vera', false],
     ] as const) {
       const row = await database.db
         .insertInto('app_user')
@@ -148,6 +150,7 @@ describe('boards (M1-043)', () => {
           ['alice', 'Members'],
           ['bob', 'Members'],
           ['carol', 'Administrators'],
+          ['vera', 'Viewers'],
         ],
       ],
       [
@@ -457,6 +460,7 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
       columns: COLUMNS(),
+      boardFilters: [{ id: 'mine', name: 'Mine', query: 'assignee = currentUser()' }],
     });
     for (const name of ['a1', 'a2', 'b1', 'b2']) await setStatus(name, 'Active');
     await setStatus('c1', 'Closed');
@@ -465,7 +469,7 @@ describe('boards (M1-043)', () => {
     const done = d.columns.find((c) => c.id === 'done');
     expect([doing?.count, doing?.wip]).toEqual([4, 'over']);
     expect([done?.count, done?.wip]).toEqual([1, 'under']);
-    // "Only my tickets" hides cards, never counts.
+    // A board filter hides cards, never counts.
     d = await data('alice', board.id, ['mine']);
     const mine = d.columns.find((c) => c.id === 'doing');
     expect([mine?.count, mine?.shown, mine?.wip]).toEqual([4, 2, 'over']);
@@ -496,7 +500,8 @@ describe('boards (M1-043)', () => {
     ]);
     const unknown = await get('alice', `/api/v1/boards/${board.id}/data?filters=nope`);
     expect(unknown.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
-    // A new board comes with the two default board filters.
+    // A new board comes with the default board filter, and no longer "Only my tickets": the
+    // person filter's "Me" finds the same cards.
     const plain = await createBoard('alice', {
       name: 'Defaults',
       kind: 'kanban',
@@ -505,13 +510,10 @@ describe('boards (M1-043)', () => {
     });
     const read = (await get('alice', `/api/v1/boards/${plain.id}`)).json();
     expect(read.board.boardFilters.map((f: { name: string }) => f.name)).toEqual([
-      'Only my tickets',
       'Recently updated',
     ]);
-    expect((await data('alice', plain.id, ['mine', 'recent'])).cards.map((c) => c.key)).toEqual([
-      T('a1').key,
-      T('b2').key,
-    ]);
+    const refused = await get('alice', `/api/v1/boards/${plain.id}/data?filters=mine`);
+    expect(refused.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
   });
 
   it('[AGL-005] filters by person as a board filter, for a plain member, with counts whole', async () => {
@@ -731,6 +733,111 @@ describe('boards (M1-043)', () => {
     expect(many.statusCode).toBe(400);
   });
 
+  it('[AGL-006] starts a new board on the default cards, with points only where there is one', async () => {
+    // The field every workspace starts with (migration 0095).
+    const field = (await get('admin', '/api/v1/fields'))
+      .json()
+      .fields.find((f: { name: string }) => f.name === 'Points').id as number;
+    const other = (await post('admin', '/api/v1/fields', { name: 'Value', type: 'number' })).json()
+      .field.id as number;
+    const pointed = await ticket('pointed', 'BA', { fields: { [field]: 5, [other]: 8 } });
+    const made = await createBoard('alice', {
+      name: 'Plain',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    const read = await get('alice', `/api/v1/boards/${made.id}`);
+    expect(read.json().board.cardRules).toEqual({
+      colourBy: 'none',
+      colours: [],
+      fields: ['priority', 'assignee', 'points'],
+      daysInColumn: false,
+    });
+    const pointsOf = async (id: number) =>
+      (await data('alice', id)).cards.find((c) => c.id === pointed.id)?.fields.points;
+    const d = await data('alice', made.id);
+    const card = d.cards.find((c) => c.id === pointed.id) as Card;
+    // Cards read the number field named Points, a priority's level, and no days marker.
+    expect(card.fields).toMatchObject({
+      points: 5,
+      priority: { name: 'Normal', level: 4 },
+    });
+    expect(card.daysInColumn).toBeNull();
+    expect(card.colour).toBeNull();
+    expect(d.cards.find((c) => c.id === T('a1').id)?.fields.points).toBeNull();
+
+    // A board estimating with a number field shows that one.
+    const estimating = await createBoard('alice', {
+      name: 'Estimating',
+      kind: 'scrum',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      sprintSettings: {
+        estimation: { statistic: 'field', fieldId: other },
+        timeTracking: 'none',
+        parallelSprints: false,
+      },
+    });
+    expect(await pointsOf(estimating.id)).toBe(8);
+
+    // The full view reads it too, when another field on the card needs that view.
+    const full = await createBoard('alice', {
+      name: 'Full',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: ['points', 'areas'] },
+    });
+    expect(await pointsOf(full.id)).toBe(5);
+  });
+
+  it('[AGL-006] says per card whether the viewer may edit it', async () => {
+    const board = await createBoard('alice', {
+      name: 'Pencils',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    expect((await data('alice', board.id)).cards.every((c) => c.mayEdit)).toBe(true);
+    const seen = (await data('vera', board.id)).cards;
+    expect(seen.length).toBeGreaterThan(1);
+    expect(seen.some((c) => c.mayEdit)).toBe(false);
+    const target = seen[0] as Card;
+    const refused = await patch('vera', `/api/v1/tickets/${target.id}`, { summary: 'Mine now' });
+    expect(refused.statusCode).toBe(403);
+
+    // A ticket-level grant: the assignee may edit their own, and only those, without a query each.
+    const policy = await database.db
+      .selectFrom('track')
+      .select('access_policy_id')
+      .where('id', '=', tracks.BA as number)
+      .executeTakeFirstOrThrow();
+    const { id: grant } = await database.db
+      .insertInto('access_grant')
+      .values({
+        workspace_id: 1,
+        policy_id: policy.access_policy_id,
+        permission: 'edit_tickets',
+        grantee: 'assignee',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const hers = await ticket('vera holds this', 'BA');
+    await database.db
+      .updateTable('ticket')
+      .set({ assignee_id: users.vera?.id as number })
+      .where('id', '=', hers.id)
+      .execute();
+    const mine = (await data('vera', board.id)).cards.filter((c) => c.mayEdit).map((c) => c.id);
+    await database.db.deleteFrom('access_grant').where('id', '=', grant).execute();
+    expect(mine).toEqual([hers.id]);
+  });
+
   it('[AGL-006] resets days in column only when the card changes column', async () => {
     const board = await createBoard('alice', {
       name: 'Days',
@@ -738,6 +845,7 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
       columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: [], daysInColumn: true },
     });
     const day = 86_400_000;
     const now = Date.now();

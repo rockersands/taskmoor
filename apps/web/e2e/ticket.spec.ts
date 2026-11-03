@@ -49,6 +49,9 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
   await expect(made).toBeVisible();
   const key = ((await made.textContent()) ?? '').split(' ')[0] as string;
   await page.getByRole('link', { name: `Open ${key}` }).click();
+  // It opens in the pop-up; the rest of this journey is on the ticket's own page.
+  await page.getByRole('dialog').getByRole('link', { name: 'Open full page' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const title = page.getByRole('heading', { level: 1 });
   await expect(title).toHaveText(`${key} Refund fails on ${testInfo.project.name}`);
   await expect(page.getByRole('button', { name: /^Follow \(/ })).toBeVisible();
@@ -77,7 +80,8 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
 
   // A priority, in place.
   const priority = details.getByRole('combobox', { name: 'Priority' });
-  await priority.selectOption({ index: 1 });
+  await priority.click();
+  await details.getByRole('listbox').getByRole('option', { name: 'Urgent' }).click();
   await expect(page.getByText('Saved.')).toBeVisible();
 
   // M: comment.

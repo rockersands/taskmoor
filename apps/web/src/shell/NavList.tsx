@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactNode, type SVGProps, useId } from 'react';
+import { type ComponentType, type SVGProps, useId } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -27,15 +27,11 @@ interface NavListProps {
   /** False in the collapsed desktop rail: icons only, with the label as the accessible name. */
   showLabels: boolean;
   onNavigate?: () => void;
-  /** A list under an item, there while the person is inside it (Tracks, ADR-116). */
-  expanded?: { id: string; content: ReactNode } | null;
 }
 
-export function NavList({ items, activeId, showLabels, onNavigate, expanded }: NavListProps) {
+export function NavList({ items, activeId, showLabels, onNavigate }: NavListProps) {
   const t = useT();
   const baseId = useId();
-  const expandableId = expanded === undefined ? null : 'tracks';
-  const open = Boolean(expanded);
   const link = ({ id, labelId, href, icon: ItemIcon }: NavItem) => {
     const label = t(labelId);
     return (
@@ -44,7 +40,6 @@ export function NavList({ items, activeId, showLabels, onNavigate, expanded }: N
           className="nav-link"
           href={routeHref(href)}
           aria-current={id === activeId ? 'page' : undefined}
-          aria-expanded={expanded !== undefined && id === expandableId ? open : undefined}
           aria-label={showLabels ? undefined : label}
           title={showLabels ? undefined : label}
           onClick={onNavigate}
@@ -52,7 +47,6 @@ export function NavList({ items, activeId, showLabels, onNavigate, expanded }: N
           <ItemIcon />
           {showLabels && <span className="nav-label">{label}</span>}
         </a>
-        {showLabels && open && id === expandableId && expanded?.content}
       </li>
     );
   };

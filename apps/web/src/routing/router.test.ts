@@ -171,3 +171,131 @@ describe('clean URLs', () => {
     expect(click('/other/page')).toBe(false);
   });
 });
+
+describe.each([
+  ['hash', '/#/tracks/FE/board?people=7', (route: string) => `/${route}`],
+  ['path', '/tracks/FE/board?people=7', (route: string) => `/${route.slice(2)}`],
+] as const)('a ticket over a page (%s routing)', (mode, page, addressOf) => {
+  const BOARD = '#/tracks/FE/board?people=7';
+  const TICKET = '#/tickets/FE-12';
+  let router: Router;
+  let stop: () => void;
+  const link = (route: string) => (mode === 'hash' ? route : addressOf(route));
+  const back = async (toAddress: string) => {
+    window.history.back();
+    await vi.waitFor(() => expect(address()).toBe(toAddress));
+  };
+
+  beforeEach(() => {
+    router = createRouter(window, { routing: mode, basePath: '/' });
+    stop = router.start();
+    window.history.pushState(null, '', page);
+  });
+  afterEach(() => stop());
+
+  it('[AGL-018] a plain click pushes the ticket’s address and the page stays the route', () => {
+    const changed = vi.fn();
+    const unsubscribe = router.subscribe(changed);
+    expect(click(link(TICKET))).toBe(true);
+    unsubscribe();
+    expect(address()).toBe(addressOf(TICKET));
+    expect(router.address()).toBe(TICKET);
+    expect(router.current()).toBe(BOARD);
+    expect(router.overlay()).toBe(TICKET);
+    expect(router.overlayDepth()).toBe(1);
+    expect(changed).toHaveBeenCalled();
+  });
+
+  it('[AGL-018] Ctrl, Cmd, Shift, middle click, a new tab and other routes are left alone', () => {
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
+      expect(click(link(TICKET), init)).toBe(false);
+    }
+    expect(click(link(TICKET), {}, { target: '_blank' })).toBe(false);
+    expect(router.overlay()).toBeNull();
+    click(link('#/tickets/FE-12/elsewhere'));
+    click(link('#/boards/7'));
+    expect(router.overlay()).toBeNull();
+  });
+
+  it('[AGL-018] a link with data-full-page leaves the page instead', () => {
+    expect(click(link(TICKET), {}, { 'data-full-page': '' })).toBe(mode === 'path');
+    expect(router.overlay()).toBeNull();
+  });
+
+  it('[AGL-018] the way out to the full page is a new entry, with no page beneath', async () => {
+    click(link(TICKET));
+    expect(click(link(TICKET), {}, { 'data-full-page': '' })).toBe(true);
+    expect(address()).toBe(addressOf(TICKET));
+    expect(router.overlay()).toBeNull();
+    expect(router.current()).toBe(TICKET);
+    await back(addressOf(TICKET));
+    await vi.waitFor(() => expect(router.overlay()).toBe(TICKET));
+    expect(router.current()).toBe(BOARD);
+  });
+
+  it('[AGL-018] Back steps through tickets to the page; closing goes there at once', async () => {
+    click(link(TICKET));
+    click(link('#/tickets/FE-13?comment=4'));
+    expect(router.overlayDepth()).toBe(2);
+    expect(router.current()).toBe(BOARD);
+    await back(addressOf(TICKET));
+    expect(router.overlayDepth()).toBe(1);
+    expect(router.current()).toBe(BOARD);
+    await back(page);
+    expect(router.overlay()).toBeNull();
+    expect(router.current()).toBe(BOARD);
+
+    click(link(TICKET));
+    click(link('#/tickets/FE-13'));
+    router.closeOverlay();
+    await vi.waitFor(() => expect(address()).toBe(page));
+    expect(router.overlay()).toBeNull();
+  });
+
+  it('[AGL-018] closing with no history below it rewrites the entry to the page', () => {
+    vi.useFakeTimers();
+    try {
+      click(link(TICKET));
+      const go = vi.spyOn(window.history, 'go').mockImplementation(() => {});
+      router.closeOverlay();
+      vi.advanceTimersByTime(2000);
+      go.mockRestore();
+      expect(address()).toBe(page);
+      expect(router.overlay()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('[AGL-018] a reload reads the same entry: the ticket over its page', () => {
+    click(link(TICKET));
+    const again = createRouter(window, { routing: mode, basePath: '/' });
+    expect(again.overlay()).toBe(TICKET);
+    expect(again.current()).toBe(BOARD);
+  });
+
+  it('[AGL-018] the same address with no state, as a shared link, is the full page', () => {
+    window.history.pushState(null, '', addressOf(TICKET));
+    expect(router.overlay()).toBeNull();
+    expect(router.current()).toBe(TICKET);
+  });
+
+  it('[AGL-018] the page beneath rewrites its own route, not the ticket’s address', () => {
+    click(link(TICKET));
+    router.replace('#/tracks/FE/board?people=8');
+    expect(address()).toBe(addressOf(TICKET));
+    expect(router.current()).toBe('#/tracks/FE/board?people=8');
+    router.replaceOverlay('#/tickets/BE-1');
+    expect(router.address()).toBe('#/tickets/BE-1');
+    expect(router.current()).toBe('#/tracks/FE/board?people=8');
+  });
+
+  it('[AGL-018] on a ticket’s own page, a link to a comment there stays on that page', () => {
+    window.history.pushState(null, '', addressOf(TICKET));
+    click(link(`${TICKET}?comment=3`));
+    expect(router.overlay()).toBeNull();
+    click(link('#/tickets/FE-13'));
+    expect(router.overlay()).toBe('#/tickets/FE-13');
+    expect(router.current().startsWith(TICKET)).toBe(true);
+  });
+});

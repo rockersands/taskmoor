@@ -185,9 +185,9 @@ describe('formula fields (M1-013)', () => {
     await app.close();
   });
 
-  it('[CORE-011] computes {Points} * 2 in the answer to a create and an edit, within 1 s, with history', async () => {
-    const points = await field({ name: 'Points', type: 'number' });
-    const double = await formula('Double points', '{Points} * 2');
+  it('[CORE-011] computes {Pts} * 2 in the answer to a create and an edit, within 1 s, with history', async () => {
+    const points = await field({ name: 'Pts', type: 'number' });
+    const double = await formula('Double points', '{Pts} * 2');
     const t = await ticket('FA', { fields: { [points]: 5 } });
     expect(t.fields[double]).toBe(10);
     // Acceptance criterion (1): the answer to the edit already holds the new value.
@@ -222,15 +222,15 @@ describe('formula fields (M1-013)', () => {
       await post('admin', '/api/v1/fields', {
         name: 'Broken',
         type: 'formula',
-        config: { expression: '{Points} * * 2', output: 'number' },
+        config: { expression: '{Pts} * * 2', output: 'number' },
       }),
     );
     expect(bad).toMatchObject({
       code: 'unexpected_token',
-      start: 11,
-      end: 12,
+      start: 8,
+      end: 9,
       line: 1,
-      column: 12,
+      column: 9,
     });
     expect(
       formulaError(
@@ -303,7 +303,7 @@ describe('formula fields (M1-013)', () => {
     // The checker answers while typing, without saving.
     const checked = await get(
       'admin',
-      `/api/v1/formulas/check?expression=${encodeURIComponent('{Cycle A} * 2 + sum(children.{Points})')}`,
+      `/api/v1/formulas/check?expression=${encodeURIComponent('{Cycle A} * 2 + sum(children.{Pts})')}`,
     );
     expect(checked.json()).toMatchObject({
       ok: true,

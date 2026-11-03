@@ -547,7 +547,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         "context_id IN (SELECT id FROM field_context WHERE name = 'Seed context') AND track_id IS NULL",
       field_option: "value = 'Seed option' AND NOT disabled",
       field_label: "name = 'seed-label'",
-      field_epoch: 'epoch > 1',
+      field_epoch: 'epoch > 1 AND workspace_id = 1',
       ticket: "summary = 'Seed ticket' AND fields <> '{}'::jsonb",
     },
     seed: async (db) => {
@@ -772,10 +772,12 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async (db) => {
       // A ticket made after the log exists: a row with its snapshot, numbered at commit. Its
-      // own ticket, so the other seeds' rows (logged too when they run later) do not count.
+      // own ticket, so the other seeds' rows (logged too when they run later) do not count. It has
+      // a priority, so 0092's filling leaves it and its one row alone.
       await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
-          requester_id, creator_id, rank)
-        SELECT 1, t.id, 36, ty.id, 'Logged ticket', u.id, u.id, 'a36'
+          requester_id, creator_id, rank, priority_id)
+        SELECT 1, t.id, 36, ty.id, 'Logged ticket', u.id, u.id, 'a36',
+               (SELECT id FROM priority WHERE name = 'Seed priority')
           FROM track t, ticket_type ty, app_user u
          WHERE t.key = 'SEED' AND ty.name = 'Seed type' AND u.email = 'seed@example.com'`.execute(
         db,
@@ -1523,6 +1525,39 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0085_ticket_templates': {
+    tables: {
+      ticket_template:
+        "name = 'Seed bug report' AND summary = 'Bug: {date}' AND defaults->>'dueInDays' = '7' AND jsonb_array_length(subtickets) = 1",
+    },
+    seed: async (db) => {
+      // A template of the seed track (ADR-113): a pattern, an outline, two defaults and one
+      // subticket.
+      await sql`INSERT INTO ticket_template (workspace_id, track_id, name, summary, description,
+          defaults, subtickets, created_by)
+        SELECT 1, t.id, 'Seed bug report', 'Bug: {date}',
+          '{"type": "doc", "content": [{"type": "paragraph"}]}',
+          '{"labels": ["seed"], "dueInDays": 7}', '[{"summary": "Write a test"}]', u.id
+          FROM track t, app_user u
+         WHERE t.key = 'SEED' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
+  '0087_track_invitations': {
+    tables: {
+      track_invitation: "email = 'invited-seed@example.com' AND delivery = 'link'",
+      // Whoever runs a track keeps giving the role that runs it (ADR-118).
+      access_grant: `id = (SELECT min(id) FROM access_grant
+        WHERE permission = 'appoint_track_admins' AND grantee = 'role')`,
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track_invitation (workspace_id, track_id, role_id, email, token_hash,
+          delivery, expires_at)
+        SELECT t.workspace_id, t.id, r.id, 'invited-seed@example.com', 'seed-invitation', 'link',
+               now() + interval '7 days'
+          FROM track t JOIN role r ON r.workspace_id = t.workspace_id
+         ORDER BY t.id, r.id LIMIT 1`.execute(db);
+    },
+  },
   '0088_one_board_per_track': {
     tables: {
       board: "name = 'Seed one-track board' AND location_user_id IS NULL",
@@ -1557,7 +1592,32 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM track WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
-  '0091_ticket_checklists': {
+  '0092_very_low_priority': {
+    // The seed's list is an administrator's by then ('Seed priority', 0018): it must stay as it is.
+    tables: { priority: "name = 'Seed priority' AND workspace_id = 1" },
+    seed: async () => {},
+  },
+  '0093_board_card_defaults': {
+    // Data only: the seed's boards hold no default card rules, so they stay as they were.
+    tables: { board: "name = 'Seed one-track board' AND card_rules = '{}'::jsonb" },
+    seed: async () => {},
+  },
+  '0094_board_kind_decides_backlog': {
+    // Data only, over tracks: the seed's first track is still there with its board.
+    tables: { track: "key = 'SEED' AND workspace_id = 1" },
+    seed: async () => {},
+  },
+  '0095_points_field': {
+    // Data only: a workspace with no such field gets one, and its board follows; tickets stay.
+    tables: {
+      field: "name = 'Points' AND type = 'number' AND workspace_id = 1",
+      board: `name = 'Seed one-track board'
+        AND (sprint_settings #>> '{estimation,fieldId}')::int
+          = (SELECT id FROM field WHERE name = 'Points' AND workspace_id = 1)`,
+    },
+    seed: async () => {},
+  },
+  '0096_ticket_checklists': {
     tables: {
       ticket_checklist: "name = 'Seed checklist' AND position = 0",
       ticket_checklist_item: "text = 'Seed item' AND state = 'rejected' AND position = 0",

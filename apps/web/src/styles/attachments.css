@@ -162,6 +162,14 @@ a.attachment-action {
   display: grid;
   place-items: center;
   padding: var(--space-4);
+}
+
+/* Its own layer, as the ticket's dialogs have, so it can fade by itself. */
+.attachment-preview-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--color-backdrop);
 }
 

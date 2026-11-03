@@ -89,7 +89,7 @@ export interface SearchClient {
   /** Changes a ticket through the ticket route (M1-042, inline edit); the ticket as it is now. */
   edit: (id: number, change: object) => Promise<SearchTicket>;
   /** Priorities, for editing a priority cell. */
-  priorities: () => Promise<{ id: number; name: string }[]>;
+  priorities: () => Promise<{ id: number; name: string; level?: number }[]>;
 }
 
 const uniqueNames = (lists: readonly { name: string }[][]) => [
@@ -168,7 +168,8 @@ export const searchClient: SearchClient = {
     (await api<{ ticket: SearchTicket }>(`/tickets/${id}`, { method: 'PATCH', body: change }))
       .ticket,
   priorities: async () =>
-    (await api<{ priorities: { id: number; name: string }[] }>('/priorities')).priorities,
+    (await api<{ priorities: { id: number; name: string; level?: number }[] }>('/priorities'))
+      .priorities,
 };
 
 /** The address of an export of a query's results in the given columns (QRY-015). */

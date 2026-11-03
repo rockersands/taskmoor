@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { BoardSettingsPage } from './BoardSettingsPage';
 import { BOARD, fakeBoardClient, SCRUM_BOARD } from './fixtures';
 
@@ -57,6 +57,22 @@ export const ScrumSprints: Story = {
     await expect(await sprints.findByRole('combobox', { name: 'Number field' })).toHaveDisplayValue(
       'Story points',
     );
+  },
+};
+
+/** Going Kanban refused while a sprint runs: the page says to complete it first (AGL-010). */
+export const SprintRunning: Story = {
+  args: {
+    client: {
+      ...fakeBoardClient({ board: SCRUM_BOARD }),
+      update: async () => ({ ok: false, fields: { kind: 'sprint_running' } }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(await canvas.findByRole('combobox', { name: 'Kind' }), 'kanban');
+    await userEvent.click(canvas.getByRole('button', { name: 'Save settings' }));
+    await expect(await canvas.findByText(/Complete it first/)).toBeVisible();
   },
 };
 

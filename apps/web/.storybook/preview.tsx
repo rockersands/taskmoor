@@ -18,16 +18,20 @@ import '../src/styles/ticket-view.css';
 import '../src/styles/ticket-tools.css';
 import '../src/styles/people.css';
 import '../src/styles/inbox.css';
+import '../src/styles/boards.css';
+import '../src/styles/ticket-icons.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
 import '../src/styles/search.css';
 import '../src/styles/charts.css';
 import '../src/styles/dashboards.css';
 import '../src/styles/releases.css';
+import '../src/styles/ticket-templates.css';
 import '../src/styles/timeline.css';
 import '../src/styles/views.css';
 import '../src/styles/ai.css';
 import '../src/styles/surfaces.css';
+import '../src/styles/motion.css';
 import '../src/builder/builder.css';
 
 const preview: Preview = {

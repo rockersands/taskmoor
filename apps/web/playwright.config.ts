@@ -38,6 +38,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
+    // Measuring a surface still swelling would give a scaled box (ADR-114, section 11).
+    contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
     {

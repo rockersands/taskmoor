@@ -9,6 +9,7 @@ import '../styles/tokens.css';
 import '../styles/shell.css';
 import '../styles/forms.css';
 import '../styles/admin.css';
+import '../styles/motion.css';
 import './builder.css';
 
 // The Builder page (M1-112, ADR-088): one static file with the web build inside. The skin

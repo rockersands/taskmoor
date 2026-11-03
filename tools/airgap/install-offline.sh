@@ -17,4 +17,5 @@ db=$(awk '$1 == "postgres" { print $2 }' images.txt)
 
 echo "== installing"
 cd compose
-TASKMOOR_IMAGE="$app" POSTGRES_IMAGE="$db" TASKMOOR_PULL=never bash install.sh
+# No update check here (OPS-005, OPS-026): install.sh keeps this in .env for later upgrades.
+TASKMOOR_IMAGE="$app" POSTGRES_IMAGE="$db" TASKMOOR_PULL=never TASKMOOR_UPDATE_CHECK=off bash install.sh

@@ -271,9 +271,15 @@ describe('query plans (M1-037)', () => {
       return res.json();
     };
     const opts = (values: string[]) => values.map((value) => ({ value }));
-    const fieldIds: Record<string, number> = {};
+    // Points comes with every workspace (migration 0095); the rest are made here.
+    const seeded = await db
+      .selectFrom('field')
+      .select('id')
+      .where('workspace_id', '=', 1)
+      .where('name', '=', 'Points')
+      .executeTakeFirstOrThrow();
+    const fieldIds: Record<string, number> = { Points: seeded.id };
     for (const [name, payload] of Object.entries({
-      Points: { type: 'number' },
       Deadline: { type: 'date' },
       Team: { type: 'select', context: { options: opts(['O1', 'O2', 'O3', 'O4', 'O5']) } },
       Tags: { type: 'select', multiple: true, context: { options: opts(['A', 'B', 'C', 'D']) } },

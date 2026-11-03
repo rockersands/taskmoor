@@ -13,6 +13,7 @@ import { functionNames, loginTimes, readOnly } from '../search/run';
 import { expandSavedSearches } from '../search/saved';
 import { commentReadableSql } from '../tickets/comments';
 import { ticketKey } from '../tickets/model';
+import { priorityLevels } from '../tickets/priority-level';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
 import { loadMap, publishedStatuses, trackMapId, workflowsOf } from '../workflows/maps';
 import {
@@ -382,6 +383,8 @@ export interface CardView {
   /** The extra fields the card rules ask for, by name. */
   fields: Record<string, unknown>;
   daysInColumn: number | null;
+  /** The viewer holds the right to edit this ticket: the card offers its pencil. */
+  mayEdit: boolean;
 }
 
 export interface LaneView {
@@ -446,15 +449,73 @@ export interface BoardData {
   people: BoardPeople;
 }
 
+/** Names a number field goes by when it holds a ticket's points. */
+const POINTS_NAMES = new Set(['points', 'story points', 'puntos']);
+
+/**
+ * The number field a card's points read: the one the board estimates with, else the workspace's
+ * number field named Points (the oldest, if there are several). None: cards show no points.
+ */
+function pointsFieldOf(catalog: Catalog, estimateFieldId: number | null): number | null {
+  if (estimateFieldId !== null) return estimateFieldId;
+  const named = [...catalog.fields.values()]
+    .filter((f) => f.type === 'number' && POINTS_NAMES.has(f.name.trim().toLowerCase()))
+    .sort((a, b) => a.id - b.id);
+  return named[0]?.id ?? null;
+}
+
+/**
+ * The field a new board estimates with (AGL-007): its own track's or the workspace's number field
+ * under a points name, the oldest, else the field most of the workspace's boards estimate with,
+ * which finds the seeded field (migration 0095) after an administrator renames it. A field they
+ * removed is not brought back. None: the board has the default statistic.
+ */
+export async function estimateFieldForNewBoard(
+  db: Kysely<Database>,
+  workspaceId: number,
+  trackId: number,
+): Promise<number | null> {
+  const numbers = await db
+    .selectFrom('field')
+    .select(['id', 'name', 'track_id'])
+    .where('workspace_id', '=', workspaceId)
+    .where('type', '=', 'number')
+    .where((eb) => eb.or([eb('track_id', 'is', null), eb('track_id', '=', trackId)]))
+    .orderBy('id')
+    .execute();
+  const named = numbers.filter((f) => POINTS_NAMES.has(f.name.trim().toLowerCase()));
+  const own = named.find((f) => f.track_id !== null) ?? named[0];
+  if (own) return own.id;
+  const used = await sql<{ id: number }>`
+    SELECT (sprint_settings #>> '{estimation,fieldId}')::int AS id
+      FROM board
+     WHERE workspace_id = ${workspaceId}
+       AND sprint_settings #>> '{estimation,statistic}' = 'field'
+     GROUP BY 1
+     ORDER BY count(*) DESC, 1`.execute(db);
+  const shared = new Set(numbers.filter((f) => f.track_id === null).map((f) => f.id));
+  return used.rows.find((row) => shared.has(row.id))?.id ?? null;
+}
+
 /** A card property, for the extra fields of the card rules. */
-function cardField(view: TicketView, name: string): unknown {
+function cardField(view: TicketView, name: string, pointsField: number | null): unknown {
   const custom = /^cf\[(\d+)\]$/.exec(name);
   if (custom) return view.fields[custom[1] as string] ?? null;
   switch (name) {
     case 'assignee':
       return view.assignee;
     case 'priority':
-      return view.priority && { id: view.priority.id, name: view.priority.name };
+      return (
+        view.priority && {
+          id: view.priority.id,
+          name: view.priority.name,
+          level: view.priority.level,
+        }
+      );
+    case 'points': {
+      const value = pointsField === null ? null : view.fields[String(pointsField)];
+      return typeof value === 'number' ? value : null;
+    }
     case 'parent':
       return view.parent?.key ? view.parent : null;
     case 'track':
@@ -483,6 +544,7 @@ interface CardSource {
 const SLIM_FIELDS = new Set([
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'createdAt',
@@ -501,9 +563,16 @@ async function cardSources(
   fields: readonly string[],
   visibleParents: ReadonlySet<number>,
   catalogs: FieldCatalogs,
+  estimateFieldId: number | null,
 ): Promise<Map<number, CardSource>> {
   const out = new Map<number, CardSource>();
   if (ids.length === 0) return out;
+  const levels = fields.includes('priority')
+    ? await priorityLevels(db, scope.ws)
+    : new Map<number, number>();
+  const pointsField = fields.includes('points')
+    ? pointsFieldOf(await catalogs.get(scope.ws), estimateFieldId)
+    : null;
   const idList = sql<boolean>`k.id = ANY(${[...ids]}::int[])`;
   if (fields.every((f) => SLIM_FIELDS.has(f))) {
     const rows = await db
@@ -535,6 +604,10 @@ async function cardSources(
         'k.version',
         'k.created_at',
         'k.updated_at',
+        (pointsField === null
+          ? sql<null>`NULL`
+          : sql<unknown>`k.fields -> ${String(pointsField)}::text`
+        ).as('points_value'),
       ])
       .where(idList)
       .where('k.deleted_at', 'is', null)
@@ -549,7 +622,12 @@ async function cardSources(
           : { id: r.priority_id, name: r.priority_name ?? '', color: r.priority_color ?? null };
       const values: Record<string, unknown> = {
         assignee,
-        priority: priority && { id: priority.id, name: priority.name },
+        priority: priority && {
+          id: priority.id,
+          name: priority.name,
+          level: levels.get(priority.id) ?? 4,
+        },
+        points: typeof r.points_value === 'number' ? r.points_value : null,
         dueDate: r.due_date,
         startDate: r.start_date,
         createdAt: r.created_at.toISOString(),
@@ -581,7 +659,7 @@ async function cardSources(
     .where('k.deleted_at', 'is', null)
     .where(scope.filter.sql)
     .execute();
-  const custom = fields.some((f) => f.startsWith('cf['))
+  const custom = fields.some((f) => f.startsWith('cf[') || f === 'points')
     ? await customFieldViews(db, scope.ws, await catalogs.get(scope.ws), details)
     : new Map<number, Record<string, JsonValue>>();
   for (const d of details) {
@@ -610,10 +688,47 @@ async function cardSources(
       rank: view.rank,
       version: view.version,
       createdAt: d.created_at,
-      fields: Object.fromEntries(fields.map((f) => [f, cardField(view, f)])),
+      fields: Object.fromEntries(fields.map((f) => [f, cardField(view, f, pointsField)])),
     });
   }
   return out;
+}
+
+/**
+ * The cards their viewer may edit (AGL-006): a track's answer is one cached lookup, and holds for
+ * every card in it. Only where the track does not grant it, a ticket-level grant (requester,
+ * assignee, a person field) might, so those tickets take one more statement, not one each; the
+ * answers come from what the authorizer has cached. What an edit may still meet (a status's lock,
+ * a field only some may set) is the ticket route's to refuse, in words, when it is tried.
+ */
+async function editableCards(
+  db: Db,
+  request: FastifyRequest,
+  rows: readonly { id: number; track_id: number }[],
+): Promise<Set<number>> {
+  const editable = new Set<number>();
+  const byTrack = new Map<number, boolean>();
+  const rest: number[] = [];
+  for (const row of rows) {
+    let holds = byTrack.get(row.track_id);
+    if (holds === undefined) {
+      holds = await request.authz.can('edit_tickets', row.track_id);
+      byTrack.set(row.track_id, holds);
+    }
+    if (holds) editable.add(row.id);
+    else rest.push(row.id);
+  }
+  if (rest.length === 0) return editable;
+  const tickets = await db
+    .selectFrom('ticket')
+    .select(['id', 'track_id', 'requester_id', 'assignee_id', 'visibility_level_id', 'fields'])
+    .where(sql<boolean>`id = ANY(${rest}::int[])`)
+    .execute();
+  for (const ticket of tickets) {
+    const row = { ...ticket, fields: ticket.fields as Record<string, unknown> };
+    if (await request.authz.canTicket('edit_tickets', row)) editable.add(ticket.id);
+  }
+  return editable;
 }
 
 /** A stable colour for an id (type, priority or person), from a fixed palette of tokens. */
@@ -632,6 +747,8 @@ export async function loadBoardData(input: {
   now?: Date;
   /** On a Scrum board, only the tickets of these sprints (the active ones, M1-044). */
   sprintIds?: readonly number[];
+  /** The number field the board estimates with, which its cards show as points (AGL-007). */
+  estimateFieldId?: number | null;
 }): Promise<BoardData> {
   const { db, request, scope, board, limit, timeoutMs } = input;
   const now = input.now ?? new Date();
@@ -656,6 +773,7 @@ export async function loadBoardData(input: {
   }
   interface CardRow {
     id: number;
+    track_id: number;
     status_id: number;
     parent_id: number | null;
     assignee_id: number | null;
@@ -676,7 +794,7 @@ export async function loadBoardData(input: {
           mapped.length === 0
             ? { rows: [] as CardRow[] }
             : await sql<CardRow>`
-          SELECT k.id, k.status_id, k.parent_id, k.assignee_id,
+          SELECT k.id, k.track_id, k.status_id, k.parent_id, k.assignee_id,
                  ${firstMatch(compiled.lanes)} AS lane, ${firstMatch(compiled.colours)} AS colour
             FROM ticket k
            WHERE ${compiled.scope} AND ${compiled.filters}
@@ -729,6 +847,7 @@ export async function loadBoardData(input: {
     board.cardRules.fields,
     visibleParents,
     input.catalogs,
+    input.estimateFieldId ?? null,
   );
 
   // Days in column: from the status changes of the cards shown.
@@ -844,6 +963,7 @@ export async function loadBoardData(input: {
     }
   }
 
+  const editable = await editableCards(db, request, shownRows);
   const cards: CardView[] = [];
   const shownPerColumn = new Map<string, number>();
   for (const r of shownRows) {
@@ -884,6 +1004,7 @@ export async function loadBoardData(input: {
       daysInColumn: since
         ? Math.max(0, Math.floor((now.getTime() - since.getTime()) / 86_400_000))
         : null,
+      mayEdit: editable.has(r.id),
     });
   }
 

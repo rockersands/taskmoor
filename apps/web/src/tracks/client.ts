@@ -46,7 +46,15 @@ export const STATISTIC_KINDS = [
 export type StatisticKind = (typeof STATISTIC_KINDS)[number];
 export type StatisticSettings = Record<string, string | number | boolean>;
 
+/** What a track has that depends on its board being Scrum (ADR-116); the server decides. */
+export interface TrackSections {
+  backlog: boolean;
+  sprints: boolean;
+}
+
 export interface TrackClient {
+  /** Whether the track has a backlog and sprints, for its tabs and reports. */
+  sections(key: string): Promise<TrackSections>;
   summary(key: string): Promise<TrackSummary>;
   /** The customized Summary, if any, and whether the person may change it. */
   summaryLayout(key: string): Promise<TrackSummaryLayout>;
@@ -92,6 +100,8 @@ export interface TrackListItem {
 const trackPath = (key: string) => `/tracks/${encodeURIComponent(key)}`;
 
 export const trackClient: TrackClient = {
+  sections: async (key) =>
+    (await api<{ track: { sections: TrackSections } }>(trackPath(key))).track.sections,
   summary: (key) => api<TrackSummary>(`/tracks/${encodeURIComponent(key)}/summary`),
   summaryLayout: (key) => api<TrackSummaryLayout>(`${trackPath(key)}/summary-layout`),
   saveSummaryLayout: async (key, layout) => {

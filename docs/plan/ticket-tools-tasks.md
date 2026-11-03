@@ -2,7 +2,7 @@
 
 The workstream the user asked for on 2026-11-03: tools on every type of ticket, for 1.0. Branch
 `claude/ticket-tools`, based on `claude/ui-overhaul`. Decision record: ADR-120. Requirements:
-CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0091.
+CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0096.
 
 | Part | What | State |
 |---|---|---|
@@ -38,7 +38,7 @@ gate: that is the coordinator's, after merging.
 `packages/sdk/src/generated/*`. The last four are generated or ordered: after joining them, run
 `pnpm verify --update` and review. In `apps/web/src/tickets/view/TicketPage.tsx` the local
 `LinksPanel` went away and the columns are wrapped in `EditorToolsProvider`, which reindented them.
-Numbers taken: migration 0091, ADR-120, CORE-031 to 033, NTF-013 and 014.
+Numbers taken: migration 0096, ADR-120, CORE-031 to 033, NTF-013 and 014.
 
 **What is new where.** The panels are in `apps/web/src/tickets/tools`; the menu is in
 `apps/web/src/richtext/slashTools.ts`, `BlockPrompt.tsx` and `EditorTools.tsx`; the routes are

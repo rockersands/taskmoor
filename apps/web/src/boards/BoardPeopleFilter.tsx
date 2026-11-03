@@ -1,5 +1,6 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { Popover } from '../shell/Popover';
 import type { BoardPeople } from './client';
 
 /** One choice of the person filter: `me`, `none`, or a person's id, as the server reads it. */
@@ -31,14 +32,13 @@ export interface BoardPeopleFilterProps {
 
 /**
  * Filtering a board by person (AGL-005 (3)): "Me" and "Unassigned" at hand, the people assigned to
- * the board's tickets in a menu, and those chosen shown so that a shared link says what it filters
- * by. Choosing several shows any of them. Every step is a button, a check box or a text box, so it
- * works from the keyboard and on a phone.
+ * the board's tickets in a popover, and those chosen shown so that a shared link says what it
+ * filters by. Choosing several shows any of them. Every step is a button, a check box or a text
+ * box, so it works from the keyboard and on a phone.
  */
 export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilterProps) {
   const t = useT();
   const id = useId();
-  const menu = useRef<HTMLDetailsElement>(null);
   const [find, setFind] = useState('');
   const viewer = people.viewerId === null ? null : String(people.viewerId);
   const others = people.assignees.filter((p) => String(p.id) !== viewer);
@@ -50,11 +50,11 @@ export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilte
   const needle = find.trim().toLowerCase();
   const listed = others.filter((p) => p.name.toLowerCase().includes(needle));
   return (
-    <fieldset className="board-filters board-people">
+    <fieldset className="filter-chips">
       <legend className="visually-hidden">{t('boards.people')}</legend>
       <button
         type="button"
-        className="board-filter"
+        className="filter-chip"
         aria-pressed={isMe}
         onClick={() =>
           onChange(isMe ? chosen.filter((c) => c !== 'me' && c !== viewer) : [...chosen, 'me'])
@@ -64,7 +64,7 @@ export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilte
       </button>
       <button
         type="button"
-        className="board-filter"
+        className="filter-chip"
         aria-pressed={chosen.includes('none')}
         onClick={() => toggle('none', !chosen.includes('none'))}
       >
@@ -74,65 +74,59 @@ export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilte
         <button
           key={choice}
           type="button"
-          className="board-filter"
+          className="filter-chip"
           aria-pressed="true"
           onClick={() => toggle(choice, false)}
         >
           {nameOf.get(choice) ?? t('boards.people.notHere')}
         </button>
       ))}
-      <details
-        ref={menu}
-        className="board-people-menu"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape' || !menu.current?.open) return;
-          menu.current.open = false;
-          menu.current.querySelector('summary')?.focus();
-        }}
+      <Popover
+        label={t('boards.people.menu', { count: named.length })}
+        title={t('boards.people.title')}
+        on={named.length > 0}
       >
-        <summary>{t('boards.people.menu', { count: named.length })}</summary>
-        <div className="board-people-panel glass-card">
-          {others.length === 0 ? (
-            <p className="page-note">{t('boards.people.nobody')}</p>
-          ) : (
-            <>
-              {others.length > FIND_FROM && (
-                <div className="form-field">
-                  <label htmlFor={`${id}-find`} className="form-label">
-                    {t('boards.people.find')}
+        {others.length === 0 ? (
+          <p className="page-note">{t('boards.people.nobody')}</p>
+        ) : (
+          <>
+            {others.length > FIND_FROM && (
+              <div className="form-field">
+                <label htmlFor={`${id}-find`} className="form-label">
+                  {t('boards.people.find')}
+                </label>
+                <input
+                  id={`${id}-find`}
+                  type="search"
+                  value={find}
+                  onChange={(event) => setFind(event.target.value)}
+                />
+              </div>
+            )}
+            <ul className="popover-list thin-scroll">
+              {listed.map((person) => (
+                <li key={person.id}>
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      className="glass-check"
+                      checked={chosen.includes(String(person.id))}
+                      onChange={(event) => toggle(String(person.id), event.target.checked)}
+                    />
+                    <span>{person.name}</span>
                   </label>
-                  <input
-                    id={`${id}-find`}
-                    type="search"
-                    value={find}
-                    onChange={(event) => setFind(event.target.value)}
-                  />
-                </div>
-              )}
-              <ul className="board-people-list">
-                {listed.map((person) => (
-                  <li key={person.id}>
-                    <label className="board-people-choice">
-                      <input
-                        type="checkbox"
-                        checked={chosen.includes(String(person.id))}
-                        onChange={(event) => toggle(String(person.id), event.target.checked)}
-                      />
-                      <span>{person.name}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-              {listed.length === 0 && <p className="page-note">{t('boards.people.noMatch')}</p>}
-              {people.more && (
-                <p className="page-note">
-                  {t('boards.people.more', { count: people.assignees.length })}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </details>
+                </li>
+              ))}
+            </ul>
+            {listed.length === 0 && <p className="page-note">{t('boards.people.noMatch')}</p>}
+            {people.more && (
+              <p className="page-note">
+                {t('boards.people.more', { count: people.assignees.length })}
+              </p>
+            )}
+          </>
+        )}
+      </Popover>
       {chosen.length > 0 && (
         <button
           type="button"

@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
 // Original line icons on a 24px grid. Stroke colour follows the text colour.
-type IconProps = SVGProps<SVGSVGElement>;
+export type IconProps = SVGProps<SVGSVGElement>;
 
 function Icon({ children, ...props }: IconProps) {
   return (
@@ -146,6 +146,121 @@ export const TicketIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="4" y="5" width="16" height="14" rx="3" />
     <path d="M8 10h8M8 14h5" />
+  </Icon>
+);
+
+/** Ticket types: a flag for a result to reach. */
+export const OutcomeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 21V4" />
+    <path d="M6 5h11l-2.5 4L17 13H6" />
+  </Icon>
+);
+
+/** Ticket types: a spark, something new. */
+export const FeatureIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3.5 14 10l6.5 2-6.5 2-2 6.5-2-6.5-6.5-2 6.5-2z" />
+  </Icon>
+);
+
+/** Ticket types: a beetle seen from above. */
+export const BugIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="8" y="8" width="8" height="12" rx="4" />
+    <path d="M12 8v12M9 5.5 10.5 8M15 5.5 13.5 8M8 11.5H4.5M8 15H4M8.5 18.5l-3 2M16 11.5h3.5M16 15h4M15.5 18.5l3 2" />
+  </Icon>
+);
+
+/** Ticket types: a spanner, work that keeps things running. */
+export const ChoreIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M15.5 4.5a4.5 4.5 0 0 0-5.6 5.9L4.2 16a2.1 2.1 0 0 0 3 3l5.7-5.6a4.5 4.5 0 0 0 5.9-5.6l-2.9 2.9-2.8-.7-.7-2.8z" />
+  </Icon>
+);
+
+/** Ticket types: a round tick, a piece of work to get done. */
+export const ToDoIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.2 12.3 2.6 2.6 5-5.4" />
+  </Icon>
+);
+
+/** Ticket types: a light bulb. */
+export const IdeaIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9.5 21h5" />
+    <path d="M12 3a6.2 6.2 0 0 0-3.8 11.1c.6.5.8 1 .8 1.7v1.7h6v-1.7c0-.7.2-1.2.8-1.7A6.2 6.2 0 0 0 12 3z" />
+  </Icon>
+);
+
+/** Ticket types: a line stepping down and along from its parent. */
+export const SubticketIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 4v9a3 3 0 0 0 3 3h9" />
+    <path d="m14.5 12.5 3.5 3.5-3.5 3.5" />
+  </Icon>
+);
+
+/** Ticket types: a plain hexagon, for a type with no icon of ours. */
+export const CustomTypeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3.5 19.5 8v8L12 20.5 4.5 16V8z" />
+  </Icon>
+);
+
+/** Heights of the rising bars of a priority, shortest first. */
+const PRIORITY_BARS = [6, 10, 14, 18];
+const PRIORITY_STUB = 2.5;
+
+/**
+ * A priority's six levels by shape alone. Level 1 is a solid diamond with an exclamation mark; 2 to
+ * 5 are four rising bars with fewer of them standing (4, 3, 2, 1), the rest down to a stub; level 6
+ * is all stubs. They read as a meter, and read in black and white.
+ */
+export const PriorityLevelIcon = ({ level, ...p }: IconProps & { level: number }) =>
+  level <= 1 ? (
+    <Icon {...p} fill="currentColor" stroke="none">
+      <path
+        fillRule="evenodd"
+        d="M12 2.5 21.5 12 12 21.5 2.5 12ZM10.9 7v6.5h2.2V7ZM12 15a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z"
+      />
+    </Icon>
+  ) : (
+    <Icon {...p} fill="currentColor" stroke="none">
+      {PRIORITY_BARS.map((height, i) => {
+        const standing = i < 6 - level;
+        const h = standing ? height : PRIORITY_STUB;
+        return <rect key={height} x={3 + i * 5} y={21 - h} width="3" height={h} rx="1" />;
+      })}
+    </Icon>
+  );
+
+/** A dial: how long something has waited. */
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Icon>
+);
+
+/** Nobody yet: the outline of a person's place, dashed. */
+export const NobodyIcon = (p: IconProps) => (
+  <Icon {...p} strokeDasharray="3 3">
+    <circle cx="12" cy="12" r="9" />
+  </Icon>
+);
+
+export const PencilIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />
+  </Icon>
+);
+
+export const ChevronDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 9.5 6 6 6-6" />
   </Icon>
 );
 

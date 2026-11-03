@@ -16,7 +16,9 @@ export default defineProject({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright(),
+      // Axe measures colour as the page is at that moment, so a surface still fading in would fail
+      // it. Stories test the place things come to rest, with the one switch in tokens.css on.
+      provider: playwright({ contextOptions: { reducedMotion: 'reduce' } }),
       instances: [{ browser: 'chromium' }],
       // In a full gate the browser starts while everything else does too.
       connectTimeout: 180_000,

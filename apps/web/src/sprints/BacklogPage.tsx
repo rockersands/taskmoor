@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type Backlog,
   type BacklogPanels,
@@ -97,6 +99,7 @@ export function BacklogPage({
     );
   }, [client, boardId]);
   useEffect(load, [load]);
+  useTicketChanges(load);
 
   useEffect(() => {
     if (!data) return;
@@ -360,6 +363,12 @@ export function BacklogPage({
               onChange={() => toggle(ticket.id)}
               aria-label={t('sprints.select.label', { key: ticket.key })}
             />
+            <span className="ticket-icons">
+              <TypeIcon name={ticket.type} icon={ticket.typeIcon} />
+              {ticket.priority && (
+                <PriorityIcon name={ticket.priority.name} level={ticket.priority.level} />
+              )}
+            </span>
             <a
               href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
               className="sprint-ticket-key"

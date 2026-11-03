@@ -31,7 +31,8 @@ vendor lock-in and nothing leaving the server by default (OPS-005).
 - **Health:** `/health` (process alive) and `/ready` (database reachable, migrations current)
   per role; an admin page shows database, queue lag, disk, backup age and certificates.
 - **No telemetry to the project** by default; an opt-in anonymous version ping is a separate
-  decision (`docs/plan/decisions.csv`, "Telemetry").
+  decision (`docs/plan/decisions.csv`, "Telemetry"). The new-version check of ADR-117 reads a
+  public file and reports nothing, so it is not telemetry.
 
 ## Options considered
 

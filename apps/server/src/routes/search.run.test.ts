@@ -157,7 +157,7 @@ describe('search (M1-037)', () => {
       return made;
     };
     const opts = (values: string[]) => values.map((value) => ({ value }));
-    await field({ name: 'Points', type: 'number' });
+    await field({ name: 'Pts', type: 'number' });
     await field({ name: 'Due by', type: 'date' });
     await field({ name: 'Deadline', type: 'datetime' });
     await field({
@@ -243,7 +243,7 @@ describe('search (M1-037)', () => {
       areaIds: [areas.Backend],
       originalEstimate: 3600,
       fields: {
-        [fields.Points as number]: 5,
+        [fields.Pts as number]: 5,
         [fields['Due by'] as number]: '2026-01-10',
         [fields.Deadline as number]: '2026-01-10T10:00:00Z',
         [fields.Team as number]: option('Team', 'Red'),
@@ -267,7 +267,7 @@ describe('search (M1-037)', () => {
       foundInReleaseIds: [releases['1.0']],
       areaIds: [areas.Frontend],
       fields: {
-        [fields.Points as number]: 3,
+        [fields.Pts as number]: 3,
         [fields['Due by'] as number]: '2026-03-01',
         [fields.Team as number]: option('Team', 'Green'),
         [fields.Tags as number]: [option('Tags', 'C')],
@@ -281,9 +281,14 @@ describe('search (M1-037)', () => {
       ticketTypeId: type('Subticket'),
       parent: keys.dashboard,
       summary: 'Export to CSV',
-      priorityId: null,
       labels: [],
     });
+    // Only an import can leave a ticket with no priority (CORE-014).
+    await database.db
+      .updateTable('ticket')
+      .set({ priority_id: null })
+      .where('summary', '=', 'Export to CSV')
+      .execute();
     await create('audit', {
       track: 'DEF',
       ticketTypeId: type('Chore'),
@@ -293,7 +298,7 @@ describe('search (M1-037)', () => {
       assigneeId: users.alice.id,
       labels: ['security'],
       fields: {
-        [fields.Points as number]: 8,
+        [fields.Pts as number]: 8,
         [fields.Tags as number]: [option('Tags', 'A')],
         [fields.Topics as number]: ['gamma'],
       },
@@ -489,10 +494,10 @@ describe('search (M1-037)', () => {
   });
 
   it('[QRY-002] finds tickets by every custom field type, by name or cf[id]', async () => {
-    expect(await set('Points > 4')).toEqual(['audit', 'login']);
-    expect(await set(`cf[${fields.Points}] = 3`)).toEqual(['dashboard']);
-    expect(await set('Points IS EMPTY')).toEqual(['closed', 'export']);
-    expect(await set('Points != 5')).toEqual(['audit', 'dashboard']);
+    expect(await set('Pts > 4')).toEqual(['audit', 'login']);
+    expect(await set(`cf[${fields.Pts}] = 3`)).toEqual(['dashboard']);
+    expect(await set('Pts IS EMPTY')).toEqual(['closed', 'export']);
+    expect(await set('Pts != 5')).toEqual(['audit', 'dashboard']);
     expect(await set('"Due by" <= 2026-01-31')).toEqual(['login']);
     expect(await set('Deadline > "2026-01-10 09:00"')).toEqual(['login']);
     expect(await set('Team = Red')).toEqual(['login']);
@@ -525,7 +530,7 @@ describe('search (M1-037)', () => {
       'export',
     ]);
     expect(await set('NOT labels IN (security)')).toEqual(['dashboard']);
-    expect(await set('NOT Points > 4')).toEqual(['dashboard']);
+    expect(await set('NOT Pts > 4')).toEqual(['dashboard']);
     expect(await set('NOT (type = Bug AND priority = High)')).toEqual([
       'audit',
       'closed',
@@ -564,13 +569,13 @@ describe('search (M1-037)', () => {
       'export',
       'closed',
     ]);
-    expect(await names('Points IS NOT EMPTY ORDER BY Points DESC')).toEqual([
+    expect(await names('Pts IS NOT EMPTY ORDER BY Pts DESC')).toEqual([
       'audit',
       'login',
       'dashboard',
     ]);
     // Empties last, then by id in the direction of the last key.
-    expect(await names('ORDER BY Points ASC')).toEqual([
+    expect(await names('ORDER BY Pts ASC')).toEqual([
       'dashboard',
       'login',
       'audit',
@@ -952,7 +957,7 @@ describe('search (M1-037)', () => {
       url: '/api/v1/search',
       payload: {
         q: `key IN (${Array.from({ length: 1000 }, (_, i) => `ABC-${i + 1}`).join(', ')})`,
-        fields: ['summary', `cf[${fields.Points}]`],
+        fields: ['summary', `cf[${fields.Pts}]`],
         limit: 2,
       },
     });
@@ -963,7 +968,7 @@ describe('search (M1-037)', () => {
       id: ids.login,
       key: keys.login,
       summary: 'Login fails on Safari',
-      fields: { [String(fields.Points)]: 5 },
+      fields: { [String(fields.Pts)]: 5 },
     });
     const unknown = await as('alice', {
       method: 'GET',
@@ -975,7 +980,9 @@ describe('search (M1-037)', () => {
   // where the server's timers fire late (Windows: about every 15 ms). Writing them takes a few
   // seconds alone and over a minute while other suites load the machine, hence the long limit.
   it('[QRY-010] stops a query over the timeout with a clear error', {
-    timeout: 180_000,
+    // It makes 20,000 tickets first: that passes alone in about 90 s, and took over 180 s in
+    // some full gates on Windows.
+    timeout: process.platform === 'win32' ? 540_000 : 180_000,
   }, async () => {
     const type = await database.db
       .selectFrom('ticket_type')

@@ -5,6 +5,8 @@ export interface HomeTicket {
   id: number;
   key: string;
   summary: string;
+  ticketType?: { name: string; icon?: string | null };
+  priority?: { name: string; level?: number } | null;
   status: { name: string; stage: 'new' | 'active' | 'closed' };
   track: { key: string; name: string };
   updatedAt: string;

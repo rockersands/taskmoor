@@ -88,14 +88,14 @@ describe('formula values through every write (M1-013)', () => {
       expect(created.statusCode, created.body).toBe(201);
       ids[name] = created.json().field.id;
     };
-    await make('Points', { type: 'number' });
+    await make('Effort', { type: 'number' });
     await make('Double', {
       type: 'formula',
-      config: { expression: '{Points} * 2', output: 'number' },
+      config: { expression: '{Effort} * 2', output: 'number' },
     });
     await make('Child points', {
       type: 'formula',
-      config: { expression: 'sum(children.{Points})', output: 'number' },
+      config: { expression: 'sum(children.{Effort})', output: 'number' },
     });
     // Reads another formula, and itself on the children: the whole tree's doubles.
     await make('Tree double', {
@@ -223,7 +223,7 @@ describe('formula values through every write (M1-013)', () => {
               track,
               summary: 'Start',
               ticketTypeId: types[level],
-              fields: { [ids.Points as number]: start[i] ?? null },
+              fields: { [ids.Effort as number]: start[i] ?? null },
               ...(parent === null ? {} : { parent: live[parent]?.id }),
             });
             expect(res.statusCode, res.body).toBe(201);
@@ -247,7 +247,7 @@ describe('formula values through every write (M1-013)', () => {
                 summary: 'Generated',
                 ticketTypeId: types[s.level],
                 dueDate: day(s.due),
-                fields: { [ids.Points as number]: s.points },
+                fields: { [ids.Effort as number]: s.points },
                 ...(parent && s.pick % 3 !== 0 ? { parent: parent.id } : {}),
                 ...(s.level === 'Subticket' && parent ? { parent: parent.id } : {}),
               });
@@ -257,7 +257,7 @@ describe('formula values through every write (M1-013)', () => {
               const t = live[s.pick % live.length] as (typeof live)[number];
               const res = await patch(`/api/v1/tickets/${t.id}`, {
                 dueDate: day(s.due),
-                fields: { [ids.Points as number]: s.points },
+                fields: { [ids.Effort as number]: s.points },
               });
               expect(res.statusCode, res.body).toBe(200);
             } else if (s.kind === 'reparent' && of('Feature').length > 0) {
@@ -344,7 +344,7 @@ describe('formula values through every write (M1-013)', () => {
     for (const name of ['due', 'Due date', 'dueDate', 'DUE DATE']) {
       expect(resolve(name)).toEqual({ id: 'due', type: 'date' });
     }
-    expect(resolve(`cf[${ids.Points}]`)).toEqual({ id: `cf[${ids.Points}]`, type: 'number' });
+    expect(resolve(`cf[${ids.Effort}]`)).toEqual({ id: `cf[${ids.Effort}]`, type: 'number' });
     expect(resolve('cf[999999]')).toMatchObject({ problem: 'unknown_field' });
   });
 });

@@ -379,6 +379,35 @@ describe('the slash menu (NTF-013)', () => {
   });
 });
 
+describe('the menu inside another form (NTF-013)', () => {
+  it('[NTF-013] Enter in a block form puts the block in and does not send the form around it', async () => {
+    const user = userEvent.setup();
+    const sent: number[] = [];
+    const changes: (PmJson | null)[] = [];
+    render(
+      <I18nProvider locale="en">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            sent.push(1);
+          }}
+        >
+          <p id="in-form">Comment</p>
+          <RichTextEditor labelledBy="in-form" onChange={(doc) => changes.push(doc)} />
+        </form>
+      </I18nProvider>,
+    );
+    const textbox = screen.getByRole('textbox', { name: 'Comment' });
+    await choose(textbox, 'status');
+    await user.keyboard('Ready{Enter}');
+    expect(sent).toEqual([]);
+    expect(changes.at(-1)?.content?.[0]?.content?.[0]).toMatchObject({
+      type: 'status',
+      attrs: { text: 'Ready' },
+    });
+  });
+});
+
 describe('the new blocks in read mode (NTF-014)', () => {
   const view = (doc: PmJson, tools: EditorTools = TOOLS) =>
     render(

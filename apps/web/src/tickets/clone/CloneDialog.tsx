@@ -6,6 +6,7 @@ import type { BulkItem, BulkOperation } from '../../bulk/client';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import { navigate, routeHref } from '../../routing/router';
+import { useLeaveMotion } from '../../shell/motion';
 import { type CloneClient, type CloneTrack, cloneClient } from './client';
 
 /** The ticket being cloned, as the ticket view knows it. */
@@ -70,6 +71,7 @@ export function CloneDialog({
   const titleId = useId();
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
+  const boxRef = useLeaveMotion(box);
   const summaryInput = useRef<HTMLInputElement>(null);
   const subticket = ticket.level === SUBTICKET;
   const [tracks, setTracks] = useState<CloneTrack[] | null>(null);
@@ -206,7 +208,7 @@ export function CloneDialog({
   return (
     <div className="ticket-dialog-backdrop">
       <div
-        ref={box}
+        ref={boxRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -350,6 +352,7 @@ export function CloneDialog({
                 <a
                   className="button-primary"
                   href={routeHref(`#/tickets/${encodeURIComponent(copyKey)}`)}
+                  onClick={onClose}
                 >
                   {t('clone.open', { key: copyKey })}
                 </a>

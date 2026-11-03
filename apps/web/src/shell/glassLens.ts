@@ -15,6 +15,7 @@ const LENS_SURFACES = [
   '.shell-drawer',
   '.help-tip-body',
   '.user-menu-popup',
+  '.popover',
   '.palette',
   '.ticket-dialog',
 ].join(',');
@@ -234,10 +235,10 @@ export function startGlassLens(): () => void {
     for (const surface of surfaces) {
       if (insideGlass(surface)) continue;
       resize.observe(surface);
-      const box = surface.getBoundingClientRect();
-      if (box.width < 8 || box.height < 8) continue;
-      const width = Math.round(box.width);
-      const height = Math.round(box.height);
+      // The surface's own size: a surface still swelling (motion.css) reports a scaled box.
+      const width = surface.offsetWidth;
+      const height = surface.offsetHeight;
+      if (width < 8 || height < 8) continue;
       const radius = Math.min(
         Number.parseFloat(getComputedStyle(surface).borderTopLeftRadius) || 0,
         width / 2,

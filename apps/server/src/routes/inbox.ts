@@ -8,6 +8,7 @@ import { isNotificationEvent, isPreferenceEvent } from '../notifications/model';
 import { bumpInbox } from '../notifications/subscriber';
 import { ALERT_INBOX_EVENTS } from '../security/notices';
 import { commentText } from '../tickets/comments';
+import { priorityLevel } from '../tickets/priority-level';
 import { resolveTrack } from '../tickets/store';
 
 /**
@@ -141,6 +142,12 @@ interface ItemRow {
   ticket_id: number | null;
   ticket_key: string | null;
   summary: string | null;
+  type_name: string | null;
+  type_icon: string | null;
+  priority_id: number | null;
+  priority_name: string | null;
+  priority_order: number | null;
+  priority_total: number;
   track_id: number | null;
   track_key: string | null;
   comment_id: number | null;
@@ -224,6 +231,15 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
               id: r.ticket_id,
               key: r.ticket_key ?? '',
               summary: r.summary ?? '',
+              ticketType: { name: r.type_name ?? '', icon: r.type_icon },
+              priority:
+                r.priority_id === null
+                  ? null
+                  : {
+                      id: r.priority_id,
+                      name: r.priority_name ?? '',
+                      level: priorityLevel(r.priority_order ?? 1, r.priority_total),
+                    },
               track: { id: r.track_id ?? 0, key: r.track_key ?? '' },
             },
       // An alert to site administrators (ADR-109): the rule and whom it is about.
@@ -262,11 +278,17 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
              n.snoozed_until, n.actor_id, u.name AS actor_name,
              to_char(${SORT_AT} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US') AS sort_at,
              k.id AS ticket_id, t.key || '-' || k.number AS ticket_key, k.summary,
+             y.name AS type_name, y.icon AS type_icon,
+             k.priority_id, p.name AS priority_name, p.sort_order AS priority_order,
+             (SELECT count(*)::int FROM priority WHERE workspace_id = ${request.workspaceId})
+               AS priority_total,
              k.track_id, t.key AS track_key,
              c.id AS comment_id, CASE WHEN ${items.readable} THEN c.body END AS comment_body,
              ${items.readable} AS comment_readable
         FROM ${items.from}
         LEFT JOIN app_user u ON u.id = n.actor_id
+        LEFT JOIN ticket_type y ON y.id = k.ticket_type_id
+        LEFT JOIN priority p ON p.id = k.priority_id
        WHERE ${items.where} AND ${extra} AND ${after}
        ORDER BY ${SORT_AT} DESC, n.id DESC
        LIMIT ${limit}`.execute(db);

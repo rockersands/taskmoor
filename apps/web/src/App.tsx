@@ -83,30 +83,35 @@ import type { NavItem } from './shell/NavList';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
 import { ThemeToggle } from './shell/ThemeToggle';
 import { type Appearance, applyAppearance } from './skins/skins';
-import { BacklogPage } from './sprints/BacklogPage';
 import { SprintReportPage } from './sprints/SprintReportPage';
 import { continuation } from './sso/client';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
+import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
+import { TicketPopup } from './tickets/view/TicketPopup';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { InvitationPage } from './trackpeople/InvitationPage';
+import { ManagedTracksPage } from './trackpeople/ManagedTracksPage';
+import { TrackPeoplePage } from './trackpeople/TrackPeoplePage';
 import {
+  BacklogOfBoard,
+  BacklogOfTrack,
   BoardInTrack,
-  KanbanHasNoBacklog,
   Redirect,
   StatisticsOfBoard,
 } from './tracks/BoardInTrack';
 import { TrackBoardSection } from './tracks/TrackBoardSection';
 import { TrackFilesPage } from './tracks/TrackFilesPage';
 import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
-import { TrackNavList } from './tracks/TrackNavList';
 import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
-import { TracksPage } from './tracks/TracksPage';
+import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
+import { newTrackModes } from './tracks/trackAccess';
 import { TutorialsPage } from './tutorial/TutorialsPage';
 import { WebhooksPage } from './webhooks/WebhooksPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
@@ -195,6 +200,7 @@ const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
+const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
 /** Every section of the guided tutorial, to start or do again (ADR-115). */
@@ -202,9 +208,9 @@ const TUTORIALS = '#/settings/tutorials';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
 const BULK = '#/bulk';
-/** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
+/** A board by id (#/boards/7), which goes to its track's Board tab; #/boards itself goes to Tracks. */
 const BOARDS = '#/boards';
-/** A track's summary by key (M1-064); the list of tracks itself is still to come. */
+/** The directory of tracks, and a track's summary by key (M1-064). */
 const TRACKS = '#/tracks';
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's files and web links. */
@@ -215,6 +221,8 @@ const TRACK_BOARD_SECTION =
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** A track's ticket templates (CORE-029). */
+const TRACK_TEMPLATES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/templates(?:[/?]|$)/;
 /** A track's calendar (M1-049). */
 const TRACK_CALENDAR = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/calendar(?:[/?]|$)/;
 /** A track's list (M1-049). */
@@ -225,6 +233,9 @@ const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
+/** An invitation's link (IAM-027) and the pages of the tracks a person runs (IAM-030). */
+const INVITATION = '#/invite';
+const MANAGED_TRACKS = '#/manage/tracks';
 const UNSUBSCRIBE = '#/unsubscribe';
 /** An MCP client's OAuth request waiting for the person's answer (M1-072). */
 const OAUTH_CONSENT = '#/oauth/consent';
@@ -299,6 +310,7 @@ function Pages() {
     },
     [setUser],
   );
+  const mayMakeTrack = newTrackModes(signedIn ? session.user : null).length > 0;
   const commands = useMemo<Command[]>(
     () => [
       ...NAV_ITEMS.map((item) => ({
@@ -308,6 +320,19 @@ function Pages() {
           navigate(item.href);
         },
       })),
+      // Making a track, for those the server lets (CORE-001).
+      ...(mayMakeTrack
+        ? [
+            {
+              id: 'new-track',
+              labelId: 'tracks.new' as const,
+              keywords: ['create', 'add'],
+              run: () => {
+                navigate(NEW_TRACK_ROUTE);
+              },
+            },
+          ]
+        : []),
       // The person's own account, once there is one to show.
       ...(signedIn
         ? [
@@ -365,9 +390,9 @@ function Pages() {
               },
             },
           ]),
-      // A configuration administrator is offered the setup pages (ADR-114).
-      ...(access === 'setup'
-        ? groupsFor('setup').flatMap((group) =>
+      // A configuration administrator or a track's manager is offered their pages (ADR-114).
+      ...(access === 'setup' || access === 'tracks'
+        ? groupsFor(access).flatMap((group) =>
             group.pages.map((page) => ({
               id: `go-setup-${page.id}`,
               labelId: page.labelId,
@@ -516,6 +541,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-ticket-templates',
+              labelId: 'tickets.templates.adminTitle' as const,
+              keywords: ['template', 'ticket template', 'subtickets', 'outline'],
+              run: () => {
+                navigate(ADMIN_TICKET_TEMPLATES);
+              },
+            },
+            {
               id: 'go-configuration-sets',
               labelId: 'admin.sets.title' as const,
               keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
@@ -558,12 +591,13 @@ function Pages() {
           ]
         : []),
     ],
-    [signedIn, admin, access, appear, showSignIn, signOut],
+    [signedIn, admin, access, mayMakeTrack, appear, showSignIn, signOut],
   );
 
   // First-run setup and password links stand alone: no shell before someone can sign in.
   if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
   if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
+  if (isRoute(hash, INVITATION)) return <InvitationPage />;
   if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
   if (isRoute(hash, OAUTH_CONSENT)) return <ConsentPage />;
 
@@ -615,6 +649,13 @@ function Pages() {
     content = <GroupsPage />;
   } else if (isRoute(hash, ADMIN_TEAMS)) {
     content = <TeamsPage />;
+  } else if (isRoute(hash, MANAGED_TRACKS)) {
+    const managed = /^#\/manage\/tracks\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = managed ? (
+      <TrackPeoplePage key={managed} trackId={Number(managed)} />
+    ) : (
+      <ManagedTracksPage />
+    );
   } else if (isRoute(hash, ADMIN_TRACKS)) {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {
@@ -641,6 +682,8 @@ function Pages() {
   } else if (adminGroupOf(hash)) {
     const group = adminGroupOf(hash);
     content = group ? <AdminGroupPage group={group} /> : null;
+  } else if (isRoute(hash, ADMIN_TICKET_TEMPLATES)) {
+    content = <TicketTemplatesPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
@@ -673,7 +716,7 @@ function Pages() {
     const inner = !boardId ? (
       <Redirect to={TRACKS} />
     ) : backlog ? (
-      <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
+      <BacklogOfBoard key={`${boardId}-backlog`} boardId={Number(boardId)} />
     ) : report ? (
       <StatisticsOfBoard boardId={Number(boardId)} path={`/sprint-report/${report}`}>
         <SprintReportPage
@@ -745,6 +788,11 @@ function Pages() {
         <ReleasesPage key={key} trackKey={key} />
       </TrackLayout>
     );
+  } else if (TRACK_TEMPLATES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
+    content = <TicketTemplatesPage key={key} trackKey={key} />;
   } else if (RELEASE.test(hash)) {
     active = 'tracks';
     guarded = true;
@@ -771,11 +819,7 @@ function Pages() {
         <TrackBoardSection trackKey={key}>
           {(board) =>
             section === 'backlog' ? (
-              board.kind === 'scrum' ? (
-                <BacklogPage key={board.id} boardId={board.id} />
-              ) : (
-                <KanbanHasNoBacklog boardId={board.id} />
-              )
+              <BacklogOfTrack board={board} />
             ) : section === 'statistics' ? (
               <TrackStatisticsPage
                 key={board.id}
@@ -865,7 +909,7 @@ function Pages() {
   }
 
   // Administration has its own navigation; each page keeps its route and its guard (ADR-114).
-  if (isRoute(hash, ADMIN_HOME)) {
+  if (isRoute(hash, ADMIN_HOME) || isRoute(hash, MANAGED_TRACKS)) {
     if (access !== 'none') active = ADMIN_NAV_ITEM.id;
     content = <AdminLayout hash={hash}>{content}</AdminLayout>;
   }
@@ -875,6 +919,7 @@ function Pages() {
     return (
       <main className="wallboard-shell">
         <RequireSession>{content}</RequireSession>
+        <TicketPopup />
       </main>
     );
   }
@@ -883,14 +928,6 @@ function Pages() {
     <AppShell
       items={access === 'none' ? NAV_ITEMS : [...NAV_ITEMS, ADMIN_NAV_ITEM]}
       activeId={active}
-      navExpanded={(onNavigate) =>
-        signedIn && active === 'tracks'
-          ? {
-              id: 'tracks',
-              content: <TrackNavList hash={hash} {...(onNavigate ? { onNavigate } : {})} />,
-            }
-          : null
-      }
       topbarEnd={
         <>
           {signedIn && (
@@ -916,6 +953,7 @@ function Pages() {
     >
       {guarded ? <RequireSession>{content}</RequireSession> : content}
       {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
+      <TicketPopup />
     </AppShell>
   );
 }

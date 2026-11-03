@@ -14,6 +14,7 @@ import { type CommentClient, commentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { MentionSource } from '../../richtext/mentions';
+import { useMotionOnChange } from '../../shell/motion';
 import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
 import type { HistoryEntry, TicketClient, TimeEntry } from './client';
 
@@ -90,6 +91,7 @@ export function ActivityPanel({
   const titleId = useId();
   const [own, setOwn] = useState<ActivityTab>('comments');
   const tab = asked ?? own;
+  const panel = useMotionOnChange<HTMLDivElement>('motion-rise', tab);
   const select = (next: ActivityTab) => {
     setOwn(next);
     onTab?.(next);
@@ -140,6 +142,7 @@ export function ActivityPanel({
         ))}
       </div>
       <div
+        ref={panel}
         id={`${baseId}-panel-${tab}`}
         role="tabpanel"
         aria-labelledby={`${baseId}-tab-${tab}`}

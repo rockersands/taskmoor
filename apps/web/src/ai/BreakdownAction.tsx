@@ -3,6 +3,8 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { leaveMotion } from '../shell/motion';
+import { typeName } from '../shell/seededNames';
 import { AiFeature, type AiFeatures } from './AiFeature';
 import { type AiNoticeClient, aiNoticeClient, aiRefusalMessage } from './AiNotice';
 import { type AiClient, aiClient, type Breakdown } from './client';
@@ -165,6 +167,7 @@ function BreakdownBody({
       {open && (
         <div className="ticket-dialog-backdrop">
           <div
+            ref={leaveMotion}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${id}-title`}
@@ -239,7 +242,7 @@ function BreakdownBody({
                         >
                           {state.proposal.childTypes.map((type) => (
                             <option key={type.id} value={type.id}>
-                              {type.name}
+                              {typeName(t, type.name)}
                             </option>
                           ))}
                         </select>

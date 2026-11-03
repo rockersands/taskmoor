@@ -1,6 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type PasswordHasher, throttleKeys } from '@taskmoor/iam';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
@@ -44,6 +44,12 @@ const sessionId = z.object({ id: z.coerce.number().int().positive() });
  * reason, never the password) and count towards the security alert rules; attempts refused
  * while locked do neither, so a flood cannot fill the log.
  */
+/** Whether the person runs at least one track, which is what brings them to Administration. */
+async function managesTracks(request: FastifyRequest): Promise<boolean> {
+  const allowed = await request.authz.allowedTracks('administer_track');
+  return allowed === 'all' || allowed.length > 0;
+}
+
 export function registerSessionRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -61,6 +67,10 @@ export function registerSessionRoutes(
       isSiteAdmin: await request.authz.isSiteAdmin(),
       // Which parts of Administration the web app offers (ADR-114); the routes still decide.
       isConfigAdmin: await request.authz.hasGlobal('configuration_admin'),
+      // Whether the web app offers a track with its own configuration (POST /api/v1/tracks).
+      mayCreateLocalTracks: await request.authz.hasGlobal('create_local_tracks'),
+      // Whether Administration offers someone the tracks they run (IAM-030, ADR-114).
+      managesTracks: await managesTracks(request),
     };
     // A program holding a token can ask what it is and what it may do (IAM-007).
     if (request.apiToken) {

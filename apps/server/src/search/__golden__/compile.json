@@ -410,6 +410,23 @@
       ],
       4,
       51,
+      -5,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      [
+        8,
+        9,
+        10,
+        12,
+        13
+      ],
+      5,
+      51,
       1,
       [
         1,
@@ -427,7 +444,7 @@
       51,
       51
     ],
-    "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND (k.assignee_id = $4::int AND k.status_id <> ALL($5::int[])) AND k.priority_id = $6::int ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int) UNION ALL (SELECT k.id AS id, $8::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $9::int AND k.deleted_at IS NULL AND k.track_id = ANY($10::int[]) AND (k.assignee_id = $11::int AND k.status_id <> ALL($12::int[])) AND k.priority_id = $13::int ORDER BY k.created_at DESC, k.id DESC LIMIT $14::int) UNION ALL (SELECT k.id AS id, $15::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $16::int AND k.deleted_at IS NULL AND k.track_id = ANY($17::int[]) AND (k.assignee_id = $18::int AND k.status_id <> ALL($19::int[])) AND k.priority_id = $20::int ORDER BY k.created_at DESC, k.id DESC LIMIT $21::int) UNION ALL (SELECT k.id AS id, $22::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $23::int AND k.deleted_at IS NULL AND k.track_id = ANY($24::int[]) AND (k.assignee_id = $25::int AND k.status_id <> ALL($26::int[])) AND k.priority_id = $27::int ORDER BY k.created_at DESC, k.id DESC LIMIT $28::int) UNION ALL (SELECT k.id AS id, NULL::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $29::int AND k.deleted_at IS NULL AND k.track_id = ANY($30::int[]) AND (k.assignee_id = $31::int AND k.status_id <> ALL($32::int[])) AND k.priority_id IS NULL ORDER BY k.created_at DESC, k.id DESC LIMIT $33::int)) s ORDER BY c0 DESC NULLS LAST, o1 DESC, id DESC LIMIT $34::int"
+    "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND (k.assignee_id = $4::int AND k.status_id <> ALL($5::int[])) AND k.priority_id = $6::int ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int) UNION ALL (SELECT k.id AS id, $8::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $9::int AND k.deleted_at IS NULL AND k.track_id = ANY($10::int[]) AND (k.assignee_id = $11::int AND k.status_id <> ALL($12::int[])) AND k.priority_id = $13::int ORDER BY k.created_at DESC, k.id DESC LIMIT $14::int) UNION ALL (SELECT k.id AS id, $15::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $16::int AND k.deleted_at IS NULL AND k.track_id = ANY($17::int[]) AND (k.assignee_id = $18::int AND k.status_id <> ALL($19::int[])) AND k.priority_id = $20::int ORDER BY k.created_at DESC, k.id DESC LIMIT $21::int) UNION ALL (SELECT k.id AS id, $22::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $23::int AND k.deleted_at IS NULL AND k.track_id = ANY($24::int[]) AND (k.assignee_id = $25::int AND k.status_id <> ALL($26::int[])) AND k.priority_id = $27::int ORDER BY k.created_at DESC, k.id DESC LIMIT $28::int) UNION ALL (SELECT k.id AS id, $29::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $30::int AND k.deleted_at IS NULL AND k.track_id = ANY($31::int[]) AND (k.assignee_id = $32::int AND k.status_id <> ALL($33::int[])) AND k.priority_id = $34::int ORDER BY k.created_at DESC, k.id DESC LIMIT $35::int) UNION ALL (SELECT k.id AS id, NULL::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $36::int AND k.deleted_at IS NULL AND k.track_id = ANY($37::int[]) AND (k.assignee_id = $38::int AND k.status_id <> ALL($39::int[])) AND k.priority_id IS NULL ORDER BY k.created_at DESC, k.id DESC LIMIT $40::int)) s ORDER BY c0 DESC NULLS LAST, o1 DESC, id DESC LIMIT $41::int"
   },
   "assignee IN membersOf(Support) AND track IN tracksOwnedByUser()": {
     "anchored": false,

@@ -6,18 +6,18 @@ import {
   useRef,
   useState,
 } from 'react';
+import { UpdateNotice } from '../admin/UpdateNotice';
 import { useT } from '../i18n/I18nProvider';
 import { UpdateBanner } from '../meta/VersionGate';
 import { startGlassLens } from './glassLens';
 import { MenuIcon } from './icons';
+import { leaveMotion, useLeaveMotion } from './motion';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
 
 interface AppShellProps {
   items: readonly NavItem[];
   activeId: string;
-  /** A list under a sidebar item while the person is inside it; undefined when none can open. */
-  navExpanded?: (onNavigate?: () => void) => { id: string; content: ReactNode } | null;
   /** Controls shown at the right end of the top bar, such as the command palette. */
   topbarEnd?: ReactNode;
   children: ReactNode;
@@ -29,13 +29,14 @@ interface AppShellProps {
  * Desktop first: on wide screens the sidebar is always there and can collapse to an icon rail.
  * Below 768px it becomes a drawer opened from the menu button, so the app still works on phones.
  */
-export function AppShell({ items, activeId, navExpanded, topbarEnd, children }: AppShellProps) {
+export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps) {
   const t = useT();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
+  const drawerRef = useLeaveMotion(drawer);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
@@ -116,18 +117,14 @@ export function AppShell({ items, activeId, navExpanded, topbarEnd, children }: 
 
       {!compact && (
         <aside id="shell-sidebar" className="shell-sidebar">
-          <NavList
-            items={items}
-            activeId={activeId}
-            showLabels={!collapsed}
-            {...(navExpanded ? { expanded: navExpanded() } : {})}
-          />
+          <NavList items={items} activeId={activeId} showLabels={!collapsed} />
         </aside>
       )}
 
       {compact && drawerOpen && (
         <>
           <button
+            ref={leaveMotion}
             type="button"
             className="shell-backdrop"
             aria-label={t('shell.closeNavigation')}
@@ -135,7 +132,7 @@ export function AppShell({ items, activeId, navExpanded, topbarEnd, children }: 
             onClick={closeDrawer}
           />
           <div
-            ref={drawer}
+            ref={drawerRef}
             id="shell-drawer"
             className="shell-drawer"
             role="dialog"
@@ -143,19 +140,14 @@ export function AppShell({ items, activeId, navExpanded, topbarEnd, children }: 
             aria-label={t('shell.navigationDialog')}
             onKeyDown={trapFocus}
           >
-            <NavList
-              items={items}
-              activeId={activeId}
-              showLabels
-              onNavigate={closeDrawer}
-              {...(navExpanded ? { expanded: navExpanded(closeDrawer) } : {})}
-            />
+            <NavList items={items} activeId={activeId} showLabels onNavigate={closeDrawer} />
           </div>
         </>
       )}
 
       <main id="main" className="shell-main" tabIndex={-1}>
         <UpdateBanner />
+        <UpdateNotice />
         {children}
       </main>
     </div>

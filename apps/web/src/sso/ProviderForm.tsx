@@ -7,7 +7,19 @@ import type { MessageId } from '../i18n/messages.en';
 import { PasswordField } from '../session/PasswordField';
 import { type IdentityProvider, isSaml, type ProviderInput, type SsoProtocol } from './client';
 import { DomainListField } from './DomainListField';
-import { changesOf, draftOf, emptyDraft, inputOf, type ProviderDraft, samlComplete } from './draft';
+import {
+  changesOf,
+  draftOf,
+  emptyDraft,
+  GOOGLE_GUIDE_URL,
+  googleDraft,
+  inputOf,
+  isGoogleIssuer,
+  type ProviderDraft,
+  publicDomains,
+  samlComplete,
+  withoutGoogle,
+} from './draft';
 import { GroupMapField } from './GroupMapField';
 
 export interface ProviderFormProps {
@@ -15,6 +27,8 @@ export interface ProviderFormProps {
   provider?: IdentityProvider | undefined;
   /** The groups the mapping can use; null when they could not be read. */
   groups: GroupSummary[] | null;
+  /** The address to register at Google; the form shows it next to the Google settings. */
+  redirectUri?: string | undefined;
   /**
    * Saves a new provider (everything) or an edit (only what changed). Rejects with the
    * backend's ApiError, which the form explains next to the fields.
@@ -69,9 +83,13 @@ function problemOf(
   }
 }
 
-const PROTOCOLS: [SsoProtocol, MessageId][] = [
+/** Google is OpenID Connect with its settings filled in, not a protocol of its own (ADR-119). */
+type ProviderChoice = SsoProtocol | 'google';
+
+const CHOICES: [ProviderChoice, MessageId][] = [
   ['oidc', 'admin.sso.form.protocolOidc'],
   ['saml', 'admin.sso.form.protocolSaml'],
+  ['google', 'admin.sso.form.protocolGoogle'],
 ];
 
 /**
@@ -79,9 +97,17 @@ const PROTOCOLS: [SsoProtocol, MessageId][] = [
  * protocol. OpenID Connect: where the provider is and the client Taskmoor uses there (the
  * secret is write-only: blank keeps it). SAML: the provider's metadata or its entity ID,
  * sign-in URL and signing certificates, and how to read the person. Both: the domains it
- * serves, the sign-in policy for them and the group mapping.
+ * serves, the sign-in policy for them and the group mapping. The Google choice (IAM-031) is
+ * OpenID Connect with safe settings filled in. Public email domains get a warning next to the
+ * options that would be dangerous for them, on any provider.
  */
-export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFormProps) {
+export function ProviderForm({
+  provider,
+  groups,
+  redirectUri,
+  onSave,
+  onCancel,
+}: ProviderFormProps) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
@@ -89,10 +115,12 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
   const [draft, setDraft] = useState<ProviderDraft>(() =>
     provider ? draftOf(provider) : emptyDraft(),
   );
+  const [choice, setChoice] = useState<ProviderChoice>('oidc');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<{ field: Field; message: string } | null>(null);
   const editing = provider !== undefined;
   const saml = draft.protocol === 'saml';
+  const google = !saml && isGoogleIssuer(draft.issuer);
   const errorId = `${id}-error`;
 
   // The form opens where the work starts.
@@ -102,6 +130,15 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
 
   const set = <K extends keyof ProviderDraft>(key: K, value: ProviderDraft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
+
+  const choose = (next: ProviderChoice) => {
+    setProblem(null);
+    setChoice(next);
+    setDraft((current) => {
+      const left = choice === 'google' ? withoutGoogle(current) : current;
+      return next === 'google' ? googleDraft(left) : { ...left, protocol: next };
+    });
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -128,11 +165,15 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
       ? { 'aria-invalid': true, 'aria-describedby': `${hintId} ${errorId}` }
       : { 'aria-describedby': hintId };
   const secretHint =
-    !provider || isSaml(provider)
-      ? t('admin.sso.form.clientSecretHintNew')
-      : provider.hasClientSecret
-        ? t('admin.sso.form.clientSecretHintKeep')
-        : t('admin.sso.form.clientSecretHintNone');
+    !provider && google
+      ? t('admin.sso.form.clientSecretHintGoogle')
+      : !provider || isSaml(provider)
+        ? t('admin.sso.form.clientSecretHintNew')
+        : provider.hasClientSecret
+          ? t('admin.sso.form.clientSecretHintKeep')
+          : t('admin.sso.form.clientSecretHintNone');
+  const publicList = intl.formatList(publicDomains(draft.domains), { type: 'conjunction' });
+  const hasPublicDomain = publicDomains(draft.domains).length > 0;
   const savedCertificates = provider && isSaml(provider) ? provider.certificates : [];
   const options = (
     [
@@ -155,23 +196,38 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
       {!provider && (
         <fieldset className="sso-protocols">
           <legend>{t('admin.sso.form.protocol')}</legend>
-          {PROTOCOLS.map(([value, label]) => (
+          {CHOICES.map(([value, label]) => (
             <div key={value} className="form-field form-field-inline">
               <input
                 id={`${id}-protocol-${value}`}
                 type="radio"
                 name={`${id}-protocol`}
                 value={value}
-                checked={draft.protocol === value}
-                onChange={() => {
-                  setProblem(null);
-                  set('protocol', value);
-                }}
+                checked={choice === value}
+                onChange={() => choose(value)}
               />
               <label htmlFor={`${id}-protocol-${value}`}>{t(label)}</label>
             </div>
           ))}
         </fieldset>
+      )}
+      {google && (
+        <div className="sso-google-note">
+          <p>{t('admin.sso.google.intro')}</p>
+          {redirectUri && (
+            <dl className="sso-addresses">
+              <dt>{t('admin.sso.google.redirect')}</dt>
+              <dd>
+                <code>{redirectUri}</code>
+              </dd>
+            </dl>
+          )}
+          <p>
+            <a href={GOOGLE_GUIDE_URL} target="_blank" rel="noreferrer">
+              {t('admin.sso.google.guide')}
+            </a>
+          </p>
+        </div>
       )}
       <div className="form-field">
         <label htmlFor={`${id}-name`}>{t('admin.sso.form.name')}</label>
@@ -335,7 +391,7 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
             label={t('admin.sso.form.clientSecret')}
             toggleLabel={t('admin.sso.form.showClientSecret')}
             autoComplete="new-password"
-            required={false}
+            required={!provider && google}
             hint={secretHint}
             value={draft.clientSecret}
             onChange={(value) => set('clientSecret', value)}
@@ -382,6 +438,16 @@ export function ProviderForm({ provider, groups, onSave, onCancel }: ProviderFor
             </p>
           </div>
         ))}
+        {hasPublicDomain && draft.jit && (
+          <p role="alert" className="sso-warning">
+            {t('admin.sso.warning.jitPublic', { domains: publicList })}
+          </p>
+        )}
+        {hasPublicDomain && draft.enforceSso && (
+          <p role="alert" className="sso-warning">
+            {t('admin.sso.warning.enforcePublic', { domains: publicList })}
+          </p>
+        )}
       </fieldset>
       <div className="form-field">
         <label htmlFor={`${id}-claim`}>

@@ -138,7 +138,7 @@ export function TicketPicker({
         autoComplete="off"
         aria-autocomplete="list"
         aria-expanded={showing}
-        aria-controls={listId}
+        aria-controls={showing ? listId : undefined}
         aria-activedescendant={showing ? `${listId}-${active}` : undefined}
         aria-describedby={hint ? `${id}-hint` : undefined}
         disabled={disabled}
@@ -152,31 +152,27 @@ export function TicketPicker({
           {hint}
         </p>
       )}
-      <div
-        id={listId}
-        role="listbox"
-        aria-label={label}
-        className="ticket-picker-list"
-        hidden={!showing}
-      >
-        {offered.map((ticket, i) => (
-          // biome-ignore lint/a11y/useKeyWithClickEvents: the field's arrow keys and Enter pick
-          <div
-            key={ticket.id}
-            id={`${listId}-${i}`}
-            role="option"
-            tabIndex={-1}
-            aria-selected={i === active}
-            className="ticket-picker-option"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => choose(ticket)}
-          >
-            <span className="ticket-picker-key">{ticket.key}</span>
-            <span className="ticket-picker-summary">{ticket.summary}</span>
-            <span className="ticket-picker-status">{ticket.status.name}</span>
-          </div>
-        ))}
-      </div>
+      {showing && (
+        <div id={listId} role="listbox" aria-label={label} className="ticket-picker-list">
+          {offered.map((ticket, i) => (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: the field's arrow keys and Enter pick
+            <div
+              key={ticket.id}
+              id={`${listId}-${i}`}
+              role="option"
+              tabIndex={-1}
+              aria-selected={i === active}
+              className="ticket-picker-option"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(ticket)}
+            >
+              <span className="ticket-picker-key">{ticket.key}</span>
+              <span className="ticket-picker-summary">{ticket.summary}</span>
+              <span className="ticket-picker-status">{ticket.status.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <p role="status" className={said ? 'form-hint' : 'visually-hidden'}>
         {said}
       </p>

@@ -244,7 +244,12 @@ function NameForm({
     if (value.trim() !== '') void onSave(value.trim());
   };
   return (
-    <form className="checklist-form" onSubmit={save}>
+    <form
+      className="checklist-form"
+      // Text that is what is already saved is no draft for the pop-up to ask about.
+      data-no-draft={value.trim() === start || undefined}
+      onSubmit={save}
+    >
       <div className="checklist-form-field">
         <label htmlFor={id} className="form-label">
           {label}

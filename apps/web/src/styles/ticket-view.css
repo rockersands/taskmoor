@@ -25,7 +25,21 @@
   content: "\2192\00a0";
 }
 
+/* The status line can hold a whole address to copy by hand. */
+.ticket-header .form-status {
+  overflow-wrap: anywhere;
+}
+
+.ticket-fact-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .ticket-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
@@ -221,10 +235,7 @@
 .ticket-facts :is(input, select) {
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--glass-fill-strong);
-  color: var(--color-text);
   font: inherit;
   max-width: 100%;
 }
@@ -338,6 +349,14 @@
   display: grid;
   place-items: center;
   padding: var(--space-4);
+}
+
+/* Its own layer: fading the backdrop itself would cut the dialog's glass off from the page. */
+.ticket-dialog-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: rgb(0 0 0 / 35%);
 }
 
@@ -456,6 +475,73 @@
 
 @media (pointer: coarse) {
   .clone-progress a:is(.button-primary, .button-secondary) {
+    min-height: var(--hit-target-touch);
+  }
+}
+
+/*
+ * The ticket pop-up: the create dialog's surface, solid to read on, wider, with a bar of chrome glass
+ * that stays while the ticket scrolls beneath it. The glass is on the bar only: on the dialog itself
+ * it would trap a dialog opened inside, which is fixed to the window. A full-screen sheet on phones.
+ */
+.create-dialog.ticket-popup {
+  top: 3vh;
+  width: min(94vw, 76rem);
+  max-height: 94vh;
+  padding: 0;
+  overscroll-behavior: contain;
+}
+
+.ticket-popup-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--glass-edge);
+  background: var(--glass-fill-chrome);
+  -webkit-backdrop-filter: blur(var(--glass-blur-chrome)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-chrome)) saturate(var(--glass-saturate));
+}
+
+.ticket-popup-bar a {
+  text-decoration: none;
+}
+
+.ticket-popup-body {
+  padding: var(--space-4) var(--space-5);
+}
+
+.ticket-popup-body .ticket-view {
+  max-width: none;
+}
+
+@media (max-width: 767px) {
+  .create-dialog.ticket-popup {
+    top: 0;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .ticket-popup-bar {
+    padding-inline: var(--space-3);
+  }
+
+  .ticket-popup-body {
+    padding: var(--space-3);
+  }
+}
+
+@media (pointer: coarse) {
+  .ticket-popup-bar a,
+  .ticket-popup-bar button {
+    display: inline-flex;
+    align-items: center;
     min-height: var(--hit-target-touch);
   }
 }

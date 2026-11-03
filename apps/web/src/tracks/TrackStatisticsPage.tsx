@@ -18,6 +18,7 @@ import {
   type TrackClient,
   trackClient,
 } from './client';
+import { useTrackSections } from './trackSections';
 
 const SPRINT_REPORTS = ['sprint-report', 'velocity'] as const;
 type SprintReportKind = (typeof SPRINT_REPORTS)[number];
@@ -315,7 +316,8 @@ export interface TrackStatisticsPageProps {
 /**
  * Every report of a track in one place (ADR-116; RPT-001, RPT-002, RPT-005): how the board's work
  * flows, its sprints, its releases and outcomes, and its tickets. All of it stays inside the
- * track's tabs. A report that follows sprints says so on a Kanban board instead of failing.
+ * track's tabs. A Kanban track does not list the reports that follow sprints, as the server has
+ * none for it; an old link to one says what it needs instead of failing.
  */
 export function TrackStatisticsPage({
   trackKey,
@@ -332,6 +334,9 @@ export function TrackStatisticsPage({
   const isSprint = has<SprintReportKind>(SPRINT_REPORTS, report);
   const isScope = has<ScopeReportKind>(SCOPE_REPORTS, report);
   const needsScrum = (isSprint || isScope) && board.kind !== 'scrum';
+  const sections = useTrackSections();
+  const hasSprints = board.kind === 'scrum' && sections?.sprints !== false;
+  const groups = GROUPS.filter((g) => hasSprints || (g.id !== 'sprints' && g.id !== 'releases'));
 
   return (
     <section className="reports-page" aria-labelledby={titleId}>
@@ -342,7 +347,7 @@ export function TrackStatisticsPage({
         about={t('statistics.about')}
       />
       <nav className="reports-tabs statistics-tabs" aria-label={t('reports.tabs')}>
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <fieldset key={group.id} className="statistics-tab-group">
             <legend>{t(group.label)}</legend>
             {group.reports.map((r) => (
