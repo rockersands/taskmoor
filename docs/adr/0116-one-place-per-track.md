@@ -56,7 +56,7 @@ them.
   An import writes a track's board only with a query confined to it: anything else becomes
   `track = KEY`, with the warning `board_query_narrowed_to_track` holding the source's query.
 - **Statistics** is every report of the track in one place: flow, sprints, releases and outcomes,
-  and its tickets. The ticket reports reuse the dashboard widgets' data and views through
+  its tickets, and the time and workload on them (below, "Summary and Statistics finished"). The ticket reports reuse the dashboard widgets' data and views through
   `GET /api/v1/tracks/:id/statistics/:kind`, which takes no query: it is the track, read through the
   viewer's filter. A board's report addresses lead into the track's tabs. A board an upgrade left
   outside a track keeps the page at its own address.
@@ -117,6 +117,49 @@ them.
     that an administrator can add one.
   - Measured on 2026-11-03: a page of a track with 1,000 outcomes and 100,000 tickets, median 21 ms
     (budget 100 ms, `track-outcomes.test.ts`). No index was added.
+
+- **Summary and Statistics finished** (T-075, T-076; RPT-001, RPT-002, RPT-005, RPT-006). Of the
+  reports the spec gives a track, six were missing: time since, single level group by, time
+  tracking, user workload, release workload and the workload pie chart, and the outcome report.
+  Created vs closed and two-dimensional statistics, which the ticket named, were already there.
+  - **The missing general reports are widget kinds**, not a second kind of report: `time-since`
+    (shown as **Tickets by date**), `group-by` (**Grouped tickets**), `workload` and
+    `time-tracking`. So the track's Statistics, its Summary and any dashboard read them the same
+    way, and the track owner can put any of them on the Summary. Statistics reads them through
+    `GET /tracks/:id/statistics/:kind`, still with no query; the pie chart joined that list.
+  - **One workload kind, three reports.** Workload by person (the open tickets' remaining estimate
+    by assignee), a release's workload (the same for the tickets that target a release) and the
+    workload pie chart (any time measure by any field) are one kind with settings: `field`,
+    `statistic`, `open`, `release` and `view`. The spec's user workload spans tracks; inside a
+    track it is by person, and a dashboard with a query covers more than one track.
+  - **Done is the closed stage** in the new reports (grouped tickets' done count, the workload's
+    open tickets), the one definition progress uses (ADR-120), so `stage = closed` finds the same
+    tickets. The reports from history keep their own rule: created vs closed, time to close and
+    average age count a close reason set or cleared (ADR-059), so a reopened ticket's past stays
+    as it was; on the default workflow both rules agree.
+  - **Time tracking** adds up each ticket's own time spent, which is the sum of its time entries,
+    those the person may not read included, as the ticket page shows it. It says when time
+    tracking is off rather than showing zeros.
+  - **The outcome report** (`GET /boards/:id/reports/outcome-report`) is the release report's
+    chart for an outcome, from the first day a ticket came under it, with its tickets as they
+    stand: done, still open, and open without an estimate. Like the other release and outcome
+    reports it follows the Scrum board's estimation and done columns, so a Kanban track does not
+    list it; how a Kanban track manages outcomes is still the user's question (T-082).
+  - **Every number equals a search.** `track-reports.test.ts` checks each count against the search
+    API, and each sum against the tickets that search finds, as two people a visibility level
+    tells apart, on a Scrum and a Kanban track; and that a Summary widget with no query reads
+    exactly what its report reads.
+  - **Speed.** Average age looked into the history once per ticket and period; it now reads the
+    spans each close reason was set in and keeps the tickets outside them, one anti-join. Measured
+    on 2026-11-03 on a Mac, a track of 100,000 tickets read by a member, median of three reads:
+    every report between 25 and 274 ms (average age 1,283 ms before), the Summary's numbers 84 ms,
+    against a budget of 1,000 ms each (RPT-002 (3) asks 3 s at a million tickets). Every gate
+    reads a track of 10,000; `TASKMOOR_LARGE_TRACK_REPORTS=1` reads 100,000. No index or migration
+    was needed.
+  - **Not done:** RPT-006 says members "view and filter" the Summary. Members read it as the
+    owner set it; a filter of their own over all its widgets is not built, as the user's decision
+    names only customizing by the owner. Numbers in the new reports are not links to their
+    searches yet, unlike the default Summary's.
 
 ## Options considered
 

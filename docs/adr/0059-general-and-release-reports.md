@@ -67,3 +67,6 @@ Scrum board's sprints. M1-064 turns several of them into dashboard widgets.
 - The forecast is a straight line at the recent velocity or pace, and the page says which.
 - Not yet: release and outcome selectors on other reports, created vs closed and
   two-dimensional statistics in the web (M1-064 widgets), the outcome report.
+- 2026-11-03 (T-076): the outcome report, time since, single level group by, time tracking and
+  the three workload reports are built, and average age reads the history with one anti-join;
+  see ADR-116, "Summary and Statistics finished".
