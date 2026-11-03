@@ -2,7 +2,7 @@
 title: "API tokens and service accounts"
 audience: admins
 sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # API tokens and service accounts
@@ -79,7 +79,7 @@ A service account is an account for a program, owned by the instance rather than
 - It acts only through its own tokens. Deactivating it stops all of them at once;
   reactivating it brings back those that have not expired.
 
-Only site administrators manage service accounts. Open **Settings**, then **Service
+Only site administrators manage service accounts. Open **Administration**, then **Service
 accounts**:
 
 1. Under **New service account**, fill in **Name** and **What it is for**, then select
@@ -126,7 +126,7 @@ that acts as another person.
 
 ## The token inventory and policy
 
-Site administrators see every token of the instance on **Settings**, then **API tokens**.
+Site administrators see every token of the instance on **Administration**, then **API tokens**.
 
 - **Show** filters the list: **All tokens**, **Active**, **Due for rotation**, **Expired** or
   **Revoked**. A token is due for rotation when it is active, not yet replaced, and expires
@@ -210,7 +210,7 @@ before it is refused.
 | An address without a session or token | 20 | 100 |
 | Changes to one ticket | 10 | 40 |
 
-Site administrators change these under **Settings**, **API usage and limits**, or with
+Site administrators change these under **Administration**, **API usage and limits**, or with
 `PUT /api/v1/admin/rate-limits`; the change is in the audit log. The same page lists the 20
 clients with the most requests in the last hour or day, with their errors and refused
 requests: a token by its name and owner, a person by name, an address as itself

@@ -1,9 +1,13 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { AdminGroupPage } from './admin/AdminGroupPage';
+import { AdminLayout } from './admin/AdminLayout';
+import { AdminOverviewPage } from './admin/AdminOverviewPage';
 import { AiSettingsPage } from './admin/AiSettingsPage';
 import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
+import { adminAccessOf } from './admin/access';
 import { AuditPage } from './admin/audit/AuditPage';
 import { FrontendsPage } from './admin/FrontendsPage';
 import { ImportsPage } from './admin/imports/ImportsPage';
@@ -12,6 +16,7 @@ import { NetworkAccessPage } from './admin/NetworkAccessPage';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
+import { ADMIN_HOME, adminGroupOf, groupsFor } from './admin/sections';
 import { TrashPage } from './admin/TrashPage';
 import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
@@ -62,6 +67,7 @@ import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
 import { HelpMenu } from './shell/HelpMenu';
 import {
+  AdministrationIcon,
   DashboardsIcon,
   HomeIcon,
   InboxIcon,
@@ -131,6 +137,16 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
     group: 'manage',
   },
 ];
+
+/** Under Manage for those who may see any of Administration (ADR-114); the only item not for all. */
+const ADMIN_NAV_ITEM: NavItem & { requiresSession: true } = {
+  id: 'administration',
+  labelId: 'nav.administration',
+  href: ADMIN_HOME,
+  icon: AdministrationIcon,
+  requiresSession: true,
+  group: 'manage',
+};
 
 /** Current page id from the hash (#/tracks -> "tracks"). */
 function routeFromHash(hash: string, fallback: string): string {
@@ -235,6 +251,7 @@ function Pages() {
   const { session, signOut, setUser } = useSession();
   const signedIn = session.status === 'signed-in';
   const admin = signedIn && session.user.isSiteAdmin;
+  const access = adminAccessOf(signedIn ? session.user : null);
   const showSignIn = useCallback(() => {
     navigate(SIGN_IN);
   }, []);
@@ -326,7 +343,31 @@ function Pages() {
             },
           ]
         : []),
-      // Administration commands are offered to site administrators only.
+      ...(access === 'none'
+        ? []
+        : [
+            {
+              id: 'go-administration',
+              labelId: 'nav.administration' as const,
+              keywords: ['admin', 'site', 'configuration'],
+              run: () => {
+                navigate(ADMIN_HOME);
+              },
+            },
+          ]),
+      // A configuration administrator is offered the setup pages (ADR-114).
+      ...(access === 'setup'
+        ? groupsFor('setup').flatMap((group) =>
+            group.pages.map((page) => ({
+              id: `go-setup-${page.id}`,
+              labelId: page.labelId,
+              run: () => {
+                navigate(page.href);
+              },
+            })),
+          )
+        : []),
+      // The other administration commands are offered to site administrators only.
       ...(admin
         ? [
             {
@@ -475,7 +516,7 @@ function Pages() {
           ]
         : []),
     ],
-    [signedIn, admin, appear, showSignIn, signOut],
+    [signedIn, admin, access, appear, showSignIn, signOut],
   );
 
   // First-run setup and password links stand alone: no shell before someone can sign in.
@@ -542,6 +583,11 @@ function Pages() {
     content = <ImportsPage />;
   } else if (isRoute(hash, ADMIN_GUARDRAILS)) {
     content = <GuardrailsPage />;
+  } else if (hash === ADMIN_HOME || hash.startsWith(`${ADMIN_HOME}?`)) {
+    content = <AdminOverviewPage />;
+  } else if (adminGroupOf(hash)) {
+    const group = adminGroupOf(hash);
+    content = group ? <AdminGroupPage group={group} /> : null;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
@@ -765,6 +811,12 @@ function Pages() {
       );
   }
 
+  // Administration has its own navigation; each page keeps its route and its guard (ADR-114).
+  if (isRoute(hash, ADMIN_HOME)) {
+    if (access !== 'none') active = ADMIN_NAV_ITEM.id;
+    content = <AdminLayout hash={hash}>{content}</AdminLayout>;
+  }
+
   // A wallboard fills the window: no navigation, no top bar (RPT-004 (2)).
   if (wallboard) {
     return (
@@ -776,7 +828,7 @@ function Pages() {
 
   return (
     <AppShell
-      items={NAV_ITEMS}
+      items={access === 'none' ? NAV_ITEMS : [...NAV_ITEMS, ADMIN_NAV_ITEM]}
       activeId={active}
       navExpanded={(onNavigate) =>
         signedIn && active === 'tracks'

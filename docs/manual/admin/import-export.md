@@ -55,13 +55,13 @@ Every import, whatever its source, runs the same way:
 A run's state is `queued`, `running`, `done`, `failed` or `cancelled`. Starting, cancelling and
 finishing an import are recorded in the audit log.
 
-Site administrators import from **Settings > Imports** (see [The import wizard](#the-import-wizard)),
+Site administrators import from **Administration > Imports** (see [The import wizard](#the-import-wizard)),
 from the command line (see [The import command](#the-import-command)), or through the API
 below (an API token needs the admin scope; see [The REST API](rest-api.md)).
 
 ### The import wizard
 
-**Settings > Imports** takes you through one import at a time:
+**Administration > Imports** takes you through one import at a time:
 
 1. **Source.** A Jira Data Center backup, a Taskmoor export or a CSV file from the imports
    folder (see [Files on the server](#files-on-the-server)), or a Jira Cloud site with its

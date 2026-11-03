@@ -1,8 +1,8 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
-accessed: 2026-10-30
+sources: apps/web/src/admin/sections.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Permissions and access
@@ -19,14 +19,16 @@ Groups and people are managed on [People and groups](people-and-groups.md).
 
 ## Where to find it
 
-- **Settings** > **Permissions** (`#/admin/permissions`) has three parts: **Roles**,
+- **Administration** > **Permissions** (`#/admin/permissions`) has three parts: **Roles**,
   **Access policies** and **Global permissions**.
-- **Settings** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
+- **Administration** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
   groups in each role.
 - Visibility policies and the permission explainer have no page yet; they are in the API.
 
-The **Administration** part of **Settings**, and most administration pages, are for site
-administrators only. Configuration administrators do their work through the API for now.
+[Administration](administration.md) is for site administrators. A configuration administrator
+sees its **Tracks and setup** pages and does that work in the web app; the rest of what they may do
+(roles, access policies, visibility policies) has its pages among those of site administrators, and
+stays in the API for them.
 
 ## Site and configuration administrators
 
@@ -74,7 +76,7 @@ holds them. New installs have three:
 Under **Roles**, **Add a role** asks for a **Role name** and **What the role does**. **Change**
 renames, **Delete** removes a role no policy uses.
 
-To put people in a role, open **Settings** > **Tracks**, **Manage** the track, choose the
+To put people in a role, open **Administration** > **Tracks**, **Manage** the track, choose the
 **Role**, then **Give the role to a person** or **Give the role to a group**. Anyone with
 **Run the track** in that track may do this.
 
@@ -227,7 +229,7 @@ every permission code and grantee kind.
 
 ## Network access: the IP allowlist
 
-**Settings**, **Network access** limits where people may connect from. With **Only allow these
+**Administration**, **Network access** limits where people may connect from. With **Only allow these
 addresses** on, the web app this server serves and every API, administration and MCP included,
 answer only requests from the addresses and ranges listed: one per line, an IPv4 or IPv6
 address or a range such as `203.0.113.0/24` or `2001:db8::/32`, with a note after `#` if you

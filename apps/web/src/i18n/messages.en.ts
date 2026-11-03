@@ -59,7 +59,7 @@ export const messagesEn = {
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
   'tracks.empty':
-    "A track holds a team or project's tickets. Administrators make them under Settings.",
+    "A track holds a team or project's tickets. Administrators make them under Administration.",
   'tracks.find': 'Find a track',
   'tracks.noMatch': 'No track has that name or key.',
   'tracks.owner': 'Led by {name}',
@@ -3519,7 +3519,7 @@ export const messagesEn = {
   'boards.settings.general': 'Board',
   'boards.settings.team': 'Team',
   'boards.settings.noTeam': 'No team',
-  'boards.settings.teamHint': 'The team whose board this is. Teams are kept under Settings.',
+  'boards.settings.teamHint': 'The team whose board this is. Teams are kept under Administration.',
   'boards.settings.subFilter': 'Sub-filter (optional)',
   'boards.settings.subFilterHint':
     'A second query: only tickets that match it as well show, for example to hide shipped work.',
@@ -4644,6 +4644,60 @@ export const messagesEn = {
   'duplicates.likely': 'Likely the same. ',
   'duplicates.reason': '{reason}',
   'duplicates.byAi': 'Ordered by AI, with its reasons. Check them before you rely on them.',
+  'nav.administration': 'Administration',
+  'settings.purpose': 'Your own account, how Taskmoor looks for you and your tutorials.',
+  'settings.tutorialsHint': 'Short guided tours of each part of Taskmoor, to start or do again.',
+  'settings.administrationMoved': 'Running the site has its own section:',
+  'admin.nav.menu': 'Administration pages',
+  'admin.nav.label': 'Administration pages',
+  'admin.breadcrumb': 'Where this page sits',
+  'admin.forbidden': 'Only site and configuration administrators can use Administration.',
+  'admin.group.people': 'People and access',
+  'admin.group.peoplePurpose':
+    'Who has an account, how people are grouped, and what they may do and see.',
+  'admin.group.setup': 'Tracks and setup',
+  'admin.group.setupPurpose':
+    'How tracks are set up: their workflows, fields and the sets they use.',
+  'admin.group.security': 'Sign-in and security',
+  'admin.group.securityPurpose':
+    'How people sign in, from where, and the record of who changed what.',
+  'admin.group.integrations': 'Integrations and AI',
+  'admin.group.integrationsPurpose':
+    'What other programs and AI features may do here, and what they cost.',
+  'admin.group.system': 'System',
+  'admin.group.systemPurpose':
+    'The health of this instance, its limits, imports and what was deleted.',
+  'admin.overview.title': 'Overview',
+  'admin.overview.purpose':
+    'How this instance is doing and what is waiting for you. The pages to run the site are listed here too.',
+  'admin.overview.purposeSetup':
+    'You can set up tracks here. The rest of Administration is for site administrators.',
+  'admin.overview.loading': 'Reading…',
+  'admin.overview.health': 'System health',
+  'admin.overview.health.ok':
+    'Everything looks fine: the database answers, migrations are done, there is disk space and a recent backup.',
+  'admin.overview.health.database': 'The database does not answer.',
+  'admin.overview.health.migrations':
+    'Some database migrations are pending or unknown to this version.',
+  'admin.overview.health.disk': 'Less than a tenth of the disk is free.',
+  'admin.overview.health.backup': 'There is no backup from the last day.',
+  'admin.overview.health.version': 'Version {version}, running since {since}.',
+  'admin.overview.health.failed':
+    'The health of this instance could not be read. Try again in a moment.',
+  'admin.overview.health.more': 'See every detail',
+  'admin.overview.waiting': 'People who have not signed in yet',
+  'admin.overview.waiting.count':
+    '{count, plural, one {# person has} other {# people have}} an account, no password and no sign-in so far.',
+  'admin.overview.waiting.partial': 'This looked at the first {count} people.',
+  'admin.overview.waiting.noneTitle': 'Nobody is waiting',
+  'admin.overview.waiting.none':
+    'Everyone you added has signed in. When you add someone without a password, they show here until they do.',
+  'admin.overview.waiting.failed': 'The list of people could not be read. Try again in a moment.',
+  'admin.overview.waiting.more': 'Open People',
+  'admin.overview.alerts.none':
+    'An alert shows here when sign-ins fail or requests are refused more often than the rules allow.',
+  'admin.overview.alerts.failed': 'The alerts could not be read. Try again in a moment.',
+  'admin.overview.alerts.more': 'Change the alert rules',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

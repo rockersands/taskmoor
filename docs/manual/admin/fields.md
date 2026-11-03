@@ -2,7 +2,7 @@
 title: "Fields, ticket types and layouts"
 audience: admins
 sources: apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Fields, ticket types and layouts
@@ -11,7 +11,7 @@ This page covers the fields a ticket holds, the custom fields you add, formula f
 types and hierarchy levels, and the configuration sets that tell each track which types,
 priorities, rules and forms it uses.
 
-In the web app, site administrators use **Settings**, **Fields** and **Settings**,
+In the web app, site administrators use **Administration**, **Fields** and **Administration**,
 **Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
 changes shared configuration needs the `admin` scope ([API tokens](api-tokens.md)). Everyone
 signed in may read these lists.
@@ -67,7 +67,7 @@ area values; set them through the API, a CSV import or bulk changes.
 
 ### Adding and managing fields
 
-On **Settings**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
+On **Administration**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
 that allow it, **Holds several values**. **Manage** on a field offers:
 
 - **Rename**.
@@ -183,7 +183,7 @@ A type set lists the ticket types a track offers, in order, with one preselected
 | Business type set | Outcome, To-do, Subticket | To-do | business and service tracks |
 | Discovery type set | Idea | Idea | discovery tracks |
 
-On **Settings**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
+On **Administration**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
 name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
 **Delete set** (not for a default set, nor one a track uses). The preselected type, the order and
 which track types a set is the default for are set through `/api/v1/type-sets`
@@ -197,7 +197,7 @@ same level, and the tickets change type with the set.
 
 A field rule set says, per field, whether it is required or hidden and what help text it shows.
 
-On **Settings**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
+On **Administration**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
 **Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
 **Save the set** saves them; rules for single ticket types are kept as they are.
 

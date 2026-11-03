@@ -2,7 +2,7 @@
 title: "Backups and restore"
 audience: admins
 sources: apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/backups/runs.ts, apps/server/src/backups/drill.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/secrets.ts, apps/server/src/routes/backups.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/purge.ts, apps/server/src/trash/policy.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/docker-compose.yml, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, tools/image/drill-backup.sh, docs/adr/0022-upgrades-and-migrations.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Backups and restore
@@ -166,7 +166,7 @@ its own migrations when it next starts. The same steps restore onto a new host.
 
 ## The backups in the web app
 
-Under **Settings**, **System status**, site administrators see a **Scheduled backups** section:
+Under **Administration**, **System status**, site administrators see a **Scheduled backups** section:
 
 | Label | Shows |
 |---|---|
@@ -186,7 +186,7 @@ Deleted tickets and tracks wait in the trash before they are deleted for good, 3
 default. Restoring one puts it back as it was, with its history and links. This is quicker than
 any backup for undoing a mistake.
 
-- **Settings**, **Trash** lists the tickets and tracks in the trash, when each one goes for good,
+- **Administration**, **Trash** lists the tickets and tracks in the trash, when each one goes for good,
   and a **Restore** button for each.
 - Site administrators set **Days in the trash** (1 to 365) under **Retention** on the same page,
   or with `PUT /api/v1/admin/trash-policy` and `{"retentionDays": 60}`. A shorter time applies to

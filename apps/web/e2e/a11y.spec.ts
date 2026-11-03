@@ -113,6 +113,8 @@ test('[NFR-005] every page passes axe at WCAG 2.1 AA', async ({ page }, testInfo
     ['list', `#/tracks/${key}/list`],
     ['calendar', `#/tracks/${key}/calendar`],
     ['settings', '#/settings'],
+    ['administration', '#/admin'],
+    ['administration group', '#/admin/group/setup'],
     ['account', '#/account'],
     ['admin system', '#/admin/system'],
     ['admin tokens', '#/admin/tokens'],

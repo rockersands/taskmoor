@@ -2,7 +2,7 @@
 title: "Tracks"
 audience: admins
 sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Tracks
@@ -14,7 +14,7 @@ tracks, see [concepts and terms](../concepts.md).
 
 ## Where tracks are managed
 
-Site administrators manage tracks in the web app under **Settings**, **Tracks**. The page adds
+Site administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, gives roles to people and groups, and archives
 and restores them.
 
@@ -30,7 +30,7 @@ the navigation is not finished.
 
 ### In the web app
 
-1. Go to **Settings**, **Tracks**.
+1. Go to **Administration**, **Tracks**.
 2. Under **Add a track**, fill in **Key** and **Track name**.
 3. Choose **Configuration**: **Shared configuration** (shared mode) or **Its own
    configuration** (local mode).
@@ -204,7 +204,7 @@ category leaves its tracks without one.
 
 ## Archiving a track
 
-On **Settings**, **Tracks**, open **Manage** and press **Archive track**, then **Yes**. **Restore
+On **Administration**, **Tracks**, open **Manage** and press **Archive track**, then **Yes**. **Restore
 track** brings it back. Only site and configuration administrators archive and restore
 (`POST /api/v1/tracks/:id/archive` and `/restore`).
 
@@ -220,7 +220,7 @@ While it is there:
 
 - nobody else sees the track or anything in it;
 - it keeps its keys, so no new track can take them;
-- site administrators restore it on **Settings**, **Trash**, under **Tracks**, with **Restore
+- site administrators restore it on **Administration**, **Trash**, under **Tracks**, with **Restore
   track** (or `POST /api/v1/tracks/:id/undelete`).
 
 The trash keeps tracks and tickets for 30 days by default. Site administrators change this under
@@ -233,7 +233,7 @@ free again. See also [backups and restore](backups.md).
 ## Configuration guardrails
 
 Guardrails limit how much configuration one track, field, policy, map, set or workflow may hold.
-Site administrators see and change them on **Settings**, **Guardrails**: each shows where it is
+Site administrators see and change them on **Administration**, **Guardrails**: each shows where it is
 used most, marks usage **Above the limit**, and takes a new **Limit** with **Save the limit**.
 
 | Guardrail | Default |

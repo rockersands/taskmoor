@@ -2,7 +2,7 @@
 title: "AI usage, spend limits and data controls"
 audience: admins
 sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # AI usage, spend limits and data controls
@@ -12,7 +12,7 @@ meters nothing and charges nothing. This page explains how administrators see wh
 stop it at a ceiling, keep sensitive values out of what is sent, and tell people what leaves the
 instance.
 
-Open **Settings → AI usage** (`#/admin/ai-usage`). Only site administrators see the page.
+Open **Administration → AI usage** (`#/admin/ai-usage`). Only site administrators see the page.
 
 ## What the page shows
 

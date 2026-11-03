@@ -195,3 +195,17 @@ export const TRASHED_TRACKS: TrashedTrack[] = [
     },
   },
 ];
+
+/** Holds Change configuration only: sees the setup pages (ADR-114). */
+export const CONFIG_ADMIN: Session = {
+  status: 'signed-in',
+  user: {
+    id: 3,
+    name: 'Cam',
+    email: 'cam@example.com',
+    isSiteAdmin: false,
+    isConfigAdmin: true,
+    timeZone: null,
+    locale: null,
+  },
+};

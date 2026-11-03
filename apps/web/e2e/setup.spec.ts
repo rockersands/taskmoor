@@ -397,7 +397,7 @@ test('[IAM-008] the account page and the user menu work on a small phone', async
 
 test('[OPS-010] the administrator opens the system status from Settings', async ({ page }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'System status' }).click();
   await expect(heading(page)).toHaveText('System status');
   const database = page.getByRole('region', { name: 'Database' });
@@ -488,7 +488,7 @@ test('[IAM-007] the administrator revokes every token of a person at once from t
     program.get('/api/v1/session', { headers: { authorization: `Bearer ${token}` } });
   for (const token of secrets) expect((await use(token)).status()).toBe(200);
 
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'API tokens' }).click();
   await expect(heading(page)).toHaveText('API tokens');
   const list = page.getByRole('region', { name: 'Tokens', exact: true });
@@ -522,7 +522,7 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
   baseURL,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Service accounts' }).click();
   await expect(heading(page)).toHaveText('Service accounts');
   const create = page.getByRole('region', { name: 'New service account' });
@@ -721,7 +721,7 @@ test('[IAM-001] when the policy covers everyone, a person without a second facto
       (r) => r.url().endsWith('/api/v1/security/two-factor') && r.request().method() === 'PUT',
     );
   try {
-    await page.goto('./#/settings');
+    await page.goto('./#/admin');
     await page.getByRole('link', { name: 'Security' }).click();
     await expect(heading(page)).toHaveText('Security');
     const policy = page.getByRole('form', { name: 'Two-factor authentication' });
@@ -848,7 +848,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
   page,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Single sign-on' }).click();
   await expect(heading(page)).toHaveText('Single sign-on');
   // The address to register at the provider comes from the backend's public URL.
@@ -999,7 +999,7 @@ test('[CORE-025] [OPS-009] the administrator undeletes a ticket and a whole trac
   });
   expect((await page.request.delete(`/api/v1/tickets/${key}`)).status()).toBe(204);
 
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Trash' }).click();
   await expect(heading(page)).toHaveText('Trash');
   await expect(page.getByText(/wait here for 30 days/)).toBeVisible();
@@ -1040,7 +1040,7 @@ test('[IAM-005] the administrator adds a directory; it syncs and its people sign
   page,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/settings');
+  await page.goto('./#/admin');
   await page.getByRole('link', { name: 'LDAP and Active Directory' }).click();
   await expect(heading(page)).toHaveText('LDAP and Active Directory');
   await page.getByRole('button', { name: 'Add a directory' }).click();
@@ -1197,7 +1197,7 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
   await signInThroughApi(page.request, ADMIN);
   let workflowId: string | undefined;
   try {
-    await page.goto('./#/settings');
+    await page.goto('./#/admin');
     await page.getByRole('link', { name: 'Workflows' }).click();
     await expect(heading(page)).toHaveText('Workflows');
     await page.getByRole('button', { name: 'Create a workflow' }).click();

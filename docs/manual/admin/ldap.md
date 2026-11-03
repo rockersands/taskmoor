@@ -2,7 +2,7 @@
 title: "LDAP directories"
 audience: admins
 sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # LDAP directories
@@ -22,7 +22,7 @@ several directories.
 - People sign in with their **email address** and their directory password. An entry without
   an email address is skipped.
 
-Directories are on **Settings** > **LDAP and Active Directory** (`#/admin/directories`), for
+Directories are on **Administration** > **LDAP and Active Directory** (`#/admin/directories`), for
 site administrators.
 
 ## Adding a directory

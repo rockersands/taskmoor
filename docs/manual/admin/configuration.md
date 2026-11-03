@@ -2,7 +2,7 @@
 title: "Configuration reference"
 audience: admins
 sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md, apps/server/src/embeddings/service.ts, deploy/compose/docker-compose.yml, docs/adr/0106-local-embeddings-and-vector-search.md, apps/server/src/outbound/guard.ts, apps/server/src/outbound/addresses.ts, apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Configuration reference
@@ -80,7 +80,7 @@ Requests that name any other origin are refused (`403 origin_not_allowed`), incl
 WebSocket connections; programs, which name none, are not affected. The Builder writes both
 settings ([the Builder's kits](builder-kits.md#frontend-and-backend-on-different-origins)). A
 wildcard such as `https://*.example.com` stops the server at start. Site administrators can add
-more frontends under **Settings > Frontends** without a restart
+more frontends under **Administration > Frontends** without a restart
 ([adding frontends](builder-kits.md#adding-frontends-without-a-restart)).
 
 ## Setup and instance identity

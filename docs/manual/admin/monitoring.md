@@ -2,7 +2,7 @@
 title: "Monitoring and logs"
 audience: admins
 sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Monitoring and logs
@@ -30,7 +30,7 @@ curl http://localhost:8080/ready
 
 ## The System status page
 
-Site administrators open **Settings**, **System status** to see whether the instance is healthy.
+Site administrators open **Administration**, **System status** to see whether the instance is healthy.
 **Refresh** reads it again.
 
 | Section | Shows |
@@ -154,7 +154,7 @@ Edits to tickets are not in the audit log: each ticket's history holds them.
 
 ### Searching and exporting
 
-Site administrators open **Settings**, **Audit log**. It lists records newest first, 50 at a
+Site administrators open **Administration**, **Audit log**. It lists records newest first, 50 at a
 time (**Show older records** reads further back), with filters for a first and last day and an
 action (`user.` finds every user event). **Download as CSV** and **Download as JSON Lines** save
 every record the filter finds, oldest first; each download is itself recorded. **Check the

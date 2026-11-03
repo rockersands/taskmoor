@@ -55,7 +55,7 @@ test('[OPS-017] (3) single-server mode: the backend serves the app and names its
   // The realtime socket on the page's own origin, no frontend registration needed.
   expect(await position).toContain('position');
 
-  await page.goto(`${SINGLE}/#/settings`);
+  await page.goto(`${SINGLE}/#/admin`);
   await page.getByRole('link', { name: 'Frontends' }).click();
   await expect(page.getByRole('heading', { name: 'Frontends', level: 1 })).toBeVisible();
   const self = page.getByRole('region', { name: 'This server' });

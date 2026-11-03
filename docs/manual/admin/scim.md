@@ -2,7 +2,7 @@
 title: "SCIM provisioning"
 audience: admins
 sources: apps/server/src/routes/scim.ts, apps/server/src/scim/schemas.ts, apps/server/src/scim/filter.ts, apps/server/src/scim/patch.ts, apps/server/src/scim/store.ts, apps/server/src/scim/resource.ts, apps/server/src/scim/errors.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tokens/bearer.ts, apps/server/src/routes/tokens.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0012_scim.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0038-scim-provisioning.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, https://www.rfc-editor.org/rfc/rfc7643, https://www.rfc-editor.org/rfc/rfc7644
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # SCIM provisioning
@@ -27,7 +27,7 @@ An identity provider connects as a **service account** with a token that holds t
 
 ## Setting it up
 
-1. Open **Settings** > **Service accounts** and create one for the provider, for example
+1. Open **Administration** > **Service accounts** and create one for the provider, for example
    "Entra ID provisioning". See [API tokens and service accounts](api-tokens.md).
 2. Show its **Tokens** and make a new token. Choose **SCIM provisioning**, which clears the
    other scopes, and an expiry. Copy the token: it is shown once.

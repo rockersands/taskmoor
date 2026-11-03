@@ -79,6 +79,13 @@ export const SettingsIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const AdministrationIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" />
+    <path d="M9 12l2 2 4-4" />
+  </Icon>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" />

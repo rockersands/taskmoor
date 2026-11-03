@@ -72,7 +72,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tracks.failed': 'No se pudieron cargar los tracks.',
   'tracks.emptyTitle': 'Aún no hay tracks',
   'tracks.empty':
-    'Un track reúne los tickets de un equipo o proyecto. Los administradores los crean en Configuración.',
+    'Un track reúne los tickets de un equipo o proyecto. Los administradores los crean en Administración.',
   'tracks.find': 'Buscar un track',
   'tracks.noMatch': 'Ningún track tiene ese nombre o clave.',
   'tracks.owner': 'A cargo de {name}',
@@ -3642,7 +3642,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.settings.team': 'Equipo',
   'boards.settings.noTeam': 'Sin equipo',
   'boards.settings.teamHint':
-    'El equipo al que pertenece este tablero. Los equipos se gestionan en Configuración.',
+    'El equipo al que pertenece este tablero. Los equipos se gestionan en Administración.',
   'boards.settings.subFilter': 'Subfiltro (opcional)',
   'boards.settings.subFilterHint':
     'Una segunda consulta: solo se muestran los tickets que también coinciden con ella, por ejemplo para ocultar el trabajo ya entregado.',
@@ -4757,4 +4757,62 @@ export const messagesEs: Record<MessageId, string> = {
   'duplicates.likely': 'Probablemente el mismo. ',
   'duplicates.reason': '{reason}',
   'duplicates.byAi': 'Ordenados por IA, con sus motivos. Revísalos antes de fiarte de ellos.',
+  'nav.administration': 'Administración',
+  'settings.purpose': 'Tu propia cuenta, cómo se ve Taskmoor para ti y tus tutoriales.',
+  'settings.tutorialsHint':
+    'Recorridos guiados breves por cada parte de Taskmoor, para empezar o repetir.',
+  'settings.administrationMoved': 'La gestión del sitio tiene su propia sección:',
+  'admin.nav.menu': 'Páginas de administración',
+  'admin.nav.label': 'Páginas de administración',
+  'admin.breadcrumb': 'Dónde está esta página',
+  'admin.forbidden':
+    'Solo los administradores del sitio y de la configuración pueden usar Administración.',
+  'admin.group.people': 'Personas y acceso',
+  'admin.group.peoplePurpose':
+    'Quién tiene cuenta, cómo se agrupan las personas y qué pueden hacer y ver.',
+  'admin.group.setup': 'Tracks y configuración',
+  'admin.group.setupPurpose':
+    'Cómo se configuran los tracks: sus flujos de trabajo, campos y los conjuntos que usan.',
+  'admin.group.security': 'Inicio de sesión y seguridad',
+  'admin.group.securityPurpose':
+    'Cómo inician sesión las personas, desde dónde, y el registro de quién cambió qué.',
+  'admin.group.integrations': 'Integraciones e IA',
+  'admin.group.integrationsPurpose':
+    'Qué pueden hacer aquí otros programas y las funciones de IA, y cuánto cuestan.',
+  'admin.group.system': 'Sistema',
+  'admin.group.systemPurpose':
+    'El estado de esta instancia, sus límites, importaciones y lo que se eliminó.',
+  'admin.overview.title': 'Resumen',
+  'admin.overview.purpose':
+    'Cómo va esta instancia y qué está pendiente. Aquí también están las páginas para gestionar el sitio.',
+  'admin.overview.purposeSetup':
+    'Aquí puedes configurar tracks. El resto de Administración es para los administradores del sitio.',
+  'admin.overview.loading': 'Leyendo…',
+  'admin.overview.health': 'Estado del sistema',
+  'admin.overview.health.ok':
+    'Todo parece bien: la base de datos responde, las migraciones están hechas, hay espacio en disco y una copia de seguridad reciente.',
+  'admin.overview.health.database': 'La base de datos no responde.',
+  'admin.overview.health.migrations':
+    'Hay migraciones de la base de datos pendientes o que esta versión no conoce.',
+  'admin.overview.health.disk': 'Queda libre menos de una décima parte del disco.',
+  'admin.overview.health.backup': 'No hay ninguna copia de seguridad del último día.',
+  'admin.overview.health.version': 'Versión {version}, en marcha desde {since}.',
+  'admin.overview.health.failed':
+    'No se pudo leer el estado de esta instancia. Inténtalo de nuevo en un momento.',
+  'admin.overview.health.more': 'Ver todos los detalles',
+  'admin.overview.waiting': 'Personas que aún no han iniciado sesión',
+  'admin.overview.waiting.count':
+    '{count, plural, one {# persona tiene} other {# personas tienen}} cuenta, sin contraseña y sin haber iniciado sesión.',
+  'admin.overview.waiting.partial': 'Se revisaron las primeras {count} personas.',
+  'admin.overview.waiting.noneTitle': 'No hay nadie pendiente',
+  'admin.overview.waiting.none':
+    'Todas las personas que añadiste han iniciado sesión. Quien añadas sin contraseña aparece aquí hasta que lo haga.',
+  'admin.overview.waiting.failed':
+    'No se pudo leer la lista de personas. Inténtalo de nuevo en un momento.',
+  'admin.overview.waiting.more': 'Abrir Personas',
+  'admin.overview.alerts.none':
+    'Una alerta aparece aquí cuando fallan los inicios de sesión o se rechazan solicitudes más de lo que permiten las reglas.',
+  'admin.overview.alerts.failed':
+    'No se pudieron leer las alertas. Inténtalo de nuevo en un momento.',
+  'admin.overview.alerts.more': 'Cambiar las reglas de alerta',
 };

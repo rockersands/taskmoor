@@ -2,7 +2,7 @@
 title: "AI settings"
 audience: admins
 sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md, packages/ai/src/adapters/openai-compatible.ts
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # AI settings
@@ -15,7 +15,7 @@ reasoning effort, prompt caching); on OpenAI, Gemini and other servers they work
 provider's own model and without those settings.
 Nothing is sent to a provider until AI is switched on and a provider is set up.
 
-Site administrators find the settings under **Settings > AI**.
+Site administrators find the settings under **Administration > AI**.
 
 ## Setting the provider and key
 

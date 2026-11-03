@@ -42,7 +42,7 @@ test('[IMP-013] a backup of 10,000 issues: upload, dry run, people, import, repo
   );
   test.setTimeout(8 * 60_000);
   await signIn(page);
-  await page.goto(`${BASE}/#/settings`);
+  await page.goto(`${BASE}/#/admin`);
   await page.getByRole('link', { name: 'Imports' }).click();
   await expect(page.getByRole('heading', { name: 'Imports', level: 1 })).toBeVisible();
 
