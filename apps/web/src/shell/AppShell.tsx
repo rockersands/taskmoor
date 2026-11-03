@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -37,6 +38,7 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
   const menuButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
   const drawerRef = useLeaveMotion(drawer);
+  const topbar = useRef<HTMLElement>(null);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
@@ -44,6 +46,34 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
   }, []);
 
   useEffect(() => startGlassLens(), []);
+
+  // The top bar stays over the top of the page as it scrolls. How far down it reaches, with the
+  // shell's gap below it, goes to the page's scroll padding (shell.css), so whatever is brought
+  // into view (a card the arrows reach, a focused field, a link's target) stops below the bar,
+  // not under it (WCAG 2.4.11). Measured, so it follows the bar on every layout and zoom.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the gap changes with the layout
+  useLayoutEffect(() => {
+    const bar = topbar.current;
+    if (!bar) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const style = getComputedStyle(bar);
+      const stays = style.position === 'sticky' || style.position === 'fixed';
+      const reach = stays
+        ? (Number.parseFloat(style.top) || 0) +
+          bar.offsetHeight +
+          (Number.parseFloat(style.marginTop) || 0)
+        : 0;
+      root.style.setProperty('--shell-topbar-reach', `${Math.ceil(reach)}px`);
+    };
+    measure();
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    watch?.observe(bar);
+    return () => {
+      watch?.disconnect();
+      root.style.removeProperty('--shell-topbar-reach');
+    };
+  }, [compact]);
 
   // Growing past the compact breakpoint swaps the drawer for the sidebar.
   useEffect(() => {
@@ -86,7 +116,7 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
         {t('shell.skipToContent')}
       </a>
 
-      <header className="shell-topbar">
+      <header ref={topbar} className="shell-topbar">
         {compact ? (
           <button
             ref={menuButton}

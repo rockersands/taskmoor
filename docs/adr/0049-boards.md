@@ -141,7 +141,11 @@ offset, a menu that leaves the flow).
 - **Keyboard and screen readers.** Each cell is one tab stop on every board, large or not (roving
   focus): Up and Down go to the next card, Home and End to the first and last; the card reached is
   drawn, focused and scrolled to the nearest edge (`scroll-margin-block` leaves a little room).
-  Tab goes on to that card's pencil and Move button, then to the next cell. Every card says its
+  The shell's top bar stays over the top of the page, so the shell measures how far down it
+  reaches (`--shell-topbar-reach`, the bar's height and the gap below it, kept current by a
+  `ResizeObserver`) and the page's `scroll-padding-top` keeps that much clear: a card reached by
+  Up or Home, or moved up with Alt, stops whole below the bar, on a phone too (WCAG 2.4.11; the
+  `BoardInShell` stories measure it in both skins). Tab goes on to that card's pencil and Move button, then to the next cell. Every card says its
   place and its cell's size (`aria-posinset`, `aria-setsize`), so "12 of 5,000" is read although
   12 cards are on the page. Alt with the arrows moves a card as before; after a move the card is
   drawn where it lands, focused and brought into view. A screen reader's browse mode reads the
