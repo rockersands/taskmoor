@@ -260,7 +260,8 @@ reported, and the coordinator checked that it was pushed.
 | T-193 | A 5,000-card column is not smooth | Done | On `main` (ADR-049): columns over 100 cards draw only the cards near the screen, with roving focus and every card reachable by keyboard; measured 50 to 55 fps and a drop settled in about 110 ms on the Mac. Browser find sees only drawn cards |
 | T-194 | Home's "Your tracks" should show the tracks a person belongs to | Done | On `main` (ADR-046): a role given directly or through a group, owning the track, or a team on its board or a live area; policy grants and "open to everyone" only let people see. Recently opened tracks come first however many they belong to; "latest opened" stays per browser |
 | T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
-| T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | To do | `docs/plan/ticket-tools-tasks.md`: same-named files, live co-editing of collapsible sections, email |
+| T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | Done | On `main` (ADR-120) except TT-7, which waits on the user; columns now written as their own form in Markdown and wiki markup |
+| T-196a | TT-7: tell followers when a checklist changes? A: as now, no notice (webhooks still get it); B: a "Checklist changed" notice administrators turn on per track, off by default (recommended); C: only when a whole checklist is completed | You | Also in ADR-120 and `docs/plan/ticket-tools-tasks.md` |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
 | T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
