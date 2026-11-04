@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import {
   type Delivery,
@@ -38,7 +39,8 @@ type State =
 
 /**
  * A track's Manage page (IAM-030), for whoever runs that track, site administrator or not: who
- * holds which role, giving and taking roles, and inviting people (IAM-027).
+ * holds which role, giving and taking roles, inviting people (IAM-027), and whether the track's
+ * followers hear of checklist changes (NTF-015).
  */
 export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPeoplePageProps) {
   const t = useT();
@@ -106,6 +108,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
     if (body?.permission === 'create_local_tracks') return t('trackPeople.problem.createTracks');
     if (body?.error === 'too_many_invitations') return t('trackPeople.problem.tooMany');
     if (body?.error === 'email_not_set_up') return t('trackPeople.emailOff');
+    if (body?.error === 'track_archived') return t('trackPeople.problem.archived');
     if (error.status === 403) return t('trackPeople.problem.forbidden');
     return t('trackPeople.problem.other');
   };
@@ -397,6 +400,20 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           ))}
         </ul>
       )}
+
+      <ChecklistNoticesBox
+        track={track}
+        on={track.checklistNotices === true}
+        client={client}
+        onSaid={(said) => {
+          setProblem(null);
+          setMessage(said);
+        }}
+        onRefused={(error) => {
+          setMessage('');
+          setProblem(refusal(error));
+        }}
+      />
 
       {inviting && (
         <InviteDialog

@@ -41,6 +41,10 @@ export interface FakeTrackPeopleOptions {
   invitations?: Invitation[];
   /** The server refuses the permission to create tracks, as it does for whoever cannot give it. */
   refuseCreateTracks?: boolean;
+  /** Whether the track's followers hear of checklist changes to begin with (NTF-015). */
+  checklistNotices?: boolean;
+  /** Saving checklist notices fails: the track was archived meanwhile. */
+  refuseNotices?: boolean;
 }
 
 export interface FakeTrackPeopleClient extends TrackPeopleClient {
@@ -69,10 +73,17 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
     { id: 4, name: 'Ana Duarte' },
   ];
   let next = 100;
+  let notices = options.checklistNotices ?? false;
   return {
     calls,
     managedTracks: async () => [SHOP, { id: 4, key: 'OPS', name: 'Operations', mode: 'local' }],
-    track: async () => SHOP,
+    track: async () => ({ ...SHOP, checklistNotices: notices }),
+    setChecklistNotices: async (trackId, on) => {
+      log('setChecklistNotices', trackId, on);
+      if (options.refuseNotices) throw new ApiError(409, { error: 'track_archived' });
+      notices = on;
+      return notices;
+    },
     roles: async () => roles,
     roleHolders: async () => structuredClone(holders),
     setRole: async (trackId, roleId, kind, actorId, on, roleOptions) => {

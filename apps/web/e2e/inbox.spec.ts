@@ -105,8 +105,8 @@ test('[NTF-003] [NTF-005] a mention reaches the open inbox within a second, exac
   await expect(item).toHaveCount(1);
 
   // Read from the inbox; nothing scrolls sideways, on a phone either.
-  await item.getByRole('button', { name: `Mark ${key} as read` }).click();
-  await expect(item.getByRole('button', { name: `Mark ${key} as unread` })).toBeVisible();
+  await item.getByRole('button', { name: `Mark as read: ${key}` }).click();
+  await expect(item.getByRole('button', { name: `Mark as unread: ${key}` })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await ada.dispose();
 });

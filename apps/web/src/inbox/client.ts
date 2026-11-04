@@ -26,6 +26,11 @@ export interface InboxItem {
    * own (`'set'`), by its name now, with the role it came with (T-206; `track_group_shared`).
    */
   group?: InboxGroup;
+  /**
+   * A run of checklist changes on a ticket the reader follows (NTF-015; `checklist_changed`):
+   * how many, and how many people besides `actor` made them. Never a list's name or an item's text.
+   */
+  checklist?: { changes: number; others: number };
   actor: { id: number; name: string } | null;
   fields?: string[];
   /** Where the reader was mentioned: `ticket`, `description`, `environment` or `comment`. */

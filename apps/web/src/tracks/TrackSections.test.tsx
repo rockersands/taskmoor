@@ -148,6 +148,9 @@ describe('a track is one place with its sections (ADR-116)', () => {
     expect(screen.queryByText('the page')).toBeNull();
     expect(await screen.findByText('the page')).toBeVisible();
     expect(screen.getByRole('navigation', { name: /^Sections of / })).toBeVisible();
+    // The effect runs just after the paint that shows the page, later under load.
+    await waitFor(() => expect(starts).toBe(1));
+    await new Promise((settled) => setTimeout(settled));
     expect(starts).toBe(1);
     board.mockRestore();
   });

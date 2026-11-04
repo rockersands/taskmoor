@@ -1259,6 +1259,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      // Its administrators have its followers told of checklist changes (NTF-015).
+      route: 'PATCH /api/v1/tracks/:id',
+      expect: 'track.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tracks/${state.newTrack}`,
+          payload: { checklistNotices: true },
+        }),
+    },
+    {
       route: 'POST /api/v1/tracks/:id/archive',
       expect: 'track.archived',
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/archive` }),

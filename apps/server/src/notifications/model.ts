@@ -39,6 +39,9 @@ export const PRODUCT_EVENTS = [
   'mentioned',
   // A track group shared with the person or set on them (T-206; ADR-121): about no ticket.
   'track_group_shared',
+  // A checklist of a ticket the person follows changed, where its track turns this on
+  // (NTF-015; ADR-120): followers only, never their own changes.
+  'checklist_changed',
 ] as const;
 
 /** Events a person may choose channels for: policy events and product events. */

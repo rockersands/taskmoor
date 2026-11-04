@@ -2,7 +2,8 @@
 
 The workstream the user asked for on 2026-11-03: tools on every type of ticket, for 1.0. Branch
 `claude/ticket-tools`, based on `claude/ui-overhaul`. Decision record: ADR-120. Requirements:
-CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0096.
+CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0096. TT-7, built later (branch
+`wave6/t196b-checklist-notice`): NTF-015, migration 0103.
 
 | Part | What | State |
 |---|---|---|
@@ -14,8 +15,9 @@ CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0096.
 ## Follow-ups: TT-1 to TT-8 (T-196)
 
 Each was first left out on purpose. T-196 (2026-11-03, branch `wave5/t196-ticket-tools-follow-ups`)
-built all but TT-7, which waits on the user. Decisions are in ADR-120, section "Follow-ups"; no
-migration and no new requirement ID were needed.
+built all but TT-7, which waited on the user; T-196b (2026-11-04) built TT-7 as they chose. Decisions
+are in ADR-120, sections "Follow-ups" and "Checklist notices". T-196 needed no migration and no new
+requirement ID; T-196b adds migration 0103 and NTF-015.
 
 | Ticket | What | State |
 |---|---|---|
@@ -25,11 +27,16 @@ migration and no new requirement ID were needed.
 | TT-4 | Two files of one name told apart | Built: a reference may hold the first 16 hex digits of the file's SHA-256; the picker lists both with size, date and who added it |
 | TT-5 | Dragging checklist items with a pointer | Built: a grip for mouse and finger; Move up and Move down stay the keyboard's way |
 | TT-6 | Changing a subticket's status from its parent's list | Built: each status is a menu of where that ticket can go, through the ticket page's own routes |
-| TT-7 | Notifying followers of checklist changes | **Waiting on the user**: the question and options are in ADR-120 ("Open question for the user") |
+| TT-7 | Notifying followers of checklist changes | **Built (T-196b, 2026-11-04).** The user chose (T-196a) a notice that a track's administrators turn on, off by default: followers who may see the ticket hear in the inbox and by email as each chooses, never of their own changes, a run of changes within the batch window as one notice naming no list or item. NTF-015, migration 0103, ADR-120 "Checklist notices" |
 | TT-8 | A language list for the code block's prompt | Built: about thirty common languages, narrowed as you type; any one word still goes in |
 | Email | The new blocks in an email's quote of a comment | Built: dates, status labels, emoji and kept inline nodes read as text (they were left out) |
 
 ## Handoff
+
+**T-196b (2026-11-04).** TT-7 is built: a track's administrators can turn on a notice to followers
+of checklist changes, off by default (`apps/server/src/notifications/checklists.ts`, migration 0103,
+NTF-015, ADR-120 "Checklist notices"). The note below that TT-7 waits is from before the user's
+answer.
 
 **T-196 (2026-11-03).** The follow-ups above are on `wave5/t196-ticket-tools-follow-ups`, in steps:
 the text formats and email text (`packages/richtext`, `comments.ts`), the editor (TT-1, TT-2, TT-4,

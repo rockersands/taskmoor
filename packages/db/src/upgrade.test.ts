@@ -129,7 +129,7 @@ describe('upgrade from earlier releases', () => {
     });
   });
 
-  describe('the default workflow 0089 left strict (0103)', () => {
+  describe('the default workflow 0089 left strict (0104)', () => {
     const FREE = [
       [5, 'any', undefined],
       [1, 'any', undefined],
@@ -231,7 +231,7 @@ describe('upgrade from earlier releases', () => {
     });
   });
 
-  describe('a close reason deleted while a workflow set it (0104)', () => {
+  describe('a close reason deleted while a workflow set it (0105)', () => {
     interface Stored {
       transitions: {
         id: number;
@@ -261,15 +261,15 @@ describe('upgrade from earlier releases', () => {
         await sql<{ id: number }>`
           SELECT id FROM close_reason WHERE lower(name) = ${name}`.execute(db)
       ).rows.map((r) => r.id);
-    const before0104 = async () => {
+    const before0105 = async () => {
       const database = await createDatabase(testPgAdminUrl());
       const db = createDb({ connectionString: database.url, maxConnections: 2 });
-      await migrateTo(db, '0103_default_workflow_left_strict');
+      await migrateTo(db, '0104_default_workflow_left_strict');
       return { database, db };
     };
 
     it('[WF-008] gives the published version and the draft Completed again, made if it is gone', async () => {
-      const { database, db } = await before0104();
+      const { database, db } = await before0105();
       try {
         const before = await atDefault(db);
         const version = before.published_version;
@@ -304,7 +304,7 @@ describe('upgrade from earlier releases', () => {
     });
 
     it('[WF-008] names the Completed that is there, and leaves a version whose reason exists', async () => {
-      const { database, db } = await before0104();
+      const { database, db } = await before0105();
       try {
         const before = await atDefault(db);
         const completed = await reasonsNamed(db, 'completed');
@@ -353,7 +353,7 @@ describe('upgrade from earlier releases', () => {
     });
 
     it('[WF-008] changes nothing where every reason still exists', async () => {
-      const { database, db } = await before0104();
+      const { database, db } = await before0105();
       try {
         const before = await atDefault(db);
         await migrateToLatest(db);

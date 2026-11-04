@@ -7,6 +7,8 @@ export interface ManagedTrack {
   key: string;
   name: string;
   mode: 'shared' | 'local';
+  /** Its followers hear of checklist changes (NTF-015); older servers leave it out. */
+  checklistNotices?: boolean;
 }
 
 export interface Named {
@@ -96,6 +98,8 @@ export interface TrackPeopleClient {
   invite: (trackId: number, body: NewInvitations) => Promise<InviteResult[]>;
   resend: (trackId: number, id: number, delivery: Delivery) => Promise<{ link?: string }>;
   revoke: (trackId: number, id: number) => Promise<void>;
+  /** Turns the track's checklist notices on or off (NTF-015); answers what is now stored. */
+  setChecklistNotices: (trackId: number, on: boolean) => Promise<boolean>;
 }
 
 export const trackPeopleClient: TrackPeopleClient = {
@@ -132,6 +136,13 @@ export const trackPeopleClient: TrackPeopleClient = {
   revoke: async (trackId, id) => {
     await api<unknown>(`/tracks/${trackId}/invitations/${id}`, { method: 'DELETE' });
   },
+  setChecklistNotices: async (trackId, on) =>
+    (
+      await api<{ track: ManagedTrack }>(`/tracks/${trackId}`, {
+        method: 'PATCH',
+        body: { checklistNotices: on },
+      })
+    ).track.checklistNotices === true,
 };
 
 /** What a link is for, from POST /api/v1/invitations/inspect. */

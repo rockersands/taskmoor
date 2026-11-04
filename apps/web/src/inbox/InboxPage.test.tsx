@@ -16,7 +16,7 @@ import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { listPath, snoozeTimes } from './client';
-import { ALERT_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 function renderInbox(client = fakeInboxClient()) {
@@ -41,7 +41,7 @@ describe('the inbox page (M1-058)', () => {
     expect(link).toHaveTextContent('Account: Kalo Smith · From 203.0.113.9');
     expect(link).toHaveAttribute('href', '#/admin/audit');
     expect(page.getByRole('button', { name: 'Priority 3', pressed: false })).toBeVisible();
-    await user.click(within(card).getByRole('button', { name: 'Mark this alert as read' }));
+    await user.click(within(card).getByRole('button', { name: 'Mark as read: this alert' }));
     await waitFor(() => expect(client.items()[0]?.read).toBe(true));
   });
 
@@ -64,7 +64,7 @@ describe('the inbox page (M1-058)', () => {
     expect(set).toHaveTextContent('Ana Ruiz set a track group on you, a copy of your own');
     await user.click(
       within(shared as HTMLElement).getByRole('button', {
-        name: 'Mark the group Quarter plan as read',
+        name: 'Mark as read: the group Quarter plan',
       }),
     );
     await waitFor(() => expect(client.items()[0]?.read).toBe(true));
@@ -76,6 +76,52 @@ describe('the inbox page (M1-058)', () => {
     expect(client.calls.filter((c) => c.method === 'list').at(-1)?.args[0]).toMatchObject({
       event: 'track_group_shared',
     });
+  });
+
+  it('[NTF-015] a run of checklist changes is one item that says who and how many, and leads to the ticket', async () => {
+    const user = userEvent.setup();
+    const { page, client } = renderInbox(
+      fakeInboxClient([
+        CHECKLIST_ITEM,
+        { ...CHECKLIST_ITEM, id: '20', checklist: { changes: 1, others: 0 } },
+        { ...CHECKLIST_ITEM, id: '21', checklist: { changes: 7, others: 2 } },
+        ...ITEMS,
+      ]),
+    );
+    const [many, one, several] = (await cards(page)) as HTMLElement[];
+    expect(many).toHaveTextContent('Mi Rivera made 5 changes to checklists');
+    expect(one).toHaveTextContent('Mi Rivera changed a checklist');
+    expect(several).toHaveTextContent('Mi Rivera and 2 more made 7 changes to checklists');
+    const link = within(many as HTMLElement).getByRole('link');
+    expect(link).toHaveAttribute('href', '#/tickets/SHOP-19');
+    // The Type filter offers it.
+    await user.selectOptions(
+      page.getByRole('combobox', { name: 'Type' }),
+      'A checklist changes on a ticket you follow',
+    );
+    expect(client.calls.filter((c) => c.method === 'list').at(-1)?.args[0]).toMatchObject({
+      event: 'checklist_changed',
+    });
+  });
+
+  it('[NTF-015] says the same in Spanish, a draft of the catalogue', async () => {
+    render(
+      <I18nProvider locale="es">
+        <InboxPage
+          client={fakeInboxClient([
+            CHECKLIST_ITEM,
+            { ...CHECKLIST_ITEM, id: '21', checklist: { changes: 3, others: 1 } },
+          ])}
+          now={() => NOW}
+        />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText('Mi Rivera hizo 5 cambios en listas de comprobación'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Mi Rivera y 1 persona más hicieron 3 cambios en listas de comprobación'),
+    ).toBeVisible();
   });
 
   it('[NTF-003] lists mentions and changes newest first, unread marked, quoting comments', async () => {
@@ -145,14 +191,24 @@ describe('the inbox page (M1-058)', () => {
     });
   });
 
+  it('[NFR-005] names each action with the words it shows, so voice control finds it', async () => {
+    const { page } = renderInbox();
+    await cards(page);
+    const actions = page.getAllByRole('button').filter((b) => b.className.includes('inbox-action'));
+    expect(actions.length).toBeGreaterThan(0);
+    for (const action of actions) {
+      expect(action.getAttribute('aria-label')).toContain(action.textContent as string);
+    }
+  });
+
   it('[NTF-003] marks one read and unread, snoozes one and marks all read', async () => {
     const user = userEvent.setup();
     const { page, client } = renderInbox();
     await cards(page);
-    await user.click(page.getByRole('button', { name: 'Mark SHOP-19 as read' }));
-    expect(await page.findByRole('button', { name: 'Mark SHOP-19 as unread' })).toBeVisible();
+    await user.click(page.getByRole('button', { name: 'Mark as read: SHOP-19' }));
+    expect(await page.findByRole('button', { name: 'Mark as unread: SHOP-19' })).toBeVisible();
     expect(page.getByText('2 unread')).toBeVisible();
-    await user.click(page.getByRole('button', { name: 'Mark SHOP-19 as unread' }));
+    await user.click(page.getByRole('button', { name: 'Mark as unread: SHOP-19' }));
     expect(await page.findByText('3 unread')).toBeVisible();
 
     // Snoozed until tomorrow morning: it leaves the list and waits in Snoozed.
@@ -173,7 +229,7 @@ describe('the inbox page (M1-058)', () => {
     expect(snoozed[0]).toHaveTextContent('Snoozed until');
     await user.click(
       within(snoozed[0] as HTMLElement).getByRole('button', {
-        name: 'Put OPS-3 back in the inbox',
+        name: 'Back to the inbox: OPS-3',
       }),
     );
     expect(await page.findByText('Nothing snoozed.')).toBeVisible();

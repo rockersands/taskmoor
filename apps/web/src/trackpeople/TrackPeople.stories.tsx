@@ -4,6 +4,7 @@ import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeSignInSso } from '../sso/fixtures';
+import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES } from './fixtures';
 import { InvitationPage } from './InvitationPage';
@@ -124,6 +125,46 @@ export const DialogWithCreateTracks: StoryObj<typeof InviteDialog> = {
 
 export const CreateTracksBoxAlone: StoryObj<typeof CreateTracksBox> = {
   render: () => <CreateTracksBox checked onChange={() => {}} />,
+};
+
+/** Whoever runs the track has its followers told of checklist changes (NTF-015). */
+export const ChecklistNotices: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const box = await canvas.findByRole('checkbox', {
+      name: 'Tell followers when a checklist changes',
+    });
+    await expect(box).not.toBeChecked();
+    await userEvent.click(box);
+    await expect(
+      await canvas.findByText('Followers of tickets in SHOP now hear when a checklist changes.'),
+    ).toBeVisible();
+    await expect(box).toBeChecked();
+  },
+};
+
+/** The same on a phone, already on. */
+export const ChecklistNoticesPhone: Story = {
+  args: { client: fakeTrackPeopleClient({ checklistNotices: true }) },
+  globals: { viewport: { value: 'mobile1' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('checkbox', { name: 'Tell followers when a checklist changes' }),
+    ).toBeChecked();
+  },
+};
+
+export const ChecklistNoticesBoxAlone: StoryObj<typeof ChecklistNoticesBox> = {
+  render: () => (
+    <ChecklistNoticesBox
+      track={{ id: 3, key: 'SHOP' }}
+      on={false}
+      client={fakeTrackPeopleClient()}
+      onSaid={() => {}}
+      onRefused={() => {}}
+    />
+  ),
 };
 
 export const TracksYouRun: StoryObj<typeof ManagedTracksPage> = {

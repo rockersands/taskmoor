@@ -243,6 +243,75 @@ describe('the invite dialog (IAM-027)', () => {
   });
 });
 
+describe('checklist notices, a choice of whoever runs the track (NTF-015)', () => {
+  const NAME = 'Tell followers when a checklist changes';
+  const noticeCalls = (client: ReturnType<typeof renderPeople>) =>
+    client.calls.filter((c) => c.action === 'setChecklistNotices').map((c) => c.args);
+
+  it('[NTF-015] is off to begin with, and saves at once when ticked or unticked, saying so', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople();
+    const box = await screen.findByRole('checkbox', { name: NAME });
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAccessibleDescription(
+      'The followers of a ticket hear of changes to its checklists and their items, in their inbox and by email as each of them chooses. Nobody hears of their own changes, and changes close together come as one notice.',
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Notices to followers' })).toBeVisible();
+    await user.click(box);
+    expect(
+      await screen.findByText('Followers of tickets in SHOP now hear when a checklist changes.'),
+    ).toBeInTheDocument();
+    expect(box).toBeChecked();
+    // From the keyboard too: Space on the focused box turns it off again.
+    box.focus();
+    await user.keyboard(' ');
+    expect(
+      await screen.findByText(
+        'Followers of tickets in SHOP no longer hear when a checklist changes.',
+      ),
+    ).toBeInTheDocument();
+    expect(box).not.toBeChecked();
+    expect(box).toHaveFocus();
+    expect(noticeCalls(client)).toEqual([
+      [3, true],
+      [3, false],
+    ]);
+  });
+
+  it('[NTF-015] shows what the track has stored', async () => {
+    renderPeople({ checklistNotices: true });
+    expect(await screen.findByRole('checkbox', { name: NAME })).toBeChecked();
+  });
+
+  it('[NTF-015] goes back and says why when the server refuses', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({ refuseNotices: true });
+    const box = await screen.findByRole('checkbox', { name: NAME });
+    await user.click(box);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The track is archived, so its settings cannot change.',
+    );
+    expect(box).not.toBeChecked();
+    expect(noticeCalls(client)).toEqual([[3, true]]);
+  });
+
+  it('[NTF-015] fits a phone, in Spanish too', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    renderPeople({}, MEMBER, 'es');
+    const box = await screen.findByRole('checkbox', {
+      name: 'Avisar a quienes siguen un ticket cuando cambia una lista de comprobación',
+    });
+    await user.click(box);
+    expect(
+      await screen.findByText(
+        'Quienes siguen tickets de SHOP ahora se enteran cuando cambia una lista de comprobación.',
+      ),
+    ).toBeInTheDocument();
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360);
+  });
+});
+
 /** A manager who may create tracks, and so give that permission (IAM-033). */
 const CREATOR = {
   status: 'signed-in' as const,
@@ -293,12 +362,12 @@ describe('the permission to create tracks with the role that runs the track (IAM
     renderPeople({}, CREATOR);
     await screen.findByText('Kalo Reyes: Administrators');
     await user.selectOptions(screen.getByLabelText('Role'), 'Members');
-    expect(screen.queryByRole('checkbox')).toBe(null);
+    expect(screen.queryByRole('checkbox', { name: 'Also let them create tracks' })).toBe(null);
     cleanup();
     renderPeople({}, MEMBER);
     await screen.findByText('Kalo Reyes: Administrators');
     expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
-    expect(screen.queryByRole('checkbox')).toBe(null);
+    expect(screen.queryByRole('checkbox', { name: 'Also let them create tracks' })).toBe(null);
   });
 
   it('[IAM-033] a site administrator is offered the box', async () => {

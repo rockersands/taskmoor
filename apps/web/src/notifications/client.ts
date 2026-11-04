@@ -2,12 +2,13 @@ import { api } from '../api/client';
 
 /**
  * The built-in notification events (M1-056), in the order settings list them; mentions of the
- * person and track groups shared with them first, product events outside policies (M1-058,
- * T-206).
+ * person, track groups shared with them and checklist changes on tickets they follow first,
+ * product events outside policies (M1-058, T-206, NTF-015).
  */
 export const NOTIFICATION_EVENTS = [
   'mentioned',
   'track_group_shared',
+  'checklist_changed',
   'ticket_created',
   'ticket_updated',
   'ticket_assigned',
