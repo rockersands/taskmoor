@@ -2,8 +2,15 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Database, EmailDelivery } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
+import { noticeGroupId, TRACK_GROUP_EVENT } from '../notifications/track-groups';
 import { commentText, readsComment } from '../tickets/comments';
-import { type EmailKind, type EmailTicket, fieldLabel, renderEmail } from './render';
+import {
+  type EmailGroupItem,
+  type EmailKind,
+  type EmailTicket,
+  fieldLabel,
+  renderEmail,
+} from './render';
 import type { MailTransport } from './transport';
 
 /**
@@ -21,6 +28,9 @@ import type { MailTransport } from './transport';
  *   was deleted or that the person may no longer read (M1-018); a readable one is quoted.
  * - A notification the person already read in the inbox (M1-058) is not emailed, digests
  *   included (NTF-003 (2)).
+ * - A track group shared with the person or set on them (T-206) is about no ticket: it goes
+ *   while the group is still theirs, under its name at send time, and is dropped otherwise.
+ *   Instant ones within the window go together in one email.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -145,6 +155,41 @@ export async function deliverEmail(
       if (held.has('browse_track')) visible.set(ticket.id, ticket);
     }
     const judged = new Set(tickets.map((t) => t.id));
+    // Track groups the notifications tell of, judged the same way (T-206): those the person
+    // still has, by their names now; any other is dropped.
+    const groupsAsked = new Set(
+      (
+        await sql<{ id: number | null }>`
+          SELECT DISTINCT (payload->>'groupId')::int AS id FROM notification
+           WHERE user_id = ${person.user_id} AND channel = 'email' AND delivered_at IS NULL
+             AND event = ${TRACK_GROUP_EVENT}`.execute(db)
+      ).rows.flatMap((r) => (r.id === null ? [] : [r.id])),
+    );
+    const groupNames = new Map(
+      groupsAsked.size === 0
+        ? []
+        : (
+            await db
+              .selectFrom('track_group as g')
+              .select(['g.id', 'g.name'])
+              .where('g.id', 'in', [...groupsAsked])
+              .where((eb) =>
+                eb.or([
+                  eb('g.owner_id', '=', person.user_id),
+                  eb.exists(
+                    eb
+                      .selectFrom('track_group_share as s')
+                      .select('s.id')
+                      .whereRef('s.group_id', '=', 'g.id')
+                      .where('s.user_id', '=', person.user_id),
+                  ),
+                ]),
+              )
+              .execute()
+          ).map((g) => [g.id, g.name]),
+    );
+    const groupOf = (n: { event: string; payload: Record<string, unknown> }) =>
+      n.event === TRACK_GROUP_EVENT ? noticeGroupId(n.payload) : null;
     // Comments the notifications quote, judged the same way (NTF-001 (3)): a comment gone,
     // deleted or no longer readable has its notifications dropped.
     const asked = new Set(
@@ -206,6 +251,8 @@ export async function deliverEmail(
       const ready = pending.filter((n) => {
         const comment = quotedOf(n.payload);
         if (comment !== null && !asked.has(comment)) return false;
+        const group = groupOf(n);
+        if (group !== null) return groupsAsked.has(group);
         return n.ticket_id === null || judged.has(n.ticket_id);
       });
       run.held += pending.length - ready.length;
@@ -285,6 +332,8 @@ export async function deliverEmail(
         // one already read in the inbox is not sent again (NTF-003 (2), M1-058).
         const kept = batch.filter((n) => {
           if (n.read_at !== null) return false;
+          const group = groupOf(n);
+          if (group !== null) return groupNames.has(group);
           const comment = commentOf(n.payload);
           if (comment !== null && !quotes.has(comment)) return false;
           return n.ticket_id !== null && visible.has(n.ticket_id);
@@ -329,7 +378,19 @@ export async function deliverEmail(
         );
         const base = options.publicUrl.replace(/\/$/, '');
         const byTicket = new Map<number, EmailTicket>();
+        const groupItems: EmailGroupItem[] = [];
         for (const n of kept) {
+          const group = groupOf(n);
+          if (group !== null) {
+            groupItems.push({
+              how: n.payload.how === 'set' ? 'set' : 'shared',
+              name: groupNames.get(group) ?? '',
+              actorName: n.actor_id === null ? null : (actors.get(n.actor_id) ?? null),
+              role: typeof n.payload.role === 'string' ? n.payload.role : null,
+              at: n.created_at,
+            });
+            continue;
+          }
           const ticket = visible.get(n.ticket_id as number) as (typeof tickets)[number];
           const entry = byTicket.get(ticket.id) ?? {
             key: ticket.key,
@@ -364,6 +425,7 @@ export async function deliverEmail(
           [...byTicket.values()],
           { settingsUrl: `${base}/#/account/notifications`, unsubscribeUrl: unsubscribe },
           user.locale,
+          groupItems.length > 0 ? { url: `${base}/#/tracks`, items: groupItems } : null,
         );
         const oneClick = unsubscribe.replace('/#/unsubscribe?', '/api/v1/unsubscribe?');
         let messageId: string | null = null;

@@ -138,6 +138,15 @@ export const messagesEn = {
   'trackGroups.delete.body':
     'Its tracks stay on your page. Whoever it is shared with loses it, and the roles the share gave them.',
   'trackGroups.delete.do': 'Delete group',
+  // Leaving a group shared with you (T-204).
+  'trackGroups.leave': 'Leave group…',
+  'trackGroups.leave.title': 'Leave {name}?',
+  'trackGroups.leave.body':
+    '{name} leaves your Tracks page. You keep every role you have: none of them came from this group alone.',
+  'trackGroups.leave.bodyRole':
+    '{name} leaves your Tracks page, and the {role} role it gave you goes from {count, plural, one {# track} other {# tracks}}. A role you hold any other way stays.',
+  'trackGroups.leave.again': 'Only {name} can share it with you again.',
+  'trackGroups.leave.do': 'Leave group',
   'trackGroups.share.title': 'Share {name}',
   'trackGroups.share.intro':
     'They see this group as you keep it. With a role, they also get it on the group’s tracks where you may give it; taking the share back removes only what it gave.',
@@ -179,6 +188,7 @@ export const messagesEn = {
   'trackGroups.moveToAt': 'Move to {name} (group {position})',
   'trackGroups.announce.takenOut': '{track} is in no group.',
   'trackGroups.announce.deleted': '{name} deleted.',
+  'trackGroups.announce.left': 'You left {name}.',
   'trackGroups.announce.renamed': 'Renamed to {name}.',
   'trackGroups.announce.minimized': '{name} minimized.',
   'trackGroups.announce.opened': '{name} opened.',
@@ -782,6 +792,7 @@ export const messagesEn = {
   'notifications.event.work_started': 'Work started',
   'notifications.event.work_stopped': 'Work stopped',
   'notifications.event.generic': 'Other changes',
+  'notifications.event.track_group_shared': 'A track group is shared with you or set on you',
   'unsubscribe.title': 'Unsubscribe',
   'unsubscribe.checking': 'Checking the link…',
   'unsubscribe.invalid':
@@ -2272,6 +2283,8 @@ export const messagesEn = {
   'admin.users.problem.managed':
     'A directory or an identity provider still keeps this person: remove them there first, or the next sync brings them back.',
   'admin.users.problem.erased': 'This person was erased already.',
+  'admin.users.problem.lastTrackAdmin':
+    'Erasing them would take back a role their shared track groups gave the only other person running a track. Give someone else a role that runs it first.',
   'admin.groups.title': 'Groups',
   'admin.groups.intro':
     'Groups gather people to give them permissions or to restrict what they see. A group inside another counts as part of it.',
@@ -3702,6 +3715,13 @@ export const messagesEn = {
   'inbox.what.assignedYou': '{actor} assigned it to you',
   'inbox.what.event': '{actor}: {event}',
   'inbox.what.custom': '{actor}: {name}',
+  // A track group shared with the reader or set on them (T-206).
+  'inbox.what.groupShared': '{actor} shared a track group with you',
+  'inbox.what.groupSharedRole': '{actor} shared a track group with you, with the role {role}',
+  'inbox.what.groupSet': '{actor} set a track group on you, a copy of your own',
+  'inbox.what.groupSetRole':
+    '{actor} set a track group on you, a copy of your own, with the role {role}',
+  'inbox.group.label': 'the group {name}',
   'inbox.unreadMark': 'Unread',
   'inbox.direct': 'Direct ask',
   'inbox.snoozedUntil': 'Snoozed until {time}',

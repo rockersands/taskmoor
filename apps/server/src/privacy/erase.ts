@@ -5,6 +5,7 @@ import { activeAdminCount } from '../directory';
 import { emit } from '../events/bus';
 import { enqueue, type JobRunner } from '../events/queue';
 import { canonicalJson } from '../tickets/model';
+import { eraseTrackGroups } from '../trackgroups/privacy';
 import { erasedEmail, erasedName } from './placeholder';
 
 export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
@@ -24,6 +25,10 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   receipts, the AI notice acknowledgement, the person's properties, imported-identity
  *   mappings, sign-in counters kept under their email, and their personal data downloads
  *   (files included). Taskmoor stores no avatar.
+ * - Their track groups go, and the shares they gave and received with what those gave, by the
+ *   rules of taking a share back (`trackgroups/privacy.ts`; ADR-121): never the last one to run
+ *   a track, so a share that gave the only person running a track refuses the erasure until
+ *   someone else runs it.
  * - Domain events about the person have their old name and email replaced in the payload.
  * - Names written into other records are replaced by a job (`ERASE_SCRUB_TASK`), which finds
  *   them by the account's id alone: the history's display names of People fields, and the
@@ -36,8 +41,9 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   `audit-verify` still verifies every record; retention removes them in time.
  *
  * Refused: the last active site administrator, oneself, an account a directory or SCIM still
- * manages (it would come back at the next sync), service accounts (not people), and a
- * confirmation that is not the account's email.
+ * manages (it would come back at the next sync), service accounts (not people), a confirmation
+ * that is not the account's email, and an erasure that would leave a track with nobody to run it
+ * (thrown as `LastTrackAdministrator`, which rolls the caller's transaction back).
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -202,6 +208,13 @@ export async function eraseUser(
     .where('id', '=', userId)
     .execute();
 
+  // Track groups (T-205; ADR-121), once the person is deactivated above, so they no longer count
+  // as running a track: taking back what their shares gave others may refuse the erasure
+  // (`LastTrackAdministrator`, which rolls the whole transaction back).
+  const groups = await eraseTrackGroups(trx, ws, userId);
+  count('track_group', groups.groups);
+  count('track_group_share', groups.sharesGiven + groups.sharesReceived);
+
   // The old name and email in events about the person (created, updated, provisioned).
   const replacements = new Map<string, string>([
     [user.email.toLowerCase(), erasedEmail(userId)],
@@ -246,7 +259,20 @@ export async function eraseUser(
     {
       type: 'user.erased',
       subjectId: userId,
-      payload: { label, endedSessions: report.endedSessions, removed },
+      payload: {
+        label,
+        endedSessions: report.endedSessions,
+        removed,
+        ...(groups.removed.length > 0
+          ? {
+              groupAccess: groups.removed.map((c) => ({
+                trackId: c.trackId,
+                userId: c.userId,
+                roleId: c.roleId,
+              })),
+            }
+          : {}),
+      },
     },
   );
   return report;

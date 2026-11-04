@@ -26,9 +26,10 @@ const VIEWS: readonly { id: InboxView; label: MessageId }[] = [
   { id: 'priority', label: 'inbox.view.priority' },
   { id: 'snoozed', label: 'inbox.view.snoozed' },
 ];
-/** The types the Type filter offers: mentions first, then the policy events. */
+/** The types the Type filter offers: mentions and groups first, then the policy events. */
 const TYPES = [
   'mentioned',
+  'track_group_shared',
   'ticket_assigned',
   'ticket_commented',
   'ticket_created',
@@ -92,8 +93,23 @@ function alertSubject(t: Translate, item: InboxItem): string {
 const alertLink = (item: InboxItem) =>
   routeHref(item.alert?.rule === 'ai_spend' ? '#/admin/ai-usage' : '#/admin/audit');
 
+/** A track group shared with the reader or set on them (T-206): who, how and the role. */
+function groupText(t: Translate, item: InboxItem): string {
+  const actor = item.actor?.name || t('inbox.someone');
+  const role = item.group?.role ?? null;
+  if (item.group?.how === 'set') {
+    return role
+      ? t('inbox.what.groupSetRole', { actor, role })
+      : t('inbox.what.groupSet', { actor });
+  }
+  return role
+    ? t('inbox.what.groupSharedRole', { actor, role })
+    : t('inbox.what.groupShared', { actor });
+}
+
 /** What happened, in the reader's words: "Alice mentioned you in a comment". */
 function whatHappened(t: Translate, item: InboxItem): string {
+  if (item.group) return groupText(t, item);
   if (!item.ticket) return alertText(t, item);
   const actor = item.actor?.name || t('inbox.someone');
   if (item.event === 'mentioned') {
@@ -130,13 +146,15 @@ const KNOWN = new Set([
 ]);
 const isKnownEvent = (label: string) => KNOWN.has(label.slice('notifications.event.'.length));
 
-/** Where an item leads: its ticket, at the comment when it is about one. */
+/** Where an item leads: its ticket, at the comment when it is about one; a group's Tracks page. */
 const linkOf = (item: InboxItem) =>
   item.ticket
     ? routeHref(
         `#/tickets/${encodeURIComponent(item.ticket.key)}${item.comment ? `?comment=${item.comment.id}` : ''}`,
       )
-    : alertLink(item);
+    : item.group
+      ? routeHref('#/tracks')
+      : alertLink(item);
 
 /**
  * The in-app inbox (M1-058; NTF-003): mentions and changes to the tickets a person follows,
@@ -386,8 +404,12 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
       {items.length > 0 && (
         <ul className="inbox-list" aria-labelledby={titleId}>
           {items.map((item) => {
-            // An alert has no ticket key: its actions name the alert instead.
-            const key = item.ticket?.key ?? t('inbox.alert.label');
+            // An alert or a group has no ticket key: its actions name it instead.
+            const key =
+              item.ticket?.key ??
+              (item.group
+                ? t('inbox.group.label', { name: item.group.name })
+                : t('inbox.alert.label'));
             const menuId = `inbox-snooze-${item.id}`;
             return (
               <li key={item.id} className={`inbox-item${item.read ? '' : ' inbox-item-unread'}`}>
@@ -411,6 +433,8 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                       <>
                         <span className="inbox-key">{key}</span> {item.ticket.summary}
                       </>
+                    ) : item.group ? (
+                      item.group.name
                     ) : (
                       alertSubject(t, item) || t('inbox.alert.review')
                     )}

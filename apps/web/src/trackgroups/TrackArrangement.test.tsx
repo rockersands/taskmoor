@@ -251,6 +251,7 @@ describe('the Tracks page in groups (CORE-034)', () => {
     );
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Move earlier',
+      'Leave group…',
     ]);
   });
 
@@ -527,5 +528,75 @@ describe('sharing a group (IAM-034)', () => {
     expect(
       await within(dialog).findByRole('button', { name: 'Choose Grace Hopper' }),
     ).toBeVisible();
+  });
+});
+
+describe('leaving a group shared with you (IAM-034, T-204)', () => {
+  const leaveFrom = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(screen.getByRole('button', { name: `Move or change the group ${name}` }));
+    await user.click(screen.getByRole('menuitem', { name: 'Leave group…' }));
+    return screen.getByRole('dialog', { name: `Leave ${name}?` });
+  };
+
+  it('[IAM-034] asks first, saying which role goes from how many tracks, then leaves', async () => {
+    const user = userEvent.setup();
+    const start = [...ARRANGED, sharedGroup(4, 'Ops picks', [4, 6], { holds: 2 })];
+    const client = open(start);
+    const ask = await leaveFrom(user, 'Ops picks');
+    expect(ask).toHaveTextContent(
+      'Ops picks leaves your Tracks page, and the Members role it gave you goes from 2 tracks. A role you hold any other way stays.',
+    );
+    expect(ask).toHaveTextContent('Only Grace Hopper can share it with you again.');
+    // Cancel changes nothing.
+    await user.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(region('Ops picks')).toBeVisible();
+    expect(client.calls.map((c) => c.method)).toEqual([]);
+
+    const again = await leaveFrom(user, 'Ops picks');
+    await user.click(within(again).getByRole('button', { name: 'Leave group' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Ops picks' })).toBeNull());
+    expect(client.calls).toEqual([{ method: 'leave', args: [4] }]);
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('You left Ops picks.'),
+    );
+    // Focus goes to the group before it, where the person was.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Move or change the group Grace’s picks' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('[IAM-034] says nothing is lost when the group gave no role of its own', async () => {
+    const user = userEvent.setup();
+    open([...ARRANGED, sharedGroup(4, 'Read only', [4], { role: null, holds: 0 })]);
+    expect(await leaveFrom(user, 'Read only')).toHaveTextContent(
+      'Read only leaves your Tracks page. You keep every role you have: none of them came from this group alone.',
+    );
+  });
+
+  it('[IAM-034] a refusal keeps the group and says why', async () => {
+    const user = userEvent.setup();
+    const client = fakeTrackGroupClient({
+      groups: ARRANGED,
+      failNext: new ApiError(409, { error: 'last_track_admin', trackIds: [2] }),
+    });
+    open(ARRANGED, client);
+    const ask = await leaveFrom(user, 'Grace’s picks');
+    await user.click(within(ask).getByRole('button', { name: 'Leave group' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/nobody to run it/);
+    expect(region('Grace’s picks')).toBeVisible();
+  });
+
+  it('[IAM-034] works on a phone', async () => {
+    const user = userEvent.setup();
+    act(() => setViewportWidth(360));
+    open();
+    const ask = await leaveFrom(user, 'Grace’s picks');
+    expect(within(ask).getByRole('button', { name: 'Leave group' })).toBeVisible();
+    await user.click(within(ask).getByRole('button', { name: 'Leave group' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Grace’s picks' })).toBeNull());
+    act(() => setViewportWidth(1440));
   });
 });

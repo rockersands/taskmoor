@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import type { Kysely, Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import type { AuthzContext } from '../authz/authorizer';
 import { roleRunsTrack, trackKeepsAdministrator } from '../authz/track-admins';
 
@@ -154,16 +154,29 @@ export async function giveOutright(
 }
 
 /**
+ * Locks the arrangements of these people, in id order: every change to a person's groups, or to
+ * the shares of a group, holds its owner's lock (and, where it changes theirs too, the other
+ * person's) before it reads anything, so changes to one person's groups run one after another.
+ */
+export async function lockArrangements(db: Db, userIds: readonly number[]): Promise<void> {
+  for (const userId of [...new Set(userIds)].sort((a, b) => a - b)) {
+    await sql`SELECT pg_advisory_xact_lock(hashtext('track-groups'), ${userId}::int)`.execute(db);
+  }
+}
+
+/**
  * Takes back what shares hold on tracks: their records go, and a role no other share still
  * holds is removed. `shareIds` are the shares, `trackIds` limits it to some tracks (all when
  * null). Throws `LastTrackAdministrator`, inside the caller's transaction, when a removal would
- * leave a track with nobody to run it.
+ * leave a track with nobody to run it. `keepAdministrators: false` skips that check, for a person
+ * being erased: they are deactivated with it, so their role runs nothing either way.
  */
 export async function releaseShares(
   trx: Transaction<Database>,
   workspaceId: number,
   shareIds: readonly number[],
   trackIds: readonly number[] | null = null,
+  options: { keepAdministrators?: boolean } = {},
 ): Promise<AccessChange[]> {
   if (shareIds.length === 0 || trackIds?.length === 0) return [];
   let query = trx
@@ -192,6 +205,7 @@ export async function releaseShares(
     seen.add(key);
     if (await heldByShares(trx, h.track_id, h.role_id, h.user_id)) continue;
     if (
+      options.keepAdministrators !== false &&
       (await roleRunsTrack(trx, h.track_id, h.role_id)) &&
       !(await trackKeepsAdministrator(trx, workspaceId, h.track_id, {
         kind: 'actor',

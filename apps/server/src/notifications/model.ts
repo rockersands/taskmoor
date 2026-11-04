@@ -35,7 +35,11 @@ export function isNotificationEvent(value: string): boolean {
  * Product events outside policies (spec 01c section 3): they reach the people they are about,
  * whatever the policy says. People still choose their channels for them (M1-058).
  */
-export const PRODUCT_EVENTS = ['mentioned'] as const;
+export const PRODUCT_EVENTS = [
+  'mentioned',
+  // A track group shared with the person or set on them (T-206; ADR-121): about no ticket.
+  'track_group_shared',
+] as const;
 
 /** Events a person may choose channels for: policy events and product events. */
 export function isPreferenceEvent(value: string): boolean {

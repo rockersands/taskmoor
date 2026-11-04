@@ -1,14 +1,24 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { passwordHasher, pepperFromSecret, pepperRing } from '@taskmoor/iam';
+import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
+import { deliverEmail } from '../email/deliver';
+import type { MailTransport, OutgoingEmail } from '../email/transport';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { folderSink } from '../export/sinks';
 import { addRoleActors } from '../import/load';
+import { writePersonalData } from '../privacy/export';
 import { issueSetupToken } from '../setup';
 import { loopbackOutbound } from '../testing/outbound';
 import type { GroupView } from './track-groups';
@@ -1035,6 +1045,406 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       // A person's own arrangement is not audited.
       expect(records.map((r) => r.action)).not.toContain('track_group.updated');
       expect(records.map((r) => r.action)).not.toContain('track_group.reordered');
+    });
+  });
+
+  /** The worker's part: events to their subscribers (notifications, the audit log). */
+  async function work(): Promise<void> {
+    const bus = new EventBus(database.db);
+    registerSubscribers(bus, { db: database.db });
+    const runner = new JobRunner(database.db, 'track-groups-work');
+    bus.attach(runner);
+    while ((await bus.relayOnce()) > 0) {}
+    while ((await runner.runOnce()) > 0) {}
+  }
+  const leave = (who: string, group: number) =>
+    as(who, { method: 'POST', url: `/api/v1/track-groups/${group}/leave` });
+
+  describe('leaving a group shared with you (IAM-034, T-204)', () => {
+    beforeAll(async () => {
+      for (const name of ['hal', 'ivy']) await addUser(name);
+    });
+
+    it('[IAM-034] a person leaves a group shared with them, and only what that share gave goes', async () => {
+      // Hal already works in ALPHA, given on its People page.
+      expect((await give('ALPHA', 'Members', 'hal')).statusCode).toBe(204);
+      const one = await makeGroup('owen', 'Leave one', ['ALPHA', 'BETA', 'DELTA']);
+      expect((await share('owen', one, 'hal', 'Members')).json()).toEqual({
+        tracks: 3,
+        given: 2,
+        alreadyHeld: 1,
+        notGivable: 0,
+      });
+      expect(await rolesOf('hal')).toEqual(['ALPHA:Members', 'BETA:Members', 'DELTA:Members']);
+      // What leaving would take: the roles this share alone gives.
+      expect((await layout('hal')).find((g) => g.id === one)).toMatchObject({
+        role: { id: roles.Members, name: 'Members' },
+        holds: 2,
+      });
+      // Ivy runs DELTA too, and shares a group of hers with the same role there.
+      expect((await give('DELTA', 'Administrators', 'ivy')).statusCode).toBe(204);
+      const hers = await makeGroup('ivy', 'Ivy picks', ['DELTA']);
+      expect((await share('ivy', hers, 'hal', 'Members')).statusCode).toBe(201);
+      expect((await layout('hal')).find((g) => g.id === one)?.holds).toBe(1);
+      expect((await layout('hal')).find((g) => g.id === hers)?.holds).toBe(0);
+
+      const left = await leave('hal', one);
+      expect(left.statusCode, left.body).toBe(200);
+      // The answer is hal's arrangement, without the group.
+      expect((left.json().groups as GroupView[]).map((g) => g.name)).toEqual(['Ivy picks']);
+      // BETA went; ALPHA was hal's own, and Ivy's share still gives DELTA.
+      expect(await rolesOf('hal')).toEqual(['ALPHA:Members', 'DELTA:Members']);
+      const event = await lastEvent('track_group.left');
+      expect(event.actor_id).toBe(ids.hal);
+      expect(event.subject_id).toBe(String(one));
+      expect(event.payload).toEqual({
+        shareId: expect.any(Number),
+        userId: ids.hal,
+        ownerId: ids.owen,
+        roleId: roles.Members,
+        removed: [{ trackId: tracks.BETA, userId: ids.hal, roleId: roles.Members }],
+      });
+      // The owner sees it no longer shared with hal.
+      expect((await layout('owen')).find((g) => g.id === one)?.sharedWith).toBe(0);
+      const listed = await as('owen', {
+        method: 'GET',
+        url: `/api/v1/track-groups/${one}/shares`,
+      });
+      expect(listed.json().shares).toEqual([]);
+
+      // Once is enough; one's own group is deleted, not left; a group never shared answers 404.
+      expect((await leave('hal', one)).statusCode).toBe(404);
+      expect((await leave('owen', one)).statusCode).toBe(403);
+      expect((await leave('ivy', one)).statusCode).toBe(404);
+      expect((await leave('hal', 999_999)).statusCode).toBe(404);
+
+      // The owner's audit trail records who left and what went.
+      await work();
+      const audited = await database.db
+        .selectFrom('audit_event')
+        .select(['actor_id', 'subject_type', 'subject_id', 'details'])
+        .where('action', '=', 'track_group.left')
+        .execute();
+      expect(audited).toContainEqual({
+        actor_id: ids.hal,
+        subject_type: 'track_group',
+        subject_id: String(one),
+        details: expect.objectContaining({
+          ownerId: ids.owen,
+          userId: ids.hal,
+          removed: [{ trackId: tracks.BETA, userId: ids.hal, roleId: roles.Members }],
+        }),
+      });
+
+      expect((await leave('hal', hers)).statusCode).toBe(200);
+      expect(await rolesOf('hal')).toEqual(['ALPHA:Members']);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${one}` });
+      await as('ivy', { method: 'DELETE', url: `/api/v1/track-groups/${hers}` });
+      await take('DELTA', 'Administrators', 'ivy');
+    });
+
+    it('[IAM-034] leaving never leaves a track with nobody to run it', async () => {
+      const run = await makeGroup('owen', 'Run', ['BETA']);
+      await share('owen', run, 'hal', 'Administrators');
+      expect(await rolesOf('hal')).toContain('BETA:Administrators');
+      // Owen steps down: hal, through the share, is the only one left to run BETA.
+      expect((await take('BETA', 'Administrators', 'owen')).statusCode).toBe(204);
+      const refused = await leave('hal', run);
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json()).toEqual({ error: 'last_track_admin', trackIds: [tracks.BETA] });
+      expect((await layout('hal')).map((g) => g.name)).toContain('Run');
+      expect(await rolesOf('hal')).toContain('BETA:Administrators');
+      // Once Owen runs it again, hal may go.
+      expect((await give('BETA', 'Administrators', 'owen')).statusCode).toBe(204);
+      expect((await leave('hal', run)).statusCode).toBe(200);
+      expect(await rolesOf('hal')).not.toContain('BETA:Administrators');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${run}` });
+    });
+  });
+
+  describe('telling people a group was shared with them or set on them (IAM-034, T-206)', () => {
+    const sent: OutgoingEmail[] = [];
+    const transport: MailTransport = {
+      send: async (email) => {
+        sent.push(email);
+        return { messageId: `<${sent.length}@test>` };
+      },
+    };
+    const mail = () =>
+      deliverEmail(database.db, new Authorizer(database.db), {
+        transport,
+        from: 'tracker@example.com',
+        publicUrl: 'http://tracker.test',
+        // Past the two-minute batch window; nobody here keeps quiet hours.
+        now: new Date(Date.now() + 10 * 60 * 1000),
+      });
+    const told = (user: string) =>
+      database.db
+        .selectFrom('notification')
+        .select(['channel', 'event', 'ticket_id', 'actor_id', 'payload'])
+        .where('user_id', '=', ids[user] as number)
+        .orderBy('id')
+        .execute();
+    const inbox = async (who: string) => {
+      const res = await as(who, { method: 'GET', url: '/api/v1/inbox' });
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json().items as {
+        event: string;
+        ticket: unknown;
+        group?: { id: number; name: string; how: string; role: string | null };
+        actor: { id: number; name: string } | null;
+      }[];
+    };
+
+    beforeAll(async () => {
+      for (const name of ['jo', 'kit']) await addUser(name);
+      await work();
+      await mail();
+      sent.length = 0;
+    });
+
+    it('[IAM-034] the person hears of a share in their inbox and by email, naming the group and the sharer, never a track', async () => {
+      const g = await makeGroup('owen', 'Quarterly', ['ALPHA', 'GAMMA']);
+      expect((await share('owen', g, 'jo', 'Members')).statusCode).toBe(201);
+      await work();
+      const notes = await told('jo');
+      expect(notes.map((n) => n.channel).sort()).toEqual(['email', 'inbox']);
+      for (const n of notes) {
+        expect(n).toMatchObject({
+          event: 'track_group_shared',
+          ticket_id: null,
+          actor_id: ids.owen,
+        });
+        expect(n.payload).toEqual({
+          type: 'track_group.shared',
+          groupId: g,
+          name: 'Quarterly',
+          how: 'shared',
+          role: 'Members',
+        });
+      }
+      // Nobody else hears of it, the sharer included.
+      expect(await told('owen')).toEqual([]);
+
+      // The inbox shows it under the group's name now, and nothing of its tracks.
+      await as('owen', {
+        method: 'PATCH',
+        url: `/api/v1/track-groups/${g}`,
+        payload: { name: 'Quarter plan' },
+      });
+      const items = await inbox('jo');
+      expect(items).toEqual([
+        expect.objectContaining({
+          event: 'track_group_shared',
+          ticket: null,
+          group: { id: g, name: 'Quarter plan', how: 'shared', role: 'Members' },
+          actor: { id: ids.owen, name: 'owen' },
+        }),
+      ]);
+      expect(JSON.stringify(items)).not.toMatch(/ALPHA|GAMMA|Alpha|Gamma/);
+      // The inbox filters by it, as by any other kind of notification.
+      const filtered = await as('jo', {
+        method: 'GET',
+        url: '/api/v1/inbox?event=track_group_shared',
+      });
+      expect(filtered.json().items).toHaveLength(1);
+
+      // The email names the group and who shared it, and links to the Tracks page.
+      const run = await mail();
+      expect(run.sent).toBe(1);
+      expect(sent).toHaveLength(1);
+      const email = sent[0] as OutgoingEmail;
+      expect(email.to).toBe('jo@example.com');
+      expect(email.subject).toBe('owen shared the track group “Quarter plan” with you');
+      expect(email.text).toContain(
+        'owen shared the track group “Quarter plan” with you, with the role Members.',
+      );
+      expect(email.text).toContain('http://tracker.test/#/tracks');
+      expect(`${email.text}${email.html}`).not.toMatch(/ALPHA|GAMMA|Alpha|Gamma/);
+      sent.length = 0;
+      await unshare('owen', g, 'jo');
+      // Taken back: the item leaves the inbox.
+      expect(await inbox('jo')).toEqual([]);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] setting a group on someone tells them too; their choices and a share taken back are kept', async () => {
+      const g = await makeGroup('owen', 'Handover', ['BETA']);
+      const copy = await as('owen', {
+        method: 'POST',
+        url: `/api/v1/track-groups/${g}/copies`,
+        payload: { userId: ids.kit, roleId: null },
+      });
+      expect(copy.statusCode, copy.body).toBe(201);
+      await work();
+      expect((await inbox('kit'))[0]?.group).toEqual({
+        id: copy.json().groupId,
+        name: 'Handover',
+        how: 'set',
+        role: null,
+      });
+      await mail();
+      expect(sent.map((e) => e.subject)).toEqual(['owen set the track group “Handover” on you']);
+      sent.length = 0;
+
+      // Kit turns email off for groups: the next share reaches the inbox only.
+      const off = await as('kit', {
+        method: 'PATCH',
+        url: '/api/v1/account/notification-preferences',
+        payload: { events: { track_group_shared: { email: false } } },
+      });
+      expect(off.statusCode, off.body).toBe(200);
+      expect(off.json().preferences.events.track_group_shared).toEqual({
+        email: false,
+        inbox: true,
+      });
+      await share('owen', g, 'kit', null);
+      await work();
+      const channels = (await told('kit')).map((n) => n.channel);
+      expect(channels.filter((c) => c === 'inbox')).toHaveLength(2);
+      expect(channels.filter((c) => c === 'email')).toHaveLength(1);
+      await unshare('owen', g, 'kit');
+
+      // Jo hears of a share by email, but it is taken back before the email goes: none goes.
+      await share('owen', g, 'jo', null);
+      await work();
+      await unshare('owen', g, 'jo');
+      const run = await mail();
+      expect(run.sent).toBe(0);
+      expect(sent).toEqual([]);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+      await as('kit', { method: 'DELETE', url: `/api/v1/track-groups/${copy.json().groupId}` });
+    });
+  });
+
+  describe('a person’s data download and erasure (IAM-008, IAM-034, T-205)', () => {
+    let erase = 0;
+    const files = mkdtempSync(join(tmpdir(), 'taskmoor-groups-privacy-'));
+    afterAll(() => rmSync(files, { recursive: true, force: true }));
+
+    const download = async (user: string, self: boolean) => {
+      const dir = mkdtempSync(join(files, 'download-'));
+      await writePersonalData(database.db, folderSink(dir), {
+        workspaceId: 1,
+        userId: ids[user] as number,
+        self,
+        stores: storesOf(await LocalStore.open(join(files, 'store'))),
+        authorizer: new Authorizer(database.db),
+      });
+      return JSON.parse(readFileSync(join(dir, 'track-groups.json'), 'utf8'));
+    };
+
+    beforeAll(async () => {
+      for (const name of ['kai', 'lou', 'mo']) await addUser(name);
+      const policy = await database.db
+        .selectFrom('access_policy')
+        .select('id')
+        .where('name', '=', 'Default access policy')
+        .executeTakeFirstOrThrow();
+      erase = (
+        await database.db
+          .insertInto('track')
+          .values({ workspace_id: 1, key: 'ERASE', name: 'Erase', access_policy_id: policy.id })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      tracks.ERASE = erase;
+    });
+
+    it('[IAM-008] the download holds the groups a person owns and those shared with them, tracks by key', async () => {
+      // Kai works in ALPHA and runs ERASE; Owen shares BETA and GAMMA with Kai, giving on BETA.
+      expect((await give('ALPHA', 'Members', 'kai')).statusCode).toBe(204);
+      expect((await give('ERASE', 'Administrators', 'kai')).statusCode).toBe(204);
+      const own = await makeGroup('kai', 'Kai picks', ['ALPHA', 'ERASE']);
+      expect((await share('kai', own, 'lou', 'Administrators')).statusCode).toBe(201);
+      expect(await rolesOf('lou')).toEqual(['ERASE:Administrators']);
+      const theirs = await makeGroup('owen', 'For Kai', ['BETA', 'GAMMA']);
+      expect((await share('owen', theirs, 'kai', 'Members')).statusCode).toBe(201);
+
+      expect(await download('kai', true)).toEqual({
+        groups: [
+          {
+            name: 'Kai picks',
+            createdAt: expect.any(String),
+            minimized: false,
+            givenBy: null,
+            tracks: ['ALPHA', 'ERASE'],
+            sharedWith: [{ person: 'lou', role: 'Administrators', since: expect.any(String) }],
+          },
+        ],
+        sharedWithMe: [
+          {
+            name: 'For Kai',
+            owner: 'owen',
+            role: 'Members',
+            since: expect.any(String),
+            minimized: false,
+            // GAMMA is in the group, but Kai may not see it: left out, as on the page.
+            tracks: ['BETA'],
+            rolesGiven: [{ track: 'BETA', role: 'Members' }],
+          },
+        ],
+      });
+      // A site administrator's download has every track.
+      expect((await download('kai', false)).sharedWithMe[0].tracks).toEqual(['BETA', 'GAMMA']);
+      // Lou's lists the share Kai gave them; Mo has none.
+      expect((await download('lou', true)).sharedWithMe).toEqual([
+        expect.objectContaining({ name: 'Kai picks', owner: 'kai', role: 'Administrators' }),
+      ]);
+      expect(await download('mo', true)).toEqual({ groups: [], sharedWithMe: [] });
+    });
+
+    it('[IAM-008] erasure deletes the person’s groups and takes back the shares they gave and received, never the last one to run a track', async () => {
+      const eraseKai = () =>
+        as('admin', {
+          method: 'POST',
+          url: `/api/v1/users/${ids.kai}/erase`,
+          payload: { confirmEmail: 'kai@example.com' },
+        });
+      // Erased, Kai runs nothing: Lou, through Kai's share, would be the last to run ERASE.
+      const refused = await eraseKai();
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(refused.json()).toEqual({ error: 'last_track_admin', trackIds: [erase] });
+      // Nothing changed.
+      const kai = await database.db
+        .selectFrom('app_user')
+        .select(['erased_at', 'deactivated_at'])
+        .where('id', '=', ids.kai as number)
+        .executeTakeFirstOrThrow();
+      expect(kai).toEqual({ erased_at: null, deactivated_at: null });
+      expect(await rolesOf('lou')).toEqual(['ERASE:Administrators']);
+      expect((await layout('lou')).map((g) => g.name)).toEqual(['Kai picks']);
+
+      // Once Mo runs ERASE too, the erasure goes through.
+      expect((await give('ERASE', 'Administrators', 'mo')).statusCode).toBe(204);
+      const erased = await eraseKai();
+      expect(erased.statusCode, erased.body).toBe(200);
+      expect(erased.json().erased.removed).toMatchObject({ track_group: 1, track_group_share: 2 });
+      // Kai's group is gone with the role its share gave Lou; the share Kai received is gone
+      // with the role it gave, and Kai's own roles stay, as erasure keeps them.
+      expect(await layout('lou')).toEqual([]);
+      expect(await rolesOf('lou')).toEqual([]);
+      expect(await rolesOf('kai')).toEqual(['ALPHA:Members', 'ERASE:Administrators']);
+      const owens = await layout('owen');
+      expect(owens.find((g) => g.name === 'For Kai')?.sharedWith).toBe(0);
+      expect(
+        await database.db
+          .selectFrom('track_group')
+          .select('id')
+          .where('owner_id', '=', ids.kai as number)
+          .execute(),
+      ).toEqual([]);
+      // The erasure's event lists the roles that went with the groups.
+      expect((await lastEvent('user.erased')).payload).toMatchObject({
+        groupAccess: expect.arrayContaining([
+          { trackId: erase, userId: ids.lou, roleId: roles.Administrators },
+          { trackId: tracks.BETA, userId: ids.kai, roleId: roles.Members },
+        ]),
+      });
+      await as('owen', {
+        method: 'DELETE',
+        url: `/api/v1/track-groups/${owens.find((g) => g.name === 'For Kai')?.id}`,
+      });
     });
   });
 });

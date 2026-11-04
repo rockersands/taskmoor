@@ -3445,6 +3445,23 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/track-groups/${state.trackGroup}/shares/${state.bo}`,
         }),
     },
+    // Shared with Bo again, who leaves it (T-204).
+    {
+      route: 'POST /api/v1/track-groups/:id/leave',
+      expect: 'track_group.left',
+      prepare: async () => {
+        await admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/shares`,
+          payload: { userId: state.bo, roleId: state.role },
+        });
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/leave`,
+        }),
+    },
     {
       route: 'POST /api/v1/track-groups/:id/copies',
       expect: 'track_group.copied',

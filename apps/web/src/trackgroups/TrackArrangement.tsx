@@ -175,6 +175,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     null,
   );
   const [deleting, setDeleting] = useState<TrackGroup | null>(null);
+  const [leaving, setLeaving] = useState<TrackGroup | null>(null);
   const [said, setSaid] = useState('');
   const saying = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /**
@@ -500,9 +501,39 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
         },
         { key: 'delete', label: t('trackGroups.delete'), onSelect: () => setDeleting(group) },
       );
+    } else {
+      // A group shared with the person: theirs to leave, after saying what goes with it (T-204).
+      items.push({
+        key: 'leave',
+        label: t('trackGroups.leave'),
+        onSelect: () => setLeaving(group),
+      });
     }
     return items;
   };
+
+  /**
+   * Where focus goes once a group has left the page: the next group, the one before, the first
+   * track in no group, or the page's hint when nothing else is left.
+   */
+  const focusAfterRemoving = (at: number) => (next: TrackGroup[]) => {
+    const near = next[at] ?? next[at - 1];
+    if (near) return `group-${near.id}`;
+    const first = tracks.find(
+      (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
+    );
+    return first ? `track-${first.id}` : 'hint';
+  };
+
+  /** What leaving a shared group takes: the role it alone gave, on how many tracks. */
+  const leavingBody = (group: TrackGroup) =>
+    group.role && (group.holds ?? 0) > 0
+      ? t('trackGroups.leave.bodyRole', {
+          name: group.name,
+          role: group.role.name,
+          count: group.holds ?? 0,
+        })
+      : t('trackGroups.leave.body', { name: group.name });
 
   const isOver = (drop: Drop) =>
     over !== null &&
@@ -746,22 +777,48 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
                 void run(
                   () => client.remove(group.id),
                   () => t('trackGroups.announce.deleted', { name: group.name }),
-                  // Focus stays where the person was: the next group, the one before, the
-                  // first track in no group, or the page's hint when nothing else is left.
-                  (next) => {
-                    const near = next[at] ?? next[at - 1];
-                    if (near) return `group-${near.id}`;
-                    const first = tracks.find(
-                      (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
-                    );
-                    return first ? `track-${first.id}` : 'hint';
-                  },
+                  // Focus stays where the person was.
+                  focusAfterRemoving(at),
                 );
               }}
             >
               {t('trackGroups.delete.do')}
             </button>
             <button type="button" className="button-secondary" onClick={() => setDeleting(null)}>
+              {t('trackGroups.cancel')}
+            </button>
+          </div>
+        </ModalDialog>
+      )}
+      {leaving && (
+        <ModalDialog
+          onClose={() => setLeaving(null)}
+          labelledBy={`${id}-leave`}
+          closeLabel={t('trackGroups.closeDialog')}
+        >
+          <h2 id={`${id}-leave`} className="section-title">
+            {t('trackGroups.leave.title', { name: leaving.name })}
+          </h2>
+          <p className="page-note">{leavingBody(leaving)}</p>
+          <p className="page-note">{t('trackGroups.leave.again', { name: leaving.owner.name })}</p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button-danger"
+              onClick={() => {
+                const group = leaving;
+                const at = groups.findIndex((g) => g.id === group.id);
+                setLeaving(null);
+                void run(
+                  () => client.leave(group.id),
+                  () => t('trackGroups.announce.left', { name: group.name }),
+                  focusAfterRemoving(at),
+                );
+              }}
+            >
+              {t('trackGroups.leave.do')}
+            </button>
+            <button type="button" className="button-secondary" onClick={() => setLeaving(null)}>
               {t('trackGroups.cancel')}
             </button>
           </div>

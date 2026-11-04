@@ -2,7 +2,7 @@ import { CUSTOM_PREFIX } from '../notifications/model';
 
 /**
  * Notification emails as text and HTML (M1-057; NTF-002): one ticket's changes gathered into
- * one email, or a digest of many tickets. Every email links to its tickets, to the
+ * one email, or a digest of many tickets, and the track groups shared with the person (T-206). Every email links to its tickets, to the
  * notification settings and to a one-click unsubscribe. Strings come from `EMAIL_MESSAGES` per
  * locale (English only so far, which other locales fall back to); everything taken from data
  * is escaped in HTML.
@@ -21,6 +21,19 @@ export interface EmailTicket {
   summary: string;
   url: string;
   items: EmailItem[];
+}
+/** A track group shared with the person or set on them (T-206): never its tracks. */
+export interface EmailGroupItem {
+  how: 'shared' | 'set';
+  name: string;
+  actorName: string | null;
+  role: string | null;
+  at: Date;
+}
+/** The track groups an email tells of, and the Tracks page where they are. */
+export interface EmailGroups {
+  url: string;
+  items: EmailGroupItem[];
 }
 export interface EmailLinks {
   settingsUrl: string;
@@ -52,6 +65,18 @@ const EN = {
   'subject.instantMany': '[{key}] {summary} ({count} changes)',
   'subject.daily': 'Your daily Taskmoor digest: {count} updates on {tickets} tickets',
   'subject.weekly': 'Your weekly Taskmoor digest: {count} updates on {tickets} tickets',
+  'subject.dailyOther': 'Your daily Taskmoor digest: {count} updates',
+  'subject.weeklyOther': 'Your weekly Taskmoor digest: {count} updates',
+  'subject.groupShared': '{actor} shared the track group “{name}” with you',
+  'subject.groupSet': '{actor} set the track group “{name}” on you',
+  'subject.groups': '{count} track groups shared with you',
+  'group.heading': 'Track groups',
+  'group.shared': '{actor} shared the track group “{name}” with you.',
+  'group.sharedRole': '{actor} shared the track group “{name}” with you, with the role {role}.',
+  'group.set': '{actor} set the track group “{name}” on you: a copy of your own.',
+  'group.setRole':
+    '{actor} set the track group “{name}” on you: a copy of your own, with the role {role}.',
+  'group.open': 'Open your tracks',
   'digest.intro': 'Here is what happened on the tickets you follow.',
   open: 'Open {key}',
   settings: 'Notification settings',
@@ -73,6 +98,12 @@ const escapeHtml = (text: string) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   );
 
+function groupText(t: ReturnType<typeof translator>, item: EmailGroupItem): string {
+  const values = { actor: item.actorName ?? t('someone'), name: item.name, role: item.role ?? '' };
+  if (item.how === 'set') return t(item.role ? 'group.setRole' : 'group.set', values);
+  return t(item.role ? 'group.sharedRole' : 'group.shared', values);
+}
+
 function eventText(t: ReturnType<typeof translator>, item: EmailItem): string {
   const who = item.actorName ?? t('someone');
   const what = item.event.startsWith(CUSTOM_PREFIX)
@@ -81,17 +112,32 @@ function eventText(t: ReturnType<typeof translator>, item: EmailItem): string {
   return `${who} ${what || t('event.generic')}`;
 }
 
+/** The subject of an email that tells of track groups and no ticket. */
+function groupsSubject(t: ReturnType<typeof translator>, items: readonly EmailGroupItem[]) {
+  const only = items[0];
+  if (items.length !== 1 || !only) return t('subject.groups', { count: items.length });
+  const values = { actor: only.actorName ?? t('someone'), name: only.name };
+  return t(only.how === 'set' ? 'subject.groupSet' : 'subject.groupShared', values);
+}
+
 export function renderEmail(
   kind: EmailKind,
   tickets: readonly EmailTicket[],
   links: EmailLinks,
   locale: string | null,
+  groups: EmailGroups | null = null,
 ): { subject: string; text: string; html: string } {
   const t = translator(locale);
   const count = tickets.reduce((n, ticket) => n + ticket.items.length, 0);
-  const first = tickets[0] as EmailTicket;
-  const subject =
-    kind === 'instant'
+  const groupItems = groups?.items ?? [];
+  const first = tickets[0];
+  const subject = !first
+    ? kind === 'instant'
+      ? groupsSubject(t, groupItems)
+      : t(kind === 'weekly' ? 'subject.weeklyOther' : 'subject.dailyOther', {
+          count: groupItems.length,
+        })
+    : kind === 'instant'
       ? first.items.length > 1
         ? t('subject.instantMany', { key: first.key, summary: first.summary, count })
         : t('subject.instant', { key: first.key, summary: first.summary })
@@ -130,6 +176,23 @@ export function renderEmail(
     html.push(
       '</ul>',
       `<p><a href="${escapeHtml(ticket.url)}">${escapeHtml(t('open', { key: ticket.key }))}</a></p>`,
+    );
+  }
+  if (groups && groupItems.length > 0) {
+    text.push(t('group.heading'));
+    html.push(
+      `<h2 style="font-size:16px;margin:16px 0 4px">${escapeHtml(t('group.heading'))}</h2>`,
+      '<ul style="margin:0;padding-left:20px">',
+    );
+    for (const item of groupItems) {
+      const line = groupText(t, item);
+      text.push(`- ${line}`);
+      html.push(`<li>${escapeHtml(line)}</li>`);
+    }
+    text.push(`${t('group.open')}: ${groups.url}`, '');
+    html.push(
+      '</ul>',
+      `<p><a href="${escapeHtml(groups.url)}">${escapeHtml(t('group.open'))}</a></p>`,
     );
   }
   text.push(

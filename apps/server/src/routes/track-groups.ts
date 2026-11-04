@@ -10,6 +10,7 @@ import {
   giveOutright,
   giveThroughShare,
   LastTrackAdministrator,
+  lockArrangements,
   releaseShares,
 } from '../trackgroups/access';
 
@@ -22,6 +23,8 @@ import {
  * A group is its owner's alone until they share it. Sharing shows it to another person, kept as
  * the owner changes it, and may give them a role on its tracks (`trackgroups/access.ts`): only
  * where the owner may give that role, and taking the share back removes only what shares gave.
+ * The person it is shared with may leave it, which takes back the same (T-204), and is told when
+ * a group is shared with or set on them (T-206, `notifications/track-groups.ts`).
  * Setting a group on someone instead gives them a copy of their own, and the role as an ordinary
  * one. A person never sees a track in a group that they may not see in the track list.
  *
@@ -61,6 +64,11 @@ export interface GroupView {
   owner: { id: number; name: string };
   /** A group shared with the caller: the role it gave them, if any. */
   role?: { id: number; name: string } | null;
+  /**
+   * A group shared with the caller: on how many tracks the role is theirs through this share
+   * alone, which leaving the group takes away (T-204).
+   */
+  holds?: number;
   /** The caller's own group: how many people it is shared with. */
   sharedWith?: number;
   /** A copy someone set on the caller. */
@@ -122,18 +130,25 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
       shared_with: number;
       given_by: number | null;
       given_by_name: string | null;
+      holds: number;
     }>`
       SELECT g.id, g.name, g.owner_id, o.name AS owner_name, true AS mine, g.position,
              g.minimized, NULL::int AS role_id, NULL::text AS role_name,
              (SELECT count(*)::int FROM track_group_share s WHERE s.group_id = g.id) AS shared_with,
-             g.given_by, gb.name AS given_by_name
+             g.given_by, gb.name AS given_by_name, 0 AS holds
         FROM track_group g
         JOIN app_user o ON o.id = g.owner_id
         LEFT JOIN app_user gb ON gb.id = g.given_by
        WHERE g.workspace_id = ${ws} AND g.owner_id = ${me}
       UNION ALL
       SELECT g.id, g.name, g.owner_id, o.name, false, s.position, s.minimized, s.role_id, r.name,
-             0, NULL, NULL
+             0, NULL, NULL,
+             -- Roles this share alone holds: another share's stay when this one goes.
+             (SELECT count(*)::int FROM track_group_access a
+               WHERE a.share_id = s.id
+                 AND NOT EXISTS (SELECT 1 FROM track_group_access b
+                                  WHERE b.share_id <> s.id AND b.track_id = a.track_id
+                                    AND b.role_id = a.role_id AND b.user_id = a.user_id))
         FROM track_group_share s
         JOIN track_group g ON g.id = s.group_id
         JOIN app_user o ON o.id = g.owner_id
@@ -172,7 +187,10 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
               sharedWith: r.shared_with,
               givenBy: r.given_by === null ? null : { id: r.given_by, name: r.given_by_name ?? '' },
             }
-          : { role: r.role_id === null ? null : { id: r.role_id, name: r.role_name ?? '' } }),
+          : {
+              role: r.role_id === null ? null : { id: r.role_id, name: r.role_name ?? '' },
+              holds: r.holds,
+            }),
         tracks: tracks.get(r.id) ?? [],
       })),
     };
@@ -372,11 +390,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
    * Throws `Gone` when the group went in the meantime.
    */
   async function lockFor(trx: Trx, ownerIds: readonly number[], groupId?: number) {
-    for (const ownerId of [...new Set(ownerIds)].sort((a, b) => a - b)) {
-      await sql`SELECT pg_advisory_xact_lock(hashtext('track-groups'), ${ownerId}::int)`.execute(
-        trx,
-      );
-    }
+    await lockArrangements(trx, ownerIds);
     if (groupId === undefined) return;
     const row = await trx
       .selectFrom('track_group')
@@ -854,6 +868,50 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     );
     if (done === null) return reply;
     return reply.code(204).send();
+  });
+
+  // Leaving a group shared with the caller (T-204): it leaves their page, and what the share gave
+  // goes with it, by the rules of taking a share back. Their own group they delete instead.
+  app.post('/api/v1/track-groups/:id/leave', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const found = await reach(request, params.data.id);
+    if (!found) return notFound(reply);
+    if (!found.share) return reply.code(403).send({ error: 'forbidden' });
+    const { group } = found;
+    const done = await guarded(reply, () =>
+      db.transaction().execute(async (trx) => {
+        // The owner's lock, as their own changes to the shares take it, and the caller's, whose
+        // arrangement loses the group.
+        await lockFor(trx, [group.owner_id, user.id], group.id);
+        const share = await trx
+          .selectFrom('track_group_share')
+          .select(['id', 'role_id'])
+          .where('group_id', '=', group.id)
+          .where('user_id', '=', user.id)
+          .executeTakeFirst();
+        if (!share) throw new Gone();
+        const removed = await releaseShares(trx, request.workspaceId, [share.id]);
+        await trx.deleteFrom('track_group_share').where('id', '=', share.id).execute();
+        // The owner's group is the subject, so its audit trail says who left and what went.
+        await emit(trx, by(request), {
+          type: 'track_group.left',
+          subjectId: group.id,
+          payload: {
+            shareId: share.id,
+            userId: user.id,
+            ownerId: group.owner_id,
+            roleId: share.role_id,
+            removed: accessList(removed),
+          },
+        });
+        return true;
+      }),
+    );
+    if (done === null) return reply;
+    return layoutOf(request);
   });
 
   // Setting a group on someone: a copy of their own, and the role as an ordinary one.

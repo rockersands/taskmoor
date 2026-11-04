@@ -7,7 +7,7 @@ export interface InboxItem {
   event: string;
   /** A direct ask: a mention, or the ticket assigned to the reader. */
   direct: boolean;
-  /** The ticket it is about; null for an alert to site administrators (ADR-109). */
+  /** The ticket it is about; null for an alert to site administrators (ADR-109) or a group. */
   ticket: {
     id: number;
     key: string;
@@ -21,6 +21,11 @@ export interface InboxItem {
    * and whom it is about. Older servers leave it out.
    */
   alert?: InboxAlert;
+  /**
+   * A track group shared with the reader (`how: 'shared'`) or set on them as a copy of their
+   * own (`'set'`), by its name now, with the role it came with (T-206; `track_group_shared`).
+   */
+  group?: InboxGroup;
   actor: { id: number; name: string } | null;
   fields?: string[];
   /** Where the reader was mentioned: `ticket`, `description`, `environment` or `comment`. */
@@ -30,6 +35,14 @@ export interface InboxItem {
   createdAt: string;
   read: boolean;
   snoozedUntil: string | null;
+}
+
+/** A track group an item tells of: never its tracks. */
+export interface InboxGroup {
+  id: number;
+  name: string;
+  how: 'shared' | 'set';
+  role: string | null;
 }
 
 /** What an alert item says (ADR-109). */

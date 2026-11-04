@@ -33,8 +33,14 @@ describe('notification settings (M1-057)', () => {
       section.getByRole('checkbox', { name: 'Tell me about changes I make myself' }),
     ).not.toBeChecked();
     const table = section.getByRole('table', { name: 'What you hear about, and where' });
-    expect(within(table).getAllByRole('row')).toHaveLength(17);
+    // The heading row, mentions, track groups shared with you (T-206) and the 15 policy events.
+    expect(within(table).getAllByRole('row')).toHaveLength(18);
     expect(within(table).getByRole('checkbox', { name: 'Inbox: Ticket closed' })).toBeChecked();
+    expect(
+      within(table).getByRole('checkbox', {
+        name: 'Email: A track group is shared with you or set on you',
+      }),
+    ).toBeChecked();
   });
 
   it('[NTF-004] saves each change at once', async () => {

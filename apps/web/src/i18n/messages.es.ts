@@ -151,6 +151,14 @@ export const messagesEs: Record<MessageId, string> = {
   'trackGroups.delete.body':
     'Sus tracks se quedan en tu página. Quien lo tenga compartido lo pierde, junto con los roles que le dio.',
   'trackGroups.delete.do': 'Eliminar grupo',
+  'trackGroups.leave': 'Salir del grupo…',
+  'trackGroups.leave.title': '¿Salir de {name}?',
+  'trackGroups.leave.body':
+    '{name} sale de tu página de tracks. Conservas todos tus roles: ninguno vino solo de este grupo.',
+  'trackGroups.leave.bodyRole':
+    '{name} sale de tu página de tracks y pierdes el rol {role} que te dio en {count, plural, one {# track} other {# tracks}}. Un rol que tengas por otra vía se queda.',
+  'trackGroups.leave.again': 'Solo {name} puede volver a compartirlo contigo.',
+  'trackGroups.leave.do': 'Salir del grupo',
   'trackGroups.share.title': 'Compartir {name}',
   'trackGroups.share.intro':
     'Verá este grupo tal como lo mantienes. Con un rol, también lo recibe en los tracks del grupo donde tú puedes darlo; si dejas de compartirlo, se quita solo lo que eso dio.',
@@ -193,6 +201,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackGroups.moveToAt': 'Mover a {name} (grupo {position})',
   'trackGroups.announce.takenOut': '{track} no está en ningún grupo.',
   'trackGroups.announce.deleted': '{name} eliminado.',
+  'trackGroups.announce.left': 'Saliste de {name}.',
   'trackGroups.announce.renamed': 'Ahora se llama {name}.',
   'trackGroups.announce.minimized': '{name} minimizado.',
   'trackGroups.announce.opened': '{name} abierto.',
@@ -807,6 +816,8 @@ export const messagesEs: Record<MessageId, string> = {
   'notifications.event.work_started': 'Trabajo iniciado',
   'notifications.event.work_stopped': 'Trabajo detenido',
   'notifications.event.generic': 'Otros cambios',
+  'notifications.event.track_group_shared':
+    'Alguien comparte contigo un grupo de tracks o te lo asigna',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
   'unsubscribe.invalid':
@@ -2342,6 +2353,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.problem.managed':
     'Un directorio o un proveedor de identidad aún gestiona a esta persona: quítala allí primero, o la próxima sincronización la traerá de vuelta.',
   'admin.users.problem.erased': 'Esta persona ya se borró.',
+  'admin.users.problem.lastTrackAdmin':
+    'Borrarla quitaría un rol que sus grupos de tracks compartidos le dieron a la única otra persona que dirige un track. Primero da a alguien más un rol que lo dirija.',
   'admin.groups.title': 'Grupos',
   'admin.groups.intro':
     'Los grupos reúnen a personas para darles permisos o restringir lo que ven. Un grupo dentro de otro cuenta como parte de él.',
@@ -3805,6 +3818,12 @@ export const messagesEs: Record<MessageId, string> = {
   'inbox.what.assignedYou': '{actor} te lo asignó',
   'inbox.what.event': '{actor}: {event}',
   'inbox.what.custom': '{actor}: {name}',
+  'inbox.what.groupShared': '{actor} compartió contigo un grupo de tracks',
+  'inbox.what.groupSharedRole': '{actor} compartió contigo un grupo de tracks, con el rol {role}',
+  'inbox.what.groupSet': '{actor} te asignó un grupo de tracks, una copia tuya',
+  'inbox.what.groupSetRole':
+    '{actor} te asignó un grupo de tracks, una copia tuya, con el rol {role}',
+  'inbox.group.label': 'el grupo {name}',
   'inbox.unreadMark': 'Sin leer',
   'inbox.direct': 'Petición directa',
   'inbox.snoozedUntil': 'Pospuesto hasta {time}',

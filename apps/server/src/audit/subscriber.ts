@@ -236,6 +236,8 @@ export const AUDITED_EVENTS = [
   'track_group.track_moved',
   'track_group.shared',
   'track_group.unshared',
+  // Someone left a group shared with them (T-204): the roles it took with it.
+  'track_group.left',
   'track_group.copied',
   // Multi-track plans (ADR-122): configuration others may see, like dashboards.
   'plan.created',

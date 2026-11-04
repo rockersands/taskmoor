@@ -8,6 +8,7 @@ import type { DomainEvent, EventType } from '../events/catalogue';
 import { readsComment } from '../tickets/comments';
 import { addedMentions, hasMentions, type Mentions, mergeMentions } from './mentions';
 import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
+import { notifyTrackGroup, TRACK_GROUP_NOTICES } from './track-groups';
 
 /**
  * The notification subscriber (M1-056; NTF-001, NTF-004): turns ticket and time entry events
@@ -25,6 +26,9 @@ import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
  * they turned off for mentions falls back to the policy's event. Direct asks (mentions, and an
  * assignment to the person) are marked `direct` for the inbox's Priority tab (NTF-003 (3)).
  *
+ * A track group shared with someone or set on them (T-206) tells that person, as the product
+ * event `track_group_shared` (`track-groups.ts`).
+ *
  * Recipients are judged when the event is handled, a moment after the change: the ticket as it
  * then is decides who hears of it. Delivery is at least once; a notification is unique per
  * event, person and channel, so a second delivery writes nothing. Each person whose inbox got
@@ -32,6 +36,8 @@ import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
  * pushes to their open inboxes.
  */
 const HANDLED: readonly EventType[] = [
+  // A track group shared with or set on someone (T-206): `track-groups.ts` tells them.
+  ...TRACK_GROUP_NOTICES,
   'ticket.created',
   'ticket.updated',
   'ticket.transitioned',
@@ -551,6 +557,10 @@ export function notificationSubscriber(db: Db): Subscriber {
     name: 'notifications',
     types: HANDLED,
     handle: async (event) => {
+      if ((TRACK_GROUP_NOTICES as readonly string[]).includes(event.type)) {
+        await notifyTrackGroup(db, event, bumpInbox);
+        return;
+      }
       await notify(db, authorizer, event);
     },
   };

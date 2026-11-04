@@ -135,6 +135,8 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PUT /api/v1/track-groups/:id/tracks/:trackId']).toBe('write');
     expect(classes['POST /api/v1/track-groups/:id/shares']).toBe('write');
     expect(classes['DELETE /api/v1/track-groups/:id/shares/:userId']).toBe('write');
+    // Leaving a group shared with one takes back what it gave, as a write (T-204).
+    expect(classes['POST /api/v1/track-groups/:id/leave']).toBe('write');
     expect(classes['POST /api/v1/track-groups/:id/copies']).toBe('write');
     // The SCIM service answers only its own scope, whatever the method (ADR-038).
     expect(classes['GET /api/v1/scim/v2/Users']).toBe('scim');
