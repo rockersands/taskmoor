@@ -4,8 +4,8 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 
 /**
  * Teams and capacity in a Multi-track plan end to end (T-089b; PLN-005, PLN-009; ADR-122): a
- * plan over two tracks plans with a team of one person, in two-week periods starting today, in
- * points. The person has 8 points due in the plan this period and 13 in a third track outside
+ * plan over two tracks plans with a team of one person, in two-week periods from this week's
+ * Monday, in points. The person has 8 points due in the plan this period and 13 in a third track outside
  * it. Their capacity is set from the Capacity view's dialog (10 points every period); the view
  * then says they are over capacity, in words, counts the work outside the plan without naming
  * it, and links their count to the search that finds exactly those tickets. No serious axe issue
@@ -47,6 +47,11 @@ async function ok<T>(answer: ReturnType<APIRequestContext['post']>): Promise<T> 
 /** A calendar day `days` after today, in UTC as the page counts them. */
 const dayFromToday = (days: number) =>
   new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+/**
+ * This week's Monday. Periods from it hold the next three days, and the whole week of each,
+ * whatever day today is: work elsewhere counts by whole weeks, Monday to Sunday.
+ */
+const thisMonday = () => dayFromToday(-((new Date().getUTCDay() + 6) % 7));
 
 test('[PLN-005] [PLN-009] a plan’s capacity: a team’s person over capacity in words, work elsewhere only counted', async ({
   page,
@@ -100,7 +105,7 @@ test('[PLN-005] [PLN-009] a plan’s capacity: a team’s person over capacity i
     data: {
       teams: [team],
       capacityUnit: 'points',
-      period: { kind: 'weeks', weeks: 2, anchor: dayFromToday(0) },
+      period: { kind: 'weeks', weeks: 2, anchor: thisMonday() },
     },
   });
   expect(set.status(), await set.text()).toBe(200);
