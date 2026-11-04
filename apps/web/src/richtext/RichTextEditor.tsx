@@ -1,13 +1,15 @@
 import {
+  columnTracks,
   editorExtensions,
   fromMarkdown,
+  isAttachmentDigest,
   isSafeHref,
   looksLikeMarkdown,
-  MAX_TITLE_LENGTH,
   type PmJson,
   TICKET_KEY,
 } from '@taskmoor/richtext';
 import { type AnyExtension, type Editor, Extension, type Node as TiptapNode } from '@tiptap/core';
+import type { Node as PmNode } from '@tiptap/pm/model';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import {
   type KeyboardEvent,
@@ -24,6 +26,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { BlockPrompt } from './BlockPrompt';
 import { showAttachment, useEditorTools } from './EditorTools';
+import { ExpandCaret, expandNodeView } from './expandView';
 import { Icon, type IconName } from './icons';
 import type { MentionPerson, MentionSource } from './mentions';
 import {
@@ -86,13 +89,6 @@ interface SlashMenu {
   rect: DOMRect | null;
   pick: (tool: SlashTool) => void;
 }
-
-/**
- * What a section's title may not hold: the server takes it only as one line of text
- * (`isExpandTitle`), and a text field keeps a pasted tab.
- */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g;
 
 /** The document, or null when it is empty. */
 export function docOf(editor: Editor): PmJson | null {
@@ -304,6 +300,11 @@ export function RichTextEditor({
     checkbox: (text: string) =>
       text === '' ? t('richtext.taskItemEmpty') : t('richtext.taskItem', { text }),
     expandTitle: t('richtext.expand.title'),
+    expandToggle: (title: string) => t('richtext.expand.toggle', { title }),
+    expandShow: t('richtext.expand.show'),
+    expandHide: t('richtext.expand.hide'),
+    expandChanged: t('richtext.expand.changed'),
+    expandUntitled: t('richtext.expand.untitled'),
   };
   const labelsRef = useRef(labels);
   labelsRef.current = labels;
@@ -465,63 +466,46 @@ export function RichTextEditor({
       }
       if (extension.name === 'expand') {
         return (extension as TiptapNode).extend({
+          addNodeView: () =>
+            expandNodeView(() => ({
+              title: labelsRef.current.expandTitle,
+              toggle: labelsRef.current.expandToggle,
+              show: labelsRef.current.expandShow,
+              hide: labelsRef.current.expandHide,
+              changed: labelsRef.current.expandChanged,
+              untitled: labelsRef.current.expandUntitled,
+            })),
+        });
+      }
+      if (extension.name === 'columnLayout') {
+        // The layout's widths come from its columns (TT-2), so a column's new width draws
+        // again here: the element a schema draws is kept while its own attributes stay.
+        return (extension as TiptapNode).extend({
           addNodeView:
             () =>
-            ({ node: first, getPos, editor: current }) => {
-              let node = first;
+            ({ node: first }) => {
               const dom = document.createElement('div');
-              dom.className = 'rt-expand';
-              const title = document.createElement('input');
-              title.type = 'text';
-              title.className = 'rt-expand-title';
-              title.maxLength = MAX_TITLE_LENGTH;
-              title.value = String(node.attrs.title ?? '');
-              title.disabled = !current.isEditable;
-              title.setAttribute('aria-label', labelsRef.current.expandTitle);
-              title.addEventListener('input', () => {
-                // A pasted tab or other control character becomes a space, as it is typed.
-                const clean = title.value.replace(CONTROL_CHARACTERS, ' ');
-                if (clean !== title.value) {
-                  const caret = title.selectionStart;
-                  title.value = clean;
-                  if (caret !== null) title.setSelectionRange(caret, caret);
-                }
-                const at = typeof getPos === 'function' ? getPos() : undefined;
-                if (at === undefined) return;
-                current.view.dispatch(
-                  current.state.tr.setNodeMarkup(at, undefined, {
-                    ...node.attrs,
-                    title: clean,
-                  }),
-                );
-              });
-              // Enter or Escape goes on to the section's text.
-              title.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter' && event.key !== 'Escape') return;
-                event.preventDefault();
-                event.stopPropagation();
-                const at = typeof getPos === 'function' ? getPos() : undefined;
-                if (at !== undefined)
-                  current
-                    .chain()
-                    .focus(at + 2)
-                    .run();
-              });
-              const contentDOM = document.createElement('div');
-              contentDOM.className = 'rt-expand-body';
-              dom.append(title, contentDOM);
+              dom.setAttribute('data-columns', '');
+              const draw = (node: PmNode) => {
+                const widths: unknown[] = [];
+                node.forEach((column) => {
+                  widths.push(column.attrs.width);
+                });
+                const tracks = columnTracks(widths);
+                if (tracks) dom.style.setProperty('--rt-columns', tracks);
+                else dom.style.removeProperty('--rt-columns');
+              };
+              draw(first);
               return {
                 dom,
-                contentDOM,
-                stopEvent: (event) => event.target === title,
-                ignoreMutation: (mutation) => mutation.target === title,
+                contentDOM: dom,
                 update: (next) => {
-                  if (next.type.name !== 'expand') return false;
-                  node = next;
-                  const value = String(next.attrs.title ?? '');
-                  if (title.value !== value) title.value = value;
+                  if (next.type.name !== 'columnLayout') return false;
+                  draw(next);
                   return true;
                 },
+                ignoreMutation: (mutation) =>
+                  mutation.type === 'attributes' && mutation.target === dom,
               };
             },
         });
@@ -534,12 +518,15 @@ export function RichTextEditor({
               const dom = document.createElement('div');
               dom.contentEditable = 'false';
               dom.setAttribute('data-attachment-ref', String(node.attrs.name ?? ''));
+              const digest = isAttachmentDigest(node.attrs.digest) ? node.attrs.digest : null;
+              if (digest) dom.setAttribute('data-digest', digest);
               window.setTimeout(() =>
                 showAttachment(
                   dom,
                   String(node.attrs.name ?? ''),
                   Boolean(node.attrs.image),
                   toolsRef.current,
+                  digest,
                 ),
               );
               dom.textContent = String(node.attrs.name ?? '');
@@ -604,7 +591,7 @@ export function RichTextEditor({
         },
       }),
     });
-    return [...shown, keys, ...(collaboration ?? [])];
+    return [...shown, keys, ExpandCaret, ...(collaboration ?? [])];
   }, []);
 
   const editor = useEditor(

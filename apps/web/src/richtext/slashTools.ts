@@ -1,11 +1,22 @@
-import type { PmJson } from '@taskmoor/richtext';
+import { MAX_COLUMNS, type PmJson, shownColumnWidth } from '@taskmoor/richtext';
 import type { Editor } from '@tiptap/core';
+import type { EditorState } from '@tiptap/pm/state';
 import type { MessageId } from '../i18n/messages.en';
 import type { EditorTools } from './EditorTools';
 import type { IconName } from './icons';
 
-/** Asks for what a block needs before it goes in: its language, a person's words, a file. */
-export type BlockPromptKind = 'code' | 'emoji' | 'date' | 'status' | 'attachment' | 'ticket';
+/**
+ * Asks for what a block needs before it goes in: its language, a person's words, a file; or, for
+ * the columns the caret is in, their widths.
+ */
+export type BlockPromptKind =
+  | 'code'
+  | 'emoji'
+  | 'date'
+  | 'status'
+  | 'attachment'
+  | 'ticket'
+  | 'columns';
 
 export interface SlashContext {
   tools: EditorTools;
@@ -140,6 +151,13 @@ export const SLASH_TOOLS: readonly SlashTool[] = [
   columns(2, 'richtext.slash.columns2'),
   columns(3, 'richtext.slash.columns3'),
   {
+    id: 'columnWidths',
+    label: 'richtext.slash.columnWidths',
+    keywords: 'columns width wide narrow layout size',
+    available: (e) => e.isActive('column'),
+    run: (_e, context) => context.openPrompt('columns'),
+  },
+  {
     id: 'table',
     label: 'richtext.table',
     icon: 'table',
@@ -215,6 +233,145 @@ export function matchingTools(
   const wanted = folded(query.trim());
   if (wanted === '') return [...tools];
   return tools.filter((tool) => folded(`${label(tool)} ${tool.keywords}`).includes(wanted));
+}
+
+/** A language a code block's prompt offers (TT-8): the word that goes in, and its usual name. */
+export interface CodeLanguage {
+  id: string;
+  name: string;
+}
+
+/**
+ * Languages people often write code in, alphabetically. Any other one word still goes in; the
+ * names are the languages' own, the same in every locale.
+ */
+export const CODE_LANGUAGES: readonly CodeLanguage[] = [
+  { id: 'bash', name: 'Bash' },
+  { id: 'c', name: 'C' },
+  { id: 'cpp', name: 'C++' },
+  { id: 'csharp', name: 'C#' },
+  { id: 'css', name: 'CSS' },
+  { id: 'dart', name: 'Dart' },
+  { id: 'diff', name: 'Diff' },
+  { id: 'dockerfile', name: 'Dockerfile' },
+  { id: 'go', name: 'Go' },
+  { id: 'graphql', name: 'GraphQL' },
+  { id: 'html', name: 'HTML' },
+  { id: 'java', name: 'Java' },
+  { id: 'javascript', name: 'JavaScript' },
+  { id: 'json', name: 'JSON' },
+  { id: 'kotlin', name: 'Kotlin' },
+  { id: 'lua', name: 'Lua' },
+  { id: 'markdown', name: 'Markdown' },
+  { id: 'php', name: 'PHP' },
+  { id: 'powershell', name: 'PowerShell' },
+  { id: 'python', name: 'Python' },
+  { id: 'r', name: 'R' },
+  { id: 'ruby', name: 'Ruby' },
+  { id: 'rust', name: 'Rust' },
+  { id: 'scala', name: 'Scala' },
+  { id: 'shell', name: 'Shell' },
+  { id: 'sql', name: 'SQL' },
+  { id: 'swift', name: 'Swift' },
+  { id: 'typescript', name: 'TypeScript' },
+  { id: 'xml', name: 'XML' },
+  { id: 'yaml', name: 'YAML' },
+];
+
+/**
+ * The languages for what was typed: by word or name, those that start with it first. Nothing
+ * typed lists them all.
+ */
+export function matchingLanguages(
+  languages: readonly CodeLanguage[],
+  typed: string,
+): CodeLanguage[] {
+  const wanted = folded(typed.trim());
+  if (wanted === '') return [...languages];
+  const found = languages.filter((l) => folded(`${l.id} ${l.name}`).includes(wanted));
+  const starts = (l: CodeLanguage) =>
+    folded(l.id).startsWith(wanted) || folded(l.name).startsWith(wanted);
+  return [...found.filter(starts), ...found.filter((l) => !starts(l))];
+}
+
+/** The columns the caret is in: where their layout starts, and each column's width. */
+export function columnLayoutAt(
+  state: EditorState,
+): { pos: number; widths: (number | null)[] } | null {
+  const { $from } = state.selection;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth);
+    if (node.type.name !== 'columnLayout') continue;
+    const widths: (number | null)[] = [];
+    node.forEach((column) => {
+      widths.push(shownColumnWidth(column.attrs.width));
+    });
+    return { pos: $from.before(depth), widths };
+  }
+  return null;
+}
+
+/** Shares a layout of this many columns offers besides equal ones, as percentages. */
+const SHARES: Record<number, number[][]> = {
+  2: [
+    [33.33, 66.67],
+    [66.67, 33.33],
+    [25, 75],
+    [75, 25],
+  ],
+  3: [
+    [25, 50, 25],
+    [50, 25, 25],
+    [25, 25, 50],
+  ],
+};
+
+/**
+ * The widths the prompt offers for a layout (TT-2): its widths now first when they are not one of
+ * the others, then equal columns (null widths), then the shares for its number of columns.
+ */
+export function widthPresets(now: readonly (number | null)[]): (number | null)[][] {
+  const count = Math.min(Math.max(now.length, 1), MAX_COLUMNS);
+  const equal: (number | null)[] = Array.from({ length: count }, () => null);
+  const presets = [equal, ...(SHARES[count] ?? [])];
+  const shown = now.some((w) => w !== null) && now.every((w) => w !== null);
+  return shown && !presets.some((p) => sameWidths(p, now)) ? [[...now], ...presets] : presets;
+}
+
+/** Whether two layouts' widths are the same, column by column. */
+export const sameWidths = (a: readonly (number | null)[], b: readonly (number | null)[]) =>
+  a.length === b.length && a.every((w, i) => w === b[i]);
+
+/**
+ * Which of the offered widths a layout has now: those it shows, or equal columns when it shows
+ * none (some columns without a width also lay out equal).
+ */
+export function currentPreset(
+  presets: readonly (readonly (number | null)[])[],
+  now: readonly (number | null)[],
+): number {
+  const at = presets.findIndex((p) => sameWidths(p, now));
+  return at >= 0 ? at : 0;
+}
+
+/**
+ * Sets every column of the layout at `pos` in one step, so undo takes it back at once and the
+ * others editing see one change.
+ */
+export function setColumnWidths(
+  editor: Editor,
+  pos: number,
+  widths: readonly (number | null)[],
+): void {
+  const layout = editor.state.doc.nodeAt(pos);
+  if (layout?.type.name !== 'columnLayout') return;
+  const tr = editor.state.tr;
+  layout.forEach((column, offset, index) => {
+    const width = widths[index] ?? null;
+    if (column.attrs.width === width) return;
+    tr.setNodeMarkup(pos + 1 + offset, undefined, { ...column.attrs, width });
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
 }
 
 /** Emoji the picker offers: common ones, each with a name in the catalogue. */

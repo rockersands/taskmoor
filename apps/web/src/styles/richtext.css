@@ -579,14 +579,86 @@
   cursor: pointer;
 }
 
-.rt-expand-title {
-  width: 100%;
+/* A section in the editor (TT-1): a toggle, the title as a field, a note when hidden text changed. */
+.rt-expand-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
   margin-bottom: var(--space-2);
+}
+
+.rt-expand[data-hidden="true"] .rt-expand-head {
+  margin-bottom: 0;
+}
+
+.rt-expand-toggle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rt-expand-toggle:hover {
+  border-color: var(--color-field-border);
+  color: var(--color-text);
+}
+
+/* A chevron drawn with borders: down while the text shows, right while it is hidden. */
+.rt-expand-toggle::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.rt-expand-toggle[aria-expanded="false"]::before {
+  transform: translateX(-2px) rotate(-45deg);
+}
+
+.rt-expand-title {
+  flex: 1 1 12rem;
+  min-width: 0;
   font-weight: 600;
 }
 
+.rt-expand-changed {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.rt-expand-body[hidden] {
+  display: none;
+}
+
+/* A language in the code block's list (TT-8): its name, then the word that goes in. */
+.rt-language-option {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.rt-language-word {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+/*
+ * Columns side by side; equal unless every column has a width, which the layout's
+ * `--rt-columns` carries (TT-2). On a narrow screen they go one under the other.
+ */
 .rt-content [data-columns] {
   display: grid;
+  grid-template-columns: var(--rt-columns, none);
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
   gap: var(--space-3);
@@ -601,7 +673,20 @@
 
 @media (max-width: 40rem) {
   .rt-content [data-columns] {
+    grid-template-columns: none;
     grid-auto-flow: row;
+  }
+}
+
+@media (pointer: coarse) {
+  .rt-expand-toggle {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
+  .rt-language-option {
+    min-height: var(--hit-target-touch);
+    align-items: center;
   }
 }
 
