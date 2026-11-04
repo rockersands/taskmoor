@@ -258,7 +258,7 @@ export function WidgetGrid({
     apply(widgetId, (list) => moveWidget(list, columns, widgetId, STEPS[tool]), tool);
 
   /** What is under the pointer, as a place in a column (T-162). */
-  function spotAt(x: number, y: number, widgetId: string): Spot | null {
+  function spotAt(x: number, y: number): Spot | null {
     const element = document.elementFromPoint?.(x, y);
     const holder = element?.closest<HTMLElement>('[data-drop-column]');
     if (!element || !holder) return null;
@@ -288,13 +288,13 @@ export function WidgetGrid({
       },
       move: (x, y) => {
         setGhost({ x, y });
-        const spot = live.current.spotAt(x, y, widget.id);
+        const spot = live.current.spotAt(x, y);
         setOver((current) =>
           current?.column === spot?.column && current?.before === spot?.before ? current : spot,
         );
       },
       drop: (x, y) => {
-        const spot = live.current.spotAt(x, y, widget.id);
+        const spot = live.current.spotAt(x, y);
         setDragging(null);
         setOver(null);
         setGhost(null);
