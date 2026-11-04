@@ -196,6 +196,24 @@ export const TRASHED_TRACKS: TrashedTrack[] = [
   },
 ];
 
+/**
+ * Runs tracks and is no administrator: sees the tracks they run (IAM-030, ADR-114), and the own
+ * sets of those with their own configuration (T-163a).
+ */
+export const TRACK_ADMIN: Session = {
+  status: 'signed-in',
+  user: {
+    id: 4,
+    name: 'Tam',
+    email: 'tam@example.com',
+    isSiteAdmin: false,
+    isConfigAdmin: false,
+    managesTracks: true,
+    timeZone: null,
+    locale: null,
+  },
+};
+
 /** Holds Change configuration only: sees the setup pages (ADR-114). */
 export const CONFIG_ADMIN: Session = {
   status: 'signed-in',

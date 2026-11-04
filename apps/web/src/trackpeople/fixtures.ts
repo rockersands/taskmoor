@@ -12,6 +12,8 @@ import type {
 } from './client';
 
 export const SHOP: ManagedTrack = { id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' };
+/** A track with its own configuration, whose Manage page leads to its own sets (T-163a). */
+export const OPS: ManagedTrack = { id: 4, key: 'OPS', name: 'Operations', mode: 'local' };
 
 export const ROLES: TrackRole[] = [
   { id: 7, name: 'Administrators', description: '', runsTrack: true, givable: true },
@@ -71,8 +73,8 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
   let next = 100;
   return {
     calls,
-    managedTracks: async () => [SHOP, { id: 4, key: 'OPS', name: 'Operations', mode: 'local' }],
-    track: async () => SHOP,
+    managedTracks: async () => [SHOP, OPS],
+    track: async (id) => (id === OPS.id ? OPS : SHOP),
     roles: async () => roles,
     roleHolders: async () => structuredClone(holders),
     setRole: async (trackId, roleId, kind, actorId, on, roleOptions) => {

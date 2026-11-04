@@ -1,8 +1,8 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-11-03
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Inviting people and running a track
@@ -22,7 +22,10 @@ then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page sh
   the track you may also see **Also let them create tracks**: see
   [Letting a manager create tracks](#letting-a-manager-create-tracks);
 - **Invite people**, when that is on for you;
-- **Invitations waiting**.
+- **Invitations waiting**;
+- for a track with its own configuration, **Its own configuration**: links to the track's own
+  **Layout sets** (where fields appear on its forms) and **Configuration sets** (its ticket types
+  and field rules). See [A track's own sets](fields.md#a-tracks-own-sets).
 
 Finding people by name uses **See people and groups**. If that permission has been taken away, a
 person can still be invited by address. Managers give roles to people; giving a role to a group

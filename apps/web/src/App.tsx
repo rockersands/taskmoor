@@ -683,7 +683,20 @@ function Pages() {
     content = <TeamsPage />;
   } else if (isRoute(hash, MANAGED_TRACKS)) {
     const managed = /^#\/manage\/tracks\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
-    content = managed ? (
+    // A local-mode track's own layout sets and configuration sets (T-163a).
+    const own = /^#\/manage\/tracks\/\d{1,10}\/(layouts|configuration-sets)(?:[/?]|$)/.exec(
+      hash,
+    )?.[1];
+    const setId = Number(/[?&]set=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
+    content = managed && own === 'layouts' ? (
+      <LayoutEditorPage
+        key={`${managed}-layouts`}
+        trackId={Number(managed)}
+        {...(setId ? { initialSetId: setId } : {})}
+      />
+    ) : managed && own === 'configuration-sets' ? (
+      <ConfigurationSetsPage key={`${managed}-sets`} trackId={Number(managed)} />
+    ) : managed ? (
       <TrackPeoplePage key={managed} trackId={Number(managed)} />
     ) : (
       <ManagedTracksPage />

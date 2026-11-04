@@ -119,6 +119,7 @@ describe('field rules and layouts (M1-012)', () => {
       ['alice', false],
       ['bob', false],
       ['carol', false],
+      ['dana', false],
     ] as const) {
       const row = await database.db
         .insertInto('app_user')
@@ -770,5 +771,197 @@ describe('field rules and layouts (M1-012)', () => {
     const done = await run({ 'due-date': '2026-12-01' });
     expect(done.statusCode, done.body).toBe(200);
     expect(done.json().ticket).toMatchObject({ status: { name: 'Active' }, dueDate: '2026-12-01' });
+  });
+
+  /**
+   * The pages of a local-mode track's own sets (T-163a; ADR-114 section 8) let whoever runs the
+   * track use them; the server stays the judge. Dana runs MINE and is a member of NEAR, both in
+   * local mode; THEIRS is a local-mode track she is not in. She is no administrator.
+   */
+  describe('a local-mode track’s own administrators (T-163a)', () => {
+    const del = (who: string, url: string) => as(who, { method: 'DELETE', url });
+    const status = async (res: Promise<LightMyRequestResponse>) => (await res).statusCode;
+    let mine = '';
+    let near = '';
+    let theirs = '';
+
+    async function holds(who: string, key: string, role: string) {
+      const roleId = (
+        await database.db
+          .selectFrom('role')
+          .select('id')
+          .where('name', '=', role)
+          .executeTakeFirstOrThrow()
+      ).id;
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: tracks[key] as number,
+          role_id: roleId,
+          user_id: users[who]?.id as number,
+        })
+        .execute();
+    }
+
+    beforeAll(async () => {
+      mine = await track({ mode: 'local' }, 'TMINE');
+      near = await track({ mode: 'local' }, 'TNEAR');
+      theirs = await track({ mode: 'local' }, 'TTHEIRS');
+      await holds('dana', mine, 'Administrators');
+      await holds('dana', near, 'Members');
+    });
+
+    it('[IAM-030] lists only the tracks she runs, with their mode, for the web app to scope to', async () => {
+      const session = (await get('dana', '/api/v1/session')).json().user;
+      expect(session).toMatchObject({ isSiteAdmin: false, isConfigAdmin: false });
+      expect(session.managesTracks).toBe(true);
+      const runs = (await get('dana', '/api/v1/me/managed-tracks')).json().tracks;
+      expect(runs).toEqual([{ id: tracks[mine], key: mine, name: mine, mode: 'local' }]);
+    });
+
+    for (const [path, one, plural] of [
+      ['layout-sets', 'layoutSet', 'layoutSets'],
+      ['field-rule-sets', 'fieldRuleSet', 'fieldRuleSets'],
+    ] as const) {
+      it(`[CORE-013] changes her own track’s ${path} and cannot read or change another track’s, nor change a shared one`, async () => {
+        const url = `/api/v1/${path}`;
+        const madeBy = async (who: string, body: Record<string, unknown>) => {
+          const res = await post(who, url, body);
+          expect(res.statusCode, res.body).toBe(201);
+          return res.json()[one].id as number;
+        };
+        // Her own track's: made, read, renamed, listed, used by the track, and deleted unused.
+        const own = await madeBy('dana', { name: `Dana ${path}`, trackId: tracks[mine] });
+        expect(await status(get('dana', `${url}/${own}`))).toBe(200);
+        expect(await status(patch('dana', `${url}/${own}`, { name: `Dana’s ${path}` }))).toBe(200);
+        const listed = (await get('dana', `${url}?trackId=${tracks[mine]}`)).json()[plural] as {
+          id: number;
+          trackId: number | null;
+        }[];
+        expect(listed.filter((s) => s.trackId !== null).map((s) => s.id)).toEqual([own]);
+        const column = path === 'layout-sets' ? 'layoutSetId' : 'fieldRuleSetId';
+        expect(
+          await status(patch('dana', `/api/v1/tracks/${tracks[mine]}`, { [column]: own })),
+        ).toBe(200);
+        const spare = await madeBy('dana', { name: `Spare ${path}`, trackId: tracks[mine] });
+        expect(await status(del('dana', `${url}/${spare}`))).toBe(204);
+
+        // A shared set: read as everyone signed in reads it, and never made, changed or deleted.
+        const shared = await madeBy('admin', { name: `Shared ${path} for Dana` });
+        expect(await status(get('dana', `${url}/${shared}`))).toBe(200);
+        expect(await status(post('dana', url, { name: `Dana’s shared ${path}` }))).toBe(403);
+        expect(await status(patch('dana', `${url}/${shared}`, { name: 'Taken' }))).toBe(403);
+        expect(await status(del('dana', `${url}/${shared}`))).toBe(403);
+        // Nor does she put a shared set on her track, or take the track back to the default.
+        expect(
+          await status(patch('dana', `/api/v1/tracks/${tracks[mine]}`, { [column]: shared })),
+        ).toBe(403);
+        expect(
+          await status(patch('dana', `/api/v1/tracks/${tracks[mine]}`, { [column]: null })),
+        ).toBe(403);
+
+        // Another track's, one she is not in: as if it did not exist, in every answer.
+        const other = await madeBy('admin', { name: `Theirs ${path}`, trackId: tracks[theirs] });
+        expect(await status(get('dana', `${url}/${other}`))).toBe(404);
+        expect(await status(patch('dana', `${url}/${other}`, { name: 'Taken' }))).toBe(404);
+        expect(await status(del('dana', `${url}/${other}`))).toBe(404);
+        expect(await status(post('dana', url, { name: 'In', trackId: tracks[theirs] }))).toBe(404);
+        expect(await status(get('dana', `${url}?trackId=${tracks[theirs]}`))).toBe(404);
+        const all = (await get('dana', url)).json()[plural] as { id: number }[];
+        expect(all.map((s) => s.id)).not.toContain(other);
+        expect(all.map((s) => s.id)).toContain(own);
+        // Nor may her track use it.
+        expect(
+          await status(patch('dana', `/api/v1/tracks/${tracks[mine]}`, { [column]: other })),
+        ).toBe(400);
+
+        // A track she is a member of but does not run: she reads its sets and changes none.
+        const nearby = await madeBy('admin', { name: `Near ${path}`, trackId: tracks[near] });
+        expect(await status(get('dana', `${url}/${nearby}`))).toBe(200);
+        expect(await status(patch('dana', `${url}/${nearby}`, { name: 'Taken' }))).toBe(403);
+        expect(await status(del('dana', `${url}/${nearby}`))).toBe(403);
+        expect(await status(post('dana', url, { name: 'In', trackId: tracks[near] }))).toBe(403);
+
+        // Nothing she was refused changed: each set keeps its name.
+        for (const [id, name] of [
+          [shared, `Shared ${path} for Dana`],
+          [other, `Theirs ${path}`],
+          [nearby, `Near ${path}`],
+        ] as const) {
+          expect((await get('admin', `${url}/${id}`)).json()[one].name).toBe(name);
+        }
+      });
+    }
+
+    it('[CORE-008] previews drafts of her own track’s layout sets only, with its fields and types', async () => {
+      const draft = {
+        ticketTypeId: types.Feature,
+        operation: 'create',
+        layouts: [
+          {
+            ticketTypeId: null,
+            operation: 'create',
+            definition: { tabs: [{ name: 'A', sections: [{ fields: ['summary'] }] }] },
+          },
+        ],
+      };
+      const preview = (setId: number, body: Record<string, unknown>) =>
+        status(post('dana', `/api/v1/layout-sets/${setId}/preview`, body));
+      const made = async (body: Record<string, unknown>) =>
+        (await post('admin', '/api/v1/layout-sets', body)).json().layoutSet.id as number;
+      const own = await made({ name: 'Previewed by Dana', trackId: tracks[mine] });
+      const shared = await made({ name: 'Shared, previewed' });
+      const other = await made({ name: 'Theirs, previewed', trackId: tracks[theirs] });
+      const nearby = await made({ name: 'Near, previewed', trackId: tracks[near] });
+      expect(await preview(own, { ...draft, trackId: tracks[mine] })).toBe(200);
+      // A draft of any other set is refused; one of a track she does not see is not found.
+      expect(await preview(shared, draft)).toBe(403);
+      expect(await preview(nearby, draft)).toBe(403);
+      expect(await preview(other, draft)).toBe(404);
+      // Her own set with another track's fields and rules: a track she does not see is not found.
+      expect(await preview(own, { ...draft, trackId: tracks[theirs] })).toBe(404);
+    });
+
+    it('[CORE-005] reads and changes her own track’s type set, and no other', async () => {
+      const typeSetOf = async (key: string) =>
+        (await get('admin', `/api/v1/tracks/${tracks[key]}`)).json().track.typeSetId as number;
+      const own = await typeSetOf(mine);
+      const read = await get('dana', `/api/v1/type-sets/${own}`);
+      expect(read.statusCode, read.body).toBe(200);
+      const ids = (read.json().typeSet.ticketTypes as { id: number }[]).map((t) => t.id);
+      expect(
+        await status(patch('dana', `/api/v1/type-sets/${own}`, { ticketTypeIds: ids })),
+      ).toBe(200);
+      // Every type set at once, a new one and deleting her own are for administrators.
+      expect(await status(get('dana', '/api/v1/type-sets'))).toBe(403);
+      expect(
+        await status(post('dana', '/api/v1/type-sets', { name: 'Dana', ticketTypeIds: ids })),
+      ).toBe(403);
+      expect(await status(del('dana', `/api/v1/type-sets/${own}`))).toBe(403);
+      // Another track's: not found when she is not in it, refused when she only works in it.
+      const other = await typeSetOf(theirs);
+      expect(await status(get('dana', `/api/v1/type-sets/${other}`))).toBe(404);
+      expect(
+        await status(patch('dana', `/api/v1/type-sets/${other}`, { ticketTypeIds: ids })),
+      ).toBe(404);
+      const nearby = await typeSetOf(near);
+      expect(await status(get('dana', `/api/v1/type-sets/${nearby}`))).toBe(403);
+      expect(
+        await status(patch('dana', `/api/v1/type-sets/${nearby}`, { ticketTypeIds: ids })),
+      ).toBe(403);
+      // A shared one, such as the default for software tracks.
+      const shared = (await get('admin', '/api/v1/type-sets')).json().typeSets.find(
+        (s: { trackId: number | null; defaultFor: string[] }) =>
+          s.trackId === null && s.defaultFor.includes('software'),
+      ) as { id: number; ticketTypes: { id: number }[] };
+      expect(
+        await status(
+          patch('dana', `/api/v1/type-sets/${shared.id}`, {
+            ticketTypeIds: shared.ticketTypes.map((t) => t.id),
+          }),
+        ),
+      ).toBe(403);
+    });
   });
 });

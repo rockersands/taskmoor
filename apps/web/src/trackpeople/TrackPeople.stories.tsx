@@ -32,6 +32,23 @@ type Story = StoryObj<typeof meta>;
 
 export const Manager: Story = {};
 
+/** A track with its own configuration: its page leads to its own sets (T-163a). */
+export const OwnConfiguration: Story = {
+  args: { trackId: 4 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('link', { name: 'Layout sets: where fields appear on its forms' }),
+    ).toBeVisible();
+  },
+};
+
+/** The same on a phone. */
+export const OwnConfigurationPhone: Story = {
+  ...OwnConfiguration,
+  globals: { viewport: { value: 'mobile1' } },
+};
+
 export const AppointingRemoved: Story = {
   args: { client: fakeTrackPeopleClient({ appointLocked: true }) },
 };

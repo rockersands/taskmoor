@@ -116,6 +116,35 @@ describe('a track manager without site administration (IAM-030)', () => {
       await screen.findByText('Only people who run this track can manage it.'),
     ).toBeInTheDocument();
   });
+
+  it('[IAM-030] a track with its own configuration leads to its own layout and configuration sets (T-163a)', async () => {
+    const show = (trackId: number) =>
+      render(
+        <I18nProvider locale="en">
+          <SessionProvider session={MEMBER}>
+            <main>
+              <TrackPeoplePage trackId={trackId} client={fakeTrackPeopleClient()} />
+            </main>
+          </SessionProvider>
+        </I18nProvider>,
+      );
+    show(4);
+    const own = await screen.findByRole('region', { name: 'Its own configuration' });
+    expect(own).toHaveTextContent('OPS has its own configuration, and you can change it here:');
+    expect(
+      within(own).getByRole('link', { name: 'Layout sets: where fields appear on its forms' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/layouts');
+    expect(
+      within(own).getByRole('link', {
+        name: 'Configuration sets: its ticket types and field rules',
+      }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
+    cleanup();
+    // A track in shared mode owns none: its sets are the administrators'.
+    show(3);
+    expect(await screen.findByText('Kalo Reyes: Administrators')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Its own configuration' })).toBeNull();
+  });
 });
 
 describe('the invite dialog (IAM-027)', () => {

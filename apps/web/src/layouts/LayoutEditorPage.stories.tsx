@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { CONFIG_ADMIN, MEMBER } from '../admin/fixtures';
+import { CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { fakeLayoutsClient, layoutSetsFixture } from './fixtures';
 import { LayoutEditorPage } from './LayoutEditorPage';
@@ -94,5 +94,63 @@ export const OnAPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
-/** Someone who is neither a site nor a configuration administrator. */
+/** Someone who is neither a site nor a configuration administrator, and runs no track. */
 export const NotAnAdministrator: Story = { parameters: { session: MEMBER } };
+
+/**
+ * Someone who runs OPS, a track with its own configuration, on its own page (T-163a): its own
+ * sets only, previewed with its fields, rules and ticket types, and no choice of track.
+ */
+export const TrackAdministrator: Story = {
+  args: { trackId: 4 },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('form', { name: 'Layouts of Ops layouts' });
+    const options = within(canvas.getByLabelText('Layout set')).getAllByRole('option');
+    await expect(options.map((option) => option.textContent)).toEqual(['Ops layouts']);
+    await expect(
+      await canvas.findByText(
+        'With the fields and rules of OPS · Operations, the track this set belongs to.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/** The same on a phone: one column, nothing sideways. */
+export const TrackAdministratorOnAPhone: Story = {
+  ...TrackAdministrator,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** A set of the track's own that the track does not use yet: the page offers to use it. */
+export const TrackSetNotUsedYet: Story = {
+  args: {
+    trackId: 4,
+    client: fakeLayoutsClient(
+      layoutSetsFixture().map((set) => (set.id === 5 ? { ...set, usedBy: [] } : set)),
+    ),
+  },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'Use this set for OPS' })).toBeVisible();
+  },
+};
+
+/** On the shared page, someone who runs tracks chooses one with its own configuration. */
+export const TracksToChoose: Story = {
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('link', { name: 'Layout sets of OPS · Operations' }),
+    ).toBeVisible();
+  },
+};
+
+/** The page of a track the person does not run. */
+export const NotTheirTrack: Story = {
+  args: { trackId: 6 },
+  parameters: { session: TRACK_ADMIN },
+};

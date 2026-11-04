@@ -18,6 +18,11 @@ export interface LayoutPreviewProps {
   tracks: { id: number; key: string; name: string }[];
   /** A local-mode track's own set: that track, where the preview starts. */
   ownerTrackId: number | null;
+  /**
+   * A track's own page (T-163a): the preview uses that track's fields and rules and no other,
+   * and offers no choice of track.
+   */
+  fixedTrack?: { id: number; key: string; name: string } | null;
   fieldName: (key: string) => string;
   /** A custom field's name when the page knows it, for saying why the server refuses a draft. */
   knownName?: (key: string) => string | undefined;
@@ -51,6 +56,7 @@ export function LayoutPreview({
   types,
   tracks,
   ownerTrackId,
+  fixedTrack = null,
   fieldName,
   knownName = () => undefined,
   delay = 250,
@@ -59,7 +65,8 @@ export function LayoutPreview({
   const id = useId();
   const expired = useSessionExpiry();
   const [chosenType, setChosenType] = useState<number | null>(types[0]?.id ?? null);
-  const [trackId, setTrackId] = useState<number | null>(ownerTrackId);
+  const [chosenTrack, setChosenTrack] = useState<number | null>(ownerTrackId);
+  const trackId = fixedTrack ? fixedTrack.id : chosenTrack;
   const [state, setState] = useState<State>({ status: 'loading', last: null });
   const typeId = form.ticketTypeId ?? chosenType;
   const layouts = useMemo(() => JSON.stringify(entriesOf(drafts)), [drafts]);
@@ -131,32 +138,38 @@ export function LayoutPreview({
             </select>
           </div>
         )}
-        <div className="form-field">
-          <label htmlFor={`${id}-track`} className="form-label">
-            {t('layouts.preview.track')}
-          </label>
-          <select
-            id={`${id}-track`}
-            value={trackId ?? ''}
-            aria-describedby={`${id}-track-hint`}
-            onChange={(event) =>
-              setTrackId(event.target.value === '' ? null : Number(event.target.value))
-            }
-          >
-            <option value="">{t('layouts.preview.noTrack')}</option>
-            {ownerTrackId !== null && !tracks.some((track) => track.id === ownerTrackId) && (
-              <option value={ownerTrackId}>{t('layouts.preview.ownerTrack')}</option>
-            )}
-            {tracks.map((track) => (
-              <option key={track.id} value={track.id}>
-                {t('admin.explain.trackOption', { key: track.key, name: track.name })}
-              </option>
-            ))}
-          </select>
-          <p id={`${id}-track-hint`} className="form-hint">
-            {t('layouts.preview.trackHint')}
+        {fixedTrack ? (
+          <p className="form-hint">
+            {t('layouts.preview.fixedTrack', { key: fixedTrack.key, name: fixedTrack.name })}
           </p>
-        </div>
+        ) : (
+          <div className="form-field">
+            <label htmlFor={`${id}-track`} className="form-label">
+              {t('layouts.preview.track')}
+            </label>
+            <select
+              id={`${id}-track`}
+              value={trackId ?? ''}
+              aria-describedby={`${id}-track-hint`}
+              onChange={(event) =>
+                setChosenTrack(event.target.value === '' ? null : Number(event.target.value))
+              }
+            >
+              <option value="">{t('layouts.preview.noTrack')}</option>
+              {ownerTrackId !== null && !tracks.some((track) => track.id === ownerTrackId) && (
+                <option value={ownerTrackId}>{t('layouts.preview.ownerTrack')}</option>
+              )}
+              {tracks.map((track) => (
+                <option key={track.id} value={track.id}>
+                  {t('admin.explain.trackOption', { key: track.key, name: track.name })}
+                </option>
+              ))}
+            </select>
+            <p id={`${id}-track-hint`} className="form-hint">
+              {t('layouts.preview.trackHint')}
+            </p>
+          </div>
+        )}
       </div>
       {typeId === null ? (
         <p className="page-note">{t('layouts.preview.noTypes')}</p>

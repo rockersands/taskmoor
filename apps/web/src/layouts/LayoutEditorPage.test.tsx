@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ADMIN, CONFIG_ADMIN, MEMBER } from '../admin/fixtures';
+import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { currentRoute, router } from '../routing/router';
@@ -447,10 +448,12 @@ describe('the layout editor (UI-T15)', () => {
     ).toHaveAttribute('href', '#/admin/configuration-sets');
   });
 
-  it('[IAM-009] refuses someone who is neither kind of administrator', () => {
+  it('[IAM-009] refuses someone who is neither kind of administrator and runs no track', () => {
     const client = renderPage(MEMBER);
     expect(
-      screen.getByText('Only site and configuration administrators change layouts.'),
+      screen.getByText(
+        'Only site and configuration administrators, and the people who run a track with its own configuration, change layouts.',
+      ),
     ).toBeVisible();
     expect(client.previews).toEqual([]);
   });
@@ -489,6 +492,200 @@ describe('the layout editor (UI-T15)', () => {
       'How bad it is',
     ]);
     expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
+  });
+});
+
+describe('a local-mode track’s own layout sets, for whoever runs the track (T-163a)', () => {
+  function renderOwn(
+    session: Session,
+    trackId: number | null,
+    client: FakeLayoutsClient = fakeLayoutsClient(),
+    locale: Locale = 'en',
+  ) {
+    render(
+      <I18nProvider locale={locale}>
+        <SessionProvider session={session}>
+          <main>
+            <LayoutEditorPage client={client} previewDelay={0} trackId={trackId} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+  const setOptions = () =>
+    within(screen.getByLabelText('Layout set'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+
+  it('[CORE-013] shows a track administrator only the sets of the track they run; new sets are its own', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(TRACK_ADMIN, 4);
+    await editor('Ops layouts');
+    expect(screen.getByText('OPS · Operations')).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Layout sets' })).toBeVisible();
+    // Neither the shared sets nor another track's: OPS's own only, the one it uses open.
+    expect(setOptions()).toEqual(['Ops layouts']);
+    expect(screen.getByText(/Used by OPS\./)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+
+    const add = screen.getByRole('form', { name: 'Add a layout set' });
+    await user.type(within(add).getByLabelText('New set name'), 'Ops intake');
+    await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
+    expect(await editor('Ops intake')).toBeVisible();
+    expect(client.made).toEqual([{ name: 'Ops intake', trackId: 4 }]);
+    expect(setOptions()).toEqual(['Ops intake', 'Ops layouts']);
+    expect(screen.getByText('No track uses this set yet.')).toBeVisible();
+
+    // Making OPS use it: said, and the set now names OPS.
+    const use = screen.getByRole('button', { name: 'Use this set for OPS' });
+    expect(use).toHaveAccessibleDescription(
+      'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
+    );
+    await user.click(use);
+    expect(await screen.findByText('OPS now uses Ops intake.')).toBeInTheDocument();
+    expect(client.assigned).toEqual([{ trackId: 4, setId: 8 }]);
+    expect(screen.getByText(/Used by OPS\./)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+  });
+
+  it('[CORE-008] places the track’s fields and previews only with its fields, rules and ticket types', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(TRACK_ADMIN, 4);
+    await editor('Ops layouts');
+    // The ticket types OPS offers, its own Runbook among them; not Chore, which it does not.
+    const typeChoice = screen.getByLabelText('Ticket type');
+    expect(within(typeChoice).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Every ticket type',
+      'Feature',
+      'Bug',
+      'Runbook',
+    ]);
+    await user.click(screen.getByRole('button', { name: 'Make a layout for this form' }));
+    expect(unplaced()).toContain('Ops notes');
+    expect(unplaced()).toContain('Severity');
+    expect(unplaced()).not.toContain('Lab notes');
+    // No choice of track: OPS's fields and rules, said in words.
+    expect(within(preview()).queryByLabelText('Fields and rules of')).toBeNull();
+    expect(
+      within(preview()).getByText(
+        'With the fields and rules of OPS · Operations, the track this set belongs to.',
+      ),
+    ).toBeVisible();
+    expect(within(preview()).getByLabelText('Preview as')).toHaveDisplayValue('Feature');
+    await waitFor(() => expect(client.previews.length).toBeGreaterThan(0));
+    expect(client.previews.every((p) => p.trackId === 4)).toBe(true);
+  });
+
+  it('[IAM-030] on the shared page offers a track administrator only the tracks they run with their own configuration', async () => {
+    const client = renderOwn(TRACK_ADMIN, null);
+    const link = await screen.findByRole('link', { name: 'Layout sets of OPS · Operations' });
+    expect(link).toHaveAttribute('href', '#/manage/tracks/4/layouts');
+    expect(
+      screen.getByText(
+        'You run these tracks with their own configuration. Choose one to arrange its forms.',
+      ),
+    ).toBeVisible();
+    // SHOP is theirs but shared; LAB is not theirs. No set at all is shown here.
+    expect(screen.queryByRole('link', { name: /SHOP|LAB/ })).toBeNull();
+    expect(screen.queryByLabelText('Layout set')).toBeNull();
+    expect(screen.queryByText(/Default layouts/)).toBeNull();
+    expect(client.previews).toEqual([]);
+  });
+
+  it('[IAM-030] says when none of the tracks they run has its own configuration', async () => {
+    renderOwn(
+      TRACK_ADMIN,
+      null,
+      fakeLayoutsClient(undefined, { runs: [{ id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' }] }),
+    );
+    expect(
+      await screen.findByText(
+        'None of the tracks you run has its own configuration. Their forms follow shared layout sets, which site and configuration administrators change.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('[IAM-030] refuses a track they do not run, and says a shared-mode track owns no sets', async () => {
+    const client = renderOwn(TRACK_ADMIN, 6);
+    expect(
+      await screen.findByText(
+        'Only the people who run this track, and site and configuration administrators, change its configuration.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/Lab layouts/)).toBeNull();
+    expect(client.previews).toEqual([]);
+    cleanup();
+    renderOwn(TRACK_ADMIN, 3);
+    expect(
+      await screen.findByText(
+        'SHOP uses shared configuration, so its forms follow shared layout sets, which site and configuration administrators change.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByLabelText('Layout set')).toBeNull();
+  });
+
+  it('[CORE-013] an administrator on a track’s own page sees only its sets too, and an archived track’s are not changed there', async () => {
+    renderOwn(CONFIG_ADMIN, 4);
+    await editor('Ops layouts');
+    expect(setOptions()).toEqual(['Ops layouts']);
+    cleanup();
+    const archived = fakeLayoutsClient();
+    archived.tracks = archived.tracks.map((t) => (t.id === 4 ? { ...t, archived: true } : t));
+    renderOwn(CONFIG_ADMIN, 4, archived);
+    expect(
+      await screen.findByText('OPS is archived. Restore it to change its configuration.'),
+    ).toBeVisible();
+    expect(screen.queryByLabelText('Layout set')).toBeNull();
+    expect(archived.previews).toEqual([]);
+  });
+
+  it('[CORE-013] the server stays the judge: a refused save says so and keeps the draft', async () => {
+    const user = userEvent.setup();
+    const client = fakeLayoutsClient();
+    client.updateLayoutSet = async () => {
+      throw new ApiError(403, { error: 'forbidden' });
+    };
+    renderOwn(TRACK_ADMIN, 4, client);
+    await editor('Ops layouts');
+    await user.click(screen.getByRole('button', { name: 'Make a layout for this form' }));
+    await user.click(screen.getByRole('button', { name: 'Save the layouts' }));
+    expect(await screen.findByText('You may not change this set.')).toBeVisible();
+    expect(screen.getByText('Unsaved changes')).toBeVisible();
+  });
+
+  it('links to the track’s own field rules and back to its Manage page', async () => {
+    renderOwn(TRACK_ADMIN, 4);
+    await editor('Ops layouts');
+    expect(
+      screen.getByRole('link', { name: 'The field rules of OPS are on its configuration sets.' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
+    expect(screen.getByRole('link', { name: 'Back to managing OPS.' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4',
+    );
+  });
+
+  it('fits a small phone', async () => {
+    setViewportWidth(375);
+    renderOwn(TRACK_ADMIN, 4);
+    expect(await editor('Ops layouts')).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Preview' })).toBeVisible();
+  });
+
+  it('passes every string through the pseudo-locale, and in Spanish', async () => {
+    renderOwn(TRACK_ADMIN, 4, fakeLayoutsClient(), 'en-XA');
+    const main = screen.getByRole('main');
+    await within(main).findByRole('form', { name: /Ops layouts/ });
+    await waitFor(() => expect(main.querySelector('.layout-preview-form')).not.toBeNull());
+    const data = new Set(['Ops layouts', 'Feature', 'Bug', 'Runbook', 'Severity', 'Customer']);
+    expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
+    cleanup();
+    renderOwn(TRACK_ADMIN, null, fakeLayoutsClient(), 'es');
+    expect(
+      await screen.findByRole('link', { name: 'Conjuntos de diseños de OPS · Operations' }),
+    ).toBeVisible();
   });
 });
 

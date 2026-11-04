@@ -1,14 +1,14 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { ADMIN } from '../admin/fixtures';
+import { ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
-import { SessionProvider } from '../session/SessionProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { ConfigurationSetsPage } from './ConfigurationSetsPage';
-import { fakeSetsClient } from './fixtures';
+import { type FakeSetsClient, fakeSetsClient } from './fixtures';
 
 function renderPage(locale: Locale = 'en') {
   const client = fakeSetsClient();
@@ -117,5 +117,132 @@ describe('configuration set administration (M1-053)', () => {
     const data = new Set(['Software types', 'Default field rules', 'Bug', 'Task', 'Story']);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('a local-mode track’s own configuration sets, for whoever runs the track (T-163a)', () => {
+  function renderOwn(
+    trackId: number | null,
+    options: { session?: Session; locale?: Locale; client?: FakeSetsClient } = {},
+  ) {
+    const client = options.client ?? fakeSetsClient();
+    render(
+      <I18nProvider locale={options.locale ?? 'en'}>
+        <SessionProvider session={options.session ?? TRACK_ADMIN}>
+          <main>
+            <ConfigurationSetsPage client={client} trackId={trackId} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+  const manageButtons = () =>
+    screen.getAllByRole('button', { name: /^Manage / }).map((b) => b.getAttribute('aria-label'));
+
+  it('[CORE-005] shows the type set the track owns and changes its types, adding and deleting none', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(4);
+    expect(await screen.findByText('OPS · Operations')).toBeVisible();
+    await user.click(await screen.findByRole('button', { name: 'Manage Operations types' }));
+    // Neither the shared type sets nor another track's.
+    expect(manageButtons()).toEqual(['Manage Operations types', 'Manage Ops rules']);
+    expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
+    expect(
+      screen.getByText(
+        'A track with its own configuration keeps one type set of its own: choose its ticket types here.',
+      ),
+    ).toBeVisible();
+    const panel = screen.getByRole('form', { name: 'Settings of Operations types' });
+    // The types that reach OPS: the shared ones and its own Runbook.
+    expect(within(panel).getByLabelText('Runbook')).toBeChecked();
+    await user.click(within(panel).getByLabelText('Task'));
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: /^Delete set/ })).toBeNull();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      ['updateTypeSet', 30, { ticketTypeIds: [5, 9, 6] }],
+    ]);
+  });
+
+  it('[CORE-003] adds rule sets for the track, with its own fields, and makes the track use one', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(4);
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    expect(await screen.findByRole('group', { name: 'Ops notes' })).toBeVisible();
+    expect(screen.queryByText('Default field rules')).toBeNull();
+    expect(screen.queryByText('Lab rules')).toBeNull();
+    const use = screen.getByRole('button', { name: 'Use this set for OPS' });
+    await user.click(use);
+    expect(await screen.findByText('OPS now uses Ops rules.')).toBeInTheDocument();
+    expect(await screen.findByText('Used by OPS.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+
+    const add = screen.getByRole('form', { name: 'Add a field rule set' });
+    await user.type(within(add).getByLabelText('Rule set name'), 'Ops intake rules');
+    await user.click(within(add).getByRole('button', { name: 'Add a field rule set' }));
+    expect(await screen.findByText('Ops intake rules was added.')).toBeInTheDocument();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      ['assignRuleSet', 4, 11],
+      ['createRuleSet', { name: 'Ops intake rules', trackId: 4 }],
+    ]);
+  });
+
+  it('[IAM-030] on the shared page offers a track administrator only the tracks they run with their own configuration', async () => {
+    renderOwn(null);
+    const link = await screen.findByRole('link', {
+      name: 'Configuration sets of OPS · Operations',
+    });
+    expect(link).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
+    expect(screen.queryByRole('link', { name: /SHOP|LAB/ })).toBeNull();
+    expect(screen.queryByText('Software types')).toBeNull();
+    expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
+  });
+
+  it('[IAM-030] refuses a track they do not run, and someone who runs none', async () => {
+    renderOwn(6);
+    expect(
+      await screen.findByText(
+        'Only the people who run this track, and site and configuration administrators, change its configuration.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('Lab rules')).toBeNull();
+    cleanup();
+    renderOwn(null, { session: MEMBER });
+    expect(
+      screen.getByText(
+        'Only site and configuration administrators, and the people who run a track with its own configuration, manage configuration sets.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('links to the track’s own layout sets and back to its Manage page', async () => {
+    renderOwn(4);
+    expect(
+      await screen.findByRole('link', { name: 'Arrange the forms of OPS on its layout sets.' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/layouts');
+    expect(screen.getByRole('link', { name: 'Back to managing OPS.' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4',
+    );
+  });
+
+  it('fits a small phone, in Spanish too', async () => {
+    setViewportWidth(375);
+    renderOwn(4, { locale: 'es' });
+    expect(
+      await screen.findByRole('button', { name: 'Gestionar Operations types' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Organiza los formularios de OPS en sus conjuntos de diseños.' }),
+    ).toBeVisible();
+  });
+
+  it('passes every string through the pseudo-locale', async () => {
+    renderOwn(4, { locale: 'en-XA' });
+    const main = screen.getByRole('main');
+    await within(main).findAllByRole('listitem');
+    const data = new Set(['Operations types', 'Ops rules']);
+    expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
   });
 });
