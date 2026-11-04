@@ -37,9 +37,22 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   roving focus), T-075 and T-076 (Summary and Statistics), T-084 to T-087 (personal track groups,
   0100, ADR-121, CORE-034, IAM-034) and T-088 (Multi-track's first stage, 0101, ADR-122, PLN-012).
   `claude/multi-track` is superseded: its task file is on `main`.
-- **Free numbers:** migrations 0102 and up (0098 and 0099 were never used and stay below `main`'s
-  highest, so do not take them), ADR-123 and up. Requirement IDs taken today: AGL-024, IAM-033,
-  CORE-034, IAM-034, PLN-012.
+- **Also on `main` (2026-11-04, each reviewed and gated):** T-089 (Multi-track dependencies,
+  PLN-006), T-161 (the guided tutorial, AGL-025), T-204 to T-206 (group follow-ups), T-089b (plan
+  capacity, PLN-005, PLN-009, migration 0102), T-162 (drag and drop beyond boards), T-163 (the layout
+  editor). **T-196** (ticket tools follow-ups TT-1 to TT-8 but TT-7) is merged on the coordinator
+  branch, but its gate hung in the tests (vitest idle for hours with only esbuild and a headless
+  browser alive) and was stopped at the user's wrap-up: run the full gate first, then fast-forward
+  `main`.
+- **Wave 6, interrupted (the user's decisions of 2026-11-04 in `decisions.csv`):** WIP commits, not
+  yet tested or reviewed, each in its own worktree under `.claude/worktrees/wf_8b96611f-b77-*` and on
+  its branch: `wave6/t162b-touch-drag-boards` (board cards and calendar entries on the shared pointer
+  drag), `wave6/t163b-layouts-for-track-admins` (the layout editor for a local-mode track's
+  administrators) and `wave6/t196b-checklist-notice` (the per-track "Checklist changed" notice; may
+  use migration 0103). They branch from `a83cf6d4`, before T-196's merge. Finish each: targeted
+  tests, then a review with a skeptic, fixes, a full gate, one at a time.
+- **Free numbers:** migrations 0103 and up (0103 may be taken by T-196b), ADR-123 and up. Requirement
+  IDs taken: AGL-024, AGL-025, IAM-033, CORE-034, IAM-034, PLN-012, PLN-013.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
 - **Other `claude/*` branches** are merged and can be ignored.
 
@@ -66,13 +79,12 @@ corepack pnpm install
 ### Next, in order
 
 1. Nothing waits to merge.
-2. Next tickets, a few at a time in side sessions or workflows, merged one by one, each reviewed first:
-   the glass pass and the sweep of every route (T-143, T-144; best alone, it touches every page),
-   Multi-track's later stages (T-089 to T-089g, `docs/plan/multi-track-tasks.md`), the tutorial
-   (T-161), drag and drop beyond boards (T-162), the layout editor (T-163), the phone and accessibility
-   pass (T-164), the group follow-ups (T-204 to T-206), ticket tools' follow-ups (T-196, T-203).
-   Questions for the user are the rows marked You in `tickets.md` (T-075a, T-086a, T-087b, T-088a are
-   new today).
+2. Gate T-196 and push it; finish wave 6 (above). Then, each reviewed first: the glass pass and the
+   sweep of every route (T-143, T-144; alone, it touches every page), the phone and accessibility pass
+   (T-164), Multi-track's remaining stages (T-089c to T-089g, and T-089j once the user answers),
+   T-013a, T-195, T-203. Questions for the user are the rows marked You in `tickets.md`; T-089j was
+   explained to them on 2026-11-04 (unbuilt capacity parts; whether hidden work counts toward
+   "elsewhere"; notes in the history after erasure; whole-week counting), awaiting their answer.
 3. The fuzz stages, on the final code (T-019; the user's decision).
 4. The release (T-020 to T-024) and going public (T-031 to T-036, T-005). Those need the user.
 
@@ -90,6 +102,11 @@ corepack pnpm install
   `@embedded-postgres` native bin) and `git worktree remove` it; the branch stays. The e2e servers now
   drop their clusters' leftover databases at start (they had grown to 9 GB), and the docs check skips
   `.claude`.
+- **A gate can hang:** on 2026-11-03 the tests stage sat idle for hours. If `.verify/budgets.jsonl`
+  stops growing for 15 minutes, stop the `pnpm verify` process tree, `rmdir /tmp/taskmoor-gate.lock`
+  and run it again.
+- **Builders by workflow** run in worktrees under `.claude/worktrees/wf_*`; a usage limit can stop
+  them mid-task, leaving uncommitted work there: resume in the same worktree rather than restart.
 - **Agents' tests at size** go behind an env var like `TASKMOOR_LARGE_SPRINTS`; the outcomes test reads
   10,000 tickets in a gate and 100,000 with `TASKMOOR_LARGE_OUTCOMES=1`.
 - **Only one Playwright run on a machine at a time.** All worktrees share the e2e ports. `pnpm verify`

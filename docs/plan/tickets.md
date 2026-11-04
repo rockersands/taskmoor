@@ -237,9 +237,11 @@ reported, and the coordinator checked that it was pushed.
 | T-160 | Help menu with tutorials and keyboard shortcuts | Done | `claude/ui-overhaul` |
 | T-161 | Tutorial: first-run offer, sections to pick, one of everything | Done | On `main` (ADR-115, AGL-025): an offer on Home at first sign-in, Settings, Tutorials to start, resume and replay, and a coach card through the eight sections, each making one real thing |
 | T-162 | Drag and drop with a keyboard path beyond boards | Done | On `main` (ADR-114): the backlog (rank and move between sprints), dashboard widgets and files onto the ticket page, by mouse, touch and keys, with a menu for every move |
-| T-162a | Should board cards and calendar entries use the same touch drag as the backlog and widgets? | You | They still use the browser's own drag, which a finger usually cannot start; their menus and keys work on phones |
+| T-162a | Should board cards and calendar entries use the same touch drag as the backlog and widgets? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
+| T-162b | Board cards and calendar entries on the shared pointer drag | In progress | WIP commit on `wave6/t162b-touch-drag-boards`, not yet tested or reviewed |
 | T-163 | Layout editor page | Done | On `main` (ADR-114, UI-T15): fields dragged or moved by keys into tabs and sections, a live preview per ticket type and operation, the server the judge |
-| T-163a | Open the layout editor to a local-mode track's own administrators, as the server already lets them change that track's layout sets? | You | Today the page, like Configuration sets, is for site and configuration administrators only |
+| T-163a | Open the layout editor to a local-mode track's own administrators? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
+| T-163b | The layout editor for a local-mode track's own administrators | In progress | WIP commit on `wave6/t163b-layouts-for-track-admins`, not yet tested or reviewed |
 | T-164 | Phone and accessibility pass | To do | UI-T09 |
 | T-165 | Update the e2e specs the rework broke | To do | Needed before that branch can pass a gate |
 
@@ -261,7 +263,8 @@ reported, and the coordinator checked that it was pushed.
 | T-194 | Home's "Your tracks" should show the tracks a person belongs to | Done | On `main` (ADR-046): a role given directly or through a group, owning the track, or a team on its board or a live area; policy grants and "open to everyone" only let people see. Recently opened tracks come first however many they belong to; "latest opened" stays per browser |
 | T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
 | T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | Done | On `main` (ADR-120) except TT-7, which waits on the user; columns now written as their own form in Markdown and wiki markup |
-| T-196a | TT-7: tell followers when a checklist changes? A: as now, no notice (webhooks still get it); B: a "Checklist changed" notice administrators turn on per track, off by default (recommended); C: only when a whole checklist is completed | You | Also in ADR-120 and `docs/plan/ticket-tools-tasks.md` |
+| T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
+| T-196b | The "Checklist changed" notice | In progress | WIP commit on `wave6/t196b-checklist-notice`, not yet tested or reviewed |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
 | T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
