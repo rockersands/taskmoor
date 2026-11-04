@@ -216,6 +216,30 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     ).toBeVisible();
   });
 
+  it('[CORE-013] keeps the rule of a field that does not reach the track when it saves the set', async () => {
+    const user = userEvent.setup();
+    const client = fakeSetsClient();
+    const elsewhere = {
+      ticketTypeId: null,
+      field: 'cf[99]',
+      required: true,
+      hidden: false,
+      description: null,
+      editableBy: null,
+    };
+    const read = client.ruleSet;
+    client.ruleSet = async (id) => ({ ...(await read(id)), rules: [elsewhere] });
+    renderOwn(4, { client });
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    const panel = await screen.findByRole('form', { name: 'Settings of Ops rules' });
+    expect(within(panel).queryByRole('group', { name: 'cf[99]' })).toBeNull();
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Ops rules was saved.')).toBeInTheDocument();
+    expect(client.calls.find((c) => c.action === 'updateRuleSet')?.args[1]).toEqual({
+      rules: [elsewhere],
+    });
+  });
+
   it('links to the track’s own layout sets and back to its Manage page', async () => {
     renderOwn(4);
     expect(
@@ -230,11 +254,11 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
   it('fits a small phone, in Spanish too', async () => {
     setViewportWidth(375);
     renderOwn(4, { locale: 'es' });
+    expect(await screen.findByRole('button', { name: 'Gestionar Operations types' })).toBeVisible();
     expect(
-      await screen.findByRole('button', { name: 'Gestionar Operations types' }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole('link', { name: 'Organiza los formularios de OPS en sus conjuntos de diseños.' }),
+      screen.getByRole('link', {
+        name: 'Organiza los formularios de OPS en sus conjuntos de diseños.',
+      }),
     ).toBeVisible();
   });
 

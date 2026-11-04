@@ -2656,8 +2656,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.backToList': 'Todos los tracks que administras',
   'trackPeople.ownConfig': 'Su configuración propia',
   'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
-  'trackPeople.layoutsLink':
-    'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
+  'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
   'trackPeople.setsLink': 'Conjuntos de configuración: sus tipos de ticket y reglas de campos',
   'trackPeople.invite': 'Invitar personas',
   'trackPeople.inviteOff':
@@ -6306,7 +6305,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ownSets.backToTrack': 'Volver a gestionar {key}.',
   'ownSets.notYours':
     'Solo quienes administran este track, y los administradores del sitio y de la configuración, cambian su configuración.',
-  'ownSets.archived': '{key} está archivado. Restáuralo para cambiar su configuración.',
+  'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
   'ownSets.useHint':
     'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
   'layouts.loading': 'Leyendo los diseños…',

@@ -6169,7 +6169,7 @@ export const messagesEn = {
   'ownSets.backToTrack': 'Back to managing {key}.',
   'ownSets.notYours':
     'Only the people who run this track, and site and configuration administrators, change its configuration.',
-  'ownSets.archived': '{key} is archived. Restore it to change its configuration.',
+  'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
   'ownSets.useHint':
     'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
   'layouts.loading': 'Reading the layouts…',

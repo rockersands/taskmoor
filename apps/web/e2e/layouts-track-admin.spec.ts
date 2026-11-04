@@ -196,7 +196,9 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
   ]);
 
   // Its field rules: a rule set of its own, used by the track.
-  await page.getByRole('link', { name: `The field rules of ${keys.mine} are on its configuration sets.` }).click();
+  await page
+    .getByRole('link', { name: `The field rules of ${keys.mine} are on its configuration sets.` })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/manage/tracks/${mine}/configuration-sets$`));
   await expect(page.getByRole('heading', { level: 1, name: 'Configuration sets' })).toBeVisible();
   await expect(page.getByRole('form', { name: 'Add a type set' })).toHaveCount(0);

@@ -84,7 +84,9 @@ export function LayoutEditorPage({
       <PageHeader
         titleId={titleId}
         title={t('layouts.title')}
-        {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+        {...(track
+          ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
+          : {})}
         purpose={t('layouts.purpose')}
         about={t('layouts.about')}
       />

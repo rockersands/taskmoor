@@ -688,19 +688,20 @@ function Pages() {
       hash,
     )?.[1];
     const setId = Number(/[?&]set=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
-    content = managed && own === 'layouts' ? (
-      <LayoutEditorPage
-        key={`${managed}-layouts`}
-        trackId={Number(managed)}
-        {...(setId ? { initialSetId: setId } : {})}
-      />
-    ) : managed && own === 'configuration-sets' ? (
-      <ConfigurationSetsPage key={`${managed}-sets`} trackId={Number(managed)} />
-    ) : managed ? (
-      <TrackPeoplePage key={managed} trackId={Number(managed)} />
-    ) : (
-      <ManagedTracksPage />
-    );
+    content =
+      managed && own === 'layouts' ? (
+        <LayoutEditorPage
+          key={`${managed}-layouts`}
+          trackId={Number(managed)}
+          {...(setId ? { initialSetId: setId } : {})}
+        />
+      ) : managed && own === 'configuration-sets' ? (
+        <ConfigurationSetsPage key={`${managed}-sets`} trackId={Number(managed)} />
+      ) : managed ? (
+        <TrackPeoplePage key={managed} trackId={Number(managed)} />
+      ) : (
+        <ManagedTracksPage />
+      );
   } else if (isRoute(hash, ADMIN_TRACKS)) {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {

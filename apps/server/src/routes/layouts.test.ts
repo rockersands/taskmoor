@@ -120,6 +120,7 @@ describe('field rules and layouts (M1-012)', () => {
       ['bob', false],
       ['carol', false],
       ['dana', false],
+      ['erin', false],
     ] as const) {
       const row = await database.db
         .insertInto('app_user')
@@ -776,7 +777,9 @@ describe('field rules and layouts (M1-012)', () => {
   /**
    * The pages of a local-mode track's own sets (T-163a; ADR-114 section 8) let whoever runs the
    * track use them; the server stays the judge. Dana runs MINE and is a member of NEAR, both in
-   * local mode; THEIRS is a local-mode track she is not in. She is no administrator.
+   * local mode; THEIRS is a local-mode track she is not in. She is no administrator. Erin runs
+   * SHARED, a shared-mode track, and nothing else; Dana is only a member of it. Alice is a member
+   * of every track and runs none.
    */
   describe('a local-mode track’s own administrators (T-163a)', () => {
     const del = (who: string, url: string) => as(who, { method: 'DELETE', url });
@@ -784,6 +787,7 @@ describe('field rules and layouts (M1-012)', () => {
     let mine = '';
     let near = '';
     let theirs = '';
+    let sharedTrack = '';
 
     async function holds(who: string, key: string, role: string) {
       const roleId = (
@@ -808,8 +812,11 @@ describe('field rules and layouts (M1-012)', () => {
       mine = await track({ mode: 'local' }, 'TMINE');
       near = await track({ mode: 'local' }, 'TNEAR');
       theirs = await track({ mode: 'local' }, 'TTHEIRS');
+      sharedTrack = await track({}, 'TSHARED');
       await holds('dana', mine, 'Administrators');
       await holds('dana', near, 'Members');
+      await holds('dana', sharedTrack, 'Members');
+      await holds('erin', sharedTrack, 'Administrators');
     });
 
     it('[IAM-030] lists only the tracks she runs, with their mode, for the web app to scope to', async () => {
@@ -818,6 +825,14 @@ describe('field rules and layouts (M1-012)', () => {
       expect(session.managesTracks).toBe(true);
       const runs = (await get('dana', '/api/v1/me/managed-tracks')).json().tracks;
       expect(runs).toEqual([{ id: tracks[mine], key: mine, name: mine, mode: 'local' }]);
+      // What her track's own pages read to scope themselves.
+      const own = (await get('dana', `/api/v1/tracks/${tracks[mine]}`)).json().track;
+      expect(own).toMatchObject({ id: tracks[mine], key: mine, mode: 'local', archived: false });
+      expect(own.typeSetId).toEqual(expect.any(Number));
+      for (const list of ['fields', 'ticket-types', 'layout-sets', 'field-rule-sets']) {
+        expect(await status(get('dana', `/api/v1/${list}?trackId=${tracks[mine]}`))).toBe(200);
+        expect(await status(get('dana', `/api/v1/${list}?trackId=${tracks[theirs]}`))).toBe(404);
+      }
     });
 
     for (const [path, one, plural] of [
@@ -921,6 +936,11 @@ describe('field rules and layouts (M1-012)', () => {
       expect(await preview(other, draft)).toBe(404);
       // Her own set with another track's fields and rules: a track she does not see is not found.
       expect(await preview(own, { ...draft, trackId: tracks[theirs] })).toBe(404);
+      // Neither who runs a shared-mode track nor a member of the owner previews a draft.
+      const draftBy = (who: string, setId: number) =>
+        status(post(who, `/api/v1/layout-sets/${setId}/preview`, draft));
+      expect(await draftBy('erin', shared)).toBe(403);
+      expect(await draftBy('alice', own)).toBe(403);
     });
 
     it('[CORE-005] reads and changes her own track’s type set, and no other', async () => {
@@ -930,9 +950,9 @@ describe('field rules and layouts (M1-012)', () => {
       const read = await get('dana', `/api/v1/type-sets/${own}`);
       expect(read.statusCode, read.body).toBe(200);
       const ids = (read.json().typeSet.ticketTypes as { id: number }[]).map((t) => t.id);
-      expect(
-        await status(patch('dana', `/api/v1/type-sets/${own}`, { ticketTypeIds: ids })),
-      ).toBe(200);
+      expect(await status(patch('dana', `/api/v1/type-sets/${own}`, { ticketTypeIds: ids }))).toBe(
+        200,
+      );
       // Every type set at once, a new one and deleting her own are for administrators.
       expect(await status(get('dana', '/api/v1/type-sets'))).toBe(403);
       expect(
@@ -950,11 +970,24 @@ describe('field rules and layouts (M1-012)', () => {
       expect(
         await status(patch('dana', `/api/v1/type-sets/${nearby}`, { ticketTypeIds: ids })),
       ).toBe(403);
+      // Who runs a shared-mode track neither reads nor changes the shared set it uses, and an
+      // ordinary member of a local-mode track does not change that track's.
+      const onShared = await typeSetOf(sharedTrack);
+      expect(await status(get('erin', `/api/v1/type-sets/${onShared}`))).toBe(403);
+      expect(
+        await status(patch('erin', `/api/v1/type-sets/${onShared}`, { ticketTypeIds: ids })),
+      ).toBe(403);
+      expect(await status(get('alice', `/api/v1/type-sets/${own}`))).toBe(403);
+      expect(await status(patch('alice', `/api/v1/type-sets/${own}`, { ticketTypeIds: ids }))).toBe(
+        403,
+      );
       // A shared one, such as the default for software tracks.
-      const shared = (await get('admin', '/api/v1/type-sets')).json().typeSets.find(
-        (s: { trackId: number | null; defaultFor: string[] }) =>
-          s.trackId === null && s.defaultFor.includes('software'),
-      ) as { id: number; ticketTypes: { id: number }[] };
+      const shared = (await get('admin', '/api/v1/type-sets'))
+        .json()
+        .typeSets.find(
+          (s: { trackId: number | null; defaultFor: string[] }) =>
+            s.trackId === null && s.defaultFor.includes('software'),
+        ) as { id: number; ticketTypes: { id: number }[] };
       expect(
         await status(
           patch('dana', `/api/v1/type-sets/${shared.id}`, {
@@ -963,5 +996,65 @@ describe('field rules and layouts (M1-012)', () => {
         ),
       ).toBe(403);
     });
+
+    it('[IAM-030] a shared-mode track’s administrator runs it and owns no configuration through it', async () => {
+      const session = (await get('erin', '/api/v1/session')).json().user;
+      expect(session).toMatchObject({ isSiteAdmin: false, isConfigAdmin: false });
+      expect(session.managesTracks).toBe(true);
+      const runs = (await get('erin', '/api/v1/me/managed-tracks')).json().tracks;
+      expect(runs).toEqual([
+        { id: tracks[sharedTrack], key: sharedTrack, name: sharedTrack, mode: 'shared' },
+      ]);
+    });
+
+    for (const [path, one, plural, column] of [
+      ['layout-sets', 'layoutSet', 'layoutSets', 'layoutSetId'],
+      ['field-rule-sets', 'fieldRuleSet', 'fieldRuleSets', 'fieldRuleSetId'],
+    ] as const) {
+      it(`[CORE-013] a shared-mode track’s administrator and an ordinary member gain no ${path}`, async () => {
+        const url = `/api/v1/${path}`;
+        const made = async (body: Record<string, unknown>) =>
+          (await post('admin', url, body)).json()[one].id as number;
+        const shared = await made({ name: `Shared ${path} for Erin` });
+        const own = await made({ name: `Own ${path} of MINE`, trackId: tracks[mine] });
+        const onShared = `/api/v1/tracks/${tracks[sharedTrack]}`;
+
+        // Who runs a shared-mode track: nothing of its own, and no shared set to change or use.
+        const refusal = await post('erin', url, { name: 'Ours', trackId: tracks[sharedTrack] });
+        expect(refusal.statusCode, refusal.body).toBe(409);
+        expect(refusal.json()).toEqual({ error: 'track_not_local' });
+        expect(await status(post('erin', url, { name: 'Ours' }))).toBe(403);
+        expect(await status(patch('erin', `${url}/${shared}`, { name: 'Taken' }))).toBe(403);
+        expect(await status(del('erin', `${url}/${shared}`))).toBe(403);
+        expect(await status(patch('erin', onShared, { [column]: shared }))).toBe(403);
+        expect(await status(patch('erin', onShared, { [column]: own }))).toBe(400);
+        const listed = (await get('erin', `${url}?trackId=${tracks[sharedTrack]}`)).json()[
+          plural
+        ] as { trackId: number | null }[];
+        expect(listed.filter((s) => s.trackId !== null)).toEqual([]);
+
+        // A member of that track: the same refusal for the mode, and the track is not theirs.
+        expect(await status(post('dana', url, { name: 'In', trackId: tracks[sharedTrack] }))).toBe(
+          409,
+        );
+        expect(await status(patch('dana', onShared, { [column]: shared }))).toBe(403);
+
+        // Someone who runs nothing, a member of the local-mode track that owns the set.
+        expect((await get('alice', '/api/v1/session')).json().user.managesTracks).toBe(false);
+        expect((await get('alice', '/api/v1/me/managed-tracks')).json().tracks).toEqual([]);
+        expect(await status(post('alice', url, { name: 'In', trackId: tracks[mine] }))).toBe(403);
+        expect(await status(patch('alice', `${url}/${own}`, { name: 'Taken' }))).toBe(403);
+        expect(await status(del('alice', `${url}/${own}`))).toBe(403);
+        expect(
+          await status(patch('alice', `/api/v1/tracks/${tracks[mine]}`, { [column]: own })),
+        ).toBe(403);
+
+        // Nothing they were refused changed.
+        expect((await get('admin', `${url}/${shared}`)).json()[one].name).toBe(
+          `Shared ${path} for Erin`,
+        );
+        expect((await get('admin', `${url}/${own}`)).json()[one].name).toBe(`Own ${path} of MINE`);
+      });
+    }
   });
 });

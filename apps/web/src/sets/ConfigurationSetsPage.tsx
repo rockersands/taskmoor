@@ -62,7 +62,9 @@ export function ConfigurationSetsPage({
       <PageHeader
         titleId={titleId}
         title={t('admin.sets.title')}
-        {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+        {...(track
+          ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
+          : {})}
       />
       {scope.status === 'all' || track ? (
         <Sets key={track?.id ?? 'all'} client={client} track={track} />
@@ -269,43 +271,43 @@ function TypeSetsSection({
       {track ? (
         <p className="page-note">{t('admin.sets.trackTypeSet')}</p>
       ) : (
-      <form
-        className="people-inline"
-        aria-label={t('admin.sets.addTypeSet')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted || chosen.length === 0) return;
-          client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
-            setName('');
-            setChosen([]);
-            setOpen(made.id);
-            said(t('admin.sets.added', { name: made.name }));
-          }, failed);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={nameId} className="form-label">
-            {t('admin.sets.typeSetName')}
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+        <form
+          className="people-inline"
+          aria-label={t('admin.sets.addTypeSet')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted || chosen.length === 0) return;
+            client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
+              setName('');
+              setChosen([]);
+              setOpen(made.id);
+              said(t('admin.sets.added', { name: made.name }));
+            }, failed);
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.sets.typeSetName')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <TypePicker
+            legend={t('admin.sets.typesIn')}
+            types={types}
+            chosen={chosen}
+            onChange={setChosen}
           />
-        </div>
-        <TypePicker
-          legend={t('admin.sets.typesIn')}
-          types={types}
-          chosen={chosen}
-          onChange={setChosen}
-        />
-        <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
-          {t('admin.sets.addTypeSet')}
-        </button>
-      </form>
+          <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
+            {t('admin.sets.addTypeSet')}
+          </button>
+        </form>
       )}
       <ul className="people-list">
         {sets.map((set) => (
@@ -637,8 +639,9 @@ function RuleSetPanel({
       aria-label={t('admin.sets.editOf', { name: set.name })}
       onSubmit={(event) => {
         event.preventDefault();
-        // Rules for one ticket type are kept as they are; the every-type rules are the rows.
-        const typed = set.rules.filter((r) => r.ticketTypeId !== null);
+        // The every-type rules are the rows. Rules for one ticket type are kept as they are, and
+        // so are those of a field with no row, such as a shared field that does not reach the track.
+        const kept = set.rules.filter((r) => r.ticketTypeId !== null || !keys.includes(r.field));
         const shown: FieldRule[] = rows
           .filter((r) => !FIXED_FIELDS.has(r.field) || r.description)
           .filter((r) => r.required || r.hidden || r.description || r.editableBy)
@@ -650,7 +653,7 @@ function RuleSetPanel({
             description: r.description || null,
             editableBy: r.editableBy,
           }));
-        client.updateRuleSet(id, { rules: [...typed, ...shown] }).then((saved) => {
+        client.updateRuleSet(id, { rules: [...kept, ...shown] }).then((saved) => {
           show(saved);
           said(t('admin.sets.saved', { name: saved.name }));
         }, failed);

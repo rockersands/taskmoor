@@ -534,7 +534,8 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
     expect(await editor('Ops intake')).toBeVisible();
     expect(client.made).toEqual([{ name: 'Ops intake', trackId: 4 }]);
-    expect(setOptions()).toEqual(['Ops intake', 'Ops layouts']);
+    // In the order the list answers: the server's by name, this fake's as made.
+    expect(setOptions().sort()).toEqual(['Ops intake', 'Ops layouts']);
     expect(screen.getByText('No track uses this set yet.')).toBeVisible();
 
     // Making OPS use it: said, and the set now names OPS.
@@ -555,12 +556,11 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     await editor('Ops layouts');
     // The ticket types OPS offers, its own Runbook among them; not Chore, which it does not.
     const typeChoice = screen.getByLabelText('Ticket type');
-    expect(within(typeChoice).getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'Every ticket type',
-      'Feature',
-      'Bug',
-      'Runbook',
-    ]);
+    expect(
+      within(typeChoice)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Every ticket type', 'Feature', 'Bug', 'Runbook']);
     await user.click(screen.getByRole('button', { name: 'Make a layout for this form' }));
     expect(unplaced()).toContain('Ops notes');
     expect(unplaced()).toContain('Severity');
@@ -597,7 +597,9 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     renderOwn(
       TRACK_ADMIN,
       null,
-      fakeLayoutsClient(undefined, { runs: [{ id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' }] }),
+      fakeLayoutsClient(undefined, {
+        runs: [{ id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' }],
+      }),
     );
     expect(
       await screen.findByText(
@@ -635,10 +637,24 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     archived.tracks = archived.tracks.map((t) => (t.id === 4 ? { ...t, archived: true } : t));
     renderOwn(CONFIG_ADMIN, 4, archived);
     expect(
-      await screen.findByText('OPS is archived. Restore it to change its configuration.'),
+      await screen.findByText('OPS is archived: its configuration changes once it is restored.'),
     ).toBeVisible();
     expect(screen.queryByLabelText('Layout set')).toBeNull();
     expect(archived.previews).toEqual([]);
+  });
+
+  it('[IAM-030] tells someone who runs an archived track that it is archived, not that it is not theirs', async () => {
+    // The tracks they run leave out archived ones.
+    const archived = fakeLayoutsClient(undefined, {
+      runs: [{ id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' }],
+    });
+    archived.tracks = archived.tracks.map((t) => (t.id === 4 ? { ...t, archived: true } : t));
+    renderOwn(TRACK_ADMIN, 4, archived);
+    expect(
+      await screen.findByText('OPS is archived: its configuration changes once it is restored.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/Only the people who run this track/)).toBeNull();
+    expect(screen.queryByLabelText('Layout set')).toBeNull();
   });
 
   it('[CORE-013] the server stays the judge: a refused save says so and keeps the draft', async () => {
@@ -679,7 +695,16 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     const main = screen.getByRole('main');
     await within(main).findByRole('form', { name: /Ops layouts/ });
     await waitFor(() => expect(main.querySelector('.layout-preview-form')).not.toBeNull());
-    const data = new Set(['Ops layouts', 'Feature', 'Bug', 'Runbook', 'Severity', 'Customer']);
+    const data = new Set([
+      'Ops layouts',
+      'Feature',
+      'Bug',
+      'Runbook',
+      'Severity',
+      'Customer',
+      'How bad it is',
+      'Ops notes',
+    ]);
     expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
     cleanup();
     renderOwn(TRACK_ADMIN, null, fakeLayoutsClient(), 'es');
@@ -803,9 +828,9 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
     client.createLayoutSet = ((create) => async (body) => {
       const made = await create(body);
       // The list is read again after the set is made: hold that read back.
-      client.layoutSets = () =>
+      client.layoutSets = (trackId) =>
         new Promise((resolve, reject) => {
-          read = () => list().then(resolve, reject);
+          read = () => list(trackId).then(resolve, reject);
         });
       return made;
     })(client.createLayoutSet);

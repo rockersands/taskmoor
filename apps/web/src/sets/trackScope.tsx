@@ -82,8 +82,11 @@ export function useSetScope(trackId: number | null, client: TrackScopeClient): S
       if (trackId === null) {
         return { status: 'choose', tracks: (runs ?? []).filter((t) => t.mode === 'local') };
       }
-      if (runs && !runs.some((t) => t.id === trackId)) return { status: 'notYours' };
       const track = await client.track(trackId);
+      if (runs && !runs.some((t) => t.id === trackId)) {
+        // The tracks someone runs leave out archived ones, so one may still be theirs.
+        return track.archived ? { status: 'archived', track } : { status: 'notYours' };
+      }
       if (track.mode !== 'local') return { status: 'shared', track };
       if (track.archived) return { status: 'archived', track };
       return { status: 'track', track };

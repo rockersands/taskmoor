@@ -397,6 +397,10 @@ some may become visible to more people.
   type set, access policy and workflow map, and may own field rule and layout sets (`trackId` on
   create) that name shared fields or its own; its administrators change them, in the web app on
   the track's own pages below.
+- A default set and a set that a track uses are not deleted.
+- [Tracks](tracks.md#configuration-sets) says how a track switches sets, and
+  [permissions and access](permissions.md) and
+  [email and notification policies](notifications.md) cover the policies.
 
 ### A track's own sets
 
@@ -421,8 +425,5 @@ Going back to a shared set, and anything about a shared set or another track's, 
 configuration administrators; the server refuses the rest whatever the page shows. The shared
 pages, **Administration** > **Layout sets** and **Configuration sets**, show someone who runs
 tracks but is no administrator only links to the tracks they run that have their own
-configuration. A track in shared mode owns no sets, and its page says so.
-- A default set and a set that a track uses are not deleted.
-- [Tracks](tracks.md#configuration-sets) says how a track switches sets, and
-  [permissions and access](permissions.md) and
-  [email and notification policies](notifications.md) cover the policies.
+configuration. A track in shared mode owns no sets, and its page says so: whoever runs it, or works
+in it, gains nothing here. An archived track's sets wait until it is restored.

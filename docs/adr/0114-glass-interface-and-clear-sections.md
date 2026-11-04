@@ -302,7 +302,10 @@ had no web page. A page under Settings, Configuration sets edits them:
   it changed: its tests now pin that such a person changes their own track's layout and field rule
   sets and its type set's types, and is refused (`403`) every change to a shared set, every change
   to the sets of a track they are only a member of, and answered `404` for any set of a track they
-  do not see. A shared set they may still read, as everyone signed in may.
+  do not see. A shared set they may still read, as everyone signed in may. The same tests pin that
+  nothing opens to anyone else: someone who runs a shared-mode track makes no set for it
+  (`409 track_not_local`), changes no shared set and puts none on the track (`403`), and an ordinary
+  member of a local-mode track changes nothing of it (`403`).
 - **Where.** Each local-mode track has its own pages beside its **Manage** page:
   `#/manage/tracks/<id>/layouts` (`?set=<id>` opens a set) and
   `#/manage/tracks/<id>/configuration-sets`. **Manage** on such a track links to both, under **Its
@@ -311,7 +314,9 @@ had no web page. A page under Settings, Configuration sets edits them:
   sees. The shared pages, `#/admin/layouts` and `#/admin/configuration-sets`, show someone who runs
   tracks and is no administrator the local-mode tracks they run, each a link to its own page, and
   no set. A track they do not run, one in shared mode and an archived one each get a sentence
-  instead of sets. An administrator who opens a track's own page sees only its sets too.
+  instead of sets; the sentence for an archived track also reaches someone who runs it, since the
+  tracks someone runs leave archived ones out. An administrator who opens a track's own page sees
+  only its sets too.
 - **Layouts on a track's page.** The list holds the track's own sets; a new set belongs to the
   track (`trackId` on create). The fields offered are those that reach the track
   (`GET /api/v1/fields?trackId=`), the ticket types those its type set offers, and the preview uses
@@ -325,7 +330,9 @@ had no web page. A page under Settings, Configuration sets edits them:
   shared ticket types and the track's own to choose from. No type set is added or deleted there:
   the server keeps a track's own type set for as long as the track. The field rule sets it owns,
   added for it, changed, deleted when unused and made the track's with **Use this set for <key>**
-  (`fieldRuleSetId`), with the fields that reach it. Each page links to the other's track page.
+  (`fieldRuleSetId`), with the fields that reach it. A save keeps the rules the page has no row
+  for, such as one for a shared field that does not reach the track. Each page links to the other's
+  track page.
 - No new route, migration, event or requirement ID: CORE-003, CORE-005, CORE-008, CORE-013 and
   IAM-030 cover it. Tests: the server's in `routes/layouts.test.ts`; the pages' component tests and
   stories, with the track administrator's session; `e2e/layouts-track-admin.spec.ts` signed in as
