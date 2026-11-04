@@ -615,6 +615,8 @@ function CommentItem({
                       aria-label={t('comments.reactWith', { emoji })}
                       onKeyDown={(event) => {
                         if (event.key === 'Escape') {
+                          // Handled here: nothing else on the page closes or pauses for it.
+                          event.preventDefault();
                           setPicking(false);
                           pickerButton.current?.focus();
                         }

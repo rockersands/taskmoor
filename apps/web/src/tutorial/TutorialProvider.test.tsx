@@ -293,6 +293,22 @@ describe('the coach card (ADR-115)', () => {
     await user.keyboard('{Escape}');
     expect(screen.getByRole('dialog', { name: 'Open Dashboards' })).toBe(open);
 
+    // A control of the page that closes on Escape and gives focus back keeps it, even when it
+    // does not say so (the reaction picker and help tips did not).
+    const opener = document.createElement('button');
+    opener.textContent = 'Opener';
+    const closer = document.createElement('button');
+    closer.textContent = 'Closer';
+    closer.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') opener.focus();
+    });
+    document.body.append(opener, closer);
+    added.push(opener, closer);
+    closer.focus();
+    await user.keyboard('{Escape}');
+    expect(opener).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: 'Open Dashboards' })).toBe(open);
+
     // On a button of the page, as after clicking one, Escape means nothing else: it pauses.
     screen.getByRole('button', { name: 'Start search' }).focus();
     await user.keyboard('{Escape}');

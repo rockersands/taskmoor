@@ -356,16 +356,27 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
   // Escape with nothing else to close pauses, as it does inside the card.
   useEffect(() => {
     if (!current || paused) return;
+    // Where focus was when the Escape began, before the page's own handlers ran.
+    let before: Element | null = null;
+    const onStart = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') before = document.activeElement;
+    };
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // The page used it: something closed and gave focus back (a picker, a tip).
+      if (document.activeElement !== before) return;
       // A modal dialog over the page takes its own Escape first.
       if (document.querySelector('[aria-modal="true"]')) return;
       if (escapeTakenBy(document.activeElement, card.current)) return;
       event.preventDefault();
       pause();
     };
+    document.addEventListener('keydown', onStart, true);
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onStart, true);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [current, paused, pause]);
 
   const value = useMemo<TutorialContextValue>(
