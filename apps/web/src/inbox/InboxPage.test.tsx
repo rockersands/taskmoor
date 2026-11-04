@@ -16,7 +16,7 @@ import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { listPath, snoozeTimes } from './client';
-import { ALERT_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 function renderInbox(client = fakeInboxClient()) {
@@ -76,6 +76,52 @@ describe('the inbox page (M1-058)', () => {
     expect(client.calls.filter((c) => c.method === 'list').at(-1)?.args[0]).toMatchObject({
       event: 'track_group_shared',
     });
+  });
+
+  it('[NTF-015] a run of checklist changes is one item that says who and how many, and leads to the ticket', async () => {
+    const user = userEvent.setup();
+    const { page, client } = renderInbox(
+      fakeInboxClient([
+        CHECKLIST_ITEM,
+        { ...CHECKLIST_ITEM, id: '20', checklist: { changes: 1, others: 0 } },
+        { ...CHECKLIST_ITEM, id: '21', checklist: { changes: 7, others: 2 } },
+        ...ITEMS,
+      ]),
+    );
+    const [many, one, several] = (await cards(page)) as HTMLElement[];
+    expect(many).toHaveTextContent('Mi Rivera made 5 changes to checklists');
+    expect(one).toHaveTextContent('Mi Rivera changed a checklist');
+    expect(several).toHaveTextContent('Mi Rivera and 2 more made 7 changes to checklists');
+    const link = within(many as HTMLElement).getByRole('link');
+    expect(link).toHaveAttribute('href', '#/tickets/SHOP-19');
+    // The Type filter offers it.
+    await user.selectOptions(
+      page.getByRole('combobox', { name: 'Type' }),
+      'A checklist changes on a ticket you follow',
+    );
+    expect(client.calls.filter((c) => c.method === 'list').at(-1)?.args[0]).toMatchObject({
+      event: 'checklist_changed',
+    });
+  });
+
+  it('[NTF-015] says the same in Spanish, a draft of the catalogue', async () => {
+    render(
+      <I18nProvider locale="es">
+        <InboxPage
+          client={fakeInboxClient([
+            CHECKLIST_ITEM,
+            { ...CHECKLIST_ITEM, id: '21', checklist: { changes: 3, others: 1 } },
+          ])}
+          now={() => NOW}
+        />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText('Mi Rivera hizo 5 cambios en listas de comprobación'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Mi Rivera y 1 persona más hicieron 3 cambios en listas de comprobación'),
+    ).toBeVisible();
   });
 
   it('[NTF-003] lists mentions and changes newest first, unread marked, quoting comments', async () => {

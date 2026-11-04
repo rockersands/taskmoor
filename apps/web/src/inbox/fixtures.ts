@@ -100,6 +100,20 @@ export const GROUP_ITEM: InboxItem = {
   snoozedUntil: null,
 };
 
+/** A run of checklist changes on a ticket the reader follows (NTF-015): who and how many. */
+export const CHECKLIST_ITEM: InboxItem = {
+  id: '19',
+  event: 'checklist_changed',
+  direct: false,
+  ticket: ticket('SHOP-19', 'Refunds show the wrong currency', 19),
+  checklist: { changes: 5, others: 0 },
+  actor: { id: 3, name: 'Mi Rivera' },
+  comment: null,
+  createdAt: '2026-10-29T09:59:00Z',
+  read: false,
+  snoozedUntil: null,
+};
+
 const shown = (item: InboxItem, now: Date) =>
   item.snoozedUntil === null || Date.parse(item.snoozedUntil) <= now.getTime();
 

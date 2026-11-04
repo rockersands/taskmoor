@@ -8,7 +8,8 @@
 
 The user asked on 2026-11-03 for tools on every type of ticket for 1.0: links chosen from the
 ticket's page, subtickets with a completion percentage, checklists, and a slash menu of blocks in
-the rich-text editor. Requirements: CORE-031, CORE-032, CORE-033, NTF-013, NTF-014.
+the rich-text editor. Requirements: CORE-031, CORE-032, CORE-033, NTF-013, NTF-014, and NTF-015
+for the checklist notices the user chose on 2026-11-04.
 
 The slash menu's scope was set by the coordinator's list and by what the document format support
 in this repository already holds. No competing product, its documentation or its screens were
@@ -59,13 +60,49 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
 - A change is history with the words it changed, one `ticket.checklist_changed` event with ids only,
   and it touches the ticket's updated time, not its version, as comments do (ADR-044): the change log
   brings open pages up to date (ADR-013), and nobody's edit of another field is refused over a ticked
-  box. Followers are not notified of each tick: it would flood them. The event is available to
-  webhooks.
+  box. The event is available to webhooks. Followers hear of it only where the track turns that on,
+  and then a run of ticks as one notice: see [Checklist notices](#checklist-notices-ntf-015).
 - Clone copies the lists with every item open, since a copy starts in the first status of its
   workflow. Export writes one record per checklist with its items; an export from before this has
   no such file and imports as before. Erasure leaves the items, whose author becomes the placeholder
   account like any other record; the person's own items are in their data download.
 - Limits: 20 checklists a ticket, 200 items a checklist, 200 and 1,000 characters.
+
+### Checklist notices (NTF-015)
+
+The question this record left open, whether followers hear of checklist changes (TT-7), was
+answered by the user on 2026-11-04 (T-196a), with the option recommended to them: a notice that a
+track's administrators turn on, off by default.
+
+- **A choice of the track's.** `track.notify_checklist_changes` (migration 0103), off for every
+  track, existing or new; `PATCH /api/v1/tracks/:id` with `checklistNotices` needs "Run the track",
+  like the track's other settings, and is recorded as a `track.updated` with what changed. A copy
+  of a track (`copyFrom`) takes the source's choice; a template starts with it off. In the web app
+  it is a box on the track's **Manage** page (`#/manage/tracks/:id`), the page its administrators
+  have, under **Notices to followers**.
+- **A product event, `checklist_changed`**, outside notification policies like a mention or a
+  shared track group (spec 01c section 3): it reaches a ticket's followers and nobody else, so a
+  policy cannot widen it, and each person chooses its channels in their settings like any other
+  event, with their email delivery, digests and quiet hours as for the rest.
+- **Never one's own change**, whatever "Tell me about changes I make myself" says: a person ticking
+  through a list knows they did.
+- **Only those who may see the ticket**, at its visibility level, when the change is handled; the
+  inbox and the mailer judge it again before showing or sending, as every ticket notification. A
+  notice holds no list's name and no item's text: the ticket, who made the changes and how many.
+  Checklists are read with the ticket's own permission, so nothing in a notice is more than its
+  reader may open, and nothing goes stale in an inbox after an item is edited.
+- **One notice for a run.** The mailer already gathers one ticket's changes within the workspace's
+  batch window (two minutes by default) into one email (NTF-002). A checklist change follows the
+  same window one step earlier: it joins the person's open notice about that ticket on each
+  channel instead of writing another. A notice is open while it is unread, not snoozed and not yet
+  emailed, until the batch window from its first change has passed, and for up to 100 changes; the
+  next change after that starts a new one. It counts its changes and keeps who made them (up to 50
+  people), so the inbox says "Ana and 2 more made 7 changes to checklists" and the email one line
+  of the same. Reading the notice in the inbox marks its email read too (NTF-003 (2)), so both
+  channels start afresh together.
+- **At least once, counted once.** A notice lists the events it holds; an event delivered twice
+  finds itself there and writes nothing. One ticket's notices are written one change at a time
+  (an advisory lock on the ticket), so two workers never both start a notice for the same run.
 
 ### The slash menu and new blocks (NTF-013, NTF-014)
 
@@ -203,6 +240,10 @@ Recommended: B. Nothing is built until the user answers (T-196).
 | File by id in the document | Exact when names repeat | A clone or an import points at the wrong file or none; an import loads files after the documents that name them |
 | File by name (chosen) | Survives clone and import; holds no address | Two files of one name show the first |
 | Checklist items as rich text | The same editor | Conversions, Yjs and limits for what is a line of text |
+| Checklist changes as a policy event | Policies already name recipients | Any policy could send every tick to a whole group; the user asked for followers only, per track |
+| A notice per checklist change | Simplest | A run of ticks floods the inbox, which is why TT-7 waited |
+| One notice for a run, in the batch window (chosen) | One item and one email line per run, the window the mailer already uses | A notice changes after it is written, so it lists the events it holds |
+| Item text in the notice | Says what changed | Stale once an item is edited; the history on the ticket has the words |
 
 ## Consequences
 

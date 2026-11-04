@@ -4,6 +4,7 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
+import { CHECKLIST_EVENT, noticeCounts } from '../notifications/checklists';
 import { isNotificationEvent, isPreferenceEvent } from '../notifications/model';
 import { bumpInbox } from '../notifications/subscriber';
 import { TRACK_GROUP_EVENT } from '../notifications/track-groups';
@@ -28,6 +29,8 @@ import { resolveTrack } from '../tickets/store';
  *   they show while the reader is a site administrator.
  * - A track group shared with the reader or set on them (T-206) is about no ticket either
  *   (`ticket: null`, with `group`): it shows while the group is still theirs, under its name now.
+ * - A checklist notice (NTF-015) is one item for a run of changes to a ticket's checklists, with
+ *   `checklist: {changes, others}`: how many, and how many people besides `actor` made them.
  * - `PATCH /api/v1/inbox/:id` `{read?, snoozedUntil?}`: read or unread; snoozed until a time
  *   (it comes back unread then) or back now (`null`). Marking read also marks the same
  *   notification's email read, so a digest leaves it out (NTF-003 (2)).
@@ -272,6 +275,9 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
       actor: r.actor_id === null ? null : { id: r.actor_id, name: r.actor_name ?? '' },
       ...(fields ? { fields } : {}),
       ...(mentionedIn ? { mentionedIn } : {}),
+      // A run of checklist changes (NTF-015): how many, and how many people besides the actor;
+      // never a list's name or an item's text.
+      ...(r.event === CHECKLIST_EVENT ? { checklist: noticeCounts(r.payload) } : {}),
       // Quoted only to those who may read it.
       comment:
         r.comment_id !== null && r.comment_readable

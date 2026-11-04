@@ -33,8 +33,9 @@ describe('notification settings (M1-057)', () => {
       section.getByRole('checkbox', { name: 'Tell me about changes I make myself' }),
     ).not.toBeChecked();
     const table = section.getByRole('table', { name: 'What you hear about, and where' });
-    // The heading row, mentions, track groups shared with you (T-206) and the 15 policy events.
-    expect(within(table).getAllByRole('row')).toHaveLength(18);
+    // The heading row, mentions, track groups shared with you (T-206), checklist changes on
+    // tickets you follow (NTF-015) and the 15 policy events.
+    expect(within(table).getAllByRole('row')).toHaveLength(19);
     expect(within(table).getByRole('checkbox', { name: 'Inbox: Ticket closed' })).toBeChecked();
     expect(
       within(table).getByRole('checkbox', {
@@ -66,6 +67,27 @@ describe('notification settings (M1-057)', () => {
       { quietHours: { start: 22, end: 6 } },
     ]);
     expect(section.getByRole('checkbox', { name: 'Email: Ticket updated' })).not.toBeChecked();
+  });
+
+  it('[NTF-015] has a row for checklist changes, chosen per channel like any other event', async () => {
+    const user = userEvent.setup();
+    const saved: PreferenceChanges[] = [];
+    const base = fakeNotificationsClient();
+    const section = renderSection({
+      ...base,
+      update: (changes) => {
+        saved.push(changes);
+        return base.update(changes);
+      },
+    });
+    const name = 'A checklist changes on a ticket you follow';
+    const inbox = await section.findByRole('checkbox', { name: `Inbox: ${name}` });
+    expect(inbox).toBeChecked();
+    expect(section.getByRole('checkbox', { name: `Email: ${name}` })).toBeChecked();
+    await user.click(inbox);
+    expect(await section.findByText('Notification settings saved.')).toBeVisible();
+    expect(saved).toEqual([{ events: { checklist_changed: { inbox: false } } }]);
+    expect(section.getByRole('checkbox', { name: `Inbox: ${name}` })).not.toBeChecked();
   });
 
   it('says when the settings cannot be read', async () => {

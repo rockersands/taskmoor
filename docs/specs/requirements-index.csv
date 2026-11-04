@@ -113,6 +113,7 @@ NTF-011,NTF,Rich links and wiki pages,M2,Should,"Jira Free (Smart Links, Conflue
 NTF-012,NTF,Whiteboards,M4,Should,YouTrack; ClickUp
 NTF-013,NTF,Slash menu,M1,Must,User requirement
 NTF-014,NTF,New blocks in the document schema,M1,Must,User requirement
+NTF-015,NTF,Checklist change notices,M1,Must,User requirement
 API-001,API,Native REST API,M1,Must,Jira Free
 API-002,API,API authentication,M1,Must,Jira Free
 API-003,API,Shim v2,M1,Must,Jira Free

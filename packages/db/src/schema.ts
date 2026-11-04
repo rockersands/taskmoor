@@ -368,6 +368,8 @@ export interface TrackTable {
   visibility_policy_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** Its notification policy; null for the workspace's default (M1-056). */
   notification_policy_id: ColumnType<number | null, number | null | undefined, number | null>;
+  /** Followers hear of checklist changes (NTF-015); off unless its administrators turn it on. */
+  notify_checklist_changes: Generated<boolean>;
   /** In the trash since (M1-101, CORE-025); restorable until the purge starts. */
   deleted_at: Timestamp | null;
   deleted_by: number | null;
