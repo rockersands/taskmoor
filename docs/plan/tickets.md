@@ -33,7 +33,7 @@ reported, and the coordinator checked that it was pushed.
 | T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed |
 | T-006 | Tests run on native Windows | Done | M1-144, on `main` |
 | T-007 | Job queue uses the database's clock | Done | On `main` |
-| T-009 | A leftover test process (vitest, PIDs 40468 and 30628) that a sub chat could not stop | You | Close it, or allow it to be closed |
+| T-009 | A leftover test process (vitest, PIDs 40468 and 30628) that a sub chat could not stop | Done | Closed with the user's permission |
 | T-008 | Keep every request as a ticket, here and in the tool itself | In progress | This file, and tracks BE, FE and FL on the demo |
 
 ## Getting to 1.0
@@ -50,7 +50,7 @@ reported, and the coordinator checked that it was pushed.
 | T-015 | Find out why records failed in the large imports | Done | Reserved words as generated keys, and sprints too large for one statement; both fixed; the seven at 500k fit the first cause, as the key BY appears by then, though that run did not capture reasons |
 | T-016 | Try the 1M-issue import on this PC | Done | 3 h 58 min, 100% of sampled entities; ADR-092 |
 | T-017 | Close M1-091 with the results | Done | In progress.csv |
-| T-018 | Merge the finished branches, each with a full gate | To do | Templates, updates, invitations, Google, ticket tools, UI; expect conflicts |
+| T-018 | Merge the finished branches, each with a full gate | Done | Templates, updates, invitations, Google, ticket tools and UI are on `main` |
 | T-019 | Fuzz stages (1, 2, 4, 8 hours) | To do | The user's decision: after all merges, about 15 hours |
 | T-020 | Release 1.0 (M1-120) | To do | LTS, changelog, signed release files |
 | T-021 | Sign the air-gap bundle and release files with the key from Drive | To do | The user allows it; never committed; local copy removed afterwards |
@@ -110,7 +110,7 @@ reported, and the coordinator checked that it was pushed.
 | T-071 | Tracks in the sidebar is one link, with no list under it | Done | replaces the expanding list, as there could be many tracks |
 | T-072 | Exactly one board per track, enforced on the server | Done | ADR-116 |
 | T-073 | No board outside a track | Done | ADR-116 |
-| T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
+| T-074 | Decide about the leftover demo board `rrg` | Done | Gone with the new demo |
 | T-075 | Summary is a dashboard the track owner can customize | Done | On `main` (ADR-116): the owner customizes it with every widget kind, members read it |
 | T-075a | Should members also filter a track's Summary (RPT-006 says "view and filter")? | You | Only the owner's customizing is built, as the user decided |
 | T-076 | Statistics holds every report for the track | Done | On `main` (ADR-116, RPT-001, RPT-002): time since, grouped tickets, time tracking, workload by person, by release and as a pie, and the outcome report; each number equals its search |
@@ -128,7 +128,7 @@ reported, and the coordinator checked that it was pushed.
 | T-087 | Sharing a group gives access to its tracks | Done | On `main`: the sharer picks a role and gives it only where they could give it track by track; taking back removes only what the share gave |
 | T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | Done | On `main` (migration 0097, IAM-033, ADR-118): new sites let only site administrators create tracks until granted; only site administrators and holders may tick the box |
 | T-087b | When someone loses the manager role, should their permission to create tracks go too? | You | Today it stays until a site administrator removes it, and the people admin page shows who holds it |
-| T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
+| T-087d | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | Done | On `main` (ADR-122, PLN-001, PLN-012, migration 0101): sources each viewer may see, filters and grouping in the address, rescheduling, the first 10,000 per view; `docs/plan/multi-track-tasks.md` holds the next stages |
 | T-088a | One plan is called a "plan" in the interface; the terminology file had "roadmap". Keep "plan"? | You | A strings and manual change only |
@@ -203,7 +203,7 @@ reported, and the coordinator checked that it was pushed.
 | T-130 | Basic search: dates on, before, after and between | Done | `claude/ui-overhaul` |
 | T-131 | Basic search: type, priority, labels and more | Done | `claude/ui-overhaul` |
 | T-132 | A widget that cannot load says what it needs | Done | `claude/ui-overhaul` |
-| T-133 | The user's "vxfdv" widget holds an invalid search | You | Fix or clear its search on the demo |
+| T-133 | The user's "vxfdv" widget holds an invalid search | Done | Gone with the new demo |
 | T-134 | Remove the sample tracks; keep only Flutter, Backend and Front | Done | The user asked; the four sample tracks are in the demo's trash |
 
 ## The look
@@ -243,7 +243,7 @@ reported, and the coordinator checked that it was pushed.
 | T-163a | Open the layout editor to a local-mode track's own administrators? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
 | T-163b | The layout editor for a local-mode track's own administrators | In progress | WIP commit on `wave6/t163b-layouts-for-track-admins`, not yet tested or reviewed |
 | T-164 | Phone and accessibility pass | To do | UI-T09 |
-| T-165 | Update the e2e specs the rework broke | To do | Needed before that branch can pass a gate |
+| T-165 | Update the e2e specs the rework broke | Done | The e2e specs pass: 239 in the gate of 2026-11-04 |
 
 ## Waiting on the user, for later
 
@@ -266,7 +266,9 @@ reported, and the coordinator checked that it was pushed.
 | T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
 | T-196b | The "Checklist changed" notice | In progress | WIP commit on `wave6/t196b-checklist-notice`, not yet tested or reviewed |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
-| T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
+| T-207 | Free movement is the default everywhere, including a new demo's sample tracks | In progress | The user found API-1 and API-2 refused: the demo seeded the AI evals' strict workflow. The user's rule of 2026-11-04: free moving is the default. On `fix/t207-free-moving-default` |
+| T-208 | A fresh checkout's first full gate fails in the browser stories (Vite's dependency cache is cold; "optimized dependencies changed") | To do | 48 failures on this PC's first gate; all pass on a rerun. Warm the cache or list the dependencies up front, or every new clone and worktree meets this |
+| T-198 | Load these tickets into the demo again | Done | All tickets loaded on the demo on 2026-11-04, in the Backend, Front and Flutter tracks |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 | T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |
 | T-201 | A subticket refusal names a custom field as "field 12", not by its name | Done | On `main`: the panel reads the create form's field names once per type; the template picker still says "field N" for a field not on the form |

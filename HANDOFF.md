@@ -89,9 +89,10 @@ corepack pnpm install
 
 ### Rules learned here
 
-- **On this Mac** (2026-11-03): commits use the clone's existing local git identity, the user's choice
-  when changing it was blocked; `pnpm dco` only needs the sign-off to match the author. Do not change it
-  or ask again. Every `*.localhost` name resolves here without a hosts file. The DNS-rebinding test uses
+- **Identity on every device** (the user's decision of 2026-11-04, replacing the Mac exception of
+  2026-11-03): commits use the no-reply address in `CLAUDE.md`, set in each clone's local git config.
+  The Mac commits with the old address wait for the history rewrite (T-005).
+- **On a Mac:** every `*.localhost` name resolves here without a hosts file. The DNS-rebinding test uses
   `::1` because macOS has only 127.0.0.1 on loopback.
 - **Side sessions** hold every test run while `/tmp/taskmoor-gate.lock` exists and take the lock for
   their own Playwright spec; the coordinator holds it for each full gate.
