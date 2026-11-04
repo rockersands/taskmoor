@@ -168,8 +168,9 @@ one waits on the user.
 - Each status in the list is the ticket page's status control: a menu of where that ticket can go,
   read as it opens, through the ticket page's own routes. The workflow, its conditions and the
   person's rights apply as on the ticket's page, so no new route, permission or event is needed. A
-  move that asks for a close reason or a priority asks for it in the panel; one that asks for other
-  fields sends the person to the ticket.
+  move that asks for a close reason or a priority asks for it in the panel, in a form under the list
+  whose first field takes the focus (Escape or Cancel goes back to the status); one that asks for
+  other fields sends the person to the ticket.
 
 ### TT-8: a code block's language
 

@@ -325,6 +325,39 @@ describe('moving a subticket from its parent’s list (CORE-032; ADR-120, TT-6)'
     expect(screen.queryByRole('form')).toBeNull();
   });
 
+  it('[CORE-032] takes the focus to the form a move asks with, and Escape goes back', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient({ transitions: childTransitions(true) });
+    // What a pop-up around the panel would hear of an Escape.
+    const around: string[] = [];
+    render(
+      <I18nProvider locale="en">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: listens only, as a pop-up does */}
+        <div
+          onKeyDown={(event) => {
+            if (!event.defaultPrevented) around.push(event.key);
+          }}
+        >
+          <SubticketsPanel ticket={ticket(0)} client={client} revision={0} />
+        </div>
+      </I18nProvider>,
+    );
+    (await statusOf('SHOP-202', 'In progress')).focus();
+    await user.keyboard('{ArrowDown}');
+    await screen.findByRole('menu', { name: 'Status of SHOP-202: In progress' });
+    await user.keyboard('{ArrowDown}{Enter}');
+    // The form opens under the whole list: its first field takes the focus, inside a form
+    // named for the ticket and the move.
+    const form = await screen.findByRole('form', { name: 'Finish SHOP-202: what it needs' });
+    const reason = within(form).getByRole('combobox', { name: 'Close reason' });
+    await waitFor(() => expect(reason).toHaveFocus());
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(await statusOf('SHOP-202', 'In progress')).toHaveFocus();
+    expect(around).not.toContain('Escape');
+    expect(client.calls.some((call) => call.action === 'moveChild')).toBe(false);
+  });
+
   it('[CORE-032] sends the person to the ticket for a move that asks for more', async () => {
     const user = userEvent.setup();
     const [reopen] = childTransitions();

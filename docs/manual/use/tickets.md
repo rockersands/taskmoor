@@ -321,8 +321,9 @@ track asks for more fields than the summary, the page names them, a field someon
 the create form shows. Subtickets are ordinary tickets: they move through the track's workflow like
 any other. Each one's status in the list is a menu, like the status on a ticket's own page: open it
 and pick where the subticket goes. It offers only what its workflow and your permissions allow, and
-asks for a close reason or a priority when the move needs one; a move that needs more sends you to
-the subticket's own page. A subticket
+asks for a close reason or a priority when the move needs one, in a form under the list that takes
+the focus (Escape or **Cancel** goes back to the status); a move that needs more sends you to the
+subticket's own page. A subticket
 has no subtickets of its own, so its page has no such section. On an outcome, the section is called
 **Tickets under this** and holds the tickets one level down, the same way.
 

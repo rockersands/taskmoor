@@ -67,6 +67,8 @@ export function SubticketsPanel({
   const [asking, setAsking] = useState<{ child: ChildTicket; to: Transition } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
+  /** Holds the form a move asks with, under the list. */
+  const askingSlot = useRef<HTMLDivElement>(null);
   const read = useRef(0);
   const readingMore = useRef(false);
   /** Each type's create form fields, asked for once (by track and type). */
@@ -152,6 +154,14 @@ export function SubticketsPanel({
     (rows?.[focusRow] ?? rows?.[rows.length - 1])?.querySelector('a')?.focus();
     setFocusRow(null);
   }, [focusRow]);
+
+  // The form a move asks with opens under the whole list, away from the status chosen: the focus
+  // goes to its first field, so a keyboard or a screen reader finds it, named for the ticket and
+  // the move.
+  useEffect(() => {
+    if (!asking) return;
+    askingSlot.current?.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
+  }, [asking]);
 
   if (!hasChildren) return null;
 
@@ -371,22 +381,35 @@ export function SubticketsPanel({
         </ul>
       )}
       {asking && formLists && (
-        <TransitionForm
-          key={`${asking.child.id}-${asking.to.id}`}
-          transition={{
-            name: t('ticketTools.subtickets.moveForm', {
-              key: asking.child.key,
-              name: asking.to.name,
-            }),
-            layout: asking.to.layout,
-          }}
-          client={formLists}
-          onRun={(fields) => void move(asking.child, asking.to, fields)}
-          onCancel={() => {
+        // biome-ignore lint/a11y/noStaticElementInteractions: Escape from any of its fields
+        <div
+          ref={askingSlot}
+          onKeyDown={(event) => {
+            // As Cancel; taken here, so a pop-up the panel is in stays open.
+            if (event.key !== 'Escape' || event.defaultPrevented) return;
+            event.preventDefault();
+            event.stopPropagation();
             setAsking(null);
             focusStatus(asking.child.id);
           }}
-        />
+        >
+          <TransitionForm
+            key={`${asking.child.id}-${asking.to.id}`}
+            transition={{
+              name: t('ticketTools.subtickets.moveForm', {
+                key: asking.child.key,
+                name: asking.to.name,
+              }),
+              layout: asking.to.layout,
+            }}
+            client={formLists}
+            onRun={(fields) => void move(asking.child, asking.to, fields)}
+            onCancel={() => {
+              setAsking(null);
+              focusStatus(asking.child.id);
+            }}
+          />
+        </div>
       )}
       {next && (
         <button
