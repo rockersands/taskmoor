@@ -41,7 +41,7 @@ describe('the inbox page (M1-058)', () => {
     expect(link).toHaveTextContent('Account: Kalo Smith · From 203.0.113.9');
     expect(link).toHaveAttribute('href', '#/admin/audit');
     expect(page.getByRole('button', { name: 'Priority 3', pressed: false })).toBeVisible();
-    await user.click(within(card).getByRole('button', { name: 'Mark this alert as read' }));
+    await user.click(within(card).getByRole('button', { name: 'Mark as read: this alert' }));
     await waitFor(() => expect(client.items()[0]?.read).toBe(true));
   });
 
@@ -64,7 +64,7 @@ describe('the inbox page (M1-058)', () => {
     expect(set).toHaveTextContent('Ana Ruiz set a track group on you, a copy of your own');
     await user.click(
       within(shared as HTMLElement).getByRole('button', {
-        name: 'Mark the group Quarter plan as read',
+        name: 'Mark as read: the group Quarter plan',
       }),
     );
     await waitFor(() => expect(client.items()[0]?.read).toBe(true));
@@ -191,14 +191,24 @@ describe('the inbox page (M1-058)', () => {
     });
   });
 
+  it('[NFR-005] names each action with the words it shows, so voice control finds it', async () => {
+    const { page } = renderInbox();
+    await cards(page);
+    const actions = page.getAllByRole('button').filter((b) => b.className.includes('inbox-action'));
+    expect(actions.length).toBeGreaterThan(0);
+    for (const action of actions) {
+      expect(action.getAttribute('aria-label')).toContain(action.textContent as string);
+    }
+  });
+
   it('[NTF-003] marks one read and unread, snoozes one and marks all read', async () => {
     const user = userEvent.setup();
     const { page, client } = renderInbox();
     await cards(page);
-    await user.click(page.getByRole('button', { name: 'Mark SHOP-19 as read' }));
-    expect(await page.findByRole('button', { name: 'Mark SHOP-19 as unread' })).toBeVisible();
+    await user.click(page.getByRole('button', { name: 'Mark as read: SHOP-19' }));
+    expect(await page.findByRole('button', { name: 'Mark as unread: SHOP-19' })).toBeVisible();
     expect(page.getByText('2 unread')).toBeVisible();
-    await user.click(page.getByRole('button', { name: 'Mark SHOP-19 as unread' }));
+    await user.click(page.getByRole('button', { name: 'Mark as unread: SHOP-19' }));
     expect(await page.findByText('3 unread')).toBeVisible();
 
     // Snoozed until tomorrow morning: it leaves the list and waits in Snoozed.
@@ -219,7 +229,7 @@ describe('the inbox page (M1-058)', () => {
     expect(snoozed[0]).toHaveTextContent('Snoozed until');
     await user.click(
       within(snoozed[0] as HTMLElement).getByRole('button', {
-        name: 'Put OPS-3 back in the inbox',
+        name: 'Back to the inbox: OPS-3',
       }),
     );
     expect(await page.findByText('Nothing snoozed.')).toBeVisible();
