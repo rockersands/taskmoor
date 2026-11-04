@@ -40,10 +40,9 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 - **Also on `main` (2026-11-04, each reviewed and gated):** T-089 (Multi-track dependencies,
   PLN-006), T-161 (the guided tutorial, AGL-025), T-204 to T-206 (group follow-ups), T-089b (plan
   capacity, PLN-005, PLN-009, migration 0102), T-162 (drag and drop beyond boards), T-163 (the layout
-  editor). **T-196** (ticket tools follow-ups TT-1 to TT-8 but TT-7) is merged on the coordinator
-  branch, but its gate hung in the tests (vitest idle for hours with only esbuild and a headless
-  browser alive) and was stopped at the user's wrap-up: run the full gate first, then fast-forward
-  `main`.
+  editor) and T-196 (ticket tools follow-ups TT-1 to TT-8 but TT-7, which is now T-196b). T-196's
+  first gate hung in the tests (vitest idle for hours) and was stopped; its rerun passed (7,286 tests,
+  238 e2e) and `main` was fast-forwarded on 2026-11-04.
 - **Wave 6, interrupted (the user's decisions of 2026-11-04 in `decisions.csv`):** WIP commits, not
   yet tested or reviewed, each in its own worktree under `.claude/worktrees/wf_8b96611f-b77-*` and on
   its branch: `wave6/t162b-touch-drag-boards` (board cards and calendar entries on the shared pointer
@@ -79,7 +78,7 @@ corepack pnpm install
 ### Next, in order
 
 1. Nothing waits to merge.
-2. Gate T-196 and push it; finish wave 6 (above). Then, each reviewed first: the glass pass and the
+2. Finish wave 6 (above). Then, each reviewed first: the glass pass and the
    sweep of every route (T-143, T-144; alone, it touches every page), the phone and accessibility pass
    (T-164), Multi-track's remaining stages (T-089c to T-089g, and T-089j once the user answers),
    T-013a, T-195, T-203. Questions for the user are the rows marked You in `tickets.md`; T-089j was
