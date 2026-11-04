@@ -265,9 +265,10 @@ reported, and the coordinator checked that it was pushed.
 | T-201 | A subticket refusal names a custom field as "field 12", not by its name | Done | On `main`: the panel reads the create form's field names once per type; the template picker still says "field N" for a field not on the form |
 | T-202 | A pasted section title from another Taskmoor document keeps control characters | Done | On `main` |
 | T-203 | A checklist item rewritten by someone else shows its new words in the writer's own data download | To do | Only on tickets the person still sees; needs an `updated_by` column |
-| T-204 | A person cannot leave a group someone shared with them | To do | Only the owner takes a share back |
-| T-205 | Track groups are not in a person's data download or erasure | To do | ADR-111 |
-| T-206 | Nobody is told when a group is shared with them | To do | A notification, like other shares |
+| T-204 | A person cannot leave a group someone shared with them | Done | On `main` (ADR-121): leaving takes back only what that share gave, with an event and the audit log |
+| T-205 | Track groups are not in a person's data download or erasure | Done | On `main` (ADR-111, ADR-121): owned groups, shares given and received in the download; erasure deletes own groups and takes shares back by the same rules, refusing to leave a track with nobody to run it |
+| T-205a | Erasing a person whose share gave the role to run a track to its only other runner: refuse, as built, or let the role stay? | You | Built as a refusal (409 last_track_admin), reading "taken back by the same rules" |
+| T-206 | Nobody is told when a group is shared with them | Done | On `main`: an inbox notification and email by their preferences, naming the group and who shared it, never tracks they cannot see |
 
 ## Flutter app (stopped)
 
