@@ -39,13 +39,32 @@ const caretFrom = (view: EditorView, pos: number, dir: 1 | -1) =>
   Selection.findFrom(view.state.doc.resolve(pos), dir, true);
 
 /**
+ * The first place a caret can stand from `pos` in a direction outside hidden text, if any: a
+ * section the person has hidden on the way is stepped over whole, so it stays hidden. Without
+ * this, the caret leaving one section would land in the next one and open it (TT-1).
+ */
+const visibleCaretFrom = (view: EditorView, pos: number, dir: 1 | -1): Selection | null => {
+  let from = pos;
+  for (;;) {
+    const found = caretFrom(view, from, dir);
+    if (!found) return null;
+    const hidden = outermostHidden(view, found.$head.pos);
+    if (!hidden) return found;
+    // Each step leaves the section the last one found, so the search always ends.
+    from = dir === 1 ? hidden.pos + hidden.node.nodeSize : hidden.pos;
+  }
+};
+
+/**
  * A collapsible section in the editor (NTF-014; ADR-120, TT-1): a toggle, its title as a field,
  * then its text. Hiding the text is the person's own view and is never written to the document,
  * so people editing together each keep theirs, and nobody's typing is hidden from anyone by
  * someone else. The hidden text still takes everyone's changes as they come; the section says
  * when it changed while hidden. The caret never stays in hidden text: hiding a section moves it
  * just past, and anything that puts the caret back inside (undo, a search, the arrow keys) shows
- * the text again. Wherever a document is only read, a section is the browser's own `details`.
+ * the text again. Where the section's keys move the caret, it steps over every other section the
+ * person hid, so that one stays hidden. Wherever a document is only read, a section is the
+ * browser's own `details`.
  *
  * Keys: Enter, Escape or Down in the title go on to the text (past the section when it is
  * hidden, onto a new paragraph when nothing follows it); Up goes to the text before it; Up on
@@ -107,22 +126,25 @@ export function expandNodeView(labels: () => ExpandLabels): NodeViewRenderer {
     const caretTo = (pos: number, dir: 1 | -1, back = true) => {
       const view = editor.view;
       const found =
-        caretFrom(view, pos, dir) ?? (back ? caretFrom(view, pos, dir === 1 ? -1 : 1) : null);
+        visibleCaretFrom(view, pos, dir) ??
+        (back ? visibleCaretFrom(view, pos, dir === 1 ? -1 : 1) : null);
       if (!found) return;
       view.dispatch(view.state.tr.setSelection(found).scrollIntoView());
       view.focus();
     };
 
     /**
-     * Puts the caret just past the section; with no text after it, a new paragraph there, so
-     * writing goes on after a hidden section rather than inside it.
+     * Puts the caret just past the section, over any hidden ones after it; with no text to see
+     * after it, a new paragraph right after it, so writing goes on after a hidden section rather
+     * than inside it or the next one.
      */
     const past = (end: number) => {
       const view = editor.view;
-      if (caretFrom(view, end, 1) || !editor.isEditable) {
+      if (visibleCaretFrom(view, end, 1)) {
         caretTo(end, 1);
         return;
       }
+      if (!editor.isEditable) return;
       const paragraph = view.state.schema.nodes.paragraph?.create();
       try {
         if (!paragraph) throw new Error('no paragraph');
@@ -142,13 +164,16 @@ export function expandNodeView(labels: () => ExpandLabels): NodeViewRenderer {
       const pos = at();
       if (!hidden || pos === undefined) return;
       // The caret does not stay in text nobody can see: it goes just past the section, or
-      // before it at the end of a document, or onto the section itself.
+      // before it at the end of a document, or onto the section itself; never into another
+      // hidden section, which would open it.
       const view = editor.view;
       const { selection, doc } = view.state;
       const end = pos + node.nodeSize;
       if (selection.$head.pos <= pos || selection.$head.pos >= end) return;
       const away =
-        caretFrom(view, end, 1) ?? caretFrom(view, pos, -1) ?? NodeSelection.create(doc, pos);
+        visibleCaretFrom(view, end, 1) ??
+        visibleCaretFrom(view, pos, -1) ??
+        NodeSelection.create(doc, pos);
       view.dispatch(view.state.tr.setSelection(away));
     };
 
@@ -245,6 +270,15 @@ const control = (view: EditorView, pos: number) => {
   const element = view.nodeDOM(pos);
   return element ? sections.get(element) : undefined;
 };
+
+/** The outermost section around a position that the person has hidden, if any. */
+function outermostHidden(view: EditorView, pos: number): { pos: number; node: PmNode } | null {
+  let outer: { pos: number; node: PmNode } | null = null;
+  for (const around of sectionsAround(view, pos)) {
+    if (control(view, around.pos)?.hidden()) outer = around;
+  }
+  return outer;
+}
 
 /**
  * Keeps the caret out of hidden text (TT-1): a selection that lands in a hidden section shows

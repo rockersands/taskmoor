@@ -155,6 +155,85 @@ describe('a collapsible section while editing (NTF-014; ADR-120, TT-1)', () => {
     expect(title).toHaveFocus();
   });
 
+  describe('next to another section the person hid', () => {
+    const TWO = doc(
+      p('Before'),
+      section('Steps', p('Click save')),
+      section('Logs', p('Error 500')),
+      p('After'),
+    );
+    const toggleOf = (name: string) =>
+      screen.getByRole('button', { name: `Text of the section “${name}”` });
+    const titles = () => screen.getAllByRole('textbox', { name: 'Section title' });
+
+    it('[NTF-014] hiding one steps the caret over the hidden one, which stays hidden', async () => {
+      const user = userEvent.setup();
+      const { editor, changes } = renderEditor({ initial: TWO });
+      await user.click(toggleOf('Logs'));
+      act(() => {
+        editor.commands.setTextSelection(positionOf(editor, 'Click save') + 2);
+      });
+      await user.click(toggleOf('Steps'));
+      expect(toggleOf('Steps')).toHaveAttribute('aria-expanded', 'false');
+      expect(toggleOf('Logs')).toHaveAttribute('aria-expanded', 'false');
+      expect(editor.state.selection.$from.parent.textContent).toBe('After');
+      expect(changes).toEqual([]);
+    });
+
+    it('[NTF-014] Down and Escape in a hidden title go past the hidden one after it too', async () => {
+      const user = userEvent.setup();
+      const { editor, changes } = renderEditor({ initial: TWO });
+      await user.click(toggleOf('Logs'));
+      await user.click(toggleOf('Steps'));
+      await user.click(titles()[0] as HTMLElement);
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+      expect(toggleOf('Logs')).toHaveAttribute('aria-expanded', 'false');
+      expect(editor.state.selection.$from.parent.textContent).toBe('After');
+      await user.click(titles()[0] as HTMLElement);
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+      expect(toggleOf('Logs')).toHaveAttribute('aria-expanded', 'false');
+      await user.keyboard('x');
+      expect(changes.at(-1)?.content?.[3]).toMatchObject(p('xAfter'));
+      expect(toggleOf('Steps')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('[NTF-014] with nothing written after them, Down goes to the line after both', async () => {
+      const user = userEvent.setup();
+      const { editor, changes } = renderEditor({
+        initial: doc(section('Steps', p('Click save')), section('Logs', p('Error 500'))),
+      });
+      await user.click(toggleOf('Logs'));
+      await user.click(toggleOf('Steps'));
+      await user.click(titles()[0] as HTMLElement);
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+      await user.keyboard('Next');
+      // The editor keeps an empty line after a document's last section; the caret goes there.
+      expect(changes.at(-1)?.content?.map((n) => n.type)).toEqual([
+        'expand',
+        'expand',
+        'paragraph',
+      ]);
+      expect(changes.at(-1)?.content?.[2]).toMatchObject(p('Next'));
+      expect(toggleOf('Steps')).toHaveAttribute('aria-expanded', 'false');
+      expect(toggleOf('Logs')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('[NTF-014] Up in a title goes past a hidden one before it to the text before', async () => {
+      const user = userEvent.setup();
+      const { editor, changes } = renderEditor({ initial: TWO });
+      await user.click(toggleOf('Steps'));
+      await user.click(titles()[1] as HTMLElement);
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+      expect(toggleOf('Steps')).toHaveAttribute('aria-expanded', 'false');
+      await user.keyboard('!');
+      expect(changes.at(-1)?.content?.[0]?.content?.[0]?.text).toMatch(/!/);
+    });
+  });
+
   it('[NTF-014] the toggle works by keyboard, and in a document someone may only read', async () => {
     const user = userEvent.setup();
     renderEditor({ editable: false });

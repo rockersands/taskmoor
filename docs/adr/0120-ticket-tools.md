@@ -125,6 +125,8 @@ one waits on the user.
   keys, shows the text again. Down or Escape in the title of a hidden section go past it, onto a new
   paragraph when nothing follows; Enter shows it and goes in; Up goes to the text before. Up on the
   first line of a section's text goes to its title, and Shift+Tab from there to the toggle.
+- Wherever hiding or these keys move the caret, it steps over every other section the person hid,
+  so a run of hidden sections stays hidden: the caret lands in the next text that can be seen.
 
 ### TT-2: column widths in the editor
 

@@ -249,7 +249,8 @@ text still takes the others' changes, and the section then says **Changed while 
 never stays in hidden text: hiding moves it past the section, and going back into the text shows it
 again. In the title, Down or Escape goes past a hidden section (onto a new line when nothing
 follows it), Enter shows its text and goes in, and Up goes to the text before; Up on the first line
-of a section's text goes back to its title.
+of a section's text goes back to its title. On the way, the caret steps over any other section you
+hid, so it stays hidden.
 
 Columns are equal unless you give them widths: with the caret in a column, `/width` offers
 **Column widths**, such as a quarter and three quarters, for all of them at once. Columns stack on
