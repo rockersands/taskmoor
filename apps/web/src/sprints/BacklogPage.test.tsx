@@ -274,6 +274,8 @@ describe('planning on the backlog (M1-047)', () => {
   });
 
   it('[AGL-008] a finger drags a ticket by its grip, not by its row; a tap opens the grip’s menu', async () => {
+    // On a phone, where a finger is the pointer.
+    setViewportWidth(375);
     const user = userEvent.setup();
     const { client, calls } = counted();
     renderBacklog(client);

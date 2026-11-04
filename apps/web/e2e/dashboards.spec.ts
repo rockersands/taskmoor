@@ -60,6 +60,8 @@ test('[RPT-004] [RPT-005] a dashboard made, set up, shared and shown as a wallbo
   const settings = dashboard.getByRole('form', { name: 'Settings of Search results' });
   await settings.getByLabel('Query').fill(`summary ~ ${word}`);
   await settings.getByRole('button', { name: 'Apply' }).click();
+  // Apply checks the query with the server first: the form closes once the widget has it.
+  await expect(settings).toHaveCount(0);
   await dashboard.getByRole('button', { name: 'Save dashboard' }).click();
   await expect(dashboard.getByRole('status')).toHaveText('Saved.');
   const widget = dashboard.getByRole('article', { name: 'Search results' });
