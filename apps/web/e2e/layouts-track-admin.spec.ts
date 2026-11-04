@@ -73,6 +73,12 @@ async function visit(page: Page, hash: string) {
 
 const MAIN = 'Details, section 1: main column';
 
+/**
+ * The select of sets, by role: a bare getByLabel('Layout set') also finds the page's own section,
+ * which its heading "Layout sets" names, and so every option on the page.
+ */
+const setPicker = (page: Page) => page.getByRole('combobox', { name: 'Layout set', exact: true });
+
 test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and rules, and only its own', async ({
   page,
 }, testInfo) => {
@@ -144,7 +150,7 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
   await add.getByRole('button', { name: 'Add a layout set' }).click();
   await expect(page.getByText(`${name} was added.`)).toBeVisible();
   const editor = page.getByRole('form', { name: `Layouts of ${name}` });
-  await expect(page.getByLabel('Layout set').locator('option')).toHaveText([name]);
+  await expect(setPicker(page).locator('option')).toHaveText([name]);
   await expect(page.getByText(shared.name)).toHaveCount(0);
   await expect(page.getByText(`Elsewhere ${stamp}`)).toHaveCount(0);
 
@@ -230,7 +236,7 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
     page.getByRole('link', { name: `Layout sets of ${keys.mine} · Forms we run` }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(keys.theirs) })).toHaveCount(0);
-  await expect(page.getByLabel('Layout set')).toHaveCount(0);
+  await expect(setPicker(page)).toHaveCount(0);
   expect(await sideways(page)).toEqual([]);
   await visit(page, `#/manage/tracks/${theirs}/layouts`);
   await expect(

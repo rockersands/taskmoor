@@ -514,7 +514,7 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     return client;
   }
   const setOptions = () =>
-    within(screen.getByLabelText('Layout set'))
+    within(screen.getByRole('combobox', { name: 'Layout set' }))
       .getAllByRole('option')
       .map((o) => o.textContent);
 
@@ -588,7 +588,7 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     ).toBeVisible();
     // SHOP is theirs but shared; LAB is not theirs. No set at all is shown here.
     expect(screen.queryByRole('link', { name: /SHOP|LAB/ })).toBeNull();
-    expect(screen.queryByLabelText('Layout set')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Layout set' })).toBeNull();
     expect(screen.queryByText(/Default layouts/)).toBeNull();
     expect(client.previews).toEqual([]);
   });
