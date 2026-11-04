@@ -5922,6 +5922,7 @@ export const messagesEn = {
   'ticketTools.checklists.itemText': 'Item',
   'ticketTools.checklists.itemAdded': 'Added: {text}',
   'ticketTools.checklists.itemRemoved': 'Removed: {text}',
+  'ticketTools.checklists.drag': 'Drag to move',
   'ticketTools.checklists.itemMoved': 'Moved: {text}',
   'ticketTools.checklists.stateOf': 'State of {text}',
   'ticketTools.checklists.edit': 'Edit {text}',

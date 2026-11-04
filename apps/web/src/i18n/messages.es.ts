@@ -6058,6 +6058,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.itemText': 'Elemento',
   'ticketTools.checklists.itemAdded': 'Añadido: {text}',
   'ticketTools.checklists.itemRemoved': 'Quitado: {text}',
+  'ticketTools.checklists.drag': 'Arrastra para mover',
   'ticketTools.checklists.itemMoved': 'Movido: {text}',
   'ticketTools.checklists.stateOf': 'Estado de {text}',
   'ticketTools.checklists.edit': 'Editar {text}',

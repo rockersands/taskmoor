@@ -309,6 +309,44 @@
   font-size: var(--font-size-200);
 }
 
+/*
+ * An item's grip (TT-5): a mouse or a finger drags the item by it. The item dragged fades, and a
+ * line shows where it would land, before or after the item under the pointer.
+ */
+.checklist-grip {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  border-radius: var(--radius-1);
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.checklist-grip:hover {
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+.checklist-items[data-dragging] {
+  cursor: grabbing;
+}
+
+.checklist-item[data-dragged] {
+  opacity: 0.5;
+}
+
+.checklist-item[data-landing="before"] {
+  box-shadow: 0 -3px 0 var(--color-focus);
+}
+
+.checklist-item[data-landing="after"] {
+  box-shadow: 0 3px 0 var(--color-focus);
+}
+
 .checklist-form {
   display: flex;
   flex-wrap: wrap;
@@ -348,9 +386,15 @@
     min-height: var(--hit-target-touch);
   }
 
-  /* A subticket's status menu (TT-6) and its items. */
+  /* A subticket's status menu (TT-6) and its items, and a checklist item's grip (TT-5). */
   .ticket-child-status-menu .status-menu-button,
   .ticket-child-status-menu .user-menu-item {
+    min-height: var(--hit-target-touch);
+  }
+
+  .checklist-grip {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
   }
 
