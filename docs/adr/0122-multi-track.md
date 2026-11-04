@@ -295,7 +295,8 @@ take on.
   `not_a_period_start`). The plan row is locked while it writes, so two editors never
   interleave. One `plan.capacity_set` event lists every change with its amount and note before
   and after; nothing changed records nothing. Audited, as `plan.updated` is: capacity is
-  configuration others see.
+  configuration others see. A note is in the event as typed, as a plan's description is, so
+  the audit log keeps it after an erasure deletes the row: notes should say "Leave", not why.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
 - Both routes are internal in the API document, as the other plan routes. Token scopes: read for
