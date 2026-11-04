@@ -363,7 +363,11 @@ Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b
   too (T-162b, below), and with them the follower learned to scroll sideways: the pointer within
   56 px of the left or right edge of the nearest area that scrolls sideways (a board's columns)
   scrolls it, faster the nearer, in physical left and right whatever the writing direction. A page
-  never scrolls sideways (ADR-033), so where no such area holds the press nothing does.
+  never scrolls sideways (ADR-033), so where no such area holds the press nothing does. They also
+  made a lost release matter, since a mouse presses them from almost anywhere: the mouse let go in
+  another window, or under the browser's own menu, sends the page no `pointerup`. A later move with
+  no button held, or a new press from the same pointer, ends the press with nothing moved and is
+  never read as a drop. A finger is not asked: the browser always ends or takes back a touch.
 - **One grip.** `shell/MoveMenu.tsx` is the grip the Tracks page's groups had (CORE-034), moved to
   the shell and shared: a button a mouse or a finger drags, which pressed opens a menu of the same
   moves, with Alt and the arrow keys stepping it. It is 44 px under a coarse pointer and carries
@@ -424,7 +428,10 @@ Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b
   than drawn, and only the card in hand and the cells under the pointer change.
 - **Calendar entries (T-162b).** An entry is its link and a grip at its end: over the link's end
   under a mouse, as a card's pencil and grip are, so a narrow day keeps its width for the ticket's
-  name, and beside the link on a touch screen. A mouse drags the link itself; a finger or a mouse
+  name. On a touch screen it always shows at 44 px: beside the link where the day has room for both,
+  and on its own row under the link where it has not, as in the seven columns of a tablet or a
+  landscape phone, so the name keeps the day's width there too and an entry grows taller instead.
+  A mouse drags the link itself; a finger or a mouse
   drags the grip, and elsewhere a finger scrolls the page. The grip,
   pressed, opens a menu of the moves Alt and the arrows make: one day earlier or later, one week
   earlier or later. That is also the way to reschedule with one finger and no drag at all, which
@@ -441,8 +448,9 @@ Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b
 - **Tests for T-162b.** `BoardPage.test.tsx`, `BoardCell.test.tsx` and `CalendarPage.test.tsx`
   drive pointer events by mouse and by finger (a finger on a card or an entry moves nothing, on the
   grip it drags), Escape, a drop where it was, and a drag over a 5,000-card board drawing only the
-  card in hand; `pointerDrag.test.ts` the sideways scrolling; the `CardInHand`, `CardDropped`,
-  `EntryInHand`, `EntryDropped` and `EntryGripMenu` stories run axe in both skins; and
+  card in hand; `pointerDrag.test.ts` the sideways scrolling and a lost release; the `CardInHand`,
+  `CardDropped`, `EntryInHand`, `EntryDropped`, `EntryGripMenu` and `EntryOnATouchTablet` stories
+  run axe in both skins, the last measuring the entry at a day's width with the touch rules on; and
   `e2e/board-drag.spec.ts` and `e2e/list-calendar.spec.ts` drag with a real finger through the
   DevTools protocol on the mobile project (to a column off the screen, the columns scrolling along;
   to the next day), and with a mouse or the grip's menu on the desktop one. `e2e/board-large.spec.ts`

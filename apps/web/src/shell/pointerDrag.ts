@@ -80,6 +80,11 @@ const offsetOf = (scroller: Element, axis: Axis) =>
  *   screen can be reached with a finger, whose drag cannot scroll the page itself;
  * - the page carries `is-pointer-dragging`, so no text is selected on the way.
  *
+ * A release the page never heard of ends the press with nothing moved: a mouse let go in another
+ * window, or under the browser's own menu. The next move shows no button held, or the next press
+ * comes from the same pointer, and neither is read as a drop. A finger has no such gap: the browser
+ * always says its touch ended or was taken back, and it reports a button held while it touches.
+ *
  * The click a drag ends with belongs to the drag and is swallowed: a link or a button under the
  * drop does nothing. A handle that a finger drags needs `touch-action: none`, or the browser
  * scrolls instead. Returns a function that stops following, for a page that goes mid-drag.
@@ -89,6 +94,7 @@ export function followPointerDrag(
   handlers: PointerDragHandlers,
 ): () => void {
   const pointerId = event.pointerId;
+  const byTouch = event.pointerType === 'touch';
   const origin = { x: event.clientX, y: event.clientY };
   const pressed = event.target instanceof Element ? event.target : null;
   const scrollers = { y: scrollerOf(pressed, 'y'), x: scrollerOf(pressed, 'x') };
@@ -126,6 +132,7 @@ export function followPointerDrag(
   const stop = (then?: () => void) => {
     if (!following) return;
     following = false;
+    window.removeEventListener('pointerdown', onPress, true);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onCancel);
@@ -150,8 +157,24 @@ export function followPointerDrag(
     window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
   };
 
+  /** The release never reached the page: the press is over, nothing moves, and no click is ours. */
+  const releaseMissed = () =>
+    stop(() => {
+      if (dragging && !cancelled) handlers.cancel();
+    });
+
+  /** The same pointer pressing again has let go unheard; this new press is the page's own. */
+  function onPress(e: PointerEvent) {
+    if (e.pointerId === pointerId) releaseMissed();
+  }
+
   function onMove(e: PointerEvent) {
-    if (e.pointerId !== pointerId || cancelled) return;
+    if (e.pointerId !== pointerId) return;
+    if (!byTouch && e.buttons === 0) {
+      releaseMissed();
+      return;
+    }
+    if (cancelled) return;
     at = { x: e.clientX, y: e.clientY };
     if (!dragging) {
       if (Math.hypot(at.x - origin.x, at.y - origin.y) < DRAG_START) return;
@@ -194,6 +217,8 @@ export function followPointerDrag(
     handlers.cancel();
   }
 
+  // On the way down, ahead of the page, so the page can begin the new press. This press is past it.
+  window.addEventListener('pointerdown', onPress, true);
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onCancel);

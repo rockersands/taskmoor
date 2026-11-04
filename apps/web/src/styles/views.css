@@ -235,8 +235,10 @@
  * An entry is its link and its grip (T-162b; ADR-114, section 12). A mouse drags the link, so its
  * text is not selected on the way; a finger drags the grip, which a finger elsewhere does not, so
  * the page still scrolls. The grip shows over the end of the link with the pointer or the keyboard
- * on its entry, so a narrow day keeps its whole width for the ticket's name; on a touch screen,
- * where nothing hovers, it always shows, beside the link.
+ * on its entry, so a narrow day keeps its whole width for the ticket's name. On a touch screen,
+ * where nothing hovers, it always shows, at full finger size: beside the link where the day has
+ * room for both, and on its own row under the link where it has not (a tablet's seven columns), so
+ * the name keeps the day's whole width there too.
  */
 .calendar-entry {
   position: relative;
@@ -324,7 +326,14 @@
 
 @media (pointer: coarse) {
   .calendar-entry {
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 2px;
+  }
+
+  /* The least a name needs beside the grip; a day with less sends the grip under it. */
+  .calendar-entry .calendar-chip {
+    flex-basis: 6rem;
   }
 
   .calendar-grip .move-grip-handle {

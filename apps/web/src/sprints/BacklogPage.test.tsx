@@ -165,8 +165,8 @@ describe('planning on the backlog (M1-047)', () => {
     const under = vi.spyOn(document, 'elementFromPoint').mockReturnValue(to);
     const point = { pointerId: 3, pointerType, isPrimary: true };
     fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 200 });
-    fireEvent.pointerMove(window, { ...point, clientX: 40, clientY: y });
-    fireEvent.pointerMove(window, { ...point, clientX: 80, clientY: y });
+    fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 40, clientY: y });
+    fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 80, clientY: y });
     if (up) fireEvent.pointerUp(window, { ...point, clientX: 80, clientY: y });
     return under;
   }

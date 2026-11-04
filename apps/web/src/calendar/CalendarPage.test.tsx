@@ -32,8 +32,8 @@ function pointerDrag(
   const under = vi.spyOn(document, 'elementFromPoint').mockReturnValue(over);
   const point = { pointerId: 8, pointerType, isPrimary: true };
   fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 200 });
-  fireEvent.pointerMove(window, { ...point, clientX: 40, clientY: 300 });
-  fireEvent.pointerMove(window, { ...point, clientX: 80, clientY: 300 });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 40, clientY: 300 });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 80, clientY: 300 });
   const letGo = () => {
     fireEvent.pointerUp(window, { ...point, clientX: 80, clientY: 300 });
     under.mockRestore();
@@ -91,6 +91,29 @@ describe('a track’s calendar (M1-049)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('CAL-2 stays where it was.');
     pointerDrag(chip, null);
     expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-12');
+  });
+
+  it('[AGL-017] a mouse let go where the page cannot hear it moves nothing, and the next press drags', async () => {
+    const client = renderCalendar();
+    const chip = await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    const target = day(/^Nov 16, 2026/);
+    const letGo = pointerDrag(chip, target, { up: false });
+    expect(chip.closest('.calendar-entry')).toHaveClass('is-dragging');
+    // Back on the page with no button held, then an ordinary click on another day.
+    fireEvent.pointerMove(window, {
+      pointerId: 8,
+      pointerType: 'mouse',
+      buttons: 0,
+      clientX: 80,
+      clientY: 300,
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('CAL-2 stays where it was.');
+    expect(target).not.toHaveClass('is-drop-target');
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    letGo();
+    expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-12');
+    pointerDrag(chip, target);
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-16'));
   });
 
   it('[AGL-017] a finger drags an entry by its grip, not by its link; a tap opens its menu', async () => {

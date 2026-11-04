@@ -103,6 +103,61 @@ export const EntryInHand: Story = {
   },
 };
 
+/**
+ * This browser's pointer is a mouse, so the page's touch rules are put in force by hand: the rules
+ * inside its `(pointer: coarse)` blocks, as they are written. Returns how to take them away.
+ */
+function asOnATouchScreen(): () => void {
+  const style = document.createElement('style');
+  style.textContent = Array.from(document.styleSheets)
+    .flatMap((sheet) => Array.from(sheet.cssRules))
+    .filter(
+      (rule): rule is CSSMediaRule =>
+        rule instanceof CSSMediaRule && rule.media.mediaText.includes('pointer: coarse'),
+    )
+    .flatMap((rule) => Array.from(rule.cssRules, (inner) => inner.cssText))
+    .join('\n');
+  document.head.append(style);
+  return () => style.remove();
+}
+
+/**
+ * On a touch screen with seven narrow days (T-162b): 63 px a day, a portrait tablet with the
+ * sidebar open. The grip keeps its full finger size on a row of its own, and the name keeps the
+ * day's whole width. A day with room, as a phone's single column, has the grip beside the name.
+ */
+export const EntryOnATouchTablet: Story = {
+  args: { client: fakeCalendarClient() },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
+    const chip = canvas.getByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    const grid = canvasElement.querySelector<HTMLElement>('.calendar-grid');
+    const entry = chip.parentElement;
+    if (!grid || !entry) throw new Error('the calendar draws its grid and the entry');
+    const boxes = () => ({
+      entry: entry.getBoundingClientRect(),
+      chip: chip.getBoundingClientRect(),
+      grip: grip.getBoundingClientRect(),
+    });
+
+    grid.style.gridTemplateColumns = 'repeat(7, 320px)';
+    const roomy = boxes();
+    await expect(roomy.grip.width).toBe(44);
+    await expect(roomy.grip.left).toBeGreaterThanOrEqual(roomy.chip.right);
+    await expect(roomy.grip.top).toBe(roomy.chip.top);
+
+    grid.style.gridTemplateColumns = 'repeat(7, 63px)';
+    const narrow = boxes();
+    await expect(narrow.chip.width).toBe(narrow.entry.width);
+    await expect(narrow.grip.top).toBeGreaterThanOrEqual(narrow.chip.bottom);
+    await expect(narrow.grip.width).toBe(44);
+    await expect(narrow.grip.height).toBe(44);
+    await expect(narrow.grip.right).toBeLessThanOrEqual(narrow.entry.right);
+  },
+};
+
 /** Let go there: CAL-2 is due on the 16th. */
 export const EntryDropped: Story = {
   args: { client: fakeCalendarClient() },

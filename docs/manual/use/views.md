@@ -113,9 +113,9 @@ To reschedule a ticket, drag it to another day:
   first.
 
 With a mouse, drag the entry itself. Each entry also has a grip, six dots at its end, which shows
-when the pointer or the keyboard is on the entry and always on a touch screen: with a finger, drag
-the entry by its grip, since a finger elsewhere scrolls the page. While you drag, the day it would
-land on is outlined and a label with the ticket follows the pointer; near the top or bottom of the
+when the pointer or the keyboard is on the entry and always on a touch screen, where it sits under
+the entry on a day too narrow to hold both: with a finger, drag the entry by its grip, since a
+finger elsewhere scrolls the page. While you drag, the day it would land on is outlined and a label with the ticket follows the pointer; near the top or bottom of the
 screen the page scrolls. **Escape** puts it back, and so does letting go on its own day or outside
 the calendar.
 

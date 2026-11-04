@@ -43,8 +43,8 @@ function pointerDrag(
   const under = vi.spyOn(document, 'elementFromPoint').mockReturnValue(over);
   const point = { pointerId: 5, pointerType, isPrimary: true };
   fireEvent.pointerDown(from, { ...point, button, clientX: 10, clientY: 200 });
-  fireEvent.pointerMove(window, { ...point, clientX: 40, clientY: y });
-  fireEvent.pointerMove(window, { ...point, clientX: 80, clientY: y });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 40, clientY: y });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 80, clientY: y });
   const letGo = () => {
     fireEvent.pointerUp(window, { ...point, clientX: 80, clientY: y });
     under.mockRestore();
@@ -773,6 +773,29 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     expect(doing()).not.toHaveClass('is-drop-target');
     expect(document.querySelector('.drag-ghost')).toBeNull();
     expect(client.moves).toEqual([]);
+  });
+
+  it('[AGL-002] a mouse let go where the page cannot hear it moves nothing, and the next press drags', async () => {
+    const client = renderBoard();
+    await page();
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    // Back on the page with no button held, then an ordinary click over another column.
+    fireEvent.pointerMove(window, {
+      pointerId: 5,
+      pointerType: 'mouse',
+      buttons: 0,
+      clientX: 80,
+      clientY: 10,
+    });
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
+    expect(doing()).not.toHaveClass('is-drop-target');
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    letGo();
+    expect(client.moves).toEqual([]);
+    pointerDrag(linkOf('SHOP-19'), doing());
+    await waitFor(() => expect(client.moves).toHaveLength(1));
   });
 
   it('[AGL-002] a finger drags a card by its grip, not by the card; a tap opens the Move menu', async () => {

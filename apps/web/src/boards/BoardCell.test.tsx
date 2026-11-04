@@ -45,7 +45,7 @@ function pointerDrag(from: Element, over: Element[], up = true) {
   fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 200 });
   for (const [i, element] of over.entries()) {
     under.mockReturnValue(element);
-    fireEvent.pointerMove(window, { ...point, clientX: 40 + i * 40, clientY: 10 });
+    fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 40 + i * 40, clientY: 10 });
   }
   const letGo = () => {
     fireEvent.pointerUp(window, { ...point, clientX: 40, clientY: 10 });

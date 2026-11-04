@@ -18,11 +18,19 @@ function press(pointerType: 'mouse' | 'touch' = 'mouse') {
   Object.defineProperty(down, 'target', { value: handle });
   Object.defineProperty(down, 'pointerType', { value: pointerType });
   const stop = followPointerDrag(down, handlers);
-  const at = (x: number, y: number, pointerId = 7) => ({ clientX: x, clientY: y, pointerId });
+  // While it is down, a pointer reports a button held.
+  const at = (x: number, y: number, pointerId = 7) => ({
+    clientX: x,
+    clientY: y,
+    pointerId,
+    buttons: 1,
+  });
   return { handle, calls, stop, at };
 }
 
-afterEach(() => {
+afterEach(async () => {
+  // A drag that ended takes its click until the next task: not into the next test.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   document.body.replaceChildren();
   document.body.className = '';
   vi.unstubAllGlobals();
@@ -117,7 +125,7 @@ describe('a press that may become a drag (T-162)', () => {
       drop: () => calls.push('drop'),
       cancel: () => calls.push('cancel'),
     });
-    const at = (x: number) => ({ clientX: x, clientY: 150, pointerId: 4 });
+    const at = (x: number) => ({ clientX: x, clientY: 150, pointerId: 4, buttons: 1 });
     // At the right edge: each frame scrolls right, and what is under the still pointer is asked again.
     fireEvent.pointerMove(window, at(395));
     frames.shift()?.(0);
@@ -144,6 +152,72 @@ describe('a press that may become a drag (T-162)', () => {
     expect(frames).toHaveLength(0);
     fireEvent.pointerUp(window, at(window.innerWidth - 2, 300));
     expect(calls.at(-2)).toBe(`drop ${window.innerWidth - 2},300`);
+  });
+
+  it('[NFR-005] a mouse that let go unheard, in another window, cancels on its next move and drops nothing', () => {
+    const { calls, at } = press();
+    fireEvent.pointerMove(window, at(40, 40));
+    // Back on the page with no button held: the drag is over, not carried along.
+    fireEvent.pointerMove(window, { ...at(90, 90), buttons: 0 });
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'cancel', 'end']);
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+    // The next ordinary click is that click: it moves nothing, and it goes through.
+    const target = document.body.appendChild(document.createElement('button'));
+    const clicked = vi.fn();
+    target.addEventListener('click', clicked);
+    fireEvent.pointerDown(window, at(90, 90));
+    fireEvent.pointerUp(window, at(90, 90));
+    fireEvent.click(target);
+    expect(clicked).toHaveBeenCalledOnce();
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'cancel', 'end']);
+  });
+
+  it('[NFR-005] a mouse that let go unheard before it dragged never starts a drag', () => {
+    const { calls, at } = press();
+    fireEvent.pointerMove(window, { ...at(90, 90), buttons: 0 });
+    fireEvent.pointerMove(window, at(120, 120));
+    expect(calls).toEqual(['end']);
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+
+  it('[NFR-005] a new press by the same mouse with no move between cancels, before the page sees it', () => {
+    const { handle, calls, at } = press();
+    fireEvent.pointerMove(window, at(40, 40));
+    // The page's own handler on the new press finds the old one over, so it can begin another.
+    const seen: string[] = [];
+    handle.addEventListener('pointerdown', () => seen.push(calls.join(' | ')));
+    fireEvent.pointerDown(handle, at(40, 40));
+    fireEvent.pointerUp(window, at(40, 40));
+    expect(seen).toEqual(['start 40,40 | move 40,40 | cancel | end']);
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'cancel', 'end']);
+  });
+
+  it('[NFR-005] another pointer pressing leaves the drag under way', () => {
+    const { calls, at } = press();
+    fireEvent.pointerMove(window, at(40, 40));
+    fireEvent.pointerDown(window, at(40, 40, 9));
+    fireEvent.pointerUp(window, at(50, 50));
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'drop 50,50', 'end']);
+  });
+
+  it('[NFR-005] Escape, then a release unheard: the press is over and the next click goes through', () => {
+    const { handle, calls, at } = press();
+    fireEvent.pointerMove(window, at(40, 40));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.pointerMove(window, { ...at(90, 90), buttons: 0 });
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'cancel', 'end']);
+    fireEvent.pointerUp(window, at(90, 90));
+    const clicked = vi.fn();
+    handle.addEventListener('click', clicked);
+    fireEvent.click(handle);
+    expect(clicked).toHaveBeenCalledOnce();
+  });
+
+  it('[NFR-007] a finger is not asked about buttons: it stays in hand', () => {
+    const { calls, at } = press('touch');
+    fireEvent.pointerMove(window, { ...at(40, 40), buttons: 0 });
+    fireEvent.pointerUp(window, { ...at(50, 50), buttons: 0 });
+    expect(calls).toEqual(['start 40,40', 'move 40,40', 'drop 50,50', 'end']);
   });
 
   it('[NFR-005] stops following when the page goes mid-drag', () => {
