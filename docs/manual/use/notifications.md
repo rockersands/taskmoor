@@ -58,7 +58,9 @@ running a track](../admin/invitations.md#tracks-you-run)). Where it is on:
 - changes close together on one ticket come as one notice that counts them: "Ana made 5 changes to
   checklists", or "Ana and 1 more made 7 changes to checklists" when others joined in. Changes keep
   joining that notice for a couple of minutes from the first (your administrator's batch window for
-  email), until you read it, or until 100 changes; the next change after that starts a new notice;
+  email), until you read or snooze it, or until 100 changes; the next change after that starts a
+  new notice. Reading a notice in the inbox keeps the changes it counts out of your email, if the
+  email has not gone yet;
 - a notice names the ticket and who made the changes, never a checklist's name or an item's words.
   Open the ticket to see them; its [history](tickets.md#history) has each change.
 

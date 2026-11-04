@@ -23,6 +23,12 @@ import { CHANNELS } from './model';
  *   is unread, not snoozed and not yet emailed, for the batch window from its first change, and
  *   up to `MAX_NOTICE_CHANGES` changes; after that the next change starts a new one. The notice
  *   counts its changes and keeps who made them.
+ * - **An email stays within one inbox notice**, so that reading the notice settles every email it
+ *   covers (NTF-003 (2)). The mailer may send an email in mid-run, with an earlier notification
+ *   about the ticket: the inbox notice goes on and the next change starts another email, so one
+ *   notice can cover several emails. The reverse never happens: when the inbox notice closes, by
+ *   a snooze or its window, the email closes with it, even with room left, and the next change
+ *   starts both afresh.
  *
  * Delivery is at least once: a notice lists the events it holds, so an event delivered twice
  * counts once. Changes to one ticket are written one at a time (an advisory lock on the ticket),
@@ -182,21 +188,45 @@ export async function notifyChecklist(
         sql<boolean>`(created_at > ${opensAfter} OR domain_event_id = ${event.id}::bigint
           OR payload->'events' ? ${event.id}::text)`,
       )
+      // Inbox rows first, as a reader takes them (the notice, then its emails), so the two never
+      // wait on each other; newest first within a channel.
+      .orderBy('channel', 'desc')
       .orderBy('id', 'desc')
       .forUpdate()
       .execute();
     const holds = (row: (typeof mine)[number]) =>
       row.domain_event_id === event.id ||
       (Array.isArray(row.payload.events) && row.payload.events.includes(event.id));
+    const eventsOf = (row: (typeof mine)[number]): unknown[] =>
+      Array.isArray(row.payload.events) ? row.payload.events : [row.domain_event_id];
+    /** Whether an inbox notice holds every change an email does. */
+    const covers = (inbox: (typeof mine)[number], email: (typeof mine)[number]) =>
+      eventsOf(email).every((id) => eventsOf(inbox).includes(id));
     const fresh: typeof wanted = [];
     const extend: string[] = [];
-    for (const want of wanted) {
-      const rows = mine.filter((r) => r.user_id === want.userId && r.channel === want.channel);
+    for (const userId of userIds) {
+      const rows = mine.filter((r) => r.user_id === userId);
       // Delivered before: nothing more to write.
       if (rows.some(holds)) continue;
-      const open = rows.find((r) => r.open);
-      if (open) extend.push(open.id);
-      else fresh.push(want);
+      const channels = wanted.filter((w) => w.userId === userId).map((w) => w.channel);
+      const inboxWanted = channels.includes('inbox');
+      const openOn = (channel: NotificationChannel) =>
+        channels.includes(channel) ? rows.find((r) => r.channel === channel && r.open) : undefined;
+      const inbox = openOn('inbox');
+      if (channels.includes('email')) {
+        const email = openOn('email');
+        // The email goes on only inside the inbox notice this change joins; with no inbox for
+        // this change, only if no inbox notice still in its window holds the email's changes.
+        const joins =
+          email !== undefined &&
+          (inboxWanted
+            ? inbox !== undefined && covers(inbox, email)
+            : !rows.some((r) => r.channel === 'inbox' && covers(r, email)));
+        if (joins) extend.push(email.id);
+        else fresh.push({ userId, channel: 'email' });
+      }
+      if (inbox) extend.push(inbox.id);
+      else if (inboxWanted) fresh.push({ userId, channel: 'inbox' });
     }
     const touchedInbox = new Set<number>();
     if (extend.length > 0) {

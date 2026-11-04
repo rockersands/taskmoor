@@ -99,7 +99,12 @@ track's administrators turn on, off by default.
   next change after that starts a new one. It counts its changes and keeps who made them (up to 50
   people), so the inbox says "Ana and 2 more made 7 changes to checklists" and the email one line
   of the same. Reading the notice in the inbox marks its email read too (NTF-003 (2)), so both
-  channels start afresh together.
+  channels start afresh together. The mailer can send a person's email in mid-run, with an earlier
+  notification about the ticket; the inbox notice goes on and the next change starts another email,
+  so one notice can cover several emails, and reading it marks all of them read, found by the
+  events the notice lists. The reverse never happens, so a read never has to split an email: when
+  an inbox notice closes, by a snooze or its window, the email closes with it, and the next change
+  starts both. A snoozed notice's email still goes out, as for any notification.
 - **At least once, counted once.** A notice lists the events it holds; an event delivered twice
   finds itself there and writes nothing. One ticket's notices are written one change at a time
   (an advisory lock on the ticket), so two workers never both start a notice for the same run.

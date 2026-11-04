@@ -370,6 +370,213 @@ describe('checklist notices (NTF-015)', () => {
     ]);
   });
 
+  /** The mailer's run at a given time; what it sent about one ticket to one person. */
+  async function mailAt(at: Date) {
+    const sent: OutgoingEmail[] = [];
+    const run = await deliverEmail(database.db, new Authorizer(database.db), {
+      transport: {
+        send: async (email) => {
+          sent.push(email);
+          return { messageId: null };
+        },
+      },
+      from: 'Taskmoor <taskmoor@example.com>',
+      publicUrl: 'https://taskmoor.example.com',
+      now: at,
+    });
+    expect(run.failed).toBe(0);
+    return (who: Person, key: string) =>
+      sent.filter((e) => e.to === `${who}@example.com` && e.text.includes(key));
+  }
+  const later = () => new Date(Date.now() + 10 * MINUTE);
+  /** Ticket notifications from before the run, nearly due, so the mailer comes in mid-run. */
+  const nearlyDue = (ticketId: number) =>
+    database.db
+      .updateTable('notification')
+      .set({ created_at: new Date(Date.now() - 110 * 1000) })
+      .where('ticket_id', '=', ticketId)
+      .where('event', '!=', CHECKLIST_EVENT)
+      .execute();
+  const noticesOf = async (who: Person, ticketId: number) =>
+    (await notices(ticketId)).filter((n) => n.who === who);
+  const emailReads = async (who: Person, ticketId: number) =>
+    (
+      await database.db
+        .selectFrom('notification')
+        .select('read_at')
+        .where('ticket_id', '=', ticketId)
+        .where('event', '=', CHECKLIST_EVENT)
+        .where('user_id', '=', users[who].id)
+        .where('channel', '=', 'email')
+        .orderBy('id')
+        .execute()
+    ).map((r) => r.read_at !== null);
+  const readItem = async (who: Person, id: string, read = true) => {
+    const res = await as(who, { method: 'PATCH', url: `/api/v1/inbox/${id}`, payload: { read } });
+    expect(res.statusCode, res.body).toBe(200);
+  };
+  const inboxRow = (rows: Awaited<ReturnType<typeof noticesOf>>, at = 0) =>
+    rows.filter((r) => r.channel === 'inbox')[at]?.id as string;
+
+  it('[NTF-003] (2) reading a notice that outlived a sent email keeps the next email from going', async () => {
+    const ticket = await followedTicket('Mail in mid-run');
+    await nearlyDue(ticket.id);
+    const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two']);
+    await deliver();
+    // The mailer comes when the earlier notification is due, and takes the first change along.
+    const first = await mailAt(new Date(Date.now() + 15 * 1000));
+    expect(first('finn', ticket.key).map((e) => /ana changed a checklist/.test(e.text))).toEqual([
+      true,
+    ]);
+    await tick('ana', ticket.id, list.id, list.items[0]?.id as number);
+    await deliver();
+    // One inbox item counts both changes (NTF-015 (2)); a second email holds the second.
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['inbox', 2],
+      ['email', 1],
+    ]);
+    expect((await inboxOf('finn')).filter((i) => i.ticket?.key === ticket.key)).toEqual([
+      expect.objectContaining({ checklist: { changes: 2, others: 0 } }),
+    ]);
+
+    // Finn reads the item, and so its two emails. Uma marks all read, the same; then she unreads
+    // the item, and her email is due again.
+    await readItem('finn', inboxRow(finn));
+    expect(await emailReads('finn', ticket.id)).toEqual([true, true]);
+    const all = await as('uma', {
+      method: 'POST',
+      url: '/api/v1/inbox/read',
+      payload: { event: CHECKLIST_EVENT },
+    });
+    expect(all.statusCode, all.body).toBe(200);
+    expect(await emailReads('uma', ticket.id)).toEqual([true, true]);
+    await readItem('uma', inboxRow(await noticesOf('uma', ticket.id)), false);
+    expect(await emailReads('uma', ticket.id)).toEqual([false, false]);
+
+    const mailed = await mailAt(later());
+    expect(mailed('finn', ticket.key)).toEqual([]);
+    expect(mailed('uma', ticket.key).map((e) => /ana changed a checklist/.test(e.text))).toEqual([
+      true,
+    ]);
+  });
+
+  it('[NTF-003] (2) a snoozed notice closes its email, so reading the next says only what was read', async () => {
+    const ticket = await followedTicket('Snoozed run');
+    await addList('ana', ticket.id, 'First', []);
+    await deliver();
+    const snooze = { snoozedUntil: new Date(Date.now() + 60 * MINUTE).toISOString() };
+    for (const who of ['finn', 'uma'] as const) {
+      const id = inboxRow(await noticesOf(who, ticket.id));
+      const res = await as(who, { method: 'PATCH', url: `/api/v1/inbox/${id}`, payload: snooze });
+      expect(res.statusCode, res.body).toBe(200);
+    }
+    await addList('ana', ticket.id, 'Second', []);
+    await deliver();
+    // A pair for each change: neither email reaches across the two notices.
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['inbox', 1],
+      ['email', 1],
+      ['inbox', 1],
+    ]);
+    expect(finn[0]?.payload.events).toEqual(finn[1]?.payload.events);
+    expect(finn[2]?.payload.events).toEqual(finn[3]?.payload.events);
+
+    // Finn reads the second: the snoozed first is still unread, and its email still goes alone.
+    await readItem('finn', inboxRow(finn, 1));
+    expect(await emailReads('finn', ticket.id)).toEqual([false, true]);
+    // Uma reads both: nothing about the checklists goes to her.
+    const uma = await noticesOf('uma', ticket.id);
+    await readItem('uma', inboxRow(uma, 1));
+    await readItem('uma', inboxRow(uma, 0));
+    expect(await emailReads('uma', ticket.id)).toEqual([true, true]);
+
+    const mailed = await mailAt(later());
+    const toFinn = mailed('finn', ticket.key);
+    expect(toFinn).toHaveLength(1);
+    expect(toFinn[0]?.text).toContain('- ana changed a checklist');
+    expect(toFinn[0]?.text).not.toContain('2 changes');
+    expect(mailed('uma', ticket.key).some((e) => /checklist/.test(e.text))).toBe(false);
+  });
+
+  it('[NTF-003] (2) an email still open when its inbox notice ages out does not take the next change', async () => {
+    const ticket = await followedTicket('Window passed');
+    await nearlyDue(ticket.id);
+    const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two']);
+    await deliver();
+    await mailAt(new Date(Date.now() + 15 * 1000));
+    await tick('ana', ticket.id, list.id, list.items[0]?.id as number);
+    await deliver();
+    // The inbox notice's window ends; the second email, younger, still has room.
+    const before = await noticesOf('finn', ticket.id);
+    await database.db
+      .updateTable('notification')
+      .set({ created_at: new Date(Date.now() - 10 * MINUTE) })
+      .where('ticket_id', '=', ticket.id)
+      .where('event', '=', CHECKLIST_EVENT)
+      .where('channel', '=', 'inbox')
+      .execute();
+    await tick('ana', ticket.id, list.id, list.items[1]?.id as number);
+    await deliver();
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['inbox', 2],
+      ['email', 1],
+      ['email', 1],
+      ['inbox', 1],
+    ]);
+    expect(finn[2]?.id).toBe(before[2]?.id);
+    // Reading the newest settles its email only; the older one's email still goes.
+    await readItem('finn', inboxRow(finn, 1));
+    expect(await emailReads('finn', ticket.id)).toEqual([false, false, true]);
+    const toFinn = (await mailAt(later()))('finn', ticket.key);
+    expect(toFinn).toHaveLength(1);
+    expect(toFinn[0]?.text).toContain('- ana changed a checklist');
+  });
+
+  it('[NTF-003] (2) a channel turned on or off in mid-run starts afresh, so read and email still agree', async () => {
+    const setInbox = async (who: Person, inbox: boolean) => {
+      const res = await as(who, {
+        method: 'PATCH',
+        url: '/api/v1/account/notification-preferences',
+        payload: { events: { [CHECKLIST_EVENT]: { inbox } } },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+    };
+    const ticket = await followedTicket('Choice changes');
+    await addList('ana', ticket.id, 'First', []);
+    await deliver();
+    await setInbox('gil', true);
+    await setInbox('finn', false);
+    await addList('ana', ticket.id, 'Second', []);
+    await deliver();
+    // Gil had only an email and now takes the inbox too: a new pair, his first email left alone.
+    const gil = await noticesOf('gil', ticket.id);
+    expect(gil.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['email', 1],
+      ['inbox', 1],
+    ]);
+    await readItem('gil', inboxRow(gil));
+    expect(await emailReads('gil', ticket.id)).toEqual([false, true]);
+    // Finn stops taking the inbox with a notice still open: his next email is apart from it, and
+    // reading that notice settles only the email it holds.
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['inbox', 1],
+      ['email', 1],
+    ]);
+    await readItem('finn', inboxRow(finn));
+    expect(await emailReads('finn', ticket.id)).toEqual([true, false]);
+    await setInbox('gil', false);
+    await setInbox('finn', true);
+  });
+
   it(`[NTF-015] holds at most ${MAX_NOTICE_CHANGES} changes in one notice, and counts an event delivered twice once`, async () => {
     const ticket = await followedTicket('Idempotent');
     await addList('ana', ticket.id, 'Steps', ['One']);

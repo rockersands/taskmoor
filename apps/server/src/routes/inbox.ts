@@ -382,15 +382,28 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
     return { unread: await counts(request, user.id) };
   });
 
-  /** Marks the email of the same notifications read or unread too (NTF-003 (2)). */
+  /**
+   * Marks the email of the same notifications read or unread too (NTF-003 (2)). A checklist notice
+   * gathers many events and can cover several emails, each with the domain event that opened it
+   * (NTF-015), so those are found by the events the notice holds.
+   */
   async function mirrorEmail(trx: Db, userId: number, ids: readonly string[], read: Date | null) {
     if (ids.length === 0) return;
+    const inbox = ids.map(Number);
     await sql`
       UPDATE notification e SET read_at = ${read}
         FROM notification i
-       WHERE i.id = ANY(${ids.map(Number)}::bigint[]) AND i.user_id = ${userId}
+       WHERE i.id = ANY(${inbox}::bigint[]) AND i.user_id = ${userId}
          AND e.domain_event_id = i.domain_event_id AND e.user_id = i.user_id
          AND e.channel = 'email'`.execute(trx);
+    await sql`
+      UPDATE notification e SET read_at = ${read}
+        FROM notification i
+       WHERE i.id = ANY(${inbox}::bigint[]) AND i.user_id = ${userId}
+         AND i.event = ${CHECKLIST_EVENT}
+         AND e.user_id = i.user_id AND e.channel = 'email' AND e.event = i.event
+         AND e.ticket_id = i.ticket_id
+         AND (e.payload->'events') <@ (i.payload->'events')`.execute(trx);
   }
 
   app.patch('/api/v1/inbox/:id', async (request, reply) => {
