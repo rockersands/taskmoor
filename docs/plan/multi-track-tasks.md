@@ -27,10 +27,13 @@ the decisions, with a section per stage.
   `DependencyList.test.tsx`, `PlanDependencies.test.tsx`, stories `Timeline/DependencyList` and
   `Plans/PlanPage` `TimelineDependencies` (axe, both skins), e2e `plan-dependencies.spec.ts`
   (desktop and phone). The size test now carries about 8,000 links at 10,000 tickets and 80,000 at
-  100,000: Timeline 136 ms, filtered 42 ms at 100,000.
-- **Left out, for the user if wanted:** other link types as dependencies, and flagging
-  dependencies within one sprint (both were in PLN-006's first wording). Outside blockers are a
-  count only (the coordinator's brief), not "with its track and status" as the first wording said.
+  100,000, plus a blocker the first 10,000 leave out and one outside the plan, both checked:
+  Timeline 136 ms, filtered 30 to 42 ms at 100,000.
+- **Kept, not built:** other link types as dependencies, and flagging dependencies within one
+  sprint (both were in PLN-006's first wording, which the user put in 1.0) are now PLN-013, M2 in
+  the spec, in no stage yet. Outside blockers are a count only (the coordinator's brief), not
+  "with its track and status" as the first wording said. Both wait for the user's answer in
+  `decisions.csv` ("Dependency options"); Claude recommends PLN-013 with the program board (MT-05).
 - **Half-done:** nothing.
 
 ### First stage (MT-01, on `main`)
@@ -50,8 +53,8 @@ the decisions, with a section per stage.
 - **Half-done:** nothing.
 - **Not measured:** PLN-001 (1), 300 tracks and 50,000 tickets in under 3 s. The 20-track
   measurement above suggests it holds; `plans.large.test.ts` takes the size as constants.
-- **Still M2 in the spec:** PLN-002 to PLN-005 and PLN-007 to PLN-009 (PLN-006 moved with MT-02).
-  Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
+- **Still M2 in the spec:** PLN-002 to PLN-005, PLN-007 to PLN-009 and PLN-013 (PLN-006 moved with
+  MT-02). Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
 
 ### Open question for the user (not blocking)
 

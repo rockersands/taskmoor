@@ -41,7 +41,13 @@ export function DependencyList({ dependencies, headingId }: DependencyListProps)
   const all = [...dependencies.values()];
   const withLate = all.filter((b) => b.late > 0);
   const lateCount = withLate.reduce((sum, b) => sum + b.late, 0);
-  const entries = onlyLate ? withLate : all;
+  // The button goes once nothing is late (a move, a filter, someone else's edit), so the narrowing
+  // goes with it: the list never stands empty with nothing to undo it, and comes back unpressed.
+  if (onlyLate && withLate.length === 0) {
+    setOnlyLate(false);
+    setShown(STEP);
+  }
+  const entries = onlyLate && withLate.length > 0 ? withLate : all;
 
   const dayText = (day: number) =>
     intl.formatDate(new Date(day * 86_400_000), {

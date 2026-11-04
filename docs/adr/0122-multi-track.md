@@ -167,8 +167,12 @@ decision; the Timeline's answer grows one field, read with the timeline's own sc
 
 - A link whose type's outward phrase is "blocks", as on a track's timeline (ADR-064): its source
   is the **blocker**, its target the **blocked** ticket. Choosing other link types as
-  dependencies, and flagging dependencies inside one sprint, are not in this stage: PLN-006 no
-  longer promises them, and each would be its own ticket if asked for.
+  dependencies, and flagging dependencies inside one sprint, are not in this stage. Both were in
+  PLN-006's first wording, which the user put in 1.0 with the rest of Multi-track, so they moved
+  to their own requirement, PLN-013, M2 in the spec until a stage builds them. Which stage, and
+  whether blockers outside the plan that the viewer may see should be named with their track and
+  status as that wording also said, is the user's question (`decisions.csv`, "Dependency
+  options").
 - **Late**: the blocker ends on or after the day the blocked ticket starts (the bars' days: their
   own, their sprint's, or a parent's roll-up), both still open. A closed blocker holds nothing
   up, and a closed blocked ticket is done, so neither is ever late. One function decides it
@@ -217,8 +221,12 @@ decision; the Timeline's answer grows one field, read with the timeline's own sc
   links and each track's last feature one into the next track (`plans.large.test.ts`, medians of
   five reads, a Mac, 2026-11-03): at 100,000 tickets and about 80,000 links
   (`TASKMOOR_LARGE_PLANS=1`), the Timeline answers in 136 ms (126 ms without dependencies in
-  stage 1) and filtered in 42 ms (28 ms), with the counted blockers checked against the plan;
-  every gate reads 10,000 tickets and about 8,000 links (97 ms).
+  stage 1) and filtered in 30 to 42 ms over two runs (28 ms); every gate reads 10,000 tickets
+  and about 8,000 links (95 to 97 ms). Tickets rank track by track, so those links never run
+  from a ticket the 10,000 leave out to a listed one; the plan's last ticket therefore also
+  blocks its first, and a ticket of a track outside the plan blocks its second. Both reads, at
+  both sizes, then ask which counted blockers are the plan's, and the test checks the answer:
+  one counted as the plan's own (`unlisted`), one as outside.
 
 ### Later stages
 
@@ -226,7 +234,9 @@ Each adds its section here when it starts: teams and capacity (T-089b; PLN-005, 
 cross-track releases (T-089c; PLN-007), the program board (T-089d; PLN-008), draft changes and
 scenarios (T-089e; PLN-002, PLN-003), the auto-scheduler (T-089f; PLN-004), duplicating a plan, a
 link to a view and exports (T-089g). PLN-002 to PLN-009 move to M1 in the spec with their stage,
-so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2.
+so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2. PLN-013 (other link
+types as dependencies, dependencies within one sprint) has no stage yet: the user's answer in
+`decisions.csv` decides it.
 
 ## Options considered
 

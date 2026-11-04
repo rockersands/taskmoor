@@ -99,6 +99,32 @@ describe('the dependencies as a list (PLN-006)', () => {
     expect(screen.queryByRole('link', { name: 'LCH-3 Ship it' })).toBeNull();
   });
 
+  it('[PLN-006] lets go of "Only late ones" when nothing is late any more, so the list never stands empty', async () => {
+    const user = userEvent.setup();
+    const view = (items: TimelineItem[]) => (
+      <I18nProvider locale="en">
+        <DependencyList dependencies={dependenciesOf(items, LINKS, [])} headingId="deps" />
+      </I18nProvider>
+    );
+    const entries = () => document.querySelectorAll('.dependency-entry').length;
+    const { rerender } = render(view(ITEMS));
+    await user.click(screen.getByRole('button', { name: 'Only late ones' }));
+    expect(entries()).toBe(1);
+    // LCH-2 moves to start after LCH-1 ends, and the Timeline reads again: nothing is late.
+    const moved = ITEMS.map((i) => (i.id === 2 ? { ...i, start: '2026-11-11' } : i));
+    rerender(view(moved));
+    expect(screen.getByText('3 tickets have blockers; none is late.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Only late ones' })).toBeNull();
+    expect(entries()).toBe(3);
+    // Late again: the button comes back, not pressed, over the whole list.
+    rerender(view(ITEMS));
+    expect(screen.getByRole('button', { name: 'Only late ones' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(entries()).toBe(3);
+  });
+
   it('[PLN-006] says when nothing shown is blocked, and offers no filter without a late one', () => {
     list([], []);
     expect(screen.getByText('No ticket shown here is blocked.')).toBeVisible();
