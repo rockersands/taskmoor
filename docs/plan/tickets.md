@@ -264,10 +264,14 @@ reported, and the coordinator checked that it was pushed.
 | T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
 | T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | Done | On `main` (ADR-120) except TT-7, which waits on the user; columns now written as their own form in Markdown and wiki markup |
 | T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
-| T-196b | The "Checklist changed" notice | In progress | WIP commit on `wave6/t196b-checklist-notice`, not yet tested or reviewed |
+| T-196b | The "Checklist changed" notice | Done | On `main` (NTF-015, ADR-120, migration 0103): a notice track administrators turn on, off by default |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
-| T-207 | Free movement is the default everywhere, including a new demo's sample tracks | In progress | The user found API-1 and API-2 refused: the demo seeded the AI evals' strict workflow. The user's rule of 2026-11-04: free moving is the default. On `fix/t207-free-moving-default` |
+| T-207 | Free movement is the default everywhere, including a new demo's sample tracks | On branch | In the gate. WF-008, ADR-116, migrations 0104 and 0105: new workflows, added statuses, sample data and close reasons all stay free moving |
 | T-208 | A fresh checkout's first full gate fails in the browser stories (Vite's dependency cache is cold; "optimized dependencies changed") | To do | 48 failures on this PC's first gate; all pass on a rerun. Warm the cache or list the dependencies up front, or every new clone and worktree meets this |
+| T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | To do | T-207 review (low): an empty In Review made closed-stage gets no close reason and no Closed time |
+| T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | To do | T-207 review (low): only the web editor's Add a status adds the free move; a warning in the draft's answer may be enough |
+| T-211 | `pnpm demo` keeps an older built frontend | To do | T-207 review (low): it rebuilds only when `apps/web/dist/index.html` is missing, so a checkout can serve an old editor |
+| T-212 | Sweep for buttons whose spoken name leaves out the words they show (WCAG 2.5.3) | To do | Found on the inbox; axe only reports it where a test runs it. Part of T-164 |
 | T-198 | Load these tickets into the demo again | Done | All tickets loaded on the demo on 2026-11-04, in the Backend, Front and Flutter tracks |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 | T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |
