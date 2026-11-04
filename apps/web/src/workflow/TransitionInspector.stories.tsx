@@ -64,7 +64,10 @@ export const GlobalTransition: Story = { args: { transitionId: 4 } };
 
 /** Without the role and group lists, pickers take ids. */
 export const IdsWithoutNames: Story = {
-  args: { transitionId: 1, lookups: { roles: null, groups: null, permissions: null } },
+  args: {
+    transitionId: 1,
+    lookups: { roles: null, groups: null, permissions: null, closeReasons: null },
+  },
 };
 
 export const AddingACheck: Story = {

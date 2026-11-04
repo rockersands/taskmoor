@@ -121,6 +121,69 @@ export function addStatus(definition: WorkflowDefinition, statusId: number): Wor
   return { ...definition, statuses: [...definition.statuses, { statusId }] };
 }
 
+/**
+ * Whether a workflow moves freely as it stands (WF-008): every transition is global and nothing
+ * someone put on one asks anything of the person moving a ticket. A workflow with no transitions
+ * yet counts: nobody has chosen a rule.
+ */
+export function isFreeMoving(definition: WorkflowDefinition): boolean {
+  return (
+    Object.keys(definition.rules ?? {}).length === 0 &&
+    definition.transitions.every(
+      (t) =>
+        t.from === 'any' &&
+        !t.guards &&
+        (t.checks?.length ?? 0) === 0 &&
+        (t.layout?.length ?? 0) === 0,
+    )
+  );
+}
+
+/**
+ * The global transition into a status, named after it: a closed-stage status sets the close reason
+ * Completed, any other clears the reason. With no Completed reason to name, it only clears.
+ */
+export function freeTransition(
+  id: number,
+  status: Pick<Status, 'id' | 'name' | 'stage'>,
+  completedId: number | null,
+): Transition {
+  return {
+    id,
+    name: status.name,
+    from: 'any',
+    to: status.id,
+    effects:
+      status.stage === 'closed' && completedId !== null
+        ? [{ type: 'update-system-field', field: 'close-reason', value: String(completedId) }]
+        : [{ type: 'clear-field', field: 'close-reason' }],
+  };
+}
+
+/**
+ * Adds a status so a free-moving workflow stays free moving: tickets can enter it at once, from
+ * any status. On a workflow with rules it only adds the status: those rules were put there on
+ * purpose, or came with an import, and the steps into it are the administrator's to draw.
+ */
+export function addStatusFreely(
+  definition: WorkflowDefinition,
+  statusId: number,
+  statuses: readonly Status[],
+  completedId: number | null,
+  reserved: Iterable<number> = [],
+): WorkflowDefinition {
+  const added = addStatus(definition, statusId);
+  if (added === definition || !isFreeMoving(definition)) return added;
+  const used = [...reserved];
+  // A workflow with no transitions yet gets them for the statuses it already had, too.
+  const wanting = definition.transitions.length === 0 ? statusIdsOf(added) : [statusId];
+  return wanting.reduce((next, id) => {
+    const status = statuses.find((s) => s.id === id);
+    if (!status || next.transitions.some((t) => t.to === id)) return next;
+    return addTransition(next, freeTransition(nextTransitionId(next, used), status, completedId));
+  }, added);
+}
+
 export function setInitialStatus(
   definition: WorkflowDefinition,
   statusId: number,

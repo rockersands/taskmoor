@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { WorkflowDefinition } from './definition';
 import { namesFor } from './describe';
-import { DEFAULT_DEFINITION, STATUSES, SUPPORT_DEFINITION } from './fixtures';
+import { STATUSES, STEPPED_DEFINITION, SUPPORT_DEFINITION } from './fixtures';
 import { lintDefinition } from './lint';
 import { type Selection, WorkflowDiagram } from './WorkflowDiagram';
 
@@ -36,7 +36,7 @@ function Holder({
 const meta = {
   title: 'Workflows/WorkflowDiagram',
   component: Holder,
-  args: { definition: DEFAULT_DEFINITION },
+  args: { definition: STEPPED_DEFINITION },
   decorators: [
     (Story) => (
       <main style={{ padding: 24 }}>
@@ -58,5 +58,5 @@ export const TransitionSelected: Story = {
 };
 
 export const StatusSelected: Story = {
-  args: { definition: DEFAULT_DEFINITION, selected: { kind: 'status', id: 5 } },
+  args: { definition: STEPPED_DEFINITION, selected: { kind: 'status', id: 5 } },
 };

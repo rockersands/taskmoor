@@ -38,8 +38,49 @@ export const STATUSES: Status[] = STAGES.map(([name, stage], i) => ({
 
 export const S = Object.fromEntries(STATUSES.map((s) => [s.name, s.id])) as Record<string, number>;
 
-/** The seeded default workflow: New, Active, In Review and Closed. */
-export const DEFAULT_DEFINITION: WorkflowDefinition = {
+/** The workflow a new site starts with (WF-008): any status to any status, nothing asked. */
+export const FREE_DEFINITION: WorkflowDefinition = {
+  initialStatusId: S.New as number,
+  statuses: [S.New, S.Active, S['In Review'], S.Closed].map((statusId) => ({
+    statusId: statusId as number,
+  })),
+  transitions: [
+    {
+      id: 5,
+      name: 'New',
+      from: 'any',
+      to: S.New as number,
+      effects: [{ type: 'clear-field', field: 'close-reason' }],
+    },
+    {
+      id: 1,
+      name: 'Active',
+      from: 'any',
+      to: S.Active as number,
+      effects: [{ type: 'clear-field', field: 'close-reason' }],
+    },
+    {
+      id: 2,
+      name: 'In Review',
+      from: 'any',
+      to: S['In Review'] as number,
+      effects: [{ type: 'clear-field', field: 'close-reason' }],
+    },
+    {
+      id: 4,
+      name: 'Closed',
+      from: 'any',
+      to: S.Closed as number,
+      effects: [{ type: 'update-system-field', field: 'close-reason', value: '1' }],
+    },
+  ],
+};
+
+/**
+ * A workflow an administrator gave steps and a required close reason: not what a site starts with,
+ * but what a workflow with rules looks like. Statuses New, Active, In Review and Closed.
+ */
+export const STEPPED_DEFINITION: WorkflowDefinition = {
   initialStatusId: S.New as number,
   statuses: [S.New, S.Active, S['In Review'], S.Closed].map((statusId) => ({
     statusId: statusId as number,
@@ -137,7 +178,7 @@ const view = (
   ...over,
 });
 
-export const DEFAULT_WORKFLOW = view(1, 'Default workflow', DEFAULT_DEFINITION, {
+export const DEFAULT_WORKFLOW = view(1, 'Default workflow', FREE_DEFINITION, {
   description: 'New, Active, In Review, Closed',
   isDefault: true,
   tracks: [
@@ -168,6 +209,10 @@ export const LOOKUPS: Lookups = {
     { id: 2, name: 'Change board' },
   ],
   permissions: ['browse_track', 'edit_tickets', 'transition_tickets', 'close_tickets'],
+  closeReasons: [
+    { id: 1, name: 'Completed' },
+    { id: 2, name: 'Duplicate' },
+  ],
 };
 
 interface VersionRecord {

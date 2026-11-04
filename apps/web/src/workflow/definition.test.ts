@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { richDefinitionArb, workflowArb } from '../test/workflow';
 import {
   addStatus,
+  addStatusFreely,
   formatDefinition,
+  isFreeMoving,
   jsonErrorOffset,
   nextTransitionId,
   removeStatus,
@@ -12,10 +14,11 @@ import {
   setInitialStatus,
   statusRemoval,
   transitionIdsOf,
+  updateTransition,
   type WorkflowDefinition,
   withRules,
 } from './definition';
-import { DEFAULT_DEFINITION, S, SUPPORT_DEFINITION } from './fixtures';
+import { FREE_DEFINITION, S, STATUSES, STEPPED_DEFINITION, SUPPORT_DEFINITION } from './fixtures';
 import { checkShape, parseDefinitionText } from './shape';
 
 const codes = (value: unknown) => checkShape(value).map((p) => `${p.path} ${p.code}`);
@@ -42,7 +45,7 @@ describe('workflow definitions in the editor (M1-030)', () => {
   });
 
   it('[WF-002] the seeded workflows have the shape the server accepts', () => {
-    expect(checkShape(DEFAULT_DEFINITION)).toEqual([]);
+    expect(checkShape(STEPPED_DEFINITION)).toEqual([]);
     expect(checkShape(SUPPORT_DEFINITION)).toEqual([]);
   });
 
@@ -125,7 +128,7 @@ describe('workflow definitions in the editor (M1-030)', () => {
 
   it('[WF-002] removing a status takes the transitions that need it and keeps the others', () => {
     const active = S.Active as number;
-    const removal = statusRemoval(DEFAULT_DEFINITION, active);
+    const removal = statusRemoval(STEPPED_DEFINITION, active);
     expect(removal.removed.map((x) => x.name)).toEqual([
       'Start',
       'Send to review',
@@ -133,7 +136,7 @@ describe('workflow definitions in the editor (M1-030)', () => {
     ]);
     const support = statusRemoval(
       {
-        ...DEFAULT_DEFINITION,
+        ...STEPPED_DEFINITION,
         transitions: [
           { id: 9, name: 'Both', from: [active, S.New as number], to: S.Closed as number },
         ],
@@ -145,7 +148,7 @@ describe('workflow definitions in the editor (M1-030)', () => {
 
     const next = removeStatus(
       {
-        ...DEFAULT_DEFINITION,
+        ...STEPPED_DEFINITION,
         rules: { '1': [{ type: 'assign', to: 'current-user' }] },
         statusPermissions: { [String(active)]: { edit: [{ role: '1' }] } },
       },
@@ -156,24 +159,79 @@ describe('workflow definitions in the editor (M1-030)', () => {
     expect(next.rules).toBeUndefined();
     expect(next.statusPermissions).toBeUndefined();
     // The initial status stays until another is chosen.
-    expect(removeStatus(DEFAULT_DEFINITION, S.New as number)).toBe(DEFAULT_DEFINITION);
+    expect(removeStatus(STEPPED_DEFINITION, S.New as number)).toBe(STEPPED_DEFINITION);
+  });
+
+  describe('a status added to a workflow that moves freely (WF-008)', () => {
+    const COMPLETED = 7;
+
+    it('[WF-008] can be entered at once, and only the closed stage sets Completed', () => {
+      const added = addStatusFreely(
+        FREE_DEFINITION,
+        S.Approved as number,
+        STATUSES,
+        COMPLETED,
+        [9],
+      );
+      expect(added.statuses.at(-1)).toEqual({ statusId: S.Approved });
+      const into = added.transitions.at(-1);
+      expect(into).toMatchObject({ id: 10, name: 'Approved', from: 'any', to: S.Approved });
+      expect(into?.effects).toEqual([
+        { type: 'update-system-field', field: 'close-reason', value: String(COMPLETED) },
+      ]);
+      expect(isFreeMoving(added)).toBe(true);
+      const open = addStatusFreely(FREE_DEFINITION, S.Draft as number, STATUSES, COMPLETED);
+      expect(open.transitions.at(-1)?.effects).toEqual([
+        { type: 'clear-field', field: 'close-reason' },
+      ]);
+    });
+
+    it('[WF-008] a workflow with no transitions yet gets one into every status', () => {
+      const start: WorkflowDefinition = {
+        initialStatusId: S.New as number,
+        statuses: [{ statusId: S.New as number }],
+        transitions: [],
+      };
+      const added = addStatusFreely(start, S.Active as number, STATUSES, COMPLETED);
+      expect(added.transitions.map((t) => [t.from, t.to])).toEqual([
+        ['any', S.New],
+        ['any', S.Active],
+      ]);
+    });
+
+    it('[WF-008] a workflow with a rule keeps its steps as they are', () => {
+      for (const ruled of [
+        STEPPED_DEFINITION,
+        withRules(FREE_DEFINITION, 1, [{ type: 'assign', to: 'requester' }]),
+        updateTransition(FREE_DEFINITION, 1, (t) => ({ ...t, layout: ['close-reason'] })),
+        updateTransition(FREE_DEFINITION, 1, (t) => ({
+          ...t,
+          checks: [{ type: 'field-required', field: 'assignee' }],
+        })),
+      ]) {
+        expect(isFreeMoving(ruled)).toBe(false);
+        const added = addStatusFreely(ruled, S.Approved as number, STATUSES, COMPLETED);
+        expect(added.transitions).toEqual(ruled.transitions);
+        expect(added.statuses.at(-1)).toEqual({ statusId: S.Approved });
+      }
+    });
   });
 
   it('[WF-002] edits change only what they name', () => {
-    const added = addStatus(DEFAULT_DEFINITION, S.Approved as number);
+    const added = addStatus(STEPPED_DEFINITION, S.Approved as number);
     expect(added.statuses.at(-1)).toEqual({ statusId: S.Approved });
     expect(addStatus(added, S.Approved as number)).toBe(added);
     expect(setInitialStatus(added, S.Approved as number).initialStatusId).toBe(S.Approved);
-    const ruled = withRules(DEFAULT_DEFINITION, 2, [{ type: 'assign', to: 'requester' }]);
+    const ruled = withRules(STEPPED_DEFINITION, 2, [{ type: 'assign', to: 'requester' }]);
     expect(ruled.rules).toEqual({ '2': [{ type: 'assign', to: 'requester' }] });
-    expect(withRules(ruled, 2, [])).toEqual(DEFAULT_DEFINITION);
+    expect(withRules(ruled, 2, [])).toEqual(STEPPED_DEFINITION);
     expect(removeTransition(ruled, 2).rules).toBeUndefined();
   });
 
   it('[WF-001] a new transition id is above every id the draft and its versions use', () => {
-    const draft: WorkflowDefinition = { ...DEFAULT_DEFINITION, transitions: [] };
+    const draft: WorkflowDefinition = { ...STEPPED_DEFINITION, transitions: [] };
     expect(nextTransitionId(draft)).toBe(1);
-    expect(nextTransitionId(draft, transitionIdsOf(DEFAULT_DEFINITION, null))).toBe(6);
+    expect(nextTransitionId(draft, transitionIdsOf(STEPPED_DEFINITION, null))).toBe(6);
   });
 
   it('compares definitions whatever their key order', () => {

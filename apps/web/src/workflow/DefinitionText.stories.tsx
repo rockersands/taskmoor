@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { DefinitionText, legendOf } from './DefinitionText';
 import { formatDefinition } from './definition';
-import { DEFAULT_DEFINITION, STATUSES } from './fixtures';
+import { STATUSES, STEPPED_DEFINITION } from './fixtures';
 
 function Holder({ initial, invalid = false }: { initial: string; invalid?: boolean }) {
   const [text, setText] = useState(initial);
@@ -13,7 +13,7 @@ function Holder({ initial, invalid = false }: { initial: string; invalid?: boole
       invalid={invalid}
       statuses={legendOf(
         STATUSES,
-        DEFAULT_DEFINITION.statuses.map((s) => s.statusId),
+        STEPPED_DEFINITION.statuses.map((s) => s.statusId),
       )}
     />
   );
@@ -22,7 +22,7 @@ function Holder({ initial, invalid = false }: { initial: string; invalid?: boole
 const meta = {
   title: 'Workflows/DefinitionText',
   component: Holder,
-  args: { initial: formatDefinition(DEFAULT_DEFINITION) },
+  args: { initial: formatDefinition(STEPPED_DEFINITION) },
   decorators: [
     (Story) => (
       <main style={{ padding: 24 }}>

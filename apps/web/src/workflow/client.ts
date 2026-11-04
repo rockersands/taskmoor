@@ -64,6 +64,7 @@ export interface Lookups {
   roles: Named[] | null;
   groups: Named[] | null;
   permissions: string[] | null;
+  closeReasons: Named[] | null;
 }
 
 /** How a status of an imported file came in (M1-127): matched by name, or created. */
@@ -193,7 +194,7 @@ export const workflowsClient: WorkflowsClient = {
       })
     ).statuses,
   lookups: async () => {
-    const [roles, groups, catalogue] = await Promise.all([
+    const [roles, groups, catalogue, closeReasons] = await Promise.all([
       optional(async () => (await api<{ roles: Named[] }>('/roles')).roles),
       optional(async () => (await api<{ groups: Named[] }>('/groups')).groups),
       optional(() =>
@@ -201,8 +202,9 @@ export const workflowsClient: WorkflowsClient = {
           Object.values(c.track).flat(),
         ),
       ),
+      optional(async () => (await api<{ closeReasons: Named[] }>('/close-reasons')).closeReasons),
     ]);
-    return { roles, groups, permissions: catalogue };
+    return { roles, groups, permissions: catalogue, closeReasons };
   },
   exportHref: (id) => `${API_BASE}/admin/workflows/${id}/export`,
   importNew: (document, name) =>

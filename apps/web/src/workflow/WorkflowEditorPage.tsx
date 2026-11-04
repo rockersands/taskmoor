@@ -23,7 +23,7 @@ import {
 } from './client';
 import { DefinitionText, legendOf } from './DefinitionText';
 import {
-  addStatus,
+  addStatusFreely,
   addTransition,
   formatDefinition,
   nextTransitionId,
@@ -66,7 +66,7 @@ type Load =
 
 type Panel = 'publish' | 'history' | 'discard' | null;
 
-const NO_LOOKUPS: Lookups = { roles: null, groups: null, permissions: null };
+const NO_LOOKUPS: Lookups = { roles: null, groups: null, permissions: null, closeReasons: null };
 
 /** The definition the editor starts from: the draft when there is one, else the published one. */
 const baseOf = (workflow: WorkflowView) => (workflow.draft ?? workflow.published).definition;
@@ -690,7 +690,18 @@ export function WorkflowEditorPage({
               statusesHeadingRef={statusesHeading}
               transitionsHeadingRef={transitionsHeading}
               onAddStatus={(statusId) => {
-                change(addStatus(working, statusId));
+                const completed = lookups.closeReasons?.find(
+                  (r) => r.name.toLowerCase() === 'completed',
+                );
+                change(
+                  addStatusFreely(
+                    working,
+                    statusId,
+                    statuses,
+                    completed?.id ?? null,
+                    transitionIdsOf(workflow.published.definition, workflow.draft?.definition),
+                  ),
+                );
                 setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
               }}
               onAddTransition={() => newTransition()}

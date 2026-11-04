@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { workflowArb } from '../test/workflow';
 import type { Transition, WorkflowDefinition } from './definition';
 import { layersOf, layoutDiagram, NODE_HEIGHT, NODE_WIDTH } from './diagram';
-import { DEFAULT_DEFINITION, S } from './fixtures';
+import { S, STEPPED_DEFINITION } from './fixtures';
 
 const t = (id: number, from: Transition['from'], to: number): Transition => ({
   id,
@@ -14,7 +14,7 @@ const t = (id: number, from: Transition['from'], to: number): Transition => ({
 
 describe('workflow diagram layout (M1-030)', () => {
   it('[WF-002] lays statuses out in layers by their distance from the initial status', () => {
-    const layers = layersOf(DEFAULT_DEFINITION);
+    const layers = layersOf(STEPPED_DEFINITION);
     expect(layers.get(S.New as number)).toBe(0);
     expect(layers.get(S.Active as number)).toBe(1);
     expect(layers.get(S['In Review'] as number)).toBe(2);

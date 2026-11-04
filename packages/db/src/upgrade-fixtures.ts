@@ -1737,6 +1737,12 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0103_default_workflow_left_strict': {
+    tables: {
+      workflow: 'is_default AND workspace_id = 1',
+    },
+    seed: async () => {},
+  },
 };
 
 /**

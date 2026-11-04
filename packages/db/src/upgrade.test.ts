@@ -129,6 +129,108 @@ describe('upgrade from earlier releases', () => {
     });
   });
 
+  describe('the default workflow 0089 left strict (0103)', () => {
+    const FREE = [
+      [5, 'any', undefined],
+      [1, 'any', undefined],
+      [2, 'any', undefined],
+      [4, 'any', undefined],
+    ];
+    const atDefault = async (db: ReturnType<typeof createDb>) => {
+      const { rows } = await sql<{
+        id: number;
+        published_version: number;
+        draft_version: number | null;
+        definition: {
+          transitions: { id: number; name: string; from: unknown; layout?: unknown }[];
+        };
+      }>`
+        SELECT w.id, w.published_version, w.draft_version, v.definition
+          FROM workflow w
+          JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
+         WHERE w.is_default`.execute(db);
+      return rows[0] as NonNullable<(typeof rows)[0]>;
+    };
+    const atBefore0089 = async () => {
+      const database = await createDatabase(testPgAdminUrl());
+      const db = createDb({ connectionString: database.url, maxConnections: 2 });
+      await migrateTo(db, '0088_one_board_per_track');
+      return { database, db };
+    };
+
+    it('[WF-008] gives a default workflow whose status was renamed its free-moving version', async () => {
+      const { database, db } = await atBefore0089();
+      try {
+        await sql`UPDATE status SET name = 'Review' WHERE name = 'In Review'`.execute(db);
+        await migrateToLatest(db);
+        const { published_version, definition } = await atDefault(db);
+        expect(published_version).toBe(2);
+        expect(definition.transitions.map((t) => [t.id, t.from, t.layout])).toEqual(FREE);
+        expect(definition.transitions.map((t) => t.name)).toEqual([
+          'New',
+          'Active',
+          'Review',
+          'Closed',
+        ]);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+
+    it('[WF-008] publishes under an open draft and keeps the draft as its author saved it', async () => {
+      const { database, db } = await atBefore0089();
+      try {
+        const before = await atDefault(db);
+        const saved = { ...before.definition, description: undefined };
+        await sql`
+          INSERT INTO workflow_version (workspace_id, workflow_id, version, definition)
+          VALUES (1, ${before.id}, 2, ${JSON.stringify(saved)})`.execute(db);
+        await sql`
+          INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
+          SELECT workspace_id, workflow_id, 2, status_id FROM workflow_version_status
+           WHERE workflow_id = ${before.id} AND version = 1`.execute(db);
+        await sql`UPDATE workflow SET draft_version = 2 WHERE id = ${before.id}`.execute(db);
+        await migrateToLatest(db);
+        const after = await atDefault(db);
+        expect(after.published_version).toBe(2);
+        expect(after.draft_version).toBe(3);
+        expect(after.definition.transitions.map((t) => [t.id, t.from, t.layout])).toEqual(FREE);
+        const { rows } = await sql<{ definition: unknown }>`
+          SELECT definition FROM workflow_version
+           WHERE workflow_id = ${before.id} AND version = 3`.execute(db);
+        expect(rows[0]?.definition).toEqual(before.definition);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+
+    it('[WF-008] leaves version 1 when it is no longer what the seed wrote', async () => {
+      const { database, db } = await atBefore0089();
+      try {
+        await sql`UPDATE status SET name = 'Review' WHERE name = 'In Review'`.execute(db);
+        const before = await atDefault(db);
+        const edited = {
+          ...before.definition,
+          transitions: before.definition.transitions.map((t) =>
+            t.id === 1 ? { ...t, name: 'Begin' } : t,
+          ),
+        };
+        await sql`
+          UPDATE workflow_version SET definition = ${JSON.stringify(edited)}
+           WHERE workflow_id = ${before.id} AND version = 1`.execute(db);
+        await migrateToLatest(db);
+        const after = await atDefault(db);
+        expect(after.published_version).toBe(1);
+        expect(after.definition).toEqual(edited);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+  });
+
   it('[OPS-006] reports a database migrated by a newer release as unknown', async () => {
     const database = await createDatabase(testPgAdminUrl());
     const db = createDb({ connectionString: database.url, maxConnections: 1 });

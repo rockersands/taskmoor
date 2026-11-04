@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { addStatus, type WorkflowDefinition } from './definition';
 import { namesFor } from './describe';
-import { DEFAULT_DEFINITION, STATUSES, SUPPORT_DEFINITION } from './fixtures';
+import { STATUSES, STEPPED_DEFINITION, SUPPORT_DEFINITION } from './fixtures';
 import { lintDefinition } from './lint';
 import { StructureLists } from './StructureLists';
 import type { Selection } from './WorkflowDiagram';
@@ -31,7 +31,7 @@ function Holder({ definition: initial }: { definition: WorkflowDefinition }) {
 const meta = {
   title: 'Workflows/StructureLists',
   component: Holder,
-  args: { definition: DEFAULT_DEFINITION },
+  args: { definition: STEPPED_DEFINITION },
   decorators: [
     (Story) => (
       <main style={{ padding: 24, maxWidth: 1000 }}>

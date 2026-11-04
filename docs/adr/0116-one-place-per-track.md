@@ -51,6 +51,18 @@ them.
   leaving it clears the reason. A workflow an administrator edited, and any imported one, keeps its
   rules. Only such a rule brings up a form or a refusal, in plain words. A ticket's status is one
   control on its page.
+  - **2026-11-04, the user's decision: free moving is the default wherever a workflow starts.** That
+    is a new site (0089, and 0103 for the default workflows 0089 passed over because a seeded status
+    was renamed or a draft was open), a board-managed workflow, a workflow created with no
+    transitions (`POST /api/v1/workflows` with none builds a global transition into each status), a
+    status added in the editor to a workflow that moves freely, a column given a path on a shared
+    workflow (a closed-stage status sets Completed), and the sample data of `pnpm demo` and the AI
+    evals, whose tracks now use the default workflow (`seedEvalDataset` sets its chosen close reasons
+    by hand after the close; a demo seeded earlier has its tracks put back on the default map when it
+    starts). A drag to a column several free transitions lead to takes the column's first status, with
+    no question; the question stays where a candidate has a rule. A close reason a workflow sets
+    cannot be deleted without a replacement (`409 used_by_workflow`), and the replacement goes into
+    the workflow. Rules someone adds on purpose, and imported workflows, stay as they are.
 - **A board stays inside its track** after it is made. A saved search a track's board stands on
   cannot be changed to a query that leaves the track (`409 board_outside_track`, naming the boards).
   An import writes a track's board only with a query confined to it: anything else becomes

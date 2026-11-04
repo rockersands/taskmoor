@@ -53,6 +53,9 @@ import {
   mayManageWorkflow,
   syncBoardWorkflow,
 } from '../workflows/board-managed';
+import { movesFreely } from '../workflows/free-moving';
+import { ticketWorkflowId } from '../workflows/maps';
+import { loadDefinition } from '../workflows/store';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
 import { registerBoardReportRoutes } from './board-reports';
 import { registerPropertyRoutes } from './properties';
@@ -1234,6 +1237,26 @@ export function registerBoardRoutes(
     }
   });
 
+  /** Whether all of a ticket's offered transitions with these ids move freely. */
+  async function freeCandidate(ws: number, ticketId: number, ids: readonly number[]) {
+    const row = await db
+      .selectFrom('ticket')
+      .select(['track_id', 'ticket_type_id'])
+      .where('id', '=', ticketId)
+      .where('workspace_id', '=', ws)
+      .executeTakeFirstOrThrow();
+    const workflowId = await ticketWorkflowId(db, ws, row.track_id, row.ticket_type_id);
+    const { published_version } = await db
+      .selectFrom('workflow')
+      .select('published_version')
+      .where('id', '=', workflowId)
+      .executeTakeFirstOrThrow();
+    const definition = await loadDefinition(db, workflowId, published_version);
+    return definition.transitions
+      .filter((t) => ids.includes(t.id))
+      .every((t) => movesFreely(t, definition));
+  }
+
   // Lets cards reach a column on a workflow the board does not manage (ADR-116): a status, and
   // the steps in and out, as a new version of the workflow. That workflow may be shared, so this
   // takes the right to edit workflows; the settings page names the other tracks first.
@@ -1438,7 +1461,20 @@ export function registerBoardRoutes(
       } else if (candidates.length === 0) {
         return reply.code(409).send({ error: 'no_transition', columnId: column.id });
       } else {
-        return reply.code(409).send({ error: 'transition_choice', transitions: candidates });
+        // Several lead into the column. Nothing to ask where they all move freely (WF-008): the
+        // column's first status it can reach. A candidate with a rule still makes it a choice.
+        const free = await freeCandidate(
+          ws,
+          ticket.id,
+          candidates.map((t) => t.id),
+        );
+        if (!free) {
+          return reply.code(409).send({ error: 'transition_choice', transitions: candidates });
+        }
+        const ranked = column.statusIds.flatMap((statusId) =>
+          candidates.filter((t) => t.to.id === statusId),
+        );
+        chosen = (ranked[0] as { id: number }).id;
       }
       const ran = await callRoute(
         runTransition,

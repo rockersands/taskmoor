@@ -7,8 +7,9 @@
 // frontend on http://localhost:<port>. Each start prints one-time links to set a password for the
 // site administrator and for three people; nothing is printed or stored in plain text.
 //
-// The data stays in .cache/demo between runs; --fresh starts over. Not for production: no TLS,
-// no backups, no email.
+// The tickets stay in the database between runs (.cache/pg-test/demo, or your own server), and
+// the attachments in .cache/demo. --fresh removes only the attachments: it keeps
+// the database. Not for production: no TLS, no backups, no email.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,6 +21,7 @@ import { sql } from 'kysely';
 import { seedEvalDataset } from '../ai/evals/seed';
 import { createPasswordLink, passwordLinkUrl } from '../directory';
 import { INSTANCE_KEY, readSetting, SETUP_KEY, writeSetting } from '../setup';
+import { releaseSampleWorkflow } from './sample-workflow';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const DATA = join(ROOT, '.cache', 'demo');
@@ -71,6 +73,8 @@ if (!(await readSetting<{ completed: boolean }>(db, SETUP_KEY))?.completed) {
   await writeSetting(db, INSTANCE_KEY, { name: 'Taskmoor de prueba' });
   await writeSetting(db, SETUP_KEY, { completed: true, completedAt: new Date().toISOString() });
 }
+// A database seeded before sample tracks moved freely leaves its strict workflow (WF-008).
+await releaseSampleWorkflow(db);
 // Everyone reads the app in Spanish; the account page changes it back per person.
 await db.updateTable('app_user').set({ locale: 'es' }).where('kind', '=', 'person').execute();
 
@@ -147,4 +151,4 @@ sign in. Each link works once; a new start makes new ones.
 
 ${links.join('\n')}
 
-Ctrl+C stops it; the data stays in .cache/demo (pnpm demo --fresh starts over).`);
+Ctrl+C stops it; the tickets stay in the database under .cache/pg-test/demo.`);

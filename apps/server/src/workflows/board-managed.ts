@@ -2,10 +2,17 @@ import type { Database, StatusStage } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Column } from '../boards/model';
 import { lockList } from '../tickets/fields';
+import { freeTransition } from './free-moving';
 import { loadMap, trackMapId } from './maps';
 import { runningMigration } from './migration';
-import type { Transition, WorkflowDefinition } from './model';
-import { loadDefinition, remapStatuses, ticketsInStatuses, writeVersion } from './store';
+import { statusIdsOf, type Transition, type WorkflowDefinition } from './model';
+import {
+  loadDefinition,
+  remapStatuses,
+  statusInfo,
+  ticketsInStatuses,
+  writeVersion,
+} from './store';
 
 /**
  * Board-managed workflows (M1-126; WF-010; spec 01a section 3.6; ADR-079). A board of a
@@ -229,6 +236,8 @@ export async function columnsWithStatuses(
   by: Actor,
   columns: readonly Column[],
   collapse: boolean,
+  /** The stage of a status made for a column; by default, what its place among `columns` says. */
+  stageOf: (index: number) => StatusStage = (index) => stageAt(index, columns.length),
 ): Promise<{ columns: Column[]; merged: Map<number, number>; made: number[] }> {
   const merged = new Map<number, number>();
   const made: number[] = [];
@@ -258,7 +267,7 @@ export async function columnsWithStatuses(
         .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
         .where('workspace_id', '=', by.workspaceId)
         .executeTakeFirstOrThrow();
-      const stage = stageAt(index, columns.length);
+      const stage = stageOf(index);
       const created = await trx
         .insertInto('status')
         .values({
@@ -330,17 +339,10 @@ export function boardDefinition(
 ): WorkflowDefinition {
   const statusIds = columns.map((c) => c.statusIds[0] as number);
   const closes = closingIndex(columns, closing);
-  const transitions: Transition[] = columns.map((column, index) => ({
-    // The status id names its transition, so it stays the same while the column does.
-    id: statusIds[index] as number,
-    name: column.name,
-    from: 'any',
-    to: statusIds[index] as number,
-    effects:
-      index === closes
-        ? [{ type: 'update-system-field', field: 'close-reason', value: String(completedId) }]
-        : [{ type: 'clear-field', field: 'close-reason' }],
-  }));
+  // The status id names its transition, so it stays the same while the column does.
+  const transitions: Transition[] = columns.map((column, index) =>
+    freeTransition(statusIds[index] as number, column.name, index === closes, completedId),
+  );
   return {
     initialStatusId: statusIds[0] as number,
     statuses: statusIds.map((statusId) => ({ statusId })),
@@ -624,26 +626,31 @@ export async function addColumnPath(
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
   const column = columns.find((c) => c.id === columnId);
   if (!column) throw new BoardWorkflowError('not_a_track_board');
-  const { columns: withStatus, made } = await columnsWithStatuses(trx, by, [column], false);
-  const statusId = withStatus[0]?.statusIds[0] as number;
-  const stored = columns.map((c) => (c.id === columnId ? (withStatus[0] as Column) : c));
   const row = await trx
     .selectFrom('workflow')
     .select('published_version')
     .where('id', '=', workflowId)
     .executeTakeFirstOrThrow();
   const current = await loadDefinition(trx, workflowId, row.published_version);
+  // A status made here takes the stage its column's place says. A workflow that closes tickets
+  // already keeps its closing status: a column added after Closed holds cards, it does not close.
+  const stages = await statusInfo(trx, by.workspaceId, [...statusIdsOf(current)]);
+  const closesAlready = [...stages.values()].some((s) => s.stage === 'closed');
+  const placed = stageAt(columns.indexOf(column), columns.length);
+  const { columns: withStatus, made } = await columnsWithStatuses(trx, by, [column], false, () =>
+    placed === 'closed' && closesAlready ? 'active' : placed,
+  );
+  const statusId = withStatus[0]?.statusIds[0] as number;
+  const stored = columns.map((c) => (c.id === columnId ? (withStatus[0] as Column) : c));
   const next = Math.max(0, ...current.transitions.map((t) => t.id)) + 1;
   const transitions: Transition[] = [...current.transitions];
   let id = next;
   if (!transitions.some((t) => t.to === statusId && t.from === 'any')) {
-    transitions.push({
-      id: id++,
-      name: column.name,
-      from: 'any',
-      to: statusId,
-      effects: [{ type: 'clear-field', field: 'close-reason' }],
-    });
+    // Entering a closing status sets Completed, as on any workflow that moves freely (WF-008).
+    const info = await statusInfo(trx, by.workspaceId, [statusId]);
+    const closes = info.get(statusId)?.stage === 'closed';
+    const completedId = closes ? await completedReasonId(trx, by) : null;
+    transitions.push(freeTransition(statusId, column.name, closes, completedId, id++));
   }
   // Out again: a global transition already leaves from it; the others get a step each.
   for (const other of stored) {
