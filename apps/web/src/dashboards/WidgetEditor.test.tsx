@@ -71,8 +71,8 @@ function dragTo(
   vi.spyOn(document, 'elementFromPoint').mockReturnValue(to);
   const point = { pointerId: 5, pointerType, isPrimary: true };
   fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 10 });
-  fireEvent.pointerMove(window, { ...point, clientX: 60, clientY: y });
-  fireEvent.pointerMove(window, { ...point, clientX: 90, clientY: y });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 60, clientY: y });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 90, clientY: y });
   if (up) fireEvent.pointerUp(window, { ...point, clientX: 90, clientY: y });
 }
 

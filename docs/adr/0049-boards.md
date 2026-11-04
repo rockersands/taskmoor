@@ -109,6 +109,12 @@ backlog column and estimation (AGL-007, AGL-014 (1)) and the full board UI with 
   drop (a lane by assignee or query is not a place to move to).
 - **Phones** move cards with the Move menu and the keyboard: touch dragging in browsers is
   uneven and would fight scrolling the columns.
+- **Changed by T-162b (2026-11-04; ADR-114, section 12):** cards left the browser's own drag for
+  pointer events (`shell/pointerDrag.ts`), as the backlog had, so a finger drags a card on a phone.
+  It drags by the card's grip, the Move button, so a finger elsewhere on a card still scrolls the
+  columns; held near their edge, the columns scroll along. The place shown, the one move request,
+  the drop where the card already is and the lanes are as above; a mouse still drags a card from
+  anywhere but its pencil.
 - **Rendering**: the cards are grouped by cell once per render, with each card's place, instead
   of filtering the list per card. 5,000 cards render in 455 to 458 ms after the data arrives
   (Chromium, `FiveThousandCards` story, two runs in each skin; budget 1 s), so no virtualised

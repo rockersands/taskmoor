@@ -1,7 +1,40 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
+
+/** The pointer this file's drags use: one no other test's clicks share. */
+const POINTER = 48;
+const pointer = (type: string, at: { x: number; y: number }) =>
+  new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    pointerId: POINTER,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: at.x,
+    clientY: at.y,
+  });
+
+/**
+ * A finger on an entry's grip (T-162b) moved over the middle of the day `to`, laid out by the
+ * browser itself: `to` is first brought into view, and the press is on the grip wherever it is.
+ */
+function dragOver(grip: Element, to: Element) {
+  const from = grip.getBoundingClientRect();
+  const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+  grip.dispatchEvent(pointer('pointerdown', a));
+  to.scrollIntoView({ block: 'center' });
+  const box = to.getBoundingClientRect();
+  const b = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  for (let i = 1; i <= 6; i++) {
+    window.dispatchEvent(
+      pointer('pointermove', { x: a.x + ((b.x - a.x) * i) / 6, y: a.y + ((b.y - a.y) * i) / 6 }),
+    );
+  }
+  return b;
+}
 
 const meta = {
   title: 'Views/CalendarPage',
@@ -18,6 +51,10 @@ const meta = {
       </main>
     ),
   ],
+  // A drag a story leaves under way ends before the next one starts.
+  beforeEach: () => () => {
+    window.dispatchEvent(pointer('pointercancel', { x: 0, y: 0 }));
+  },
 } satisfies Meta<typeof CalendarPage>;
 
 export default meta;
@@ -29,5 +66,113 @@ export const Month: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'November 2026' })).toBeVisible();
     await expect(canvas.getByText('◆ Launch')).toBeVisible();
+  },
+};
+
+/** An entry's grip pressed (T-162b): a menu of the moves its keys make. */
+export const EntryGripMenu: Story = {
+  args: { client: fakeCalendarClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Move the due day of CAL-2' }));
+    const menu = within(await canvas.findByRole('menu'));
+    // The menu fades in: visible once its first frames have been drawn.
+    await waitFor(() =>
+      expect(menu.getByRole('menuitem', { name: 'One day earlier' })).toBeVisible(),
+    );
+    await expect(menu.getByRole('menuitem', { name: 'One week later' })).toBeVisible();
+  },
+};
+
+/**
+ * CAL-2 in hand by its grip, over the 16th (T-162b): the day is outlined, the entry fades where it
+ * was, a label follows the finger, and the page says what is in hand and that Escape cancels.
+ */
+export const EntryInHand: Story = {
+  args: { client: fakeCalendarClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
+    const day = canvas.getByRole('listitem', { name: /^Nov 16, 2026/ });
+    dragOver(grip, day);
+    await waitFor(() => expect(day).toHaveClass('is-drop-target'));
+    await expect(canvas.getByRole('status')).toHaveTextContent(
+      'Moving CAL-2: drop it on another day. Escape cancels.',
+    );
+    await expect(document.querySelector('.drag-ghost')).toHaveTextContent('CAL-2 Press kit');
+  },
+};
+
+/**
+ * This browser's pointer is a mouse, so the page's touch rules are put in force by hand: the rules
+ * inside its `(pointer: coarse)` blocks, as they are written. Returns how to take them away.
+ */
+function asOnATouchScreen(): () => void {
+  const style = document.createElement('style');
+  style.textContent = Array.from(document.styleSheets)
+    .flatMap((sheet) => Array.from(sheet.cssRules))
+    .filter(
+      (rule): rule is CSSMediaRule =>
+        rule instanceof CSSMediaRule && rule.media.mediaText.includes('pointer: coarse'),
+    )
+    .flatMap((rule) => Array.from(rule.cssRules, (inner) => inner.cssText))
+    .join('\n');
+  document.head.append(style);
+  return () => style.remove();
+}
+
+/**
+ * On a touch screen with seven narrow days (T-162b): 63 px a day, a portrait tablet with the
+ * sidebar open. The grip keeps its full finger size on a row of its own, and the name keeps the
+ * day's whole width. A day with room, as a phone's single column, has the grip beside the name.
+ */
+export const EntryOnATouchTablet: Story = {
+  args: { client: fakeCalendarClient() },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
+    const chip = canvas.getByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    const grid = canvasElement.querySelector<HTMLElement>('.calendar-grid');
+    const entry = chip.parentElement;
+    if (!grid || !entry) throw new Error('the calendar draws its grid and the entry');
+    const boxes = () => ({
+      entry: entry.getBoundingClientRect(),
+      chip: chip.getBoundingClientRect(),
+      grip: grip.getBoundingClientRect(),
+    });
+
+    grid.style.gridTemplateColumns = 'repeat(7, 320px)';
+    const roomy = boxes();
+    await expect(roomy.grip.width).toBe(44);
+    await expect(roomy.grip.left).toBeGreaterThanOrEqual(roomy.chip.right);
+    await expect(roomy.grip.top).toBe(roomy.chip.top);
+
+    grid.style.gridTemplateColumns = 'repeat(7, 63px)';
+    const narrow = boxes();
+    await expect(narrow.chip.width).toBe(narrow.entry.width);
+    await expect(narrow.grip.top).toBeGreaterThanOrEqual(narrow.chip.bottom);
+    await expect(narrow.grip.width).toBe(44);
+    await expect(narrow.grip.height).toBe(44);
+    await expect(narrow.grip.right).toBeLessThanOrEqual(narrow.entry.right);
+  },
+};
+
+/** Let go there: CAL-2 is due on the 16th. */
+export const EntryDropped: Story = {
+  args: { client: fakeCalendarClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
+    const day = canvas.getByRole('listitem', { name: /^Nov 16, 2026/ });
+    window.dispatchEvent(pointer('pointerup', dragOver(grip, day)));
+    await waitFor(() =>
+      expect(
+        within(canvas.getByRole('listitem', { name: /^Nov 16, 2026/ })).getByRole('link', {
+          name: 'CAL-2 Press kit, due this day',
+        }),
+      ).toBeVisible(),
+    );
+    await expect(canvas.getByRole('status')).toHaveTextContent('CAL-2 is now due on Nov 16, 2026.');
   },
 };

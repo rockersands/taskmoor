@@ -231,6 +231,71 @@
   border-inline-start-style: dashed;
 }
 
+/*
+ * An entry is its link and its grip (T-162b; ADR-114, section 12). A mouse drags the link, so its
+ * text is not selected on the way; a finger drags the grip, which a finger elsewhere does not, so
+ * the page still scrolls. The grip shows over the end of the link with the pointer or the keyboard
+ * on its entry, so a narrow day keeps its whole width for the ticket's name. On a touch screen,
+ * where nothing hovers, it always shows, at full finger size: beside the link where the day has
+ * room for both, and on its own row under the link where it has not (a tablet's seven columns), so
+ * the name keeps the day's whole width there too.
+ */
+.calendar-entry {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.calendar-entry .calendar-chip {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* While it is in hand, the entry fades where it was; a label follows the pointer. */
+.calendar-entry.is-dragging {
+  opacity: 0.45;
+}
+
+/* The grip's menu is placed against the whole entry, not the small grip, so it fits the day. */
+.calendar-grip.move-grip {
+  position: static;
+  display: flex;
+}
+
+.calendar-grip .move-grip-handle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 24px;
+  height: auto;
+  min-height: 24px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--ease-soft),
+    background-color var(--motion-fast) var(--ease-soft);
+}
+
+.calendar-grip .move-grip-handle:hover,
+.calendar-grip .move-grip-handle[aria-expanded="true"] {
+  background: var(--color-surface-sunken);
+}
+
+.calendar-entry:hover .move-grip-handle,
+.calendar-entry:focus-within .move-grip-handle,
+.calendar-entry.is-dragging .move-grip-handle {
+  opacity: 1;
+}
+
+/* Early in the week the menu opens towards the later days, else towards the earlier ones. */
+.calendar-day.is-early-week .move-grip-popup {
+  inset-inline: 0 auto;
+}
+
 @media (max-width: 767px) {
   .calendar-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -256,6 +321,26 @@
   .list-rules input,
   .list-rules select {
     min-height: var(--hit-target-touch);
+  }
+}
+
+@media (pointer: coarse) {
+  .calendar-entry {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+
+  /* The least a name needs beside the grip; a day with less sends the grip under it. */
+  .calendar-entry .calendar-chip {
+    flex-basis: 6rem;
+  }
+
+  .calendar-grip .move-grip-handle {
+    position: static;
+    width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+    opacity: 1;
   }
 }
 

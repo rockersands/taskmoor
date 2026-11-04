@@ -45,7 +45,9 @@ timeline reads a track's sprints and releases (ADR-064).
   moves a focused entry by a day or a week; choosing it opens both days in a panel (the phone's
   way). Every move is `PATCH /tickets/:key`, so the Schedule permission and history apply.
 - **Phones**: the list's table scrolls inside its region; the calendar becomes a list of the
-  month's days.
+  month's days. Since T-162b (2026-11-04; ADR-114, section 12) a drag is pointer events, not the
+  browser's own: a finger drags an entry by its grip, which pressed also opens a menu of the moves
+  the keys make, and a mouse drags the entry itself.
 
 ## Options considered
 

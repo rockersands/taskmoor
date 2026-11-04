@@ -4039,6 +4039,9 @@ export const messagesEn = {
   'boards.card.moveDown': 'Down in {column}',
   'boards.moved': '{key} moved to {column}.',
   'boards.dropped': '{key} moved within {column}.',
+  // A card dragged by pointer events (T-162b): what is in hand, and a drag that moved nothing.
+  'boards.drag.start': 'Moving {key}: drop it on a place in a column. Escape cancels.',
+  'boards.drag.cancelled': '{key} stays where it was.',
   'boards.ranked': '{key} moved {direction, select, up {up} other {down}} in {column}.',
   'boards.noTransition':
     '{key} cannot go to {column}: its workflow has no step there from {status}. An administrator can add one to the workflow.',
@@ -4889,7 +4892,16 @@ export const messagesEn = {
   'calendar.next': 'Next month',
   'calendar.thisMonth': 'This month',
   'calendar.hint':
-    'Drag a ticket to another day to move it; its start moves along. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens the ticket.',
+    'Drag a ticket to another day to move it, with a mouse from anywhere on it or by its grip; its start moves along. Its grip also opens a menu of moves. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens the ticket.',
+  // A calendar entry's grip and its drag by pointer events (T-162b).
+  'calendar.grip.due': 'Move the due day of {key}',
+  'calendar.grip.start': 'Move the start of {key}',
+  'calendar.grip.dayEarlier': 'One day earlier',
+  'calendar.grip.dayLater': 'One day later',
+  'calendar.grip.weekEarlier': 'One week earlier',
+  'calendar.grip.weekLater': 'One week later',
+  'calendar.drag.start': 'Moving {key}: drop it on another day. Escape cancels.',
+  'calendar.drag.cancelled': '{key} stays where it was.',
   'calendar.days': 'Days',
   'calendar.day': '{date}, {count, plural, =0 {no tickets} one {# ticket} other {# tickets}}',
   'calendar.release': '◆ {name}',

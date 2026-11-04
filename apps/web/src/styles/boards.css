@@ -709,10 +709,37 @@
   }
 }
 
-/* Drag and drop (M1-046): the card in hand fades, the cell it would land in is outlined, and a
-   line shows the place before the card it would go above. */
-.board-card[draggable="true"] {
+/* Drag and drop (M1-046; pointer events since T-162b): the card in hand fades, the cell it would
+   land in is outlined, and a line shows the place before the card it would go above. A mouse
+   drags the card from anywhere, so its text is not selected on the way; its title editor is. */
+.board-card {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (pointer: fine) {
+  .board-card:not(:has(.board-card-title-form)) {
+    cursor: grab;
+  }
+}
+
+.board-card-title-form input {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* The grip (the Move button): a finger on it drags the card rather than scrolling the board, and
+   a long press shows no menu of the browser's own. Elsewhere on the card a finger scrolls. */
+.board-card-grip {
   cursor: grab;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+/* The columns snap to a column's start when scrolled by hand; while a card is in hand they scroll
+   along with the pointer near an edge in small steps, which snapping would undo. */
+body.is-pointer-dragging .board-scroll {
+  scroll-snap-type: none;
 }
 
 /* While a card travels: the original fades, the column under it glows, a line marks the place. */

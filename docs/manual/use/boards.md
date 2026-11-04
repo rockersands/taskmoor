@@ -57,9 +57,10 @@ track's board estimates with it. Set a ticket's points in its details, on the cr
 search result's cell. A card with no value shows nothing. An administrator may rename the field or
 remove it ([Fields](../admin/fields.md#the-points-field)).
 
-If you may edit a ticket, its card has a pencil at the corner (on a touch screen, in a row under the
-card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be
-saved the card says why. A card does not move or drag while its title is being edited.
+If you may edit a ticket, its card has a pencil at the corner, beside its grip (on a touch screen,
+both in a row under the card). The pencil edits the title in place: **Enter** saves, **Escape**
+cancels, and if the title cannot be saved the card says why. A card does not move or drag while its
+title is being edited.
 
 If the board shows days in column, a card that has waited a day or more shows a small clock with the
 number, and a card that has just arrived shows nothing. Cards are in rank order.
@@ -97,15 +98,24 @@ Moving a card to another column changes the ticket's status to that column's. On
 site starts with, a move asks for nothing: any card goes to any column. If you want to give a reason,
 write it in a comment. There are three ways to move a card:
 
-- drag the card to a place in another column, or up and down in its own column;
-- open the card's **Move PAY-42** menu and choose **Forward to Done**, **Back to To do**, **Up in
-  Doing** or **Down in Doing**;
+- drag the card to a place in another column, or up and down in its own column. With a mouse, drag
+  it from anywhere but its pencil; with a finger, drag it by its grip (the six dots at its corner,
+  or in the row under the card on a touch screen), since a finger elsewhere on a card scrolls the
+  board;
+- press the card's grip, **Move PAY-42**, and choose **Forward to Done**, **Back to To do**, **Up
+  in Doing** or **Down in Doing**;
 - focus the card and press Alt with the left or right arrow (to the next column) or the up or
   down arrow (within the column).
 
+While you drag, the column and the place the card would land are outlined, the card fades where it
+was and a label with its key and title follows the pointer. Hold it near the left or right edge of
+the columns and they scroll along, so a column off the screen can be reached on a phone; near the
+top or bottom of the screen, the page scrolls. **Escape** puts the card back where it was, and so
+does letting go outside the columns. A screen reader hears what is in hand and what happened.
+
 Only a rule someone put on the workflow, or one that came with an import, can ask for more. Then a
 move brings up a form, or a refusal in plain words, such as **PAY-42 cannot go to Done: its workflow
-has no step there from To do.** On phones, use the menu or the keyboard.
+has no step there from To do.** A drop asks exactly what the menu and the keys ask.
 
 ### Board filters
 

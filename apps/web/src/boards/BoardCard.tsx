@@ -1,14 +1,14 @@
 import {
   type CSSProperties,
-  type DragEvent,
   type KeyboardEvent,
-  type MouseEvent,
   memo,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
-import { ClockIcon, MoreIcon, NobodyIcon, PencilIcon } from '../shell/icons';
+import { ClockIcon, NobodyIcon, PencilIcon } from '../shell/icons';
+import { GripIcon } from '../shell/MoveMenu';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import type { SubticketProgress } from '../tickets/tools/client';
 import { SubticketProgressMini } from '../tickets/tools/Progress';
@@ -19,15 +19,14 @@ import type { BoardCard } from './client';
  * its latest handlers, so a card is drawn again only when its own props change (T-193).
  */
 export interface CardActions {
-  /** A press begins somewhere on the card. */
-  press(): void;
-  /** A press begins on one of the card's buttons: a drag from there is not meant. */
-  pressButton(): void;
-  dragStart(event: DragEvent, card: BoardCard): void;
-  dragEnd(): void;
+  /**
+   * A press begins on the card, which may become a drag (T-162b; ADR-114, section 12): a mouse's
+   * anywhere but on the pencil, anything's on the grip (`data-card-grip`), the Move button.
+   */
+  grab(event: ReactPointerEvent, card: BoardCard): void;
   keyDown(event: KeyboardEvent, card: BoardCard): void;
-  /** The card's link is followed; a click right after a drag opens nothing. */
-  open(event: MouseEvent, card: BoardCard): void;
+  /** The card's link is followed (a click that ends a drag never reaches it). */
+  open(card: BoardCard): void;
   editTitle(card: BoardCard): void;
   toggleMenu(card: BoardCard): void;
   linkRef(id: number, link: HTMLAnchorElement | null): void;
@@ -100,8 +99,10 @@ function CardPerson({ name, nobody }: { name: string | null; nobody: string }) {
 
 /**
  * One card (M1-043, M1-046; AGL-006): its key and title, icons, the fields the board shows, and
- * its pencil and Move menu. Drawn again only when its own props change: a drop, a drag over the
- * board or a reload draws the cards that changed, not the whole board (T-193).
+ * its pencil and grip, which opens the Move menu. A mouse drags the card from anywhere but the
+ * pencil; a finger by the grip, since elsewhere it scrolls (T-162b). Drawn again only when its
+ * own props change: a drop, a drag over the board or a reload draws the cards that changed, not
+ * the whole board (T-193).
  */
 function BoardCardView({
   card,
@@ -134,10 +135,7 @@ function BoardCardView({
       data-card-id={card.id}
       aria-posinset={place}
       aria-setsize={of}
-      draggable={!busy && !titleOpen}
-      onPointerDownCapture={actions.press}
-      onDragStart={(event) => actions.dragStart(event, card)}
-      onDragEnd={actions.dragEnd}
+      onPointerDown={(event) => actions.grab(event, card)}
       style={Object.keys(style).length > 0 ? style : undefined}
       onKeyDown={(event) => actions.keyDown(event, card)}
     >
@@ -147,10 +145,12 @@ function BoardCardView({
         <a
           className="board-card-link"
           href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-          onClick={(event) => actions.open(event, card)}
+          onClick={() => actions.open(card)}
           aria-describedby={hintId}
           title={`${card.key} ${card.summary}`}
           tabIndex={tabIndex}
+          // The card is dragged, not the link's address (the browser's own drag would end ours).
+          draggable={false}
           ref={(el) => actions.linkRef(card.id, el)}
         >
           <span className="board-card-key">{card.key}</span>{' '}
@@ -204,24 +204,25 @@ function BoardCardView({
               disabled={busy}
               tabIndex={tabIndex}
               ref={(el) => actions.pencilRef(card.id, el)}
-              onPointerDown={actions.pressButton}
               onClick={() => actions.editTitle(card)}
             >
               <PencilIcon width={18} height={18} />
             </button>
           )}
+          {/* The card's grip: a mouse or a finger drags the card by it, and a press opens the
+              Move menu. Elsewhere on the card a finger scrolls the board (T-162b). */}
           <button
             type="button"
-            className="board-card-move"
+            className="board-card-move board-card-grip"
+            data-card-grip=""
             aria-expanded={menuOpen}
             aria-label={t('boards.card.move', { key: card.key })}
             title={t('boards.card.move', { key: card.key })}
             disabled={busy}
             tabIndex={tabIndex}
-            onPointerDown={actions.pressButton}
             onClick={() => actions.toggleMenu(card)}
           >
-            <MoreIcon width={18} height={18} />
+            <GripIcon />
           </button>
         </span>
       )}

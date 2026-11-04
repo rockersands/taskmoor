@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
@@ -27,6 +27,31 @@ const keysIn = (name: string) =>
   cell(name)
     .queryAllByRole('link')
     .map((a) => a.textContent?.split(' ')[0]);
+
+/**
+ * A drag with pointer events, as a mouse or a finger makes it (T-162b): down on `from` (a card's
+ * link, its grip or its pencil), over the page, then up there unless the test lets go itself.
+ * What the page finds under the pointer is `over`. jsdom lays nothing out: every box is empty, so
+ * a card's middle is at 0 and a pointer above 0 is in its lower half.
+ */
+function pointerDrag(
+  from: Element,
+  over: Element | null,
+  options: { pointerType?: 'mouse' | 'touch'; y?: number; up?: boolean; button?: number } = {},
+) {
+  const { pointerType = 'mouse', y = 10, up = true, button = 0 } = options;
+  const under = vi.spyOn(document, 'elementFromPoint').mockReturnValue(over);
+  const point = { pointerId: 5, pointerType, isPrimary: true };
+  fireEvent.pointerDown(from, { ...point, button, clientX: 10, clientY: 200 });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 40, clientY: y });
+  fireEvent.pointerMove(window, { ...point, buttons: 1, clientX: 80, clientY: y });
+  const letGo = () => {
+    fireEvent.pointerUp(window, { ...point, clientX: 80, clientY: y });
+    under.mockRestore();
+  };
+  if (up) letGo();
+  return letGo;
+}
 
 describe('a card’s title in place', () => {
   const cardOf = (key: string) =>
@@ -140,35 +165,44 @@ describe('a card’s title in place', () => {
   });
 
   it('[AGL-006] a click right after a drag opens nothing, and a later one does', async () => {
-    renderBoard();
+    const client = renderBoard();
     const link = await screen.findByRole('link', { name: /^SHOP-19 / });
-    const card = cardOf('SHOP-19');
-    const clicked = () => !fireEvent.click(link);
-    fireEvent.dragStart(card, { dataTransfer: { setData: () => {}, effectAllowed: '' } });
-    fireEvent.dragEnd(card);
-    expect(clicked()).toBe(true);
-    const now = performance.now();
-    const later = vi.spyOn(performance, 'now').mockReturnValue(now + 1000);
-    // A plain click stays a real link's click, for the router to take.
-    const after = (e: Event) => e.preventDefault();
-    window.addEventListener('click', after, { once: true });
+    const hash = window.location.hash;
+    // Dragged, and let go over nothing: it stays, and the click that ends the drag is the drag's.
+    pointerDrag(link, null);
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
     expect(fireEvent.click(link)).toBe(false);
-    later.mockRestore();
+    expect(window.location.hash).toBe(hash);
+    // A plain click later stays a real link's click, for the router to take.
+    await act(() => new Promise((done) => setTimeout(done, 0)));
+    const router = vi.fn((e: Event) => e.preventDefault());
+    window.addEventListener('click', router, { once: true });
+    fireEvent.click(link);
+    expect(router).toHaveBeenCalledOnce();
     expect(link).toHaveAttribute('href', '#/tickets/SHOP-19');
+    // The link itself is never the browser's own drag, which would end the pointer's.
+    expect(link).toHaveAttribute('draggable', 'false');
+    expect(client.moves).toEqual([]);
   });
 
   it('[AGL-006] the pencil neither starts a drag nor opens the ticket', async () => {
     const user = userEvent.setup();
-    renderBoard();
+    const client = renderBoard();
     await page();
     const hash = window.location.hash;
     const pencil = screen.getByRole('button', { name: 'Edit the title of SHOP-19' });
     expect(pencil.closest('a')).toBeNull();
-    fireEvent.pointerDown(pencil);
-    // A press on the pencil that turns into a drag does not take the card along.
-    expect(fireEvent.dragStart(cardOf('SHOP-19'))).toBe(false);
+    // A press on the pencil that moves does not take the card along.
+    const letGo = pointerDrag(
+      pencil,
+      screen.getByRole('list', { name: 'Doing in Everything else' }),
+      {
+        up: false,
+      },
+    );
     expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
-    fireEvent.pointerUp(pencil);
+    letGo();
+    expect(client.moves).toEqual([]);
     await user.click(pencil);
     expect(window.location.hash).toBe(hash);
     expect(screen.getByRole('textbox', { name: 'Title of SHOP-19' })).toBeVisible();
@@ -179,15 +213,21 @@ describe('a card’s title in place', () => {
     const client = renderBoard();
     await page();
     const card = cardOf('SHOP-19');
-    expect(card).toHaveAttribute('draggable', 'true');
+    const doing = screen.getByRole('list', { name: 'Doing in Everything else' });
     const input = await openEditor(user, 'SHOP-19');
-    expect(card).toHaveAttribute('draggable', 'false');
     expect(screen.queryByRole('button', { name: 'Move SHOP-19' })).toBeNull();
+    pointerDrag(card, doing);
+    expect(card).not.toHaveClass('is-dragging');
     await user.keyboard('{Alt>}{ArrowRight}{ArrowDown}{/Alt}');
     expect(client.moves).toEqual([]);
     expect(input).toHaveFocus();
     await user.keyboard('{Escape}');
-    expect(card).toHaveAttribute('draggable', 'true');
+    // Closed again, it drags as before.
+    const letGo = pointerDrag(cardOf('SHOP-19'), doing, { up: false });
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    letGo();
+    expect(client.moves).toEqual([]);
   });
 
   it('[AGL-006] reaches the pencil from the keyboard', async () => {
@@ -657,48 +697,35 @@ describe("a new board's filter in the person's language", () => {
   });
 });
 
-describe('dragging cards (M1-046)', () => {
-  // jsdom has no DragEvent: a mouse event stands in, so the pointer's position reaches the page.
-  beforeAll(() => {
-    if (!('DragEvent' in window)) {
-      Object.defineProperty(window, 'DragEvent', {
-        value: class extends MouseEvent {},
-        configurable: true,
-      });
-    }
-  });
-  // jsdom gives no layout: every card's box is empty, so its middle is at 0.
-  const dataTransfer = () => ({
-    setData: () => undefined,
-    getData: () => '',
-    effectAllowed: 'move',
-    dropEffect: 'move',
-  });
-  const cardOf = (key: string) =>
-    screen.getByRole('link', { name: new RegExp(`^${key} `) }).closest('li') as HTMLElement;
-  const drag = (key: string, to: HTMLElement, over: HTMLElement = to, clientY = 10) => {
-    const transfer = dataTransfer();
-    fireEvent.dragStart(cardOf(key), { dataTransfer: transfer });
-    fireEvent.dragOver(over, { dataTransfer: transfer, clientY });
-    fireEvent.drop(to, { dataTransfer: transfer });
-  };
+describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
+  const linkOf = (key: string) => screen.getByRole('link', { name: new RegExp(`^${key} `) });
+  const cardOf = (key: string) => linkOf(key).closest('li') as HTMLElement;
+  const doing = () => screen.getByRole('list', { name: 'Doing in Everything else' });
 
   it('[AGL-002] a card dropped on another column moves there through its transition', async () => {
     const client = renderBoard();
     await page();
-    drag('SHOP-19', screen.getByRole('list', { name: 'Doing in Everything else' }));
+    pointerDrag(linkOf('SHOP-19'), doing());
     await waitFor(() =>
       expect(keysIn('Doing in Everything else')).toEqual(['SHOP-23', 'SHOP-24', 'SHOP-19']),
     );
     // At the end of the cell: after its last card.
     expect(client.moves.at(-1)).toEqual({ ticket: 119, columnId: 'doing', after: 124 });
     expect(await screen.findByText('SHOP-19 moved to Doing.')).toBeInTheDocument();
+    // Seamless: one way there, so nothing is asked (ADR-116).
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Only the card that moved drops into place, focused where it landed.
+    await waitFor(() => expect(linkOf('SHOP-19')).toHaveFocus());
+    expect(document.querySelectorAll('.motion-drop')).toHaveLength(1);
   });
 
   it('[AGL-002] a drop where several transitions lead asks which one', async () => {
     renderBoard();
     await page();
-    drag('SHOP-23', screen.getByRole('list', { name: 'Review and done in Everything else' }));
+    pointerDrag(
+      linkOf('SHOP-23'),
+      screen.getByRole('list', { name: 'Review and done in Everything else' }),
+    );
     expect(
       await screen.findByRole('dialog', { name: 'Move SHOP-23 to Review and done' }),
     ).toBeVisible();
@@ -707,15 +734,131 @@ describe('dragging cards (M1-046)', () => {
   it('[AGL-009] a card dropped above another in its column takes that place', async () => {
     const client = renderBoard();
     await page();
-    const doing = screen.getByRole('list', { name: 'Doing in Everything else' });
     // Above the middle of SHOP-23: before it.
-    drag('SHOP-24', doing, cardOf('SHOP-23'), -1);
+    pointerDrag(linkOf('SHOP-24'), cardOf('SHOP-23'), { y: -1 });
     await waitFor(() => expect(keysIn('Doing in Everything else')).toEqual(['SHOP-24', 'SHOP-23']));
     expect(client.moves.at(-1)).toEqual({ ticket: 124, columnId: 'doing', before: 123 });
-    // Dropped where it already is: nothing is asked of the server.
+    // Dropped where it already is: nothing is asked of the server, and the page says so.
     const before = client.moves.length;
-    drag('SHOP-24', doing, cardOf('SHOP-23'), -1);
+    pointerDrag(linkOf('SHOP-24'), cardOf('SHOP-23'), { y: -1 });
     expect(client.moves).toHaveLength(before);
+    expect(screen.getByText('SHOP-24 stays where it was.')).toBeInTheDocument();
+  });
+
+  it('[AGL-002] [NFR-005] says what is in hand, marks where it would land, and Escape cancels', async () => {
+    const client = renderBoard();
+    await page();
+    // Over the top half of SHOP-23: the line goes above it, and the cell is outlined.
+    const letGo = pointerDrag(linkOf('SHOP-19'), cardOf('SHOP-23'), { y: -1, up: false });
+    expect(
+      screen.getByText('Moving SHOP-19: drop it on a place in a column. Escape cancels.'),
+    ).toBeInTheDocument();
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    expect(doing()).toHaveClass('is-drop-target');
+    expect(cardOf('SHOP-23')).toHaveClass('is-drop-before');
+    // A label with the card's key and title follows the pointer, hidden from screen readers.
+    const ghost = document.querySelector('.drag-ghost');
+    expect(ghost).toHaveTextContent('SHOP-19 Refunds show the wrong currency');
+    expect(ghost).toHaveAttribute('aria-hidden', 'true');
+    expect(document.body).toHaveClass('is-pointer-dragging');
+    // Escape goes no further than the drag: a dialog around the board would stay open.
+    const outside = vi.fn();
+    document.addEventListener('keydown', outside);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    document.removeEventListener('keydown', outside);
+    expect(outside).not.toHaveBeenCalled();
+    letGo();
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
+    expect(doing()).not.toHaveClass('is-drop-target');
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    expect(client.moves).toEqual([]);
+  });
+
+  it('[AGL-002] a mouse let go where the page cannot hear it moves nothing, and the next press drags', async () => {
+    const client = renderBoard();
+    await page();
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    // Back on the page with no button held, then an ordinary click over another column.
+    fireEvent.pointerMove(window, {
+      pointerId: 5,
+      pointerType: 'mouse',
+      buttons: 0,
+      clientX: 80,
+      clientY: 10,
+    });
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
+    expect(doing()).not.toHaveClass('is-drop-target');
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    letGo();
+    expect(client.moves).toEqual([]);
+    pointerDrag(linkOf('SHOP-19'), doing());
+    await waitFor(() => expect(client.moves).toHaveLength(1));
+  });
+
+  it('[AGL-002] a finger drags a card by its grip, not by the card; a tap opens the Move menu', async () => {
+    // On a phone, where a finger is the pointer.
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    const client = renderBoard();
+    await page();
+    // A finger on the card scrolls the board: nothing moves.
+    pointerDrag(linkOf('SHOP-19'), doing(), { pointerType: 'touch' });
+    expect(client.moves).toEqual([]);
+    expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
+    // On the grip, it drags: to the end of Doing.
+    const grip = screen.getByRole('button', { name: 'Move SHOP-19' });
+    expect(grip).toHaveAttribute('data-card-grip');
+    pointerDrag(grip, doing(), { pointerType: 'touch' });
+    await waitFor(() =>
+      expect(keysIn('Doing in Everything else')).toEqual(['SHOP-23', 'SHOP-24', 'SHOP-19']),
+    );
+    expect(client.moves).toEqual([{ ticket: 119, columnId: 'doing', after: 124 }]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // A press without moving is the grip's own: its Move menu opens, as before.
+    await user.click(screen.getByRole('button', { name: 'Move SHOP-21' }));
+    expect(
+      within(cardOf('SHOP-21')).getByRole('button', { name: 'Forward to Doing' }),
+    ).toBeVisible();
+  });
+
+  it('[AGL-002] a card that leaves the board under the drag asks nothing of the server', async () => {
+    const client = fakeBoardClient();
+    const read = client.data;
+    renderBoard(client);
+    await page();
+    // A read is on its way when the drag begins, and it comes back without the card.
+    let answer: () => void = () => {};
+    const answered = new Promise<void>((done) => {
+      answer = done;
+    });
+    client.data = async (...args) => {
+      const data = await read(...args);
+      await answered;
+      return { ...data, cards: data.cards.filter((card) => card.id !== 119) };
+    };
+    act(() => announceTicketChange());
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    await act(async () => answer());
+    await waitFor(() => expect(screen.queryByRole('link', { name: /^SHOP-19 / })).toBeNull());
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    letGo();
+    expect(client.moves).toEqual([]);
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+
+  it('[AGL-002] a mouse drags by the grip too, but not with another button', async () => {
+    const client = renderBoard();
+    await page();
+    pointerDrag(screen.getByRole('button', { name: 'Move SHOP-19' }), doing(), { button: 2 });
+    expect(client.moves).toEqual([]);
+    pointerDrag(screen.getByRole('button', { name: 'Move SHOP-19' }), doing());
+    await waitFor(() => expect(client.moves).toHaveLength(1));
+    expect(screen.queryByRole('button', { name: 'Forward to Doing' })).toBeNull();
   });
 });
 
