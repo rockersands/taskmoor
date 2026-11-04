@@ -28,7 +28,12 @@ interface Entry {
 const PER_DAY = 6;
 
 /** Alt with an arrow moves an entry by these days: a day sideways, a week up or down. */
-const KEY_STEPS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+const KEY_STEPS: Record<string, number> = {
+  ArrowLeft: -1,
+  ArrowRight: 1,
+  ArrowUp: -7,
+  ArrowDown: 7,
+};
 
 /** The moves an entry's grip offers, as its keys make them (T-162b). */
 const GRIP_STEPS = [

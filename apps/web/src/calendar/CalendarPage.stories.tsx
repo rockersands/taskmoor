@@ -74,11 +74,12 @@ export const EntryGripMenu: Story = {
   args: { client: fakeCalendarClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Move the due day of CAL-2' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Move the due day of CAL-2' }));
     const menu = within(await canvas.findByRole('menu'));
-    await expect(menu.getByRole('menuitem', { name: 'One day earlier' })).toBeVisible();
+    // The menu fades in: visible once its first frames have been drawn.
+    await waitFor(() =>
+      expect(menu.getByRole('menuitem', { name: 'One day earlier' })).toBeVisible(),
+    );
     await expect(menu.getByRole('menuitem', { name: 'One week later' })).toBeVisible();
   },
 };

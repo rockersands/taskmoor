@@ -18,8 +18,8 @@ import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
-import { followPointerDrag } from '../shell/pointerDrag';
 import { Popover } from '../shell/Popover';
+import { followPointerDrag } from '../shell/pointerDrag';
 import { CompleteSprintDialog, type SprintCounts } from '../sprints/CompleteSprint';
 import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
 import { useSyncEngine } from '../sync/SyncProvider';
@@ -600,10 +600,13 @@ export function BoardPage({
   }
 
   /** A drop: the same move as the keyboard's, to the column and the place shown. */
-  function dropOn(card: BoardCard, place: DropPlace | null) {
+  function dropOn(held: BoardCard, place: DropPlace | null) {
+    // As the board is now: a read already on its way when the drag began may have moved the card,
+    // or taken it away. Later ones wait for the drag to end (`moving`).
+    const card = data?.cards.find((c) => c.id === held.id);
     const column = place ? columns.find((c) => c.id === place.columnId) : undefined;
-    const stayed = () => setAnnouncement(t('boards.drag.cancelled', { key: card.key }));
-    if (!place || !column || busy || place.before === card.id) return stayed();
+    const stayed = () => setAnnouncement(t('boards.drag.cancelled', { key: held.key }));
+    if (!card || !place || !column || busy || place.before === card.id) return stayed();
     const { before, laneId } = place;
     const rest = cardsIn(column.id, laneId).filter((c) => c.id !== card.id);
     const last = rest[rest.length - 1];

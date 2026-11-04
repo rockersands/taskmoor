@@ -42,7 +42,7 @@ describe('a busy calendar day (PLN-012)', () => {
     '[PLN-012] names its "more" button with the words it shows, in %s',
     (locale) => {
       renderBusyDay(locale);
-      const more = screen.getByRole('button', { expanded: false });
+      const more = screen.getByRole('button', { name: /^3 / });
       const shown = more.textContent ?? '';
       expect(shown).toMatch(/^3 /);
       // Label in Name (WCAG 2.5.3): speech input finds the button by what it shows.

@@ -2,7 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { finger } from './touch';
 
 /**
- * Dragging a card really moves its ticket (M1-046; AGL-003, ADR-049): with a mouse on a desktop,
+ * Dragging a card really moves its ticket (M1-046; AGL-002, ADR-049): with a mouse on a desktop,
  * and with a finger on a phone by the card's grip, the columns scrolling along at the screen's
  * edge (T-162b; ADR-114, section 12). On the workflow a site starts with, any card goes to any
  * column, left or right, with no dialog.
@@ -37,7 +37,7 @@ async function oneTicket(page: Page, prefix: string) {
   return { key, word, ticket, status };
 }
 
-test('[AGL-003] a mouse drag moves a card to any column with nothing asked', async ({
+test('[AGL-002] a mouse drag moves a card to any column with nothing asked', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'dragging with a mouse is a desktop path');
@@ -76,7 +76,7 @@ test('[AGL-003] a mouse drag moves a card to any column with nothing asked', asy
   expect(await status()).toBe('New');
 });
 
-test('[AGL-003] [NFR-007] a finger drags a card by its grip to a column off the screen', async ({
+test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the screen', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'a finger on a phone');
@@ -115,12 +115,17 @@ test('[AGL-003] [NFR-007] a finger drags a card by its grip to a column off the 
   // Inside the edge zone, but near its inner side: a slow, steady scroll.
   const edge = { x: region.x + region.width - 50, y: g.y + g.height / 2 };
   await hand.moveTo(edge);
-  await expect(page.getByText(`Moving ${ticket.key}: drop it on a place in a column.`, { exact: false })).toBeAttached();
+  await expect(
+    page.getByText(`Moving ${ticket.key}: drop it on a place in a column.`, { exact: false }),
+  ).toBeAttached();
   await expect
-    .poll(async () => ((await active.boundingBox())?.x ?? Number.POSITIVE_INFINITY) < edge.x - 120, {
-      intervals: [50],
-      timeout: 15_000,
-    })
+    .poll(
+      async () => ((await active.boundingBox())?.x ?? Number.POSITIVE_INFINITY) < edge.x - 120,
+      {
+        intervals: [50],
+        timeout: 15_000,
+      },
+    )
     .toBe(true);
   const target = (await active.boundingBox()) as NonNullable<typeof region>;
   await hand.moveTo({ x: target.x + 40, y: target.y + Math.min(target.height / 2, 60) }, 4);

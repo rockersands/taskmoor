@@ -58,8 +58,9 @@ search result's cell. A card with no value shows nothing. An administrator may r
 remove it ([Fields](../admin/fields.md#the-points-field)).
 
 If you may edit a ticket, its card has a pencil at the corner, beside its grip (on a touch screen,
-both in a row under the card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be
-saved the card says why. A card does not move or drag while its title is being edited.
+both in a row under the card). The pencil edits the title in place: **Enter** saves, **Escape**
+cancels, and if the title cannot be saved the card says why. A card does not move or drag while its
+title is being edited.
 
 If the board shows days in column, a card that has waited a day or more shows a small clock with the
 number, and a card that has just arrived shows nothing. Cards are in rank order.

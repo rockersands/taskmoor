@@ -717,6 +717,12 @@
   user-select: none;
 }
 
+@media (pointer: fine) {
+  .board-card:not(:has(.board-card-title-form)) {
+    cursor: grab;
+  }
+}
+
 .board-card-title-form input {
   -webkit-user-select: text;
   user-select: text;

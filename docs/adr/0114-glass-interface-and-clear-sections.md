@@ -350,7 +350,7 @@ Section 7 carried out for the backlog, dashboard widgets and files on a ticket, 
 habits: the place a drop would land is outlined, the page says what is in hand and what happened,
 Escape cancels, and every move also has a menu or keys. Requirements: AGL-008 and AGL-009 (the
 backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no new one was needed.
-Board cards (AGL-002, AGL-003, AGL-009) and calendar entries (AGL-017) followed in T-162b.
+Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b.
 
 - **Pointer events, not the browser's drag and drop, for things the page moves.** A finger never
   starts a native drag on most phones, so the backlog leaves it and the widgets never take it up.
@@ -422,8 +422,10 @@ Board cards (AGL-002, AGL-003, AGL-009) and calendar entries (AGL-017) followed 
   `data-drop-column` and `data-drop-lane`. On a large board (T-193) the card in hand stays drawn
   wherever the page scrolls, and a drag draws no other card: the label is moved by hand rather
   than drawn, and only the card in hand and the cells under the pointer change.
-- **Calendar entries (T-162b).** An entry is its link and a grip after it. A mouse drags the link
-  itself; a finger or a mouse drags the grip, and elsewhere a finger scrolls the page. The grip,
+- **Calendar entries (T-162b).** An entry is its link and a grip at its end: over the link's end
+  under a mouse, as a card's pencil and grip are, so a narrow day keeps its width for the ticket's
+  name, and beside the link on a touch screen. A mouse drags the link itself; a finger or a mouse
+  drags the grip, and elsewhere a finger scrolls the page. The grip,
   pressed, opens a menu of the moves Alt and the arrows make: one day earlier or later, one week
   earlier or later. That is also the way to reschedule with one finger and no drag at all, which
   the calendar lacked (WCAG 2.5.7). The grip shows while the pointer or the keyboard is on its

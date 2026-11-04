@@ -193,9 +193,13 @@ describe('a card’s title in place', () => {
     const pencil = screen.getByRole('button', { name: 'Edit the title of SHOP-19' });
     expect(pencil.closest('a')).toBeNull();
     // A press on the pencil that moves does not take the card along.
-    const letGo = pointerDrag(pencil, screen.getByRole('list', { name: 'Doing in Everything else' }), {
-      up: false,
-    });
+    const letGo = pointerDrag(
+      pencil,
+      screen.getByRole('list', { name: 'Doing in Everything else' }),
+      {
+        up: false,
+      },
+    );
     expect(cardOf('SHOP-19')).not.toHaveClass('is-dragging');
     letGo();
     expect(client.moves).toEqual([]);
@@ -708,6 +712,8 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     // At the end of the cell: after its last card.
     expect(client.moves.at(-1)).toEqual({ ticket: 119, columnId: 'doing', after: 124 });
     expect(await screen.findByText('SHOP-19 moved to Doing.')).toBeInTheDocument();
+    // Seamless: one way there, so nothing is asked (ADR-116).
+    expect(screen.queryByRole('dialog')).toBeNull();
     // Only the card that moved drops into place, focused where it landed.
     await waitFor(() => expect(linkOf('SHOP-19')).toHaveFocus());
     expect(document.querySelectorAll('.motion-drop')).toHaveLength(1);
@@ -739,7 +745,7 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     expect(screen.getByText('SHOP-24 stays where it was.')).toBeInTheDocument();
   });
 
-  it('[AGL-003] [NFR-005] says what is in hand, marks where it would land, and Escape cancels', async () => {
+  it('[AGL-002] [NFR-005] says what is in hand, marks where it would land, and Escape cancels', async () => {
     const client = renderBoard();
     await page();
     // Over the top half of SHOP-23: the line goes above it, and the cell is outlined.
@@ -769,7 +775,7 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     expect(client.moves).toEqual([]);
   });
 
-  it('[AGL-003] a finger drags a card by its grip, not by the card; a tap opens the Move menu', async () => {
+  it('[AGL-002] a finger drags a card by its grip, not by the card; a tap opens the Move menu', async () => {
     // On a phone, where a finger is the pointer.
     setViewportWidth(375);
     const user = userEvent.setup();
@@ -787,6 +793,7 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
       expect(keysIn('Doing in Everything else')).toEqual(['SHOP-23', 'SHOP-24', 'SHOP-19']),
     );
     expect(client.moves).toEqual([{ ticket: 119, columnId: 'doing', after: 124 }]);
+    expect(screen.queryByRole('dialog')).toBeNull();
     // A press without moving is the grip's own: its Move menu opens, as before.
     await user.click(screen.getByRole('button', { name: 'Move SHOP-21' }));
     expect(
@@ -794,7 +801,34 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     ).toBeVisible();
   });
 
-  it('[AGL-003] a mouse drags by the grip too, but not with another button', async () => {
+  it('[AGL-002] a card that leaves the board under the drag asks nothing of the server', async () => {
+    const client = fakeBoardClient();
+    const read = client.data;
+    renderBoard(client);
+    await page();
+    // A read is on its way when the drag begins, and it comes back without the card.
+    let answer: () => void = () => {};
+    const answered = new Promise<void>((done) => {
+      answer = done;
+    });
+    client.data = async (...args) => {
+      const data = await read(...args);
+      await answered;
+      return { ...data, cards: data.cards.filter((card) => card.id !== 119) };
+    };
+    act(() => announceTicketChange());
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    expect(cardOf('SHOP-19')).toHaveClass('is-dragging');
+    await act(async () => answer());
+    await waitFor(() => expect(screen.queryByRole('link', { name: /^SHOP-19 / })).toBeNull());
+    expect(document.querySelector('.drag-ghost')).toBeNull();
+    letGo();
+    expect(client.moves).toEqual([]);
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+
+  it('[AGL-002] a mouse drags by the grip too, but not with another button', async () => {
     const client = renderBoard();
     await page();
     pointerDrag(screen.getByRole('button', { name: 'Move SHOP-19' }), doing(), { button: 2 });

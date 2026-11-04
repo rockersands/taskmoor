@@ -170,7 +170,9 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
     await grip.click();
     await page.getByRole('menuitem', { name: 'One day later' }).click();
     // The keyboard stays with the entry on its new day.
-    await expect(eighteenth.getByRole('button', { name: `Move the due day of ${ticket}` })).toBeFocused();
+    await expect(
+      eighteenth.getByRole('button', { name: `Move the due day of ${ticket}` }),
+    ).toBeFocused();
   }
   await expect(calendar.getByRole('status')).toHaveText(`${ticket} is now due on ${label(18)}.`);
   await expect(

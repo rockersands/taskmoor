@@ -2,8 +2,8 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   memo,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';

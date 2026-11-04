@@ -234,13 +234,13 @@
 /*
  * An entry is its link and its grip (T-162b; ADR-114, section 12). A mouse drags the link, so its
  * text is not selected on the way; a finger drags the grip, which a finger elsewhere does not, so
- * the page still scrolls. The grip shows with the pointer or the keyboard on its entry, and always
- * on a touch screen.
+ * the page still scrolls. The grip shows over the end of the link with the pointer or the keyboard
+ * on its entry, so a narrow day keeps its whole width for the ticket's name; on a touch screen,
+ * where nothing hovers, it always shows, beside the link.
  */
 .calendar-entry {
   position: relative;
   display: flex;
-  gap: 2px;
   min-width: 0;
 }
 
@@ -264,14 +264,23 @@
 }
 
 .calendar-grip .move-grip-handle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
   width: 24px;
   height: auto;
   min-height: 24px;
   border-radius: 4px;
+  background: var(--color-surface);
   opacity: 0;
   transition:
     opacity var(--motion-fast) var(--ease-soft),
     background-color var(--motion-fast) var(--ease-soft);
+}
+
+.calendar-grip .move-grip-handle:hover,
+.calendar-grip .move-grip-handle[aria-expanded="true"] {
+  background: var(--color-surface-sunken);
 }
 
 .calendar-entry:hover .move-grip-handle,
@@ -311,8 +320,15 @@
   .list-rules select {
     min-height: var(--hit-target-touch);
   }
+}
+
+@media (pointer: coarse) {
+  .calendar-entry {
+    gap: 2px;
+  }
 
   .calendar-grip .move-grip-handle {
+    position: static;
     width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
     opacity: 1;

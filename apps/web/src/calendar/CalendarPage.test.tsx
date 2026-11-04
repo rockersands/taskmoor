@@ -106,7 +106,9 @@ describe('a track’s calendar (M1-049)', () => {
     const grip = screen.getByRole('button', { name: 'Move the due day of CAL-2' });
     pointerDrag(grip, day(/^Nov 14, 2026/), { pointerType: 'touch' });
     await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-14'));
-    expect(await screen.findByRole('status')).toHaveTextContent('CAL-2 is now due on Nov 14, 2026.');
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'CAL-2 is now due on Nov 14, 2026.',
+    );
     // A tap is the grip's own: a menu of the moves the keys make, one at a time.
     await user.click(screen.getByRole('button', { name: 'Move the due day of CAL-2' }));
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
