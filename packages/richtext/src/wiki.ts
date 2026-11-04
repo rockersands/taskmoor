@@ -1,4 +1,12 @@
-import { type AdfNode, layoutSpan, MAX_TITLE_LENGTH } from './adf';
+import {
+  type AdfNode,
+  isAttachmentName,
+  layoutSpan,
+  MAX_COLUMNS,
+  MAX_TITLE_LENGTH,
+  shownColumnWidth,
+  TICKET_KEY,
+} from './adf';
 import type { PmJson } from './convert';
 import { dayOf, isSafeHref, readableBlocks, SAFE_COLOR } from './markdown';
 import { schema } from './schema';
@@ -16,7 +24,9 @@ import { schema } from './schema';
  * - `{code:sql}` ... `{code}` and `{noformat}` ... `{noformat}` hold text taken as it is;
  *   `{quote}` ... `{quote}` holds blocks; `{panel:...}` ... `{panel}` holds blocks in a panel
  *   (`{info}`, `{note}`, `{tip}` and `{warning}` read as panels of those types);
- *   `{expand:Title}` ... `{expand}` holds blocks in a collapsible section.
+ *   `{expand:Title}` ... `{expand}` holds blocks in a collapsible section;
+ *   `{section}` ... `{section}` holds columns, each `{column}` ... `{column}`, with
+ *   `{column:width=40%}` for a column that has a width.
  *
  * Inside a line: `*bold*`, `_italic_`, `-strike-`, `+underline+`, `^superscript^`,
  * `~subscript~`, `{{monospace}}`, `{color:#36b37e}text{color}`, `[text|address]`, `[address]`,
@@ -32,6 +42,10 @@ import { schema } from './schema';
  * - panel types are the panel's background colour (`{panel:bgColor=#deebff}` is info), or
  *   `panelType=` for types without a colour of their own (tip, custom);
  * - a code block without a language is `{noformat}` (a bare `{code}` reads as no language too);
+ * - a file of the ticket is a paragraph of `!name!` for a picture or `[^name]` for another file,
+ *   the way the markup names a ticket's files; a ticket reference is `[PAY-42|/browse/PAY-42]`,
+ *   a link whose text is the key and whose address is the ticket's (a link written that way
+ *   reads back as a reference too);
  * - a line feed inside a paragraph reads as a line break, the way people type them.
  *
  * Documented losses, everything else round-trips (`wiki.test.ts` holds the corpus):
@@ -51,9 +65,13 @@ import { schema } from './schema';
  *   addresses the editor may not hold (`javascript:` and the like) keep only their text;
  * - a code language that the markup cannot carry is dropped, and a code block whose text holds
  *   its own closing tag is written with `{noformat}`;
- * - columns are written as their blocks, one column after the other, and read back as that;
- * - a file of the ticket is written as its name and a ticket reference as its key, and both read
- *   back as text;
+ * - columns inside a column lose their frame, and a column width that is not a percentage above
+ *   0 and up to 100, with at most ten decimals, is not written; a `{section}` that holds anything
+ *   but one to six columns, or a `{column}` outside one, loses its frame;
+ * - a file whose name the markup cannot hold (a `!` or `|` in a picture's name, brackets or `|`
+ *   in another's, white space at either end, or a name that reads as an address) is written as
+ *   its name and reads back as text; which of two files of one name a reference means is not
+ *   written: it reads back as the first file of that name;
  * - a collapsible section inside another loses its frame, and `}` in a section's title is dropped:
  *   the markup cannot hold either;
  * - nodes and marks kept whole for the other format are written as the readable content they
@@ -139,13 +157,20 @@ const entity = (ch: string) => `&#${ch.codePointAt(0) as number};`;
 /** Writes a document (ProseMirror JSON on the shared schema) as wiki markup. */
 export function toWiki(doc: PmJson): string {
   if (doc.type !== 'doc') throw new Error(`Expected a doc node, got "${doc.type}"`);
-  return blocksOut(doc.content ?? [], { quote: false, panel: false, expand: false });
+  return blocksOut(doc.content ?? [], {
+    quote: false,
+    panel: false,
+    expand: false,
+    columns: false,
+  });
 }
 
 interface BlockContext {
   quote: boolean;
   panel: boolean;
   expand: boolean;
+  /** Inside a column: a layout there loses its frame, since `{section}` cannot nest. */
+  columns: boolean;
 }
 
 function blocksOut(nodes: readonly PmJson[], ctx: BlockContext): string {
@@ -197,16 +222,26 @@ function blockOut(n: PmJson, ctx: BlockContext): string {
       const title = expandTitle(a.title);
       return `{expand${title === '' ? '' : `:${title}`}}\n${blocksOut(content, { ...ctx, expand: true })}\n{expand}`;
     }
-    case 'columnLayout':
-      return blocksOut(
-        content.flatMap((column) => column.content ?? []),
-        ctx,
-      );
-    case 'attachmentRef':
-      return inlineOut([{ type: 'text', text: String(a.name ?? '') }], {
-        newlines: true,
-        lineStart: true,
+    case 'columnLayout': {
+      if (ctx.columns) {
+        return blocksOut(
+          content.flatMap((column) => column.content ?? []),
+          ctx,
+        );
+      }
+      const inner = { ...ctx, columns: true };
+      const columns = content.map((column) => {
+        const width = columnWidthText(column.attrs?.width);
+        const body = blocksOut(column.content ?? [], inner);
+        return `{column${width === null ? '' : `:width=${width}%`}}\n${body}${body === '' ? '' : '\n'}{column}`;
       });
+      return `{section}\n${columns.join('\n')}\n{section}`;
+    }
+    case 'attachmentRef': {
+      const name = String(a.name ?? '');
+      const file = fileMarkup(name, Boolean(a.image));
+      return file ?? inlineOut([{ type: 'text', text: name }], { newlines: true, lineStart: true });
+    }
     case 'table':
       return tableOut(n);
     case 'unknownBlock':
@@ -214,6 +249,37 @@ function blockOut(n: PmJson, ctx: BlockContext): string {
     default:
       return '';
   }
+}
+
+/** A column's width as `{column:width=40%}` writes it, or null when it has none to write. */
+function columnWidthText(width: unknown): string | null {
+  const shown = shownColumnWidth(width);
+  const text = shown === null ? '' : String(shown);
+  return /^\d{1,3}(?:\.\d{1,10})?$/.test(text) ? text : null;
+}
+
+/** A name that reads as an address rather than a file of the ticket. */
+const ADDRESS_LIKE = /^[A-Za-z][A-Za-z0-9+.-]*:|[/\\]/;
+
+/**
+ * A file of the ticket as the markup names one, `!name!` for a picture and `[^name]` for another
+ * file, or null when the name cannot be held that way (then it is written as text).
+ */
+function fileMarkup(name: string, image: boolean): string | null {
+  if (!isAttachmentName(name) || name.trim() !== name || ADDRESS_LIKE.test(name)) return null;
+  if (image) return /[!|]/.test(name) ? null : `!${name}!`;
+  return /[[\]|]/.test(name) ? null : `[^${name}]`;
+}
+
+/** The file a paragraph's whole text names, as the writer writes one, or null. */
+function fileIn(text: string): PmJson | null {
+  const source = text.trim();
+  const picture = /^!([^!|\n]+)(?:\|[^!\n]*)?!$/.exec(source);
+  const other = picture ? null : /^\[\^([^[\]|\n]+)\]$/.exec(source);
+  const name = picture?.[1] ?? other?.[1];
+  if (name === undefined || name.trim() !== name || ADDRESS_LIKE.test(name)) return null;
+  if (!isAttachmentName(name)) return null;
+  return { type: 'attachmentRef', attrs: { name, image: picture !== null } };
 }
 
 /**
@@ -446,8 +512,11 @@ function leafUnits(n: PmJson, marks: MarkJson[]): Unit[] {
       return lits(dayOf(String(a.timestamp ?? '')));
     case 'status':
       return a.text ? lits(`[${String(a.text)}]`) : [];
-    case 'ticketRef':
-      return a.key ? lits(String(a.key)) : [];
+    case 'ticketRef': {
+      const key = String(a.key ?? '');
+      if (TICKET_KEY.test(key)) return [syn(`[${key}|/browse/${key}]`)];
+      return key ? lits(key) : [];
+    }
     default:
       return [];
   }
@@ -775,6 +844,7 @@ export function fromWiki(text: string): PmJson {
     quote: false,
     panel: false,
     expand: false,
+    columns: false,
   });
   const json: PmJson = {
     type: 'doc',
@@ -810,6 +880,22 @@ function unnest(blocks: readonly PmJson[], ctx: BlockContext): PmJson[] {
     } else if (b.type === 'expand') {
       if (ctx.expand) splice(unnest(content, ctx));
       else out.push(within(b, { ...ctx, expand: true }));
+    } else if (b.type === 'columnLayout') {
+      // Columns in a column lose their frame, as the writer writes them.
+      if (ctx.columns)
+        splice(
+          unnest(
+            content.flatMap((c) => c.content ?? []),
+            ctx,
+          ),
+        );
+      else {
+        const inner = { ...ctx, columns: true };
+        out.push({ ...b, content: content.map((column) => within(column, inner)) });
+      }
+    } else if (b.type === 'column') {
+      // A `{column}` outside a `{section}`: its blocks take its place.
+      splice(unnest(content, ctx));
     } else {
       out.push(b);
     }
@@ -817,7 +903,8 @@ function unnest(blocks: readonly PmJson[], ctx: BlockContext): PmJson[] {
   return out;
 }
 
-const MACRO = /[ \t]*\{(code|noformat|quote|panel|info|note|tip|warning|expand)(?::([^}\n]*))?\}/iy;
+const MACRO =
+  /[ \t]*\{(code|noformat|quote|panel|info|note|tip|warning|expand|section|column)(?::([^}\n]*))?\}/iy;
 const HEADING = /^h([1-6])\.(?:\s(.*))?$/;
 const RULE = /^-{4,}[ \t]*$/;
 const QUOTE_LINE = /^bq\.(?:\s(.*))?$/;
@@ -920,7 +1007,8 @@ function blocksIn(src: string): PmJson[] {
     }
     const lines = [line];
     i = continuation(src, eol + 1, lines);
-    out.push({ type: 'paragraph', content: inlineIn(lines.join('\n')) });
+    const text = lines.join('\n');
+    out.push(fileIn(text) ?? { type: 'paragraph', content: inlineIn(text) });
   }
   return out;
 }
@@ -1005,6 +1093,30 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
       ],
       end,
     };
+  }
+  if (name === 'column') {
+    // A column for the `{section}` around it to take; anywhere else `unnest` unwraps it.
+    const width = params(m[2]).named.get('width');
+    const percent =
+      width && /^\d{1,3}(?:\.\d{1,10})?%?$/.test(width) ? Number.parseFloat(width) : null;
+    return {
+      blocks: [
+        {
+          type: 'column',
+          attrs: { width: shownColumnWidth(percent) },
+          content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }],
+        },
+      ],
+      end,
+    };
+  }
+  if (name === 'section') {
+    const columns = blocks.filter((b) => b.type === 'column');
+    if (columns.length > 0 && columns.length === blocks.length && columns.length <= MAX_COLUMNS) {
+      return { blocks: [{ type: 'columnLayout', content: columns }], end };
+    }
+    // Anything else in it: its blocks, the columns among them unwrapped by `unnest`.
+    return { blocks, end };
   }
   if (name === 'expand') {
     return {
@@ -1555,6 +1667,11 @@ function linkIn(src: string, marks: readonly MarkJson[]): PmJson[] {
   }
   if (src.startsWith('^') && src.length > 1) return inlineIn(src.slice(1), marks);
   const bar = aliasEnd(src);
+  // `[PAY-42|/browse/PAY-42]`: a reference to the ticket, as the writer writes one.
+  const ticket = bar === -1 ? null : /^\/browse\/([^/?#\s]+)$/.exec(src.slice(bar + 1).trim());
+  if (ticket && TICKET_KEY.test(ticket[1] as string) && src.slice(0, bar) === ticket[1]) {
+    return [{ type: 'ticketRef', attrs: { key: ticket[1] } }];
+  }
   if (bar === -1) {
     const href = src.trim();
     if (shorthand(href)) {

@@ -8,6 +8,27 @@ import { RichTextView } from './RichTextView';
 const TOOLS: EditorTools = {
   attachments: async () => [
     { name: 'notes.pdf', image: false, href: 'https://files.example.test/2', thumbnail: null },
+    // Two files of one name (TT-4): the picker tells them apart.
+    {
+      name: 'screen.png',
+      image: true,
+      href: 'https://files.example.test/3',
+      thumbnail: null,
+      sha256: 'a'.repeat(64),
+      size: 48_000,
+      createdAt: '2026-11-01T10:00:00Z',
+      author: 'Ana Ruiz',
+    },
+    {
+      name: 'screen.png',
+      image: true,
+      href: 'https://files.example.test/4',
+      thumbnail: null,
+      sha256: 'b'.repeat(64),
+      size: 52_000,
+      createdAt: '2026-11-02T16:30:00Z',
+      author: 'Ben Ode',
+    },
   ],
   tickets: async () => [
     { id: 40, key: 'SHOP-40', summary: 'Retry a failed payment', status: { name: 'New' } },
@@ -27,6 +48,14 @@ const BLOCKS: PmJson = {
       content: [
         { type: 'column', content: para('Left.') },
         { type: 'column', content: para('Right.') },
+      ],
+    },
+    // Columns with widths (TT-2): a third and two thirds.
+    {
+      type: 'columnLayout',
+      content: [
+        { type: 'column', attrs: { width: 33.33 }, content: para('Narrow.') },
+        { type: 'column', attrs: { width: 66.67 }, content: para('Wide.') },
       ],
     },
     { type: 'attachmentRef', attrs: { name: 'notes.pdf', image: false } },
@@ -118,5 +147,60 @@ export const BlocksInReadMode: Story = {
     await expect(canvas.getByRole('link', { name: 'SHOP-40' })).toBeVisible();
     await expect(canvas.getByText('Steps')).toBeVisible();
     await expect(await canvas.findByRole('link', { name: 'notes.pdf' })).toBeVisible();
+  },
+};
+
+/** A section whose text this person hid while editing (TT-1); the title stays a field. */
+export const HiddenSectionInTheEditor: Story = {
+  args: { initial: BLOCKS },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByRole('button', { name: 'Text of the section “Steps”' });
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByText('Inside.')).not.toBeVisible();
+  },
+};
+
+/** The code block's prompt with its list of common languages (TT-8), narrowed. */
+export const LanguageList: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('textbox', { name: 'Description' }));
+    await userEvent.keyboard('/code');
+    await canvas.findByRole('listbox', { name: 'Blocks to add' });
+    await userEvent.keyboard('{Enter}');
+    await canvas.findByRole('combobox', { name: 'Code language (optional)' });
+    await userEvent.keyboard('ja{ArrowDown}');
+    const list = canvas.getByRole('listbox', { name: 'Common languages' });
+    await expect(within(list).getByRole('option', { name: 'Java' })).toBeVisible();
+  },
+};
+
+/** Two files of one name, each with its size, date and who added it (TT-4). */
+export const SameNamedFiles: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('textbox', { name: 'Description' }));
+    await userEvent.keyboard('/image');
+    await canvas.findByRole('listbox', { name: 'Blocks to add' });
+    await userEvent.keyboard('{Enter}');
+    const list = await canvas.findByRole('listbox', { name: 'Image or file from this ticket' });
+    await expect(within(list).getAllByRole('option', { name: /^screen\.png \(/ })).toHaveLength(2);
+  },
+};
+
+/** The widths of the columns the caret is in (TT-2). */
+export const ColumnWidths: Story = {
+  args: { initial: BLOCKS },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByText('Wide.'));
+    await userEvent.keyboard(' /width');
+    await canvas.findByRole('listbox', { name: 'Blocks to add' });
+    await userEvent.keyboard('{Enter}');
+    await expect(
+      await canvas.findByRole('combobox', { name: 'Widths of the 2 columns' }),
+    ).toHaveDisplayValue('33.3%, 66.7%');
   },
 };

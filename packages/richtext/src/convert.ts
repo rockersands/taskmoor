@@ -3,6 +3,7 @@ import {
   type AdfMark,
   type AdfNode,
   adfShapeProblem,
+  isAttachmentDigest,
   isAttachmentName,
   isExpandTitle,
   MAX_COLUMNS,
@@ -41,26 +42,39 @@ function columnsOf(node: AdfNode): AdfNode[] | null {
   return fits ? columns : null;
 }
 
-/** The media node a file of the ticket is written as, when it holds nothing else. */
-const fileMedia = (id: unknown): AdfNode => ({
+/**
+ * The media node a file of the ticket is written as, when it holds nothing else: its name as the
+ * id and, when the reference says which of two files of one name, its `digest` (TT-4).
+ */
+const fileMedia = (id: unknown, digest: unknown): AdfNode => ({
   type: 'media',
-  attrs: { type: 'file', id, collection: ATTACHMENT_COLLECTION },
+  attrs: {
+    type: 'file',
+    id,
+    collection: ATTACHMENT_COLLECTION,
+    ...(isAttachmentDigest(digest) ? { digest } : {}),
+  },
 });
 
 /**
  * The file a media wrapper names, when it is a file of the ticket; else it is kept whole. A
- * media node with more than the file (a size, alt text, marks) is kept too, for the export.
+ * media node with more than the file (a size, alt text, marks) is kept too, for the export. A
+ * `digest` that is not one (hexadecimal digits) is one of those other attributes.
  */
-function attachmentOf(node: AdfNode): { name: string; media: AdfNode | null } | null {
+function attachmentOf(
+  node: AdfNode,
+): { name: string; digest: string | null; media: AdfNode | null } | null {
   const [only, ...rest] = node.content ?? [];
   if (!only || rest.length > 0 || only.type !== 'media') return null;
-  const { type, id, collection, ...more } = only.attrs ?? {};
+  const { type, id, collection, digest, ...more } = only.attrs ?? {};
   if (collection !== ATTACHMENT_COLLECTION || !isAttachmentName(id)) return null;
+  const known = isAttachmentDigest(digest) ? digest : null;
   const plain =
     type === 'file' &&
     Object.keys(more).length === 0 &&
+    (digest === undefined || known !== null) &&
     Object.keys(only).every((key) => key === 'type' || key === 'attrs');
-  return { name: id, media: plain ? null : clone(only) };
+  return { name: id, digest: known, media: plain ? null : clone(only) };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -161,6 +175,7 @@ function block(node: AdfNode): PmJson {
         attrs: withAdf(node, {
           name: file.name,
           image: node.type === 'mediaSingle',
+          digest: file.digest,
           adfMedia: file.media,
         }),
       };
@@ -358,9 +373,14 @@ function exportNode(n: PmJson): AdfNode {
         ? {
             ...clone(kept),
             type: 'media',
-            attrs: { ...clone(kept.attrs ?? {}), id: a.name, collection: ATTACHMENT_COLLECTION },
+            attrs: {
+              ...clone(kept.attrs ?? {}),
+              id: a.name,
+              collection: ATTACHMENT_COLLECTION,
+              ...(isAttachmentDigest(a.digest) ? { digest: a.digest } : {}),
+            },
           }
-        : fileMedia(a.name);
+        : fileMedia(a.name, a.digest);
       return node(a.image ? 'mediaSingle' : 'mediaGroup', attrsOut(a), [media]);
     }
     case 'ticketRef':

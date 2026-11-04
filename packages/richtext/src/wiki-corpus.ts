@@ -131,8 +131,9 @@ const HAND: CorpusDocument[] = [
     doc: doc({ type: 'expand', attrs: { title: 'a } b' }, content: [p(t('Body.'))] }),
   },
   {
+    // Columns are `{section}` holding `{column}` blocks (ADR-120, TT-3).
     name: 'columns',
-    lossless: false,
+    lossless: true,
     doc: doc({
       type: 'columnLayout',
       content: [
@@ -142,17 +143,91 @@ const HAND: CorpusDocument[] = [
     }),
   },
   {
-    name: 'attachment-reference',
-    lossless: false,
+    // A width as `{column:width=40%}` (TT-2); an empty column; blocks of every kind inside.
+    name: 'columns-with-widths',
+    lossless: true,
     doc: doc(
-      { type: 'attachmentRef', attrs: { name: 'screen shot (1).png', image: true } },
-      { type: 'attachmentRef', attrs: { name: 'notes.pdf', image: false } },
+      p(t('Before.')),
+      {
+        type: 'columnLayout',
+        content: [
+          { type: 'column', attrs: { width: 25 }, content: [p()] },
+          {
+            type: 'column',
+            attrs: { width: 41.5 },
+            content: [
+              ul([p(t('one'))], [p(t('two'))]),
+              code('sql', 'select 1;'),
+              panel('note', p(t('Mind it.'))),
+              { type: 'expand', attrs: { title: 'More' }, content: [p(t('Hidden.'))] },
+              quote(p(t('Quoted.'))),
+            ],
+          },
+          { type: 'column', attrs: { width: 33.5 }, content: [p(t('{section} and {column}'))] },
+        ],
+      },
+      p(t('After.')),
     ),
   },
   {
-    name: 'ticket-reference',
+    // A layout in a column loses its frame, and so does a width the markup does not write.
+    name: 'columns-in-column',
     lossless: false,
-    doc: doc(p(t('Blocked by '), { type: 'ticketRef', attrs: { key: 'PAY-42' } }, t('.'))),
+    doc: doc({
+      type: 'columnLayout',
+      content: [
+        {
+          type: 'column',
+          attrs: { width: 150 },
+          content: [
+            {
+              type: 'columnLayout',
+              content: [
+                { type: 'column', content: [p(t('Inner left.'))] },
+                { type: 'column', content: [p(t('Inner right.'))] },
+              ],
+            },
+          ],
+        },
+        { type: 'column', attrs: { width: 1e-11 }, content: [p(t('Right.'))] },
+      ],
+    }),
+  },
+  {
+    // `!name!` for a picture and `[^name]` for another file (TT-3), the markup's own forms.
+    name: 'attachment-reference',
+    lossless: true,
+    doc: doc(
+      { type: 'attachmentRef', attrs: { name: 'screen shot (1).png', image: true } },
+      { type: 'attachmentRef', attrs: { name: 'notes.pdf', image: false } },
+      panel('info', { type: 'attachmentRef', attrs: { name: 'my_file*v2*.pdf', image: false } }),
+    ),
+  },
+  {
+    // Names the markup cannot hold read back as text; a digest is not written (TT-4).
+    name: 'attachment-names-as-text',
+    lossless: false,
+    doc: doc(
+      { type: 'attachmentRef', attrs: { name: 'wow!.png', image: true } },
+      { type: 'attachmentRef', attrs: { name: 'a [b].pdf', image: false } },
+      { type: 'attachmentRef', attrs: { name: 'http:x.pdf', image: false } },
+      { type: 'attachmentRef', attrs: { name: ' lead.pdf', image: false } },
+      {
+        type: 'attachmentRef',
+        attrs: { name: 'shot.png', image: true, digest: '3f2a9c0d1e4b5a67' },
+      },
+    ),
+  },
+  {
+    // `[PAY-42|/browse/PAY-42]`: a link to the ticket by its key (TT-3).
+    name: 'ticket-reference',
+    lossless: true,
+    doc: doc(
+      p(t('Blocked by '), { type: 'ticketRef', attrs: { key: 'PAY-42' } }, t('.')),
+      h(3, { type: 'ticketRef', attrs: { key: 'OPS_2-7' } }),
+      ul([p(t('see '), { type: 'ticketRef', attrs: { key: 'A-1' } })]),
+      table(row(td({ type: 'ticketRef', attrs: { key: 'B-2' } }), td(t('x')))),
+    ),
   },
   // Text and paragraphs -----------------------------------------------------------------------
   { name: 'empty-document', lossless: true, doc: doc(p()) },
@@ -1562,4 +1637,28 @@ export const SOURCES: CorpusSource[] = [
   { name: 'only-blank-lines', wiki: '\n\n   \n\t\n' },
   // A tab and other control characters in a section title read as spaces (NTF-014).
   { name: 'section-title-controls', wiki: '{expand:Step\t1\u0007 of\u001b 2}\nBody.\n{expand}' },
+  // Columns written by hand (TT-3): upper case, widths without `%`, no blank lines.
+  {
+    name: 'section-by-hand',
+    wiki: '{SECTION}\n{column:width=30}\nLeft\n{column}\n{Column}\nRight\n{column}\n{section}',
+  },
+  // A section with text beside its columns, a column alone, and seven columns: no layout.
+  {
+    name: 'sections-that-are-not-layouts',
+    wiki: [
+      '{section}\nText first.\n{column}\nA\n{column}\n{section}',
+      '{column}\nAlone.\n{column}',
+      `{section}\n${Array.from({ length: 7 }, (_, i) => `{column}\n${i}\n{column}`).join('\n')}\n{section}`,
+    ].join('\n\n'),
+  },
+  // Files of the ticket, alone in a paragraph; an address and a file among text stay links.
+  {
+    name: 'file-forms',
+    wiki: '!shot.png|thumbnail!\n\n[^report.pdf]\n\n!https://example.test/a.png!\n\nSee [^notes.pdf] and !b.png!',
+  },
+  // A link to a ticket whose text is not its key stays a link.
+  {
+    name: 'ticket-links',
+    wiki: '[PAY-42|/browse/PAY-42] [the bug|/browse/PAY-43] [PAY-44|/browse/X-1]',
+  },
 ];

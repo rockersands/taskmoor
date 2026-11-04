@@ -5,7 +5,7 @@ import TaskItem, { type TaskItemOptions } from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import type { Schema } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
-import { expandTitleLine, TICKET_KEY } from './adf';
+import { columnTracks, expandTitleLine, isAttachmentDigest, TICKET_KEY } from './adf';
 
 /**
  * The document schema shared by the editor, the server and the importer. Everything the
@@ -101,24 +101,55 @@ const Expand = Node.create({
   ],
 });
 
-/** Blocks side by side (NTF-014): columns of equal width on a screen wide enough for them. */
+/**
+ * Blocks side by side (NTF-014) on a screen wide enough for them, one under the other on a
+ * narrow one. Columns are equal unless every one has a width (ADR-120, TT-2): then the layout's
+ * `--rt-columns` property, made from those numbers only, sets their shares.
+ */
 const ColumnLayout = Node.create({
   name: 'columnLayout',
   group: 'block',
   content: 'column+',
   defining: true,
   parseHTML: () => [{ tag: 'div[data-columns]' }],
-  renderHTML: () => ['div', { 'data-columns': '' }, 0],
+  renderHTML: ({ node }) => {
+    const widths: unknown[] = [];
+    node.forEach((column) => {
+      widths.push(column.attrs.width);
+    });
+    const tracks = columnTracks(widths);
+    return [
+      'div',
+      { 'data-columns': '', ...(tracks ? { style: `--rt-columns: ${tracks}` } : {}) },
+      0,
+    ];
+  },
 });
 
 const Column = Node.create({
   name: 'column',
   content: 'block+',
   isolating: true,
-  // The width the other format gave it: kept for export, not shown.
-  addAttributes: () => ({ width: { default: null, rendered: false } }),
+  // A percentage, as the other format holds it; the layout shows it (see `ColumnLayout`).
+  addAttributes: () => ({
+    width: {
+      default: null,
+      rendered: false,
+      parseHTML: (element: unknown) => {
+        const value = Number((element as DomElement).getAttribute('data-width') ?? Number.NaN);
+        return Number.isFinite(value) ? value : null;
+      },
+    },
+  }),
   parseHTML: () => [{ tag: 'div[data-column]' }],
-  renderHTML: () => ['div', { 'data-column': '' }, 0],
+  renderHTML: ({ node }) => [
+    'div',
+    {
+      'data-column': '',
+      ...(typeof node.attrs.width === 'number' ? { 'data-width': String(node.attrs.width) } : {}),
+    },
+    0,
+  ],
 });
 
 /**
@@ -134,6 +165,9 @@ const AttachmentRef = Node.create({
   addAttributes: () => ({
     name: { default: '', rendered: false },
     image: { default: false, rendered: false },
+    // Which of two files of one name (TT-4): the first digits of its SHA-256, or null for the
+    // first file of the name.
+    digest: { default: null, rendered: false },
     // The other format's media node, when it held more than the file (a size, alt text,
     // marks): kept so an export writes it back, never shown and never read for the file.
     adfMedia: { default: null, rendered: false },
@@ -141,10 +175,14 @@ const AttachmentRef = Node.create({
   parseHTML: () => [
     {
       tag: 'div[data-attachment-ref]',
-      getAttrs: (element: unknown) => ({
-        name: (element as DomElement).getAttribute('data-attachment-ref') ?? '',
-        image: (element as DomElement).getAttribute('data-image') === 'true',
-      }),
+      getAttrs: (element: unknown) => {
+        const digest = (element as DomElement).getAttribute('data-digest');
+        return {
+          name: (element as DomElement).getAttribute('data-attachment-ref') ?? '',
+          image: (element as DomElement).getAttribute('data-image') === 'true',
+          digest: isAttachmentDigest(digest) ? digest : null,
+        };
+      },
     },
   ],
   renderHTML: ({ node }) => [
@@ -152,6 +190,7 @@ const AttachmentRef = Node.create({
     {
       'data-attachment-ref': String(node.attrs.name ?? ''),
       ...(node.attrs.image ? { 'data-image': 'true' } : {}),
+      ...(isAttachmentDigest(node.attrs.digest) ? { 'data-digest': node.attrs.digest } : {}),
     },
     String(node.attrs.name ?? ''),
   ],

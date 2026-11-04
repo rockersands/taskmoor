@@ -1,3 +1,7 @@
-screen shot (1).png
+!screen shot (1).png!
 
-notes.pdf
+[^notes.pdf]
+
+{panel:bgColor=#deebff}
+[^my_file*v2*.pdf]
+{panel}

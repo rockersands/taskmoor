@@ -1,0 +1,10 @@
+{section}
+{column}
+Inner left.
+
+Inner right.
+{column}
+{column}
+Right.
+{column}
+{section}

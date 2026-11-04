@@ -72,6 +72,7 @@ export function RichTextView({ doc, className }: RichTextViewProps) {
           file.getAttribute('data-attachment-ref') ?? '',
           file.getAttribute('data-image') === 'true',
           tools,
+          file.getAttribute('data-digest'),
         );
       }
     } catch {

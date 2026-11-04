@@ -71,7 +71,10 @@ describe('the slash menu (NTF-013)', () => {
     await user.click(textbox);
     await user.keyboard('/');
     const list = await menu();
-    expect(within(list).getAllByRole('option').length).toBe(SLASH_TOOLS.length);
+    // Everything but the widths of columns, which only shows inside them.
+    expect(within(list).getAllByRole('option').length).toBe(
+      SLASH_TOOLS.filter((tool) => tool.id !== 'columnWidths').length,
+    );
     await user.keyboard('hea');
     await waitFor(() =>
       expect(
@@ -158,6 +161,7 @@ describe('the slash menu (NTF-013)', () => {
       'expand',
       'columns-2',
       'columns-3',
+      'columnWidths',
       'table',
       'rule',
       'link',
@@ -303,13 +307,13 @@ describe('the slash menu (NTF-013)', () => {
     const user = userEvent.setup();
     const { textbox, changes } = renderEditor();
     await choose(textbox, 'code');
-    const field = await screen.findByRole('textbox', { name: 'Code language (optional)' });
+    const field = await screen.findByRole('combobox', { name: 'Code language (optional)' });
     expect(field).toHaveFocus();
     await user.keyboard('not a language{Enter}');
     expect(screen.getByText('A language is one word, such as sql.')).toBeVisible();
     await user.clear(field);
     await user.keyboard('sql{Enter}');
-    expect(screen.queryByRole('textbox', { name: 'Code language (optional)' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Code language (optional)' })).toBeNull();
     await waitFor(() => expect(textbox).toHaveFocus());
     await user.keyboard('SELECT 1');
     expect(changes.at(-1)?.content?.[0]).toMatchObject({
@@ -394,32 +398,195 @@ describe('the slash menu (NTF-013)', () => {
     );
   });
 
-  it('[NTF-013] offers two files of one name once, since a reference holds only the name', async () => {
+  it('[NTF-014] offers two files of one name as two choices, and the reference keeps the one picked (TT-4)', async () => {
     const user = userEvent.setup();
+    const shot = (n: number, sha256: string, createdAt: string) => ({
+      name: 'image.png',
+      image: true,
+      href: `https://files.example.test/${n}`,
+      thumbnail: null,
+      sha256,
+      size: 2048 * n,
+      createdAt,
+      author: n === 1 ? 'Ana' : null,
+    });
+    const files = [
+      shot(1, `${'a'.repeat(16)}${'0'.repeat(48)}`, '2026-11-01T10:00:00Z'),
+      shot(2, `${'b'.repeat(16)}${'0'.repeat(48)}`, '2026-11-02T10:00:00Z'),
+      { ...shot(3, 'c'.repeat(64), '2026-11-03T10:00:00Z'), name: 'notes.pdf', image: false },
+    ];
+    const { textbox, changes } = renderEditor({}, { attachments: async () => files });
+    await choose(textbox, 'image');
+    const list = await screen.findByRole('listbox', { name: 'Image or file from this ticket' });
+    const names = within(list)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    // Each of the two says its size, when it came and who added it; a name alone stays alone.
+    expect(names).toHaveLength(3);
+    expect(names[0]).toMatch(/^image\.png \(2 KB, Nov 1, 2026, .+, by Ana\)$/);
+    expect(names[1]).toMatch(/^image\.png \(4 KB, Nov 2, 2026, .+\)$/);
+    expect(names[2]).toBe('notes.pdf');
+    await user.keyboard('{ArrowDown}{Enter}');
+    await waitFor(() =>
+      expect(changes.at(-1)?.content?.[0]).toMatchObject({
+        type: 'attachmentRef',
+        attrs: { name: 'image.png', image: true, digest: 'b'.repeat(16) },
+      }),
+    );
+  });
+
+  it('[NTF-014] tells two files of one name apart by their place when nothing else does (TT-4)', async () => {
     const shot = (n: number) => ({
       name: 'image.png',
       image: true,
       href: `https://files.example.test/${n}`,
       thumbnail: null,
     });
-    const { textbox, changes } = renderEditor(
-      {},
-      { attachments: async () => [shot(1), shot(2), { ...shot(3), name: 'notes.pdf' }] },
-    );
+    const { textbox } = renderEditor({}, { attachments: async () => [shot(1), shot(2)] });
     await choose(textbox, 'image');
     const list = await screen.findByRole('listbox', { name: 'Image or file from this ticket' });
     expect(
       within(list)
         .getAllByRole('option')
         .map((o) => o.textContent),
-    ).toEqual(['image.png', 'notes.pdf']);
-    await user.keyboard('image{Enter}');
+    ).toEqual(['image.png (file 1)', 'image.png (file 2)']);
+  });
+
+  it('[NTF-013] offers common languages for a code block, narrowed as you type (TT-8)', async () => {
+    const user = userEvent.setup();
+    const { textbox, changes } = renderEditor();
+    await choose(textbox, 'code');
+    const field = await screen.findByRole('combobox', { name: 'Code language (optional)' });
+    const list = screen.getByRole('listbox', { name: 'Common languages' });
+    expect(within(list).getAllByRole('option').length).toBeGreaterThan(20);
+    await user.keyboard('ty');
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['TypeScript']);
+    await user.clear(field);
+    await user.keyboard('sh');
+    // Those that start with it come first; a word unlike the name shows beside it.
+    const options = within(list).getAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['Shell', 'Bash', 'C#csharp', 'PowerShell']);
+    await user.keyboard('{ArrowDown}');
+    expect(field).toHaveAttribute('aria-activedescendant', options[0]?.id);
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{ArrowDown}{ArrowUp}{Enter}');
+    await waitFor(() => expect(textbox).toHaveFocus());
+    await user.keyboard('ls');
+    expect(changes.at(-1)?.content?.[0]).toMatchObject({
+      type: 'codeBlock',
+      attrs: { language: 'shell' },
+    });
+  });
+
+  it('[NTF-013] keeps the option the arrow keys reach in sight in a long list (TT-8)', async () => {
+    // jsdom has no layout and no scrolling: what was asked to come into view is recorded.
+    const scrolled = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrolled,
+      configurable: true,
+    });
+    const last = () => scrolled.mock.contexts.at(-1) as HTMLElement | undefined;
+    try {
+      const user = userEvent.setup();
+      const first = renderEditor();
+      await choose(first.textbox, 'code');
+      await screen.findByRole('combobox', { name: 'Code language (optional)' });
+      const list = screen.getByRole('listbox', { name: 'Common languages' });
+      const options = within(list).getAllByRole('option');
+      // Up from what was typed goes to the last of about thirty, far below the few in sight.
+      await user.keyboard('{ArrowUp}');
+      expect(options.at(-1)).toHaveAttribute('aria-selected', 'true');
+      expect(last()).toBe(options.at(-1));
+      expect(scrolled).toHaveBeenLastCalledWith({ block: 'nearest' });
+      await user.keyboard('{ArrowDown}{ArrowDown}');
+      expect(last()).toBe(options[1]);
+
+      document.body.innerHTML = '';
+      const second = renderEditor();
+      await choose(second.textbox, 'emoji');
+      await screen.findByRole('combobox', { name: 'Emoji' });
+      const emoji = within(screen.getByRole('listbox', { name: 'Emoji' })).getAllByRole('option');
+      await user.keyboard('{ArrowUp}');
+      expect(emoji.at(-1)).toHaveAttribute('aria-selected', 'true');
+      expect(last()).toBe(emoji.at(-1));
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
+  it('[NTF-013] still takes any one word for a language, and a pointer can pick one (TT-8)', async () => {
+    const user = userEvent.setup();
+    const first = renderEditor();
+    await choose(first.textbox, 'code');
+    await screen.findByRole('combobox', { name: 'Code language (optional)' });
+    await user.keyboard('elixir{Enter}');
+    await waitFor(() => expect(first.textbox).toHaveFocus());
+    await user.keyboard('x');
+    expect(first.changes.at(-1)?.content?.[0]?.attrs?.language).toBe('elixir');
+    document.body.innerHTML = '';
+    const second = renderEditor();
+    await choose(second.textbox, 'code');
+    await screen.findByRole('combobox', { name: 'Code language (optional)' });
+    await user.click(screen.getByRole('option', { name: 'Python' }));
+    await waitFor(() => expect(second.textbox).toHaveFocus());
+    await user.keyboard('x');
+    expect(second.changes.at(-1)?.content?.[0]?.attrs?.language).toBe('python');
+  });
+
+  it('[NTF-014] sets the widths of the columns the caret is in, all at once (TT-2)', async () => {
+    const user = userEvent.setup();
+    const { textbox, changes } = renderEditor();
+    await choose(textbox, 'two');
+    await user.keyboard('left /width');
+    const list = await menu();
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Column widths']);
+    await user.keyboard('{Enter}');
+    const widths = await screen.findByRole('combobox', { name: 'Widths of the 2 columns' });
+    expect(widths).toHaveFocus();
+    expect(
+      within(widths)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Equal', '33.3%, 66.7%', '66.7%, 33.3%', '25%, 75%', '75%, 25%']);
+    await user.selectOptions(widths, '25%, 75%');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await waitFor(() => expect(textbox).toHaveFocus());
+    const layout = changes.at(-1)?.content?.[0];
+    expect(layout?.content?.map((column) => column.attrs?.width)).toEqual([25, 75]);
+    // The text typed before the menu stays, with the "/width" gone.
+    expect(JSON.stringify(layout)).toContain('left ');
+    expect(JSON.stringify(layout)).not.toContain('/width');
+    const shown = textbox.querySelector<HTMLElement>('[data-columns]');
+    expect(shown?.style.getPropertyValue('--rt-columns')).toBe('minmax(0, 25fr) minmax(0, 75fr)');
+    // Equal again: the widths go, and so does the property.
+    await user.keyboard(' /width{Enter}');
+    const again = await screen.findByRole('combobox', { name: 'Widths of the 2 columns' });
+    expect(again).toHaveDisplayValue('25%, 75%');
+    await user.selectOptions(again, 'Equal');
+    await user.keyboard('{Enter}');
     await waitFor(() =>
-      expect(changes.at(-1)?.content?.[0]).toMatchObject({
-        type: 'attachmentRef',
-        attrs: { name: 'image.png', image: true },
-      }),
+      expect(changes.at(-1)?.content?.[0]?.content?.map((c) => c.attrs?.width)).toEqual([
+        null,
+        null,
+      ]),
     );
+    expect(shown?.style.getPropertyValue('--rt-columns')).toBe('');
+  });
+
+  it('[NTF-014] offers the widths of columns only inside columns (TT-2)', async () => {
+    const user = userEvent.setup();
+    const { textbox } = renderEditor();
+    await user.click(textbox);
+    await user.keyboard('/width');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
   });
 
   it('[NTF-013] links another ticket by what is typed, as its key only', async () => {
@@ -585,6 +752,58 @@ describe('the new blocks in read mode (NTF-014)', () => {
       'href',
       'https://files.example.test/2',
     );
+  });
+
+  it('[NTF-014] shows the file of a name whose SHA-256 the reference names, else the first (TT-4)', async () => {
+    const file = (n: number, sha256?: string) => ({
+      name: 'report.pdf',
+      image: false,
+      href: `https://files.example.test/${n}`,
+      thumbnail: null,
+      ...(sha256 ? { sha256 } : {}),
+    });
+    const tools: EditorTools = {
+      attachments: async () => [
+        file(1, 'a'.repeat(64)),
+        file(2, `${'b'.repeat(16)}${'0'.repeat(48)}`),
+      ],
+    };
+    view(
+      doc(
+        { type: 'attachmentRef', attrs: { name: 'report.pdf', digest: 'b'.repeat(16) } },
+        { type: 'attachmentRef', attrs: { name: 'report.pdf' } },
+        // A digest no file has: the first of the name.
+        { type: 'attachmentRef', attrs: { name: 'report.pdf', digest: 'c'.repeat(16) } },
+      ),
+      tools,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('link', { name: 'report.pdf' })).toHaveLength(3),
+    );
+    expect(
+      screen.getAllByRole('link', { name: 'report.pdf' }).map((a) => a.getAttribute('href')),
+    ).toEqual([
+      'https://files.example.test/2',
+      'https://files.example.test/1',
+      'https://files.example.test/1',
+    ]);
+  });
+
+  it('[NTF-014] lays columns out by their widths when every one has a width (TT-2)', () => {
+    const layout = (...widths: (number | null)[]) =>
+      doc({
+        type: 'columnLayout',
+        content: widths.map((width) => ({ type: 'column', attrs: { width }, content: [p('x')] })),
+      });
+    const { container, unmount } = view(layout(30, 70));
+    expect(
+      container
+        .querySelector<HTMLElement>('[data-columns]')
+        ?.style.getPropertyValue('--rt-columns'),
+    ).toBe('minmax(0, 30fr) minmax(0, 70fr)');
+    unmount();
+    const equal = view(layout(30, null));
+    expect(equal.container.querySelector('[data-columns]')?.getAttribute('style')).toBeNull();
   });
 
   it('[NTF-014] shows a file the ticket does not have as its name, with no link', async () => {

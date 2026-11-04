@@ -148,8 +148,9 @@ export const DOCUMENTS: CorpusDocument[] = [
     ),
   },
   {
+    // Columns are quotes of quotes (ADR-120, TT-3): `> [!COLUMNS]`, then `> > [!COLUMN]` each.
     name: 'columns',
-    lossless: false,
+    lossless: true,
     doc: doc({
       type: 'columnLayout',
       content: [
@@ -157,6 +158,90 @@ export const DOCUMENTS: CorpusDocument[] = [
         { type: 'column', content: [p(t('Two.'))] },
       ],
     }),
+  },
+  {
+    // A width after the marker (TT-2), as a percentage; an empty column, and blocks of all kinds.
+    name: 'columns-with-widths',
+    lossless: true,
+    doc: doc(
+      p(t('Before.')),
+      {
+        type: 'columnLayout',
+        content: [
+          { type: 'column', attrs: { width: 25 }, content: [p()] },
+          {
+            type: 'column',
+            attrs: { width: 50 },
+            content: [
+              ul([p(t('one'))], [p(t('two'))]),
+              code('sql', 'select 1;'),
+              panel('note', p(t('Mind it.'))),
+              { type: 'expand', attrs: { title: 'More' }, content: [p(t('Hidden.'))] },
+            ],
+          },
+          { type: 'column', attrs: { width: 33.33 }, content: [quote(p(t('Quoted.')))] },
+        ],
+      },
+      { type: 'columnLayout', content: [{ type: 'column', content: [p(t('Alone.'))] }] },
+    ),
+  },
+  {
+    // Columns in a column nest one quote deeper; a quote whose text starts like a marker stays one.
+    name: 'columns-nested',
+    lossless: true,
+    doc: doc(
+      {
+        type: 'columnLayout',
+        content: [
+          {
+            type: 'column',
+            content: [
+              {
+                type: 'columnLayout',
+                content: [
+                  { type: 'column', content: [p(t('Inner left.'))] },
+                  { type: 'column', content: [p(t('Inner right.'))] },
+                ],
+              },
+            ],
+          },
+          { type: 'column', content: [p(t('[!COLUMN] is text here.'))] },
+        ],
+      },
+      quote(p(t('[!COLUMNS]')), quote(p(t('[!COLUMN]')))),
+    ),
+  },
+  {
+    // Widths Markdown does not write: none, over 100, and more decimals than it keeps.
+    name: 'columns-unwritten-widths',
+    lossless: false,
+    doc: doc({
+      type: 'columnLayout',
+      content: [
+        { type: 'column', attrs: { width: 0 }, content: [p(t('a'))] },
+        { type: 'column', attrs: { width: 150 }, content: [p(t('b'))] },
+        { type: 'column', attrs: { width: 1e-11 }, content: [p(t('c'))] },
+      ],
+    }),
+  },
+  {
+    // Which of two files of one name (TT-4): the first digits of its SHA-256, after `#`.
+    name: 'attachment-digest',
+    lossless: true,
+    doc: doc(
+      {
+        type: 'attachmentRef',
+        attrs: { name: 'report #2.pdf', image: false, digest: '3f2a9c0d1e4b5a67' },
+      },
+      {
+        type: 'attachmentRef',
+        attrs: {
+          name: 'shot.png',
+          image: true,
+          digest: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        },
+      },
+    ),
   },
   { name: 'plain-paragraph', lossless: true, doc: doc(p(t('The export button does nothing.'))) },
   {
@@ -780,6 +865,39 @@ export const SOURCES: CorpusSource[] = [
     // An escaped marker or one written as a character reference is text, in a plain quote.
     name: 'escaped-markers',
     markdown: '> \\[!EXPAND] Not a section\n\n> &#91;!INFO]\n> Not a panel.\n',
+  },
+  {
+    // Written by hand, without the blank lines the writer puts in (TT-3).
+    name: 'columns-by-hand',
+    markdown: '> [!columns]\n>\n> > [!COLUMN] 30%\n> > Left\n>\n> > [!Column]\n> > Right\n',
+  },
+  {
+    // Not a layout: something other than a column inside, too many columns, a width that is no
+    // number, or an escaped marker. Each stays a quote, its markers as text.
+    name: 'columns-that-are-quotes',
+    markdown: [
+      '> [!COLUMNS]',
+      '>',
+      '> Text, not a column.',
+      '',
+      `> [!COLUMNS]\n${Array.from({ length: 7 }, (_, i) => `>\n> > [!COLUMN]\n> > ${i}`).join('\n')}`,
+      '',
+      '> [!COLUMNS]',
+      '>',
+      '> > [!COLUMN] wide',
+      '> > Text.',
+      '',
+      '> \\[!COLUMNS]',
+      '>',
+      '> > [!COLUMN]',
+      '> > Text.',
+      '',
+    ].join('\n'),
+  },
+  {
+    // A digest that is not hexadecimal digits is part of the name, as it was written.
+    name: 'attachment-hash-in-name',
+    markdown: '[a](attachment:notes#v2.pdf)\n\n[b](attachment:notes.pdf#3F2A9C0D1E4B5A67)\n',
   },
   { name: 'empty', markdown: '' },
 ];

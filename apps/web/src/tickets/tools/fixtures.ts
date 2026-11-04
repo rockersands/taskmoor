@@ -1,4 +1,4 @@
-import type { TicketLink } from '../view/client';
+import type { TicketLink, Transition } from '../view/client';
 import type {
   Checklist,
   ChecklistItem,
@@ -45,13 +45,13 @@ export const STARTING_CHILDREN: ChildTicket[] = [
     id: 201,
     key: 'SHOP-201',
     summary: 'Write the retry rules',
-    status: { name: 'Done', stage: 'closed' },
+    status: { id: 3, name: 'Done', stage: 'closed' },
   },
   {
     id: 202,
     key: 'SHOP-202',
     summary: 'Test on the slow network',
-    status: { name: 'In progress', stage: 'active' },
+    status: { id: 2, name: 'In progress', stage: 'active' },
   },
 ];
 
@@ -90,6 +90,23 @@ export const CHILD_FORM_FIELDS = [
   { id: 41, name: 'Points' },
 ];
 
+/**
+ * The subtickets' workflow in the fake (TT-6): to do, in progress, done, every move open. Finish
+ * asks for a close reason when the test says so.
+ */
+export function childTransitions(closeAsks = false): Transition[] {
+  return [
+    { id: 11, name: 'Reopen', to: { id: 1, name: 'To do', stage: 'new' }, layout: [] },
+    { id: 12, name: 'Start', to: { id: 2, name: 'In progress', stage: 'active' }, layout: [] },
+    {
+      id: 13,
+      name: 'Finish',
+      to: { id: 3, name: 'Done', stage: 'closed' },
+      layout: closeAsks ? ['close-reason'] : [],
+    },
+  ];
+}
+
 export interface FakeToolsClient extends TicketToolsClient {
   calls: { action: string; args: unknown[] }[];
 }
@@ -104,11 +121,14 @@ export function fakeToolsClient(
     childTypes?: { id: number; name: string }[];
     checklists?: Checklist[];
     canEdit?: boolean;
+    /** Where a subticket may go (TT-6); none moves a subticket from the list at all. */
+    transitions?: Transition[] | 'none';
   } = {},
 ): FakeToolsClient {
   const links = structuredClone(start.links ?? STARTING_LINKS);
   const calls: FakeToolsClient['calls'] = [];
   const children = structuredClone(start.children ?? STARTING_CHILDREN);
+  const moves = start.transitions === 'none' ? undefined : start.transitions;
   let next = 100;
   let lists = structuredClone(start.checklists ?? STARTING_CHECKLISTS);
   const answer = (): TicketChecklists => {
@@ -231,11 +251,38 @@ export function fakeToolsClient(
         id: next++,
         key: `SHOP-${next + 200}`,
         summary: ticket.summary,
-        status: { name: 'To do', stage: 'new' as const },
+        status: { id: 1, name: 'To do', stage: 'new' as const },
       };
       children.push(made);
       return { id: made.id, key: made.key };
     },
+    ...(start.transitions === 'none'
+      ? {}
+      : {
+          childTransitions: async (id: number) => {
+            calls.push({ action: 'childTransitions', args: [id] });
+            return structuredClone(moves ?? childTransitions());
+          },
+          moveChild: async (id: number, transitionId: number, fields?: Record<string, unknown>) => {
+            calls.push({ action: 'moveChild', args: [id, transitionId, fields ?? {}] });
+            const child = children.find((c) => c.id === id) as ChildTicket;
+            const to = (moves ?? childTransitions(true)).find(
+              (tr) => tr.id === transitionId,
+            ) as Transition;
+            const status = {
+              id: to.to.id,
+              name: to.to.name,
+              stage: to.to.stage as ChildTicket['status']['stage'],
+            };
+            child.status = { ...status };
+            return { id: child.id, key: child.key, status };
+          },
+          closeReasons: async () => [
+            { id: 1, name: 'Done', level: 0 },
+            { id: 2, name: 'Won’t do', level: 0 },
+          ],
+          priorities: async () => [{ id: 3, name: 'Medium', level: 3 }],
+        }),
     pick: async (query) => {
       calls.push({ action: 'pick', args: [query] });
       const wanted = /summary ~ "([^"*]*)\*?"/.exec(query)?.[1]?.toLowerCase() ?? '';

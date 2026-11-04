@@ -1,5 +1,11 @@
-## Left
-
-One.
-
-Two.
+> [!COLUMNS]
+>
+> > [!COLUMN]
+> >
+> > ## Left
+> >
+> > One.
+>
+> > [!COLUMN]
+> >
+> > Two.

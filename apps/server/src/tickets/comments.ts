@@ -1,5 +1,5 @@
 import type { Database, JsonValue } from '@taskmoor/db';
-import { schema } from '@taskmoor/richtext';
+import { dayOf, schema } from '@taskmoor/richtext';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 
 /**
@@ -96,17 +96,33 @@ export function commentReadableSql(
 
 type DocNode = ReturnType<typeof schema.nodeFromJSON>;
 
-/** What an inline or block leaf reads as in plain text. */
+/**
+ * What an inline or block leaf reads as in plain text, the way the other text formats write it
+ * (ADR-120): a date as its day, a status label in brackets, an emoji as itself, a reference by
+ * its key or file name, and what an imported node holds as its text.
+ */
 function leafText(leaf: DocNode): string {
+  const a = leaf.attrs;
   switch (leaf.type.name) {
     case 'hardBreak':
       return '\n';
     case 'mention':
-      return `@${leaf.attrs.label ?? leaf.attrs.id ?? ''}`;
+      return `@${a.label ?? a.id ?? ''}`;
     case 'ticketRef':
-      return String(leaf.attrs.key ?? '');
+      return String(a.key ?? '');
     case 'attachmentRef':
-      return String(leaf.attrs.name ?? '');
+      return String(a.name ?? '');
+    case 'date':
+      return dayOf(String(a.timestamp ?? ''));
+    case 'status':
+      return a.text ? `[${String(a.text)}]` : '';
+    case 'emoji':
+      return typeof a.text === 'string' && a.text !== '' ? a.text : String(a.shortName ?? '');
+    case 'unknownInline': {
+      const kept = a.adf as { text?: unknown; attrs?: { text?: unknown; url?: unknown } } | null;
+      const text = kept?.text ?? kept?.attrs?.text ?? kept?.attrs?.url;
+      return typeof text === 'string' ? text : '';
+    }
     default:
       return '';
   }

@@ -1,5 +1,6 @@
 import type {
   BlockContent,
+  Blockquote,
   Definition,
   DefinitionContent,
   Html,
@@ -28,7 +29,16 @@ import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
 import { gfmStrikethrough } from 'micromark-extension-gfm-strikethrough';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
-import { type AdfNode, expandTitleLine, isAttachmentName, layoutSpan, TICKET_KEY } from './adf';
+import {
+  type AdfNode,
+  expandTitleLine,
+  isAttachmentDigest,
+  isAttachmentName,
+  layoutSpan,
+  MAX_COLUMNS,
+  shownColumnWidth,
+  TICKET_KEY,
+} from './adf';
 import { fromAdfJson, type PmJson } from './convert';
 import { schema } from './schema';
 
@@ -41,8 +51,12 @@ import { schema } from './schema';
  * - panels are alert quotes, `> [!INFO]` (GitHub's NOTE, TIP and WARNING are panel types too;
  *   IMPORTANT reads as info and CAUTION as error);
  * - a collapsible section is a quote that starts `> [!EXPAND] Its title`;
- * - a file of the ticket is a paragraph of one link or image with the `attachment:` scheme, a
- *   ticket reference a link with the `ticket:` scheme: `[PAY-42](ticket:PAY-42)`;
+ * - columns are a quote that starts `> [!COLUMNS]` and holds only quotes, one per column, each
+ *   starting `> > [!COLUMN]`, with its width after the marker when it has one (`[!COLUMN] 40%`);
+ * - a file of the ticket is a paragraph of one link or image with the `attachment:` scheme, its
+ *   name encoded and, when the reference says which of two files of one name, `#` and the first
+ *   digits of its SHA-256 (`attachment:shot.png#3f2a9c0d1e4b5a67`); a ticket reference is a link
+ *   with the `ticket:` scheme: `[PAY-42](ticket:PAY-42)`;
  * - underline, subscript, superscript and text colour are the inline HTML tags `<ins>`,
  *   `<sub>`, `<sup>` and `<span style="color: #36b37e">`; `<u>` reads as underline and `<br>`
  *   as a line break. No other HTML is interpreted: it stays as the text it is.
@@ -59,7 +73,10 @@ import { schema } from './schema';
  *   `<br>` and cells with other blocks keep only their text;
  * - an ordered task list reads as a task list; a list where only some items have a checkbox
  *   reads as a plain list with `[ ]` or `[x]` as text;
- * - columns are written as their blocks, one column after the other, and read back as that;
+ * - a column width that is not a percentage above 0 and up to 100, written with at most ten
+ *   decimals, is not written;
+ * - a quote that starts `[!COLUMNS]` but holds anything other than one to six `[!COLUMN]`
+ *   quotes stays a quote, its markers as text;
  * - a collapsible section's title that holds a web address ends where the address starts: the
  *   address reads as the section's first paragraph;
  * - nodes and marks the editor keeps whole for the other format (`unknownBlock`,
@@ -289,10 +306,19 @@ function blockOut(n: PmJson): RootContent[] {
       ];
     }
     case 'columnLayout':
-      return content.flatMap((column) => blocksOut(column.content ?? []));
+      return [
+        {
+          type: 'blockquote',
+          children: [
+            { type: 'paragraph', children: [{ type: 'html', value: '[!COLUMNS]' }] },
+            ...content.map(columnOut),
+          ],
+        },
+      ];
     case 'attachmentRef': {
       const name = String(a.name ?? '');
-      const url = `${ATTACHMENT_SCHEME}${encodeURIComponent(wellFormed(name))}`;
+      const digest = isAttachmentDigest(a.digest) ? `#${a.digest}` : '';
+      const url = `${ATTACHMENT_SCHEME}${encodeURIComponent(wellFormed(name))}${digest}`;
       return [
         {
           type: 'paragraph',
@@ -312,6 +338,21 @@ function blockOut(n: PmJson): RootContent[] {
       // Inline content where a block belongs cannot come from the schema; be lenient anyway.
       return [];
   }
+}
+
+/** A width as a column's marker writes it: a plain decimal, or nothing. */
+const WIDTH_TEXT = /^\d{1,3}(?:\.\d{1,10})?$/;
+
+/** One column of a layout: a quote that starts `[!COLUMN]`, with its width when it has one. */
+function columnOut(column: PmJson): Blockquote {
+  const width = shownColumnWidth(column.attrs?.width);
+  const text = width === null ? '' : String(width);
+  const lead: PhrasingContent[] = [{ type: 'html', value: '[!COLUMN]' }];
+  if (WIDTH_TEXT.test(text)) lead.push({ type: 'text', value: ` ${text}%` });
+  return {
+    type: 'blockquote',
+    children: [{ type: 'paragraph', children: lead }, ...flowOut(column.content ?? [])],
+  };
 }
 
 /** Blocks that may sit in a quote or a list item (everything `blockOut` makes). */
@@ -777,8 +818,58 @@ function blockIn(n: RootContent, defs: Definitions): PmJson[] {
   }
 }
 
-/** A quote, or a panel when its first line is an alert marker such as `[!WARNING]`. */
+/** The text a quote's first paragraph starts with, when it may be a marker. */
+function leadOf(first: RootContent | undefined): string {
+  const lead = first?.type === 'paragraph' ? first.children[0] : undefined;
+  return (lead?.type === 'text' || lead?.type === 'html') && !typedMarkers.has(lead)
+    ? lead.value
+    : '';
+}
+
+/**
+ * Columns, when a quote holds `[!COLUMNS]` alone in its first paragraph and then one to six
+ * quotes that each start `[!COLUMN]`; null otherwise, and it reads as a quote.
+ */
+function layoutIn(children: readonly RootContent[], defs: Definitions): PmJson | null {
+  const [first, ...rest] = children;
+  if (first?.type !== 'paragraph' || first.children.length !== 1) return null;
+  if (!/^\[!COLUMNS\][ \t]*$/i.test(leadOf(first))) return null;
+  if (rest.length === 0 || rest.length > MAX_COLUMNS) return null;
+  const columns: PmJson[] = [];
+  for (const quote of rest) {
+    if (quote.type !== 'blockquote') return null;
+    const [lead, ...blocks] = quote.children;
+    const marker = /^\[!COLUMN\](?:[ \t]+(\d{1,3}(?:\.\d{1,10})?)%)?[ \t]*(?:\r?\n|$)/i.exec(
+      leadOf(lead),
+    );
+    if (!marker || lead?.type !== 'paragraph') return null;
+    const remaining = (lead.children[0] as { value: string }).value.slice(marker[0].length);
+    const paragraph: PhrasingContent[] = [
+      ...(remaining === '' ? [] : [{ type: 'text', value: remaining } as PhrasingContent]),
+      ...lead.children.slice(1),
+    ];
+    const content = [
+      ...(paragraph.length > 0
+        ? [{ type: 'paragraph', content: inlinesIn(paragraph, [], defs) } as PmJson]
+        : []),
+      ...blocksIn(blocks, defs),
+    ];
+    columns.push({
+      type: 'column',
+      attrs: { width: marker[1] === undefined ? null : shownColumnWidth(Number(marker[1])) },
+      content: content.length > 0 ? content : [{ type: 'paragraph' }],
+    });
+  }
+  return { type: 'columnLayout', content: columns };
+}
+
+/**
+ * A quote; a panel when its first line is an alert marker such as `[!WARNING]`; a collapsible
+ * section after `[!EXPAND]`; columns after `[!COLUMNS]`.
+ */
 function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
+  const layout = layoutIn(children, defs);
+  if (layout) return layout;
   const [first, ...rest] = children;
   if (first?.type === 'paragraph') {
     const lead = first.children[0];
@@ -992,7 +1083,12 @@ function attachmentIn(children: readonly PhrasingContent[]): PmJson | null {
   if ((only.type !== 'link' && only.type !== 'image') || !only.url.startsWith(ATTACHMENT_SCHEME)) {
     return null;
   }
-  const encoded = only.url.slice(ATTACHMENT_SCHEME.length);
+  const raw = only.url.slice(ATTACHMENT_SCHEME.length);
+  // A name is written encoded, so a `#` in it is `%23`: a bare one starts the digest.
+  const hash = raw.lastIndexOf('#');
+  const tail = hash === -1 ? null : raw.slice(hash + 1);
+  const digest = isAttachmentDigest(tail) ? tail : null;
+  const encoded = digest === null ? raw : raw.slice(0, hash);
   let name: string;
   try {
     name = decodeURIComponent(encoded);
@@ -1000,7 +1096,7 @@ function attachmentIn(children: readonly PhrasingContent[]): PmJson | null {
     name = encoded;
   }
   if (!isAttachmentName(name)) return null;
-  return { type: 'attachmentRef', attrs: { name, image: only.type === 'image' } };
+  return { type: 'attachmentRef', attrs: { name, image: only.type === 'image', digest } };
 }
 
 function linkIn(

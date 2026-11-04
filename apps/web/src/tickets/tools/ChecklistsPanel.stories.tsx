@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, fireEvent, waitFor, within } from 'storybook/test';
 import { ChecklistsPanel } from './ChecklistsPanel';
 import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
 
@@ -63,5 +63,35 @@ export const Empty: Story = {
   args: { client: fakeToolsClient({ checklists: [] }) },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('No checklists yet.')).toBeVisible();
+  },
+};
+
+/**
+ * An item dragged by its grip (TT-5), as a pointer does it: the item fades, a line shows where it
+ * would land, and letting go moves it there.
+ */
+export const DraggingAnItem: Story = {
+  args: { client: fakeToolsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = (text: string) =>
+      canvas.getByRole('checkbox', { name: text }).closest('li') as HTMLElement;
+    await canvas.findByRole('checkbox', { name: 'Write the notes' });
+    const grip = row('Write the notes').querySelector('.checklist-grip') as HTMLElement;
+    const from = grip.getBoundingClientRect();
+    const to = row('Tell the people').getBoundingClientRect();
+    const point = { pointerId: 5, pointerType: 'mouse', isPrimary: true, button: 0 };
+    const x = from.left + from.width / 2;
+    fireEvent.pointerDown(grip, { ...point, clientX: x, clientY: from.top + 4 });
+    fireEvent.pointerMove(window, { ...point, clientX: x, clientY: to.bottom - 4 });
+    await expect(row('Tell the people')).toHaveAttribute('data-landing', 'after');
+    fireEvent.pointerUp(window, { ...point, clientX: x, clientY: to.bottom - 4 });
+    await waitFor(() =>
+      expect(
+        (canvas.getAllByRole('checkbox') as HTMLInputElement[]).map(
+          (box) => box.labels?.[0]?.textContent,
+        )[3],
+      ).toBe('Write the notes'),
+    );
   },
 };

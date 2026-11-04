@@ -1,12 +1,13 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
-import { ChecklistsPanel } from './ChecklistsPanel';
+import { ChecklistsPanel, droppedOrder } from './ChecklistsPanel';
+import type { Checklist } from './client';
 import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
 
 const TICKET = { id: 41 };
@@ -401,5 +402,129 @@ describe('ChecklistsPanel', () => {
       (text) => !/Before release|Write the|Tag the|Run the|Tell the|Print it/.test(text),
     );
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('dragging a checklist item with a pointer (CORE-033; ADR-120, TT-5)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const row = (text: string) =>
+    screen.getByRole('checkbox', { name: text }).closest('li') as HTMLElement;
+  const grip = (text: string) => row(text).querySelector('.checklist-grip') as HTMLElement;
+
+  /**
+   * A drag as a mouse or a finger makes it: down on the grip, moves, up over the target, on its
+   * upper or lower half. jsdom lays nothing out, so the target is what is under the pointer and
+   * it says where its halves are.
+   */
+  function dragTo(
+    from: HTMLElement,
+    to: HTMLElement,
+    half: 'upper' | 'lower',
+    pointerType: 'mouse' | 'touch' = 'mouse',
+  ) {
+    vi.spyOn(document, 'elementFromPoint').mockReturnValue(to);
+    vi.spyOn(to, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 100, 400, 40));
+    const y = half === 'upper' ? 110 : 130;
+    const point = { pointerId: 3, pointerType, isPrimary: true };
+    fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(window, { ...point, clientX: 12, clientY: 60 });
+    fireEvent.pointerMove(window, { ...point, clientX: 12, clientY: y });
+    return () => fireEvent.pointerUp(window, { ...point, clientX: 12, clientY: y });
+  }
+
+  it('[CORE-033] puts an item before or after the one it is dropped on', () => {
+    const ids = [1, 2, 3, 4];
+    expect(droppedOrder(ids, 1, 3, false)).toEqual([2, 1, 3, 4]);
+    expect(droppedOrder(ids, 1, 3, true)).toEqual([2, 3, 1, 4]);
+    expect(droppedOrder(ids, 4, 1, false)).toEqual([4, 1, 2, 3]);
+    expect(droppedOrder(ids, 2, 4, true)).toEqual([1, 3, 4, 2]);
+    // Where it already is, on itself, or onto something not in the list: nothing changes.
+    expect(droppedOrder(ids, 2, 3, false)).toBeNull();
+    expect(droppedOrder(ids, 2, 1, true)).toBeNull();
+    expect(droppedOrder(ids, 2, 2, true)).toBeNull();
+    expect(droppedOrder(ids, 2, 9, true)).toBeNull();
+  });
+
+  it('[CORE-033] moves an item dragged with a mouse, showing where it would land', async () => {
+    const { client } = renderPanel();
+    await screen.findByRole('checkbox', { name: 'Write the notes' });
+    const drop = dragTo(grip('Write the notes'), row('Tell the people'), 'lower');
+    expect(row('Write the notes')).toHaveAttribute('data-dragged', 'true');
+    expect(row('Tell the people')).toHaveAttribute('data-landing', 'after');
+    drop();
+    expect(row('Write the notes')).not.toHaveAttribute('data-dragged');
+    await waitFor(() =>
+      expect(client.calls).toContainEqual({
+        action: 'orderItems',
+        args: [41, 30, [301, 302, 303, 300, 304]],
+      }),
+    );
+    expect(await screen.findByText('Moved: Write the notes')).toBeInTheDocument();
+    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    expect(boxes.map((box) => box.labels?.[0]?.textContent)).toEqual([
+      'Tag the build',
+      'Run the upgrade',
+      'Tell the people',
+      'Write the notes',
+      'Print it',
+    ]);
+  });
+
+  it('[CORE-033] moves an item dragged with a finger, before the one it is dropped on', async () => {
+    const { client } = renderPanel();
+    await screen.findByRole('checkbox', { name: 'Print it' });
+    dragTo(grip('Print it'), row('Tag the build'), 'upper', 'touch')();
+    await waitFor(() =>
+      expect(client.calls).toContainEqual({
+        action: 'orderItems',
+        args: [41, 30, [300, 304, 301, 302, 303]],
+      }),
+    );
+  });
+
+  it('[CORE-033] a press without moving, Escape, or a drop where it already is moves nothing', async () => {
+    const { client } = renderPanel();
+    await screen.findByRole('checkbox', { name: 'Write the notes' });
+    const point = { pointerId: 3, pointerType: 'mouse', isPrimary: true };
+    fireEvent.pointerDown(grip('Tag the build'), { ...point, button: 0, clientX: 5, clientY: 5 });
+    fireEvent.pointerUp(window, { ...point, clientX: 6, clientY: 6 });
+    const drop = dragTo(grip('Tag the build'), row('Tell the people'), 'upper');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(row('Tell the people')).not.toHaveAttribute('data-landing');
+    drop();
+    dragTo(grip('Tag the build'), row('Run the upgrade'), 'upper')();
+    expect(row('Run the upgrade')).not.toHaveAttribute('data-landing');
+    await act(async () => {});
+    expect(client.calls.filter((call) => call.action === 'orderItems')).toEqual([]);
+  });
+
+  it('[CORE-033] keeps the grip for pointers: the keyboard has Move up and Move down', async () => {
+    renderPanel();
+    await screen.findByRole('checkbox', { name: 'Write the notes' });
+    const handle = grip('Tag the build');
+    expect(handle).toHaveAttribute('aria-hidden', 'true');
+    expect(handle).not.toHaveAttribute('tabindex');
+    expect(
+      within(row('Tag the build')).getByRole('button', { name: 'Move Tag the build up' }),
+    ).toBeVisible();
+  });
+
+  it('[CORE-033] has no grip where nothing can move: one item, or a reader', async () => {
+    const first = STARTING_CHECKLISTS[0] as Checklist;
+    const one = fakeToolsClient({ checklists: [{ ...first, items: first.items.slice(0, 1) }] });
+    const { container, unmount } = render(
+      <I18nProvider locale="en">
+        <ChecklistsPanel ticket={TICKET} client={one} revision={0} />
+      </I18nProvider>,
+    );
+    await screen.findByRole('checkbox', { name: 'Write the notes' });
+    expect(container.querySelector('.checklist-grip')).toBeNull();
+    unmount();
+    const reader = renderPanel(fakeToolsClient({ canEdit: false }));
+    await screen.findByRole('checkbox', { name: 'Write the notes' });
+    expect(reader.container.querySelector('.checklist-grip')).toBeNull();
   });
 });

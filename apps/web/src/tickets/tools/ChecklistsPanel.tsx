@@ -1,4 +1,12 @@
-import { type FormEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useLockText } from '../../locks/useLockText';
@@ -47,6 +55,37 @@ function useFocusBack(open: boolean, opener: RefObject<HTMLElement | null>) {
   }, [open, opener]);
 }
 
+/** How far a pointer moves before a press on an item's grip becomes a drag, in pixels. */
+const DRAG_START = 6;
+
+/**
+ * The order an item dropped on another makes (TT-5): it goes before that item, or after it when
+ * dropped on its lower half. Null when nothing would change.
+ */
+export function droppedOrder(
+  ids: readonly number[],
+  id: number,
+  target: number,
+  after: boolean,
+): number[] | null {
+  if (id === target || !ids.includes(id) || !ids.includes(target)) return null;
+  const rest = ids.filter((other) => other !== id);
+  const at = rest.indexOf(target) + (after ? 1 : 0);
+  const next = [...rest.slice(0, at), id, ...rest.slice(at)];
+  return next.every((other, i) => other === ids[i]) ? null : next;
+}
+
+/** Six dots, the grip an item is dragged by. */
+function GripIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+      {[4, 8, 12].map((y) =>
+        [6, 10].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" fill="currentColor" />),
+      )}
+    </svg>
+  );
+}
+
 /** Which position an item or a list moves to, and the order that makes. */
 function moved(ids: readonly number[], id: number, step: -1 | 1): number[] | null {
   const at = ids.indexOf(id);
@@ -78,8 +117,9 @@ function ProgressLine({ progress }: { progress: ChecklistProgress }) {
  * A ticket's checklists (CORE-033): named lists, separate from the description, of items that are
  * open, in progress, done or rejected. The box makes an item done or open; the list beside it sets
  * any state. Each list and the ticket overall show a percentage in which a rejected item is left
- * out. Order changes with buttons, so the keyboard does all a pointer does. Every route answers
- * the whole of the ticket's checklists, and this panel shows what it answered.
+ * out. Order changes with buttons, so the keyboard does all a pointer does, and an item can also
+ * be dragged by its grip with a mouse or a finger (TT-5). Every route answers the whole of the
+ * ticket's checklists, and this panel shows what it answered.
  */
 export function ChecklistsPanel({
   ticket,
@@ -409,6 +449,10 @@ function ChecklistBlock({
   const [renaming, setRenaming] = useState(false);
   const [text, setText] = useState('');
   const [movedItem, setMovedItem] = useState<Moved | null>(null);
+  /** The item being dragged, and where it would land (TT-5). */
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [landing, setLanding] = useState<{ id: number; after: boolean } | null>(null);
+  const items = useRef<HTMLUListElement>(null);
   const addInput = useRef<HTMLInputElement>(null);
   const renameButton = useRef<HTMLButtonElement>(null);
   useFocusBack(renaming, renameButton);
@@ -423,6 +467,72 @@ function ChecklistBlock({
         () => setMovedItem({ id: item.id, step }),
       );
     }
+  };
+  /** The item of this list under the pointer, and whether on its lower half. */
+  const itemAt = (x: number, y: number): { id: number; after: boolean } | null => {
+    const row = document.elementFromPoint?.(x, y)?.closest<HTMLElement>('[data-item]');
+    if (!row || !items.current?.contains(row)) return null;
+    const box = row.getBoundingClientRect();
+    return { id: Number(row.dataset.item), after: y > box.top + box.height / 2 };
+  };
+  /**
+   * A drag by an item's grip, with pointer events so a mouse and a finger work alike: past a few
+   * pixels it is a drag, the item it is over shows where it would land, and letting go there
+   * moves it. Escape or a cancelled touch leaves the order as it was.
+   */
+  const beginDrag = (event: ReactPointerEvent<HTMLElement>, item: ChecklistItem) => {
+    if (busy || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    // No text is selected on the way.
+    event.preventDefault();
+    const start = { x: event.clientX, y: event.clientY };
+    const pointerId = event.pointerId;
+    const from = [...order];
+    let moving = false;
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      if (!moving) {
+        if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < DRAG_START) return;
+        moving = true;
+        setDragging(item.id);
+      }
+      e.preventDefault();
+      const over = itemAt(e.clientX, e.clientY);
+      setLanding(over && droppedOrder(from, item.id, over.id, over.after) ? over : null);
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('keydown', onKey, true);
+      setDragging(null);
+      setLanding(null);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      stop();
+      if (!moving) return;
+      const over = itemAt(e.clientX, e.clientY);
+      const next = over && droppedOrder(from, item.id, over.id, over.after);
+      if (next) {
+        void run(
+          () => client.orderItems(ticketId, list.id, next),
+          t('ticketTools.checklists.itemMoved', { text: item.text }),
+        );
+      }
+    };
+    const onCancel = (e: PointerEvent) => {
+      if (e.pointerId === pointerId) stop();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      stop();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKey, true);
   };
   const addItem = async (event: FormEvent) => {
     event.preventDefault();
@@ -499,13 +609,16 @@ function ChecklistBlock({
       </div>
       <ProgressLine progress={list.progress} />
       {list.items.length > 0 && (
-        <ul className="checklist-items">
+        <ul ref={items} className="checklist-items" data-dragging={dragging !== null || undefined}>
           {list.items.map((item, at) => (
             <ChecklistRow
               key={item.id}
               item={item}
               canEdit={canEdit}
               busy={busy}
+              dragged={dragging === item.id}
+              landing={landing?.id === item.id ? (landing.after ? 'after' : 'before') : null}
+              onGrip={list.items.length > 1 ? (event) => beginDrag(event, item) : null}
               canMoveUp={at > 0}
               canMoveDown={at < list.items.length - 1}
               focusMove={movedItem?.id === item.id ? movedItem.step : null}
@@ -562,6 +675,9 @@ function ChecklistRow({
   item,
   canEdit,
   busy,
+  dragged,
+  landing,
+  onGrip,
   canMoveUp,
   canMoveDown,
   focusMove,
@@ -574,6 +690,12 @@ function ChecklistRow({
   item: ChecklistItem;
   canEdit: boolean;
   busy: boolean;
+  /** This item is being dragged (TT-5). */
+  dragged: boolean;
+  /** A dragged item would land just before or after this one. */
+  landing: 'before' | 'after' | null;
+  /** Starts a drag by the grip; null when there is nowhere to drag to. */
+  onGrip: ((event: ReactPointerEvent<HTMLElement>) => void) | null;
   canMoveUp: boolean;
   canMoveDown: boolean;
   /** The item just moved this way: its move button takes the focus again. */
@@ -640,7 +762,13 @@ function ChecklistRow({
     );
   }
   return (
-    <li className="checklist-item" data-state={state}>
+    <li
+      className="checklist-item"
+      data-state={state}
+      data-item={item.id}
+      data-dragged={dragged || undefined}
+      data-landing={landing ?? undefined}
+    >
       <input
         ref={box}
         id={boxId}
@@ -654,6 +782,17 @@ function ChecklistRow({
       </label>
       {canEdit ? (
         <span className="checklist-item-controls">
+          {onGrip && (
+            // For a pointer only: Move up and Move down are the same moves by keyboard.
+            <span
+              className="checklist-grip"
+              aria-hidden="true"
+              title={t('ticketTools.checklists.drag')}
+              onPointerDown={onGrip}
+            >
+              <GripIcon />
+            </span>
+          )}
           <select
             value={state}
             aria-label={t('ticketTools.checklists.stateOf', { text: item.text })}

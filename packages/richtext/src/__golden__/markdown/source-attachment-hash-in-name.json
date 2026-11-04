@@ -1,0 +1,25 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "adfMedia": null,
+        "digest": null,
+        "image": false,
+        "name": "notes#v2.pdf"
+      },
+      "type": "attachmentRef"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "adfMedia": null,
+        "digest": null,
+        "image": false,
+        "name": "notes.pdf#3F2A9C0D1E4B5A67"
+      },
+      "type": "attachmentRef"
+    }
+  ],
+  "type": "doc"
+}

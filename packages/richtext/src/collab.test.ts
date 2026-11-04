@@ -98,11 +98,22 @@ describe('documents in Yjs (ADR-014)', () => {
         {
           type: 'columnLayout',
           content: [
-            { type: 'column', content: [paragraph('Left').content?.[0] as PmJson] },
-            { type: 'column', content: [paragraph('Right').content?.[0] as PmJson] },
+            {
+              type: 'column',
+              attrs: { width: 30 },
+              content: [paragraph('Left').content?.[0] as PmJson],
+            },
+            {
+              type: 'column',
+              attrs: { width: 70 },
+              content: [paragraph('Right').content?.[0] as PmJson],
+            },
           ],
         },
-        { type: 'attachmentRef', attrs: { name: 'a.png', image: true } },
+        {
+          type: 'attachmentRef',
+          attrs: { name: 'a.png', image: true, digest: '3f2a9c0d1e4b5a67' },
+        },
         {
           type: 'paragraph',
           content: [
@@ -118,9 +129,11 @@ describe('documents in Yjs (ADR-014)', () => {
     const { a, b } = peers(start);
     expect(docFromYDoc(a)).toEqual(normal(start));
     expect(docFromYDoc(b)).toEqual(normal(start));
-    // One retitles the section while the other adds a block.
+    // One retitles the section and widens a column while the other adds a block.
     const retitled = normal(start);
     (retitled.content?.[0]?.attrs as Record<string, unknown>).title = 'Much more';
+    (retitled.content?.[1]?.content?.[0]?.attrs as Record<string, unknown>).width = 50;
+    (retitled.content?.[1]?.content?.[1]?.attrs as Record<string, unknown>).width = 50;
     writeDocToYDoc(a, retitled);
     const added = normal(start);
     added.content?.push({ type: 'attachmentRef', attrs: { name: 'b.pdf', image: false } });
@@ -129,6 +142,8 @@ describe('documents in Yjs (ADR-014)', () => {
     const merged = docFromYDoc(a);
     expect(merged).toEqual(docFromYDoc(b));
     expect(merged.content?.[0]?.attrs?.title).toBe('Much more');
+    expect(merged.content?.[1]?.content?.map((c) => c.attrs?.width)).toEqual([50, 50]);
+    expect(merged.content?.[2]?.attrs?.digest).toBe('3f2a9c0d1e4b5a67');
     expect(merged.content?.at(-1)?.attrs?.name).toBe('b.pdf');
   });
 

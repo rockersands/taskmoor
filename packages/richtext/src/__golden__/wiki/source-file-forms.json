@@ -1,0 +1,79 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "adfMedia": null,
+        "digest": null,
+        "image": true,
+        "name": "shot.png"
+      },
+      "type": "attachmentRef"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "adfMedia": null,
+        "digest": null,
+        "image": false,
+        "name": "report.pdf"
+      },
+      "type": "attachmentRef"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/a.png",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "https://example.test/a.png",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "See notes.pdf and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "b.png",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "b.png",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

@@ -122,6 +122,10 @@ export function ticketEditorTools(
             image: file.kind === 'image',
             href: files.urls.content(file),
             thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
+            sha256: file.sha256,
+            size: file.size,
+            createdAt: file.createdAt,
+            author: file.author?.name ?? null,
           })),
         );
         asked.catch(() => {

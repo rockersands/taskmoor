@@ -1,5 +1,10 @@
+{section}
+{column}
 h2. Left
 
 One.
-
+{column}
+{column}
 Two.
+{column}
+{section}

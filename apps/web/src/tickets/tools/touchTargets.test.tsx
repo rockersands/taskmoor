@@ -86,6 +86,16 @@ describe('touch targets in the ticket tools (ADR-033)', () => {
     const small = fields.filter((field) => !isTouchTarget(field, rules));
     expect(small.map((field) => field.outerHTML)).toEqual([]);
 
+    // A subticket's status menu (TT-6).
+    const statuses = screen.getAllByRole('button', { name: /^Status of SHOP-/ });
+    expect(statuses).toHaveLength(2);
+    expect(statuses.filter((button) => !isTouchTarget(button, rules))).toEqual([]);
+
+    // A checklist item's grip (TT-5).
+    const grips = [...container.querySelectorAll('.checklist-grip')];
+    expect(grips.length).toBeGreaterThan(1);
+    expect(grips.filter((grip) => !isTouchTarget(grip, rules)).map((g) => g.outerHTML)).toEqual([]);
+
     const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
     expect(boxes.length).toBeGreaterThan(0);
     for (const box of boxes) {

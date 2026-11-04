@@ -493,6 +493,105 @@ describe('the new blocks (NTF-014)', () => {
     ).toMatch(/collapsible/);
   });
 
+  it('[NTF-014] (1) keeps which of two files of one name a reference means (TT-4)', () => {
+    const doc = adfDoc([
+      {
+        type: 'mediaGroup',
+        content: [
+          {
+            type: 'media',
+            attrs: {
+              type: 'file',
+              id: 'report.pdf',
+              collection: 'taskmoor-attachments',
+              digest: '3f2a9c0d1e4b5a67',
+            },
+          },
+        ],
+      },
+    ]);
+    const pm = fromAdf(doc);
+    expect(pm.firstChild?.attrs).toMatchObject({ name: 'report.pdf', digest: '3f2a9c0d1e4b5a67' });
+    // Nothing else on the media node, so nothing is kept beside the reference.
+    expect(pm.firstChild?.attrs.adfMedia).toBeNull();
+    expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
+
+    // A digest that is not hexadecimal digits is one of the media node's own attributes.
+    const odd = adfDoc([
+      {
+        type: 'mediaSingle',
+        content: [
+          {
+            type: 'media',
+            attrs: {
+              type: 'file',
+              id: 'a.png',
+              collection: 'taskmoor-attachments',
+              digest: 'not-hex',
+            },
+          },
+        ],
+      },
+    ]);
+    const kept = fromAdf(odd);
+    expect(kept.firstChild?.attrs.digest).toBeNull();
+    expect(kept.firstChild?.attrs.adfMedia).not.toBeNull();
+    expect(canonicalAdf(toAdf(kept))).toEqual(canonicalAdf(odd));
+  });
+
+  it('[NTF-014] (2) refuses a digest or a column width that is not one (TT-2, TT-4)', () => {
+    const block = (node: Record<string, unknown>) => ({ type: 'doc', content: [node] });
+    for (const digest of [null, '3f2a9c0d', '3f2a9c0d1e4b5a67', 'a'.repeat(64)]) {
+      expect(
+        docShapeProblem(block({ type: 'attachmentRef', attrs: { name: 'a.png', digest } })),
+      ).toBeNull();
+    }
+    for (const digest of ['', '3f2a', 'ABCDEF0123456789', 'a'.repeat(65), '3f2a9c0d#', 7]) {
+      expect(
+        docShapeProblem(block({ type: 'attachmentRef', attrs: { name: 'a.png', digest } })),
+        String(digest),
+      ).toMatch(/digest/);
+    }
+    const layout = (width: unknown) =>
+      block({
+        type: 'columnLayout',
+        content: [{ type: 'column', attrs: { width }, content: [{ type: 'paragraph' }] }],
+      });
+    for (const width of [null, 50, 33.33, 0, 150])
+      expect(docShapeProblem(layout(width))).toBeNull();
+    for (const width of ['50%', '1fr; background: url(x)', true]) {
+      expect(docShapeProblem(layout(width)), String(width)).toMatch(/width/);
+    }
+  });
+
+  it('[NTF-014] shows a column width only as numbers, and only when every column has one', () => {
+    const tracks = (widths: unknown[]) => {
+      const node = schema.nodeFromJSON({
+        type: 'columnLayout',
+        content: widths.map((width) => ({
+          type: 'column',
+          attrs: { width },
+          content: [{ type: 'paragraph' }],
+        })),
+      });
+      const spec = schema.nodes.columnLayout?.spec.toDOM?.(node) as unknown[];
+      return (spec[1] as Record<string, unknown>).style;
+    };
+    expect(tracks([40, 60])).toBe('--rt-columns: minmax(0, 40fr) minmax(0, 60fr)');
+    expect(tracks([33.333333, 66.666667])).toBe(
+      '--rt-columns: minmax(0, 33.3333fr) minmax(0, 66.6667fr)',
+    );
+    // One without a width, or one the layout cannot show: all equal.
+    for (const widths of [
+      [40, null],
+      [0, 100],
+      [50, 150],
+      [Number.NaN, 50],
+    ]) {
+      expect(tracks(widths), JSON.stringify(widths)).toBeUndefined();
+    }
+  });
+
   it('[NTF-014] (2) writes no raw HTML and no address from what a block holds', () => {
     const doc = schema.nodeFromJSON({
       type: 'doc',

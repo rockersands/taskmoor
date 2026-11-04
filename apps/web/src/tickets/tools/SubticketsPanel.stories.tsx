@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
-import { fakeToolsClient } from './fixtures';
+import { expect, userEvent, within } from 'storybook/test';
+import { childTransitions, fakeToolsClient } from './fixtures';
 import { SubticketProgressMini } from './Progress';
 import { SubticketsPanel } from './SubticketsPanel';
 
@@ -74,5 +74,29 @@ export const Mini: Story = {
   render: () => <SubticketProgressMini progress={{ total: 8, closed: 3 }} />,
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('3/8')).toBeVisible();
+  },
+};
+
+/** A subticket's status opened as a menu of where it can go (TT-6). */
+export const MovingASubticket: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Status of SHOP-202: In progress' }),
+    );
+    await expect(await canvas.findByRole('menuitem', { name: 'Done' })).toBeVisible();
+  },
+};
+
+/** A move that asks for a close reason first (TT-6). */
+export const MoveAsksForAReason: Story = {
+  args: { client: fakeToolsClient({ transitions: childTransitions(true) }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Status of SHOP-202: In progress' }),
+    );
+    await userEvent.click(await canvas.findByRole('menuitem', { name: 'Done' }));
+    await expect(await canvas.findByRole('combobox', { name: 'Close reason' })).toBeVisible();
   },
 };

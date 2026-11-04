@@ -4,6 +4,7 @@
       "attrs": {
         "adfAttrs": null,
         "adfMedia": null,
+        "digest": null,
         "image": true,
         "name": "login.png"
       },

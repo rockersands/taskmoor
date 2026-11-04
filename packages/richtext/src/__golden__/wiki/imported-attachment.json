@@ -2,15 +2,13 @@
   "content": [
     {
       "attrs": {
-        "adfAttrs": null
+        "adfAttrs": null,
+        "adfMedia": null,
+        "digest": null,
+        "image": true,
+        "name": "login.png"
       },
-      "content": [
-        {
-          "text": "login.png",
-          "type": "text"
-        }
-      ],
-      "type": "paragraph"
+      "type": "attachmentRef"
     }
   ],
   "type": "doc"
