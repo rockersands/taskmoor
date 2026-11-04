@@ -287,6 +287,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Aquí se muestran los tickets de este track. Cambia el filtro o crea el primero.',
   'empty.releases.upcoming':
     'Una versión reúne los tickets que se publican juntos. Planifica la próxima aquí.',
+  'empty.releases.upcomingRead':
+    'Una versión reúne los tickets que se publican juntos. Los administradores del track las planifican.',
   'empty.releases.shipped': 'Una versión aparece aquí cuando se ha publicado.',
   'empty.groups.body': 'Un grupo reúne a personas para que puedas darles permisos a la vez.',
   'empty.teams.body':

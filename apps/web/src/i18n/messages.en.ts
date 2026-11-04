@@ -272,6 +272,8 @@ export const messagesEn = {
   'empty.list.body': 'Tickets of this track show here. Change the filter, or create the first one.',
   'empty.releases.upcoming':
     'A release gathers the tickets that ship together. Plan the next one here.',
+  'empty.releases.upcomingRead':
+    'A release gathers the tickets that ship together. The track’s administrators plan them.',
   'empty.releases.shipped': 'A release shows here once it has shipped.',
   'empty.groups.body': 'A group gathers people so that you can give them permissions together.',
   'empty.teams.body': 'A team says who works together. Boards, areas and Team fields can name it.',

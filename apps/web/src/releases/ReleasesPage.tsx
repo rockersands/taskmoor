@@ -175,7 +175,9 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
       <section className="glass-card release-group" aria-labelledby={`${id}-upcoming`}>
         <h2 id={`${id}-upcoming`}>{t('releases.upcoming')}</h2>
         {upcoming.length === 0 ? (
-          <EmptyState title={t('releases.noneUpcoming')}>{t('empty.releases.upcoming')}</EmptyState>
+          <EmptyState title={t('releases.noneUpcoming')}>
+            {t(list.mayManage ? 'empty.releases.upcoming' : 'empty.releases.upcomingRead')}
+          </EmptyState>
         ) : (
           rows(upcoming)
         )}
