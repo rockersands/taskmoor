@@ -238,7 +238,7 @@ reported, and the coordinator checked that it was pushed.
 | T-161 | Tutorial: first-run offer, sections to pick, one of everything | Done | On `main` (ADR-115, AGL-025): an offer on Home at first sign-in, Settings, Tutorials to start, resume and replay, and a coach card through the eight sections, each making one real thing |
 | T-162 | Drag and drop with a keyboard path beyond boards | Done | On `main` (ADR-114): the backlog (rank and move between sprints), dashboard widgets and files onto the ticket page, by mouse, touch and keys, with a menu for every move |
 | T-162a | Should board cards and calendar entries use the same touch drag as the backlog and widgets? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
-| T-162b | Board cards and calendar entries on the shared pointer drag | In progress | WIP commit on `wave6/t162b-touch-drag-boards`, not yet tested or reviewed |
+| T-162b | Board cards and calendar entries on the shared pointer drag | On branch | In the gate. Reviewed; a release the page never hears no longer drops a ticket on the next click |
 | T-163 | Layout editor page | Done | On `main` (ADR-114, UI-T15): fields dragged or moved by keys into tabs and sections, a live preview per ticket type and operation, the server the judge |
 | T-163a | Open the layout editor to a local-mode track's own administrators? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
 | T-163b | The layout editor for a local-mode track's own administrators | In progress | WIP commit on `wave6/t163b-layouts-for-track-admins`, not yet tested or reviewed |
@@ -266,7 +266,7 @@ reported, and the coordinator checked that it was pushed.
 | T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
 | T-196b | The "Checklist changed" notice | Done | On `main` (NTF-015, ADR-120, migration 0103): a notice track administrators turn on, off by default |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
-| T-207 | Free movement is the default everywhere, including a new demo's sample tracks | On branch | In the gate. WF-008, ADR-116, migrations 0104 and 0105: new workflows, added statuses, sample data and close reasons all stay free moving |
+| T-207 | Free movement is the default everywhere, including a new demo's sample tracks | Done | On `main` (WF-008, ADR-116, migrations 0104 and 0105): new workflows, added statuses, sample data and close reasons all stay free moving |
 | T-208 | A fresh checkout's first full gate fails in the browser stories (Vite's dependency cache is cold; "optimized dependencies changed") | To do | 48 failures on this PC's first gate; all pass on a rerun. Warm the cache or list the dependencies up front, or every new clone and worktree meets this |
 | T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | To do | T-207 review (low): an empty In Review made closed-stage gets no close reason and no Closed time |
 | T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | To do | T-207 review (low): only the web editor's Add a status adds the free move; a warning in the draft's answer may be enough |
