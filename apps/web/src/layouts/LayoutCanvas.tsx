@@ -50,6 +50,9 @@ type Drop =
 
 /** How far a pointer moves before a press on a grip becomes a drag, in pixels. */
 const DRAG_START = 6;
+/** Near the top or bottom of the window, by this much, a drag scrolls the page. */
+const SCROLL_EDGE = 48;
+const SCROLL_STEP = 16;
 
 /**
  * The layout of one form (UI-T15; ADR-114 section 8; CORE-008): the fields not placed, then the
@@ -239,6 +242,9 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
         setDrag(item);
       }
       e.preventDefault();
+      // A long layout on a phone: holding near an edge brings the rest into reach.
+      if (e.clientY < SCROLL_EDGE) window.scrollBy(0, -SCROLL_STEP);
+      else if (e.clientY > window.innerHeight - SCROLL_EDGE) window.scrollBy(0, SCROLL_STEP);
       setGhost({ x: e.clientX, y: e.clientY });
       setOver(dropAt(e.clientX, e.clientY, item));
     };
@@ -413,9 +419,9 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
                 beginDrag(event, { kind: 'section', id: section.id, name: title })
               }
             />
-            <h4 id={titleId} className="layout-section-title">
+            <h3 id={titleId} className="layout-section-title">
               {title}
-            </h4>
+            </h3>
             <button
               type="button"
               className="button-secondary layout-remove"
@@ -510,9 +516,9 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
               onStep={(d) => stepTabBy(tab.id, d)}
               onDragStart={(event) => beginDrag(event, { kind: 'tab', id: tab.id, name: label })}
             />
-            <h3 id={titleId} className="layout-tab-title">
+            <h2 id={titleId} className="layout-tab-title">
               {t('layouts.tabTitle', { position: index + 1, name: label })}
-            </h3>
+            </h2>
             <button
               type="button"
               className="button-secondary layout-remove"
@@ -593,9 +599,9 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
         className={`layout-palette glass-card${over?.kind === 'palette' ? ' is-drop-target' : ''}`}
         data-drop="palette"
       >
-        <h3 id={`${id}-palette`} className="section-title">
+        <h2 id={`${id}-palette`} className="section-title">
           {t('layouts.palette')}
-        </h3>
+        </h2>
         <p className="form-hint">{t('layouts.paletteHint')}</p>
         {unplaced.length === 0 ? (
           <p className="page-note">{t('layouts.allPlaced')}</p>

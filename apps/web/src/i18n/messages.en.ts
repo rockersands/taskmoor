@@ -5740,7 +5740,7 @@ export const messagesEn = {
   'admin.trackSets.purpose':
     'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets are made on Layouts and visibility policies on their own page; priority sets and notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Layout sets and visibility policies are made on pages of their own; priority sets and notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -5975,13 +5975,13 @@ export const messagesEn = {
   'richtext.emoji.pin': 'pin',
   'richtext.emoji.waiting': 'waiting',
   'richtext.emoji.heart': 'heart',
-  'settings.layouts': 'Layouts',
+  'settings.layouts': 'Layout sets',
   'settings.layoutsHint':
     'Where fields appear on the create, edit and view forms, per ticket type.',
   'admin.sets.rulesAndLayouts':
     'Field rules decide whether a field is required, hidden or has help text. Where fields appear, and in what order, is up to the layouts: a hidden field never appears, even where a layout places it, and a required field always does.',
-  'admin.sets.layoutsLink': 'Arrange the forms on Layouts.',
-  'layouts.title': 'Layouts',
+  'admin.sets.layoutsLink': 'Arrange the forms on Layout sets.',
+  'layouts.title': 'Layout sets',
   'layouts.purpose':
     'Arrange where fields appear on the create, edit and view forms, for every ticket type or for one.',
   'layouts.about':
@@ -6068,6 +6068,7 @@ export const messagesEn = {
   'layouts.moveTo': 'Move to {section}',
   'layouts.moveToTab': 'Move to tab {name}',
   'layouts.takeOff': 'Take off the layout',
+  'layouts.noMoves': 'Nowhere to move it yet',
   'layouts.unknownField': 'A field that is gone ({key})',
   'layouts.onlyPlaced': 'Show only the fields I placed',
   'layouts.onlyPlacedHint':

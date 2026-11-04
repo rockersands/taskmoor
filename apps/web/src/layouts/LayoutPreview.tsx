@@ -107,9 +107,9 @@ export function LayoutPreview({
 
   return (
     <section aria-labelledby={`${id}-title`} className="layout-preview glass-card">
-      <h3 id={`${id}-title`} className="section-title">
+      <h2 id={`${id}-title`} className="section-title">
         {t('layouts.preview.title')}
-      </h3>
+      </h2>
       <p className="form-hint">{t('layouts.preview.intro')}</p>
       <div className="layout-preview-choices">
         {form.ticketTypeId === null && (
@@ -204,9 +204,9 @@ export function LayoutPreview({
                     {...(name ? { 'aria-labelledby': headingId } : {})}
                   >
                     {name && (
-                      <h4 id={headingId} className="facts-title">
+                      <h3 id={headingId} className="facts-title">
                         {name}
-                      </h4>
+                      </h3>
                     )}
                     <div className="layout-preview-sections">
                       {tab.sections.map((section, j) => (

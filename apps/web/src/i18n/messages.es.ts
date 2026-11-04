@@ -5870,7 +5870,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.purpose':
     'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños se crean en Diseños y las políticas de visibilidad en su página; los conjuntos de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Los conjuntos de diseños y las políticas de visibilidad se crean en sus propias páginas; los conjuntos de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -6111,13 +6111,13 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.emoji.pin': 'chincheta',
   'richtext.emoji.waiting': 'esperando',
   'richtext.emoji.heart': 'corazón',
-  'settings.layouts': 'Diseños',
+  'settings.layouts': 'Conjuntos de diseños',
   'settings.layoutsHint':
     'Dónde aparecen los campos en los formularios de crear, editar y ver, por tipo de ticket.',
   'admin.sets.rulesAndLayouts':
     'Las reglas de campos deciden si un campo es obligatorio, está oculto o tiene texto de ayuda. Dónde aparecen los campos, y en qué orden, lo deciden los diseños: un campo oculto nunca aparece, aunque un diseño lo coloque, y uno obligatorio siempre aparece.',
-  'admin.sets.layoutsLink': 'Organiza los formularios en Diseños.',
-  'layouts.title': 'Diseños',
+  'admin.sets.layoutsLink': 'Organiza los formularios en Conjuntos de diseños.',
+  'layouts.title': 'Conjuntos de diseños',
   'layouts.purpose':
     'Organiza dónde aparecen los campos en los formularios de crear, editar y ver, para todos los tipos de ticket o para uno.',
   'layouts.about':
@@ -6210,6 +6210,7 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.moveTo': 'Mover a {section}',
   'layouts.moveToTab': 'Mover a la pestaña {name}',
   'layouts.takeOff': 'Quitar del diseño',
+  'layouts.noMoves': 'Todavía no hay adónde moverlo',
   'layouts.unknownField': 'Un campo que ya no existe ({key})',
   'layouts.onlyPlaced': 'Mostrar solo los campos que coloqué',
   'layouts.onlyPlacedHint':

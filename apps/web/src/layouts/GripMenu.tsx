@@ -1,4 +1,5 @@
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { useT } from '../i18n/I18nProvider';
 import { leaveMotion } from '../shell/motion';
 import { useMenuButton } from '../shell/useMenuButton';
 
@@ -45,6 +46,7 @@ export function GripMenu({
   onStep,
   justDragged,
 }: GripMenuProps) {
+  const t = useT();
   const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
     useMenuButton();
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -84,7 +86,7 @@ export function GripMenu({
       >
         <GripIcon />
       </button>
-      {open && items.length > 0 && (
+      {open && (
         <div ref={leaveMotion} className="user-menu-popup layout-grip-popup">
           <div
             ref={menu}
@@ -94,6 +96,19 @@ export function GripMenu({
             className="user-menu-list"
             onKeyDown={keys.onMenuKeyDown}
           >
+            {items.length === 0 && (
+              // Nowhere to go yet (one tab, or no section to put a field in): said, not hidden.
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                type="button"
+                aria-disabled="true"
+                className="user-menu-item"
+                onClick={() => close(true)}
+              >
+                {t('layouts.noMoves')}
+              </button>
+            )}
             {items.map((item) => (
               <button
                 key={item.key}
