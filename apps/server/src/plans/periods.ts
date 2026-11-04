@@ -57,6 +57,18 @@ export function periodsBefore(setting: PeriodSetting, day: string, count: number
   return start;
 }
 
+/**
+ * The Thursday of the week, Monday to Sunday, that holds `day`. A period at least a week long
+ * that holds this Thursday holds at least four days of the week: most of it. Work elsewhere is
+ * counted by these weeks (ADR-122 stage 3), so no choice of periods narrows it below a week.
+ */
+export function weekThursday(day: string): string {
+  const n = dayNumber(day);
+  // Day 0, 1970-01-01, was a Thursday: this is how many days the week has run before `day`.
+  const sinceMonday = (((n + 3) % 7) + 7) % 7;
+  return isoDay(n - sinceMonday + 3);
+}
+
 /** Whether `day` is the first day of one of the periods. */
 export function isPeriodStart(setting: PeriodSetting, day: string): boolean {
   return periodHolding(setting, day).start === day;

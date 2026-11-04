@@ -155,5 +155,13 @@ export type CapacityEntry = z.infer<typeof capacityEntry>;
 /** How many capacities one change sets at most: a row's every period, and some. */
 export const MAX_CAPACITY_ENTRIES = 200;
 export const capacityBody = z
-  .object({ entries: z.array(capacityEntry).min(1).max(MAX_CAPACITY_ENTRIES) })
+  .object({
+    entries: z.array(capacityEntry).min(1).max(MAX_CAPACITY_ENTRIES),
+    /**
+     * The unit and periods the amounts were typed for: when the plan's are no longer these,
+     * nothing is set (`settings_changed`), since 30 points are not 30 hours.
+     */
+    unit: z.enum(CAPACITY_UNITS).optional(),
+    period: periodInput.optional(),
+  })
   .strict();

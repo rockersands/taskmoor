@@ -1,6 +1,6 @@
 import type { Database, PlanCapacityUnit } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { type Kysely, type RawBuilder, sql } from 'kysely';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
@@ -14,6 +14,8 @@ import {
   type PeriodSetting,
   periodsBefore,
   periodsFrom,
+  samePeriods,
+  weekThursday,
 } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
@@ -32,8 +34,11 @@ import { searchRefusal } from './search';
  *   Every number is the count of a search: the plan's `query`, the row's `clause` and the
  *   period's `clause`, ANDed. A person's other work due in the period (outside the plan, left
  *   out by the filters, or hidden from the viewer) counts against their capacity as one number,
- *   `elsewhere`, never named or linked. Unassigned work, and work of people in none of the
- *   plan's teams, have rows of their own, without capacity.
+ *   `elsewhere`, never named or linked, and counted by whole weeks: each week, Monday to Sunday,
+ *   in the period that holds its Thursday (most of its days). Since anyone may own a plan and
+ *   move its periods a day at a time, counting it by day would give away the day each hidden
+ *   ticket is due. Unassigned work, and work of people in none of the plan's teams, have rows
+ *   of their own, without capacity.
  * - `PUT /api/v1/plans/:id/capacity` sets, changes or removes capacities (a team's or a
  *   member's, for every period or one), for those who may change the plan; one
  *   `plan.capacity_set` event lists every change.
@@ -42,6 +47,8 @@ import { searchRefusal } from './search';
  * the sum of its members' when any has one. Over capacity: what the row's people have due in the
  * period, here and elsewhere, is more than that.
  */
+type Db = Kysely<Database> | Transaction<Database>;
+
 const DEFAULT_PERIODS = 6;
 /** Names a number field goes by when it holds a ticket's points (as boards read them). */
 const POINTS_NAMES = ['points', 'story points', 'puntos'];
@@ -124,10 +131,10 @@ export function registerPlanCapacityRoutes(
   }
 
   /** The members of each team, in name order; everyone `membersOf("id:<team>")` returns. */
-  async function membersOf(ws: number, teamIds: readonly number[]) {
+  async function membersOf(q: Db, ws: number, teamIds: readonly number[]) {
     if (teamIds.length === 0)
       return new Map<number, { id: number; name: string; active: boolean }[]>();
-    const rows = await db
+    const rows = await q
       .selectFrom('team_member as m')
       .innerJoin('app_user as u', 'u.id', 'm.user_id')
       .select(['m.team_id', 'u.id', 'u.name', 'u.deactivated_at'])
@@ -197,9 +204,13 @@ export function registerPlanCapacityRoutes(
         const n = dayNumber(due);
         return periods.findIndex((x) => n >= dayNumber(x.start) && n <= dayNumber(x.end));
       };
+      // Work elsewhere goes by whole weeks: those whose Thursday is in view, Monday to Sunday.
+      const weeksStart = isoDay(dayNumber(windowStart) - 3);
+      const weeksEnd = isoDay(dayNumber(windowEnd) + 3);
 
       const teams = await planTeams(db, plan.id);
       const members = await membersOf(
+        db,
         ws,
         teams.map((t) => t.id),
       );
@@ -229,8 +240,8 @@ export function registerPlanCapacityRoutes(
                  GROUP BY k.assignee_id, k.due_date`.execute(trx)
             ).rows
           : [];
-        // The rest of the members' work due in the window: outside the plan, filtered out or
-        // hidden from the viewer. Counted, never named. The trash and archived tracks hold none.
+        // The rest of the members' work due in the weeks in view: outside the plan, filtered out
+        // or hidden from the viewer. Counted, never named. The trash and archived tracks hold none.
         const elsewhere =
           people.length === 0
             ? []
@@ -240,7 +251,7 @@ export function registerPlanCapacityRoutes(
                          COALESCE(sum(${value}), 0)::float8 AS amount
                     FROM ticket k JOIN track t ON t.id = k.track_id
                    WHERE k.workspace_id = ${ws}::int AND k.assignee_id = ANY(${people}::int[])
-                     AND k.due_date BETWEEN ${windowStart}::date AND ${windowEnd}::date
+                     AND k.due_date BETWEEN ${weeksStart}::date AND ${weeksEnd}::date
                      AND k.deleted_at IS NULL AND t.deleted_at IS NULL AND t.archived_at IS NULL
                      ${where ? sql`AND (${where}) IS NOT TRUE` : sql``}
                    GROUP BY k.assignee_id, k.due_date`.execute(trx)
@@ -277,7 +288,7 @@ export function registerPlanCapacityRoutes(
       const away = new Map<number, Elsewhere[]>();
       for (const r of counted.elsewhere) {
         const list = away.get(r.assignee_id) ?? periods.map(() => ({ count: 0, amount: 0 }));
-        const at = periodAt(r.due);
+        const at = periodAt(weekThursday(r.due));
         const cell = list[at];
         if (cell) {
           cell.count += r.n;
@@ -437,37 +448,51 @@ export function registerPlanCapacityRoutes(
     if (!plan) return reply.code(404).send({ error: 'not_found' });
     if (!plan.editable)
       return reply.code(403).send({ error: 'forbidden', permission: 'edit_plan' });
-    const setting = periodOf(plan);
-    const entries = parsed.data.entries;
+    const { entries, unit, period } = parsed.data;
 
-    // Only the plan's teams and their members; only first days of the plan's periods.
-    const teamIds = new Set((await planTeams(db, plan.id)).map((t) => t.id));
-    const memberIds = new Set(
-      [...(await membersOf(ws, [...teamIds])).values()].flat().map((m) => m.id),
-    );
-    const fields: Record<string, string> = {};
-    const seen = new Set<string>();
-    for (const [i, e] of entries.entries()) {
-      if (e.teamId !== undefined && !teamIds.has(e.teamId)) {
-        fields[`entries.${i}.teamId`] = 'not_in_plan';
+    const outcome = await db.transaction().execute(async (trx) => {
+      // One writer at a time per plan, so two people's changes never interleave; and the plan's
+      // settings, teams and members are read under that lock, so a change of them that commits
+      // meanwhile (which clears capacity) is seen here, not undone by rows checked before it.
+      const locked = await trx
+        .selectFrom('plan')
+        .select(['capacity_unit', 'period_kind', 'period_weeks', 'period_anchor'])
+        .where('id', '=', plan.id)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!locked) return { missing: true as const };
+      const setting = periodOf(locked);
+      // Amounts typed for another unit or other periods mean something else now.
+      if (
+        (unit !== undefined && unit !== locked.capacity_unit) ||
+        (period !== undefined && !samePeriods(period, setting))
+      ) {
+        return { settingsChanged: { unit: locked.capacity_unit, period: setting } };
       }
-      if (e.userId !== undefined && !memberIds.has(e.userId)) {
-        fields[`entries.${i}.userId`] = 'not_in_plan';
-      }
-      if (e.period !== null && !isPeriodStart(setting, e.period)) {
-        fields[`entries.${i}.period`] = 'not_a_period_start';
-      }
-      const key = `${subjectKey(e)}@${e.period ?? '*'}`;
-      if (seen.has(key)) fields.entries = 'duplicate';
-      seen.add(key);
-    }
-    if (Object.keys(fields).length > 0) {
-      return reply.code(400).send({ error: 'invalid_fields', fields });
-    }
 
-    const changes = await db.transaction().execute(async (trx) => {
-      // One writer at a time per plan, so two people's changes never interleave.
-      await trx.selectFrom('plan').select('id').where('id', '=', plan.id).forUpdate().execute();
+      // Only the plan's teams and their members; only first days of the plan's periods.
+      const teamIds = new Set((await planTeams(trx, plan.id)).map((t) => t.id));
+      const memberIds = new Set(
+        [...(await membersOf(trx, ws, [...teamIds])).values()].flat().map((m) => m.id),
+      );
+      const fields: Record<string, string> = {};
+      const seen = new Set<string>();
+      for (const [i, e] of entries.entries()) {
+        if (e.teamId !== undefined && !teamIds.has(e.teamId)) {
+          fields[`entries.${i}.teamId`] = 'not_in_plan';
+        }
+        if (e.userId !== undefined && !memberIds.has(e.userId)) {
+          fields[`entries.${i}.userId`] = 'not_in_plan';
+        }
+        if (e.period !== null && !isPeriodStart(setting, e.period)) {
+          fields[`entries.${i}.period`] = 'not_a_period_start';
+        }
+        const key = `${subjectKey(e)}@${e.period ?? '*'}`;
+        if (seen.has(key)) fields.entries = 'duplicate';
+        seen.add(key);
+      }
+      if (Object.keys(fields).length > 0) return { fields };
+
       const out: {
         subject: string;
         period: string | null;
@@ -526,9 +551,14 @@ export function registerPlanCapacityRoutes(
           { type: 'plan.capacity_set', subjectId: plan.id, payload: { changes: out } },
         );
       }
-      return out;
+      return { changes: out };
     });
-    return { changed: changes.length };
+    if ('missing' in outcome) return reply.code(404).send({ error: 'not_found' });
+    if ('settingsChanged' in outcome) {
+      return reply.code(409).send({ error: 'settings_changed', ...outcome.settingsChanged });
+    }
+    if ('fields' in outcome) return reply.code(400).send({ error: 'invalid_fields', ...outcome });
+    return { changed: outcome.changes.length };
   });
 }
 

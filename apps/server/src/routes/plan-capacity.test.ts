@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import { createDb, type Database } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -643,5 +645,220 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         expect((await searched('admin', q)).count, q).toBe(row?.cells[i]?.count);
       }
     }
+  });
+
+  it('[PLN-009] never narrows hidden work below a week, however the periods are set', async () => {
+    // Bo sees only CPA. His own plan over it plans with Web (Ana is in it), so Ana's invoice run
+    // (CPB, 8 points, Wednesday 2027-03-10) and core work (CPC, 13, Thursday 2027-03-11) are
+    // work elsewhere he may not see. Moving one-week periods a day at a time must not tell them
+    // apart: the week of 2027-03-08 counts whole, in the period that holds its Thursday.
+    const own = (
+      await call(
+        'bo',
+        {
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: { name: 'Bo’s', sources: [{ kind: 'track', trackId: tracks.CPA }] },
+        },
+        201,
+      )
+    ).plan.id as number;
+    await call('bo', {
+      method: 'PATCH',
+      url: `/api/v1/plans/${own}`,
+      payload: { teams: [teams.Web], period: { kind: 'weeks', weeks: 1, anchor: '2027-03-08' } },
+    });
+    const elsewhereOf = async (from: string, periods: number) => {
+      const res = await as('bo', {
+        method: 'GET',
+        url: `/api/v1/plans/${own}/capacity?from=${from}&periods=${periods}`,
+      });
+      expect(res.statusCode, res.body.slice(0, 400)).toBe(200);
+      const answer = res.json() as Answer;
+      const ana = answer.teams[0]?.members.find((m) => m.id === users.ana?.id);
+      return {
+        periods: answer.periods.map((p) => p.start),
+        elsewhere: ana?.cells.map((c) => c.elsewhere) ?? [],
+      };
+    };
+    expect((await elsewhereOf('2027-03-08', 1)).elsewhere).toEqual([{ count: 2, amount: 21 }]);
+    for (let day = 4; day <= 17; day++) {
+      const anchor = `2027-03-${String(day).padStart(2, '0')}`;
+      for (const weeks of [1, 2]) {
+        await call('bo', {
+          method: 'PATCH',
+          url: `/api/v1/plans/${own}`,
+          payload: { period: { kind: 'weeks', weeks, anchor } },
+        });
+        const seen = await elsewhereOf('2027-02-22', 6);
+        const holding = seen.elsewhere.filter((e) => e.count > 0);
+        expect(holding, `${weeks} weeks from ${anchor}`).toEqual([{ count: 2, amount: 21 }]);
+      }
+    }
+    // A week across two months counts whole in the month that holds most of it: Ana's work due
+    // Monday 2027-05-31 and Tuesday 2027-06-01, hidden from Bo, both in June (Thursday June 3).
+    await ticket('CPC', 'Month end', {
+      assigneeId: users.ana?.id,
+      dueDate: '2027-05-31',
+      ...pts(1),
+    });
+    await ticket('CPC', 'Month start', {
+      assigneeId: users.ana?.id,
+      dueDate: '2027-06-01',
+      ...pts(2),
+    });
+    await call('bo', {
+      method: 'PATCH',
+      url: `/api/v1/plans/${own}`,
+      payload: { period: { kind: 'month' } },
+    });
+    const months = await elsewhereOf('2027-05-01', 2);
+    expect(months).toEqual({
+      periods: ['2027-05-01', '2027-06-01'],
+      elsewhere: [
+        { count: 0, amount: 0 },
+        { count: 2, amount: 3 },
+      ],
+    });
+  });
+
+  it('[PLN-009] refuses amounts typed for a unit or periods the plan no longer has', async () => {
+    const plan = (await call('admin', { method: 'GET', url: `/api/v1/plans/${planId}` })).plan;
+    expect(plan).toMatchObject({
+      capacityUnit: 'hours',
+      period: { kind: 'weeks', weeks: 2, anchor: '2027-03-29' },
+    });
+    const put = (body: Record<string, unknown>, code: number) =>
+      call(
+        'admin',
+        {
+          method: 'PUT',
+          url: `/api/v1/plans/${planId}/capacity`,
+          payload: { entries: [{ userId: users.ana?.id, period: null, amount: 30 }], ...body },
+        },
+        code,
+      );
+    // 30 typed as points while the plan counts hours: nothing set, the settings it has now.
+    expect(await put({ unit: 'points' }, 409)).toEqual({
+      error: 'settings_changed',
+      unit: 'hours',
+      period: { kind: 'weeks', weeks: 2, anchor: '2027-03-29' },
+    });
+    expect(
+      await put({ unit: 'hours', period: { kind: 'weeks', weeks: 1, anchor: '2027-03-29' } }, 409),
+    ).toMatchObject({ error: 'settings_changed' });
+    const rows = () =>
+      database.db
+        .selectFrom('plan_capacity')
+        .select(['amount'])
+        .where('plan_id', '=', planId)
+        .where('user_id', '=', users.ana?.id as number)
+        .where('period_start', 'is', null)
+        .execute();
+    expect(await rows()).toEqual([]);
+    // An anchor whole periods away makes the same periods.
+    expect(
+      await put({ unit: 'hours', period: { kind: 'weeks', weeks: 2, anchor: '2027-03-01' } }, 200),
+    ).toEqual({ changed: 1 });
+    expect((await rows()).map((r) => Number(r.amount))).toEqual([30]);
+  });
+
+  describe('while the plan’s settings change (PLN-005, PLN-009)', () => {
+    let side: Kysely<Database>;
+    beforeAll(() => {
+      side = createDb({ connectionString: database.url, maxConnections: 2 });
+    });
+    afterAll(async () => {
+      await side.destroy();
+    });
+
+    /** Until a session of the database waits on a row's lock. */
+    async function untilWaiting() {
+      for (let tries = 0; tries < 200; tries++) {
+        const { rows } = await sql<{ n: number }>`
+          SELECT count(*)::int AS n FROM pg_stat_activity
+           WHERE datname = current_database() AND wait_event_type = 'Lock'
+             AND wait_event IN ('transactionid', 'tuple')`.execute(side);
+        if ((rows[0]?.n ?? 0) >= 1) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error('nobody waits on the plan’s row');
+    }
+
+    /**
+     * A change of capacity sent while a change of the plan holds its row (as `PATCH` does), the
+     * change of the plan made and committed only once the capacity waits for it.
+     */
+    async function racing(
+      entries: Record<string, unknown>[],
+      extra: Record<string, unknown>,
+      change: (trx: Transaction<Database>) => Promise<unknown>,
+    ) {
+      let putting: Promise<{ statusCode: number; body: string }> | undefined;
+      await side.transaction().execute(async (trx) => {
+        await trx.selectFrom('plan').select('id').where('id', '=', planId).forUpdate().execute();
+        putting = as('admin', {
+          method: 'PUT',
+          url: `/api/v1/plans/${planId}/capacity`,
+          payload: { entries, ...extra },
+        }).then((res) => res);
+        await untilWaiting();
+        await change(trx);
+      });
+      return (await putting) as { statusCode: number; body: string };
+    }
+    const rowsOf = (userId: number) =>
+      database.db
+        .selectFrom('plan_capacity')
+        .select(['team_id', 'amount'])
+        .where('plan_id', '=', planId)
+        .where('user_id', '=', userId)
+        .execute();
+
+    it('[PLN-005] sets no capacity for someone whose team left the plan meanwhile', async () => {
+      await call('admin', {
+        method: 'PATCH',
+        url: `/api/v1/plans/${planId}`,
+        payload: { teams: [teams.Web, teams.Ops] },
+      });
+      const cy = users.cy?.id as number;
+      // Cy is in Ops; a site administrator takes Ops out of the plan while the owner saves.
+      const res = await racing([{ userId: cy, period: null, amount: 3 }], {}, (trx) =>
+        trx
+          .deleteFrom('plan_team')
+          .where('plan_id', '=', planId)
+          .where('team_id', '=', teams.Ops as number)
+          .execute(),
+      );
+      expect(res.statusCode, res.body).toBe(400);
+      expect(JSON.parse(res.body)).toEqual({
+        error: 'invalid_fields',
+        fields: { 'entries.0.userId': 'not_in_plan' },
+      });
+      expect(await rowsOf(cy)).toEqual([]);
+    });
+
+    it('[PLN-005] sets no amount in a unit the plan changed from meanwhile', async () => {
+      const ana = users.ana?.id as number;
+      const before = await rowsOf(ana);
+      // Typed as 12 hours; the unit becomes points (clearing every capacity) while it waits.
+      const res = await racing(
+        [{ userId: ana, period: null, amount: 12 }],
+        { unit: 'hours', period: { kind: 'weeks', weeks: 2, anchor: '2027-03-29' } },
+        async (trx) => {
+          await trx
+            .updateTable('plan')
+            .set({ capacity_unit: 'points' })
+            .where('id', '=', planId)
+            .execute();
+          await trx.deleteFrom('plan_capacity').where('plan_id', '=', planId).execute();
+        },
+      );
+      // Her 30 hours for every period, and 1 for the period from 2027-03-15.
+      expect(before.map((r) => Number(r.amount)).sort((a, b) => a - b)).toEqual([1, 30]);
+      expect(res.statusCode, res.body).toBe(409);
+      expect(JSON.parse(res.body)).toMatchObject({ error: 'settings_changed', unit: 'points' });
+      expect(await rowsOf(ana)).toEqual([]);
+    });
   });
 });
