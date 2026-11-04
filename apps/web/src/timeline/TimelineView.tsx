@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -15,6 +16,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { dayNumber, isoDay, type Rescheduled, type Timeline, type TimelineItem } from './client';
+import { type Blocked, barOf, blockerCount, dependencyState } from './dependencies';
 import { scheduleRefusal } from './refusal';
 
 /** What a timeline draws: a track's, or a Multi-track plan's (ADR-064, ADR-122). */
@@ -41,6 +43,13 @@ export interface TimelineViewProps {
   groupOf?: (item: TimelineItem) => TimelineGroup;
   /** What the note under a cut-off timeline says. */
   truncatedText: string;
+  /**
+   * Each blocked ticket's blockers (`dependenciesOf`): with it, a badge beside each blocked bar
+   * says how many there are, and turns red with a word when one is late (PLN-006).
+   */
+  dependencies?: ReadonlyMap<number, Blocked>;
+  /** More controls beside the zoom. */
+  tools?: ReactNode;
 }
 
 type Zoom = 'weeks' | 'months' | 'quarters';
@@ -74,29 +83,16 @@ interface Drag {
   moved: boolean;
 }
 
-/** A ticket's bar: its own (or its sprint's) days, or the span rolled up from its children. */
-function barOf(item: TimelineItem): { start: number; due: number; kind: 'own' | 'rollup' } | null {
-  if (item.start !== null || item.due !== null) {
-    const start = dayNumber(item.start ?? (item.due as string));
-    const due = dayNumber(item.due ?? (item.start as string));
-    return { start, due: Math.max(start, due), kind: 'own' };
-  }
-  const r = item.rollup;
-  if (r && (r.start !== null || r.due !== null)) {
-    const start = dayNumber(r.start ?? (r.due as string));
-    return { start, due: Math.max(start, dayNumber(r.due ?? (r.start as string))), kind: 'rollup' };
-  }
-  return null;
-}
-
 /**
  * The drawing of a timeline (M1-048; AGL-015; PLN-012): tickets as bars over the calendar,
  * parents above their children (collapsible), zoomed by weeks, months or quarters, optionally
  * grouped under headings. A parent without dates of its own shows the span rolled up from its
  * children, and every parent says how many of them are closed. Tickets in a sprint without dates
- * show the sprint's. Lines join a blocking ticket to those it blocks; sprints are bands and
- * releases lines, with today marked. Past `WINDOW_AFTER` rows, only the rows in view are drawn
- * (every row is 44px), so a plan's 10,000 tickets scroll as smoothly as a track's few.
+ * show the sprint's. Lines join a blocking ticket to those it blocks, dashed and red when late
+ * (`dependencyState`); with `dependencies`, a badge beside each blocked bar counts its blockers,
+ * listed or not, and says "late" in words. Sprints are bands and releases lines, with today
+ * marked. Past `WINDOW_AFTER` rows, only the rows in view are drawn (every row is 44px), so a
+ * plan's 10,000 tickets scroll as smoothly as a track's few.
  *
  * Rescheduling: drag a bar to move it, or its ends to change its start or due day; Alt with
  * the left or right arrow moves a focused bar a day (with Shift, a week); choosing a bar opens a
@@ -111,6 +107,8 @@ export function TimelineView({
   now,
   groupOf,
   truncatedText,
+  dependencies,
+  tools,
 }: TimelineViewProps) {
   const t = useT();
   const intl = useIntl();
@@ -404,6 +402,11 @@ export function TimelineView({
     const bar = barOf(item);
     const days = live ?? bar;
     const progress = item.rollup;
+    const blocked = dependencies?.get(item.id);
+    const badgeId = blocked ? `${id}-dep-${item.id}` : undefined;
+    const badgeText = blocked
+      ? t('timeline.badge', { count: blockerCount(blocked), late: blocked.late })
+      : '';
     return (
       <li
         key={`i:${item.id}`}
@@ -449,7 +452,7 @@ export function TimelineView({
               type="button"
               className={`timeline-bar${item.dated === 'sprint' ? ' is-sprint' : ''}${live ? ' is-dragging' : ''}`}
               style={{ left: x(days.start), width: (days.due - days.start + 1) * px }}
-              aria-describedby={`${id}-hint`}
+              aria-describedby={badgeId ? `${id}-hint ${badgeId}` : `${id}-hint`}
               aria-label={t('timeline.bar', {
                 key: item.key,
                 start: dayText(days.start),
@@ -481,6 +484,7 @@ export function TimelineView({
               role="img"
               className="timeline-bar is-rollup"
               style={{ left: x(days.start), width: (days.due - days.start + 1) * px }}
+              aria-describedby={badgeId}
               aria-label={t('timeline.rollup', {
                 key: item.key,
                 start: dayText(days.start),
@@ -501,9 +505,25 @@ export function TimelineView({
               style={{ left: x(today) }}
               onClick={() => setSelected(item.id)}
               aria-label={t('timeline.schedule', { key: item.key })}
+              aria-describedby={badgeId}
             >
               {t('timeline.noDates')}
             </button>
+          )}
+          {blocked && (
+            <span
+              id={badgeId}
+              className={`timeline-badge${blocked.late > 0 ? ' is-late' : ''}${days ? '' : ' is-before'}`}
+              style={{ left: days ? x(days.due + 1) + 12 : x(today) }}
+              title={badgeText}
+            >
+              <span aria-hidden="true">
+                {blocked.late > 0
+                  ? t('timeline.badge.late', { count: blockerCount(blocked) })
+                  : blockerCount(blocked)}
+              </span>
+              <span className="visually-hidden">{badgeText}</span>
+            </span>
           )}
         </div>
       </li>
@@ -560,6 +580,7 @@ export function TimelineView({
         <button type="button" className="button-secondary" onClick={scrollToToday}>
           {t('timeline.today')}
         </button>
+        {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
         {t('timeline.hint')}
@@ -652,8 +673,9 @@ export function TimelineView({
                 {data.links.map((l) => {
                   const from = byId.get(l.from);
                   const to = byId.get(l.to);
-                  const a = from ? barOf(from) : null;
-                  const b = to ? barOf(to) : null;
+                  if (!from || !to) return null;
+                  const a = barOf(from);
+                  const b = barOf(to);
                   const ra = rowOf.get(l.from);
                   const rb = rowOf.get(l.to);
                   if (!a || !b || ra === undefined || rb === undefined) return null;
@@ -664,7 +686,7 @@ export function TimelineView({
                   const y1 = ra * ROW + ROW / 2;
                   const x2 = x(b.start);
                   const y2 = rb * ROW + ROW / 2;
-                  const late = b.start <= a.due;
+                  const late = dependencyState(from, to) === 'late';
                   return (
                     <path
                       key={`${l.from}-${l.to}`}
@@ -709,6 +731,7 @@ export function TimelineView({
             blockedBy={data.links
               .filter((l) => l.to === chosen.id)
               .map((l) => byId.get(l.from)?.key ?? '')}
+            blocked={dependencies?.get(chosen.id)}
             onSave={(start, due) => void save(chosen, start, due)}
             onClose={() => setSelected(null)}
           />
@@ -724,12 +747,15 @@ function SchedulePanel({
   item,
   blocks,
   blockedBy,
+  blocked,
   onSave,
   onClose,
 }: {
   item: TimelineItem;
   blocks: string[];
   blockedBy: string[];
+  /** Its blockers with their state and those not listed, when the page gives dependencies. */
+  blocked?: Blocked | undefined;
   onSave: (start: string | null, due: string | null) => void;
   onClose: () => void;
 }) {
@@ -790,6 +816,22 @@ function SchedulePanel({
         <p className="board-hint">
           {t('timeline.panel.blockedBy', { keys: blockedBy.join(', ') })}
         </p>
+      )}
+      {blocked && blocked.late > 0 && (
+        <p className="board-hint timeline-panel-late">
+          {t('timeline.panel.late', {
+            keys: blocked.blockers
+              .filter((b) => b.state === 'late')
+              .map((b) => b.item.key)
+              .join(', '),
+          })}
+        </p>
+      )}
+      {blocked && blocked.outside > 0 && (
+        <p className="board-hint">{t('dependencies.outside', { count: blocked.outside })}</p>
+      )}
+      {blocked && blocked.unlisted > 0 && (
+        <p className="board-hint">{t('dependencies.unlisted', { count: blocked.unlisted })}</p>
       )}
     </aside>
   );

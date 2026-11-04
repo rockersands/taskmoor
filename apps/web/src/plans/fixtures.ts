@@ -15,9 +15,12 @@ import type {
 /**
  * A Multi-track plan in memory for stories and tests (ADR-122): "Spring launch" over the tracks
  * SHOP and OPS and the saved search "Billing due", with an outcome in SHOP rolled up from two
- * features, an OPS ticket, a blocking link across the tracks, and a saved search that no longer
- * runs. Filters narrow the tickets as the server would; rescheduling changes them;
- * `refuse` answers the code the ticket route would, and `hidden` hides sources from the viewer.
+ * features, an OPS ticket, and a saved search that no longer runs. Dependencies (PLN-006): SHOP-2
+ * blocks SHOP-3, which starts before SHOP-2 ends (late), and OPS-4 across the tracks; OPS-4
+ * blocks OPS-5, which has no dates, and is itself blocked by two tickets outside the plan, only
+ * counted. Filters narrow the tickets as the server would, and a blocker they leave out is
+ * counted as the plan's own; rescheduling changes them; `refuse` answers the code the ticket
+ * route would, and `hidden` hides sources from the viewer.
  */
 const item = (
   id: number,
@@ -130,6 +133,15 @@ const filterText = (filters: PlanFilters) =>
     .join(' AND ');
 
 const BASE = 'track IN ("SHOP", "OPS") OR (track = PLB AND due IS NOT EMPTY)';
+
+/** Blocking links between the plan's tickets: `from` blocks `to`. */
+const LINKS = [
+  { from: 2, to: 3 },
+  { from: 2, to: 4 },
+  { from: 4, to: 5 },
+];
+/** Blockers outside the plan (or hidden from the viewer), by the ticket they block. */
+const OUTSIDE = new Map([[4, 2]]);
 
 export interface FakePlanOptions {
   /** Answer reschedules with this code (or this refusal) instead of saving them. */
@@ -301,10 +313,20 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     timeline: async (_id, filters): Promise<PlanTimeline> => {
       const list = shown(filters);
       const listed = list.slice(0, 10_000);
+      const ids = new Set(listed.map((i) => i.id));
+      const links = nothing ? [] : LINKS.filter((l) => ids.has(l.from) && ids.has(l.to));
+      const blockersElsewhere = nothing
+        ? []
+        : listed.flatMap((i) => {
+            const outside = OUTSIDE.get(i.id) ?? 0;
+            const unlisted = LINKS.filter((l) => l.to === i.id && !ids.has(l.from)).length;
+            return outside + unlisted > 0 ? [{ id: i.id, outside, unlisted }] : [];
+          });
       return structuredClone({
         query: query(filters),
         items: listed,
-        links: nothing ? [] : [{ from: 2, to: 4 }],
+        links,
+        blockersElsewhere,
         tracks: TRACKS,
         markers: {
           sprints: nothing

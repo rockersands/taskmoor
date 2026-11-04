@@ -53,6 +53,24 @@ export const TimelineByTrack: Story = {
   },
 };
 
+/**
+ * Dependencies (PLN-006): SHOP-2 blocks SHOP-3, which starts before SHOP-2 ends, so its badge is
+ * red and says "late"; OPS-4 counts two blockers outside the plan; the list below says the same.
+ */
+export const TimelineDependencies: Story = {
+  args: { section: 'timeline' },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/timeline';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('1 · late')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Dependencies' })).toBeVisible();
+    await expect(canvas.getByText('2 tickets outside this plan')).toBeVisible();
+    await expect(canvas.getByText('3 tickets have blockers; 1 dependency is late.')).toBeVisible();
+  },
+};
+
 /** The List as a search, grouped by track. */
 export const ListByTrack: Story = {
   args: { section: 'list' },

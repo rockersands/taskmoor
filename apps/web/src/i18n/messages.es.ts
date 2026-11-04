@@ -4761,6 +4761,35 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.group.title': '{name} ({count, number})',
   'timeline.group.collapse': 'Ocultar los tickets de {name}',
   'timeline.group.expand': 'Mostrar los tickets de {name}',
+  'timeline.badge':
+    'Bloqueado por {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # con retraso}}',
+  'timeline.badge.late': '{count, number} · con retraso',
+  'timeline.panel.late': 'Con retraso: {keys}',
+  'dependencies.title': 'Dependencias',
+  'dependencies.goTo': 'Lista de dependencias',
+  'dependencies.none': 'Ningún ticket de los que se muestran está bloqueado.',
+  'dependencies.summary':
+    '{tickets, plural, one {# ticket tiene bloqueos} other {# tickets tienen bloqueos}}{late, plural, =0 {; ninguna dependencia va con retraso.} one {; # dependencia va con retraso.} other {; # dependencias van con retraso.}}',
+  'dependencies.onlyLate': 'Solo las que van con retraso',
+  'dependencies.more': 'Mostrar {count, number} más',
+  'dependencies.blockedBy': 'Bloqueado por:',
+  'dependencies.state.late': 'Con retraso:',
+  'dependencies.state.onTime': 'A tiempo:',
+  'dependencies.state.closed': 'Cerrado:',
+  'dependencies.state.undated': 'Sin fechas:',
+  'dependencies.detail.late': 'termina el {due}, pero {key} empieza el {start}.',
+  'dependencies.detail.onTime': 'termina el {due}, antes de que {key} empiece el {start}.',
+  'dependencies.detail.closed': 'ya no frena a {key}.',
+  'dependencies.detail.undated': 'a uno de los dos le faltan fechas para comparar.',
+  'dependencies.detail.blockedClosed': '{key} ya está cerrado.',
+  'dependencies.outside':
+    '{count, plural, one {Bloqueado por # ticket fuera de este plan} other {Bloqueado por # tickets fuera de este plan}}',
+  'dependencies.unlisted':
+    '{count, plural, one {Bloqueado por # ticket de este plan que no se muestra aquí} other {Bloqueado por # tickets de este plan que no se muestran aquí}}',
+  'dependencies.outsideCount':
+    '{count, plural, one {# ticket fuera de este plan} other {# tickets fuera de este plan}}',
+  'dependencies.unlistedCount':
+    '{count, plural, one {# ticket de este plan que no se muestra aquí} other {# tickets de este plan que no se muestran aquí}}',
   'schedule.refused.forbidden':
     'No se pudo reprogramar {key}: no puedes programar tickets en su track.',
   'schedule.refused.locked':

@@ -59,6 +59,11 @@ export interface PlanTickets {
   query: string | null;
   /** The same as a condition on ticket `k`, with the viewer's filter; null finds nothing. */
   where: RawBuilder<boolean> | null;
+  /**
+   * The plan's tickets without the filters, with the viewer's filter: whether a ticket the view
+   * leaves out is in the plan for them (dependencies, PLN-006). Null when `where` is.
+   */
+  unfiltered: RawBuilder<boolean> | null;
 }
 
 /** The sources of these plans, in their order. */
@@ -248,7 +253,7 @@ export async function planTickets(
   const now = new Date();
   const compose = () => sourcesText(keys, [...conditions.values()]);
   let text = compose();
-  if (text === null) return { scope, sources, hidden, query: null, where: null };
+  if (text === null) return { scope, sources, hidden, query: null, where: null, unfiltered: null };
   let base: RawBuilder<boolean>;
   try {
     base = await compileQuery(db, scope, text, now);
@@ -265,12 +270,14 @@ export async function planTickets(
       }
     }
     text = compose();
-    if (text === null) return { scope, sources, hidden, query: null, where: null };
+    if (text === null) {
+      return { scope, sources, hidden, query: null, where: null, unfiltered: null };
+    }
     base = await compileQuery(db, scope, text, now);
   }
   const extra = filterText(filters);
   const where = extra
     ? sql<boolean>`(${base} AND ${await compileCondition(db, scope, extra, now)})`
     : base;
-  return { scope, sources, hidden, query: withFilters(text, extra), where };
+  return { scope, sources, hidden, query: withFilters(text, extra), where, unfiltered: base };
 }

@@ -4641,6 +4641,36 @@ export const messagesEn = {
   'timeline.group.title': '{name} ({count, number})',
   'timeline.group.collapse': 'Hide the tickets of {name}',
   'timeline.group.expand': 'Show the tickets of {name}',
+  // Dependencies on a timeline (PLN-006; ADR-122).
+  'timeline.badge':
+    'Blocked by {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # late}}',
+  'timeline.badge.late': '{count, number} · late',
+  'timeline.panel.late': 'Late: {keys}',
+  'dependencies.title': 'Dependencies',
+  'dependencies.goTo': 'List of dependencies',
+  'dependencies.none': 'No ticket shown here is blocked.',
+  'dependencies.summary':
+    '{tickets, plural, one {# ticket has blockers} other {# tickets have blockers}}{late, plural, =0 {; none is late.} one {; # dependency is late.} other {; # dependencies are late.}}',
+  'dependencies.onlyLate': 'Only late ones',
+  'dependencies.more': 'Show {count, number} more',
+  'dependencies.blockedBy': 'Blocked by:',
+  'dependencies.state.late': 'Late:',
+  'dependencies.state.onTime': 'On time:',
+  'dependencies.state.closed': 'Closed:',
+  'dependencies.state.undated': 'No dates:',
+  'dependencies.detail.late': 'it ends {due}, but {key} starts {start}.',
+  'dependencies.detail.onTime': 'it ends {due}, before {key} starts {start}.',
+  'dependencies.detail.closed': 'it no longer holds {key} up.',
+  'dependencies.detail.undated': 'one of the two has no dates to compare.',
+  'dependencies.detail.blockedClosed': '{key} is closed already.',
+  'dependencies.outside':
+    '{count, plural, one {Blocked by # ticket outside this plan} other {Blocked by # tickets outside this plan}}',
+  'dependencies.unlisted':
+    '{count, plural, one {Blocked by # ticket of this plan not shown here} other {Blocked by # tickets of this plan not shown here}}',
+  'dependencies.outsideCount':
+    '{count, plural, one {# ticket outside this plan} other {# tickets outside this plan}}',
+  'dependencies.unlistedCount':
+    '{count, plural, one {# ticket of this plan not shown here} other {# tickets of this plan not shown here}}',
   'schedule.refused.forbidden':
     '{key} could not be rescheduled: you may not schedule tickets in its track.',
   'schedule.refused.locked':

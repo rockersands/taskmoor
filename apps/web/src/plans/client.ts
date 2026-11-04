@@ -6,6 +6,7 @@ import {
   type TimelineItem,
   timelineClient,
 } from '../timeline/client';
+import type { BlockersElsewhere } from '../timeline/dependencies';
 
 /** A source of a plan as one viewer sees it (ADR-122); those hidden from them are only counted. */
 export type PlanSource =
@@ -97,6 +98,12 @@ export interface PlanTimelineItem extends TimelineItem {
 export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
   query: string | null;
   items: PlanTimelineItem[];
+  /**
+   * The blockers of listed tickets that the timeline does not list, only counted (PLN-006):
+   * outside the plan or hidden from the viewer, and the plan's own left out by filters or the
+   * first 10,000.
+   */
+  blockersElsewhere: BlockersElsewhere[];
   tracks: PlanTrack[];
 }
 

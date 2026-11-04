@@ -45,6 +45,7 @@ describe('a plan view read again (PLN-012)', () => {
       query: 'q',
       items: items.filter((i) => keys.includes(i.key)),
       links: [],
+      blockersElsewhere: [],
       tracks: [],
       markers: { sprints: [], releases: [] },
       truncated: false,
