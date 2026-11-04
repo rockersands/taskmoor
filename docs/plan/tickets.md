@@ -213,8 +213,8 @@ reported, and the coordinator checked that it was pushed.
 | T-140 | Liquid Glass style, in our own design | Done | No Apple or Atlassian assets |
 | T-141 | Deep strength, Soft canvas, the generated illustration | Done | Decided by the user, who says Gemini's terms allow it |
 | T-142 | Controls need not truly bend their colour for now | Done | Decision recorded |
-| T-143 | Glass on every page, starting with the track sections | To do | Waits for the merges; the list section was called out |
-| T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
+| T-143 | Glass on every page, starting with the track sections | In progress | On `wave7/t143-glass-every-page`; the list section was called out |
+| T-144 | The design is consistent through the whole app | In progress | On `wave7/t143-glass-every-page`: shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | Done | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | Done | On `main`: every filter checked in Spanish and the pseudo-locale; the list's group headings for type and priority were the one gap. Status names stay untranslated everywhere (NFR-006 (2), a product decision) |
 | T-147 | A watery look for every animation in the app | Done | off with reduced motion |
@@ -241,7 +241,7 @@ reported, and the coordinator checked that it was pushed.
 | T-162b | Board cards and calendar entries on the shared pointer drag | Done | On `main` (ADR-114): a finger drags a card or calendar entry by its grip. Not tried on a real phone yet; real touch went through Chromium only |
 | T-163 | Layout editor page | Done | On `main` (ADR-114, UI-T15): fields dragged or moved by keys into tabs and sections, a live preview per ticket type and operation, the server the judge |
 | T-163a | Open the layout editor to a local-mode track's own administrators? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
-| T-163b | The layout editor for a local-mode track's own administrators | On branch | In the gate. Reviewed; the server enforces it, as well as the page |
+| T-163b | The layout editor for a local-mode track's own administrators | Done | On `main` (ADR-114): the server refuses other tracks and shared sets, with tests in `layouts.test.ts` |
 | T-164 | Phone and accessibility pass | To do | UI-T09 |
 | T-165 | Update the e2e specs the rework broke | Done | The e2e specs pass: 239 in the gate of 2026-11-04 |
 

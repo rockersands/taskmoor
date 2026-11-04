@@ -43,15 +43,19 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   editor) and T-196 (ticket tools follow-ups TT-1 to TT-8 but TT-7, which is now T-196b). T-196's
   first gate hung in the tests (vitest idle for hours) and was stopped; its rerun passed (7,286 tests,
   238 e2e) and `main` was fast-forwarded on 2026-11-04.
-- **Wave 6, interrupted (the user's decisions of 2026-11-04 in `decisions.csv`):** WIP commits, not
-  yet tested or reviewed, each in its own worktree under `.claude/worktrees/wf_8b96611f-b77-*` and on
-  its branch: `wave6/t162b-touch-drag-boards` (board cards and calendar entries on the shared pointer
-  drag), `wave6/t163b-layouts-for-track-admins` (the layout editor for a local-mode track's
-  administrators) and `wave6/t196b-checklist-notice` (the per-track "Checklist changed" notice; may
-  use migration 0103). They branch from `a83cf6d4`, before T-196's merge. Finish each: targeted
-  tests, then a review with a skeptic, fixes, a full gate, one at a time.
-- **Free numbers:** migrations 0103 and up (0103 may be taken by T-196b), ADR-123 and up. Requirement
-  IDs taken: AGL-024, AGL-025, IAM-033, CORE-034, IAM-034, PLN-012, PLN-013.
+- **Wave 6 and T-207 are on `main` (2026-11-04, on Windows, each reviewed and gated):** T-196b (the
+  Checklist changed notice, NTF-015, 0103), T-207 (free moving is the default wherever a workflow
+  starts, the user's rule; WF-008, ADR-116, 0104, 0105), T-162b (touch drag on boards and the calendar;
+  its first real touch run found a real bug, fixed) and T-163b (layouts for a local-mode track's own
+  administrators). The last gate had 7,436 tests and 244 e2e. Finger drags were only run in
+  Chromium's simulated touch, not yet on a real phone.
+- **In progress:** T-143 and T-144, in `G:/tm-t143` on `wave7/t143-glass-every-page`, from
+  `7d459c5`. They touch every page, so they run alone.
+- **The demo** runs from `G:/tm-demo` at `http://localhost:8080`, with the real Backend, Front and
+  Flutter tracks and their tickets, its database in `.cache/pg-test/demo` there. Its one-time links
+  are in `.cache/demo.log`: never put them in chat.
+- **Free numbers:** migrations 0106 and up, ADR-123 and up. Requirement IDs taken: AGL-024, AGL-025,
+  IAM-033, CORE-034, IAM-034, PLN-012, PLN-013.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
 - **Other `claude/*` branches** are merged and can be ignored.
 
@@ -78,10 +82,10 @@ corepack pnpm install
 ### Next, in order
 
 1. Nothing waits to merge.
-2. Finish wave 6 (above). Then, each reviewed first: the glass pass and the
-   sweep of every route (T-143, T-144; alone, it touches every page), the phone and accessibility pass
-   (T-164), Multi-track's remaining stages (T-089c to T-089g, and T-089j once the user answers),
-   T-013a, T-195, T-203. Questions for the user are the rows marked You in `tickets.md`; T-089j was
+2. Each reviewed first: the glass pass and the
+   sweep of every route (T-143, T-144, in progress), the phone and accessibility pass
+   (T-164, T-212), Multi-track's remaining stages (T-089c to T-089g, and T-089j once the user answers),
+   T-013a, T-195, T-203, T-208 to T-211. Questions for the user are the rows marked You in `tickets.md`; T-089j was
    explained to them on 2026-11-04 (unbuilt capacity parts; whether hidden work counts toward
    "elsewhere"; notes in the history after erasure; whole-week counting), awaiting their answer.
 3. The fuzz stages, on the final code (T-019; the user's decision).
