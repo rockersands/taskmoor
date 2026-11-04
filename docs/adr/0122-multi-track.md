@@ -271,10 +271,19 @@ take on.
 - **Work elsewhere** (`elsewhere`, per person and period): the rest of a team member's work due
   in the period, outside the plan, left out by the filters or in tracks the viewer may not see,
   outside the trash and archived tracks. It counts against their capacity, since they have to do
-  it all, as one count and one amount, never a key, summary, track or date: the rule of hidden
+  it all, as one count and one amount, never a key, summary, track or day: the rule of hidden
   sources (stage 1) and blockers outside the plan (stage 2). So a viewer learns how much hidden
   work a person has due, but not what. Only the plan's team members have this number; unassigned
   work and people in none of the teams have no capacity, so nothing elsewhere is read for them.
+- **Elsewhere goes by whole weeks**, Monday to Sunday, each counted in the period that holds its
+  Thursday, which holds at least four of its days in periods of a week or more. Anyone may own a
+  plan, choose its teams and move one-week periods a day at a time; counted by due day, the
+  totals for two anchors a day apart told which day each hidden ticket falls due, with its
+  points. By weeks on one grid that no setting moves, every total is a sum of whole weeks, so no
+  choice of periods reads a hidden ticket's due date closer than its week. The price: in periods
+  that do not start on a Monday, and in months, work elsewhere due in the days around a period's
+  edge counts in the period next to it (up to three days off), and the page says it is counted
+  by weeks. Elsewhere is never a link, so no search has to agree with it.
 - **Capacity in a period** is that period's own row, else the row for every period. A team
   without either has its members' summed, when any member has one (`from: members`). Someone
   with no capacity is never over.
@@ -292,8 +301,12 @@ take on.
   for every period (`period` null) or one period's first day, `amount` null to remove it. Only
   the plan's owner and site administrators (`forbidden` with `edit_plan` otherwise), only its
   teams and their members, only first days of its periods (`not_in_plan`,
-  `not_a_period_start`). The plan row is locked while it writes, so two editors never
-  interleave. One `plan.capacity_set` event lists every change with its amount and note before
+  `not_a_period_start`). The plan row is locked first, and the settings, teams and members are
+  read under that lock, so two editors never interleave and a change of the plan that commits
+  meanwhile is seen: it never writes a row for someone whose team left, or for periods that are
+  gone. The page also sends `unit` and `period`, the settings the amounts were typed for; when
+  the plan's are no longer those (an anchor moved by whole periods is the same), nothing is set
+  and the answer is 409 `settings_changed` with the plan's, since 30 points are not 30 hours. One `plan.capacity_set` event lists every change with its amount and note before
   and after; nothing changed records nothing. Audited, as `plan.updated` is: capacity is
   configuration others see. A note is in the event as typed, as a plan's description is, so
   the audit log keeps it after an erasure deletes the row: notes should say "Leave", not why.
@@ -315,7 +328,9 @@ take on.
   On a phone each row is a card with the periods as a list. It reads again when a ticket changes.
 - The plan's editors open **Set capacity** on a team or person: a dialog with the capacity and
   note for every period, and one for each period in view, which replace it there. It sends only
-  what changed, in one request.
+  what changed, in one request. A note goes with a capacity: one typed where no capacity is typed
+  is refused at that capacity, which takes the focus, rather than dropped; emptying a capacity
+  removes it with its note.
 - **Settings** gains **Teams and capacity**: the teams, ticked in order, the unit and the
   periods; a new unit or new periods ask first, saying what will be cleared.
 
@@ -368,6 +383,9 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
 | Capacity: a ticket spread over its days from start to due | Closer to how work is done | Fractions no search can show; tickets without a start need a rule of their own |
 | Capacity: periods as the tracks' sprints | Matches how teams plan | A plan spans tracks with different sprints, or none; kept for velocity and external iterations, later |
 | Capacity: work elsewhere left out of the load | Nothing about hidden work reaches the viewer | A person looks free while their hidden work fills the period; the plan's leader plans wrong |
+| Capacity: work elsewhere by whole weeks, Monday to Sunday (chosen) | No setting of the periods narrows hidden work below a week; periods may still start on any day | Up to three days off in periods that do not start on a Monday, and in months |
+| Capacity: work elsewhere by due day | Exact in every period | Moving the anchor a day at a time gives away each hidden ticket's due day |
+| Capacity: periods only from Mondays | Weeks exact | Sprints that start mid-week cannot be matched; months against weeks still single out days at a month's edge |
 
 ## Consequences
 
@@ -389,8 +407,9 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
   out of the count altogether, `outside` would count only blockers the viewer may see, one
   statement more.
 - A viewer of a plan learns how much work a team member has due in a period outside their view
-  (a count and a sum of points or hours), though not which. Should the user want hidden work
-  left out, `elsewhere` would count only work the viewer may see, and over-capacity would then
-  differ between viewers.
+  (a count and a sum of points or hours), though not which, nor its day: as they may own a plan
+  and set its periods, they can learn it week by week, Monday to Sunday, and no closer. Should
+  the user want hidden work left out, `elsewhere` would count only work the viewer may see, and
+  over-capacity would then differ between viewers.
 - Capacity follows the plan's teams as they are now: someone who leaves a team drops out of the
   view at once, and their capacity rows stay until the team leaves the plan or they come back.

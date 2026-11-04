@@ -124,7 +124,10 @@ In each period:
   and says **Over capacity by** how much in words.
 - **"+13 points in 1 ticket elsewhere"** is the rest of that person's work due then: outside the
   plan, left out by your filters, or in tracks you may not see. It counts against their capacity,
-  because they have to do it all, but it is never named, dated or linked.
+  because they have to do it all, but it is never named, dated or linked. It is counted by whole
+  weeks, Monday to Sunday, each in the period that holds most of the week, so however the
+  periods are set it never tells which day hidden work is due. In periods that start on another
+  day, or in months, work elsewhere due near a period's edge can count in the period next to it.
 - **"3 tickets"** links to the search that finds exactly those tickets of the plan, as you may see
   them. The filters above narrow the plan's work as in every view.
 - A team without a capacity of its own in a period has its people's, summed, marked **Its members'
@@ -135,8 +138,11 @@ In each period:
 The plan's owner and site administrators see **Set capacity** on each team and person. In the
 dialog, **Capacity for every period** is what they can take on in any period, with a note; below
 it, each period in view can have its own capacity and note instead, for leave or a holiday. Leave
-a field empty for none. **Save capacity** saves only what changed. Each change is kept in the
-plan's history with its note, so a note should say what planning needs ("Leave"), not why.
+a field empty for none. A note goes with a capacity: a note typed where no capacity is typed is
+not saved, and the dialog says so at that capacity. Emptying a capacity removes it with its note.
+**Save capacity** saves only what changed. Each change is kept in the plan's history with its
+note, so a note should say what planning needs ("Leave"), not why. If someone changes the plan's
+unit or periods while you type, nothing is saved and the dialog asks you to reload the page.
 
 ## Filtering and grouping
 
