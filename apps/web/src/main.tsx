@@ -37,6 +37,7 @@ import './styles/plans.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
 import './styles/track-groups.css';
+import './styles/drag.css';
 import './styles/motion.css';
 
 async function start() {

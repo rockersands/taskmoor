@@ -1,19 +1,12 @@
-import {
-  type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { type PointerEvent as ReactPointerEvent, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { ChevronDownIcon } from '../shell/icons';
 import { ModalDialog } from '../shell/ModalDialog';
-import { leaveMotion } from '../shell/motion';
+import { type MoveMenuItem as MenuItem, MoveMenu } from '../shell/MoveMenu';
+import { DRAG_START } from '../shell/pointerDrag';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
-import { useMenuButton } from '../shell/useMenuButton';
 import type { TrackListItem } from '../tracks/client';
 import { trackHref } from '../tracks/TrackLayout';
 import type { GroupTrack, TrackGroup, TrackGroupClient } from './client';
@@ -48,116 +41,8 @@ type Drop =
   | { kind: 'group'; groupId: number }
   | { kind: 'loose' };
 
-/** How far a pointer moves before a press on a handle becomes a drag, in pixels. */
-const DRAG_START = 6;
 /** How many small squares a minimized group shows. */
 const SQUARES = 9;
-
-/** Six dots: the handle's grip, drawn here. */
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-      {[4, 8, 12].map((y) =>
-        [6, 10].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" fill="currentColor" />),
-      )}
-    </svg>
-  );
-}
-
-/** One move in a grip's menu; the key is stable, since two groups may share a name. */
-interface MenuItem {
-  key: string;
-  label: string;
-  onSelect: () => void;
-}
-
-interface MoveMenuProps {
-  label: string;
-  /** Which element this handle moves, so focus can find it again after a change. */
-  handle: string;
-  items: MenuItem[];
-  onDragStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  /** Alt and an arrow key: -1 earlier, 1 later. */
-  onStep?: (direction: -1 | 1) => void;
-  /** True right after this handle's own drag, whose click must not open the menu. */
-  justDragged: (handle: string) => boolean;
-}
-
-/**
- * A card's or group's handle: drag it with a mouse or a finger, or press it for a menu of the
- * same moves; Alt and the arrow keys move what it belongs to. Every drag has this keyboard path.
- */
-function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: MoveMenuProps) {
-  const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
-    useMenuButton();
-  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const step =
-      event.key === 'ArrowUp' || event.key === 'ArrowLeft'
-        ? -1
-        : event.key === 'ArrowDown' || event.key === 'ArrowRight'
-          ? 1
-          : 0;
-    if (event.altKey && step !== 0) {
-      event.preventDefault();
-      onStep?.(step);
-      return;
-    }
-    keys.onButtonKeyDown(event);
-  };
-  return (
-    <div className="track-move" ref={container}>
-      <button
-        ref={button}
-        id={buttonId}
-        type="button"
-        className="track-move-handle"
-        data-handle={handle}
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        {...(open ? { 'aria-controls': menuId } : {})}
-        onClick={(event) => {
-          // A pointer's click right after a drag is the drag's; Enter or Space never is.
-          if (event.detail > 0 && justDragged(handle)) return;
-          if (open) close(false);
-          else openMenu(true);
-        }}
-        onKeyDown={onKeyDown}
-        onPointerDown={onDragStart}
-      >
-        <GripIcon />
-      </button>
-      {open && (
-        <div ref={leaveMotion} className="user-menu-popup track-move-popup">
-          <div
-            ref={menu}
-            id={menuId}
-            role="menu"
-            aria-labelledby={buttonId}
-            className="user-menu-list"
-            onKeyDown={keys.onMenuKeyDown}
-          >
-            {items.map((item) => (
-              <button
-                key={item.key}
-                role="menuitem"
-                tabIndex={-1}
-                type="button"
-                className="user-menu-item"
-                onClick={() => {
-                  close(true);
-                  item.onSelect();
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * The Tracks page arranged in the person's groups (CORE-034; ADR-121): open groups are glass
@@ -741,7 +626,7 @@ export function TrackArrangement({
       )}
       {drag && ghost && (
         <div
-          className="track-drag-ghost"
+          className="drag-ghost"
           aria-hidden="true"
           style={{ transform: `translate(${ghost.x + 12}px, ${ghost.y + 12}px)` }}
         >

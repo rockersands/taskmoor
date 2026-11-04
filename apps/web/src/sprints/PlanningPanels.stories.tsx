@@ -26,8 +26,7 @@ const meta = {
     failed: false,
     filter: { kind: 'release', id: 50 },
     onFilter: fn(),
-    dragging: false,
-    onDrop: fn(),
+    over: null,
   },
   decorators: [
     (Story) => (
@@ -52,6 +51,17 @@ export const Panels: Story = {
     await expect(canvas.getByRole('button', { name: /Faster checkout/ })).toHaveTextContent(
       '6 tickets, 2 closed',
     );
+  },
+};
+
+/** Tickets dragged over an outcome: the place they would go is outlined (T-162). */
+export const DropOver: Story = {
+  args: { over: { kind: 'outcome', id: 41 }, filter: null },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('button', { name: /Wallets/ }).closest('li')?.className ?? '',
+    ).toContain('is-drop-target');
   },
 };
 

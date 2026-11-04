@@ -1,7 +1,7 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
+sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -41,6 +41,21 @@ it.
 5. Press **Save dashboard**, or **Cancel**. **Delete dashboard** removes it after asking.
 
 If someone else saved the dashboard meanwhile, reload it and make your change again.
+
+#### Arranging widgets
+
+While you edit, move a widget in any of these ways:
+
+- Drag it by its grip (the six dots before its title), with a mouse or a finger, or by its title
+  with a mouse, and let go at a place in any column. The column and the place are outlined on the
+  way. An empty column says so and still takes a widget. **Escape** puts the widget back.
+- Press **Up**, **Down**, **Left** or **Right** on the widget.
+- On any of the widget's buttons, press Alt with an arrow key for the same move; the keyboard stays
+  on the button of that arrow.
+
+After each move, a screen reader hears where the widget is now, such as "Alpha is now in column 2,
+1 of 2". Nothing is kept until you press **Save dashboard**. A track's customized
+[summary](views.md#customizing-the-summary) is arranged the same way.
 
 ### Widgets
 

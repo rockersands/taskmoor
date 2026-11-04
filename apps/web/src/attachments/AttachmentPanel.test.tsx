@@ -283,3 +283,93 @@ describe('the attachment panel (M1-016)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+describe('files dropped anywhere on a ticket (T-162; ADR-114, section 12)', () => {
+  /** What a drag from outside the page carries: only the kinds while over, the files at the drop. */
+  const carrying = (files: File[] = []) => ({ types: ['Files'], files });
+  const heading = () =>
+    screen.findByRole('heading', { level: 1, name: 'SHOP-41 Checkout fails for expired cards' });
+  const ticket = () => document.querySelector('.ticket-view') as HTMLElement;
+  const card = () => document.querySelector('.file-drop-overlay');
+  const said = () =>
+    Array.from(ticket().querySelectorAll('[aria-live="polite"]'))
+      .map((x) => x.textContent)
+      .join(' ');
+
+  it('[CORE-021] outlines the whole ticket with a card naming it and the limit; let go anywhere, they attach', async () => {
+    let id = 200;
+    const calls = openTicket({
+      'POST /tickets/41/attachments': (body) => {
+        const file = (body as FormData).get('file') as File;
+        return jsonResponse(201, { attachment: uploaded(file.name, id++) });
+      },
+    });
+    const title = await heading();
+    await screen.findByLabelText('Attach files');
+    expect(
+      within(panel()).getByText(
+        'Drop files anywhere on this ticket, paste them here, or choose them. Up to 1 GB each.',
+      ),
+    ).toBeVisible();
+    fireEvent.dragEnter(title, { dataTransfer: carrying() });
+    // Taken here, so a file let go on the ticket never replaces the page.
+    expect(fireEvent.dragOver(title, { dataTransfer: carrying() })).toBe(false);
+    expect(ticket()).toHaveClass('is-file-drop');
+    expect(card()).toHaveTextContent('Drop to attach to SHOP-41');
+    expect(card()).toHaveTextContent('Up to 1 GB a file');
+    expect(card()).toHaveAttribute('aria-hidden', 'true');
+    expect(said()).toContain('Files over SHOP-41: let go to attach them.');
+    // Crossing into another part of the ticket keeps it outlined.
+    fireEvent.dragEnter(panel(), { dataTransfer: carrying() });
+    fireEvent.dragLeave(title, { dataTransfer: carrying() });
+    expect(card()).not.toBeNull();
+    fireEvent.drop(panel(), {
+      dataTransfer: carrying([new File(['x'], 'far-away.log', { type: 'text/plain' })]),
+    });
+    expect(card()).toBeNull();
+    expect(ticket()).not.toHaveClass('is-file-drop');
+    expect(await within(panel()).findByText('far-away.log attached.')).toBeVisible();
+    // Dropped on the title, far from the panel: the same.
+    fireEvent.dragEnter(title, { dataTransfer: carrying() });
+    fireEvent.drop(title, {
+      dataTransfer: carrying([new File(['y'], 'on-title.txt', { type: 'text/plain' })]),
+    });
+    expect(await within(panel()).findByText('on-title.txt attached.')).toBeVisible();
+    expect(
+      calls.filter(isUpload).map((c) => ((c.body as FormData).get('file') as File).name),
+    ).toEqual(['far-away.log', 'on-title.txt']);
+  });
+
+  it('[CORE-021] leaves a drag of text alone, and takes the outline away when files leave', async () => {
+    openTicket();
+    const title = await heading();
+    await screen.findByLabelText('Attach files');
+    const text = { types: ['text/plain'], files: [] };
+    fireEvent.dragEnter(title, { dataTransfer: text });
+    // Not taken: whatever is under it decides, as it would without the ticket.
+    expect(fireEvent.dragOver(title, { dataTransfer: text })).toBe(true);
+    expect(card()).toBeNull();
+    fireEvent.dragEnter(title, { dataTransfer: carrying() });
+    expect(card()).not.toBeNull();
+    fireEvent.dragLeave(title, { dataTransfer: carrying() });
+    expect(card()).toBeNull();
+    // A drag that ends somewhere else leaves nothing behind.
+    fireEvent.dragEnter(title, { dataTransfer: carrying() });
+    fireEvent(window, new Event('dragend'));
+    expect(card()).toBeNull();
+  });
+
+  it('[CORE-021] where files may not be added, the card says why and a drop attaches nothing', async () => {
+    const calls = openTicket({}, { canCreate: false });
+    const title = await heading();
+    await within(panel()).findAllByRole('listitem');
+    fireEvent.dragEnter(title, { dataTransfer: carrying() });
+    expect(fireEvent.dragOver(title, { dataTransfer: carrying() })).toBe(false);
+    expect(card()).toHaveTextContent('You may not attach files to this ticket.');
+    expect(card()).not.toHaveTextContent('Up to');
+    expect(said()).toContain('You may not attach files to this ticket.');
+    fireEvent.drop(title, { dataTransfer: carrying([new File(['z'], 'nope.txt')]) });
+    expect(card()).toBeNull();
+    expect(calls.some(isUpload)).toBe(false);
+  });
+});

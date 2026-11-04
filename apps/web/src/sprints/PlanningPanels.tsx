@@ -1,4 +1,4 @@
-import { type DragEvent, type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { BacklogPanels } from './client';
 
@@ -14,9 +14,8 @@ export interface PlanningPanelsProps {
   /** The item the backlog is filtered by, if any. */
   filter: PanelTarget | null;
   onFilter: (target: PanelTarget | null, name: string) => void;
-  /** Whether tickets are being dragged: only then do the items take drops. */
-  dragging: boolean;
-  onDrop: (target: PanelTarget, name: string) => void;
+  /** The item a drag is over, outlined as the place the tickets would go (T-162). */
+  over: PanelTarget | null;
 }
 
 const same = (a: PanelTarget | null, b: PanelTarget) => a?.kind === b.kind && a.id === b.id;
@@ -25,20 +24,13 @@ const same = (a: PanelTarget | null, b: PanelTarget) => a?.kind === b.kind && a.
  * The backlog's planning panels (M1-047, AGL-008): the open outcomes and the unshipped releases
  * of the board's tracks, each with how many of its tickets the viewer sees. Choosing an item
  * filters the backlog to its tickets (pressed again, it shows all); dropping dragged tickets on
- * it puts them under the outcome or into the release. The selection's menus do the same from
- * the keyboard and on phones.
+ * it puts them under the outcome or into the release. The backlog finds an item under the pointer
+ * by its `data-drop-panel` and carries out the drop (T-162). The selection's menus do the same
+ * from the keyboard.
  */
-export function PlanningPanels({
-  panels,
-  failed,
-  filter,
-  onFilter,
-  dragging,
-  onDrop,
-}: PlanningPanelsProps) {
+export function PlanningPanels({ panels, failed, filter, onFilter, over }: PlanningPanelsProps) {
   const t = useT();
   const id = useId();
-  const [over, setOver] = useState<string | null>(null);
 
   const item = (target: PanelTarget, name: string, body: ReactNode) => {
     const key = `${target.kind}-${target.id}`;
@@ -46,19 +38,10 @@ export function PlanningPanels({
     return (
       <li
         key={key}
-        className={`backlog-panel-item${over === key ? ' is-drop-target' : ''}`}
-        onDragOver={(event: DragEvent) => {
-          if (!dragging) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-          if (over !== key) setOver(key);
-        }}
-        onDragLeave={() => setOver((current) => (current === key ? null : current))}
-        onDrop={(event: DragEvent) => {
-          event.preventDefault();
-          setOver(null);
-          onDrop(target, name);
-        }}
+        className={`backlog-panel-item${same(over, target) ? ' is-drop-target' : ''}`}
+        data-drop-panel={target.kind}
+        data-target-id={target.id}
+        data-name={name}
       >
         <button
           type="button"

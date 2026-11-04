@@ -46,9 +46,76 @@
   box-shadow: var(--shadow-1);
 }
 
+.dashboard-widget-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .dashboard-widget-title {
   margin: 0;
   font-size: var(--font-size-300);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Arranging widgets by drag (T-162; ADR-114, section 12): a grip a finger or a mouse drags, the
+ * title a mouse drags, an empty column that still takes a drop, and the column and place a drop
+ * would land in marked as on the board.
+ */
+.dashboard-widget-grip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  border-radius: var(--radius-2);
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.is-editing .dashboard-widget-title {
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.dashboard-grid.is-editing .dashboard-column {
+  min-height: 6rem;
+  border-radius: var(--radius-3);
+}
+
+.dashboard-column-empty {
+  display: grid;
+  place-items: center;
+  min-height: 6rem;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--radius-3);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  text-align: center;
+}
+
+.dashboard-column.is-drop-target {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 4px;
+}
+
+.dashboard-widget.is-dragging {
+  opacity: 0.5;
+}
+
+.dashboard-widget.is-drop-before {
+  box-shadow:
+    0 -4px 0 -1px var(--color-accent),
+    var(--shadow-1);
 }
 
 /* The card's title names its chart; the caption stays as the figure's name for readers. */
@@ -256,6 +323,11 @@
 }
 
 @media (pointer: coarse) {
+  .dashboard-widget-grip {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
   .dashboard-widget-tools button,
   .dashboard-row .reports-check,
   .summary-list a,

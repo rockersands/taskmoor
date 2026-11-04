@@ -1,0 +1,71 @@
+/*
+ * Drag and drop beyond the board (T-162; ADR-114, sections 7 and 12): the grip that drags by mouse
+ * or finger and opens a menu of the same moves, the label that follows the pointer, and the page
+ * while something is in hand. Where a drop would land is outlined by each page, as on the board.
+ */
+.move-grip {
+  position: relative;
+  flex: none;
+}
+
+.move-grip-handle {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  border: 1px solid transparent;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: grab;
+  /* A finger on the grip drags what it belongs to rather than scrolling the page or selecting text. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--motion-fast) var(--ease-soft);
+}
+
+.move-grip-handle:hover,
+.move-grip-handle[aria-expanded="true"] {
+  border-color: var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+/*
+ * What is in hand, under the pointer. It is placed by the pointer's own coordinates, which do not
+ * turn with the writing direction, so it starts from the physical top left.
+ */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* While something is in hand: no text is selected on the way, and the pointer says so. */
+body.is-pointer-dragging {
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (pointer: coarse) {
+  .move-grip-handle {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+}

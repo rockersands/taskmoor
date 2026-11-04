@@ -14,6 +14,7 @@ import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
+import { useFileDropArea } from './FileDrop';
 import { formatSize } from './format';
 import { MediaImage } from './media';
 
@@ -58,7 +59,9 @@ function FileGlyph() {
  * preview of images, PDF, video, text and ZIP contents, download one or all, and delete where
  * the viewer may. Files arrive by the file chooser, by dropping them on the panel or by pasting
  * them into it; each is checked against the size limit before it is sent. Built to sit in the
- * ticket view (M1-051); a list of cards, so phones never scroll sideways.
+ * ticket view (M1-051); a list of cards, so phones never scroll sideways. In the ticket view a
+ * drop anywhere on the ticket arrives here (T-162, `FileDrop.tsx`): the panel tells the ticket
+ * what a drop does, and comes into view to show the files arriving.
  */
 export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps) {
   const t = useT();
@@ -75,6 +78,9 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
   const [confirming, setConfirming] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Attachment | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  /** The ticket around the panel takes the drops, when there is one (T-162). */
+  const area = useFileDropArea();
 
   const load = useCallback(async () => {
     try {
@@ -148,6 +154,36 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
     setMessage(done.map((name) => t('attachments.uploaded', { name })).join(' '));
   };
 
+  // What a drop anywhere on the ticket does: these files, sent as chosen ones, in view.
+  const latest = useRef(upload);
+  latest.current = upload;
+  const refusal =
+    state.status === 'loading'
+      ? t('attachments.loading')
+      : state.status === 'failed'
+        ? t('attachments.failed')
+        : state.canCreate
+          ? null
+          : state.locked
+            ? lockText(state.locked, 'attach')
+            : !state.available
+              ? t('attachments.unavailable')
+              : t('attachments.forbidden');
+  const limit = loaded ? size(loaded.maxFileSize) : null;
+  useEffect(() => {
+    if (!area) return;
+    area({
+      ready: refusal === null,
+      refusal,
+      limit,
+      attach: (files) => {
+        panel.current?.scrollIntoView?.({ block: 'nearest' });
+        void latest.current(files);
+      },
+    });
+  }, [area, refusal, limit]);
+  useEffect(() => (area ? () => area(null) : undefined), [area]);
+
   const onDrop = (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     setDragging(false);
@@ -218,16 +254,22 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
 
   return (
     <section
+      ref={panel}
       aria-labelledby={titleId}
       className="attachment-panel"
       data-dragging={dragging || undefined}
-      onDragOver={(event) => {
-        if (!loaded?.canCreate) return;
-        event.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
+      // Inside a ticket, the whole ticket takes the drops; on its own, the panel does.
+      {...(area
+        ? {}
+        : {
+            onDragOver: (event: DragEvent<HTMLElement>) => {
+              if (!loaded?.canCreate) return;
+              event.preventDefault();
+              setDragging(true);
+            },
+            onDragLeave: () => setDragging(false),
+            onDrop,
+          })}
       onPaste={onPaste}
     >
       <div className="attachment-header">
@@ -262,7 +304,9 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
           {loaded.canCreate ? (
             <div className="attachment-drop" data-tutorial="ticket-attach">
               <p id={hintId} className="attachment-hint">
-                {t('attachments.dropHint', { limit: size(loaded.maxFileSize) })}
+                {t(area ? 'attachments.dropHintTicket' : 'attachments.dropHint', {
+                  limit: size(loaded.maxFileSize),
+                })}
               </p>
               <label className="button-primary attachment-choose">
                 {t('attachments.attach')}

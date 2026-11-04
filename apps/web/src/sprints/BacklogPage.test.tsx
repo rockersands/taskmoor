@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import type { TrackSections } from '../tracks/client';
@@ -48,19 +48,33 @@ describe('the backlog with sprint sections (M1-044)', () => {
     expect(section('Backlog').getAllByRole('img', { name: 'High' })).toHaveLength(2);
   });
 
-  it('[AGL-008] moves a ticket into a sprint and back to the backlog with the keyboard', async () => {
+  it('[AGL-008] moves a ticket into a sprint and back to the backlog from its grip, by keyboard', async () => {
     const user = userEvent.setup();
     renderBacklog();
     await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
-    await user.selectOptions(
-      section('Backlog').getByRole('combobox', { name: 'Move CHK-4 to' }),
-      'Checkout Sprint 2',
-    );
+    const grip = section('Backlog').getByRole('button', { name: 'Move CHK-4' });
+    grip.focus();
+    await user.keyboard('{Enter}');
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Move down',
+      'Move to the bottom',
+      'Move to Checkout Sprint 1',
+      'Move to Checkout Sprint 2',
+    ]);
+    await user.click(screen.getByRole('menuitem', { name: 'Move to Checkout Sprint 2' }));
     await waitFor(() => expect(keysIn('Checkout Sprint 2')).toEqual(['CHK-3', 'CHK-4']));
-    await user.selectOptions(
-      section('Checkout Sprint 2').getByRole('combobox', { name: 'Move CHK-3 to' }),
-      'Backlog',
+    // The grip is where the ticket went, and still has the keyboard.
+    await waitFor(() =>
+      expect(
+        section('Checkout Sprint 2').getByRole('button', { name: 'Move CHK-4' }),
+      ).toHaveFocus(),
     );
+    await user.click(section('Checkout Sprint 2').getByRole('button', { name: 'Move CHK-3' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to Backlog' }));
     await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-3', 'CHK-5']));
   });
 
@@ -132,31 +146,31 @@ describe('the backlog with sprint sections (M1-044)', () => {
 });
 
 describe('planning on the backlog (M1-047)', () => {
-  // jsdom has no DragEvent: a mouse event stands in, so the pointer's position reaches the page.
-  beforeAll(() => {
-    if (!('DragEvent' in window)) {
-      Object.defineProperty(window, 'DragEvent', {
-        value: class extends MouseEvent {},
-        configurable: true,
-      });
-    }
-  });
-  const dataTransfer = () => ({
-    setData: () => undefined,
-    getData: () => '',
-    effectAllowed: 'move',
-    dropEffect: 'move',
-  });
   const rowOf = (key: string) =>
     screen.getByRole('link', { name: key }).closest('li') as HTMLElement;
-  // jsdom gives no layout: every row's box is empty, so a pointer above 0 is above its middle.
-  const drag = (key: string, to: HTMLElement, over: HTMLElement = to, clientY = 10) => {
-    const transfer = dataTransfer();
-    fireEvent.dragStart(rowOf(key), { dataTransfer: transfer });
-    fireEvent.dragOver(over, { dataTransfer: transfer, clientY });
-    fireEvent.drop(to, { dataTransfer: transfer });
-  };
-  /** The fake client, counting the calls that change sprints. */
+  /** jsdom lays nothing out: each row the test lands on is given a box, 40 pixels from y. */
+  const placed = (row: HTMLElement, top: number) =>
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, top, 600, 40));
+  /**
+   * A drag with pointer events, as a mouse or a finger makes it (T-162): down on a row or a grip,
+   * over the page, then up (unless the test lets go itself). What is under the pointer is the
+   * target given.
+   */
+  function dragTo(
+    from: HTMLElement,
+    to: Element,
+    options: { pointerType?: 'mouse' | 'touch'; y?: number; up?: boolean } = {},
+  ) {
+    const { pointerType = 'mouse', y = 300, up = true } = options;
+    const under = vi.spyOn(document, 'elementFromPoint').mockReturnValue(to);
+    const point = { pointerId: 3, pointerType, isPrimary: true };
+    fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 200 });
+    fireEvent.pointerMove(window, { ...point, clientX: 40, clientY: y });
+    fireEvent.pointerMove(window, { ...point, clientX: 80, clientY: y });
+    if (up) fireEvent.pointerUp(window, { ...point, clientX: 80, clientY: y });
+    return under;
+  }
+  /** The fake client, counting the calls that change sprints and ranks. */
   function counted() {
     const client = fakeSprintClient();
     const calls: string[] = [];
@@ -195,14 +209,15 @@ describe('planning on the backlog (M1-047)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2 tickets moved to Checkout Sprint 2.');
   });
 
-  it('[AGL-008] drags the selection to a place in another section, as one block', async () => {
+  it('[AGL-008] drags the selection by mouse to a place in another section, as one block', async () => {
     const { client, calls } = counted();
     renderBacklog(client);
     await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select CHK-5' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select CHK-4' }));
     // Above the middle of CHK-3: the block goes before it, in the order the page shows.
-    drag('CHK-5', screen.getByRole('region', { name: 'Checkout Sprint 2' }), rowOf('CHK-3'), -1);
+    placed(rowOf('CHK-3'), 290);
+    dragTo(screen.getByText('Split payments'), rowOf('CHK-3'), { y: 300 });
     await waitFor(() => expect(keysIn('Checkout Sprint 2')).toEqual(['CHK-4', 'CHK-5', 'CHK-3']));
     expect(calls).toEqual(['add 12 4,5', 'rank 4,5 {"before":3}']);
   });
@@ -212,18 +227,137 @@ describe('planning on the backlog (M1-047)', () => {
     const { client, calls } = counted();
     renderBacklog(client);
     await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
-    drag('CHK-5', screen.getByRole('region', { name: 'Backlog' }), rowOf('CHK-4'), -1);
+    placed(rowOf('CHK-4'), 290);
+    dragTo(screen.getByText('Split payments'), rowOf('CHK-4'), { y: 300 });
     await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-5', 'CHK-4']));
     expect(calls).toEqual(['rank 5 {"before":4}']);
-    // Dropped where it already is: nothing is asked of the server.
-    drag('CHK-5', screen.getByRole('region', { name: 'Backlog' }), rowOf('CHK-4'), -1);
+    // Dropped where it already is: nothing is asked of the server, and the page says so.
+    placed(rowOf('CHK-4'), 290);
+    dragTo(screen.getByText('Split payments'), rowOf('CHK-4'), { y: 300 });
     expect(calls).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent('CHK-5 stays where it was.');
     screen.getByRole('link', { name: 'CHK-5' }).focus();
     await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
     await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-4', 'CHK-5']));
     expect(calls.at(-1)).toBe('rank 5 {"after":4}');
     expect(screen.getByRole('status')).toHaveTextContent('CHK-5 moved down.');
     await waitFor(() => expect(screen.getByRole('link', { name: 'CHK-5' })).toHaveFocus());
+  });
+
+  it('[AGL-008] [NFR-005] says what is in hand, marks where it would land, and Escape cancels', async () => {
+    const { client, calls } = counted();
+    renderBacklog(client);
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    placed(rowOf('CHK-3'), 290);
+    const under = dragTo(screen.getByText('Gift cards'), rowOf('CHK-3'), { y: 300, up: false });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Moving CHK-4: drop on a place in a sprint or the backlog, or on an outcome or a release. Escape cancels.',
+    );
+    expect(rowOf('CHK-4')).toHaveClass('is-dragging');
+    expect(screen.getByRole('region', { name: 'Checkout Sprint 2' })).toHaveClass('is-drop-target');
+    expect(rowOf('CHK-3')).toHaveClass('is-drop-before');
+    // Escape goes no further than the drag: a dialog around the page would stay open.
+    const outside = vi.fn();
+    document.addEventListener('keydown', outside);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    document.removeEventListener('keydown', outside);
+    expect(outside).not.toHaveBeenCalled();
+    fireEvent.pointerUp(window, { pointerId: 3, pointerType: 'mouse', clientX: 80, clientY: 300 });
+    under.mockRestore();
+    expect(screen.getByRole('status')).toHaveTextContent('CHK-4 stays where it was.');
+    expect(rowOf('CHK-4')).not.toHaveClass('is-dragging');
+    expect(screen.getByRole('region', { name: 'Checkout Sprint 2' })).not.toHaveClass(
+      'is-drop-target',
+    );
+    expect(calls).toEqual([]);
+    expect(keysIn('Backlog')).toEqual(['CHK-4', 'CHK-5']);
+  });
+
+  it('[AGL-008] a finger drags a ticket by its grip, not by its row; a tap opens the grip’s menu', async () => {
+    // On a phone, where a finger is the pointer.
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    const { client, calls } = counted();
+    renderBacklog(client);
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    // A finger on the row scrolls the page: nothing moves.
+    dragTo(
+      screen.getByText('Gift cards'),
+      screen.getByRole('region', { name: 'Checkout Sprint 2' }),
+      {
+        pointerType: 'touch',
+      },
+    ).mockRestore();
+    expect(calls).toEqual([]);
+    // On the grip, it drags: to the end of the planned sprint.
+    dragTo(
+      section('Backlog').getByRole('button', { name: 'Move CHK-4' }),
+      screen.getByRole('heading', { name: 'Checkout Sprint 2' }),
+      { pointerType: 'touch' },
+    ).mockRestore();
+    await waitFor(() => expect(keysIn('Checkout Sprint 2')).toEqual(['CHK-3', 'CHK-4']));
+    expect(calls).toEqual(['add 12 4', 'rank 4 {"after":3}']);
+    expect(screen.getByRole('status')).toHaveTextContent('1 ticket moved to Checkout Sprint 2.');
+    // A press without moving is the grip's own: its menu opens.
+    await user.click(section('Backlog').getByRole('button', { name: 'Move CHK-5' }));
+    expect(screen.getByRole('menu')).toBeVisible();
+  });
+
+  it('[AGL-009] the grip’s menu ranks one ticket up, down, to the top and to the bottom', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = counted();
+    renderBacklog(client);
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    await user.click(section('Backlog').getByRole('button', { name: 'Move CHK-5' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to the top' }));
+    await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-5', 'CHK-4']));
+    expect(calls).toEqual(['rank 5 {"position":"top"}']);
+    expect(screen.getByRole('status')).toHaveTextContent('CHK-5 moved to the top.');
+    await waitFor(() =>
+      expect(section('Backlog').getByRole('button', { name: 'Move CHK-5' })).toHaveFocus(),
+    );
+    // Alt and the arrows work on the grip too, and leave the keyboard on it.
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+    await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-4', 'CHK-5']));
+    expect(calls.at(-1)).toBe('rank 5 {"after":4}');
+    await waitFor(() =>
+      expect(section('Backlog').getByRole('button', { name: 'Move CHK-5' })).toHaveFocus(),
+    );
+    await user.keyboard('{Enter}');
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Move up',
+      'Move to the top',
+      'Move to Checkout Sprint 1',
+      'Move to Checkout Sprint 2',
+    ]);
+    await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
+    await waitFor(() => expect(keysIn('Backlog')).toEqual(['CHK-5', 'CHK-4']));
+    expect(calls.at(-1)).toBe('rank 5 {"before":4}');
+    expect(screen.getByRole('status')).toHaveTextContent('CHK-5 moved up.');
+  });
+
+  it('[AGL-009] a grip with no move to offer opens no empty menu, and says it is unavailable', async () => {
+    const user = userEvent.setup();
+    // A new board: no sprints yet, and one ticket in its backlog.
+    const client = fakeSprintClient();
+    const first = client.state();
+    client.backlog = async () =>
+      structuredClone({
+        ...first,
+        sprints: [],
+        backlog: { ...first.backlog, tickets: first.backlog.tickets.slice(0, 1) },
+      });
+    renderBacklog(client);
+    const grip = await screen.findByRole('button', { name: 'Move CHK-4' });
+    expect(grip).toHaveAttribute('aria-disabled', 'true');
+    expect(grip).not.toHaveAttribute('aria-haspopup');
+    await user.click(grip);
+    expect(screen.queryByRole('menu')).toBeNull();
+    grip.focus();
+    await user.keyboard('{Enter}');
+    await user.keyboard('{ArrowDown}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(grip).toHaveFocus();
   });
 
   it('[AGL-008] puts tickets under an outcome by a drop on the panel, and filters by it', async () => {
@@ -234,9 +368,12 @@ describe('planning on the backlog (M1-047)', () => {
       await screen.findByRole('complementary', { name: 'Outcomes and releases' }),
     );
     const outcome = await panels.findByRole('button', { name: /Faster checkout/ });
-    drag('CHK-4', outcome.closest('li') as HTMLElement);
+    dragTo(rowOf('CHK-4'), outcome).mockRestore();
     await waitFor(() => expect(outcome).toHaveTextContent('1 ticket, 0 closed'));
     expect(client.state().backlog.tickets.find((x) => x.key === 'CHK-4')?.parentId).toBe(40);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '1 ticket put under CHK-40 Faster checkout.',
+    );
     await user.click(outcome);
     expect(outcome).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Showing the tickets of CHK-40 Faster checkout.')).toBeVisible();

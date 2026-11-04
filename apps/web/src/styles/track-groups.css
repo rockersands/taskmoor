@@ -113,56 +113,27 @@
   font-weight: 650;
 }
 
-.track-move {
-  position: relative;
-  flex: none;
-}
-
 /* A track card with its grip at the top corner. */
 .track-card {
   position: relative;
   padding-inline-end: calc(var(--hit-target) + var(--space-2));
 }
 
-.track-card .track-move {
+.track-card .move-grip {
   position: absolute;
   inset-block-start: var(--space-2);
   inset-inline-end: var(--space-2);
-}
-
-.track-move-handle {
-  display: inline-grid;
-  place-items: center;
-  width: var(--hit-target);
-  height: var(--hit-target);
-  border: 1px solid transparent;
-  border-radius: var(--radius-2);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: grab;
-  /* A finger on the grip drags the card rather than scrolling the page or selecting text. */
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  transition: background-color var(--motion-fast) var(--ease-soft);
-}
-
-.track-move-handle:hover,
-.track-move-handle[aria-expanded="true"] {
-  border-color: var(--glass-edge);
-  background: var(--glass-surface-sunken);
-  color: var(--color-text);
 }
 
 /*
  * A card's grip sits at its end, so its menu opens towards the start; a group's grip leads its
  * head, so its menu opens towards the end. Neither runs off the page.
  */
-.track-card .track-move-popup {
+.track-card .move-grip-popup {
   inset-inline: auto 0;
 }
 
-.track-group-head .track-move-popup {
+.track-group-head .move-grip-popup {
   inset-inline: 0 auto;
 }
 
@@ -170,8 +141,8 @@
  * Every card and group is glass, each its own stacking context: an open menu's card, and the
  * group around it, rise above the cards and groups after them, which would cover the menu.
  */
-.track-card:has(.track-move-popup),
-.track-group:has(.track-move-popup) > section {
+.track-card:has(.move-grip-popup),
+.track-group:has(.move-grip-popup) > section {
   z-index: 2;
 }
 
@@ -197,26 +168,6 @@
 .track-ungrouped > .section-title,
 .track-ungrouped > .page-note {
   margin: 0;
-}
-
-.track-drag-ghost {
-  position: fixed;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  z-index: 60;
-  max-width: 16rem;
-  padding: var(--space-2) var(--space-3);
-  overflow: hidden;
-  border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-pill);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-highlight), var(--shadow-1);
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 /* The share dialog's chosen person, and a share of someone no longer active. */
@@ -247,7 +198,6 @@
 }
 
 @media (pointer: coarse) {
-  .track-move-handle,
   .track-group-toggle {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);

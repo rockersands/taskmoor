@@ -1,7 +1,7 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -31,7 +31,9 @@ the track's other sections, such as its [**Releases**](boards.md#releases),
 The track's owner and its administrators see **Customize**. It starts from the numbers above, as
 one widget called **This track's numbers**, so nothing is lost. They can then choose a **Layout**
 of one to three columns, add any [widget](dashboards-and-reports.md#widgets) with **Widget to
-add**, set each one up, move and remove them, and press **Save the summary**. The numbers can be
+add**, set each one up, move them (by drag, by their buttons or with Alt and the arrow keys, as
+on a [dashboard](dashboards-and-reports.md#arranging-widgets)) and remove them, and press **Save the
+summary**. The numbers can be
 removed and added back. Nobody has to set this up: a track shows its default summary until someone
 does.
 
