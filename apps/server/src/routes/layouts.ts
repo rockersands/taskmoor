@@ -51,7 +51,8 @@ import {
  *   operation shows, with required marks, help text and the custom fields it needs.
  * - `POST /api/v1/layout-sets/:id/preview` gives the form a set's layouts, or a draft of them,
  *   would show for a ticket type and operation in a track (the layout editor's live preview,
- *   UI-T15; ADR-114). It checks a draft as a save would and stores nothing: a read.
+ *   UI-T15; ADR-114). It checks a draft as a save would and stores nothing: a read. Anyone who
+ *   reads the set may preview its saved layouts; a draft comes only from those who may change it.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -198,11 +199,17 @@ export function registerLayoutRoutes(
       await reply.code(409).send({ error: 'track_archived' });
       return false;
     }
-    if ((await request.authz.can('administer_track', ownerTrackId)) || (await isAdmin(request))) {
-      return true;
-    }
+    if (await mayChange(request, ownerTrackId)) return true;
     await reply.code(403).send({ error: 'forbidden' });
     return false;
+  }
+
+  /** Who could save a set, its track's state aside: `mayConfigure` without an answer. */
+  async function mayChange(request: FastifyRequest, ownerTrackId: number | null) {
+    if (ownerTrackId !== null && (await request.authz.can('administer_track', ownerTrackId))) {
+      return true;
+    }
+    return isAdmin(request);
   }
 
   /** The tracks using a set: those naming it, and for a default set those naming none. */
@@ -523,9 +530,11 @@ export function registerLayoutRoutes(
   }
 
   // The layout editor's live preview (UI-T15; ADR-114 section 8; CORE-008, CORE-013): what a
-  // set's layouts, or a draft of them, would show. Whoever may read the set may ask; the track
-  // must be one they see. The draft is checked as a save checks it, so the editor hears the
-  // server's verdict before saving; nothing is stored and no event is emitted.
+  // set's layouts, or a draft of them, would show. Whoever may read the set may ask about its
+  // saved layouts; the track must be one they see, and so must the ticket type. A draft is
+  // checked as a save checks it, so the editor hears the server's verdict before saving; only
+  // those who could save the set send one, since that verdict tells a field or type of a track
+  // they do not see from one that does not exist. Nothing is stored and no event is emitted.
   app.post('/api/v1/layout-sets/:id/preview', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = z.object({ id }).safeParse(request.params);
@@ -543,6 +552,9 @@ export function registerLayoutRoutes(
     if (!set || (set.track_id !== null && !(await canSeeTrack(request, set.track_id)))) {
       return notFound(reply);
     }
+    if (body.layouts && !(await mayChange(request, set.track_id))) {
+      return reply.code(403).send({ error: 'forbidden' });
+    }
     const trackId = body.trackId === undefined ? set.track_id : body.trackId;
     let ruleSetId: number | null = null;
     if (trackId !== null) {
@@ -557,13 +569,20 @@ export function registerLayoutRoutes(
       }
       ruleSetId = track.field_rule_set_id;
     }
+    // A local-mode track's own type is unknown to whoever does not see that track, as on
+    // `GET /api/v1/ticket-types/:id`: one answer for both.
     const type = await db
       .selectFrom('ticket_type')
-      .select('id')
+      .select('owner_track_id')
       .where('id', '=', body.ticketTypeId)
       .where('workspace_id', '=', ws)
       .executeTakeFirst();
-    if (!type) return reply.code(400).send({ error: 'unknown_ticket_type' });
+    if (
+      !type ||
+      (type.owner_track_id !== null && !(await canSeeTrack(request, type.owner_track_id)))
+    ) {
+      return reply.code(400).send({ error: 'unknown_ticket_type' });
+    }
     const catalog = await catalogs.get(ws);
     let layouts: ReadonlyMap<string, LayoutDefinition>;
     if (body.layouts) {

@@ -62,8 +62,10 @@ describe('field rules and layouts (M1-012)', () => {
     form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key)));
 
   /** A shared track whose members are Alice and Bob; Carol administers it. */
-  async function track(extra: Record<string, unknown> = {}): Promise<string> {
-    const key = `L${++trackCount}`;
+  async function track(
+    extra: Record<string, unknown> = {},
+    key = `L${++trackCount}`,
+  ): Promise<string> {
     const res = await post('admin', '/api/v1/tracks', { key, name: key, mode: 'shared', ...extra });
     expect(res.statusCode, res.body).toBe(201);
     tracks[key] = res.json().track.id;
@@ -560,6 +562,84 @@ describe('field rules and layouts (M1-012)', () => {
         remoteAddress: nextAddress(),
       });
       expect(out.statusCode).toBe(401);
+    });
+
+    it('[CORE-013] tells nobody about the fields and types of a track they do not see', async () => {
+      // SECRET is a local-mode track Bob is not in, with a field and a ticket type of its own.
+      const secret = await track({ mode: 'local' }, 'PSECRET');
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', tracks[secret] as number)
+        .where('user_id', '=', users.bob?.id as number)
+        .execute();
+      const field = await post('admin', '/api/v1/fields', {
+        name: `Secret notes ${secret}`,
+        type: 'text',
+        trackId: tracks[secret],
+      });
+      expect(field.statusCode, field.body).toBe(201);
+      const fieldId = field.json().field.id as number;
+      const level = await database.db
+        .selectFrom('hierarchy_level')
+        .select('id')
+        .where('kind', '=', 'standard')
+        .executeTakeFirstOrThrow();
+      const made = await post('admin', '/api/v1/ticket-types', {
+        name: `Secret type ${secret}`,
+        levelId: level.id,
+        trackId: tracks[secret],
+      });
+      expect(made.statusCode, made.body).toBe(201);
+      const typeId = made.json().ticketType.id as number;
+      const set = await layoutSet([], `Probed ${secret}`);
+      const draftWith = (key: string) => ({
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        layouts: [
+          {
+            ticketTypeId: null,
+            operation: 'edit',
+            definition: { tabs: [{ name: 'A', sections: [{ fields: [key] }] }] },
+          },
+        ],
+      });
+      // A draft is judged as a save is, so only those who could save the set send one: Bob's
+      // answer is the same for SECRET's field and for a field that does not exist.
+      const hidden = await preview('bob', set.id, draftWith(`cf[${fieldId}]`));
+      const missing = await preview('bob', set.id, draftWith('cf[999999]'));
+      expect([hidden.statusCode, hidden.json()]).toEqual([403, { error: 'forbidden' }]);
+      expect([missing.statusCode, missing.json()]).toEqual([403, { error: 'forbidden' }]);
+      // Carol administers tracks, but a shared set is for site and configuration administrators.
+      expect((await preview('carol', set.id, draftWith('summary'))).statusCode).toBe(403);
+      // The administrators who may change the set hear the verdict.
+      expect((await preview('admin', set.id, draftWith(`cf[${fieldId}]`))).json()).toEqual({
+        error: 'invalid_request',
+        detail: `cf[${fieldId}] belongs to another track`,
+      });
+      // A local-mode track's administrators preview drafts of its own set.
+      const own = await track({ mode: 'local' }, 'POWN');
+      const ownSet = await post('admin', '/api/v1/layout-sets', {
+        name: `Own ${own}`,
+        trackId: tracks[own],
+      });
+      expect(ownSet.statusCode, ownSet.body).toBe(201);
+      const carols = await preview('carol', ownSet.json().layoutSet.id, draftWith('summary'));
+      expect(carols.statusCode, carols.body).toBe(200);
+      // SECRET's own type is unknown to Bob, as a type that does not exist is; not to admin.
+      const saved = (ticketTypeId: number) => ({ ticketTypeId, operation: 'edit' });
+      const hiddenType = await preview('bob', set.id, saved(typeId));
+      const missingType = await preview('bob', set.id, saved(999999));
+      expect([hiddenType.statusCode, hiddenType.json()]).toEqual([
+        400,
+        { error: 'unknown_ticket_type' },
+      ]);
+      expect([missingType.statusCode, missingType.json()]).toEqual([
+        400,
+        { error: 'unknown_ticket_type' },
+      ]);
+      expect((await preview('admin', set.id, saved(typeId))).statusCode).toBe(200);
+      // Alice is in SECRET, so its type is hers to preview.
+      expect((await preview('alice', set.id, saved(typeId))).statusCode).toBe(200);
     });
   });
 
