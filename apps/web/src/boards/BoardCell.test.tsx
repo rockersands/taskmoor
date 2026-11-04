@@ -35,6 +35,26 @@ const cell = (name: string) => screen.getByRole('list', { name });
 const linkOf = (key: string) => screen.getByRole('link', { name: new RegExp(`^${key} `) });
 const itemOf = (key: string) => linkOf(key).closest('li') as HTMLElement;
 
+/**
+ * A mouse drag with pointer events (T-162b): down on `from`, then over each of `over` in turn,
+ * as the page finds them under the pointer, then up on the last unless the test lets go itself.
+ */
+function pointerDrag(from: Element, over: Element[], up = true) {
+  const under = vi.spyOn(document, 'elementFromPoint');
+  const point = { pointerId: 6, pointerType: 'mouse', isPrimary: true };
+  fireEvent.pointerDown(from, { ...point, button: 0, clientX: 10, clientY: 200 });
+  for (const [i, element] of over.entries()) {
+    under.mockReturnValue(element);
+    fireEvent.pointerMove(window, { ...point, clientX: 40 + i * 40, clientY: 10 });
+  }
+  const letGo = () => {
+    fireEvent.pointerUp(window, { ...point, clientX: 40, clientY: 10 });
+    under.mockRestore();
+  };
+  if (up) letGo();
+  return letGo;
+}
+
 // jsdom has no layout: every box is empty, the screen 768 px tall, and nothing scrolls.
 const scrolled = vi.fn();
 beforeAll(() => {
@@ -42,12 +62,6 @@ beforeAll(() => {
     value: scrolled,
     configurable: true,
   });
-  if (!('DragEvent' in window)) {
-    Object.defineProperty(window, 'DragEvent', {
-      value: class extends MouseEvent {},
-      configurable: true,
-    });
-  }
 });
 afterAll(() => {
   Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
@@ -154,11 +168,8 @@ describe('a long column (T-193)', () => {
     await screen.findByRole('list', { name: 'Doing' });
     const drawn = document.querySelectorAll('.board-card').length;
     expect(drawn).toBeLessThan(100);
-    const transfer = { setData: () => {}, getData: () => '', effectAllowed: '', dropEffect: '' };
     drawnCards.count = 0;
-    fireEvent.dragStart(itemOf('SHOP-1001'), { dataTransfer: transfer });
-    fireEvent.dragOver(cell('Doing'), { dataTransfer: transfer, clientY: 10 });
-    fireEvent.drop(cell('Doing'), { dataTransfer: transfer });
+    pointerDrag(linkOf('SHOP-1001'), [cell('Doing')]);
     await waitFor(() => expect(linkOf('SHOP-1001')).toHaveFocus());
     expect(client.moves).toEqual([{ ticket: 1101, columnId: 'doing', after: 1100 }]);
     expect(itemOf('SHOP-1001')).toHaveAttribute('aria-posinset', '1001');
@@ -169,11 +180,10 @@ describe('a long column (T-193)', () => {
     // Dragging over the board draws no card again, only the one in hand.
     await act(async () => {});
     drawnCards.count = 0;
-    fireEvent.dragStart(itemOf('SHOP-1002'), { dataTransfer: transfer });
-    fireEvent.dragOver(cell('Doing'), { dataTransfer: transfer, clientY: 10 });
-    fireEvent.dragOver(cell('To do'), { dataTransfer: transfer, clientY: 10 });
+    const letGo = pointerDrag(linkOf('SHOP-1002'), [cell('Doing'), cell('To do')], false);
     expect(drawnCards.count).toBe(1);
-    fireEvent.dragEnd(itemOf('SHOP-1002'));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    letGo();
   });
 
   it('[AGL-013] opens the Move menu of a card in a long column in full', async () => {

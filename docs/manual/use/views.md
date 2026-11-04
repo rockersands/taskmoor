@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx
-accessed: 2026-11-03
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-04
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -112,12 +112,22 @@ To reschedule a ticket, drag it to another day:
 - dragging the start entry moves the start day, and the due day along if it would otherwise come
   first.
 
-With the keyboard, focus an entry and press Alt with the left or right arrow to move it a day,
-or with the up or down arrow to move it a week. Clicking an entry, or Enter, opens the ticket over the
-calendar, where **Start date** and **Due date** are among its details. Rescheduling needs the **Set due dates**
-permission. When a change is refused, the calendar says why: you may not schedule tickets in the
-track, its status or dates are locked for you, the track is archived, the ticket is gone, the dates
-are not valid, or the ticket changed meanwhile.
+With a mouse, drag the entry itself. Each entry also has a grip, six dots at its end, which shows
+when the pointer or the keyboard is on the entry and always on a touch screen: with a finger, drag
+the entry by its grip, since a finger elsewhere scrolls the page. While you drag, the day it would
+land on is outlined and a label with the ticket follows the pointer; near the top or bottom of the
+screen the page scrolls. **Escape** puts it back, and so does letting go on its own day or outside
+the calendar.
+
+Pressing or tapping the grip, **Move the due day of PAY-42** (or **Move the start of PAY-42**),
+opens a menu with **One day earlier**, **One day later**, **One week earlier** and **One week
+later**: a way to reschedule with one finger and no drag. With the keyboard, focus an entry or its
+grip and press Alt with the left or right arrow to move it a day, or with the up or down arrow to
+move it a week; the keyboard stays with the entry on its new day. Clicking an entry, or Enter,
+opens the ticket over the calendar, where **Start date** and **Due date** are among its details.
+Rescheduling needs the **Set due dates** permission. When a change is refused, the calendar says
+why: you may not schedule tickets in the track, its status or dates are locked for you, the track
+is archived, the ticket is gone, the dates are not valid, or the ticket changed meanwhile.
 
 On a phone, the calendar becomes a list of the month's days.
 

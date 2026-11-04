@@ -7,6 +7,40 @@ import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, longColumn, manyCards, ONE_LANE, SCRUM_BOARD } from './fixtures';
 
+/** The pointer this file's drags use: one no other test's clicks share. */
+const POINTER = 47;
+const pointer = (type: string, at: { x: number; y: number }) =>
+  new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    pointerId: POINTER,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: at.x,
+    clientY: at.y,
+  });
+
+/**
+ * A finger on a card's grip (T-162b) moved over the top of `to`, laid out by the browser itself.
+ * The story's frame is a phone's width, so `to` is first brought into view: the press is on the
+ * grip wherever it then is, and the finger ends over `to`.
+ */
+function dragOver(grip: Element, to: Element) {
+  const from = grip.getBoundingClientRect();
+  const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+  grip.dispatchEvent(pointer('pointerdown', a));
+  to.scrollIntoView({ block: 'center', inline: 'center' });
+  const box = to.getBoundingClientRect();
+  const b = { x: box.left + box.width / 2, y: box.top + Math.min(box.height / 4, 10) };
+  for (let i = 1; i <= 6; i++) {
+    window.dispatchEvent(
+      pointer('pointermove', { x: a.x + ((b.x - a.x) * i) / 6, y: a.y + ((b.y - a.y) * i) / 6 }),
+    );
+  }
+  return b;
+}
+
 const meta = {
   title: 'Boards/BoardPage',
   component: BoardPage,
@@ -18,6 +52,10 @@ const meta = {
       </main>
     ),
   ],
+  // A drag a story leaves under way ends before the next one starts.
+  beforeEach: () => () => {
+    window.dispatchEvent(pointer('pointercancel', { x: 0, y: 0 }));
+  },
 } satisfies Meta<typeof BoardPage>;
 
 export default meta;
@@ -125,6 +163,53 @@ export const ChooseTransition: Story = {
     await expect(
       await canvas.findByRole('dialog', { name: 'Move SHOP-23 to Review and done' }),
     ).toBeVisible();
+  },
+};
+
+/**
+ * SHOP-19 in hand by its grip, over the top of SHOP-23 in Doing (T-162b): the cell and the place
+ * are marked, the card fades where it was, a label follows the finger, and the page says what is
+ * in hand and that Escape cancels.
+ */
+export const CardInHand: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const doing = await canvas.findByRole('list', { name: 'Doing in Everything else' });
+    const target = within(doing)
+      .getByRole('link', { name: /^SHOP-23 / })
+      .closest('li') as Element;
+    dragOver(canvas.getByRole('button', { name: 'Move SHOP-19' }), target);
+    await waitFor(() => expect(target).toHaveClass('is-drop-before'));
+    await expect(doing).toHaveClass('is-drop-target');
+    await expect(
+      canvas.getByText('Moving SHOP-19: drop it on a place in a column. Escape cancels.'),
+    ).toBeInTheDocument();
+    await expect(document.querySelector('.drag-ghost')).toHaveTextContent('SHOP-19');
+    await expect(document.body).toHaveClass('is-pointer-dragging');
+  },
+};
+
+/** Let go there: SHOP-19 lands in Doing, before SHOP-23, and only it drops into place. */
+export const CardDropped: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const doing = await canvas.findByRole('list', { name: 'Doing in Everything else' });
+    const target = within(doing)
+      .getByRole('link', { name: /^SHOP-23 / })
+      .closest('li') as Element;
+    const at = dragOver(canvas.getByRole('button', { name: 'Move SHOP-19' }), target);
+    window.dispatchEvent(pointer('pointerup', at));
+    await waitFor(() =>
+      expect(
+        within(doing)
+          .getAllByRole('link')
+          .map((link) => link.textContent?.split(' ')[0]),
+      ).toEqual(['SHOP-19', 'SHOP-23', 'SHOP-24']),
+    );
+    await expect(canvas.getByText('SHOP-19 moved to Doing.')).toBeInTheDocument();
+    await expect(document.querySelector('.drag-ghost')).toBeNull();
   },
 };
 

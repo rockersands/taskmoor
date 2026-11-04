@@ -1,6 +1,5 @@
 import {
   type CSSProperties,
-  type DragEvent,
   type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -76,8 +75,12 @@ export interface BoardCellProps {
   /** Cards drawn wherever they are: dragged, edited, with a menu or a question open, landing. */
   keep: readonly (number | null | undefined)[];
   windowing: Windowing;
-  onDragOver(event: DragEvent<HTMLUListElement>): void;
-  onDrop(event: DragEvent<HTMLUListElement>): void;
+  /**
+   * The column and lane this cell is: a drag asks the page what is under the pointer, and the
+   * cell says it is a place to drop on with these (`data-drop-column`, `data-drop-lane`; T-162b).
+   */
+  columnId: string;
+  laneId: string;
   renderCard(card: BoardCard, place: number, slot: CardSlot): ReactNode;
 }
 
@@ -107,8 +110,8 @@ export function BoardCell({
   windowed,
   keep,
   windowing,
-  onDragOver,
-  onDrop,
+  columnId,
+  laneId,
   renderCard,
 }: BoardCellProps) {
   const list = useRef<HTMLUListElement>(null);
@@ -278,8 +281,8 @@ export function BoardCell({
       ref={list}
       className={className}
       aria-label={label}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      data-drop-column={columnId}
+      data-drop-lane={laneId}
       onFocus={onFocus}
       onKeyDown={onKeyDown}
       style={after > 0 ? ({ '--cell-skip-after': `${after}px` } as CSSProperties) : undefined}

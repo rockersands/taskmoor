@@ -1,14 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { finger } from './touch';
 
 /**
  * List and calendar views end to end (M1-049; AGL-016, AGL-017), on tracks of their own:
  * fifty rows of a track's list edited in place one after another (five on a phone), the list
  * grouped by priority with its count, a format rule naming and colouring the rows it finds,
  * and on the calendar a ticket dragged to another day (on a phone, its days changed in its
- * pop-up) with its due day saved. No serious axe issue and no sideways page scroll. It uses the
- * attachments database (preview 4174), whose administrator (Ada Attach) the API server made.
+ * pop-up) with its due day saved, then a day later by its grip: dragged by a real finger on a
+ * phone (T-162b), through the grip's menu on a desktop. No serious axe issue and no sideways
+ * page scroll. It uses the attachments database (preview 4174), whose administrator (Ada
+ * Attach) the API server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -147,4 +150,34 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
       .getByRole('listitem', { name: new RegExp(`^${label(17)}, `) })
       .getByRole('link', { name: `${ticket} Launch party, due this day` }),
   ).toBeVisible();
+
+  // A day later by its grip (T-162b): on a phone a finger drags it to the 18th, the next day in
+  // the list; on a desktop the grip's menu makes the same move.
+  const grip = calendar.getByRole('button', { name: `Move the due day of ${ticket}` });
+  const eighteenth = calendar.getByRole('listitem', { name: new RegExp(`^${label(18)}, `) });
+  if (isMobile) {
+    // In the middle of the screen, clear of the edges where a drag scrolls the page.
+    await grip.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const from = await grip.boundingBox();
+    const to = await eighteenth.boundingBox();
+    if (!from || !to) throw new Error('the grip and the next day are on the page');
+    const hand = await finger(page);
+    await hand.down({ x: from.x + from.width / 2, y: from.y + from.height / 2 });
+    await hand.moveTo({ x: to.x + to.width / 2, y: to.y + to.height / 2 });
+    await expect(eighteenth).toHaveClass(/is-drop-target/);
+    await hand.up();
+  } else {
+    await grip.click();
+    await page.getByRole('menuitem', { name: 'One day later' }).click();
+    // The keyboard stays with the entry on its new day.
+    await expect(eighteenth.getByRole('button', { name: `Move the due day of ${ticket}` })).toBeFocused();
+  }
+  await expect(calendar.getByRole('status')).toHaveText(`${ticket} is now due on ${label(18)}.`);
+  await expect(
+    eighteenth.getByRole('link', { name: `${ticket} Launch party, due this day` }),
+  ).toBeVisible();
+  const later = await (await page.request.get(`${BASE}/api/v1/tickets/${ticket}`)).json();
+  expect(later.ticket.dueDate).toBe(day(18));
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

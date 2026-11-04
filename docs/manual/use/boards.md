@@ -2,7 +2,7 @@
 title: "Boards, sprints and the backlog"
 audience: users
 sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-03
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Boards, sprints and the backlog
@@ -57,8 +57,8 @@ track's board estimates with it. Set a ticket's points in its details, on the cr
 search result's cell. A card with no value shows nothing. An administrator may rename the field or
 remove it ([Fields](../admin/fields.md#the-points-field)).
 
-If you may edit a ticket, its card has a pencil at the corner (on a touch screen, in a row under the
-card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be
+If you may edit a ticket, its card has a pencil at the corner, beside its grip (on a touch screen,
+both in a row under the card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be
 saved the card says why. A card does not move or drag while its title is being edited.
 
 If the board shows days in column, a card that has waited a day or more shows a small clock with the
@@ -97,15 +97,24 @@ Moving a card to another column changes the ticket's status to that column's. On
 site starts with, a move asks for nothing: any card goes to any column. If you want to give a reason,
 write it in a comment. There are three ways to move a card:
 
-- drag the card to a place in another column, or up and down in its own column;
-- open the card's **Move PAY-42** menu and choose **Forward to Done**, **Back to To do**, **Up in
-  Doing** or **Down in Doing**;
+- drag the card to a place in another column, or up and down in its own column. With a mouse, drag
+  it from anywhere but its pencil; with a finger, drag it by its grip (the six dots at its corner,
+  or in the row under the card on a touch screen), since a finger elsewhere on a card scrolls the
+  board;
+- press the card's grip, **Move PAY-42**, and choose **Forward to Done**, **Back to To do**, **Up
+  in Doing** or **Down in Doing**;
 - focus the card and press Alt with the left or right arrow (to the next column) or the up or
   down arrow (within the column).
 
+While you drag, the column and the place the card would land are outlined, the card fades where it
+was and a label with its key and title follows the pointer. Hold it near the left or right edge of
+the columns and they scroll along, so a column off the screen can be reached on a phone; near the
+top or bottom of the screen, the page scrolls. **Escape** puts the card back where it was, and so
+does letting go outside the columns. A screen reader hears what is in hand and what happened.
+
 Only a rule someone put on the workflow, or one that came with an import, can ask for more. Then a
 move brings up a form, or a refusal in plain words, such as **PAY-42 cannot go to Done: its workflow
-has no step there from To do.** On phones, use the menu or the keyboard.
+has no step there from To do.** A drop asks exactly what the menu and the keys ask.
 
 ### Board filters
 

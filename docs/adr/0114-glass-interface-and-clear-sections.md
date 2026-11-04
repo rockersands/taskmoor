@@ -214,11 +214,12 @@ sentences. Examples:
 
 | What | Drag | Keyboard or button path |
 |---|---|---|
-| Board cards (between columns and within one) | kept, restyled | Alt+arrows and the card's ⋯ menu (kept) |
+| Board cards (between columns and within one) | kept, restyled; by finger too (section 12, T-162b) | Alt+arrows and the card's Move menu, on its grip (kept) |
 | Board columns (order) | new, on the board and in settings | Move left and Move right in the column's menu |
 | Backlog ranking and sprint planning | kept, restyled; by finger too (section 12) | each ticket's grip menu, the selection's menus, Alt+arrows |
 | Dashboard widgets | new (section 12) | Move up, down, left and right buttons (kept), Alt+arrows on them |
 | Files on a ticket | kept, the whole ticket accepts a drop (section 12) | Attach files button and paste (kept) |
+| Calendar entries (to another day) | kept; by finger too (section 12, T-162b) | Alt+arrows (kept) and each entry's grip menu (new) |
 
 Every drop is announced in a live region, as the board does now.
 
@@ -349,6 +350,7 @@ Section 7 carried out for the backlog, dashboard widgets and files on a ticket, 
 habits: the place a drop would land is outlined, the page says what is in hand and what happened,
 Escape cancels, and every move also has a menu or keys. Requirements: AGL-008 and AGL-009 (the
 backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no new one was needed.
+Board cards (AGL-002, AGL-003, AGL-009) and calendar entries (AGL-017) followed in T-162b.
 
 - **Pointer events, not the browser's drag and drop, for things the page moves.** A finger never
   starts a native drag on most phones, so the backlog leaves it and the widgets never take it up.
@@ -357,8 +359,11 @@ backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no 
   top or bottom of the scrolling area scrolls it (a finger's drag cannot scroll the page itself), no
   text is selected on the way, and the click a drag ends with is swallowed. What is under the
   pointer is asked of the page (`elementFromPoint`, with `data-drop-*` attributes on the targets),
-  so a mouse, a pen and a finger take one path. Board cards keep the native drag of ADR-049 for now;
-  moving them onto this follower would give them a finger drag too (an open question below).
+  so a mouse, a pen and a finger take one path. Board cards and calendar entries moved onto it
+  too (T-162b, below), and with them the follower learned to scroll sideways: the pointer within
+  56 px of the left or right edge of the nearest area that scrolls sideways (a board's columns)
+  scrolls it, faster the nearer, in physical left and right whatever the writing direction. A page
+  never scrolls sideways (ADR-033), so where no such area holds the press nothing does.
 - **One grip.** `shell/MoveMenu.tsx` is the grip the Tracks page's groups had (CORE-034), moved to
   the shell and shared: a button a mouse or a finger drags, which pressed opens a menu of the same
   moves, with Alt and the arrow keys stepping it. It is 44 px under a coarse pointer and carries
@@ -366,6 +371,9 @@ backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no 
   A grip with no moves to offer opens no empty menu: it carries `aria-disabled` and no
   `aria-haspopup`, a press, Enter or an arrow opens nothing, and it still drags, since a drop may
   have somewhere to go that the menu does not list (an outcome or a release on the backlog).
+  Calendar entries use it too. A board card's grip is its own Move button with the same dots and
+  the same `touch-action: none`, as its menu opens in the card's own flow, which a long column
+  keeps drawn and never clips (T-193).
 - **The backlog.** A mouse drags a row from anywhere but its controls, a finger by its grip; a
   ticket that is part of the selection takes the whole selection, in order. The section and the
   place are outlined as on the board (`is-drop-target`, `is-drop-before`), the outcome or release
@@ -397,10 +405,48 @@ backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no 
   a real browser and are checked by axe in both skins, mid-drag and dropped; `e2e/drag-and-drop.spec.ts`
   drags by mouse on a desktop and by touch input through the DevTools protocol on a phone, as
   `e2e/track-groups.spec.ts` does.
-- **Open question for the user.** Whether board cards (and calendar entries) should move onto the
-  same pointer follower, so a finger drags them on a phone as it now drags backlog tickets and
-  widgets; their menus and keys already work there. A backlog row, like a board card, no longer
-  selects its summary as text, since a mouse drags the row from it.
+- **Board cards (T-162b; the user's decision of 2026-11-04 on T-162a).** Cards leave the browser's
+  drag of ADR-049 for the same follower, so a finger drags them on a phone. A mouse drags a card
+  from anywhere but its pencil (and never while its title is edited); a finger or a mouse drags it
+  by its grip, the Move button, which now shows the six dots and keeps its name ("Move PAY-42"),
+  its place at the card's corner (in a row under the card on a touch screen, 44 px) and its menu,
+  opened by a press. Elsewhere on a card a finger scrolls the board, so the columns still scroll
+  under a finger. Held near the left or right edge of the columns, they scroll along, and
+  snapping to a column's start is off while a card is in hand, as it would undo the small steps.
+  The cell and the place are outlined as before (`is-drop-target`, `is-drop-before`), the card
+  fades where it was, a label with its key and title follows the pointer, and the board's live
+  region says what is in hand, then what the server did, or that the card stayed where it was (let
+  go where it was, outside any cell, or after Escape). A drop sends the same move as before, so the
+  transition, the "which transition" question, the form a workflow rule asks for, the seamless
+  moves and refusals of ADR-116 and the rank all come from the move route, unchanged. Cells carry
+  `data-drop-column` and `data-drop-lane`. On a large board (T-193) the card in hand stays drawn
+  wherever the page scrolls, and a drag draws no other card: the label is moved by hand rather
+  than drawn, and only the card in hand and the cells under the pointer change.
+- **Calendar entries (T-162b).** An entry is its link and a grip after it. A mouse drags the link
+  itself; a finger or a mouse drags the grip, and elsewhere a finger scrolls the page. The grip,
+  pressed, opens a menu of the moves Alt and the arrows make: one day earlier or later, one week
+  earlier or later. That is also the way to reschedule with one finger and no drag at all, which
+  the calendar lacked (WCAG 2.5.7). The grip shows while the pointer or the keyboard is on its
+  entry, and always on a touch screen, where it is 44 px; its menu opens towards the later days on
+  Monday to Wednesday and towards the earlier ones otherwise, so it stays on the page. The day under
+  the pointer is outlined, the entry fades, a label follows the pointer, and the status line says
+  what is in hand, then the new day or that it stayed. The rescheduling rules are unchanged: a due
+  day takes its start along, keeping the length; a start pushes the due day along only when it
+  would pass it. A move by the keys or the menu keeps the keyboard on the entry, link or grip, on
+  its new day (before, the entry was drawn again on that day and the focus was lost).
+- **Nothing new on the server for T-162b either.** The board's move route and the ticket route
+  judge every drop as they judge the menus and keys, with their events and audit entries.
+- **Tests for T-162b.** `BoardPage.test.tsx`, `BoardCell.test.tsx` and `CalendarPage.test.tsx`
+  drive pointer events by mouse and by finger (a finger on a card or an entry moves nothing, on the
+  grip it drags), Escape, a drop where it was, and a drag over a 5,000-card board drawing only the
+  card in hand; `pointerDrag.test.ts` the sideways scrolling; the `CardInHand`, `CardDropped`,
+  `EntryInHand`, `EntryDropped` and `EntryGripMenu` stories run axe in both skins; and
+  `e2e/board-drag.spec.ts` and `e2e/list-calendar.spec.ts` drag with a real finger through the
+  DevTools protocol on the mobile project (to a column off the screen, the columns scrolling along;
+  to the next day), and with a mouse or the grip's menu on the desktop one. `e2e/board-large.spec.ts`
+  times a drop from the pointer's release.
+- A backlog row, like a board card and a calendar entry, no longer selects its text, since a mouse
+  drags it from there.
 
 ## Options considered
 

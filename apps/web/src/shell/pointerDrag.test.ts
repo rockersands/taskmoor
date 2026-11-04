@@ -25,6 +25,7 @@ function press(pointerType: 'mouse' | 'touch' = 'mouse') {
 afterEach(() => {
   document.body.replaceChildren();
   document.body.className = '';
+  vi.unstubAllGlobals();
 });
 
 describe('a press that may become a drag (T-162)', () => {
@@ -85,6 +86,64 @@ describe('a press that may become a drag (T-162)', () => {
     fireEvent.pointerMove(window, at(10, 40));
     fireEvent.pointerCancel(window, at(10, 40));
     expect(calls).toEqual(['start 10,40', 'move 10,40', 'cancel', 'end']);
+  });
+
+  it('[NFR-007] near the left or right edge of an area that scrolls sideways, scrolls it along', () => {
+    // A board's columns (T-162b): 400 px of a 2,000 px row, scrolled by the pointer at an edge.
+    const columns = document.createElement('div');
+    columns.style.overflowX = 'auto';
+    let left = 0;
+    Object.defineProperties(columns, {
+      scrollWidth: { value: 2000 },
+      clientWidth: { value: 400 },
+      scrollLeft: { get: () => left },
+    });
+    columns.getBoundingClientRect = () => new DOMRect(0, 0, 400, 300);
+    columns.scrollBy = ((options: ScrollToOptions) => {
+      left = Math.min(1600, Math.max(0, left + (options.left ?? 0)));
+    }) as Element['scrollBy'];
+    const handle = document.createElement('button');
+    columns.append(handle);
+    document.body.append(columns);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => frames.push(run));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const calls: string[] = [];
+    const down = new PointerEvent('pointerdown', { clientX: 200, clientY: 150, pointerId: 4 });
+    Object.defineProperty(down, 'target', { value: handle });
+    const stop = followPointerDrag(down, {
+      start: () => calls.push('start'),
+      move: (x) => calls.push(`move ${x}`),
+      drop: () => calls.push('drop'),
+      cancel: () => calls.push('cancel'),
+    });
+    const at = (x: number) => ({ clientX: x, clientY: 150, pointerId: 4 });
+    // At the right edge: each frame scrolls right, and what is under the still pointer is asked again.
+    fireEvent.pointerMove(window, at(395));
+    frames.shift()?.(0);
+    frames.shift()?.(16);
+    expect(left).toBeGreaterThan(0);
+    expect(calls).toEqual(['start', 'move 395', 'move 395', 'move 395']);
+    // In the middle it stops; at the left edge it scrolls back.
+    fireEvent.pointerMove(window, at(200));
+    frames.shift()?.(32);
+    expect(frames).toHaveLength(0);
+    const scrolled = left;
+    fireEvent.pointerMove(window, at(5));
+    frames.shift()?.(48);
+    expect(left).toBeLessThan(scrolled);
+    stop();
+  });
+
+  it('[NFR-005] scrolls nothing sideways where nothing scrolls sideways', () => {
+    const { calls, at } = press('touch');
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => frames.push(run));
+    // At the far right of the page, which never scrolls sideways, and well clear of top and bottom.
+    fireEvent.pointerMove(window, at(window.innerWidth - 2, 300));
+    expect(frames).toHaveLength(0);
+    fireEvent.pointerUp(window, at(window.innerWidth - 2, 300));
+    expect(calls.at(-2)).toBe(`drop ${window.innerWidth - 2},300`);
   });
 
   it('[NFR-005] stops following when the page goes mid-drag', () => {

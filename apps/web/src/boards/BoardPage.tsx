@@ -1,8 +1,7 @@
 import {
   type CSSProperties,
-  type DragEvent,
   type KeyboardEvent,
-  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useId,
@@ -19,6 +18,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
+import { followPointerDrag } from '../shell/pointerDrag';
 import { Popover } from '../shell/Popover';
 import { CompleteSprintDialog, type SprintCounts } from '../sprints/CompleteSprint';
 import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
@@ -93,6 +93,26 @@ export function shareCards(previous: readonly BoardCard[] | undefined, next: Boa
 
 const cellKey = (columnId: string, laneId: string) => `${columnId}\u0000${laneId}`;
 const NO_CARDS: BoardCard[] = [];
+
+/** Where a dragged card would land: before a card of a cell, or at the cell's end (null). */
+interface DropPlace {
+  columnId: string;
+  laneId: string;
+  before: number | null;
+}
+const samePlace = (a: DropPlace | null, b: DropPlace | null) =>
+  a === b ||
+  (a !== null &&
+    b !== null &&
+    a.columnId === b.columnId &&
+    a.laneId === b.laneId &&
+    a.before === b.before);
+
+/** A press on these is theirs: a mouse drags a card from anywhere else on it. */
+const OWN_PRESS = 'button, input, select, textarea';
+
+/** The label that follows the pointer, placed by its coordinates (`drag-ghost`, drag.css). */
+const ghostAt = (at: { x: number; y: number }) => `translate(${at.x + 12}px, ${at.y + 12}px)`;
 
 /** The cards by cell, each card's place in it and the lanes' counts, in one pass (M1-046). */
 function groupCards(cards: readonly BoardCard[]) {
@@ -209,6 +229,11 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  * Each cell is one tab stop whose arrows go from card to card; a board of more than
  * `WINDOW_FROM` cards draws only the cards near the screen, and a drop draws again only the
  * cards that changed (T-193, `BoardCell`, `BoardCard`).
+ *
+ * Drags use pointer events (T-162b; ADR-114, section 12), as the backlog's do: a mouse drags a
+ * card from anywhere but its pencil, and a finger or a mouse by its grip, so a finger elsewhere
+ * scrolls the board. The cell and the place are marked, a label follows the pointer, the page
+ * says what is in hand, Escape cancels, and near an edge the columns or the page scroll along.
  */
 export function BoardPage({
   boardId,
@@ -250,11 +275,12 @@ export function BoardPage({
   const scrollRegion = useRef<HTMLElement>(null);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
   const [dragging, setDragging] = useState<number | null>(null);
-  const [dropAt, setDropAt] = useState<{
-    columnId: string;
-    laneId: string;
-    before: number | null;
-  } | null>(null);
+  const [dropAt, setDropAt] = useState<DropPlace | null>(null);
+  /** Stops following the press under way, if any (T-162b). */
+  const stopDrag = useRef<(() => void) | null>(null);
+  /** The label in hand and where the pointer is: moved by hand, so a drag draws no card again. */
+  const ghost = useRef<HTMLDivElement>(null);
+  const pointerAt = useRef({ x: 0, y: 0 });
   // A large board draws only the cards near the screen (T-193): every cell reads where it is on
   // a scroll through one listener.
   const [windowing] = useState(createWindowing);
@@ -265,10 +291,6 @@ export function BoardPage({
   const pencils = useRef(new Map<number, HTMLButtonElement>());
   /** The pencil that gets focus back once its editor has closed. */
   const pencilAfter = useRef<number | null>(null);
-  /** A press that began on a card's button: a drag from there would not be meant. */
-  const pressedButton = useRef(false);
-  /** When a drag last ended: a click that follows at once is the drag's, and opens nothing. */
-  const dragEndedAt = useRef(Number.NEGATIVE_INFINITY);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
 
@@ -402,18 +424,22 @@ export function BoardPage({
   const [actions] = useState<CardActions>(() => {
     const latest = () => handlers.current as CardActions;
     return {
-      press: () => latest().press(),
-      pressButton: () => latest().pressButton(),
-      dragStart: (event, card) => latest().dragStart(event, card),
-      dragEnd: () => latest().dragEnd(),
+      grab: (event, card) => latest().grab(event, card),
       keyDown: (event, card) => latest().keyDown(event, card),
-      open: (event, card) => latest().open(event, card),
+      open: (card) => latest().open(card),
       editTitle: (card) => latest().editTitle(card),
       toggleMenu: (card) => latest().toggleMenu(card),
       linkRef: (id, link) => latest().linkRef(id, link),
       pencilRef: (id, pencil) => latest().pencilRef(id, pencil),
     };
   });
+  // A drag outlives the drawing it began in: it asks the latest one where it is and what to do.
+  const live = useRef<{
+    dropAt(x: number, y: number): DropPlace | null;
+    dropOn(card: BoardCard, place: DropPlace | null): void;
+  } | null>(null);
+  // A page that goes mid-drag stops following the pointer.
+  useEffect(() => () => stopDrag.current?.(), []);
 
   if (state === 'loading' && !data) {
     return (
@@ -549,42 +575,43 @@ export function BoardPage({
     );
   }
 
-  /** Where a drag over a cell would put the card: before the card under the pointer's half. */
-  function overCell(event: DragEvent, columnId: string, laneId: string) {
-    if (dragging === null) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    const over = (event.target as HTMLElement).closest<HTMLElement>('[data-card-id]');
+  /**
+   * What is under the pointer, as a place a dragged card may land (T-162b): a cell, and in it
+   * before the card under the pointer's upper half, else before the next one or at the end.
+   */
+  function placeAt(x: number, y: number): DropPlace | null {
+    const element = document.elementFromPoint?.(x, y);
+    const holder = element?.closest<HTMLElement>('[data-drop-column]');
+    if (!element || !holder) return null;
+    const columnId = holder.dataset.dropColumn as string;
+    const laneId = holder.dataset.dropLane as string;
+    const over = element.closest<HTMLElement>('[data-card-id]');
     let before: number | null = null;
-    if (over) {
+    if (over && holder.contains(over)) {
       const id = Number(over.dataset.cardId);
       const rect = over.getBoundingClientRect();
-      if (event.clientY < rect.top + rect.height / 2) before = id;
+      if (y < rect.top + rect.height / 2) before = id;
       else {
         const cell = cardsIn(columnId, laneId);
         before = cell[cell.findIndex((c) => c.id === id) + 1]?.id ?? null;
       }
     }
-    if (dropAt?.columnId !== columnId || dropAt.laneId !== laneId || dropAt.before !== before) {
-      setDropAt({ columnId, laneId, before });
-    }
+    return { columnId, laneId, before };
   }
 
   /** A drop: the same move as the keyboard's, to the column and the place shown. */
-  function drop(event: DragEvent, column: Column, laneId: string) {
-    event.preventDefault();
-    const card = data?.cards.find((c) => c.id === dragging);
-    const before = dropAt?.columnId === column.id ? dropAt.before : null;
-    setDragging(null);
-    setDropAt(null);
-    if (!card || busy || before === card.id) return;
+  function dropOn(card: BoardCard, place: DropPlace | null) {
+    const column = place ? columns.find((c) => c.id === place.columnId) : undefined;
+    const stayed = () => setAnnouncement(t('boards.drag.cancelled', { key: card.key }));
+    if (!place || !column || busy || place.before === card.id) return stayed();
+    const { before, laneId } = place;
     const rest = cardsIn(column.id, laneId).filter((c) => c.id !== card.id);
     const last = rest[rest.length - 1];
     if (card.columnId === column.id) {
-      // Dropped where it already was: nothing to do.
+      // Dropped where it already was: nothing to ask of the server.
       const order = cardsIn(column.id, card.laneId).map((c) => c.id);
       const at = before === null ? rest.length : rest.findIndex((c) => c.id === before);
-      if (order.indexOf(card.id) === at) return;
+      if (order.indexOf(card.id) === at) return stayed();
     }
     const request: MoveRequest =
       before !== null
@@ -599,6 +626,53 @@ export function BoardPage({
         ? t('boards.dropped', { key: card.key, column: column.name })
         : t('boards.moved', { key: card.key, column: column.name }),
     );
+  }
+  live.current = { dropAt: placeAt, dropOn };
+
+  /** Ends a drag on the page: nothing in hand, nothing marked. */
+  function endDrag() {
+    setDragging(null);
+    setDropAt(null);
+  }
+
+  /**
+   * A press on a card that may become a drag (T-162b): by mouse from anywhere but the card's
+   * pencil and editor, by anything from its grip. Not while a move runs or its title is edited.
+   */
+  function grab(event: ReactPointerEvent, card: BoardCard) {
+    const target = event.target as Element;
+    const onGrip = target.closest('[data-card-grip]') !== null;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    // A finger elsewhere on the card scrolls the board; a mouse on a control uses it.
+    if (!onGrip && (event.pointerType !== 'mouse' || target.closest(OWN_PRESS))) return;
+    if (busy || stopDrag.current || editing?.id === card.id) return;
+    const words = { key: card.key };
+    stopDrag.current = followPointerDrag(event, {
+      start: (x, y) => {
+        pointerAt.current = { x, y };
+        setDragging(card.id);
+        setMenuFor(null);
+        setAnnouncement(t('boards.drag.start', words));
+      },
+      move: (x, y) => {
+        pointerAt.current = { x, y };
+        if (ghost.current) ghost.current.style.transform = ghostAt(pointerAt.current);
+        const to = live.current?.dropAt(x, y) ?? null;
+        setDropAt((current) => (samePlace(current, to) ? current : to));
+      },
+      drop: (x, y) => {
+        const to = live.current?.dropAt(x, y) ?? null;
+        endDrag();
+        live.current?.dropOn(card, to);
+      },
+      cancel: () => {
+        endDrag();
+        setAnnouncement(t('boards.drag.cancelled', words));
+      },
+      end: () => {
+        stopDrag.current = null;
+      },
+    });
   }
 
   function onCardKey(event: KeyboardEvent, card: BoardCard) {
@@ -709,35 +783,9 @@ export function BoardPage({
   ));
 
   handlers.current = {
-    press: () => {
-      pressedButton.current = false;
-    },
-    pressButton: () => {
-      pressedButton.current = true;
-    },
-    dragStart: (event: DragEvent, card: BoardCard) => {
-      // No drag while a move runs, nor from a press that began on a button.
-      if (pressedButton.current || busy) {
-        pressedButton.current = false;
-        event.preventDefault();
-        return;
-      }
-      event.dataTransfer.setData('text/plain', card.key);
-      event.dataTransfer.effectAllowed = 'move';
-      setDragging(card.id);
-      setMenuFor(null);
-    },
-    dragEnd: () => {
-      dragEndedAt.current = performance.now();
-      setDragging(null);
-      setDropAt(null);
-    },
+    grab,
     keyDown: onCardKey,
-    open: (event: MouseEvent, card: BoardCard) => {
-      if (performance.now() - dragEndedAt.current < 300) {
-        event.preventDefault();
-        return;
-      }
+    open: (card: BoardCard) => {
       rememberBoard(card.key, {
         id: boardId,
         name: board.name,
@@ -846,6 +894,8 @@ export function BoardPage({
   // On a large board each cell draws the cards near the screen and these, wherever they are.
   const windowed = data.cards.length > WINDOW_FROM;
   const keep = [dragging, menuFor, editing?.id, landing, choice?.card.id, asking?.card.id];
+  // What a drag holds, for the label that follows the pointer.
+  const inHand = dragging === null ? undefined : data.cards.find((c) => c.id === dragging);
 
   const grid = { '--board-columns': columns.length } as CSSProperties;
   return (
@@ -1024,8 +1074,8 @@ export function BoardPage({
                         windowed={windowed}
                         windowing={windowing}
                         keep={keep}
-                        onDragOver={(event) => overCell(event, column.id, lane.id)}
-                        onDrop={(event) => drop(event, column, lane.id)}
+                        columnId={column.id}
+                        laneId={lane.id}
                         label={
                           showLanes
                             ? t('boards.cell', { column: column.name, lane: lane.name })
@@ -1046,6 +1096,16 @@ export function BoardPage({
       <div className="visually-hidden" aria-live="polite">
         {announcement}
       </div>
+      {inHand && (
+        <div
+          ref={ghost}
+          className="drag-ghost"
+          aria-hidden="true"
+          style={{ transform: ghostAt(pointerAt.current) }}
+        >
+          {`${inHand.key} ${inHand.summary}`}
+        </div>
+      )}
       {completing && (
         <CompleteSprintDialog
           sprint={completing.sprint}

@@ -219,8 +219,9 @@ test('[AGL-013] a 5,000-card column scrolls and takes a drop without holding the
     } catch {
       frames.observe({ type: 'longtask', buffered: false });
     }
+    // The drop is the release of the pointer that drags the card (T-162b).
     document.addEventListener(
-      'drop',
+      'pointerup',
       () => {
         w.dropWatch.start = performance.now();
         const settled = () => {
