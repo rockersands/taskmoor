@@ -4685,6 +4685,98 @@ export const messagesEn = {
   'plans.settings.failed': 'The plan could not be saved.',
   'plans.settings.hiddenKept':
     '{count, plural, one {# source is} other {# sources are}} hidden from you and will stay in the plan.',
+  'plans.section.capacity': 'Capacity',
+  'plans.capacity.failed': 'This plan’s capacity could not be loaded.',
+  'plans.capacity.earlier': 'Earlier periods',
+  'plans.capacity.later': 'Later periods',
+  'plans.capacity.current': 'This period',
+  'plans.capacity.now': 'Now',
+  'plans.capacity.range': '{start} to {end}',
+  'plans.capacity.hint.points':
+    'Work due in each period against what each team and person can take on, in points from the field {field}. A ticket counts whole in the period of its due date.',
+  'plans.capacity.hint.hours':
+    'Work due in each period against what each team and person can take on, in hours of original estimate. A ticket counts whole in the period of its due date.',
+  'plans.capacity.hint.elsewhere':
+    '“Elsewhere” is someone’s other work due in that period: outside this plan, left out by the filters or hidden from you. It counts against their capacity, and is never named. It is counted by whole weeks, Monday to Sunday, each in the period that holds most of it.',
+  'plans.capacity.noPointsField':
+    'This site has no Points field, so no ticket has points here: each counts as without an estimate.',
+  'plans.capacity.noTeams': 'This plan has no teams yet.',
+  'plans.capacity.chooseTeams': 'Choose its teams in Settings',
+  'plans.capacity.table': 'Capacity by period',
+  'plans.capacity.who': 'Team or person',
+  'plans.capacity.unscheduled': 'Open, no due date',
+  'plans.capacity.teamMeta': 'Team · {count, plural, one {# person} other {# people}}',
+  'plans.capacity.inactive': '{name} (deactivated)',
+  'plans.capacity.unassigned': 'Unassigned',
+  'plans.capacity.others': 'People in none of these teams',
+  'plans.capacity.points': '{value, plural, one {# point} other {# points}}',
+  'plans.capacity.hours': '{value, plural, one {# hour} other {# hours}}',
+  'plans.capacity.loadOf': '{load} of {capacity}',
+  'plans.capacity.noCapacity': 'No capacity set',
+  'plans.capacity.fromMembers': 'Its members’ capacity',
+  'plans.capacity.over': 'Over capacity by {amount}',
+  'plans.capacity.tickets': '{count, plural, one {# ticket} other {# tickets}}',
+  'plans.capacity.nothingDue': 'Nothing due',
+  'plans.capacity.noneOpen': 'None',
+  'plans.capacity.elsewhere':
+    '+{amount} in {count, plural, one {# ticket} other {# tickets}} elsewhere',
+  'plans.capacity.unestimated':
+    '{count, plural, one {# without an estimate} other {# without an estimate}}',
+  'plans.capacity.link': '{tickets} for {who}, {period}: open the search',
+  'plans.capacity.set': 'Set capacity',
+  'plans.capacity.setFor': 'Set capacity of {name}',
+  'plans.capacity.saved': 'Capacity of {name} saved.',
+  'plans.capacity.saveFailed': 'The capacity could not be saved.',
+  'plans.capacity.forbidden': 'You may not change this plan’s capacity.',
+  'plans.capacity.notInPlan': 'This team or person is no longer in the plan. Reload the page.',
+  'plans.capacity.settingsChanged':
+    'This plan’s unit or periods changed meanwhile, so nothing was saved. Reload the page and set the capacity again.',
+  'plans.capacity.dialog.title': 'Capacity of {name}',
+  'plans.capacity.dialog.intro.points':
+    'How many points {name} can take on in a period. Leave a field empty for none.',
+  'plans.capacity.dialog.intro.hours':
+    'How many hours {name} can work in a period. Leave a field empty for none.',
+  'plans.capacity.dialog.every': 'Every period',
+  'plans.capacity.dialog.everyAmount': 'Capacity for every period',
+  'plans.capacity.dialog.everyNote': 'Note for every period',
+  'plans.capacity.dialog.periods': 'Single periods',
+  'plans.capacity.dialog.periodsHint':
+    'A period filled in here uses its own capacity instead: for leave or a holiday, say.',
+  'plans.capacity.dialog.amountFor': 'Capacity for {period}',
+  'plans.capacity.dialog.noteFor': 'Note for {period}',
+  'plans.capacity.dialog.save': 'Save capacity',
+  'plans.capacity.dialog.cancel': 'Cancel',
+  'plans.capacity.dialog.close': 'Close',
+  'plans.capacity.dialog.invalid':
+    'Enter a number from 0 to 100,000 with at most two decimals, or leave it empty.',
+  'plans.capacity.dialog.noteNeedsAmount':
+    'A note goes with a capacity: enter one for {period}, or clear its note.',
+  'plans.capacity.dialog.noteNeedsAmountEvery':
+    'A note goes with a capacity: enter one for every period, or clear its note.',
+  'plans.settings.capacity': 'Teams and capacity',
+  'plans.settings.teams': 'Teams',
+  'plans.settings.teamsHint':
+    'The Capacity view shows each chosen team and its members. A team gives nobody access.',
+  'plans.settings.noTeams':
+    'This site has no teams yet. Site administrators make them in Settings, under Teams.',
+  'plans.settings.teamOption': '{name} ({count, plural, one {# person} other {# people}})',
+  'plans.settings.teamsFailed': 'The teams could not be loaded.',
+  'plans.settings.findTeam': 'Find a team',
+  'plans.settings.teamsChosen':
+    '{count, plural, =0 {No team chosen} one {# team chosen} other {# teams chosen}}',
+  'plans.settings.teamGone': 'A team you chose no longer exists. Reload the page and choose again.',
+  'plans.settings.unit': 'Count work in',
+  'plans.settings.unit.points': 'Points',
+  'plans.settings.unit.hours': 'Hours of original estimate',
+  'plans.settings.period': 'Periods',
+  'plans.settings.period.weeks': '{count, plural, one {Every week} other {Every # weeks}}',
+  'plans.settings.period.month': 'Every calendar month',
+  'plans.settings.anchor': 'A period starts on',
+  'plans.settings.capacityHint':
+    'Changing the unit clears every capacity set in this plan. Changing the periods clears the capacity set for single periods.',
+  'plans.settings.confirmUnit': 'Change the unit? Every capacity set in this plan will be cleared.',
+  'plans.settings.confirmPeriod':
+    'Change the periods? The capacity set for single periods will be cleared.',
   'dashboards.mine': 'Yours',
   'dashboards.others': 'Shared with you',
   'dashboards.chooseForWallboard': 'Show {name} on the wallboard',

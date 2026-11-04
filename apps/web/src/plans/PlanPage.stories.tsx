@@ -97,6 +97,50 @@ export const Calendar: Story = {
   },
 };
 
+/**
+ * Capacity (PLN-005, PLN-009): Web and its people by two-week period, in points. Ana is over in
+ * both periods shown first (13 points elsewhere, then leave), in red and in words.
+ */
+export const Capacity: Story = {
+  args: { section: 'capacity', client: fakePlanClient() },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/capacity';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Capacity by period' })).toBeVisible();
+    await expect(canvas.getByText('Over capacity by 8 points')).toBeVisible();
+    // Web's and Ana's: counted, never named.
+    await expect(canvas.getAllByText('+13 points in 1 ticket elsewhere')).toHaveLength(2);
+  },
+};
+
+/** Capacity on a phone: a card per team and person, no sideways scroll. */
+export const CapacityOnAPhone: Story = {
+  args: { section: 'capacity', client: fakePlanClient() },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/capacity';
+  },
+  play: async ({ canvasElement }) => {
+    // The e2e spec checks the cards and the scroll at a phone's width; here, the content.
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Over capacity by 8 points')).toBeVisible();
+  },
+};
+
+/** Capacity in a plan with no teams yet: where to choose them. */
+export const CapacityWithoutTeams: Story = {
+  args: { section: 'capacity', client: fakePlanClient({ noTeams: true }) },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/capacity';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('This plan has no teams yet.')).toBeVisible();
+  },
+};
+
 /** Settings: name, description, sources and who sees it. */
 export const Settings: Story = {
   args: { section: 'settings' },
@@ -106,6 +150,9 @@ export const Settings: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('checkbox', { name: 'DATA · Data' })).toBeVisible();
+    // Teams and capacity (PLN-005): the site's teams, the unit and the periods.
+    await expect(await canvas.findByRole('checkbox', { name: 'Web (2 people)' })).toBeChecked();
+    await expect(canvas.getByLabelText('Count work in')).toHaveValue('points');
   },
 };
 

@@ -3566,6 +3566,30 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/plans/:id/capacity',
+      expect: 'plan.capacity_set',
+      // The plan plans with a team first (its own events, before the one counted here).
+      prepare: async () => {
+        const team = await admin({
+          method: 'POST',
+          url: '/api/v1/teams',
+          payload: { name: 'Contract capacity team' },
+        });
+        state.capacityTeam = team.json().team?.id;
+        await admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}`,
+          payload: { teams: [state.capacityTeam] },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/plans/${state.plan}/capacity`,
+          payload: { entries: [{ teamId: state.capacityTeam, period: null, amount: 30 }] },
+        }),
+    },
+    {
       route: 'DELETE /api/v1/plans/:id',
       expect: 'plan.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/plans/${state.plan}` }),

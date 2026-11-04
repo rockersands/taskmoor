@@ -327,37 +327,47 @@ export async function writePersonalData(
     .where('user_id', '=', userId)
     .orderBy('section')
     .execute();
-  const [preference, notificationSettings, properties, savedSearches, plans] = await Promise.all([
-    db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
-    db
-      .selectFrom('notification_preference')
-      .select(['event', 'channel', 'enabled'])
-      .where('user_id', '=', userId)
-      .orderBy('event')
-      .orderBy('channel')
-      .execute(),
-    db
-      .selectFrom('user_property')
-      .select(['key', 'value', 'updated_at'])
-      .where('user_id', '=', userId)
-      .orderBy('key')
-      .execute(),
-    db
-      .selectFrom('saved_search')
-      .select(['name', 'description', 'query', 'created_at'])
-      .where('workspace_id', '=', ws)
-      .where('owner_id', '=', userId)
-      .orderBy('id')
-      .execute(),
-    // Multi-track plans they own (ADR-122): what they named them, not the tickets they find.
-    db
-      .selectFrom('plan')
-      .select(['name', 'description', 'created_at'])
-      .where('workspace_id', '=', ws)
-      .where('owner_id', '=', userId)
-      .orderBy('id')
-      .execute(),
-  ]);
+  const [preference, notificationSettings, properties, savedSearches, plans, capacity] =
+    await Promise.all([
+      db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
+      db
+        .selectFrom('notification_preference')
+        .select(['event', 'channel', 'enabled'])
+        .where('user_id', '=', userId)
+        .orderBy('event')
+        .orderBy('channel')
+        .execute(),
+      db
+        .selectFrom('user_property')
+        .select(['key', 'value', 'updated_at'])
+        .where('user_id', '=', userId)
+        .orderBy('key')
+        .execute(),
+      db
+        .selectFrom('saved_search')
+        .select(['name', 'description', 'query', 'created_at'])
+        .where('workspace_id', '=', ws)
+        .where('owner_id', '=', userId)
+        .orderBy('id')
+        .execute(),
+      // Multi-track plans they own (ADR-122): what they named them, not the tickets they find.
+      db
+        .selectFrom('plan')
+        .select(['name', 'description', 'created_at'])
+        .where('workspace_id', '=', ws)
+        .where('owner_id', '=', userId)
+        .orderBy('id')
+        .execute(),
+      // Their capacity in plans (PLN-009): by the plan's id, as a plan may be hidden from them.
+      db
+        .selectFrom('plan_capacity')
+        .select(['plan_id', 'period_start', 'amount', 'note'])
+        .where('workspace_id', '=', ws)
+        .where('user_id', '=', userId)
+        .orderBy('plan_id')
+        .orderBy('period_start')
+        .execute(),
+    ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
       autoFollow: preference?.auto_follow ?? null,
@@ -389,6 +399,12 @@ export async function writePersonalData(
         name: p.name,
         description: p.description,
         createdAt: iso(p.created_at),
+      })),
+      planCapacity: capacity.map((c) => ({
+        planId: c.plan_id,
+        period: c.period_start,
+        amount: Number(c.amount),
+        note: c.note,
       })),
     }),
   );

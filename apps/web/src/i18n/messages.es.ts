@@ -4798,6 +4798,99 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.settings.failed': 'No se pudo guardar el plan.',
   'plans.settings.hiddenKept':
     '{count, plural, one {# fuente está oculta} other {# fuentes están ocultas}} para ti y {count, plural, one {seguirá} other {seguirán}} en el plan.',
+  'plans.section.capacity': 'Capacidad',
+  'plans.capacity.failed': 'No se pudo cargar la capacidad de este plan.',
+  'plans.capacity.earlier': 'Periodos anteriores',
+  'plans.capacity.later': 'Periodos siguientes',
+  'plans.capacity.current': 'Este periodo',
+  'plans.capacity.now': 'Ahora',
+  'plans.capacity.range': '{start} a {end}',
+  'plans.capacity.hint.points':
+    'El trabajo que vence en cada periodo frente a lo que cada equipo y persona puede asumir, en puntos del campo {field}. Un ticket cuenta entero en el periodo de su fecha de vencimiento.',
+  'plans.capacity.hint.hours':
+    'El trabajo que vence en cada periodo frente a lo que cada equipo y persona puede asumir, en horas de estimación original. Un ticket cuenta entero en el periodo de su fecha de vencimiento.',
+  'plans.capacity.hint.elsewhere':
+    '«En otra parte» es el resto del trabajo de alguien que vence en ese periodo: fuera de este plan, dejado fuera por los filtros u oculto para ti. Cuenta contra su capacidad y nunca se nombra. Se cuenta por semanas enteras, de lunes a domingo, cada una en el periodo que tiene la mayor parte de ella.',
+  'plans.capacity.noPointsField':
+    'Este sitio no tiene un campo Puntos, así que aquí ningún ticket tiene puntos: cada uno cuenta como sin estimación.',
+  'plans.capacity.noTeams': 'Este plan aún no tiene equipos.',
+  'plans.capacity.chooseTeams': 'Elige sus equipos en Configuración',
+  'plans.capacity.table': 'Capacidad por periodo',
+  'plans.capacity.who': 'Equipo o persona',
+  'plans.capacity.unscheduled': 'Abiertos, sin fecha de vencimiento',
+  'plans.capacity.teamMeta': 'Equipo · {count, plural, one {# persona} other {# personas}}',
+  'plans.capacity.inactive': '{name} (desactivada)',
+  'plans.capacity.unassigned': 'Sin asignar',
+  'plans.capacity.others': 'Personas de ninguno de estos equipos',
+  'plans.capacity.points': '{value, plural, one {# punto} other {# puntos}}',
+  'plans.capacity.hours': '{value, plural, one {# hora} other {# horas}}',
+  'plans.capacity.loadOf': '{load} de {capacity}',
+  'plans.capacity.noCapacity': 'Sin capacidad definida',
+  'plans.capacity.fromMembers': 'La capacidad de sus miembros',
+  'plans.capacity.over': 'Supera la capacidad en {amount}',
+  'plans.capacity.tickets': '{count, plural, one {# ticket} other {# tickets}}',
+  'plans.capacity.nothingDue': 'Nada vence',
+  'plans.capacity.noneOpen': 'Ninguno',
+  'plans.capacity.elsewhere':
+    '+{amount} en {count, plural, one {# ticket} other {# tickets}} en otra parte',
+  'plans.capacity.unestimated': '{count, plural, one {# sin estimación} other {# sin estimación}}',
+  'plans.capacity.link': '{tickets} de {who}, {period}: abrir la búsqueda',
+  'plans.capacity.set': 'Definir capacidad',
+  'plans.capacity.setFor': 'Definir la capacidad de {name}',
+  'plans.capacity.saved': 'Se guardó la capacidad de {name}.',
+  'plans.capacity.saveFailed': 'No se pudo guardar la capacidad.',
+  'plans.capacity.forbidden': 'No puedes cambiar la capacidad de este plan.',
+  'plans.capacity.notInPlan': 'Este equipo o persona ya no está en el plan. Recarga la página.',
+  'plans.capacity.settingsChanged':
+    'La unidad o los periodos de este plan cambiaron mientras tanto, así que no se guardó nada. Recarga la página y vuelve a poner la capacidad.',
+  'plans.capacity.dialog.title': 'Capacidad de {name}',
+  'plans.capacity.dialog.intro.points':
+    'Cuántos puntos puede asumir {name} en un periodo. Deja un campo vacío si no hay ninguno.',
+  'plans.capacity.dialog.intro.hours':
+    'Cuántas horas puede trabajar {name} en un periodo. Deja un campo vacío si no hay ninguna.',
+  'plans.capacity.dialog.every': 'Todos los periodos',
+  'plans.capacity.dialog.everyAmount': 'Capacidad para todos los periodos',
+  'plans.capacity.dialog.everyNote': 'Nota para todos los periodos',
+  'plans.capacity.dialog.periods': 'Periodos sueltos',
+  'plans.capacity.dialog.periodsHint':
+    'Un periodo que llenes aquí usa su propia capacidad: por vacaciones o un feriado, por ejemplo.',
+  'plans.capacity.dialog.amountFor': 'Capacidad para {period}',
+  'plans.capacity.dialog.noteFor': 'Nota para {period}',
+  'plans.capacity.dialog.save': 'Guardar capacidad',
+  'plans.capacity.dialog.cancel': 'Cancelar',
+  'plans.capacity.dialog.close': 'Cerrar',
+  'plans.capacity.dialog.invalid':
+    'Escribe un número de 0 a 100.000 con dos decimales como máximo, o déjalo vacío.',
+  'plans.capacity.dialog.noteNeedsAmount':
+    'Una nota va con una capacidad: escribe una para {period} o borra su nota.',
+  'plans.capacity.dialog.noteNeedsAmountEvery':
+    'Una nota va con una capacidad: escribe una para todos los periodos o borra su nota.',
+  'plans.settings.capacity': 'Equipos y capacidad',
+  'plans.settings.teams': 'Equipos',
+  'plans.settings.teamsHint':
+    'La vista Capacidad muestra cada equipo elegido y sus miembros. Un equipo no le da acceso a nadie.',
+  'plans.settings.noTeams':
+    'Este sitio aún no tiene equipos. Los administradores del sitio los crean en Configuración, en Equipos.',
+  'plans.settings.teamOption': '{name} ({count, plural, one {# persona} other {# personas}})',
+  'plans.settings.teamsFailed': 'No se pudieron cargar los equipos.',
+  'plans.settings.findTeam': 'Buscar un equipo',
+  'plans.settings.teamsChosen':
+    '{count, plural, =0 {Ningún equipo elegido} one {# equipo elegido} other {# equipos elegidos}}',
+  'plans.settings.teamGone':
+    'Un equipo que elegiste ya no existe. Recarga la página y vuelve a elegir.',
+  'plans.settings.unit': 'Contar el trabajo en',
+  'plans.settings.unit.points': 'Puntos',
+  'plans.settings.unit.hours': 'Horas de estimación original',
+  'plans.settings.period': 'Periodos',
+  'plans.settings.period.weeks': '{count, plural, one {Cada semana} other {Cada # semanas}}',
+  'plans.settings.period.month': 'Cada mes del calendario',
+  'plans.settings.anchor': 'Un periodo empieza el',
+  'plans.settings.capacityHint':
+    'Si cambias la unidad, se borra toda la capacidad definida en este plan. Si cambias los periodos, se borra la capacidad definida para periodos sueltos.',
+  'plans.settings.confirmUnit':
+    '¿Cambiar la unidad? Se borrará toda la capacidad definida en este plan.',
+  'plans.settings.confirmPeriod':
+    '¿Cambiar los periodos? Se borrará la capacidad definida para periodos sueltos.',
   'dashboards.mine': 'Tuyos',
   'dashboards.others': 'Compartidos contigo',
   'dashboards.chooseForWallboard': 'Mostrar {name} en la pantalla mural',

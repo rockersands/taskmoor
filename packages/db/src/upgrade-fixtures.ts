@@ -1709,6 +1709,34 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT 1, id, 'any_user' FROM plan WHERE name = 'Seed plan'`.execute(db);
     },
   },
+  '0102_plan_capacity': {
+    tables: {
+      plan: `name = 'Seed capacity plan' AND capacity_unit = 'hours' AND period_kind = 'weeks'
+        AND period_weeks = 3 AND period_anchor = DATE '2026-11-02'`,
+      plan_team: `team_id = (SELECT id FROM team WHERE name = 'Seed team')
+        AND plan_id = (SELECT id FROM plan WHERE name = 'Seed capacity plan')`,
+      // Its team's capacity for every period is written too; one row is checked per table.
+      plan_capacity: `user_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')
+        AND period_start = DATE '2026-11-23' AND amount = 12.5 AND note = 'Leave'`,
+    },
+    seed: async (db) => {
+      // A plan in hours over three-week periods that plans with the seed team: the team's
+      // capacity for every period, and the seed person's for one period, with a note (ADR-122).
+      await sql`INSERT INTO plan (workspace_id, owner_id, name, capacity_unit, period_kind,
+          period_weeks, period_anchor)
+        SELECT 1, id, 'Seed capacity plan', 'hours', 'weeks', 3, DATE '2026-11-02'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      const plan = sql`(SELECT id FROM plan WHERE name = 'Seed capacity plan')`;
+      const team = sql`(SELECT id FROM team WHERE name = 'Seed team')`;
+      await sql`INSERT INTO plan_team (workspace_id, plan_id, team_id, position)
+        VALUES (1, ${plan}, ${team}, 0)`.execute(db);
+      await sql`INSERT INTO plan_capacity (workspace_id, plan_id, team_id, amount)
+        VALUES (1, ${plan}, ${team}, 120)`.execute(db);
+      await sql`INSERT INTO plan_capacity (workspace_id, plan_id, user_id, period_start, amount, note)
+        SELECT 1, ${plan}, id, DATE '2026-11-23', 12.5, 'Leave'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

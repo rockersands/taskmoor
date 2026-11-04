@@ -89,6 +89,8 @@ const PERSONAL_TABLES = [
   'ai_notice_ack',
   'ldap_user',
   'scim_user',
+  // Their capacity in Multi-track plans and its notes (PLN-009; ADR-122).
+  'plan_capacity',
 ] as const;
 
 /** Every string in a JSON value equal to one of `from`'s keys (emails ignoring case) replaced. */

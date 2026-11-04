@@ -1,4 +1,4 @@
-import type { Database } from '@taskmoor/db';
+import type { Database, PlanCapacityUnit } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import type { z } from 'zod';
@@ -16,6 +16,7 @@ import {
   sourceKey,
   updateBody,
 } from '../plans/model';
+import { samePeriods } from '../plans/periods';
 import {
   browsedTracks,
   type PlanTickets,
@@ -67,7 +68,17 @@ type Row = {
   version: number;
   created_at: Date;
   updated_at: Date;
+  capacity_unit: PlanCapacityUnit;
+  period_kind: 'weeks' | 'month';
+  period_weeks: number;
+  period_anchor: string;
 };
+
+/** The plan's periods as the API says them (PLN-005). */
+export const periodOf = (row: Pick<Row, 'period_kind' | 'period_weeks' | 'period_anchor'>) =>
+  row.period_kind === 'month'
+    ? ({ kind: 'month' } as const)
+    : ({ kind: 'weeks', weeks: row.period_weeks, anchor: row.period_anchor } as const);
 
 /** How many assignees the filters offer; the rest are reached by a search. */
 const CHOICE_PEOPLE = 50;
@@ -90,6 +101,21 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
 /** Whether plan `p` is visible to the person: theirs, or shared with them. */
 export function planVisible(ws: number, userId: number): RawBuilder<boolean> {
   return sql<boolean>`(p.owner_id = ${userId} OR ${sharedWith(PLAN_SHARES, sql<number>`p.id`, ws, userId)})`;
+}
+
+/**
+ * The site teams a plan plans with, in order (PLN-005). Everyone signed in reads teams and their
+ * members (ADR-076), so naming them adds nothing a viewer could not already read.
+ */
+export async function planTeams(db: Db, planId: number): Promise<{ id: number; name: string }[]> {
+  return db
+    .selectFrom('plan_team as pt')
+    .innerJoin('team as t', 't.id', 'pt.team_id')
+    .select(['t.id', 't.name'])
+    .where('pt.plan_id', '=', planId)
+    .orderBy('pt.position')
+    .orderBy('t.id')
+    .execute();
 }
 
 export interface PlanRouteOptions {
@@ -127,6 +153,10 @@ export function registerPlanRoutes(
         'p.version',
         'p.created_at',
         'p.updated_at',
+        'p.capacity_unit',
+        'p.period_kind',
+        'p.period_weeks',
+        'p.period_anchor',
       ])
       .where('p.workspace_id', '=', ws);
 
@@ -143,10 +173,20 @@ export function registerPlanRoutes(
     return row.owner_id === request.user?.id || (await request.authz.isSiteAdmin());
   }
 
+  /** The plan's capacity settings and teams (PLN-005), the same for every viewer. */
+  async function settingsView(row: Row) {
+    return {
+      capacityUnit: row.capacity_unit,
+      period: periodOf(row),
+      teams: await planTeams(db, row.id),
+    };
+  }
+
   /** The plan as the API says it; with `tickets`, its sources as this viewer sees them. */
   async function view(request: FastifyRequest, row: Row, tickets: PlanTickets) {
     const shares = (await sharesOf(db, PLAN_SHARES, [row.id])).get(row.id) ?? [];
     return {
+      ...(await settingsView(row)),
       id: row.id,
       name: row.name,
       description: row.description,
@@ -239,6 +279,75 @@ export function registerPlanRoutes(
         })),
       )
       .execute();
+  }
+
+  /** Field errors for a plan's teams: duplicates, and teams the workspace does not have. */
+  async function teamErrors(ws: number, teams: readonly number[]) {
+    const fields: Record<string, string> = {};
+    if (new Set(teams).size !== teams.length) fields.teams = 'duplicate';
+    const found = new Set(
+      teams.length === 0
+        ? []
+        : (
+            await db
+              .selectFrom('team')
+              .select('id')
+              .where('workspace_id', '=', ws)
+              .where('id', 'in', [...teams])
+              .execute()
+          ).map((t) => t.id),
+    );
+    for (const [i, id] of teams.entries()) if (!found.has(id)) fields[`teams.${i}`] = 'not_found';
+    return fields;
+  }
+
+  /**
+   * The plan's teams replaced, in order. Capacity set for a team that leaves goes with it, and so
+   * does that of people who are in none of the teams left; both come back empty if they return.
+   */
+  async function writeTeams(
+    trx: Db,
+    ws: number,
+    planId: number,
+    teams: readonly number[],
+  ): Promise<number> {
+    await trx.deleteFrom('plan_team').where('plan_id', '=', planId).execute();
+    if (teams.length > 0) {
+      await trx
+        .insertInto('plan_team')
+        .values(
+          teams.map((teamId, position) => ({
+            workspace_id: ws,
+            plan_id: planId,
+            team_id: teamId,
+            position,
+          })),
+        )
+        .execute();
+    }
+    const kept = teams.length === 0 ? [0] : [...teams];
+    const ofTeams = await trx
+      .deleteFrom('plan_capacity')
+      .where('plan_id', '=', planId)
+      .where('team_id', 'is not', null)
+      .where('team_id', 'not in', kept)
+      .executeTakeFirst();
+    const ofPeople = await trx
+      .deleteFrom('plan_capacity')
+      .where('plan_id', '=', planId)
+      .where('user_id', 'is not', null)
+      .where(({ not, exists, selectFrom }) =>
+        not(
+          exists(
+            selectFrom('team_member as m')
+              .select('m.user_id')
+              .whereRef('m.user_id', '=', 'plan_capacity.user_id')
+              .where('m.team_id', 'in', kept),
+          ),
+        ),
+      )
+      .executeTakeFirst();
+    return Number(ofTeams.numDeletedRows) + Number(ofPeople.numDeletedRows);
   }
 
   /** The plan read again and answered, as the person sees it, with the filters. */
@@ -497,10 +606,14 @@ export function registerPlanRoutes(
       const added = body.shares.filter((s) => !before.has(shareKey(s)));
       if (await refuseShares(request, reply, added, body.shares)) return reply;
     }
+    if (body.teams !== undefined) {
+      const fields = await teamErrors(ws, body.teams);
+      if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
+    }
     const outcome = await db.transaction().execute(async (trx) => {
       const locked = await trx
         .selectFrom('plan')
-        .select('version')
+        .select(['version', 'capacity_unit', 'period_kind', 'period_weeks', 'period_anchor'])
         .where('id', '=', row.id)
         .forUpdate()
         .executeTakeFirst();
@@ -508,25 +621,60 @@ export function registerPlanRoutes(
       if (body.version !== undefined && body.version !== locked.version) {
         return { conflict: locked.version };
       }
+      const teamsBefore =
+        body.teams === undefined ? [] : (await planTeams(trx, row.id)).map((t) => t.id);
       const before = {
         name: row.name,
         description: row.description,
         sources: current.map((r) => sourceKey(inputOf(r))),
         shares: sharesBefore.map(shareKey).sort(),
+        teams: teamsBefore,
+        capacityUnit: locked.capacity_unit,
+        period: periodOf(locked),
       };
       const after = {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
         ...(sources !== undefined ? { sources: sources.map(sourceKey) } : {}),
         ...(body.shares !== undefined ? { shares: body.shares.map(shareKey).sort() } : {}),
+        ...(body.teams !== undefined ? { teams: body.teams } : {}),
+        ...(body.capacityUnit !== undefined ? { capacityUnit: body.capacityUnit } : {}),
+        ...(body.period !== undefined ? { period: body.period } : {}),
       };
       const changes = diff(before as Record<string, unknown>, after as Record<string, unknown>);
       if (Object.keys(changes).length === 0) return { unchanged: true as const };
+      // Amounts in one unit mean nothing in another, and a period's own capacity belongs to a
+      // period that no longer exists: both are cleared, and the event says how many went. An
+      // anchor moved by whole periods makes the same periods, so it clears nothing.
+      const cleared = changes.capacityUnit
+        ? await trx.deleteFrom('plan_capacity').where('plan_id', '=', row.id).executeTakeFirst()
+        : body.period !== undefined && !samePeriods(periodOf(locked), body.period)
+          ? await trx
+              .deleteFrom('plan_capacity')
+              .where('plan_id', '=', row.id)
+              .where('period_start', 'is not', null)
+              .executeTakeFirst()
+          : null;
+      let removed = Number(cleared?.numDeletedRows ?? 0);
+      if (body.teams !== undefined && changes.teams) {
+        removed += await writeTeams(trx, ws, row.id, body.teams);
+      }
+      if (removed > 0) changes.capacityCleared = { from: removed, to: 0 };
       await trx
         .updateTable('plan')
         .set({
           ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.description !== undefined ? { description: body.description } : {}),
+          ...(body.capacityUnit !== undefined ? { capacity_unit: body.capacityUnit } : {}),
+          ...(body.period !== undefined
+            ? body.period.kind === 'month'
+              ? { period_kind: 'month' as const }
+              : {
+                  period_kind: 'weeks' as const,
+                  period_weeks: body.period.weeks,
+                  period_anchor: body.period.anchor,
+                }
+            : {}),
           version: locked.version + 1,
           updated_at: new Date(),
         })

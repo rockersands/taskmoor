@@ -1,11 +1,16 @@
 import { ApiError } from '../api/client';
 import { dayNumber, isoDay, type Refusal } from '../timeline/client';
+import { fakeCapacity, PLAN_PERIOD, PLAN_TEAMS } from './capacityFixtures';
 import type {
+  CapacityEntry,
+  CapacitySettings,
+  CapacityUnit,
   Plan,
   PlanCalendar,
   PlanClient,
   PlanFilters,
   PlanInput,
+  PlanPeriod,
   PlanRow,
   PlanSummary,
   PlanTimeline,
@@ -157,6 +162,10 @@ export interface FakePlanOptions {
   editable?: boolean;
   /** The person viewing (for `assignee = me`). */
   me?: number;
+  /** A plan that plans with no teams yet. */
+  noTeams?: boolean;
+  /** Answer capacity changes with this code instead of saving them. */
+  refuseCapacity?: string;
 }
 
 const refusal = (r: string | Omit<Refusal, 'ok'>): Refusal =>
@@ -166,12 +175,20 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   items: () => PlanTimelineItem[];
   saved: PlanInput[];
   removed: number[];
+  capacitySaved: CapacityEntry[][];
+  /** The unit and periods each change of capacity said it was typed for. */
+  capacitySettings: (CapacitySettings | undefined)[];
 } {
+  const capacity = fakeCapacity();
+  let teams = options.noTeams ? [] : PLAN_TEAMS;
+  let unit: CapacityUnit = 'points';
+  let period: PlanPeriod = PLAN_PERIOD;
   let items = rolled(options.items ?? planItems());
   const me = options.me ?? ANA.id;
   const nothing = options.hidden === 'all';
   const saved: PlanInput[] = [];
   const removed: number[] = [];
+  const capacitySettings: (CapacitySettings | undefined)[] = [];
   let version = 1;
   let name = 'Spring launch';
   const plan = (filters: PlanFilters = {}): Plan => ({
@@ -199,6 +216,9 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
           ? `(${BASE}) AND ${filterText(filters)}`
           : BASE,
     version,
+    capacityUnit: unit,
+    period,
+    teams,
   });
   const shown = (filters: PlanFilters) =>
     nothing ? [] : items.filter((i) => passes(i, filters, me));
@@ -207,6 +227,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     items: () => items,
     saved,
     removed,
+    capacitySaved: capacity.saved,
+    capacitySettings,
     list: async (): Promise<PlanRow[]> => [
       {
         id: 12,
@@ -247,6 +269,9 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       }
       version++;
       if (input.name) name = input.name;
+      if (input.teams) teams = PLAN_TEAMS.filter((x) => input.teams?.includes(x.id));
+      if (input.capacityUnit) unit = input.capacityUnit;
+      if (input.period) period = input.period;
       return { ok: true, plan: plan() };
     },
     remove: async (id) => {
@@ -393,6 +418,35 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       );
       return { ok: true };
     },
+    capacity: async (_id, filters, from, periods) => {
+      const answer = capacity.answer(
+        shown(filters),
+        query(filters),
+        filters,
+        from,
+        periods,
+        options.editable ?? true,
+        unit,
+      );
+      return teams.length === 0 ? { ...answer, teams: [] } : answer;
+    },
+    setCapacity: async (_id, entries, settings) => {
+      capacitySettings.push(settings);
+      if (options.refuseCapacity) return options.refuseCapacity;
+      // As the server does: amounts typed for another unit or other periods are refused.
+      if (
+        settings &&
+        (settings.unit !== unit || JSON.stringify(settings.period) !== JSON.stringify(period))
+      ) {
+        return 'settings_changed';
+      }
+      return capacity.setCapacity(entries);
+    },
+    teamOptions: async () => [
+      { id: 3, name: 'Web', memberCount: 2 },
+      { id: 4, name: 'Ops', memberCount: 1 },
+      { id: 5, name: 'Data', memberCount: 4 },
+    ],
     sourceOptions: async () => ({
       tracks: [...TRACKS, { id: 3, key: 'DATA', name: 'Data' }],
       savedSearches: [

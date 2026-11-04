@@ -6,11 +6,41 @@ except the hierarchy grid (PLN-010) and baselines (PLN-011) (the user's decision
 `docs/plan/decisions.csv` rows "Multi-track scope" and "Multi-track first rules"). ADR-122 holds
 the decisions, with a section per stage.
 
-## Handoff (2026-11-03, second stage built)
+## Handoff (2026-11-03, third stage built)
 
-**State: MT-01 (T-088) is on `main`. MT-02 (T-089, dependencies) is built on
-`wave4/t089-plan-dependencies`, waiting for the coordinator's gate and merge.** MT-03 to MT-08
-(T-089b to T-089g) have not started.
+**State: MT-01 (T-088) and MT-02 (T-089) are on `main`. MT-03 (T-089b, teams and capacity) is
+built on `wave5/t089b-plan-capacity`, waiting for the coordinator's gate and merge.** MT-04 to
+MT-08 (T-089c to T-089g) have not started.
+
+- **Done (MT-03):** migration `0102_plan_capacity` (the plan's unit and periods as columns of
+  `plan`; `plan_team`; `plan_capacity`); PLN-005 and PLN-009 reworded to what is built and moved
+  to M1 (spec and `requirements-index.csv`); ADR-122's stage 3 section. Server:
+  `routes/plan-capacity.ts` (`GET` and `PUT /plans/:id/capacity`), `plans/periods.ts`; teams,
+  unit and periods in `PATCH /plans/:id`; one `plan.capacity_set` event, audited, with its
+  contract scenario; scope classes read and write; capacity in the data download and deleted on
+  erasure. Web: the plan's **Capacity** tab (`PlanCapacityPage`, a table on a desktop, a card per
+  row on a phone), `CapacityDialog`, `TeamPicker` and **Teams and capacity** in Settings. Manual:
+  the Teams and capacity section of `docs/manual/use/multi-track.md`, and capacity in the data
+  download and erasure of `docs/manual/admin/people-and-groups.md`.
+- **Rules:** a ticket counts whole in the period of its due day, for its assignee and each plan
+  team they are in; every count equals its search (row, period and the plan's query ANDed); a
+  team member's other work due then (outside the plan, filtered out or hidden) counts against
+  their capacity as one number, never named; over capacity is red and says so in words.
+- **Tests:** `plan-capacity.test.ts` (10: numbers equal their searches for three viewers, hidden
+  work only counted, filters, months, hours, an empty team, the anchor, teams leaving),
+  `privacy.test.ts` (download and erasure), the contract and scope tests,
+  `PlanCapacity.test.tsx` (8), stories `Plans/PlanPage` `Capacity`, `CapacityOnAPhone`,
+  `CapacityWithoutTeams`, `Settings` and `Plans/CapacityDialog` (axe, both skins), e2e
+  `plan-capacity.spec.ts` (desktop and phone). The size test reads Capacity too: 8 ms at
+  10,000 tickets, 23 ms at 100,000 (`TASKMOOR_LARGE_PLANS=1`).
+- **Kept, not built (an open question for the user, in ADR-122 stage 3):** velocity from
+  history, other teams' sprints as external iterations, days and percent with a working week,
+  allocations to outcomes and free-text entries, bulk copy, paste and fill, CSV import, and
+  re-running scheduling previews (with the auto-scheduler, MT-07). They need a requirement ID of
+  their own, which this stage was not given.
+- **Half-done:** nothing.
+
+### Second stage (MT-02, on `main`)
 
 - **Done (MT-02):** PLN-006 reworded to what is built and moved to M1 (spec and
   `requirements-index.csv`); ADR-122's stage 2 section. Server: `GET /plans/:id/timeline` reads
@@ -53,8 +83,8 @@ the decisions, with a section per stage.
 - **Half-done:** nothing.
 - **Not measured:** PLN-001 (1), 300 tracks and 50,000 tickets in under 3 s. The 20-track
   measurement above suggests it holds; `plans.large.test.ts` takes the size as constants.
-- **Still M2 in the spec:** PLN-002 to PLN-005, PLN-007 to PLN-009 and PLN-013 (PLN-006 moved with
-  MT-02). Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
+- **Still M2 in the spec:** PLN-002 to PLN-004, PLN-007, PLN-008 and PLN-013 (PLN-006 moved with
+  MT-02, PLN-005 and PLN-009 with MT-03). Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
 
 ### Open question for the user (not blocking)
 
@@ -79,6 +109,10 @@ the decisions, with a section per stage.
 - **Grouping by outcome** waits for a query condition "under this outcome" (the dialect already
   maps `parentEpic` to `parentOutcome`, which the search does not implement yet): then the List can
   link each group to its search. The Timeline already puts outcomes above their children.
+- **Capacity** (MT-03): `plan_capacity` and `apps/server/src/plans/periods.ts` hold capacity per team and person
+  and the plan's periods; the auto-scheduler (MT-07) and the program board (MT-05) can read them.
+  `GET /plans/:id/capacity` counts work by due day; a team's sprints as periods, and velocity,
+  would be a new `period_kind`.
 
 ### Tickets, in order
 
@@ -88,8 +122,8 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | Ticket | Backlog | What | Spec | Migration | State |
 |---|---|---|---|---|---|
 | MT-01 | T-088 | Plans with sources and sharing; Summary, Timeline, List and Calendar; group and filter in the address; the size limit; sidebar entry. PLN-001 moved to M1, PLN-012 added | PLN-001, PLN-012 | 0101 | On `main` |
-| MT-02 | T-089 | Dependencies view: lines and badges, late ones red, blockers outside the plan | PLN-006 | none | Built on `wave4/t089-plan-dependencies`, waiting for the gate |
-| MT-03 | T-089b | Teams and capacity, individual capacity | PLN-005, PLN-009 | next free | To do |
+| MT-02 | T-089 | Dependencies view: lines and badges, late ones red, blockers outside the plan | PLN-006 | none | On `main` |
+| MT-03 | T-089b | Teams and capacity, individual capacity: a Capacity view per team, person and period, capacity per team and person for every period or one, over capacity in red and in words, hidden work only counted | PLN-005, PLN-009 | 0102 | Built on `wave5/t089b-plan-capacity`, waiting for the gate |
 | MT-04 | T-089c | Releases across tracks | PLN-007 | next free | To do |
 | MT-05 | T-089d | Program board, edited in real time with the existing sync and Yjs tools where they fit | PLN-008 | next free | To do |
 | MT-06 | T-089e | Draft changes and scenarios | PLN-002, PLN-003 | next free | To do |
@@ -97,8 +131,7 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | our own wording | none expected | To do |
 
 PLN-010 (hierarchy grid) and PLN-011 (baselines) are not in this scope unless the user says so.
-Migration numbers: take the next free one on `main` when each stage starts (0102 and 0103 were held
-for this ticket and not used).
+Migration numbers: take the next free one on `main` when each stage starts (MT-03 took 0102).
 
 **Every ticket delivers:** spec, ADR section, routes with events, contract scenarios, audit
 decisions and scope classes, tests citing requirement IDs, en and es strings, shared glass styles and

@@ -243,6 +243,7 @@ export const AUDITED_EVENTS = [
   'plan.created',
   'plan.updated',
   'plan.deleted',
+  'plan.capacity_set',
   'track.summary_layout_set',
   'track.summary_layout_removed',
   'audit.settings_updated',

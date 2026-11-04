@@ -30,6 +30,12 @@ export interface PlanShare {
   roleName?: string | null;
 }
 
+/** What a plan counts work and capacity in (PLN-005). */
+export type CapacityUnit = 'points' | 'hours';
+
+/** A plan's periods: every 1 to 6 weeks from a first day, or each calendar month. */
+export type PlanPeriod = { kind: 'weeks'; weeks: number; anchor: string } | { kind: 'month' };
+
 /** `GET /api/v1/plans/:id`. */
 export interface Plan {
   id: number;
@@ -43,6 +49,87 @@ export interface Plan {
   /** The plan's query with the filters asked for: the List's search; null finds nothing. */
   query: string | null;
   version: number;
+  capacityUnit: CapacityUnit;
+  period: PlanPeriod;
+  /** The site teams it plans with, in order (PLN-005). */
+  teams: { id: number; name: string }[];
+}
+
+/** Tickets of the plan as the viewer sees them: how many, their estimates summed, and unestimated. */
+export interface CapacityWork {
+  count: number;
+  amount: number;
+  unestimated: number;
+}
+
+/** A row's work in one period against its capacity (PLN-005, PLN-009). */
+export interface CapacityCell extends CapacityWork {
+  /** Their other work due then: outside the plan, filtered out or hidden; never named. */
+  elsewhere: { count: number; amount: number };
+  /** The work here and elsewhere. */
+  load: number;
+  over: boolean;
+}
+
+/** A capacity in one period: that period's own, every period's, or a team's members' summed. */
+export interface PeriodCapacity {
+  amount: number | null;
+  note: string;
+  from: 'period' | 'default' | 'members' | null;
+}
+
+export interface CapacityOf {
+  /** The capacity set for every period. */
+  default: { amount: number; note: string } | null;
+  periods: PeriodCapacity[];
+}
+
+export interface CapacityPerson {
+  id: number;
+  name: string;
+  active: boolean;
+  /** Its condition, ANDed to the plan's query and a period's: the search behind a number. */
+  clause: string;
+  capacity: CapacityOf;
+  cells: CapacityCell[];
+  unscheduled: CapacityWork;
+}
+
+export interface CapacityTeam extends Omit<CapacityPerson, 'active'> {
+  members: CapacityPerson[];
+}
+
+/** `GET /api/v1/plans/:id/capacity`. */
+export interface PlanCapacity {
+  query: string | null;
+  editable: boolean;
+  unit: CapacityUnit;
+  /** The field points are read from; null when the workspace has none. */
+  pointsField: { id: number; name: string } | null;
+  period: PlanPeriod;
+  periods: { start: string; end: string; clause: string }[];
+  /** `from` for the periods before and after these. */
+  previous: string;
+  next: string;
+  unscheduledClause: string;
+  teams: CapacityTeam[];
+  unassigned: { clause: string; cells: CapacityWork[]; unscheduled: CapacityWork };
+  others: { clause: string; cells: CapacityWork[]; unscheduled: CapacityWork };
+}
+
+/** One capacity to set: a team's or a person's, every period (null) or one; null removes it. */
+export interface CapacityEntry {
+  teamId?: number;
+  userId?: number;
+  period: string | null;
+  amount: number | null;
+  note?: string;
+}
+
+/** The unit and periods capacities were typed for; the server refuses them for others. */
+export interface CapacitySettings {
+  unit: CapacityUnit;
+  period: PlanPeriod;
 }
 
 /** One row of `GET /api/v1/plans`. */
@@ -128,6 +215,10 @@ export interface PlanInput {
   description?: string;
   sources?: PlanSourceInput[];
   shares?: PlanShare[];
+  /** Team ids, in order. */
+  teams?: number[];
+  capacityUnit?: CapacityUnit;
+  period?: PlanPeriod;
 }
 
 export type PlanSaved =
@@ -150,10 +241,23 @@ export interface PlanClient {
   summary(id: number, filters: PlanFilters): Promise<PlanSummary>;
   timeline(id: number, filters: PlanFilters): Promise<PlanTimeline>;
   calendar(id: number, filters: PlanFilters, from: string, to: string): Promise<PlanCalendar>;
+  /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
+  capacity(id: number, filters: PlanFilters, from: string, periods: number): Promise<PlanCapacity>;
+  /**
+   * Sets capacities typed for `settings`; true when saved, else the refusal's code
+   * (`settings_changed` when the plan's unit or periods are no longer those).
+   */
+  setCapacity(
+    id: number,
+    entries: CapacityEntry[],
+    settings?: CapacitySettings,
+  ): Promise<true | string>;
   /** Rescheduling is the ticket's own change, as on a track. */
   reschedule: TimelineClient['reschedule'];
   move: CalendarClient['move'];
   sourceOptions(): Promise<SourceOptions>;
+  /** The site's teams, for a plan's settings. */
+  teamOptions(): Promise<{ id: number; name: string; memberCount: number }[]>;
 }
 
 /** The filters as query parameters, in a fixed order. */
@@ -198,6 +302,23 @@ export const planClient: PlanClient = {
   timeline: (id, filters) => api<PlanTimeline>(withFilters(`/plans/${id}/timeline`, filters)),
   calendar: (id, filters, from, to) =>
     api<PlanCalendar>(withFilters(`/plans/${id}/calendar`, filters, { from, to })),
+  capacity: (id, filters, from, periods) =>
+    api<PlanCapacity>(
+      withFilters(`/plans/${id}/capacity`, filters, { from, periods: String(periods) }),
+    ),
+  setCapacity: async (id, entries, settings) => {
+    try {
+      await api(`/plans/${id}/capacity`, { method: 'PUT', body: { entries, ...settings } });
+      return true;
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      return error.code ?? String(error.status);
+    }
+  },
+  teamOptions: async () =>
+    (await api<{ teams: { id: number; name: string; memberCount: number }[] }>('/teams')).teams.map(
+      (t) => ({ id: t.id, name: t.name, memberCount: t.memberCount }),
+    ),
   reschedule: timelineClient.reschedule,
   move: calendarClient.move,
   sourceOptions: async () => {

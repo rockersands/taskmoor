@@ -101,6 +101,253 @@
   cursor: pointer;
 }
 
+/* Teams and capacity (T-089b; PLN-005, PLN-009; ADR-122 stage 3): a table of teams and people
+   by period on a desktop, a card per row on a phone. Over capacity is red and says so in words. */
+
+.plan-capacity {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.plan-capacity > p {
+  margin: 0;
+}
+
+.capacity-tools h2 {
+  min-width: 14rem;
+}
+
+.capacity-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.capacity-scroll:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.capacity-table {
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-200);
+}
+
+.capacity-table th,
+.capacity-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.capacity-table thead th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-surface-sunken);
+}
+
+.capacity-table thead th.is-current {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.capacity-table tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  min-width: 11rem;
+  max-width: 16rem;
+  background: var(--color-surface-raised);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.capacity-table tbody th > * {
+  display: block;
+}
+
+.capacity-table tbody th > * + * {
+  margin-top: var(--space-1);
+}
+
+.capacity-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.capacity-row.is-team th,
+.capacity-row.is-team td {
+  background: var(--color-surface-sunken);
+}
+
+.capacity-card-title {
+  margin: 0;
+  font-size: var(--font-size-300);
+  overflow-wrap: anywhere;
+}
+
+.capacity-row.is-team .capacity-name,
+.capacity-card.is-team .capacity-card-title {
+  font-weight: 600;
+}
+
+.capacity-row.is-person th {
+  padding-inline-start: var(--space-5);
+}
+
+.capacity-row.is-unassigned th,
+.capacity-row.is-others th {
+  font-style: italic;
+}
+
+.capacity-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 8rem;
+}
+
+.capacity-cell.is-over {
+  padding-inline-start: var(--space-2);
+  border-inline-start: 3px solid var(--color-danger);
+}
+
+.capacity-load {
+  font-variant-numeric: tabular-nums;
+}
+
+.capacity-bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.capacity-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width var(--motion-base) var(--ease-soft);
+}
+
+.is-over .capacity-bar > span {
+  background: var(--color-danger);
+}
+
+.capacity-over {
+  color: var(--color-danger);
+}
+
+.capacity-muted,
+.capacity-elsewhere,
+.capacity-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.capacity-note {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.capacity-now {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-size: var(--font-size-100);
+}
+
+.capacity-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capacity-card {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.capacity-card.is-person {
+  margin-inline-start: var(--space-3);
+}
+
+.capacity-card dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+}
+
+.capacity-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(6rem, 38%) minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.capacity-card dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.capacity-card dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.capacity-card .capacity-cell {
+  min-width: 0;
+}
+
+.plan-capacity-settings {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.plan-capacity-settings-row,
+.capacity-dialog-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.capacity-dialog-row .form-field:last-child {
+  flex: 1 1 12rem;
+}
+
+.capacity-dialog-group {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.capacity-dialog-group input[inputmode="decimal"] {
+  width: 8rem;
+}
+
 @media (max-width: 40rem) {
   .plan-filters .form-field {
     flex: 1 1 100%;
@@ -112,7 +359,33 @@
   }
 }
 
+@media (max-width: 40rem) {
+  .capacity-dialog-row .form-field,
+  .plan-capacity-settings-row .form-field {
+    flex: 1 1 100%;
+  }
+
+  .capacity-dialog-group input[inputmode="decimal"],
+  .plan-capacity-settings select {
+    width: 100%;
+  }
+}
+
 @media (pointer: coarse) {
+  .capacity-tools button,
+  .capacity-set,
+  .capacity-count,
+  .capacity-dialog input,
+  .plan-capacity-settings select,
+  .plan-capacity-settings input {
+    min-height: var(--hit-target-touch);
+  }
+
+  .capacity-count {
+    display: inline-flex;
+    align-items: center;
+  }
+
   .plan-filters select,
   .plan-filters button,
   .plan-source-group input,
