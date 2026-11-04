@@ -234,7 +234,6 @@
   height: 100%;
   border-radius: inherit;
   background: var(--color-accent);
-  transition: width var(--motion-base) var(--ease-soft);
 }
 
 .is-over .capacity-bar > span {
