@@ -1567,11 +1567,34 @@
       "description text not null default ''::text",
       "version integer not null default 1",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "capacity_unit text not null default 'points'::text",
+      "period_kind text not null default 'weeks'::text",
+      "period_weeks smallint not null default 2",
+      "period_anchor date not null default '2024-01-01'::date"
     ],
     "indexes": [
       "CREATE INDEX plan_owner_idx ON public.plan USING btree (workspace_id, owner_id)",
       "CREATE UNIQUE INDEX plan_pkey ON public.plan USING btree (id)"
+    ]
+  },
+  "plan_capacity": {
+    "columns": [
+      "id integer not null default nextval('plan_capacity_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "plan_id integer not null",
+      "team_id integer",
+      "user_id integer",
+      "period_start date",
+      "amount numeric not null",
+      "note text not null default ''::text"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX plan_capacity_pkey ON public.plan_capacity USING btree (id)",
+      "CREATE INDEX plan_capacity_team_idx ON public.plan_capacity USING btree (team_id) WHERE (team_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX plan_capacity_team_key ON public.plan_capacity USING btree (plan_id, team_id, COALESCE(period_start, '0001-01-01'::date)) WHERE (team_id IS NOT NULL)",
+      "CREATE INDEX plan_capacity_user_idx ON public.plan_capacity USING btree (user_id) WHERE (user_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX plan_capacity_user_key ON public.plan_capacity USING btree (plan_id, user_id, COALESCE(period_start, '0001-01-01'::date)) WHERE (user_id IS NOT NULL)"
     ]
   },
   "plan_share": {
@@ -1610,6 +1633,18 @@
       "CREATE INDEX plan_source_plan_idx ON public.plan_source USING btree (plan_id, \"position\")",
       "CREATE INDEX plan_source_saved_search_idx ON public.plan_source USING btree (saved_search_id) WHERE (saved_search_id IS NOT NULL)",
       "CREATE INDEX plan_source_track_idx ON public.plan_source USING btree (track_id) WHERE (track_id IS NOT NULL)"
+    ]
+  },
+  "plan_team": {
+    "columns": [
+      "workspace_id integer not null",
+      "plan_id integer not null",
+      "team_id integer not null",
+      "position integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX plan_team_pkey ON public.plan_team USING btree (plan_id, team_id)",
+      "CREATE INDEX plan_team_team_idx ON public.plan_team USING btree (team_id)"
     ]
   },
   "priority": {

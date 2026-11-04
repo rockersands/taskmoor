@@ -49,6 +49,24 @@ export const createBody = z
   })
   .strict();
 
+/** How many teams a plan plans with (PLN-005). */
+export const MAX_TEAMS = 50;
+
+/** What a plan counts work and capacity in (PLN-005; ADR-122 stage 3). */
+export const CAPACITY_UNITS = ['points', 'hours'] as const;
+
+/** A plan's periods: every 1 to 6 weeks from a first day, or each calendar month. */
+export const periodInput = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('weeks'),
+      weeks: z.number().int().min(1).max(6),
+      anchor: z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD'),
+    })
+    .strict(),
+  z.object({ kind: z.literal('month') }).strict(),
+]);
+
 export const updateBody = z
   .object({
     name: name.optional(),
@@ -56,6 +74,12 @@ export const updateBody = z
     /** The sources the editor sees, in order; those hidden from them are kept. */
     sources: z.array(sourceInput).max(MAX_SOURCES).optional(),
     shares: z.array(planShareInput).max(100).optional(),
+    /** The site teams the plan plans with, in order (PLN-005). */
+    teams: z.array(idNum).max(MAX_TEAMS).optional(),
+    /** Changing it clears every capacity set: amounts in one unit mean nothing in another. */
+    capacityUnit: z.enum(CAPACITY_UNITS).optional(),
+    /** Changing it clears the capacity set for single periods; that for every period stays. */
+    period: periodInput.optional(),
     version: z.number().int().positive().optional(),
   })
   .strict();
@@ -90,3 +114,46 @@ const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
 export const calendarQuery = z.object({ ...filterShape, from: day, to: day }).strict();
 /** The longest range a calendar asks for: the six weeks a month shows, and some room. */
 export const MAX_CALENDAR_DAYS = 100;
+
+/** How many periods the capacity view shows at most (PLN-005). */
+export const MAX_PERIODS = 12;
+/** The capacity view: the filters, the day whose period comes first, and how many periods. */
+export const capacityQuery = z
+  .object({
+    ...filterShape,
+    from: day.optional(),
+    periods: z.coerce.number().int().min(1).max(MAX_PERIODS).optional(),
+  })
+  .strict();
+
+/** A capacity in the plan's unit: from 0 to 100,000, in hundredths at most. */
+const amount = z
+  .number()
+  .min(0)
+  .max(100_000)
+  .refine((v) => Math.abs(Math.round(v * 100) - v * 100) < 1e-6, 'at most two decimals');
+
+/**
+ * One capacity to set (PLN-005, PLN-009): a team's or a person's, for every period (`period`
+ * null) or for the period starting that day; `amount` null removes it.
+ */
+export const capacityEntry = z
+  .object({
+    teamId: idNum.optional(),
+    userId: idNum.optional(),
+    period: day.nullable(),
+    amount: amount.nullable(),
+    note: z.string().trim().max(200).optional(),
+  })
+  .strict()
+  .refine((e) => (e.teamId === undefined) !== (e.userId === undefined), {
+    message: 'team_or_person',
+    path: ['teamId'],
+  });
+export type CapacityEntry = z.infer<typeof capacityEntry>;
+
+/** How many capacities one change sets at most: a row's every period, and some. */
+export const MAX_CAPACITY_ENTRIES = 200;
+export const capacityBody = z
+  .object({ entries: z.array(capacityEntry).min(1).max(MAX_CAPACITY_ENTRIES) })
+  .strict();

@@ -1060,6 +1060,26 @@ export const EVENT_TYPES = {
   'plan.updated': { subject: 'plan', payload: z.object({ changes }) },
   'plan.deleted': { subject: 'plan', payload: z.object({ name: z.string() }) },
   /**
+   * Capacity set, changed or removed in a plan (PLN-005, PLN-009; ADR-122 stage 3): for a team
+   * (`team:3`) or a person (`user:12`), every period (null) or one period's first day, with the
+   * amount and note before and after (null for none).
+   */
+  'plan.capacity_set': {
+    subject: 'plan',
+    payload: z.object({
+      changes: z
+        .array(
+          z.object({
+            subject: z.string(),
+            period: z.string().nullable(),
+            from: z.object({ amount: z.number(), note: z.string() }).nullable(),
+            to: z.object({ amount: z.number(), note: z.string() }).nullable(),
+          }),
+        )
+        .min(1),
+    }),
+  },
+  /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay
    * in the workflow, as they can carry tokens.

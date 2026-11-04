@@ -1114,6 +1114,40 @@ export interface PlanTable {
   version: Generated<number>;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+  /** What work and capacity are counted in (PLN-005; ADR-122 stage 3). */
+  capacity_unit: Generated<PlanCapacityUnit>;
+  /** Periods of `period_weeks` weeks from `period_anchor`, or calendar months. */
+  period_kind: Generated<PlanPeriodKind>;
+  period_weeks: Generated<number>;
+  /** A first day of a period (YYYY-MM-DD); periods repeat from it both ways. */
+  period_anchor: ColumnType<string, string | undefined, string>;
+}
+
+export type PlanCapacityUnit = 'points' | 'hours';
+export type PlanPeriodKind = 'weeks' | 'month';
+
+/** A site team a plan plans with (PLN-005), in the order chosen; it gives no access. */
+export interface PlanTeamTable {
+  workspace_id: number;
+  plan_id: number;
+  team_id: number;
+  position: number;
+}
+
+/**
+ * How much a team or a person can take on in a plan's periods, in its unit (PLN-005, PLN-009):
+ * `period_start` null for every period, or one period's first day for that period alone.
+ */
+export interface PlanCapacityTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  team_id: number | null;
+  user_id: number | null;
+  period_start: DateText;
+  /** numeric(8, 2), read as text. */
+  amount: ColumnType<string, number | string, number | string>;
+  note: Generated<string>;
 }
 
 export type PlanSourceKind = 'track' | 'saved_search';
@@ -2845,6 +2879,8 @@ export interface Database {
   plan: PlanTable;
   plan_source: PlanSourceTable;
   plan_share: PlanShareTable;
+  plan_team: PlanTeamTable;
+  plan_capacity: PlanCapacityTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

@@ -18,7 +18,7 @@ const nextAddress = () => `100.89.${Math.floor(++address / 250)}.${(address % 25
  * a year, each feature blocking the next under its outcome and the last one blocking the first of
  * the next track's, the very last blocking the very first (left out by the first 10,000, so
  * only counted) and a ticket outside the plan blocking the second (PLN-006), read by a member
- * of every track. Every gate reads 10,000 tickets;
+ * of every track, whose team the plan plans with (PLN-005). Every gate reads 10,000 tickets;
  * the M1 bar of 100,000 runs with
  *   TASKMOOR_LARGE_PLANS=1 npx vitest run --project=server apps/server/src/routes/plans.large.test.ts
  * Each view, and the List's search and groups, is read five times; the median must stay under a
@@ -248,6 +248,27 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     });
     expect(made.statusCode, made.body).toBe(201);
     plan = made.json().plan.id;
+    // Teams and capacity (PLN-005): the plan plans with the member's team, 30 points a period.
+    const team = await as({ method: 'POST', url: '/api/v1/teams', payload: { name: 'Big team' } });
+    expect(team.statusCode, team.body).toBe(201);
+    const teamId = team.json().team.id as number;
+    const joined = await as({
+      method: 'PUT',
+      url: `/api/v1/teams/${teamId}/members/${ids.member}`,
+    });
+    expect(joined.statusCode, joined.body).toBe(204);
+    const planned = await as({
+      method: 'PATCH',
+      url: `/api/v1/plans/${plan}`,
+      payload: { teams: [teamId], period: { kind: 'weeks', weeks: 2, anchor: '2027-01-04' } },
+    });
+    expect(planned.statusCode, planned.body).toBe(200);
+    const set = await as({
+      method: 'PUT',
+      url: `/api/v1/plans/${plan}/capacity`,
+      payload: { entries: [{ teamId, period: null, amount: 30 }] },
+    });
+    expect(set.statusCode, set.body).toBe(200);
   }, 900_000);
   afterAll(async () => {
     await app.close();
@@ -288,6 +309,20 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
       url: `/api/v1/plans/${plan}/timeline?assignee=me&track=BIG3`,
     });
     await timed('choices', { method: 'GET', url: `/api/v1/plans/${plan}/choices` });
+    // Capacity over six periods: the team's first period is the count of its search.
+    const capacity = await timed('capacity', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/capacity?from=2027-03-01&periods=6`,
+    });
+    const team = (capacity.teams as { clause: string; cells: { count: number }[] }[])[0];
+    const period = (capacity.periods as { clause: string }[])[0];
+    const found = await read({
+      method: 'POST',
+      url: '/api/v1/search',
+      payload: { q: `(${query}) AND ${team?.clause} AND ${period?.clause}`, count: true, limit: 1 },
+    });
+    expect(team?.cells[0]?.count).toBeGreaterThan(0);
+    expect(team?.cells[0]?.count).toBe(found.total.count);
     // The List is the search with the plan's query, and its groups the two-dimensional report.
     await timed('list', {
       method: 'POST',

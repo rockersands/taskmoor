@@ -208,6 +208,23 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         description: 'Looked at the tray',
       })
       .execute();
+    // [PLN-009] Kalo's capacity in Mi's plan, with its note.
+    const plan = await database.db
+      .insertInto('plan')
+      .values({ workspace_id: 1, owner_id: users.mi?.id as number, name: 'Mi’s plan' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_capacity')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        user_id: kalo,
+        period_start: '2026-11-02',
+        amount: 12.5,
+        note: 'Leave',
+      })
+      .execute();
     const key = newObjectKey(1);
     const bytes = Buffer.from('a photo of the tray');
     const put = await store.put(key, Readable.from([bytes]), { maxBytes: 1000 });
@@ -334,6 +351,10 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     });
     expect(profile.sessions.length).toBeGreaterThan(0);
     expect(JSON.stringify(profile)).not.toMatch(/password_hash|token_hash|scrypt/);
+    // Their capacity in plans, by the plan's id: the plan may be hidden from them.
+    expect(JSON.parse(String(zip['preferences.json'])).planCapacity).toEqual([
+      { planId: plan.id, period: '2026-11-02', amount: 12.5, note: 'Leave' },
+    ]);
     const tickets = lines(zip['tickets.ndjson']);
     expect(tickets).toEqual([
       expect.objectContaining({
@@ -493,6 +514,16 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         expires_at: new Date(Date.now() + 86_400_000),
       })
       .execute();
+    // [PLN-009] Kalo's capacity in a plan, with a note about Kalo.
+    const plan = await database.db
+      .insertInto('plan')
+      .values({ workspace_id: 1, owner_id: mi, name: 'Toner plan' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_capacity')
+      .values({ workspace_id: 1, plan_id: plan.id, user_id: kalo, amount: 4, note: 'Part time' })
+      .execute();
     await work();
     const before = await verifyChain(database.db, 1);
     expect(before.ok).toBe(true);
@@ -525,6 +556,8 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       'api_token',
       'totp_credential',
       'personal_export',
+      // [PLN-009] Their capacity in plans, notes and all; the plan stays.
+      'plan_capacity',
     ] as const) {
       const left = await database.db
         .selectFrom(table)
@@ -533,6 +566,9 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         .executeTakeFirstOrThrow();
       expect(Number(left.n), table).toBe(0);
     }
+    expect(
+      await database.db.selectFrom('plan').select('id').where('id', '=', plan.id).execute(),
+    ).toHaveLength(1);
     // The old session no longer works and the old email signs nobody in.
     expect((await get('kalo', '/api/v1/session')).json().user ?? null).toBeNull();
     expect((await signIn('kalo@example.com')).statusCode).toBe(401);
