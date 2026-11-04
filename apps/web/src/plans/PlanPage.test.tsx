@@ -44,6 +44,7 @@ describe('a Multi-track plan (PLN-001, PLN-012)', () => {
       'Timeline',
       'List',
       'Calendar',
+      'Capacity',
       'Settings',
     ]);
     const searched = (link: HTMLElement) =>

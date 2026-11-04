@@ -65,7 +65,5 @@ export function isPeriodStart(setting: PeriodSetting, day: string): boolean {
 /** Whether two settings make the same periods: an anchor moved by whole periods changes none. */
 export function samePeriods(a: PeriodSetting, b: PeriodSetting): boolean {
   if (a.kind === 'month' || b.kind === 'month') return a.kind === b.kind;
-  return (
-    a.weeks === b.weeks && (dayNumber(a.anchor) - dayNumber(b.anchor)) % (a.weeks * 7) === 0
-  );
+  return a.weeks === b.weeks && (dayNumber(a.anchor) - dayNumber(b.anchor)) % (a.weeks * 7) === 0;
 }

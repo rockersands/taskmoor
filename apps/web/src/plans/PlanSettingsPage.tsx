@@ -1,8 +1,17 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
-import type { Plan, PlanClient, PlanShare, PlanSourceInput, SourceOptions } from './client';
+import type {
+  CapacityUnit,
+  Plan,
+  PlanClient,
+  PlanPeriod,
+  PlanShare,
+  PlanSourceInput,
+  SourceOptions,
+} from './client';
 import { SourcePicker } from './SourcePicker';
+import { type TeamOption, TeamPicker } from './TeamPicker';
 
 type Visibility = 'private' | 'any_user' | 'custom';
 
@@ -20,6 +29,18 @@ const inputOf = (plan: Plan): PlanSourceInput[] =>
       : { kind: 'savedSearch', savedSearchId: s.id },
   );
 
+const DAY_MS = 86_400_000;
+const dayNumber = (day: string) => Math.floor(Date.parse(`${day}T00:00:00Z`) / DAY_MS);
+
+/** Whether two settings make the same periods: an anchor moved by whole periods changes none. */
+function samePeriods(a: PlanPeriod, b: PlanPeriod): boolean {
+  if (a.kind === 'month' || b.kind === 'month') return a.kind === b.kind;
+  return a.weeks === b.weeks && (dayNumber(a.anchor) - dayNumber(b.anchor)) % (a.weeks * 7) === 0;
+}
+
+/** The choices of the periods' select: every 1 to 6 weeks, or each calendar month. */
+const PERIOD_CHOICES = ['1', '2', '3', '4', '5', '6', 'month'] as const;
+
 export interface PlanSettingsPageProps {
   plan: Plan;
   client: PlanClient;
@@ -30,6 +51,9 @@ export interface PlanSettingsPageProps {
  * A plan's settings (PLN-001), for its owner and site administrators: its name, description,
  * sources and who sees it, and deleting it. The sources hidden from the editor stay as they are:
  * nobody removes what they cannot see. Sharing needs "Share dashboards and saved searches".
+ * Teams and capacity (PLN-005): the site teams the plan plans with, the unit work and capacity
+ * are counted in and its periods. A new unit clears every capacity set, and new periods the
+ * capacity set for single periods, so each asks first.
  */
 export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProps) {
   const t = useT();
@@ -43,6 +67,14 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [optionsFailed, setOptionsFailed] = useState(false);
+  const [teams, setTeams] = useState<number[]>(() => plan.teams.map((x) => x.id));
+  const [teamOptions, setTeamOptions] = useState<TeamOption[] | null>(null);
+  const [teamsFailed, setTeamsFailed] = useState(false);
+  const [unit, setUnit] = useState<CapacityUnit>(plan.capacityUnit);
+  const [periodChoice, setPeriodChoice] = useState<string>(
+    plan.period.kind === 'month' ? 'month' : String(plan.period.weeks),
+  );
+  const [anchor, setAnchor] = useState(plan.period.kind === 'weeks' ? plan.period.anchor : '');
 
   // Read once per plan, not again for each version saved.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan, not per version
@@ -71,8 +103,40 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     };
   }, [client, plan.id]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan, not per version
+  useEffect(() => {
+    let live = true;
+    client.teamOptions().then(
+      (list) => {
+        if (!live) return;
+        // A team the plan has that the list did not give still shows, ticked.
+        const all: TeamOption[] = [...list];
+        for (const x of plan.teams) {
+          if (!all.some((o) => o.id === x.id)) all.push({ ...x, memberCount: null });
+        }
+        setTeamOptions(all);
+      },
+      () => live && setTeamsFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, plan.id]);
+
+  const period: PlanPeriod | null =
+    periodChoice === 'month'
+      ? { kind: 'month' }
+      : anchor
+        ? { kind: 'weeks', weeks: Number(periodChoice), anchor }
+        : null;
+
   const save = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !period) return;
+    if (unit !== plan.capacityUnit) {
+      if (!window.confirm(t('plans.settings.confirmUnit'))) return;
+    } else if (!samePeriods(period, plan.period)) {
+      if (!window.confirm(t('plans.settings.confirmPeriod'))) return;
+    }
     setBusy(true);
     setProblem(null);
     setStatus('');
@@ -83,6 +147,9 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
       ...(visibility === 'custom'
         ? {}
         : { shares: visibility === 'private' ? [] : [{ scope: 'any_user' as const }] }),
+      teams,
+      capacityUnit: unit,
+      period,
       version: plan.version,
     });
     setBusy(false);
@@ -96,9 +163,11 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         ? t('plans.settings.conflict')
         : saved.error === 'forbidden'
           ? t('plans.settings.mayNotShare')
-          : Object.values(saved.fields).includes('not_found')
-            ? t('plans.create.sourceGone')
-            : t('plans.settings.failed'),
+          : Object.keys(saved.fields).some((k) => k.startsWith('teams'))
+            ? t('plans.settings.teamGone')
+            : Object.values(saved.fields).includes('not_found')
+              ? t('plans.create.sourceGone')
+              : t('plans.settings.failed'),
     );
   };
 
@@ -163,6 +232,58 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
           )}
         </select>
       </div>
+      <fieldset className="plan-capacity-settings">
+        <legend>{t('plans.settings.capacity')}</legend>
+        {teamsFailed ? (
+          <p className="board-problem" role="alert">
+            {t('plans.settings.teamsFailed')}
+          </p>
+        ) : (
+          <TeamPicker options={teamOptions} value={teams} onChange={setTeams} />
+        )}
+        <div className="plan-capacity-settings-row">
+          <label className="form-field" htmlFor={`${id}-unit`}>
+            <span className="form-label">{t('plans.settings.unit')}</span>
+            <select
+              id={`${id}-unit`}
+              value={unit}
+              onChange={(event) => setUnit(event.target.value as CapacityUnit)}
+            >
+              <option value="points">{t('plans.settings.unit.points')}</option>
+              <option value="hours">{t('plans.settings.unit.hours')}</option>
+            </select>
+          </label>
+          <label className="form-field" htmlFor={`${id}-period`}>
+            <span className="form-label">{t('plans.settings.period')}</span>
+            <select
+              id={`${id}-period`}
+              value={periodChoice}
+              onChange={(event) => setPeriodChoice(event.target.value)}
+            >
+              {PERIOD_CHOICES.map((choice) => (
+                <option key={choice} value={choice}>
+                  {choice === 'month'
+                    ? t('plans.settings.period.month')
+                    : t('plans.settings.period.weeks', { count: Number(choice) })}
+                </option>
+              ))}
+            </select>
+          </label>
+          {periodChoice !== 'month' && (
+            <label className="form-field" htmlFor={`${id}-anchor`}>
+              <span className="form-label">{t('plans.settings.anchor')}</span>
+              <input
+                id={`${id}-anchor`}
+                type="date"
+                required
+                value={anchor}
+                onChange={(event) => setAnchor(event.target.value)}
+              />
+            </label>
+          )}
+        </div>
+        <p className="board-hint">{t('plans.settings.capacityHint')}</p>
+      </fieldset>
       <p className="board-hint" role="status">
         {status}
       </p>
@@ -172,7 +293,7 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button-primary" disabled={busy || !name.trim()}>
+        <button type="submit" className="button-primary" disabled={busy || !name.trim() || !period}>
           {t('plans.settings.save')}
         </button>
         <button type="button" className="button-secondary" onClick={() => void remove()}>
