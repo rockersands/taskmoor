@@ -1,7 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Notifications/InboxPage',
@@ -49,8 +61,25 @@ export const Snooze: Story = {
   },
 };
 
+/** Nothing yet: the picture and what arrives here. */
 export const Empty: Story = {
   args: { client: fakeInboxClient([]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/^Nothing here/)).toBeVisible();
+    await expect(canvas.getByText(/^Mentions of you and changes/)).toBeVisible();
+  },
+};
+
+/** At a phone's width: the views wrap and the items' actions fall under their words. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Ana Ruiz mentioned you in a comment')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /^Priority/ })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };
 
 /** All read: nothing stands out, and there is nothing to mark. */

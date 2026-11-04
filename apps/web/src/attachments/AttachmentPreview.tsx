@@ -188,7 +188,7 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
     <div className="attachment-preview-backdrop">
       <div
         ref={dialogRef}
-        className="attachment-preview"
+        className="ticket-dialog attachment-preview"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -83,7 +83,7 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
       </p>
     );
   }
-  if (!data) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const date = (day: string, year = false) =>
     intl.formatDate(new Date(`${day}T00:00:00Z`), {
@@ -344,8 +344,12 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
           ))}
         </ul>
       ) : (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-        <section className="capacity-scroll glass-card" aria-label={tableName} tabIndex={0}>
+        <section
+          className="glass-card glass-scroller capacity-scroll"
+          aria-label={tableName}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+          tabIndex={0}
+        >
           <table className="capacity-table">
             <thead>
               <tr>

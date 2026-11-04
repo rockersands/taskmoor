@@ -799,6 +799,8 @@
 }
 
 .home-list {
+  display: grid;
+  min-width: 0;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-3);

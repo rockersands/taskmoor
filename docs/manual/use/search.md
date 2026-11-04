@@ -3,14 +3,15 @@ title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
 sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts
-accessed: 2026-11-03
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Search and the query language
 
 **Search** in the navigation finds tickets. It has a basic mode for everyday questions and an
 advanced mode where you write a query. The same query language describes boards, list filters,
-format rules and dashboard widgets. A search only ever finds tickets you may see.
+format rules and dashboard widgets. A search only ever finds tickets you may see. One that finds
+none says so, and what to try next.
 
 ## Basic search
 
@@ -307,7 +308,8 @@ project = PAY AND issuetype = Bug AND fixVersion IN unreleasedVersions() AND rep
 
 ## Saved searches
 
-The **Saved searches** bar on the search page keeps queries for later.
+The **Saved searches** bar on the search page keeps queries for later. With none yet, it says so
+and how to make the first.
 
 - **Choose a saved search** lists those you can see (others' with their owner's name);
   **Open** shows its query, its columns and its results.

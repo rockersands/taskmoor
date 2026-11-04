@@ -1,56 +1,9 @@
 /* The inbox (M1-058): cards that wrap, so phones never scroll sideways; 44px on touch. */
-.inbox-page {
-  max-width: 56rem;
-}
-
-.inbox-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-}
-
-.inbox-count {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-200);
-}
-
 .inbox-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-4);
-  margin: var(--space-3) 0;
-}
-
-.inbox-views {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  min-width: 0;
-  margin: 0;
-  border: 0;
-  padding: var(--space-1);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-}
-
-.inbox-view {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-4);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.inbox-view[aria-pressed="true"] {
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-1);
-  font-weight: var(--font-weight-strong);
 }
 
 .inbox-view-count {
@@ -73,15 +26,10 @@
   min-width: 0;
 }
 
-.inbox-filter select {
-  max-width: 100%;
-  min-height: var(--hit-target);
-}
-
 .inbox-list {
   display: grid;
   gap: var(--space-2);
-  margin: 0 0 var(--space-4);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -93,16 +41,14 @@
   gap: var(--space-2) var(--space-4);
   min-width: 0;
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-2);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
-.inbox-item-unread {
-  background: var(--color-surface-raised);
+/* Unread: an accent bar on the card's edge and a heavier first line, on the same glass. */
+.glass-card.inbox-item-unread {
   box-shadow:
     inset 4px 0 0 var(--color-accent),
-    var(--shadow-1);
+    var(--glass-highlight),
+    var(--glass-contact);
 }
 
 .inbox-body {
@@ -157,35 +103,11 @@
   font-size: var(--font-size-200);
 }
 
-.inbox-badge {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-weight: var(--font-weight-strong);
-}
-
 .inbox-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-1);
-}
-
-.inbox-action {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-200);
-  cursor: pointer;
-}
-
-.inbox-action:hover {
-  background: var(--color-surface-sunken);
 }
 
 .inbox-snooze {
@@ -201,8 +123,6 @@
 }
 
 @media (pointer: coarse) {
-  .inbox-view,
-  .inbox-action,
   .inbox-unread-only,
   .inbox-filter select {
     min-height: var(--hit-target-touch);

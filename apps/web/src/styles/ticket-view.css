@@ -298,7 +298,15 @@
 .ticket-tabpanel .comment-panel {
   margin-top: 0;
   padding: 0;
+  border: 0;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: none;
+}
+
+.ticket-tabpanel .comment-panel::before {
+  content: none;
 }
 
 .ticket-feed {
@@ -312,7 +320,7 @@
 .ticket-feed-item {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   overflow-wrap: anywhere;
 }
 

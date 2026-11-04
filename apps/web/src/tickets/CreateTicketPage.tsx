@@ -11,6 +11,7 @@ import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
 import { IconSelect } from '../shell/IconSelect';
+import { PageHeader } from '../shell/PageHeader';
 import { priorityName } from '../shell/priorityName';
 import { fieldName, typeName } from '../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
@@ -605,7 +606,7 @@ export function CreateTicketPage({
   }
 
   return (
-    <section aria-labelledby={titleId} className="create-page">
+    <section aria-labelledby={titleId} className="page create-page">
       {variant === 'dialog' ? (
         <div className="create-dialog-head">
           <h2 id={titleId} className="page-title">
@@ -616,9 +617,11 @@ export function CreateTicketPage({
           </button>
         </div>
       ) : (
-        <h1 id={titleId} className="page-title">
-          {t('tickets.create.title')}
-        </h1>
+        <PageHeader
+          titleId={titleId}
+          title={t('tickets.create.title')}
+          purpose={t('purpose.createTicket')}
+        />
       )}
       {client.template && tracks.status === 'loaded' && tracks.value.length > 0 && (
         <form
@@ -752,7 +755,8 @@ export function CreateTicketPage({
                 <section
                   // biome-ignore lint/suspicious/noArrayIndexKey: tabs have no id; their order is fixed
                   key={i}
-                  className="create-tab"
+                  // On the page a slab of its own; in the dialog a well, as glass is already there.
+                  className={variant === 'dialog' ? 'create-tab' : 'glass-card create-tab'}
                   {...(name ? { 'aria-labelledby': headingId } : {})}
                 >
                   {name && (

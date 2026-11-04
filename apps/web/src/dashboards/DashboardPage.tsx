@@ -2,6 +2,8 @@ import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type Dashboard,
   type DashboardClient,
@@ -105,14 +107,14 @@ export function DashboardPage({
 
   if (failed) {
     return (
-      <section className="dashboard-page">
+      <section className="page dashboard-page">
         <p className="board-problem" role="alert">
           {t('dashboards.notFound')}
         </p>
       </section>
     );
   }
-  if (!dashboard) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!dashboard) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const editing = draft !== null;
   const layout = draft?.layout ?? dashboard.layout;
@@ -191,87 +193,93 @@ export function DashboardPage({
 
   return (
     <section
-      className={wallboard ? 'dashboard-page is-wallboard' : 'dashboard-page'}
+      className={wallboard ? 'page page-full dashboard-page is-wallboard' : 'page dashboard-page'}
       aria-labelledby={titleId}
     >
-      <div className="board-header">
-        <h1 id={titleId} className="page-title">
-          {dashboard.name}
-        </h1>
-        {wallboard && (
-          <div className="dashboard-actions">
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => void document.documentElement.requestFullscreen?.()}
-            >
-              {t('dashboards.fullScreen')}
-            </button>
-            <a className="board-settings-link" href={routeHref(`#/dashboards/${dashboard.id}`)}>
-              {t('dashboards.leaveWallboard')}
-            </a>
-          </div>
-        )}
-        {!wallboard && (
-          <p className="board-meta">
-            {t('dashboards.meta', { owner: dashboard.owner.name })}
-            {dashboard.isDefault && ` ${t('dashboards.isDefault')}`}
-          </p>
-        )}
-      </div>
-      {!wallboard && (
-        <div className="dashboard-actions">
-          {dashboard.editable && !editing && (
-            <button
-              type="button"
-              className="button-primary"
-              data-tutorial="dashboard-edit"
-              onClick={startEditing}
-            >
-              {t('dashboards.edit')}
-            </button>
-          )}
-          {!editing && (
+      <PageHeader
+        titleId={titleId}
+        title={dashboard.name}
+        // A wallboard is read from across a room: its title and its widgets, nothing about itself.
+        purpose={wallboard ? undefined : t('purpose.dashboard')}
+        eyebrow={
+          wallboard
+            ? undefined
+            : `${t('dashboards.meta', { owner: dashboard.owner.name })}${
+                dashboard.isDefault ? ` ${t('dashboards.isDefault')}` : ''
+              }`
+        }
+        actions={
+          wallboard ? (
             <>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => void document.documentElement.requestFullscreen?.()}
+              >
+                {t('dashboards.fullScreen')}
+              </button>
+              <a className="button-quiet" href={routeHref(`#/dashboards/${dashboard.id}`)}>
+                {t('dashboards.leaveWallboard')}
+              </a>
+            </>
+          ) : editing ? undefined : (
+            <>
+              {dashboard.editable && (
+                <button
+                  type="button"
+                  className="button-primary"
+                  data-tutorial="dashboard-edit"
+                  onClick={startEditing}
+                >
+                  {t('dashboards.edit')}
+                </button>
+              )}
               <button type="button" className="button-secondary" onClick={() => void copy()}>
                 {t('dashboards.copy')}
               </button>
               <a
-                className="board-settings-link"
+                className="button-quiet"
                 href={routeHref(
                   `#/dashboards/${dashboard.id}/wallboard?rotate=${dashboard.id}&seconds=60`,
                 )}
               >
                 {t('dashboards.wallboard')}
               </a>
+              {admin && !dashboard.isDefault && (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => void makeDefault()}
+                >
+                  {t('dashboards.makeDefault')}
+                </button>
+              )}
+              {dashboard.editable && (
+                <div className="form-field dashboard-visibility">
+                  <label htmlFor={`${titleId}-visibility`}>{t('dashboards.visibility')}</label>
+                  <select
+                    id={`${titleId}-visibility`}
+                    value={visibility}
+                    onChange={(e) => void share(e.target.value as Visibility)}
+                  >
+                    <option value="private">{t('dashboards.visibility.private')}</option>
+                    <option value="any_user">{t('dashboards.visibility.any_user')}</option>
+                    <option value="public">{t('dashboards.visibility.public')}</option>
+                    {visibility === 'custom' && (
+                      <option value="custom">{t('dashboards.visibility.custom')}</option>
+                    )}
+                  </select>
+                </div>
+              )}
             </>
-          )}
-          {admin && !dashboard.isDefault && !editing && (
-            <button type="button" className="button-secondary" onClick={() => void makeDefault()}>
-              {t('dashboards.makeDefault')}
-            </button>
-          )}
-          {dashboard.editable && !editing && (
-            <div className="form-field dashboard-visibility">
-              <label htmlFor={`${titleId}-visibility`}>{t('dashboards.visibility')}</label>
-              <select
-                id={`${titleId}-visibility`}
-                value={visibility}
-                onChange={(e) => void share(e.target.value as Visibility)}
-              >
-                <option value="private">{t('dashboards.visibility.private')}</option>
-                <option value="any_user">{t('dashboards.visibility.any_user')}</option>
-                <option value="public">{t('dashboards.visibility.public')}</option>
-                {visibility === 'custom' && (
-                  <option value="custom">{t('dashboards.visibility.custom')}</option>
-                )}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
+          )
+        }
+      />
       {editing && draft && (
-        <div className="reports-controls dashboard-editor" data-tutorial="dashboard-editor">
+        <div
+          className="glass-card reports-controls dashboard-editor"
+          data-tutorial="dashboard-editor"
+        >
           <div className="form-field">
             <label htmlFor={`${titleId}-name`}>{t('dashboards.name')}</label>
             <input
@@ -321,9 +329,9 @@ export function DashboardPage({
         </p>
       )}
       {widgets.length === 0 ? (
-        <p className="report-empty">
-          {dashboard.editable ? t('dashboards.emptyEditable') : t('dashboards.empty')}
-        </p>
+        <EmptyState title={t('empty.dashboard.title')}>
+          {t(dashboard.editable ? 'empty.dashboard.bodyEditable' : 'empty.dashboard.body')}
+        </EmptyState>
       ) : (
         <WidgetGrid
           layout={layout}

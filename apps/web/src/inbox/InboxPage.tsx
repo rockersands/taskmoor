@@ -3,6 +3,8 @@ import { useIntl } from 'react-intl';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import {
@@ -318,21 +320,21 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
   ];
 
   return (
-    <section aria-labelledby={titleId} className="inbox-page">
-      <div className="inbox-header">
-        <h1 id={titleId} className="page-title">
-          {t('inbox.title')}
-        </h1>
-        <p className="inbox-count">{countText(unread.all)}</p>
-      </div>
+    <section aria-labelledby={titleId} className="page inbox-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('inbox.title')}
+        eyebrow={countText(unread.all)}
+        purpose={t('purpose.inbox')}
+      />
       <div className="inbox-toolbar">
-        <fieldset className="inbox-views">
+        <fieldset className="filter-chips">
           <legend className="visually-hidden">{t('inbox.views')}</legend>
           {VIEWS.map((v) => (
             <button
               key={v.id}
               type="button"
-              className="inbox-view"
+              className="filter-chip"
               aria-pressed={view === v.id}
               onClick={() => {
                 setNotice(null);
@@ -362,7 +364,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
           {t('inbox.unreadOnly')}
         </label>
         <label className="inbox-filter">
-          <span>{t('inbox.filter.type')}</span>
+          <span className="form-label">{t('inbox.filter.type')}</span>
           <select value={type} onChange={(e) => setType(e.currentTarget.value)}>
             <option value="">{t('inbox.filter.anyType')}</option>
             {TYPES.map((event) => (
@@ -373,7 +375,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
           </select>
         </label>
         <label className="inbox-filter">
-          <span>{t('inbox.filter.track')}</span>
+          <span className="form-label">{t('inbox.filter.track')}</span>
           <select value={track} onChange={(e) => setTrack(e.currentTarget.value)}>
             <option value="">{t('inbox.filter.anyTrack')}</option>
             {tracks.map((tr) => (
@@ -411,7 +413,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
         </div>
       )}
       {state === 'loaded' && items.length === 0 && (
-        <p className="page-note">{t(unreadOnly ? 'inbox.empty.unread' : EMPTY[view])}</p>
+        <EmptyState title={t(unreadOnly ? 'inbox.empty.unread' : EMPTY[view])} />
       )}
       {items.length > 0 && (
         <ul className="inbox-list" aria-labelledby={titleId}>
@@ -424,7 +426,10 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                 : t('inbox.alert.label'));
             const menuId = `inbox-snooze-${item.id}`;
             return (
-              <li key={item.id} className={`inbox-item${item.read ? '' : ' inbox-item-unread'}`}>
+              <li
+                key={item.id}
+                className={`glass-card inbox-item${item.read ? '' : ' inbox-item-unread'}`}
+              >
                 <div className="inbox-body">
                   <p className="inbox-what">
                     {!item.read && (
@@ -472,7 +477,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                       </span>
                     )}
                     <time dateTime={item.createdAt}>{when(item.createdAt)}</time>
-                    {item.direct && <span className="inbox-badge">{t('inbox.direct')}</span>}
+                    {item.direct && <span className="badge badge-accent">{t('inbox.direct')}</span>}
                     {item.snoozedUntil && (
                       <span>{t('inbox.snoozedUntil', { time: when(item.snoozedUntil) })}</span>
                     )}
@@ -481,7 +486,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                 <div className="inbox-actions">
                   <button
                     type="button"
-                    className="inbox-action"
+                    className="button-quiet inbox-action"
                     aria-label={t(item.read ? 'inbox.markUnreadOf' : 'inbox.markReadOf', { key })}
                     onClick={() => void change(item, { read: !item.read })}
                   >
@@ -490,7 +495,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                   {item.snoozedUntil ? (
                     <button
                       type="button"
-                      className="inbox-action"
+                      className="button-quiet inbox-action"
                       aria-label={t('inbox.unsnoozeOf', { key })}
                       onClick={() => void change(item, { snoozedUntil: null })}
                     >
@@ -500,7 +505,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                     <div className="inbox-snooze">
                       <button
                         type="button"
-                        className="inbox-action"
+                        className="button-quiet inbox-action"
                         aria-label={t('inbox.snoozeOf', { key })}
                         aria-expanded={snoozeMenu === item.id}
                         aria-controls={menuId}
@@ -514,7 +519,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                             <li key={option.label}>
                               <button
                                 type="button"
-                                className="inbox-action"
+                                className="button-quiet inbox-action"
                                 onClick={() =>
                                   void change(item, { snoozedUntil: option.at.toISOString() })
                                 }

@@ -6,6 +6,7 @@ import { type ListClient, listClient } from '../list/client';
 import { navigate, routeHref, useRoute } from '../routing/router';
 import { type SearchClient, searchClient } from '../search/client';
 import { useMotionOnChange } from '../shell/motion';
+import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import {
   PLAN_GROUPS,
@@ -130,23 +131,28 @@ export function PlanPage({
       </p>
     );
   }
-  if (!plan) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!plan) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const go = (next: PlanView) => navigate(planHref(id, section, next));
   const tabs = PLAN_SECTIONS.filter((s) => s.id !== 'settings' || plan.editable);
   const broken = plan.sources.filter((s) => s.kind === 'savedSearch' && s.state === 'broken');
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
   const grouped = section === 'timeline' || section === 'list';
+  const wide = section === 'timeline' || section === 'capacity';
   const viewProps = { id, plan, filters: view.filters, client, now };
 
   return (
-    <section className="plan-page" aria-labelledby={titleId}>
-      <div className="board-header">
-        <h1 id={titleId} className="page-title">
-          {plan.name}
-        </h1>
-        <p className="board-meta">{t('plans.meta', { owner: plan.owner.name })}</p>
-      </div>
+    <section
+      // A timeline or a table of periods needs the width; the other sections read at the page's.
+      className={wide ? 'page page-full plan-page' : 'page plan-page'}
+      aria-labelledby={titleId}
+    >
+      <PageHeader
+        titleId={titleId}
+        title={plan.name}
+        eyebrow={t('plans.meta', { owner: plan.owner.name })}
+        purpose={t('purpose.plan')}
+      />
       {plan.description && <p className="plan-description">{plan.description}</p>}
       <nav className="track-tabs" aria-label={t('plans.sections', { name: plan.name })}>
         <ul>
@@ -214,7 +220,7 @@ export function PlanPage({
 function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
   const t = useT();
   return (
-    <section className="plan-page">
+    <section className="page plan-page">
       <p className="board-problem" role="alert">
         {t('plans.filterProblem')}
       </p>

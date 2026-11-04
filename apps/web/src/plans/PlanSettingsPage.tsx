@@ -179,7 +179,7 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
 
   return (
     <form
-      className="plan-settings"
+      className="glass-card plan-settings"
       aria-label={t('plans.section.settings')}
       onSubmit={(event) => {
         event.preventDefault();

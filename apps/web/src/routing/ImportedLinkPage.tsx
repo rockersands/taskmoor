@@ -2,6 +2,7 @@ import { type ImportedLinkKind, importedLinkOf, importedLinkRoute } from '@taskm
 import { useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { PageHeader } from '../shell/PageHeader';
 import { redirectRoute, routeHref } from './router';
 
 /** Finds what a link of the earlier tracker became: the app's route, or null for nothing. */
@@ -72,17 +73,33 @@ export function ImportedLinkPage({
 
   return (
     <section className="page" aria-labelledby="imported-link-title">
-      <h1 id="imported-link-title">{t('importedLink.title')}</h1>
-      {state === 'looking' && <p role="status">{t('importedLink.looking')}</p>}
+      <PageHeader
+        titleId="imported-link-title"
+        title={t('importedLink.title')}
+        purpose={t('purpose.importedLink')}
+      />
+      {state === 'looking' && (
+        <p role="status" className="page-note">
+          {t('importedLink.looking')}
+        </p>
+      )}
       {state === 'missing' && (
         <>
-          <p role="alert">{t('importedLink.missing')}</p>
+          <p role="alert" className="form-error">
+            {t('importedLink.missing')}
+          </p>
           <p>
-            <a href={routeHref('#/search')}>{t('importedLink.toSearch')}</a>
+            <a className="button-quiet" href={routeHref('#/search')}>
+              {t('importedLink.toSearch')}
+            </a>
           </p>
         </>
       )}
-      {state === 'failed' && <p role="alert">{t('importedLink.failed')}</p>}
+      {state === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('importedLink.failed')}
+        </p>
+      )}
     </section>
   );
 }

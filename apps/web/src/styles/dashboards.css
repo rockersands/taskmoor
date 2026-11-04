@@ -1,17 +1,24 @@
 /* Dashboards (M1-064; ADR-060): widgets as cards in the layout's columns, one column on
    phones; a wallboard shows them without the shell and a little larger. */
-.dashboards-page,
-.dashboard-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
+.dashboards-page > .glass-card,
+.dashboard-editor {
+  padding: var(--space-4);
 }
 
-.dashboard-actions {
-  display: flex;
-  flex-wrap: wrap;
+/* A long option in a list keeps to the width there is, on a phone too. */
+.dashboard-editor > .form-field {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboards-page > .glass-card > h2 {
+  margin-block: 0 var(--space-3);
+}
+
+/* The page's actions end level with its visibility choice, a label over a field. */
+.dashboard-page .page-header-actions {
   align-items: end;
-  gap: var(--space-2) var(--space-3);
 }
 
 .dashboard-grid {
@@ -133,7 +140,7 @@
   gap: var(--space-1);
 }
 
-.dashboard-widget-tools button {
+.dashboard-widget-tool {
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
   border: 1px solid var(--glass-edge);
@@ -145,7 +152,7 @@
   cursor: pointer;
 }
 
-.dashboard-widget-tools button:hover:not(:disabled) {
+.dashboard-widget-tool:hover:not(:disabled) {
   background: var(--glass-tint-accent);
 }
 
@@ -336,7 +343,7 @@
     height: var(--hit-target-touch);
   }
 
-  .dashboard-widget-tools button,
+  .dashboard-widget-tool,
   .dashboard-row .reports-check,
   .summary-list a,
   .widget-tickets a {

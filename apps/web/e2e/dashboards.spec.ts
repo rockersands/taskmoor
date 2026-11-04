@@ -49,7 +49,7 @@ test('[RPT-004] [RPT-005] a dashboard made, set up, shared and shown as a wallbo
   await page.getByLabel('New dashboard').fill(`Dash ${word}`);
   await page.getByRole('button', { name: 'Create dashboard' }).click();
   const dashboard = page.getByRole('region', { name: `Dash ${word}` });
-  await expect(dashboard.getByText('This dashboard has no widgets yet.')).toBeVisible();
+  await expect(dashboard.getByText('No widgets yet')).toBeVisible();
 
   // A search-results widget, set up in place, shows its ticket once saved.
   await dashboard.getByRole('button', { name: 'Edit dashboard' }).click();

@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { searchHref } from '../releases/client';
+import { EmptyState } from '../shell/EmptyState';
 import type { Plan, PlanClient, PlanCount, PlanFilters, PlanSummary } from './client';
 
 export interface PlanSectionProps {
@@ -60,7 +61,7 @@ export function PlanSummaryPage({ id, filters, client }: PlanSectionProps) {
       </p>
     );
   }
-  if (!summary) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!summary) return <p className="report-loading">{t('reports.loading')}</p>;
   if (summary.query === null) return null;
 
   const number = (item: PlanCount) => intl.formatNumber(item.count);
@@ -75,7 +76,7 @@ export function PlanSummaryPage({ id, filters, client }: PlanSectionProps) {
       <section className="glass-card summary-section" aria-labelledby={`${sectionId}-${key}`}>
         <h2 id={`${sectionId}-${key}`}>{t(title)}</h2>
         {items.length === 0 ? (
-          <p className="report-empty">{t('summary.nothingOpen')}</p>
+          <EmptyState compact title={t('summary.nothingOpen')} />
         ) : (
           <ul className="summary-list">
             {items.map((item) => (

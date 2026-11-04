@@ -7,6 +7,7 @@ import { ColumnChart } from '../reports/ColumnChart';
 import { DonutChart, MAX_SLICES } from '../reports/DonutChart';
 import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { estimateText } from '../sprints/client';
 import { useTicketChangeCount } from '../tickets/view/ticketChanges';
@@ -132,7 +133,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   if (widget.kind === 'quick-links') {
     const links = (config.links as { label: string; url: string }[] | undefined) ?? [];
     return links.length === 0 ? (
-      <p className="report-empty">{t('dashboards.widget.noLinks')}</p>
+      <EmptyState compact title={t('dashboards.widget.noLinks')} />
     ) : (
       <ul className="widget-links">
         {links.map((l) => (
@@ -155,8 +156,8 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       </p>
     );
   }
-  if (data === undefined) return <p className="report-empty">{t('reports.loading')}</p>;
-  if (data === null) return <p className="report-empty">{t('dashboards.widget.noData')}</p>;
+  if (data === undefined) return <p className="report-loading">{t('reports.loading')}</p>;
+  if (data === null) return <EmptyState compact title={t('dashboards.widget.noData')} />;
   const unavailable = (data as { unavailable?: string } | null)?.unavailable;
   if (unavailable) {
     return (
@@ -170,7 +171,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     case 'followed-tickets': {
       const d = data as { tickets: TicketRow[]; total: { count: number; exact: boolean } };
       if (d.tickets.length === 0)
-        return <p className="report-empty">{t('dashboards.widget.noTickets')}</p>;
+        return <EmptyState compact title={t('dashboards.widget.noTickets')} />;
       return (
         <>
           <ul className="widget-tickets">
@@ -507,7 +508,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     }
     case 'average-time-in-status': {
       const d = data as { statuses: { status: { id: number; name: string }; average: number }[] };
-      if (d.statuses.length === 0) return <p className="report-empty">{t('reports.time.empty')}</p>;
+      if (d.statuses.length === 0) return <EmptyState compact title={t('reports.time.empty')} />;
       const { unit, format } = durations(t, intl, Math.max(0, ...d.statuses.map((s) => s.average)));
       return (
         <ColumnChart
@@ -568,7 +569,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
         total: number;
         closed: number;
       };
-      if (d.total === 0) return <p className="report-empty">{t('dashboards.widget.noTickets')}</p>;
+      if (d.total === 0) return <EmptyState compact title={t('dashboards.widget.noTickets')} />;
       return (
         <ul className="widget-groups" aria-label={title}>
           {d.values.map((v) => (
@@ -621,7 +622,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       const hours = (v: number) =>
         t('reports.hours', { value: intl.formatNumber(v / H, { maximumFractionDigits: 1 }) });
       const statistic = t(`dashboards.statistic.${d.statistic}` as MessageId);
-      if (d.total === 0) return <p className="report-empty">{t('dashboards.widget.noTickets')}</p>;
+      if (d.total === 0) return <EmptyState compact title={t('dashboards.widget.noTickets')} />;
       if (config.view === 'pie') {
         const sorted = [...d.values]
           .filter((v) => v.seconds > 0)
@@ -643,7 +644,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                 },
               ];
         return slices.length === 0 ? (
-          <p className="report-empty">{t('dashboards.widget.noTime', { statistic })}</p>
+          <EmptyState compact title={t('dashboards.widget.noTime', { statistic })} />
         ) : (
           <DonutChart
             title={title}

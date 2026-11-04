@@ -4,6 +4,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { type LockAction, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type BulkClient,
   type BulkError,
@@ -187,10 +188,12 @@ export function BulkOperationPage({
   const number = (n: number) => intl.formatNumber(n);
   const cloning = op.action === 'clone';
   return (
-    <section aria-labelledby={titleId} className="bulk-page">
-      <h1 id={titleId} className="page-title">
-        {t(TITLES[op.action], { count: op.total })}
-      </h1>
+    <section aria-labelledby={titleId} className="page bulk-page">
+      <PageHeader
+        titleId={titleId}
+        title={t(TITLES[op.action], { count: op.total })}
+        purpose={t('purpose.bulk')}
+      />
       <p role="status" className="form-status">
         {statusText(t, op)}
       </p>
@@ -200,7 +203,7 @@ export function BulkOperationPage({
         </label>
         <progress id={`${progressId}-bar`} max={op.total} value={done} />
       </div>
-      <dl className="bulk-counts">
+      <dl className="glass-card bulk-counts">
         <div>
           <dt>{t(cloning ? 'bulk.clone.copied' : 'bulk.count.succeeded')}</dt>
           <dd>{number(op.succeeded)}</dd>
@@ -236,7 +239,7 @@ export function BulkOperationPage({
         </p>
       )}
       {op.failed > 0 && (
-        <section aria-labelledby={failuresId} className="facts">
+        <section aria-labelledby={failuresId} className="glass-card bulk-failures-card">
           <h2 id={failuresId} className="facts-title">
             {t(cloning ? 'bulk.clone.failures' : 'bulk.failures')}
           </h2>

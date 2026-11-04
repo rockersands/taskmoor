@@ -150,7 +150,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
 
   const count = loaded?.comments.length ?? 0;
   return (
-    <section aria-labelledby={titleId} className="comment-panel">
+    <section aria-labelledby={titleId} className="glass-card comment-panel">
       <div className="comment-header">
         <h2 id={titleId} className="comment-title">
           {t('comments.title')}

@@ -8,6 +8,8 @@
 /* A page's width and its rhythm. A board, a timeline or a diagram that needs it all says so. */
 .page {
   display: grid;
+  /* One column no wider than the page: a wide field or table inside cannot stretch it sideways. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-5);
   min-width: 0;
@@ -20,6 +22,11 @@
 
 .page > .page-header {
   margin-bottom: 0;
+}
+
+/* A status line with nothing to say yet stays in place for a screen reader, and takes no gap. */
+.page > .form-status:empty {
+  margin-block-end: calc(-1 * var(--space-5));
 }
 
 /* Everything but the one primary action: a quiet glass pill (ADR-114, section 2). */

@@ -93,6 +93,27 @@ export const Results: Story = {
   },
 };
 
+/** A search that finds nothing says so, and what to try. */
+export const NoResults: Story = {
+  args: {
+    initialQuery: 'track = SHOP',
+    client: {
+      ...fakeSearchClient(),
+      search: async () => ({
+        tickets: [],
+        next: null,
+        total: { count: 0, exact: true },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No tickets match this search')).toBeVisible();
+    await expect(canvas.queryByRole('table')).toBeNull();
+    await expect(canvas.getByRole('button', { name: 'Basic', pressed: true })).toBeVisible();
+  },
+};
+
 /** A saved search opened from the address: its query, its columns and its results (M1-063). */
 export const SavedSearchOpened: Story = {
   args: { initialSavedSearch: 2 },

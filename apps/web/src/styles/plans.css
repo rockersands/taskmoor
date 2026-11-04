@@ -3,12 +3,20 @@
 
 .plan-description {
   max-width: 70ch;
-  margin: 0 0 var(--space-3);
+  margin: 0;
   color: var(--color-text-muted);
 }
 
+.plans-page > .glass-card > h2 {
+  margin-block: 0 var(--space-3);
+}
+
+.plans-page > .glass-card {
+  padding: var(--space-4);
+}
+
 .plan-notices {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   padding: var(--space-2) var(--space-3);
   list-style: none;
   border: 1px solid var(--color-border);
@@ -27,7 +35,6 @@
   flex-wrap: wrap;
   align-items: end;
   gap: var(--space-2) var(--space-3);
-  margin-block: var(--space-3);
 }
 
 .plan-filters select {
@@ -44,7 +51,7 @@
   display: grid;
   gap: var(--space-3);
   max-width: 48rem;
-  margin-block: var(--space-3);
+  padding: var(--space-5);
 }
 
 .plan-sources {
@@ -56,8 +63,9 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
 }
 
 .plan-source-group ul {
@@ -78,7 +86,7 @@
 }
 
 .timeline-group .timeline-lane {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .timeline-group-name {
@@ -138,7 +146,7 @@
 .capacity-table th,
 .capacity-table td {
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--glass-edge);
   text-align: start;
   vertical-align: top;
 }
@@ -181,9 +189,13 @@
   gap: var(--space-1) var(--space-2);
 }
 
-.capacity-row.is-team th,
-.capacity-row.is-team td {
+/* The name stays opaque, as the row's other names do: the cells scroll under it. */
+.capacity-row.is-team th {
   background: var(--color-surface-sunken);
+}
+
+.capacity-row.is-team td {
+  background: var(--glass-surface-sunken);
 }
 
 .capacity-card-title {
@@ -317,8 +329,9 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
 }
 
 .plan-capacity-settings-row,

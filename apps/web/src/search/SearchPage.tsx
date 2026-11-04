@@ -16,6 +16,8 @@ import { useT } from '../i18n/I18nProvider';
 import { replaceRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
 import { BasicFilters } from './BasicFilters';
 import {
@@ -203,10 +205,8 @@ export function SearchPage({
   };
 
   return (
-    <section aria-labelledby={titleId} className="search-page">
-      <h1 id={titleId} className="page-title">
-        {t('search.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page search-page">
+      <PageHeader titleId={titleId} title={t('search.title')} purpose={t('purpose.search')} />
       <AskQuery
         {...(ai.client ? { client: ai.client } : {})}
         {...(ai.notice ? { notice: ai.notice } : {})}
@@ -219,11 +219,11 @@ export function SearchPage({
           searchFor(query);
         }}
       />
-      <fieldset className="search-modes" data-tutorial="search-modes">
+      <fieldset className="filter-chips" data-tutorial="search-modes">
         <legend className="visually-hidden">{t('search.mode')}</legend>
         <button
           type="button"
-          className="button-secondary search-mode"
+          className="filter-chip"
           aria-pressed={mode === 'basic'}
           onClick={toBasic}
         >
@@ -231,7 +231,7 @@ export function SearchPage({
         </button>
         <button
           type="button"
-          className="button-secondary search-mode"
+          className="filter-chip"
           aria-pressed={mode === 'advanced'}
           onClick={toAdvanced}
         >
@@ -672,6 +672,9 @@ function ResultList({
               </nav>
             )}
           </div>
+          {results.page.tickets.length === 0 && (
+            <EmptyState title={t('empty.search.title')}>{t('empty.search.body')}</EmptyState>
+          )}
           {results.page.tickets.length > 0 && (
             <ResultTable
               tickets={results.page.tickets}

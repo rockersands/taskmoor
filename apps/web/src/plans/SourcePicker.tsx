@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import type { PlanSourceInput, SourceOptions } from './client';
 
 export interface SourcePickerProps {
@@ -30,7 +31,7 @@ export function SourcePicker({ options, value, onChange }: SourcePickerProps) {
   const searches = (options?.savedSearches ?? []).filter(
     (x) => !needle || x.name.toLowerCase().includes(needle),
   );
-  if (!options) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!options) return <p className="report-loading">{t('reports.loading')}</p>;
   return (
     <div className="plan-sources">
       <label className="form-field" htmlFor={`${id}-filter`}>
@@ -48,7 +49,7 @@ export function SourcePicker({ options, value, onChange }: SourcePickerProps) {
       <fieldset className="plan-source-group">
         <legend>{t('plans.sources.tracks')}</legend>
         {tracks.length === 0 ? (
-          <p className="report-empty">{t('plans.sources.noTracks')}</p>
+          <EmptyState compact title={t('plans.sources.noTracks')} />
         ) : (
           <ul>
             {tracks.map((x) => {
@@ -72,7 +73,7 @@ export function SourcePicker({ options, value, onChange }: SourcePickerProps) {
       <fieldset className="plan-source-group">
         <legend>{t('plans.sources.savedSearches')}</legend>
         {searches.length === 0 ? (
-          <p className="report-empty">{t('plans.sources.noSavedSearches')}</p>
+          <EmptyState compact title={t('plans.sources.noSavedSearches')} />
         ) : (
           <ul>
             {searches.map((x) => {

@@ -1,6 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, fn, within } from 'storybook/test';
 import { type ImportedLinkLookup, ImportedLinkPage } from './ImportedLinkPage';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Routing/ImportedLinkPage',
@@ -53,5 +65,16 @@ export const Failed: Story = {
     await expect(await within(canvasElement).findByRole('alert')).toHaveTextContent(
       'could not be looked up',
     );
+  },
+};
+
+export const MissingAtPhoneWidth: Story = {
+  args: { route: '#/imported/board/99', lookup: async () => null },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('alert');
+    await expect(canvas.getByRole('heading', { level: 1 })).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

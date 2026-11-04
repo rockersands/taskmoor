@@ -265,12 +265,20 @@ export const messagesEs: Record<MessageId, string> = {
     'Cómo está esta instancia ahora mismo: su base de datos, sus tareas y su versión.',
   'purpose.trash':
     'Los tickets y tracks eliminados esperan aquí hasta que se restauran o se acaba su plazo.',
+  'purpose.importedLink':
+    'A dónde lleva ahora un enlace de un gestor anterior cuyo trabajo se importó aquí.',
   'purpose.signIn': 'Inicia sesión para ver tu trabajo.',
   'purpose.invitation': 'Te han invitado a un track: acepta para empezar a trabajar en él.',
   'purpose.passwordLink': 'Elige una contraseña para tu cuenta. Este enlace funciona una sola vez.',
   'purpose.consent': 'Un programa pide actuar en tu nombre. Lee lo que quiere y responde.',
   'purpose.unsubscribe':
     'Deja de recibir los correos de este enlace. Puedes cambiarlo más tarde en tus ajustes.',
+  'empty.search.title': 'Ningún ticket coincide con esta búsqueda',
+  'empty.search.body':
+    'Prueba con menos filtros, una fecha más amplia u otra consulta. Solo coinciden los tickets que puedes ver.',
+  'empty.saved.title': 'Aún no hay búsquedas guardadas',
+  'empty.saved.body':
+    'Haz una búsqueda y elige Guardar como nueva: quedará aquí para reutilizarla, compartirla o seguirla por correo.',
   'empty.dashboards.title': 'Aún no hay paneles',
   'empty.dashboards.body':
     'Un panel reúne gráficos y listas que resumen el trabajo. Crea el primero arriba.',
@@ -4860,8 +4868,6 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien cambió este panel mientras tanto. Recárgalo e inténtalo de nuevo.',
   'dashboards.invalid':
     'No se puede guardar la configuración de un widget. Revísala e inténtalo de nuevo.',
-  'dashboards.empty': 'Este panel no tiene widgets.',
-  'dashboards.emptyEditable': 'Este panel aún no tiene widgets. Edítalo para añadir algunos.',
   'dashboards.unsaved': 'Guarda el panel para ver este widget.',
   'dashboards.tool.settings': 'Configuración de {name}',
   'dashboards.tool.up': 'Subir {name}',
@@ -4887,7 +4893,6 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.newName': 'Panel nuevo',
   'dashboards.create': 'Crear el panel',
   'dashboards.listFailed': 'No se pudieron cargar los paneles.',
-  'dashboards.none': 'Aún no hay paneles. Crea uno arriba.',
   // Multi-track plans (T-088; ADR-122).
   'plans.intro':
     'Un plan reúne los tickets de varios tracks y búsquedas guardadas en un solo Resumen, Cronograma, Lista y Calendario. Cada persona ve en él solo los tickets que ya puede ver.',

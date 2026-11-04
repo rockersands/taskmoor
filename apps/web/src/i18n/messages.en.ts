@@ -251,12 +251,20 @@ export const messagesEn = {
   'purpose.system': 'How this instance is doing right now: its database, its jobs and its version.',
   'purpose.trash':
     'Deleted tickets and tracks wait here until they are restored or their time is up.',
+  'purpose.importedLink':
+    'Where a link from an earlier tracker leads, now that its work was imported here.',
   'purpose.signIn': 'Sign in to see your work.',
   'purpose.invitation': 'You were invited to a track: accept to start working in it.',
   'purpose.passwordLink': 'Choose a password for your account. This link works once.',
   'purpose.consent': 'A program asks to act for you. Read what it wants, then answer.',
   'purpose.unsubscribe':
     'Stop the emails this link stands for. You can change it later in your settings.',
+  'empty.search.title': 'No tickets match this search',
+  'empty.search.body':
+    'Try fewer filters, a wider date or another query. Only tickets you may see can match.',
+  'empty.saved.title': 'No saved searches yet',
+  'empty.saved.body':
+    'Run a search, then choose Save as new: it stays here to reuse, share or follow by email.',
   'empty.dashboards.title': 'No dashboards yet',
   'empty.dashboards.body':
     'A dashboard gathers charts and lists that sum up the work. Create the first one above.',
@@ -4740,8 +4748,6 @@ export const messagesEn = {
   'dashboards.saved': 'Saved.',
   'dashboards.conflict': 'Someone changed this dashboard meanwhile. Reload it and try again.',
   'dashboards.invalid': 'A widget’s settings cannot be saved. Check them and try again.',
-  'dashboards.empty': 'This dashboard has no widgets.',
-  'dashboards.emptyEditable': 'This dashboard has no widgets yet. Edit it to add some.',
   'dashboards.unsaved': 'Save the dashboard to see this widget.',
   'dashboards.tool.settings': 'Settings of {name}',
   'dashboards.tool.up': 'Move {name} up',
@@ -4767,7 +4773,6 @@ export const messagesEn = {
   'dashboards.newName': 'New dashboard',
   'dashboards.create': 'Create dashboard',
   'dashboards.listFailed': 'The dashboards could not be loaded.',
-  'dashboards.none': 'No dashboards yet. Create one above.',
   // Multi-track plans (T-088; ADR-122).
   'plans.intro':
     'A plan brings the tickets of several tracks and saved searches together in one Summary, Timeline, List and Calendar. Everyone sees in it only the tickets they may see anyway.',
