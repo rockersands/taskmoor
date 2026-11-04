@@ -307,6 +307,9 @@ backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no 
   the shell and shared: a button a mouse or a finger drags, which pressed opens a menu of the same
   moves, with Alt and the arrow keys stepping it. It is 44 px under a coarse pointer and carries
   `touch-action: none`, so a finger on it drags rather than scrolls; elsewhere a finger scrolls.
+  A grip with no moves to offer opens no empty menu: it carries `aria-disabled` and no
+  `aria-haspopup`, a press, Enter or an arrow opens nothing, and it still drags, since a drop may
+  have somewhere to go that the menu does not list (an outcome or a release on the backlog).
 - **The backlog.** A mouse drags a row from anywhere but its controls, a finger by its grip; a
   ticket that is part of the selection takes the whole selection, in order. The section and the
   place are outlined as on the board (`is-drop-target`, `is-drop-before`), the outcome or release

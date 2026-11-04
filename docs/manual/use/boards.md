@@ -212,7 +212,10 @@ when time tracking is on, the remaining estimate).
   place it would land are outlined, and the page says what you are moving. Hold it near the top
   or bottom of the screen to scroll there. **Escape** puts it back where it was.
 - Each ticket's grip, pressed or tapped, opens **Move PAY-42**: **Move up**, **Move down**, **Move
-  to the top**, **Move to the bottom** and **Move to** each other sprint or the backlog.
+  to the top**, **Move to the bottom** and **Move to** each other sprint or the backlog. A ticket
+  with none of these to offer, such as the only one in the backlog of a board with no sprints yet,
+  has a grip that opens nothing and reads as unavailable; it still drags onto an outcome or a
+  release.
 - Alt with the up or down arrow moves a focused ticket (its key or its grip) past its neighbour.
 - Tick tickets one by one, or a whole section with **Select every ticket shown in** that
   section. The selection bar then offers **Move selected to…**, **Move to the top**, **Move to
