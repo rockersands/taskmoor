@@ -117,7 +117,7 @@
 }
 
 .icon-select-option[aria-selected="true"] {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 @media (pointer: coarse) {

@@ -81,9 +81,11 @@
   margin-inline: auto;
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-3);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  isolation: isolate;
 }
 
 .create-dialog:focus {
@@ -127,7 +129,7 @@
 
 .shell[data-layout="compact"] .create-open-icon {
   display: inline;
-  font-size: 1.25rem;
+  font-size: var(--font-size-400);
   line-height: 1;
 }
 
@@ -204,7 +206,7 @@
 }
 
 .home-ticket-key {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   white-space: nowrap;
 }
 

@@ -3,7 +3,6 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { OutcomeIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { TypeIcon } from '../shell/TicketIcons';
@@ -78,7 +77,6 @@ export function TrackOutcomesPage({ trackKey, client = trackClient }: TrackOutco
       {!read && !failed && <p className="page-note">{t('boards.loading')}</p>}
       {read && read.outcomes.length === 0 && (
         <EmptyState
-          icon={OutcomeIcon}
           title={t('track.outcomes.emptyTitle')}
           action={
             types.length > 0 && (

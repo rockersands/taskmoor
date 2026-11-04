@@ -62,16 +62,16 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .session-badge {
-  padding: 2px var(--space-2);
-  border-radius: 999px;
+  padding: var(--space-half) var(--space-2);
+  border-radius: var(--radius-pill);
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .session-meta {
@@ -129,11 +129,11 @@
 
 .appearance-text {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 .appearance-name {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .appearance-hint {
@@ -164,7 +164,7 @@
   flex-direction: column;
   gap: 6px;
   height: 100%;
-  padding: 8px;
+  padding: var(--space-2);
   background-color: var(--color-canvas);
   background-image: var(--canvas-image);
   background-position: center;
@@ -183,14 +183,14 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-1);
   background: var(--color-surface);
 }
 
 .skin-preview-line {
   width: 60%;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
   background: var(--color-text-muted);
 }
 
@@ -219,7 +219,7 @@
 
 .notification-delivery legend {
   margin-bottom: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .notification-choice {
@@ -254,7 +254,7 @@
 
 .notification-events caption {
   margin-bottom: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-align: start;
 }
 

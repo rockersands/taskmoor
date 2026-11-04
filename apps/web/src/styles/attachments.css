@@ -67,7 +67,7 @@
 .file-drop-title {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -169,7 +169,7 @@
 .attachment-name {
   display: inline-block;
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -188,7 +188,7 @@ span.attachment-name {
   margin: var(--space-1) 0 0;
   color: var(--color-warning);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .attachment-actions {

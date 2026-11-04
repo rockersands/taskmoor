@@ -186,7 +186,7 @@ function NotSignedInPanel({ read }: { read: OverviewClient['people'] }) {
       )}
       {state.status === 'loaded' &&
         (waiting.length === 0 ? (
-          <EmptyState title={t('admin.overview.waiting.noneTitle')}>
+          <EmptyState compact title={t('admin.overview.waiting.noneTitle')}>
             {t('admin.overview.waiting.none')}
           </EmptyState>
         ) : (
@@ -233,7 +233,9 @@ function AlertsPanel({ read }: { read: OverviewClient['alerts'] }) {
       )}
       {state.status === 'loaded' &&
         (state.value.length === 0 ? (
-          <EmptyState title={t('admin.alerts.none')}>{t('admin.overview.alerts.none')}</EmptyState>
+          <EmptyState compact title={t('admin.alerts.none')}>
+            {t('admin.overview.alerts.none')}
+          </EmptyState>
         ) : (
           <ul className="admin-panel-list">
             {state.value.slice(0, SHOWN).map((alert) => (

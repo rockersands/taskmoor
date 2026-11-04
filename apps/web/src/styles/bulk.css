@@ -37,7 +37,7 @@
 .bulk-counts dd {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .bulk-failures {
@@ -56,7 +56,7 @@
 
 .bulk-ticket {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 

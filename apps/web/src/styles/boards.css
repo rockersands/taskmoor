@@ -31,8 +31,7 @@
   min-height: var(--hit-target);
 }
 
-.board-unmapped,
-.board-problem {
+.board-unmapped {
   margin: var(--space-2) 0;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-1);
@@ -40,9 +39,10 @@
   overflow-wrap: anywhere;
 }
 
+/* It looks like every other error (forms.css); only its place on the page is its own. */
 .board-problem {
-  background: var(--color-danger-soft);
-  color: var(--color-text);
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
 }
 
 .board-scroll {
@@ -117,12 +117,12 @@
 .board-column-hidden {
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-column-hidden {
   color: var(--color-text-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .board-lane-title {
@@ -138,7 +138,7 @@
 .board-lane-title span {
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .board-cell {
@@ -165,7 +165,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-3) var(--space-2) calc(var(--space-3) + 4px);
+  padding: var(--space-3) var(--space-3) var(--space-2) calc(var(--space-3) + var(--space-1));
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   background: var(--glass-fill-strong);
@@ -252,14 +252,14 @@
   border-radius: var(--radius-pill);
   background: var(--color-surface-sunken);
   color: var(--color-text);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-align: center;
 }
 
 .board-card-age {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 /* The assignee sits at the card's far corner, the same place on every card. */
@@ -273,8 +273,8 @@
   border-radius: 50%;
   background: var(--color-blush-soft);
   color: var(--color-blush);
-  font-size: 0.6875rem;
-  font-weight: 650;
+  font-size: 0.85em;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-card-person.is-nobody {
@@ -289,7 +289,7 @@
   top: var(--space-1);
   inset-inline-end: var(--space-1);
   display: inline-flex;
-  gap: 2px;
+  gap: var(--space-half);
   border-radius: var(--radius-pill);
   background: var(--color-surface-raised);
   opacity: 0;
@@ -459,7 +459,7 @@
 
 .board-settings-section > legend {
   padding: 0 var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-settings-list {
@@ -502,7 +502,7 @@
 
 .board-settings-statuses caption {
   text-align: start;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-settings-statuses th,
@@ -635,7 +635,7 @@
 }
 
 .sprint-ticket-key {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .sprint-ticket-summary {
@@ -838,7 +838,7 @@ body.is-pointer-dragging .board-scroll {
 
 .backlog-panel-item button {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
@@ -862,7 +862,7 @@ body.is-pointer-dragging .board-scroll {
 }
 
 .backlog-panel-key {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .backlog-panel-name {

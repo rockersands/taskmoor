@@ -74,7 +74,7 @@
 
 .timeline-group .timeline-label {
   background: var(--color-surface-sunken);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .timeline-group .timeline-lane {
@@ -90,9 +90,9 @@
 .calendar-more {
   display: block;
   width: 100%;
-  padding: 2px 4px;
+  padding: var(--space-half) var(--space-1);
   border: 1px dashed var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   background: transparent;
   color: var(--color-text-muted);
   font: inherit;
@@ -145,7 +145,7 @@
 
 .capacity-table thead th {
   color: var(--color-text-muted);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   white-space: nowrap;
   background: var(--color-surface-sunken);
 }
@@ -162,7 +162,7 @@
   min-width: 11rem;
   max-width: 16rem;
   background: var(--color-surface-raised);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   overflow-wrap: anywhere;
 }
 
@@ -194,7 +194,7 @@
 
 .capacity-row.is-team .capacity-name,
 .capacity-card.is-team .capacity-card-title {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .capacity-row.is-person th {
@@ -208,7 +208,7 @@
 
 .capacity-cell {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   min-width: 8rem;
 }
 

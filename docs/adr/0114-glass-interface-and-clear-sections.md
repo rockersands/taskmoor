@@ -175,6 +175,29 @@ become **translucent glass**:
   Nothing is taken from Apple's or Atlassian's assets, screenshots, colours or layouts. The
   translucent depth is the idea we borrow, not any asset.
 
+- **The shared pieces, as built (T-143, T-144, 2026-11-04).** One look, in one place:
+  - `styles/shared.css`, loaded by the app, the stories and the Builder, before any page's styles:
+    `.page` (the width of about 76 rem and the rhythm; `.page-full` for what needs it all),
+    `.button-secondary` and `.button-quiet` (one quiet glass pill under two names, which also says
+    `aria-pressed` by a heavier word and an edge), `.button-danger`, `.data-table` (hairlines of
+    `--glass-edge` between rows, a quiet head) and `.badge` with its variants.
+  - `styles/forms.css`: every field's shape with no specificity, `.form-label`, one look for
+    `.form-error`, `.board-problem` and a `.page-note` that is an alert, and `.form fieldset`: a
+    slab on the canvas, a well with no blur of its own inside other glass.
+  - `styles/surfaces.css`: `.glass-scroller` beside `.glass-card` for a card that scrolls, its rim
+    inside it. Dialogs (`.create-dialog`, `.ticket-dialog`) are floating glass, with the strong fill,
+    the rim and the lens where it works.
+  - `EmptyState` always draws the one picture; `compact` is the words alone, for a short list inside
+    a card. `PageHeader` can take focus through `titleRef`.
+  - Tokens: `--radius-mark` (4 px) for marks too small for the radii of this section (a key cap, a
+    swatch, a bar, a code span; the 2 to 6 px these used before now read one value), `--space-half`
+    (2 px) and one scale of font weights (400, 550, 600, 700; what was 500 is 550 and what was 650
+    is 600). The gloss and the lens's shadow are tokens too.
+  - `--glass-surface-strong` in the light skin went from 66 % to 68 %: `contrast.test.ts` now holds a
+    dialog over the page's dim layer, and accent text fell just short at 66 %.
+  - `styles/design.test.ts` is the guard, and `styles/design-offenders.ts` lists what is still to
+    fix; when OFFENDERS is empty the sweep is done. The guard says at its head what it cannot check.
+
 ### 4. Light and dark
 
 - Both skins of ADR-036 stay, and each gains the glass tokens.

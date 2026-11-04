@@ -60,38 +60,16 @@
 
 .status-ok {
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .status-bad {
   color: var(--color-danger);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .status-warn {
   color: var(--color-warning);
-}
-
-.button-secondary {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-1);
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-soft);
-}
-
-.button-secondary:hover:not(:disabled) {
-  background: var(--color-surface-sunken);
-}
-
-.button-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .settings-section {
@@ -112,7 +90,7 @@
   align-items: center;
   min-height: var(--hit-target);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 /* Administration (ADR-114): its own navigation beside the page, folded above it when narrow. */
@@ -140,7 +118,7 @@
   display: flex;
   align-items: center;
   min-height: var(--hit-target);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
@@ -151,7 +129,7 @@
 
 .admin-nav-list {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -179,7 +157,7 @@
 
 .admin-nav-link[aria-current="page"] {
   background: var(--glass-tint-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .admin-breadcrumb {
@@ -257,7 +235,7 @@
   align-items: center;
   min-height: var(--hit-target);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .visibility-members {
@@ -327,7 +305,6 @@
 
 @media (pointer: coarse) {
   .button-primary,
-  .button-secondary,
   .link-list a {
     min-height: var(--hit-target-touch);
   }
@@ -384,7 +361,7 @@
 }
 
 .ai-usage-caption {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-align: start;
   padding-block-end: var(--space-2);
 }
@@ -443,7 +420,7 @@
 .api-usage-table thead th {
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .api-usage-table tbody th {
@@ -455,7 +432,7 @@
 }
 
 .api-usage-table td[data-throttled] {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .api-limits-form {
@@ -474,7 +451,7 @@
 }
 
 .api-limits-scope legend {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .api-limits-scope .form-hint {
@@ -536,7 +513,7 @@
 
 .audit-table thead th {
   color: var(--color-text-muted);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .audit-settings,
@@ -641,7 +618,7 @@
 .import-form legend,
 .import-people legend {
   padding: 0 var(--space-1);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .import-choices {
@@ -652,7 +629,7 @@
 .import-choices-title,
 .import-subtitle {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .import-form textarea {

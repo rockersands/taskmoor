@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { EmptyState } from './EmptyState';
-import { BoardsIcon } from './icons';
 import { PageHeader } from './PageHeader';
 
 const meta = {
@@ -47,7 +46,6 @@ export const Empty: Story = {
       <PageHeader {...args} />
       <section className="glass-card" style={{ padding: 24 }}>
         <EmptyState
-          icon={BoardsIcon}
           title="No boards yet"
           action={
             <a className="button-quiet" href="#/boards">

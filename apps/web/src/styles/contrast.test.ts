@@ -57,6 +57,7 @@ const TEXT: [string, string[]][] = [
   ['color-danger', ['color-danger-soft', 'color-surface', 'color-surface-raised']],
   ['color-warning', ['color-warning-soft', 'color-surface-raised']],
   ['color-success', ['color-success-soft', 'color-surface-raised']],
+  ['color-surface', ['color-danger']],
   ['color-blue', ['color-blue-soft']],
   ['color-blush', ['color-blush-soft']],
   ['color-butter', ['color-butter-soft']],
@@ -315,10 +316,126 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(short).toEqual([]);
     });
 
+    /** The worst ratio of a text colour on layers of glass, the last on top, sheen off and on. */
+    const worstOnStack = (fore: string, tints: Layer[], under: Layer[] = []) => {
+      let worst = Number.POSITIVE_INFINITY;
+      for (const cell of sample.cells) {
+        for (const pixel of [cell.mean, cell.lightest, cell.darkest]) {
+          const canvas = under.reduce((back, top) => over(top, back), over(dim, pixel));
+          const glass = tints.reduce(
+            (back, tint) => over(tint, back),
+            saturate(canvas, saturation),
+          );
+          worst = Math.min(
+            worst,
+            ratioOf(textOf(fore), glass),
+            ratioOf(textOf(fore), over({ colour: [255, 255, 255], alpha: sheen }, glass)),
+          );
+        }
+      }
+      return worst;
+    };
+    const STATES = ['color-danger', 'color-success', 'color-warning', 'color-blue'];
+
+    it(`[NFR-005] keeps state colours readable on glass in the ${name} skin`, () => {
+      // `.status-bad`, `.status-warn`, a link in a card: words that sit straight on glass.
+      const short: string[] = [];
+      for (const surface of ['glass-surface', 'glass-surface-sunken', 'glass-surface-strong']) {
+        for (const fore of STATES) {
+          const worst = worstOnStack(fore, [layer(name, surface)]);
+          if (worst < 4.5) short.push(`${fore} on ${surface}: ${worst.toFixed(2)} < 4.5`);
+        }
+      }
+      expect(short).toEqual([]);
+    });
+
+    it(`[NFR-005] keeps a glass table readable in the ${name} skin`, () => {
+      // `.data-table` in shared.css on a card: its rows, its head and a row under the pointer, and
+      // the same table on a dialog. The head and the hover are a well over the card.
+      const short: string[] = [];
+      const well = layer(name, 'glass-surface-sunken');
+      const parts: [string, Layer[], string[]][] = [
+        [
+          'a row',
+          [layer(name, 'glass-surface')],
+          ['color-text', 'color-text-muted', 'color-accent', ...STATES],
+        ],
+        ['the head', [layer(name, 'glass-surface'), well], ['color-text-muted']],
+        [
+          'a hovered row',
+          [layer(name, 'glass-surface'), well],
+          ['color-text', 'color-text-muted', 'color-accent', ...STATES],
+        ],
+        [
+          'a row on a dialog',
+          [layer(name, 'glass-surface-strong')],
+          ['color-text', 'color-text-muted', 'color-accent', ...STATES],
+        ],
+        ['the head on a dialog', [layer(name, 'glass-surface-strong'), well], ['color-text-muted']],
+      ];
+      for (const [part, tints, fores] of parts) {
+        for (const fore of fores) {
+          const worst = worstOnStack(fore, tints);
+          if (worst < 4.5) short.push(`${fore} in ${part}: ${worst.toFixed(2)} < 4.5`);
+        }
+      }
+      expect(short).toEqual([]);
+    });
+
+    it(`[NFR-005] keeps a badge readable, on any glass, in the ${name} skin`, () => {
+      // `.badge` with no variant is a well on whatever holds it; the variants are opaque soft tints.
+      const well = layer(name, 'glass-surface-sunken');
+      for (const surface of ['glass-surface', 'glass-surface-strong']) {
+        expect(worstOnStack('color-text', [layer(name, surface), well])).toBeGreaterThanOrEqual(
+          4.5,
+        );
+      }
+      for (const [fore, back] of [
+        ['color-text', 'color-accent-soft'],
+        ['color-blue', 'color-blue-soft'],
+        ['color-success', 'color-success-soft'],
+        ['color-warning', 'color-warning-soft'],
+        ['color-danger', 'color-danger-soft'],
+      ] as const) {
+        expect(ratioOf(textOf(fore), textOf(back))).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it(`[NFR-005] keeps floating glass over the page's dim layer at AA in the ${name} skin`, () => {
+      // A dialog: `--color-backdrop` over the page, then the strong glass, and a group of fields as
+      // a well inside it. The page under it is at most as dark as the canvas here; what a page draws
+      // under a dialog is only seen in the browser.
+      const short: string[] = [];
+      const backdrop = layer(name, 'color-backdrop');
+      const strong = layer(name, 'glass-surface-strong');
+      const well = layer(name, 'glass-surface-sunken');
+      for (const fore of ['color-text', 'color-text-muted', 'color-accent', 'color-danger']) {
+        for (const [part, tints] of [
+          ['a dialog', [strong]],
+          ['a group of fields in a dialog', [strong, well]],
+        ] as const) {
+          const worst = worstOnStack(fore, [...tints], [backdrop]);
+          if (worst < 4.5) short.push(`${fore} on ${part}: ${worst.toFixed(2)} < 4.5`);
+        }
+      }
+      expect(short).toEqual([]);
+    });
+
+    it(`[NFR-005] keeps a quiet pill that is on readable in the ${name} skin`, () => {
+      // `.button-secondary[aria-pressed="true"]`, hovered or on, on a card and on a dialog: the word
+      // at 4.5:1, the accent edge that marks it at 3:1 beside the tint.
+      const tint = layer(name, 'glass-tint-accent');
+      for (const surface of ['glass-surface', 'glass-surface-strong']) {
+        const stack = [layer(name, surface), tint];
+        expect(worstOnStack('color-text', stack)).toBeGreaterThanOrEqual(4.5);
+        expect(worstOnStack('color-accent', stack)).toBeGreaterThanOrEqual(3);
+      }
+    });
+
     it(`[NFR-005] keeps a filled pill's text at AA under its gloss in the ${name} skin`, () => {
       const fill = textOf('color-primary');
       const text = textOf('color-on-primary');
-      // The dome's lightest and darkest layers, from `.button-primary` in surfaces.css.
+      // The dome's lightest and darkest layers, `--pill-gloss`, on `.button-primary` in surfaces.css.
       const lightest = over({ colour: [255, 255, 255], alpha: 0.6 }, fill);
       const darkest = over({ colour: [0, 0, 0], alpha: 0.05 }, fill);
       expect(ratioOf(text, lightest)).toBeGreaterThanOrEqual(4.5);

@@ -194,7 +194,9 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
       </h2>
       <p className="page-note">{t('admin.aiLimits.limitsHint')}</p>
       {limits.length === 0 ? (
-        <EmptyState title={t('admin.aiUsage.noLimits')}>{t('admin.aiLimits.noLimits')}</EmptyState>
+        <EmptyState compact title={t('admin.aiUsage.noLimits')}>
+          {t('admin.aiLimits.noLimits')}
+        </EmptyState>
       ) : (
         <ul className="people-list">
           {limits.map((limit) => (

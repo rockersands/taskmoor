@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { HelpTip } from './HelpTip';
 
 interface PageHeaderProps {
@@ -7,6 +7,8 @@ interface PageHeaderProps {
   /** Plain text of the title for the help button's name, when the title is not a string. */
   titleText?: string;
   titleId?: string;
+  /** Lets the page move focus to its heading, when what had focus is gone (signing out). */
+  titleRef?: Ref<HTMLHeadingElement>;
   /** One line under the title saying what the page is for (ADR-114). */
   purpose?: ReactNode;
   /** A longer explanation behind the "What is this for?" button. */
@@ -25,6 +27,7 @@ export function PageHeader({
   title,
   titleText,
   titleId,
+  titleRef,
   purpose,
   about,
   eyebrow,
@@ -36,7 +39,11 @@ export function PageHeader({
       <div className="page-header-text">
         {eyebrow && <p className="page-eyebrow">{eyebrow}</p>}
         <div className="page-header-title">
-          <h1 id={titleId} className="page-title">
+          <h1
+            id={titleId}
+            className="page-title"
+            {...(titleRef ? { ref: titleRef, tabIndex: -1 } : {})}
+          >
             {title}
           </h1>
           {about && name && <HelpTip name={name}>{about}</HelpTip>}

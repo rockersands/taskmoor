@@ -15,7 +15,6 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
@@ -999,7 +998,6 @@ export function BoardPage({
       {data.cards.length === 0 &&
         (people.length > 0 ? (
           <EmptyState
-            icon={BoardsIcon}
             title={t('boards.people.emptyTitle')}
             action={
               <button type="button" className="button-quiet" onClick={() => choosePeople([])}>
@@ -1011,7 +1009,6 @@ export function BoardPage({
           </EmptyState>
         ) : hasBacklog && filters.length === 0 ? (
           <EmptyState
-            icon={BoardsIcon}
             title={t('boards.emptyScrumTitle')}
             action={
               <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
@@ -1022,9 +1019,7 @@ export function BoardPage({
             {t('boards.emptyScrumBody')}
           </EmptyState>
         ) : (
-          <EmptyState icon={BoardsIcon} title={t('boards.empty')}>
-            {t('boards.emptyBody')}
-          </EmptyState>
+          <EmptyState title={t('boards.empty')}>{t('boards.emptyBody')}</EmptyState>
         ))}
       <section
         ref={scrollRegion}

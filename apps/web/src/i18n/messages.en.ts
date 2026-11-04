@@ -210,6 +210,105 @@ export const messagesEn = {
     'Cards move from left to right as the work moves on: drag one to another column to move its ticket.',
   'purpose.ticket':
     'One piece of work: what it is, where it stands, who has it and everything that happened to it.',
+  'purpose.inbox': 'Mentions of you and changes to the tickets you follow, newest first.',
+  'purpose.search':
+    'Find tickets with filters or the query language, and save the searches you reuse.',
+  'purpose.dashboards': 'Charts and lists that sum up the work at a glance, for you or a team.',
+  'purpose.dashboard': 'The charts and lists gathered here sum up the work at a glance.',
+  'purpose.list':
+    'This track’s tickets as rows: filter them, group them and choose the columns you need.',
+  'purpose.calendar':
+    'This track’s tickets on their dates, a month at a time. Drag one to another day to reschedule it.',
+  'purpose.timeline':
+    'This track’s tickets over time, as bars from start to due date. Drag a bar to change its dates.',
+  'purpose.backlog':
+    'The work not yet in a sprint, in order of priority: rank it here and plan the next sprints.',
+  'purpose.releases':
+    'What this track has shipped and what it will ship next, with how far each release has come.',
+  'purpose.release':
+    'One release: the tickets in it, how far they have come and the notes they add up to.',
+  'purpose.boardSettings':
+    'How this board works: its columns, what it shows on a card and who may change it.',
+  'purpose.boardReports':
+    'How the work flows through this board: where it waits and how long it takes.',
+  'purpose.sprintReport':
+    'How this sprint went: what was planned, what was finished and what changed along the way.',
+  'purpose.plans':
+    'A plan shows the work of several tracks and saved searches together, on one timeline, calendar and list.',
+  'purpose.plan': 'The work of this plan’s tracks and saved searches together, in one place.',
+  'purpose.bulk': 'How a change to many tickets is going, and which tickets it could not change.',
+  'purpose.createTicket':
+    'Add a new piece of work to a track: its type, a summary and what the track asks for.',
+  'purpose.trackPeople': 'Who has which role in this track, and who has been invited to join it.',
+  'purpose.workflowEditor':
+    'The statuses of this workflow and the moves between them. Change a draft, check it, then publish it.',
+  'purpose.aiUsage':
+    'What AI features have been used for, by whom and at what cost, and how close they are to their limits.',
+  'purpose.apiUsage':
+    'How much the API is being used, by which clients, and how close they are to their limits.',
+  'purpose.security':
+    'The rules that keep accounts safe: second factors and the alerts you receive.',
+  'purpose.system': 'How this instance is doing right now: its database, its jobs and its version.',
+  'purpose.trash':
+    'Deleted tickets and tracks wait here until they are restored or their time is up.',
+  'purpose.signIn': 'Sign in to see your work.',
+  'purpose.invitation': 'You were invited to a track: accept to start working in it.',
+  'purpose.passwordLink': 'Choose a password for your account. This link works once.',
+  'purpose.consent': 'A program asks to act for you. Read what it wants, then answer.',
+  'purpose.unsubscribe':
+    'Stop the emails this link stands for. You can change it later in your settings.',
+  'empty.dashboards.title': 'No dashboards yet',
+  'empty.dashboards.body':
+    'A dashboard gathers charts and lists that sum up the work. Create the first one above.',
+  'empty.dashboard.title': 'No widgets yet',
+  'empty.dashboard.body':
+    'Widgets are the charts and lists of a dashboard. Whoever may edit it adds them.',
+  'empty.dashboard.bodyEditable':
+    'Widgets are the charts and lists of a dashboard. Edit it to add the first one.',
+  'empty.plans.body':
+    'A plan shows the work of several tracks and saved searches together. Create the first one above.',
+  'empty.planTickets.body':
+    'The plan shows the tickets of its tracks and saved searches. Add one to it, or change the filter.',
+  'empty.list.body': 'Tickets of this track show here. Change the filter, or create the first one.',
+  'empty.releases.upcoming':
+    'A release gathers the tickets that ship together. Plan the next one here.',
+  'empty.releases.shipped': 'A release shows here once it has shipped.',
+  'empty.groups.body': 'A group gathers people so that you can give them permissions together.',
+  'empty.teams.body': 'A team says who works together. Boards, areas and Team fields can name it.',
+  'empty.serviceAccounts.body':
+    'A service account lets a program act through its own tokens, without being a person.',
+  'empty.fields.body':
+    'A custom field adds what your tickets need to hold beyond the built-in fields.',
+  'empty.workflows.body':
+    'A workflow moves tickets between statuses. Create one to change how work moves.',
+  'empty.directories.title': 'No directories yet',
+  'empty.directories.body':
+    'People and groups are managed in Taskmoor until you connect a directory.',
+  'empty.identityProviders.title': 'No identity providers yet',
+  'empty.identityProviders.body': 'Everyone signs in with a password until you add one.',
+  'empty.templates.body':
+    'A template starts a new ticket with a summary, an outline and default values.',
+  'empty.imports.body':
+    'An import brings work over from an earlier tracker. Start with a dry run: it writes nothing.',
+  'empty.frontends.body':
+    'A frontend on another address must be registered here before it may use this server.',
+  'empty.aiUsage.body':
+    'Calls show here once people use an AI feature. Choose a longer period to look further back.',
+  'empty.apiUsage.body':
+    'Requests show here once a program uses the API. Choose a longer period to look further back.',
+  'empty.audit.body': 'Try a wider filter: records stay here until their retention ends.',
+  'empty.users.body': 'Try another name or email address, or a wider filter.',
+  'empty.adminTokens.body':
+    'Try a wider filter. Tokens show here once a person or a service account creates one.',
+  'empty.tokens.body':
+    'A token lets a program or script call the API as you. Create one when you need it.',
+  'empty.personalData.body':
+    'Prepare a download to get everything Taskmoor keeps about this person.',
+  'empty.trackPeople.body':
+    'A track shows here once you run it: when someone gives you the role, or you create the track.',
+  'empty.trash.tickets': 'A deleted ticket waits here until it is restored or its time is up.',
+  'empty.trash.tracks': 'A deleted track waits here until it is restored or its time is up.',
+  'empty.reports.period': 'Choose a longer period, or come back when the board has seen more work.',
   'about.home':
     'Assigned to you lists the open tickets where you are the assignee, the most recently changed first. Opened lately lists the tickets you viewed. You follow lists the tickets whose changes reach your inbox.',
   'about.board':

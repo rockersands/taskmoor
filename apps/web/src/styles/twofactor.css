@@ -82,7 +82,7 @@
 /* The Account section: one group per kind of factor. */
 .two-factor-state {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .two-factor-on {

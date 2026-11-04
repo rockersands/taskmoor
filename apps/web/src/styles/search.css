@@ -46,7 +46,7 @@
 .search-choices > legend,
 .search-filter > legend {
   padding: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .search-filters {
@@ -244,14 +244,14 @@
 
 .search-table thead th {
   color: var(--color-text-muted);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   white-space: nowrap;
   background: var(--color-surface-sunken);
 }
 
 .search-key {
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .search-cell {

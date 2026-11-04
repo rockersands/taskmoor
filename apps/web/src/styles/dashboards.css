@@ -217,7 +217,7 @@
   max-width: 4rem;
   min-width: 2px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
   background: var(--color-chart-1);
 }
 
@@ -297,20 +297,20 @@
 
 .summary-count {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .summary-bar {
   display: block;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
   background: var(--color-surface-sunken);
 }
 
 .summary-bar > span {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
   background: var(--color-chart-1);
 }
 

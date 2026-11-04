@@ -75,7 +75,7 @@
 .builder-advanced summary {
   min-height: var(--hit-target);
   line-height: var(--hit-target);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 

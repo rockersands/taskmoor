@@ -8,7 +8,7 @@
 }
 
 .chart-title {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .chart-legend {
@@ -39,13 +39,13 @@
 .chart-key {
   width: 16px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
 }
 
 .chart-swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
 }
 
 .chart-key-one {
@@ -79,13 +79,13 @@
 
 .chart-tick {
   fill: var(--color-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-100);
 }
 
 .chart-value {
   fill: var(--color-text);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-strong);
 }
 
 .chart-line {
@@ -278,7 +278,7 @@
 .reports-tabs a[aria-current="page"] {
   background: var(--color-accent);
   color: var(--color-on-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 /* A track's reports, in groups (ADR-116); the pills wrap, so a phone never scrolls sideways. */
@@ -304,7 +304,7 @@
   padding: 0;
   color: var(--color-text);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: var(--hit-target);
 }
 
@@ -328,7 +328,7 @@
 
 .reports-choices legend {
   padding: 0 var(--space-1);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .reports-choices .report-note {
@@ -387,7 +387,7 @@
 .report-stats dd {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 /* Wide tables scroll inside their own box, never the page (ADR-033). */
