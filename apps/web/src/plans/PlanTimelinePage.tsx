@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import type { TimelineItem } from '../timeline/client';
+import { DependencyList } from '../timeline/DependencyList';
+import { dependenciesOf } from '../timeline/dependencies';
 import { type TimelineGroup, TimelineView } from '../timeline/TimelineView';
 import type { PlanGroup } from './address';
 import type { PlanTimeline, PlanTimelineItem } from './client';
@@ -14,6 +16,11 @@ import type { PlanSectionProps } from './PlanSummaryPage';
  * `TimelineView` with roll-ups, dependencies and the sprints and releases of their tracks, grouped
  * on the page by track, assignee, status, type or priority. Rescheduling is each ticket's own
  * change, so its track's permission and history apply.
+ *
+ * Dependencies (PLN-006): lines between listed tickets, a badge beside each blocked bar that
+ * counts its blockers and says when one is late, and the same as a list below the timeline
+ * (`DependencyList`), which a button beside the zoom reaches at once. Blockers the timeline does
+ * not list are only counted, never named.
  */
 export function PlanTimelinePage({
   id,
@@ -26,6 +33,7 @@ export function PlanTimelinePage({
   const [data, setData] = useState<PlanTimeline | null>(null);
   const [failed, setFailed] = useState(false);
   const filterKey = JSON.stringify(filters);
+  const listId = useId();
 
   /** Counts requests: only the latest one's answer is drawn, however they come back. */
   const latest = useRef(0);
@@ -80,6 +88,10 @@ export function PlanTimelinePage({
       }
     };
   }, [group, data]);
+  const dependencies = useMemo(
+    () => (data ? dependenciesOf(data.items, data.links, data.blockersElsewhere) : new Map()),
+    [data],
+  );
 
   if (failed) {
     return (
@@ -101,7 +113,18 @@ export function PlanTimelinePage({
         now={now}
         {...(groupOf ? { groupOf } : {})}
         truncatedText={t('plans.truncated', { count: data.items.length })}
+        dependencies={dependencies}
+        tools={
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => document.getElementById(listId)?.focus()}
+          >
+            {t('dependencies.goTo')}
+          </button>
+        }
       />
+      <DependencyList dependencies={dependencies} headingId={listId} />
     </div>
   );
 }

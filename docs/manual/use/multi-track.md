@@ -1,7 +1,7 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -53,11 +53,40 @@ filter the plan to see the rest.
 - **Timeline**: the tickets as bars over the calendar, as on a track's
   [timeline](views.md#the-timeline), with the sprints and releases of their tracks. Parents sit
   above their children, and a parent without dates shows the span of all its children you may see,
-  even those outside the plan. Lines join a ticket to the ones it blocks, across tracks too.
+  even those outside the plan. Lines join a ticket to the ones it blocks, across tracks too: see
+  [Dependencies](#dependencies).
 - **List**: the plan's tickets as a search, in your columns, sorted by newest, recently updated,
   due date or priority. You edit cells in place, as in search results. It stops at 10,000 rows.
 - **Calendar**: a month of the tickets on their due and start days. A day shows six tickets and a
   button for the rest.
+
+## Dependencies
+
+When one ticket blocks another (a **Blocks** link on the ticket), the Timeline shows the
+dependency, across tracks too.
+
+- **A line** runs from the end of the blocker's bar to the start of the bar it blocks. A ticket
+  without dates has no bar, so no line, but it still has its badge and its place in the list.
+- **A badge** beside each blocked bar counts its blockers. Point at it to read, for example,
+  "Blocked by 3 tickets, 1 late"; a screen reader says the same with the bar.
+- **Late**: a dependency is late when the blocker ends on or after the day the blocked ticket
+  starts. Its line turns red and dashed, and the badge turns red and says **late** in words. A
+  blocker that is closed holds nothing up, so it is never late, and neither is a dependency whose
+  blocked ticket is already closed. Move the blocked ticket after its blocker, or the blocker
+  earlier, and the warning goes.
+- **Blockers you do not see on the Timeline** are only counted, on the ticket they block:
+  - "Blocked by 2 tickets outside this plan" counts blockers that are not in the plan, and those you
+    may not see. It never says which, so nothing hidden from you is named, dated or linked.
+  - "Blocked by 1 ticket of this plan not shown here" counts blockers of the plan that your filters
+    leave out, or that come after the first 10,000. Clear the filters to see them.
+- Tickets in the trash block nothing.
+
+Below the Timeline, **Dependencies** lists the same as text, for the keyboard and screen readers:
+each blocked ticket with its blockers, each marked **Late**, **On time**, **Closed** or **No
+dates**, with the days that decide it, and the counts of those not shown. **Only late ones**
+narrows the list, and **List of dependencies**, beside the zoom buttons, takes you straight to
+it. Choosing a bar also shows, in its side panel, which of its blockers are late and how many
+are elsewhere.
 
 ## Filtering and grouping
 
@@ -93,6 +122,6 @@ nothing from it. Share those as well when they should.
 
 ## Not yet in Multi-track
 
-Dependencies as their own view, teams and capacity, releases across tracks, the program board,
-draft changes and scenarios, the auto-scheduler, and copying or exporting a plan come in later
-versions.
+Teams and capacity, releases across tracks, the program board, draft changes and scenarios, the
+auto-scheduler, and copying or exporting a plan come in later versions. Dependencies are the
+**Blocks** links only: other link types do not count as dependencies.

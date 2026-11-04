@@ -1,0 +1,277 @@
+import { randomBytes } from 'node:crypto';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
+import { hashPassword } from '@taskmoor/iam';
+import type { FastifyInstance, InjectOptions } from 'fastify';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildApp } from '../app';
+import { SESSION_COOKIE } from '../auth';
+
+// Made for this run: no password is written in the repository.
+const PASSWORD = `plan-deps-${randomBytes(18).toString('base64url')}`;
+let address = 0;
+const nextAddress = () => `100.87.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
+
+function sessionCookie(header: string | string[] | undefined): string {
+  const list = Array.isArray(header) ? header : header ? [header] : [];
+  return (
+    (
+      list.find(
+        (c) => c.startsWith(`${SESSION_COOKIE}=`) && !c.startsWith(`${SESSION_COOKIE}=;`),
+      ) ?? ''
+    ).split(';')[0] ?? ''
+  );
+}
+
+interface Timeline {
+  items: { id: number; key: string; summary: string }[];
+  links: { from: number; to: number }[];
+  blockersElsewhere: { id: number; outside: number; unlisted: number }[];
+  truncated: boolean;
+}
+
+/**
+ * The dependencies of a Multi-track plan's Timeline (T-089; PLN-006; ADR-122). A plan over DPA,
+ * where Ana is a member; she also sees DPB, which is not a source, and never DPC. In DPA, Design
+ * blocks Build (which starts before Design ends) and Ship; Ship is also blocked by a DPB ticket,
+ * a DPC ticket and a ticket in the trash, and related to another. A blocker the timeline lists is
+ * a line; any other is only counted on the ticket it blocks: outside the plan or hidden as one
+ * number, never named, and the plan's own that a filter leaves out as another.
+ */
+describe('a plan’s dependencies (PLN-006)', () => {
+  const database = useMigratedDatabase();
+  let app: FastifyInstance;
+  const users: Record<string, { id: number; cookie: string }> = {};
+  const tracks: Record<string, number> = {};
+  const t: Record<string, { id: number; key: string }> = {};
+  let planId = 0;
+
+  const as = (who: string, options: InjectOptions) =>
+    app.inject({
+      ...options,
+      remoteAddress: nextAddress(),
+      headers: { ...(options.headers ?? {}), cookie: users[who]?.cookie ?? '' },
+    });
+  const call = async (who: string, options: InjectOptions, code = 200) => {
+    const res = await as(who, options);
+    expect(res.statusCode, `${options.method} ${options.url}: ${res.body.slice(0, 400)}`).toBe(
+      code,
+    );
+    return res.json();
+  };
+  const timeline = async (who: string, query = '') => {
+    const res = await as(who, { method: 'GET', url: `/api/v1/plans/${planId}/timeline${query}` });
+    expect(res.statusCode, res.body.slice(0, 400)).toBe(200);
+    return { body: res.body, answer: res.json() as Timeline };
+  };
+  const ticket = async (track: string, summary: string, data: Record<string, unknown> = {}) =>
+    (
+      await call(
+        'admin',
+        { method: 'POST', url: '/api/v1/tickets', payload: { track, summary, ...data } },
+        201,
+      )
+    ).ticket as { id: number; key: string };
+  const linkType = async (outward: string) =>
+    (
+      await database.db
+        .selectFrom('link_type')
+        .select('id')
+        .where('outward', '=', outward)
+        .executeTakeFirstOrThrow()
+    ).id;
+  /** `blocker` blocks `blocked`, or another link type's outward phrase. */
+  const link = async (
+    blocker: { key: string },
+    blocked: { key: string },
+    outward = 'blocks',
+  ): Promise<void> => {
+    await call(
+      'admin',
+      {
+        method: 'POST',
+        url: `/api/v1/tickets/${blocker.key}/links`,
+        payload: { linkTypeId: await linkType(outward), ticket: blocked.key },
+      },
+      201,
+    );
+  };
+
+  beforeAll(async () => {
+    app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
+    const hash = await hashPassword(PASSWORD);
+    for (const [name, admin] of [
+      ['admin', true],
+      ['ana', false],
+      ['cy', false],
+    ] as const) {
+      const row = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: `${name}@example.com`,
+          name,
+          password_hash: hash,
+          is_site_admin: admin,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/session',
+        payload: { email: `${name}@example.com`, password: PASSWORD },
+        remoteAddress: nextAddress(),
+      });
+      users[name] = { id: row.id, cookie: sessionCookie(res.headers['set-cookie']) };
+    }
+    for (const [key, name] of [
+      ['DPA', 'Apps'],
+      ['DPB', 'Billing'],
+      ['DPC', 'Core'],
+    ] as const) {
+      const made = await call(
+        'admin',
+        { method: 'POST', url: '/api/v1/tracks', payload: { key, name, mode: 'shared' } },
+        201,
+      );
+      tracks[key] = made.track.id;
+    }
+    const members = (
+      await database.db
+        .selectFrom('role')
+        .select('id')
+        .where('name', '=', 'Members')
+        .executeTakeFirstOrThrow()
+    ).id;
+    for (const key of ['DPA', 'DPB']) {
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: tracks[key] as number,
+          role_id: members,
+          user_id: users.ana?.id as number,
+        })
+        .execute();
+    }
+    const ana = users.ana?.id;
+    t.design = await ticket('DPA', 'Design', { startDate: '2027-03-01', dueDate: '2027-03-10' });
+    t.build = await ticket('DPA', 'Build', {
+      startDate: '2027-03-08',
+      dueDate: '2027-03-20',
+      assigneeId: ana,
+    });
+    t.ship = await ticket('DPA', 'Ship', {
+      startDate: '2027-03-22',
+      dueDate: '2027-03-25',
+      assigneeId: ana,
+    });
+    t.invoice = await ticket('DPB', 'Invoice run', { dueDate: '2027-03-30' });
+    t.secret = await ticket('DPC', 'Secret core work', { dueDate: '2027-04-30' });
+    t.binned = await ticket('DPA', 'Binned', { dueDate: '2027-03-05' });
+    t.related = await ticket('DPB', 'Related only');
+    await link(t.design, t.build);
+    await link(t.design, t.ship);
+    await link(t.invoice, t.ship);
+    await link(t.secret, t.ship);
+    await link(t.binned, t.ship);
+    await link(t.related, t.ship, 'relates to');
+    // In the trash: no longer a blocker anyone counts.
+    await database.db
+      .updateTable('ticket')
+      .set({ deleted_at: new Date() })
+      .where('id', '=', t.binned.id)
+      .execute();
+    planId = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: {
+            name: 'Delivery',
+            sources: [{ kind: 'track', trackId: tracks.DPA }],
+            shares: [{ scope: 'any_user' }],
+          },
+        },
+        201,
+      )
+    ).plan.id;
+  }, 120_000);
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('[PLN-006] draws listed blockers as lines and counts the others, without the trash or other link types', async () => {
+    const { answer } = await timeline('admin');
+    expect(answer.items.map((i) => i.summary).sort()).toEqual(['Build', 'Design', 'Ship']);
+    expect(answer.links).toEqual([
+      { from: t.design?.id, to: t.build?.id },
+      { from: t.design?.id, to: t.ship?.id },
+    ]);
+    // Invoice run (outside the plan) and Secret core work: two, whoever may see them.
+    expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
+  });
+
+  it('[PLN-006] counts a blocker hidden from the viewer as outside the plan, and never names it', async () => {
+    const { answer, body } = await timeline('ana');
+    expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
+    const listed = new Set(answer.items.map((i) => i.id));
+    for (const l of answer.links) {
+      expect(listed.has(l.from) && listed.has(l.to)).toBe(true);
+    }
+    // Neither its key nor its summary is anywhere in the answer.
+    expect(body).not.toContain(t.secret?.key);
+    expect(body).not.toContain('Secret core work');
+    expect(body).not.toContain('DPC');
+    // The ticket's own page lists only the links she may see: the plan adds no name to them.
+    const links = await call('ana', { method: 'GET', url: `/api/v1/tickets/${t.ship?.key}/links` });
+    expect(links.links.map((l: { ticket: { key: string } }) => l.ticket.key).sort()).toEqual(
+      [t.design?.key, t.invoice?.key, t.related?.key].sort(),
+    );
+  });
+
+  it('[PLN-006] counts the plan’s own blockers that a filter leaves out apart from those outside it', async () => {
+    const { answer } = await timeline('ana', '?assignee=me');
+    expect(answer.items.map((i) => i.summary).sort()).toEqual(['Build', 'Ship']);
+    expect(answer.links).toEqual([]);
+    expect(answer.blockersElsewhere).toEqual(
+      [
+        { id: t.build?.id, outside: 0, unlisted: 1 },
+        { id: t.ship?.id, outside: 2, unlisted: 1 },
+      ].sort((a, b) => (a.id ?? 0) - (b.id ?? 0)),
+    );
+  });
+
+  it('[PLN-006] counts nothing for someone who sees none of the plan', async () => {
+    const { answer, body } = await timeline('cy');
+    expect(answer.items).toEqual([]);
+    expect(answer.links).toEqual([]);
+    expect(answer.blockersElsewhere).toEqual([]);
+    expect(body).not.toContain('Secret core work');
+  });
+
+  it('[PLN-006] makes a blocker that joins the plan a line instead of a count', async () => {
+    await call('admin', {
+      method: 'PATCH',
+      url: `/api/v1/plans/${planId}`,
+      payload: {
+        sources: [
+          { kind: 'track', trackId: tracks.DPA },
+          { kind: 'track', trackId: tracks.DPB },
+        ],
+      },
+    });
+    try {
+      const { answer } = await timeline('ana');
+      expect(answer.links).toContainEqual({ from: t.invoice?.id, to: t.ship?.id });
+      // Secret core work stays outside for her, and only counted.
+      expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 1, unlisted: 0 }]);
+    } finally {
+      await call('admin', {
+        method: 'PATCH',
+        url: `/api/v1/plans/${planId}`,
+        payload: { sources: [{ kind: 'track', trackId: tracks.DPA }] },
+      });
+    }
+  });
+});

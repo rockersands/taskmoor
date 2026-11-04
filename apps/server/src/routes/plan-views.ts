@@ -12,7 +12,13 @@ import {
   MAX_CALENDAR_DAYS,
   type PlanFilters,
 } from '../plans/model';
-import { browsedTracks, type PlanTickets, planTickets, sourceRows } from '../plans/query';
+import {
+  browsedTracks,
+  filterText,
+  type PlanTickets,
+  planTickets,
+  sourceRows,
+} from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { planVisible } from './plans';
 import { searchRefusal } from './search';
@@ -31,6 +37,10 @@ import { searchRefusal } from './search';
  *   first 10,000 in rank order are chosen first and only they are read further. Roll-ups cover
  *   every descendant the viewer may see, in the plan or not; a parent they may not see reads as
  *   none. Markers: dated sprints of the Scrum boards and dated releases of the tracks listed.
+ *   Dependencies (PLN-006): blocking links between listed tickets, and for each listed ticket
+ *   the blockers it does not list, only counted (`blockersElsewhere`): those outside the plan or
+ *   hidden from the viewer as one number, never named, and those of the plan that the filters or
+ *   the 10,000 leave out as another. Blockers in the trash are not counted.
  * - `GET /api/v1/plans/:id/calendar?from=&to=`: the tickets with a start or due day in the
  *   range (at most 100 days, at most 10,000 tickets by due day), with the sprints and releases of
  *   their tracks that overlap it.
@@ -358,12 +368,15 @@ export function registerPlanViewRoutes(
         query: tickets.query,
         items: [],
         links: [],
+        blockersElsewhere: [],
         tracks: [],
         markers: { sprints: [], releases: [] },
         truncated: false,
       };
       const where = tickets.where;
-      if (!where) return none;
+      const unfiltered = tickets.unfiltered;
+      if (!where || !unfiltered) return none;
+      const filtered = filterText(f.data) !== null;
       // The viewer's tickets of any track, for roll-ups beyond the plan.
       const seen = await compileQuery(db, tickets.scope, '', new Date());
       const answer = await readOnly(db, timeoutMs, async (trx) => {
@@ -373,7 +386,10 @@ export function registerPlanViewRoutes(
              LIMIT ${LISTED + 1}`.execute(trx)
         ).rows.map((r) => r.id);
         const ids = chosen.slice(0, LISTED);
-        if (ids.length === 0) return { rows: [], rollups: [], links: [], ids, more: false };
+        if (ids.length === 0) {
+          return { rows: [], rollups: [], links: [], elsewhere: [], ids, more: false };
+        }
+        const more = chosen.length > LISTED;
         const rows = (
           await sql<ItemRow>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
@@ -417,15 +433,40 @@ export function registerPlanViewRoutes(
              WHERE tree.depth > 0
              GROUP BY tree.root`.execute(trx)
         ).rows;
-        const links = (
+        // Every blocker of a listed ticket, outside the trash: drawn when listed, else counted.
+        const blocking = (
           await sql<{ from: number; to: number }>`
-            SELECT l.source_id AS from, l.target_id AS to
+            SELECT DISTINCT l.source_id AS from, l.target_id AS to
               FROM ticket_link l JOIN link_type lt ON lt.id = l.link_type_id
+              JOIN ticket b ON b.id = l.source_id
              WHERE l.workspace_id = ${ws}::int AND lower(lt.outward) = 'blocks'
-               AND l.source_id = ANY(${ids}::int[]) AND l.target_id = ANY(${ids}::int[])
+               AND l.target_id = ANY(${ids}::int[]) AND b.deleted_at IS NULL
              ORDER BY l.source_id, l.target_id`.execute(trx)
         ).rows;
-        return { rows, rollups, links, ids, more: chosen.length > LISTED };
+        const listed = new Set(ids);
+        const links = blocking.filter((l) => listed.has(l.from));
+        const others = blocking.filter((l) => !listed.has(l.from));
+        // Which of the others are the plan's for this viewer, left out by the filters or the
+        // 10,000. Without either, every ticket of the plan is listed, so none is.
+        const blockers = [...new Set(others.map((l) => l.from))];
+        const inPlan = new Set(
+          (filtered || more) && blockers.length > 0
+            ? (
+                await sql<{ id: number }>`
+                  SELECT k.id FROM ticket k
+                   WHERE k.id = ANY(${blockers}::int[]) AND ${unfiltered}`.execute(trx)
+              ).rows.map((r) => r.id)
+            : [],
+        );
+        const counted = new Map<number, { id: number; outside: number; unlisted: number }>();
+        for (const l of others) {
+          const entry = counted.get(l.to) ?? { id: l.to, outside: 0, unlisted: 0 };
+          if (inPlan.has(l.from)) entry.unlisted++;
+          else entry.outside++;
+          counted.set(l.to, entry);
+        }
+        const elsewhere = [...counted.values()].sort((a, b) => a.id - b.id);
+        return { rows, rollups, links, elsewhere, ids, more };
       });
       if (answer.rows.length === 0) return none;
       const parents = [
@@ -471,6 +512,7 @@ export function registerPlanViewRoutes(
           };
         }),
         links: answer.links,
+        blockersElsewhere: answer.elsewhere,
         tracks: extra.tracks,
         markers: extra.markers,
         truncated: answer.more,

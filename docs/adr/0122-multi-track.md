@@ -157,13 +157,76 @@ Each view answers the plan's query with the filters, as the viewer. Each lists a
 - Rescheduling is one function on the page (`reschedule` in the plan client); scenarios replace
   it with a draft change.
 
+### Stage 2 (T-089): dependencies on the Timeline
+
+PLN-006, reworded to what is built and moved to M1. Nothing new is stored: dependencies are the
+blocking links tickets already have (CORE-018), so there is no migration, route, event or audit
+decision; the Timeline's answer grows one field, read with the timeline's own scope.
+
+#### What a dependency is
+
+- A link whose type's outward phrase is "blocks", as on a track's timeline (ADR-064): its source
+  is the **blocker**, its target the **blocked** ticket. Choosing other link types as
+  dependencies, and flagging dependencies inside one sprint, are not in this stage: PLN-006 no
+  longer promises them, and each would be its own ticket if asked for.
+- **Late**: the blocker ends on or after the day the blocked ticket starts (the bars' days: their
+  own, their sprint's, or a parent's roll-up), both still open. A closed blocker holds nothing
+  up, and a closed blocked ticket is done, so neither is ever late. One function decides it
+  (`dependencyState`, `apps/web/src/timeline/dependencies.ts`) for the lines, the badges and the
+  list, on a track's timeline too, whose lines were late by days alone before.
+
+#### What the viewer is told
+
+- **Listed blockers** (both tickets among the Timeline's listed tickets): a line from the
+  blocker's end to the blocked ticket's start, dashed in the danger colour when late; a line needs
+  both bars, so a ticket without days has its badge and its entry in the list, but no line.
+- **A badge beside each blocked bar** (or before "No dates") counts all its blockers, listed or
+  not. When one is late it turns red and says "late" in words. The bar's description carries the
+  full sentence ("Blocked by 3 tickets, 1 late"), so a screen reader hears it on the bar.
+- **The list** below the Timeline (`DependencyList`) says the same for the keyboard and screen
+  readers: each blocked ticket in the Timeline's order, its listed blockers each with "Late",
+  "On time", "Closed" or "No dates" in words and the days that decide it, and the counts of the
+  others. "Only late ones" narrows it; it shows 100 tickets at a time. A button beside the zoom,
+  "List of dependencies", moves focus to its heading, past every row of the Timeline.
+- **Blockers the Timeline does not list** are counted per blocked ticket
+  (`blockersElsewhere: { id, outside, unlisted }` in `GET /plans/:id/timeline`):
+  - `outside`: outside the plan, or hidden from the viewer, as one number ("blocked by 2 tickets
+    outside this plan"). Never a key, summary, track, status or date, so the answer reads the same
+    whether such a blocker is hidden or merely elsewhere. This is the rule for hidden sources
+    (stage 1): a number, never which. A ticket's own page lists only the links its viewer may see
+    and counts none; the plan's count adds no name to that, only that something outside the
+    viewer's plan holds the ticket up, which is what someone planning needs to know.
+  - `unlisted`: tickets of the plan for this viewer (they match its query without the filters,
+    with the viewer's ticket filter) that the filters or the first 10,000 leave out, so "outside
+    this plan" is never said of the plan's own tickets. They are tickets the viewer sees; they are
+    counted, not drawn, because they have no row.
+  - Blockers in the trash count for nobody, as a ticket's links leave them out.
+- Rescheduling is unchanged: moving a bar is the ticket's own change, and the next read redraws
+  the lines, badges and list, so a late dependency clears once the blocked ticket moves after its
+  blocker. The side panel adds which blockers are late and the counts of the others.
+
+#### How the server reads them
+
+- One statement reads every blocking link whose target is listed (the target's index), with the
+  blocker outside the trash; those whose blocker is listed are lines, the rest are counted. Only
+  when a filter is set or the view is cut at 10,000 does a second statement ask which of the
+  counted blockers are in the plan for the viewer (`planTickets` now also gives `unfiltered`, the
+  plan's condition without the filters); without either, every ticket of the plan is listed, so
+  none is.
+- Measured with the size test, which now gives every outcome's features a chain of eight blocking
+  links and each track's last feature one into the next track (`plans.large.test.ts`, medians of
+  five reads, a Mac, 2026-11-03): at 100,000 tickets and about 80,000 links
+  (`TASKMOOR_LARGE_PLANS=1`), the Timeline answers in 136 ms (126 ms without dependencies in
+  stage 1) and filtered in 42 ms (28 ms), with the counted blockers checked against the plan;
+  every gate reads 10,000 tickets and about 8,000 links (97 ms).
+
 ### Later stages
 
-Each adds its section here when it starts: dependencies (T-089; PLN-006), teams and capacity
-(T-089b; PLN-005, PLN-009), cross-track releases (T-089c; PLN-007), the program board (T-089d;
-PLN-008), draft changes and scenarios (T-089e; PLN-002, PLN-003), the auto-scheduler (T-089f;
-PLN-004), duplicating a plan, a link to a view and exports (T-089g). PLN-002 to PLN-009 move to M1
-in the spec with their stage, so nothing lists them for 1.0 before they exist.
+Each adds its section here when it starts: teams and capacity (T-089b; PLN-005, PLN-009),
+cross-track releases (T-089c; PLN-007), the program board (T-089d; PLN-008), draft changes and
+scenarios (T-089e; PLN-002, PLN-003), the auto-scheduler (T-089f; PLN-004), duplicating a plan, a
+link to a view and exports (T-089g). PLN-002 to PLN-009 move to M1 in the spec with their stage,
+so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2.
 
 ## Options considered
 
@@ -191,3 +254,7 @@ in the spec with their stage, so nothing lists them for 1.0 before they exist.
 - A plan someone may see but whose sources they cannot see is an empty plan for them. The page
   says so, so the owner knows to share the tracks or searches as well.
 - Revisit grouping by outcome when the query language gains an "under this outcome" condition.
+- A viewer learns how many blockers outside their view hold a ticket up, though not which: the
+  same kind of number as the count of hidden sources. Should the user want hidden blockers left
+  out of the count altogether, `outside` would count only blockers the viewer may see, one
+  statement more.

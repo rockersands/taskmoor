@@ -185,6 +185,41 @@
   stroke-dasharray: 4 3;
 }
 
+/* A blocked bar's badge (PLN-006): how many blockers, just past the bar's end (or before "No
+   dates"); red with the word "late" when one is late, so colour is never the only sign. */
+.timeline-badge {
+  position: absolute;
+  top: 12px;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timeline-badge.is-before {
+  transform: translateX(calc(-100% - 6px));
+}
+
+.timeline-badge.is-late {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.timeline-panel-late {
+  color: var(--color-danger);
+}
+
 .timeline-rows {
   position: relative;
   margin: 0;
@@ -349,6 +384,74 @@ button.timeline-bar:focus-visible {
   gap: var(--space-2);
 }
 
+/* The dependencies as a list (PLN-006): each blocked ticket and its blockers, late ones marked
+   in words and in the danger colour. */
+.dependency-list {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dependency-list h2 {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+.dependency-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.dependency-tools p {
+  margin: 0;
+}
+
+.dependency-entries {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dependency-entry {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+  overflow-wrap: anywhere;
+}
+
+.dependency-entry.is-late {
+  border-inline-start: 3px solid var(--color-danger);
+}
+
+.dependency-ticket,
+.dependency-by {
+  margin: 0;
+}
+
+.dependency-by {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.dependency-key,
+.dependency-state {
+  font-weight: 600;
+}
+
+.dependency-blockers {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-4);
+}
+
+.dependency-state.is-late {
+  color: var(--color-danger);
+}
+
 @media (max-width: 767px) {
   .timeline-page {
     --timeline-label: 9.5rem;
@@ -380,8 +483,17 @@ button.timeline-bar:focus-visible {
   .timeline-zoom button,
   .timeline-tools button,
   .timeline-panel input,
-  .timeline-panel button {
+  .timeline-panel button,
+  .dependency-list button {
     min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+  }
+
+  .dependency-list a {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.25em;
     min-height: var(--hit-target-touch);
   }
 }

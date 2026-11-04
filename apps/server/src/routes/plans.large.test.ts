@@ -15,8 +15,9 @@ const nextAddress = () => `100.89.${Math.floor(++address / 250)}.${(address % 25
 
 /**
  * A plan at size (PLN-012 (1)): 20 tracks of outcomes, each with nine dated features spread over
- * a year, read by a member of every track. Every gate reads 10,000 tickets; the M1 bar of 100,000
- * runs with
+ * a year, each feature blocking the next under its outcome and the last one blocking the first of
+ * the next track's (PLN-006), read by a member of every track. Every gate reads 10,000 tickets;
+ * the M1 bar of 100,000 runs with
  *   TASKMOOR_LARGE_PLANS=1 npx vitest run --project=server apps/server/src/routes/plans.large.test.ts
  * Each view, and the List's search and groups, is read five times; the median must stay under a
  * second.
@@ -167,6 +168,26 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
                LATERAL (SELECT id FROM ticket WHERE track_id = k.track_id AND number = k.number + o) p
          WHERE k.id = ${template}`.execute(database.db);
     }
+    // Dependencies: a chain of eight under each outcome, and one into each next track.
+    const blocks = (
+      await database.db
+        .selectFrom('link_type')
+        .select('id')
+        .where('outward', '=', 'blocks')
+        .executeTakeFirstOrThrow()
+    ).id;
+    await sql`
+      INSERT INTO ticket_link (workspace_id, link_type_id, source_id, target_id)
+      SELECT a.workspace_id, ${blocks}::int, a.id, b.id
+        FROM ticket a JOIN ticket b ON b.parent_id = a.parent_id AND b.number = a.number + 1
+       WHERE a.track_id = ANY(${trackIds}::int[])`.execute(database.db);
+    await sql`
+      INSERT INTO ticket_link (workspace_id, link_type_id, source_id, target_id)
+      SELECT a.workspace_id, ${blocks}::int, a.id, b.id
+        FROM ticket a
+        JOIN ticket b ON b.track_id = (${trackIds}::int[])[array_position(${trackIds}::int[], a.track_id) + 1]
+             AND b.summary = 'Feature 1.1'
+       WHERE a.summary = ${`Feature ${OUTCOMES}.9`}`.execute(database.db);
     await sql`ANALYZE`.execute(database.db);
     const made = await as({
       method: 'POST',
@@ -201,6 +222,10 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     ).filter((i) => i.summary.startsWith('Outcome '));
     expect(outcomes.length).toBeGreaterThan(0);
     expect(outcomes.every((o) => o.rollup?.total === 9)).toBe(true);
+    // Lines between listed features; the first 10,000 leave some blockers out, only counted.
+    expect((timeline.links as unknown[]).length).toBeGreaterThan(0);
+    const elsewhere = timeline.blockersElsewhere as { outside: number; unlisted: number }[];
+    expect(elsewhere.every((e) => e.outside === 0)).toBe(true);
     await timed('calendar', {
       method: 'GET',
       url: `/api/v1/plans/${plan}/calendar?from=2027-02-22&to=2027-04-04`,
