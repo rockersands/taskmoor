@@ -124,6 +124,35 @@ export function expandTitleLine(text: string): string {
 export const isAttachmentName = (v: unknown): v is string =>
   plainLine(v, MAX_ATTACHMENT_NAME) && (v as string).trim() !== '';
 
+/**
+ * What tells two files of one name apart (ADR-120, TT-4): the first hexadecimal digits of the
+ * file's SHA-256. A clone and an import keep a file's bytes, so they keep it too; it is no id and
+ * no address. The picker writes `DIGEST_LENGTH` digits; a longer one, up to the whole, reads too.
+ */
+export const DIGEST_LENGTH = 16;
+const DIGEST = /^[0-9a-f]{8,64}$/;
+export const isAttachmentDigest = (v: unknown): v is string =>
+  typeof v === 'string' && DIGEST.test(v);
+
+/**
+ * A column's width as a layout shows it (ADR-120, TT-2): a percentage above 0 and up to 100. The
+ * other format may hold others, which are kept for export and not shown.
+ */
+export function shownColumnWidth(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 100 ? v : null;
+}
+
+/**
+ * The tracks a layout's columns take, as a value for its `--rt-columns` property, or null when
+ * any column has no width a layout shows (then they are equal). Built from numbers only, so a
+ * document can put nothing else into a style.
+ */
+export function columnTracks(widths: readonly unknown[]): string | null {
+  const shown = widths.map(shownColumnWidth);
+  if (shown.length === 0 || shown.some((w) => w === null)) return null;
+  return shown.map((w) => `minmax(0, ${Number((w as number).toFixed(4))}fr)`).join(' ');
+}
+
 /** Why a new block's attributes are not what it may hold, or null. */
 function blockValueProblem(type: string, attrs: Record<string, unknown>): string | null {
   switch (type) {
@@ -132,7 +161,14 @@ function blockValueProblem(type: string, attrs: Record<string, unknown>): string
         ? null
         : 'a ticket reference without a ticket key';
     case 'attachmentRef':
-      return isAttachmentName(attrs.name) ? null : 'an attachment reference without a file name';
+      if (!isAttachmentName(attrs.name)) return 'an attachment reference without a file name';
+      return attrs.digest === undefined || attrs.digest === null || isAttachmentDigest(attrs.digest)
+        ? null
+        : 'an attachment reference whose digest is not hexadecimal digits';
+    case 'column':
+      return attrs.width === undefined || attrs.width === null || typeof attrs.width === 'number'
+        ? null
+        : 'a column whose width is not a number';
     case 'expand':
       return attrs.title === undefined || attrs.title === null || isExpandTitle(attrs.title)
         ? null

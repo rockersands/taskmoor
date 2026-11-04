@@ -1,0 +1,8 @@
+{section}
+{column:width=30%}
+Left
+{column}
+{column}
+Right
+{column}
+{section}

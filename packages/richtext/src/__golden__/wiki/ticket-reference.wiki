@@ -1,1 +1,7 @@
-Blocked by PAY-42.
+Blocked by [PAY-42|/browse/PAY-42].
+
+h3. [OPS_2-7|/browse/OPS_2-7]
+
+* see [A-1|/browse/A-1]
+
+|[B-2|/browse/B-2]|x|

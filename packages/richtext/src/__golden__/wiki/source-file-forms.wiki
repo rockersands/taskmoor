@@ -1,0 +1,7 @@
+!shot.png!
+
+[^report.pdf]
+
+[https://example.test/a.png]
+
+See notes.pdf and [b.png|b.png]

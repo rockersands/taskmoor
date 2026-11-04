@@ -44,6 +44,47 @@ describe('a comment as plain text (email, excerpts, AI context)', () => {
     expect(commentText(body)).toBe('Logs\nTuesday\n500');
   });
 
+  it("[NTF-014] the slash menu's inline blocks read as the other text formats write them", () => {
+    const body = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Due ' },
+            { type: 'date', attrs: { timestamp: String(Date.UTC(2026, 10, 20)) } },
+            { type: 'text', text: ', now ' },
+            { type: 'status', attrs: { text: 'BLOCKED', color: 'red' } },
+            { type: 'text', text: ' ' },
+            { type: 'emoji', attrs: { shortName: ':fire:', text: '🔥' } },
+            { type: 'emoji', attrs: { shortName: ':custom:', text: null } },
+            { type: 'text', text: ', see ' },
+            { type: 'ticketRef', attrs: { key: 'PAY-42' } },
+            { type: 'text', text: ' and ' },
+            {
+              type: 'unknownInline',
+              attrs: { adf: { type: 'inlineCard', attrs: { url: 'https://example.test/x' } } },
+            },
+          ],
+        },
+        {
+          type: 'columnLayout',
+          content: [
+            { type: 'column', attrs: { width: 40 }, content: [paragraph('Left')] },
+            { type: 'column', attrs: { width: 60 }, content: [paragraph('Right')] },
+          ],
+        },
+        {
+          type: 'attachmentRef',
+          attrs: { name: 'shot.png', image: true, digest: '3f2a9c0d1e4b5a67' },
+        },
+      ],
+    };
+    expect(commentText(body)).toBe(
+      'Due 2026-11-20, now [BLOCKED] 🔥:custom:, see PAY-42 and https://example.test/x\nLeft\nRight\nshot.png',
+    );
+  });
+
   it('[NTF-001] mentions read as names, line breaks as lines, and a long text is cut', () => {
     const body = {
       type: 'doc',

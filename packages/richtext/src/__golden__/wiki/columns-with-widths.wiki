@@ -1,0 +1,31 @@
+Before.
+
+{section}
+{column:width=25%}
+{column}
+{column:width=41.5%}
+* one
+* two
+
+{code:sql}
+select 1;
+{code}
+
+{panel:bgColor=#eae6ff}
+Mind it.
+{panel}
+
+{expand:More}
+Hidden.
+{expand}
+
+{quote}
+Quoted.
+{quote}
+{column}
+{column:width=33.5%}
+\{section} and \{column}
+{column}
+{section}
+
+After.
