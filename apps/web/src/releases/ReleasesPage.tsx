@@ -132,6 +132,7 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
       {list.mayManage && (
         <form
           className="release-create"
+          data-tutorial="release-new"
           aria-label={t('releases.create.label')}
           onSubmit={(event) => {
             event.preventDefault();

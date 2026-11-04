@@ -39,6 +39,7 @@ export function NavList({ items, activeId, showLabels, onNavigate }: NavListProp
         <a
           className="nav-link"
           href={routeHref(href)}
+          data-tutorial={`nav-${id}`}
           aria-current={id === activeId ? 'page' : undefined}
           aria-label={showLabels ? undefined : label}
           title={showLabels ? undefined : label}

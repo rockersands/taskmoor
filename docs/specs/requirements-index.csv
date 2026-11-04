@@ -87,6 +87,7 @@ AGL-021,AGL,Natural-language quick add,M2,Should,Vikunja
 AGL-022,AGL,Stale ticket auto-close,M2,Should,Fizzy
 AGL-023,AGL,Story maps and retrospectives,M4,Could,Easy Agile TeamRhythm app
 AGL-024,AGL,Outcomes section,M1,Must,Taskmoor (the user's decision; ADR-116)
+AGL-025,AGL,Guided tutorial,M1,Must,Taskmoor (the user's request; ADR-115)
 RPT-001,RPT,Agile reports,M1,Must,Jira Free
 RPT-002,RPT,General reports,M1,Must,Jira Free
 RPT-003,RPT,Report data foundation,M1,Must,Jira Free

@@ -24,6 +24,8 @@ export function HelpTip({ name, children }: HelpTipProps) {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Handled here: nothing else on the page closes or pauses for it.
+        event.preventDefault();
         setOpen(false);
         button.current?.focus();
       }

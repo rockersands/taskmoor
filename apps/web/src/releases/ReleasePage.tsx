@@ -397,7 +397,11 @@ function Ship({
   };
 
   return (
-    <section className="release-section" aria-labelledby={`${id}-ship`}>
+    <section
+      className="release-section"
+      data-tutorial="release-ship"
+      aria-labelledby={`${id}-ship`}
+    >
       <h2 id={`${id}-ship`}>{t('release.ship.title')}</h2>
       {!opened ? (
         <button type="button" className="button-primary" onClick={() => setOpened(true)}>

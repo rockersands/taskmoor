@@ -185,7 +185,7 @@ export function SavedSearchBar({
           {t('saved.open')}
         </button>
       </div>
-      <div className="saved-actions">
+      <div className="saved-actions" data-tutorial="search-save">
         {opened?.editable && (
           <button type="button" className="button-secondary" disabled={busy} onClick={save}>
             {t('saved.save')}

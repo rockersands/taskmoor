@@ -62,7 +62,11 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
       <h1 id={`${id}-title`} className="page-title">
         {t('nav.dashboards')}
       </h1>
-      <form className="reports-controls" onSubmit={(e) => void create(e)}>
+      <form
+        className="reports-controls"
+        data-tutorial="dashboard-new"
+        onSubmit={(e) => void create(e)}
+      >
         <div className="form-field">
           <label htmlFor={`${id}-name`}>{t('dashboards.newName')}</label>
           <input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} />

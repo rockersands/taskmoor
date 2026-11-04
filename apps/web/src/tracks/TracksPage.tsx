@@ -99,7 +99,12 @@ export function TracksPage({
       track.name.toLocaleLowerCase().includes(wanted),
   );
   const newTrackButton = (
-    <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+    <button
+      type="button"
+      className="button-primary"
+      data-tutorial="new-track"
+      onClick={() => setCreating(true)}
+    >
       {t('tracks.new')}
     </button>
   );

@@ -365,7 +365,7 @@ function AddUser({
   const [busy, setBusy] = useState(false);
   if (!open) {
     return (
-      <div className="form-actions">
+      <div className="form-actions" data-tutorial="admin-user-new">
         <button type="button" className="button-primary" onClick={() => setOpen(true)}>
           {t('admin.users.add')}
         </button>
@@ -375,6 +375,7 @@ function AddUser({
   return (
     <form
       className="people-form"
+      data-tutorial="admin-user-new"
       aria-label={t('admin.users.add')}
       onSubmit={(event) => {
         event.preventDefault();

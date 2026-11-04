@@ -222,7 +222,12 @@ export function DashboardPage({
       {!wallboard && (
         <div className="dashboard-actions">
           {dashboard.editable && !editing && (
-            <button type="button" className="button-primary" onClick={startEditing}>
+            <button
+              type="button"
+              className="button-primary"
+              data-tutorial="dashboard-edit"
+              onClick={startEditing}
+            >
               {t('dashboards.edit')}
             </button>
           )}
@@ -266,7 +271,7 @@ export function DashboardPage({
         </div>
       )}
       {editing && draft && (
-        <div className="reports-controls dashboard-editor">
+        <div className="reports-controls dashboard-editor" data-tutorial="dashboard-editor">
           <div className="form-field">
             <label htmlFor={`${titleId}-name`}>{t('dashboards.name')}</label>
             <input

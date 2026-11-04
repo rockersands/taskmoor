@@ -8,6 +8,7 @@
     {
       "title": "Using Taskmoor",
       "pages": [
+        "use/tutorials.md",
         "use/tickets.md",
         "use/boards.md",
         "use/views.md",

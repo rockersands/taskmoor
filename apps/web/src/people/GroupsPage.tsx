@@ -165,6 +165,7 @@ function AddGroup({
   return (
     <form
       className="people-form"
+      data-tutorial="admin-group-new"
       aria-label={t('admin.groups.add')}
       onSubmit={(event) => {
         event.preventDefault();
@@ -308,7 +309,7 @@ function GroupPanel({
           ))}
         </ul>
       )}
-      <div className="form-field">
+      <div className="form-field" data-tutorial="admin-group-member">
         <label htmlFor={`${formId}-search`} className="form-label">
           {t('admin.groups.addPerson')}
         </label>

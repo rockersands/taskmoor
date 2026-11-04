@@ -393,7 +393,7 @@ function TrackPanel({
       </form>
 
       {track.mode === 'shared' && maps.length > 0 && (
-        <div className="form-field">
+        <div className="form-field" data-tutorial="track-workflow-map">
           <label htmlFor={`${id}-map`} className="form-label">
             {t('admin.tracks.workflowMap')}
           </label>
@@ -546,6 +546,7 @@ function TrackPanel({
           {groups.length > 0 && (
             <form
               className="people-inline"
+              data-tutorial="track-role-group"
               onSubmit={(event) => {
                 event.preventDefault();
                 const picked = groups.find((g) => String(g.id) === group);

@@ -1,5 +1,6 @@
 import { runtimeConfig } from '../runtime/config';
 import { oauthClient } from '../session/oauth';
+import { announceApiChange, changedPath } from './changes';
 
 /**
  * The frontend's one way to call the backend. Same origin by default (the backend serves the
@@ -40,6 +41,16 @@ const CREDENTIALS = credentialsFor(runtimeConfig.apiUrl);
  * token, refreshed once and the request sent again when the backend refuses it.
  */
 export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const response = await authorizedFetch(url, init);
+  // A change the backend took, for the guided tutorial's steps that wait for one (ADR-115).
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (response.ok && method !== 'GET' && method !== 'HEAD') {
+    announceApiChange({ method, path: changedPath(url, API_BASE) });
+  }
+  return response;
+}
+
+async function authorizedFetch(url: string, init: RequestInit): Promise<Response> {
   const client = oauthClient;
   if (!client) return fetch(url, { ...init, credentials: CREDENTIALS });
   const send = (token: string | null) => {

@@ -510,12 +510,13 @@ export function BacklogPage({
       </p>
       {data && (
         <div className="backlog-layout">
-          <div className="backlog-main">
+          <div className="backlog-main" data-tutorial="backlog">
             {data.mayManage && (
               <div className="form-actions">
                 <button
                   type="button"
                   className="button-secondary"
+                  data-tutorial="sprint-create"
                   disabled={busy}
                   onClick={() =>
                     run(async () => {
@@ -796,7 +797,13 @@ function SprintPanel({
       {section.goal && <p className="board-hint">{section.goal}</p>}
       {manage && canStart && section.state === 'future' && (
         <div className="form-actions">
-          <button type="button" className="button-primary" disabled={busy} onClick={onStart}>
+          <button
+            type="button"
+            className="button-primary"
+            data-tutorial="sprint-start"
+            disabled={busy}
+            onClick={onStart}
+          >
             {t('sprints.start.submit')}
           </button>
         </div>

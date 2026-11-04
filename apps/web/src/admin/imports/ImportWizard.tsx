@@ -259,7 +259,7 @@ export function ImportWizard({
             ? t('admin.imports.wizard.deltaTitle', { id: delta.id })
             : t('admin.imports.wizard.title')}
         </h2>
-        <fieldset disabled={running || imported}>
+        <fieldset disabled={running || imported} data-tutorial="import-source">
           <legend>{t('admin.imports.wizard.source')}</legend>
           {fixed ? (
             <p className="page-note">
@@ -488,7 +488,7 @@ export function ImportWizard({
           </p>
         )}
         {!imported && (
-          <div className="form-actions">
+          <div className="form-actions" data-tutorial="import-run">
             <button
               type="submit"
               className={finished?.dryRun && finished.ok ? 'button-secondary' : 'button-primary'}

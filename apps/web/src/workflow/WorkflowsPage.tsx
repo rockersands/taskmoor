@@ -136,6 +136,7 @@ export function WorkflowsPage({
                   ref={createButton}
                   type="button"
                   className="button-primary"
+                  data-tutorial="workflow-new"
                   aria-expanded={creating}
                   onClick={() => {
                     setDone('');
@@ -436,6 +437,7 @@ function CreateWorkflowForm({
   return (
     <form
       className="form sso-editor"
+      data-tutorial="workflow-new-form"
       onSubmit={submit}
       aria-label={t('admin.workflows.form.title')}
       noValidate

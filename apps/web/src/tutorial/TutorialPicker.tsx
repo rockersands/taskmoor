@@ -1,16 +1,16 @@
 import { useId } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
-import { TUTORIAL_SECTIONS, type TutorialSectionId, type TutorialStatus } from './sections';
+import type { TutorialSection, TutorialSectionId, TutorialStatus } from './sections';
 
 interface TutorialPickerProps {
-  /** Site administrators also see the sections that need one. */
-  admin: boolean;
+  /** The sections this person is offered (`sectionsFor`), in order. */
+  sections: readonly TutorialSection[];
   status: Partial<Record<TutorialSectionId, TutorialStatus>>;
   selected: readonly TutorialSectionId[];
   onSelect: (selected: TutorialSectionId[]) => void;
-  /** Starts, resumes or replays one section at once. */
-  onStart: (section: TutorialSectionId) => void;
+  /** Starts, resumes or replays one section at once; the first-run offer leaves it out. */
+  onStart?: (section: TutorialSectionId) => void;
 }
 
 const STATUS: Record<TutorialStatus, MessageId> = {
@@ -33,7 +33,7 @@ const ACTION: Record<TutorialStatus, MessageId> = {
  * first-run offer and by Settings, Tutorials.
  */
 export function TutorialPicker({
-  admin,
+  sections,
   status,
   selected,
   onSelect,
@@ -41,7 +41,6 @@ export function TutorialPicker({
 }: TutorialPickerProps) {
   const t = useT();
   const baseId = useId();
-  const sections = TUTORIAL_SECTIONS.filter((s) => admin || !s.admin);
   return (
     <ul className="tutorial-picker">
       {sections.map((section) => {
@@ -77,20 +76,23 @@ export function TutorialPicker({
               </p>
               <p className="tutorial-card-meta">
                 <span>{t('tutorial.minutes', { minutes: section.minutes })}</span>
-                {section.admin && <span>{t('tutorial.adminOnly')}</span>}
+                {section.who === 'site' && <span>{t('tutorial.adminOnly')}</span>}
+                {section.who === 'setup' && <span>{t('tutorial.setupOnly')}</span>}
                 <span className="tutorial-card-status" data-status={state}>
                   {t(STATUS[state])}
                 </span>
               </p>
             </div>
-            <button
-              type="button"
-              className="button-quiet tutorial-card-start"
-              aria-label={`${t(ACTION[state])}: ${title}`}
-              onClick={() => onStart(id)}
-            >
-              {t(ACTION[state])}
-            </button>
+            {onStart && (
+              <button
+                type="button"
+                className="button-quiet tutorial-card-start"
+                aria-label={t('tutorial.actionOn', { action: t(ACTION[state]), title })}
+                onClick={() => onStart(id)}
+              >
+                {t(ACTION[state])}
+              </button>
+            )}
           </li>
         );
       })}

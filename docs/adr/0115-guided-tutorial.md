@@ -2,7 +2,7 @@
 
 - Status: Accepted (the user, 2026-11-03, with ADR-114)
 - Date: 2026-11-02
-- Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T10 to UI-T13)
+- Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T10 to UI-T13); built as T-161 (AGL-025)
 
 ## Context
 
@@ -16,12 +16,15 @@ server. The interface it runs in is ADR-114.
 
 - **Sections** (the person picks any): Tracks and tickets; Workflows; Boards and sprints;
   Search and saved searches; Dashboards; Releases; Administration; Import.
-  - Workflows, Administration and Import show only to site administrators.
+  - Workflows shows only to those who may edit workflows (site and configuration
+    administrators); Administration and Import only to site administrators (changed in T-161,
+    see "As built").
   - Each section makes one real thing in the person's own instance. What they make stays,
     and they may keep or delete it.
-- **First sign-in:** a welcome dialog offers the sections as cards to tick, with suggested ones
-  preselected. The choices are Start, Not now and Don't offer again. Not now and Don't offer
-  again both leave every section available.
+- **First sign-in:** a welcome panel at the top of Home (not a modal dialog; see "As built")
+  offers the sections as cards to tick, with suggested ones preselected. The choices are Start,
+  Not now and Don't offer again. Not now and Don't offer again both leave every section
+  available.
 - **Settings → Tutorials** (and Help → Tutorials) lists every section with its state (Not
   started, In progress, Done, Skipped), to start, resume or do again at any time. Home links
   there too ("Take the tour").
@@ -68,3 +71,50 @@ server. The interface it runs in is ADR-114.
   the start, and the last step offers the page to delete it.
 - The migration number is 0084, agreed with the main session.
 - Revisit if sections prove too long (split them) or people want a section per role.
+
+## As built (T-161, 2026-11-03)
+
+The code is `apps/web/src/tutorial`; the requirement is AGL-025. Where it differs from the
+decision above, this section wins.
+
+- **The offer is a panel in Home, not a modal dialog.** A dialog over the page at sign-in would
+  hold back the page the person came for (a deep link, a ticket in an email) and every keyboard
+  shortcut that waits for dialogs to close. The panel sits under Home's header, before Your
+  tracks. It shows while the server says the offer was never answered and no section was
+  started. Start and Not now store `shown`, Don't offer again stores `dismissed`; neither brings
+  it back. A progress answer of another shape shows nothing.
+- **Who is offered what:** sections carry `everyone`, `setup` or `site`. Workflows is `setup`,
+  since configuration administrators edit workflows too; Administration and Import are `site`.
+  A step may also be for some people only: someone who may not make a track opens one of theirs
+  instead of making one. The server still decides every change.
+- **How a step knows it is done:** a route (being on the page), a marker appearing (a form
+  opened), or the server accepting a change. For the last, `apiFetch` tells listeners of every
+  successful request other than a read, as its method and path (`api/changes.ts`), so the step
+  moves on whichever page or control made the thing. Only changes after the step began count.
+  Back marks a step to wait for Next, and the card then drops its line about moving on by
+  itself; Next is always there, so nothing traps the person.
+- **Boards and sprints** no longer makes a board: since ADR-116 each track has one. It moves a
+  card on the track's board, then plans and starts a sprint.
+- **Where the run lives:** the section showing, its step and what the person opened along the
+  way (to offer Take me there and Open what you made) are kept in the tab's session storage, so a
+  reload keeps the card. Every change to the run applies to it as it stands, so one change of
+  route that both finishes a step and names what the person opened (the ticket opened over the
+  page) keeps both. Another tab or device shows nothing until the person resumes from
+  Settings, Tutorials; the server keeps each section's state and step, saved at every step.
+- **Focus:** the card takes focus when a section starts and after Back, Next and Resume. When a
+  step moves on by itself while focus is in a field, a menu or another dialog, focus stays and
+  the card's status line announces the step. Escape pauses wherever focus is (the card, the
+  page, a link or a button on it), except in a field, a menu or list or what opens one, or another
+  dialog, which keep Escape for themselves; a modal dialog over the page takes it first. Pausing
+  and finishing give focus back to where it was.
+- **Layout:** the card sits at the end corner and moves to the other corner, or the top, when it
+  would cover the ringed control. On a phone it docks across the bottom, as does the paused
+  panel; the main area, and any dialog over the page that scrolls inside itself (the create
+  dialog, the ticket pop-up: `.create-dialog`), gain padding of the docked one's height
+  (`--coach-space`, with `data-coach` on the root), so what it covers can scroll above it. The
+  paused panel is fixed over the glass card's own `position: relative`.
+- **Checks:** `steps.test.ts` reads the app's source for every marker a step uses, so a page that
+  drops one fails before release; `TutorialProvider.test.tsx` walks every section's steps;
+  `CoachCard.stories.tsx` checks in a phone-sized browser that a sheet's end scrolls above the
+  docked card and the paused panel; `e2e/tutorial.spec.ts` walks the offer and the Dashboards
+  section on a desktop and a phone.

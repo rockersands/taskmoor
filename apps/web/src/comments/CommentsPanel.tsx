@@ -357,6 +357,7 @@ function Composer({ id, client, audiences, mentions, problemText, onAdded }: Com
   return (
     <form
       className="comment-composer"
+      data-tutorial="ticket-comment"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -614,6 +615,8 @@ function CommentItem({
                       aria-label={t('comments.reactWith', { emoji })}
                       onKeyDown={(event) => {
                         if (event.key === 'Escape') {
+                          // Handled here: nothing else on the page closes or pauses for it.
+                          event.preventDefault();
                           setPicking(false);
                           pickerButton.current?.focus();
                         }

@@ -69,7 +69,7 @@ export function StructureLists({
   );
 
   return (
-    <div className="workflow-structure">
+    <div className="workflow-structure" data-tutorial="workflow-structure">
       <section aria-labelledby={`${id}-statuses`} className="workflow-structure-part">
         <h2 id={`${id}-statuses`} ref={statusesHeadingRef} tabIndex={-1} className="facts-title">
           {t('admin.workflow.statuses')}
