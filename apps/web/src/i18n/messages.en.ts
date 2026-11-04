@@ -4697,7 +4697,7 @@ export const messagesEn = {
   'plans.capacity.hint.hours':
     'Work due in each period against what each team and person can take on, in hours of original estimate. A ticket counts whole in the period of its due date.',
   'plans.capacity.hint.elsewhere':
-    '“Elsewhere” is someone’s other work due in that period: outside this plan, left out by the filters or hidden from you. It counts against their capacity, and is never named.',
+    '“Elsewhere” is someone’s other work due in that period: outside this plan, left out by the filters or hidden from you. It counts against their capacity, and is never named. It is counted by whole weeks, Monday to Sunday, each in the period that holds most of it.',
   'plans.capacity.noPointsField':
     'This site has no Points field, so no ticket has points here: each counts as without an estimate.',
   'plans.capacity.noTeams': 'This plan has no teams yet.',
@@ -4729,6 +4729,8 @@ export const messagesEn = {
   'plans.capacity.saveFailed': 'The capacity could not be saved.',
   'plans.capacity.forbidden': 'You may not change this plan’s capacity.',
   'plans.capacity.notInPlan': 'This team or person is no longer in the plan. Reload the page.',
+  'plans.capacity.settingsChanged':
+    'This plan’s unit or periods changed meanwhile, so nothing was saved. Reload the page and set the capacity again.',
   'plans.capacity.dialog.title': 'Capacity of {name}',
   'plans.capacity.dialog.intro.points':
     'How many points {name} can take on in a period. Leave a field empty for none.',
@@ -4747,6 +4749,10 @@ export const messagesEn = {
   'plans.capacity.dialog.close': 'Close',
   'plans.capacity.dialog.invalid':
     'Enter a number from 0 to 100,000 with at most two decimals, or leave it empty.',
+  'plans.capacity.dialog.noteNeedsAmount':
+    'A note goes with a capacity: enter one for {period}, or clear its note.',
+  'plans.capacity.dialog.noteNeedsAmountEvery':
+    'A note goes with a capacity: enter one for every period, or clear its note.',
   'plans.settings.capacity': 'Teams and capacity',
   'plans.settings.teams': 'Teams',
   'plans.settings.teamsHint':

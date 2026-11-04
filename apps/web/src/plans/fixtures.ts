@@ -3,6 +3,7 @@ import { dayNumber, isoDay, type Refusal } from '../timeline/client';
 import { fakeCapacity, PLAN_PERIOD, PLAN_TEAMS } from './capacityFixtures';
 import type {
   CapacityEntry,
+  CapacitySettings,
   CapacityUnit,
   Plan,
   PlanCalendar,
@@ -175,6 +176,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   saved: PlanInput[];
   removed: number[];
   capacitySaved: CapacityEntry[][];
+  /** The unit and periods each change of capacity said it was typed for. */
+  capacitySettings: (CapacitySettings | undefined)[];
 } {
   const capacity = fakeCapacity();
   let teams = options.noTeams ? [] : PLAN_TEAMS;
@@ -185,6 +188,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   const nothing = options.hidden === 'all';
   const saved: PlanInput[] = [];
   const removed: number[] = [];
+  const capacitySettings: (CapacitySettings | undefined)[] = [];
   let version = 1;
   let name = 'Spring launch';
   const plan = (filters: PlanFilters = {}): Plan => ({
@@ -224,6 +228,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     saved,
     removed,
     capacitySaved: capacity.saved,
+    capacitySettings,
     list: async (): Promise<PlanRow[]> => [
       {
         id: 12,
@@ -425,8 +430,18 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       );
       return teams.length === 0 ? { ...answer, teams: [] } : answer;
     },
-    setCapacity: async (_id, entries) =>
-      options.refuseCapacity ? options.refuseCapacity : capacity.setCapacity(entries),
+    setCapacity: async (_id, entries, settings) => {
+      capacitySettings.push(settings);
+      if (options.refuseCapacity) return options.refuseCapacity;
+      // As the server does: amounts typed for another unit or other periods are refused.
+      if (
+        settings &&
+        (settings.unit !== unit || JSON.stringify(settings.period) !== JSON.stringify(period))
+      ) {
+        return 'settings_changed';
+      }
+      return capacity.setCapacity(entries);
+    },
     teamOptions: async () => [
       { id: 3, name: 'Web', memberCount: 2 },
       { id: 4, name: 'Ops', memberCount: 1 },

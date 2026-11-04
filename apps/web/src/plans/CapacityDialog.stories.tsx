@@ -63,3 +63,18 @@ export const TeamInHoursRefused: Story = {
     await expect(args.onSave).not.toHaveBeenCalled();
   },
 };
+
+/** A note typed for a period without its own capacity: refused at that capacity, nothing sent. */
+export const NoteWithoutCapacity: Story = {
+  play: async ({ canvasElement, args }) => {
+    const dialog = within(canvasElement.ownerDocument.body);
+    await userEvent.type(await dialog.findByLabelText('Note for Nov 30 to Dec 13'), 'Holiday');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save capacity' }));
+    const amount = dialog.getByLabelText('Capacity for Nov 30 to Dec 13');
+    await expect(amount).toHaveAccessibleDescription(
+      'A note goes with a capacity: enter one for Nov 30 to Dec 13, or clear its note.',
+    );
+    await expect(amount).toHaveFocus();
+    await expect(args.onSave).not.toHaveBeenCalled();
+  },
+};

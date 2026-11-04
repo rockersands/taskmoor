@@ -101,7 +101,9 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     expect(within(ana).getAllByRole('link')).toHaveLength(1);
     expect(
       screen.getByText(/“Elsewhere” is someone’s other work due in that period/),
-    ).toBeVisible();
+    ).toHaveTextContent(
+      'It is counted by whole weeks, Monday to Sunday, each in the period that holds most of it.',
+    );
   });
 
   it('[PLN-009] sets a person’s capacity for every period and for one, from the keyboard', async () => {
@@ -136,6 +138,80 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         { userId: 8, period: '2026-11-16', amount: null },
       ]),
     );
+  });
+
+  it('[PLN-009] refuses a note typed without a capacity at that capacity, never dropping it', async () => {
+    const user = userEvent.setup();
+    const client = renderCapacity();
+    await user.click(await screen.findByRole('button', { name: 'Set capacity of Ana Ruiz' }));
+    // Ana has 10 points every period: the period's own field shows it, empty.
+    const amount = screen.getByLabelText('Capacity for Nov 30 to Dec 13');
+    expect(amount).toHaveValue('');
+    expect(amount).toHaveAttribute('placeholder', '10');
+    await user.type(screen.getByLabelText('Note for Nov 30 to Dec 13'), 'Holiday{Enter}');
+    // Nothing sent and the dialog stays, saying so at the amount, which takes the focus.
+    expect(screen.getByRole('dialog', { name: 'Capacity of Ana Ruiz' })).toBeVisible();
+    expect(client.capacitySaved).toEqual([]);
+    await waitFor(() => expect(amount).toHaveFocus());
+    expect(amount).toHaveAttribute('aria-invalid', 'true');
+    expect(amount).toHaveAccessibleDescription(
+      'A note goes with a capacity: enter one for Nov 30 to Dec 13, or clear its note.',
+    );
+    expect(screen.getByLabelText('Note for Nov 30 to Dec 13')).toHaveValue('Holiday');
+    // Typing the amount clears what was said; saving keeps the note with it.
+    await user.type(amount, '6');
+    expect(amount).not.toHaveAttribute('aria-invalid');
+    expect(amount).not.toHaveAccessibleDescription();
+    // The same for every period's note.
+    await user.clear(screen.getByLabelText('Capacity for every period'));
+    await user.type(screen.getByLabelText('Note for every period'), 'Part time');
+    await user.click(screen.getByRole('button', { name: 'Save capacity' }));
+    const every = screen.getByLabelText('Capacity for every period');
+    await waitFor(() => expect(every).toHaveFocus());
+    expect(every).toHaveAccessibleDescription(
+      'A note goes with a capacity: enter one for every period, or clear its note.',
+    );
+    expect(client.capacitySaved).toEqual([]);
+    await user.type(every, '8{Enter}');
+    expect(await screen.findByText('Capacity of Ana Ruiz saved.')).toBeVisible();
+    expect(client.capacitySaved).toEqual([
+      [
+        { userId: 7, period: null, amount: 8, note: 'Part time' },
+        { userId: 7, period: '2026-11-30', amount: 6, note: 'Holiday' },
+      ],
+    ]);
+    // Emptying an amount alone still removes that capacity, with the note it had.
+    await user.click(screen.getByRole('button', { name: 'Set capacity of Ana Ruiz' }));
+    expect(screen.getByLabelText('Note for Nov 16 to Nov 29')).toHaveValue('Leave');
+    await user.clear(screen.getByLabelText('Capacity for Nov 16 to Nov 29'));
+    await user.click(screen.getByRole('button', { name: 'Save capacity' }));
+    await waitFor(() =>
+      expect(client.capacitySaved.at(-1)).toEqual([
+        { userId: 7, period: '2026-11-16', amount: null },
+      ]),
+    );
+  });
+
+  it('[PLN-009] sends the unit and periods capacity was typed for, and says when they changed', async () => {
+    const user = userEvent.setup();
+    const client = renderCapacity();
+    await user.click(await screen.findByRole('button', { name: 'Set capacity of Bo Lindqvist' }));
+    await user.type(screen.getByLabelText('Capacity for every period'), '12{Enter}');
+    expect(await screen.findByText('Capacity of Bo Lindqvist saved.')).toBeVisible();
+    expect(client.capacitySettings).toEqual([
+      { unit: 'points', period: { kind: 'weeks', weeks: 2, anchor: '2026-11-02' } },
+    ]);
+    // Someone counts the plan in hours meanwhile: 12 points are not 12 hours, so nothing saves.
+    await client.update(12, { capacityUnit: 'hours', version: 1 });
+    await user.click(screen.getByRole('button', { name: 'Set capacity of Bo Lindqvist' }));
+    const every = screen.getByLabelText('Capacity for every period');
+    await user.clear(every);
+    await user.type(every, '14{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This plan’s unit or periods changed meanwhile, so nothing was saved. Reload the page and set the capacity again.',
+    );
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(client.capacitySaved).toHaveLength(1);
   });
 
   it('[PLN-009] says why a change of capacity was refused', async () => {

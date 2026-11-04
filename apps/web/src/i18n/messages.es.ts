@@ -4810,7 +4810,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.capacity.hint.hours':
     'El trabajo que vence en cada periodo frente a lo que cada equipo y persona puede asumir, en horas de estimación original. Un ticket cuenta entero en el periodo de su fecha de vencimiento.',
   'plans.capacity.hint.elsewhere':
-    '«En otra parte» es el resto del trabajo de alguien que vence en ese periodo: fuera de este plan, dejado fuera por los filtros u oculto para ti. Cuenta contra su capacidad y nunca se nombra.',
+    '«En otra parte» es el resto del trabajo de alguien que vence en ese periodo: fuera de este plan, dejado fuera por los filtros u oculto para ti. Cuenta contra su capacidad y nunca se nombra. Se cuenta por semanas enteras, de lunes a domingo, cada una en el periodo que tiene la mayor parte de ella.',
   'plans.capacity.noPointsField':
     'Este sitio no tiene un campo Puntos, así que aquí ningún ticket tiene puntos: cada uno cuenta como sin estimación.',
   'plans.capacity.noTeams': 'Este plan aún no tiene equipos.',
@@ -4841,6 +4841,8 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.capacity.saveFailed': 'No se pudo guardar la capacidad.',
   'plans.capacity.forbidden': 'No puedes cambiar la capacidad de este plan.',
   'plans.capacity.notInPlan': 'Este equipo o persona ya no está en el plan. Recarga la página.',
+  'plans.capacity.settingsChanged':
+    'La unidad o los periodos de este plan cambiaron mientras tanto, así que no se guardó nada. Recarga la página y vuelve a poner la capacidad.',
   'plans.capacity.dialog.title': 'Capacidad de {name}',
   'plans.capacity.dialog.intro.points':
     'Cuántos puntos puede asumir {name} en un periodo. Deja un campo vacío si no hay ninguno.',
@@ -4859,6 +4861,10 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.capacity.dialog.close': 'Cerrar',
   'plans.capacity.dialog.invalid':
     'Escribe un número de 0 a 100.000 con dos decimales como máximo, o déjalo vacío.',
+  'plans.capacity.dialog.noteNeedsAmount':
+    'Una nota va con una capacidad: escribe una para {period} o borra su nota.',
+  'plans.capacity.dialog.noteNeedsAmountEvery':
+    'Una nota va con una capacidad: escribe una para todos los periodos o borra su nota.',
   'plans.settings.capacity': 'Equipos y capacidad',
   'plans.settings.teams': 'Equipos',
   'plans.settings.teamsHint':

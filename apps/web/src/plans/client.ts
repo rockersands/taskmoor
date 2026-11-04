@@ -126,6 +126,12 @@ export interface CapacityEntry {
   note?: string;
 }
 
+/** The unit and periods capacities were typed for; the server refuses them for others. */
+export interface CapacitySettings {
+  unit: CapacityUnit;
+  period: PlanPeriod;
+}
+
 /** One row of `GET /api/v1/plans`. */
 export interface PlanRow {
   id: number;
@@ -237,8 +243,15 @@ export interface PlanClient {
   calendar(id: number, filters: PlanFilters, from: string, to: string): Promise<PlanCalendar>;
   /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
   capacity(id: number, filters: PlanFilters, from: string, periods: number): Promise<PlanCapacity>;
-  /** Sets capacities; true when saved, else the refusal's code. */
-  setCapacity(id: number, entries: CapacityEntry[]): Promise<true | string>;
+  /**
+   * Sets capacities typed for `settings`; true when saved, else the refusal's code
+   * (`settings_changed` when the plan's unit or periods are no longer those).
+   */
+  setCapacity(
+    id: number,
+    entries: CapacityEntry[],
+    settings?: CapacitySettings,
+  ): Promise<true | string>;
   /** Rescheduling is the ticket's own change, as on a track. */
   reschedule: TimelineClient['reschedule'];
   move: CalendarClient['move'];
@@ -293,9 +306,9 @@ export const planClient: PlanClient = {
     api<PlanCapacity>(
       withFilters(`/plans/${id}/capacity`, filters, { from, periods: String(periods) }),
     ),
-  setCapacity: async (id, entries) => {
+  setCapacity: async (id, entries, settings) => {
     try {
-      await api(`/plans/${id}/capacity`, { method: 'PUT', body: { entries } });
+      await api(`/plans/${id}/capacity`, { method: 'PUT', body: { entries, ...settings } });
       return true;
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;

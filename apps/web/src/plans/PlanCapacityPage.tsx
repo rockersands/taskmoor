@@ -392,7 +392,11 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
           capacity={editing.capacity}
           onClose={() => setEditing(null)}
           onSave={async (entries) => {
-            const saved = await client.setCapacity(id, entries);
+            // The unit and periods the amounts were typed for, refused once they change.
+            const saved = await client.setCapacity(id, entries, {
+              unit: data.unit,
+              period: data.period,
+            });
             if (saved === true) {
               setStatus(t('plans.capacity.saved', { name: editing.name }));
               setEditing(null);
