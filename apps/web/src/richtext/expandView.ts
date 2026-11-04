@@ -1,7 +1,7 @@
 import { MAX_TITLE_LENGTH } from '@taskmoor/richtext';
 import { type Editor, Extension, type NodeViewRenderer } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
-import { NodeSelection, Plugin, PluginKey, Selection } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 
 /** The words a section shows in the editor, in the reader's language. */
@@ -48,8 +48,9 @@ const caretFrom = (view: EditorView, pos: number, dir: 1 | -1) =>
  * the text again. Wherever a document is only read, a section is the browser's own `details`.
  *
  * Keys: Enter, Escape or Down in the title go on to the text (past the section when it is
- * hidden); Up goes to the text before it; Up on the first line of a section's text goes to its
- * title, and Shift+Tab from there to the toggle, which Enter or Space works.
+ * hidden, onto a new paragraph when nothing follows it); Up goes to the text before it; Up on
+ * the first line of a section's text goes to its title, and Shift+Tab from there to the toggle,
+ * which Enter or Space works.
  */
 export function expandNodeView(labels: () => ExpandLabels): NodeViewRenderer {
   return ({ node: first, getPos, editor }) => {
@@ -112,6 +113,27 @@ export function expandNodeView(labels: () => ExpandLabels): NodeViewRenderer {
       view.focus();
     };
 
+    /**
+     * Puts the caret just past the section; with no text after it, a new paragraph there, so
+     * writing goes on after a hidden section rather than inside it.
+     */
+    const past = (end: number) => {
+      const view = editor.view;
+      if (caretFrom(view, end, 1) || !editor.isEditable) {
+        caretTo(end, 1);
+        return;
+      }
+      const paragraph = view.state.schema.nodes.paragraph?.create();
+      try {
+        if (!paragraph) throw new Error('no paragraph');
+        const tr = view.state.tr.insert(end, paragraph);
+        view.dispatch(tr.setSelection(TextSelection.create(tr.doc, end + 1)).scrollIntoView());
+        view.focus();
+      } catch {
+        caretTo(end, 1);
+      }
+    };
+
     const setHidden = (next: boolean) => {
       if (next === hidden) return;
       hidden = next;
@@ -154,7 +176,7 @@ export function expandNodeView(labels: () => ExpandLabels): NodeViewRenderer {
         event.stopPropagation();
         // Enter shows a hidden section's text and goes into it; the others go past it.
         if (hidden && event.key === 'Enter') setHidden(false);
-        if (hidden) caretTo(end, 1);
+        if (hidden) past(end);
         else caretTo(pos + 1, 1);
       } else if (event.key === 'ArrowUp') {
         // Up goes to the text before the section; with none, the title keeps the caret.

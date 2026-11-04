@@ -123,6 +123,22 @@ describe('a collapsible section while editing (NTF-014; ADR-120, TT-1)', () => {
     expect(changes.at(-1)?.content?.[1]?.content?.[0]).toMatchObject(p('yClick save'));
   });
 
+  it('[NTF-014] Down past a hidden section with nothing after it starts a paragraph there', async () => {
+    const user = userEvent.setup();
+    const { editor, changes } = renderEditor({ initial: doc(section('Last', p('Inside'))) });
+    await user.click(screen.getByRole('button', { name: 'Text of the section “Last”' }));
+    await user.click(screen.getByRole('textbox', { name: 'Section title' }));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(editor.isFocused).toBe(true));
+    await user.keyboard('Next');
+    expect(changes.at(-1)?.content?.map((n) => n.type)).toEqual(['expand', 'paragraph']);
+    expect(changes.at(-1)?.content?.[1]).toMatchObject(p('Next'));
+    expect(screen.getByRole('button', { name: 'Text of the section “Last”' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
   it('[NTF-014] Up in the title goes to the text before; with none, the title keeps the caret', async () => {
     const user = userEvent.setup();
     const first = renderEditor();
