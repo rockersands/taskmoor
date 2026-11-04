@@ -73,7 +73,7 @@ export function DependencyList({ dependencies, headingId }: DependencyListProps)
   };
 
   return (
-    <section className="dependency-list" aria-labelledby={headingId}>
+    <section className="glass-card dependency-list" aria-labelledby={headingId}>
       <h2 id={headingId} tabIndex={-1}>
         {t('dependencies.title')}
       </h2>

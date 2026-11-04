@@ -118,7 +118,7 @@ wallboard**), set **Seconds per dashboard**, and press **Start the wallboard**.
 
 The **Reports** link on a board opens this section, and moving between reports stays inside the
 track's tabs. Each report counts only the tickets you can see in the track, so two people may read
-different numbers.
+different numbers. A report with nothing to chart says so and what to try, such as a longer period.
 
 Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
 track does not list them. An old link to one says it needs a Scrum board, and those who may change

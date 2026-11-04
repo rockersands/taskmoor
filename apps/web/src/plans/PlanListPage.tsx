@@ -8,7 +8,7 @@ import {
   loadListColumns,
   saveListColumns,
 } from '../list/client';
-import { GroupSection } from '../list/ListPage';
+import { GroupSection } from '../list/GroupSection';
 import { ColumnPicker } from '../search/ColumnPicker';
 import type { SearchClient, SearchField, SearchTicket } from '../search/client';
 import { DEFAULT_COLUMNS } from '../search/columns';
@@ -105,6 +105,7 @@ export function PlanListPage({
       format={undefined}
       onTickets={onTickets}
       cap={cap}
+      emptyBody={t('empty.planTickets.body')}
     />
   );
 
@@ -122,7 +123,7 @@ export function PlanListPage({
           </select>
         </label>
       </div>
-      <details className="list-panel">
+      <details className="glass-card list-panel">
         <summary>{t('list.columns')}</summary>
         <ColumnPicker
           columns={columns}

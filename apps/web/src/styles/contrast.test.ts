@@ -382,6 +382,24 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(short).toEqual([]);
     });
 
+    it(`[NFR-005] keeps a row tinted by a format rule readable in the ${name} skin`, () => {
+      // The tones of `[data-tone]` in views.css are opaque, so the glass under the table does not
+      // matter: the row's text, its link and a rule's mark over the tone are read on their own.
+      const short: string[] = [];
+      for (const tone of [
+        'color-danger-soft',
+        'color-warning-soft',
+        'color-success-soft',
+        'color-accent-soft',
+      ]) {
+        for (const fore of ['color-text', 'color-text-muted', 'color-accent']) {
+          const ratio = ratioOf(textOf(fore), textOf(tone));
+          if (ratio < 4.5) short.push(`${fore} on ${tone}: ${ratio.toFixed(2)} < 4.5`);
+        }
+      }
+      expect(short).toEqual([]);
+    });
+
     it(`[NFR-005] keeps a badge readable, on any glass, in the ${name} skin`, () => {
       // `.badge` with no variant is a well on whatever holds it; the variants are opaque soft tints.
       const well = layer(name, 'glass-surface-sunken');

@@ -203,7 +203,7 @@ export function ColumnChart({
       </div>
       <details className="chart-table">
         <summary>{tableLabel}</summary>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               <th scope="col">{categoryHeader}</th>

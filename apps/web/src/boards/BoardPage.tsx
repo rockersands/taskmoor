@@ -442,15 +442,15 @@ export function BoardPage({
 
   if (state === 'loading' && !data) {
     return (
-      <section className="board-page" aria-busy="true">
+      <section className="page page-full board-page" aria-busy="true">
         <p className="page-note">{t('boards.loading')}</p>
       </section>
     );
   }
   if (state === 'failed' || !board || !data) {
     return (
-      <section className="board-page">
-        <h1 className="page-title">{t('boards.title')}</h1>
+      <section className="page page-full board-page" aria-labelledby={titleId}>
+        <PageHeader titleId={titleId} title={t('boards.title')} purpose={t('purpose.board')} />
         <p className="page-note" role="alert">
           {t('boards.failed')}
         </p>
@@ -901,7 +901,7 @@ export function BoardPage({
 
   const grid = { '--board-columns': columns.length } as CSSProperties;
   return (
-    <section className="board-page" aria-labelledby={titleId}>
+    <section className="page page-full board-page" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
         title={board.name}
@@ -1131,7 +1131,7 @@ export function BoardPage({
       )}
       {asking && (
         <div
-          className="board-choice"
+          className="glass-card board-choice"
           role="dialog"
           aria-modal="true"
           aria-labelledby={askingTitleId}
@@ -1170,7 +1170,7 @@ export function BoardPage({
       )}
       {choice && (
         <div
-          className="board-choice"
+          className="glass-card board-choice"
           role="dialog"
           aria-modal="true"
           aria-labelledby={choiceTitleId}
@@ -1207,6 +1207,7 @@ export function BoardPage({
           </ul>
           <button
             type="button"
+            className="button-secondary"
             onClick={() => {
               setChoice(null);
               links.current.get(choice.card.id)?.focus();

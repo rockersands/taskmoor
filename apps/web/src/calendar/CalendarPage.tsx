@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { PageHeader } from '../shell/PageHeader';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { dayNumber, isoDay } from '../timeline/client';
 import { CalendarView, monthOf, monthWeeks } from './CalendarView';
@@ -45,25 +46,35 @@ export function CalendarPage({
 
   if (failed) {
     return (
-      <section className="calendar-page">
+      <section className="page calendar-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('track.section.calendar')}
+          purpose={t('purpose.calendar')}
+        />
         <p className="board-problem" role="alert">
           {t('calendar.notFound')}
         </p>
       </section>
     );
   }
-  if (!data) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
 
   return (
-    <section className="calendar-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('calendar.title', { name: data.track.name })}
-        </h1>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}>
-          {t('releases.toSummary')}
-        </a>
-      </div>
+    <section className="page calendar-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('calendar.title', { name: data.track.name })}
+        purpose={t('purpose.calendar')}
+        actions={
+          <a
+            className="button-quiet"
+            href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}
+          >
+            {t('releases.toSummary')}
+          </a>
+        }
+      />
       <CalendarView
         data={data}
         month={month}

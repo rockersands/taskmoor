@@ -61,7 +61,7 @@ export function PlanningPanels({ panels, failed, filter, onFilter, over }: Plann
           {t('sprints.panels.failed')}
         </p>
       )}
-      <section className="backlog-panel" aria-labelledby={`${id}-outcomes`}>
+      <section className="glass-card backlog-panel" aria-labelledby={`${id}-outcomes`}>
         <h2 id={`${id}-outcomes`}>{t('sprints.panels.outcomes')}</h2>
         {panels &&
           (panels.outcomes.length === 0 ? (
@@ -84,7 +84,7 @@ export function PlanningPanels({ panels, failed, filter, onFilter, over }: Plann
             </ul>
           ))}
       </section>
-      <section className="backlog-panel" aria-labelledby={`${id}-releases`}>
+      <section className="glass-card backlog-panel" aria-labelledby={`${id}-releases`}>
         <h2 id={`${id}-releases`}>{t('sprints.panels.releases')}</h2>
         {panels &&
           (panels.releases.length === 0 ? (

@@ -370,7 +370,7 @@ export function WidgetGrid({
               {held.map((w) => (
                 <article
                   key={w.id}
-                  className={`dashboard-widget${dragging === w.id ? ' is-dragging' : ''}${
+                  className={`glass-card dashboard-widget${dragging === w.id ? ' is-dragging' : ''}${
                     over?.column === column && over.before === w.id ? ' is-drop-before' : ''
                   }`}
                   aria-label={widgetTitle(t, w)}

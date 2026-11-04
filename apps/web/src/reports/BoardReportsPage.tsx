@@ -4,6 +4,8 @@ import type { Board } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { ColumnChart } from './ColumnChart';
 import {
   type CumulativeFlow,
@@ -76,15 +78,17 @@ export function BoardReportsPage({
   }, [client, boardId]);
 
   return (
-    <section className="reports-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {board ? t('reports.title', { name: board.name }) : t('reports.titleLoading')}
-        </h1>
-        <a className="board-settings-link" href={routeHref(`#/boards/${boardId}`)}>
-          {t('reports.back')}
-        </a>
-      </div>
+    <section className="page reports-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={board ? t('reports.title', { name: board.name }) : t('reports.titleLoading')}
+        purpose={t('purpose.boardReports')}
+        actions={
+          <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
+            {t('reports.back')}
+          </a>
+        }
+      />
       <nav className="reports-tabs" aria-label={t('reports.tabs')}>
         {BOARD_REPORTS.filter((r) => !isScope(r) || board?.kind === 'scrum').map((r) => (
           <a
@@ -219,7 +223,7 @@ export function FlowReportBody({
     const last = f.dates.length - 1;
     const total = f.columns.reduce((s, c) => s + (c.counts[last] ?? 0), 0);
     if (last < 0 || f.columns.every((c) => c.counts.every((v) => v === 0))) {
-      return <p className="report-empty">{t('reports.flow.empty')}</p>;
+      return <EmptyState title={t('reports.flow.empty')}>{t('empty.reports.period')}</EmptyState>;
     }
     const final = f.columns[f.columns.length - 1];
     const unmapped = f.unmapped[last] ?? 0;
@@ -247,7 +251,11 @@ export function FlowReportBody({
   };
 
   const controlView = (c: CycleTime) => {
-    if (c.total === 0) return <p className="report-empty">{t('reports.control.empty')}</p>;
+    if (c.total === 0) {
+      return (
+        <EmptyState title={t('reports.control.empty')}>{t('empty.reports.period')}</EmptyState>
+      );
+    }
     const { unit, format } = durations(
       Math.max(...c.points.map((p) => Math.max(p.cycle, p.average + p.deviation))),
     );
@@ -302,7 +310,11 @@ export function FlowReportBody({
   };
 
   const cycleView = (c: CycleTime) => {
-    if (c.total === 0) return <p className="report-empty">{t('reports.control.empty')}</p>;
+    if (c.total === 0) {
+      return (
+        <EmptyState title={t('reports.control.empty')}>{t('empty.reports.period')}</EmptyState>
+      );
+    }
     // Bins of hours read in hours, whatever their number.
     const { format } = durations(c.histogram.width >= DAY ? 72 * HOUR : 0);
     return (
@@ -339,7 +351,9 @@ export function FlowReportBody({
   };
 
   const timeView = (r: TimeInStatus) => {
-    if (r.statuses.length === 0) return <p className="report-empty">{t('reports.time.empty')}</p>;
+    if (r.statuses.length === 0) {
+      return <EmptyState title={t('reports.time.empty')}>{t('empty.reports.period')}</EmptyState>;
+    }
     const { unit, format } = durations(Math.max(...r.statuses.map((s) => s.average)));
     const longest = r.statuses.reduce((a, b) => (b.average > a.average ? b : a));
     const columnName = (columnId: string | null) =>
@@ -370,7 +384,7 @@ export function FlowReportBody({
         />
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard */}
         <section className="report-table" aria-label={t('reports.time.table')} tabIndex={0}>
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th scope="col">{t('reports.time.status')}</th>
@@ -401,7 +415,7 @@ export function FlowReportBody({
 
   const current: { from: string; to: string } | null =
     report === 'cumulative-flow' ? flow : report === 'time-in-status' ? times : cycle;
-  let body: ReactNode = <p className="report-empty">{t('reports.loading')}</p>;
+  let body: ReactNode = <p className="report-loading">{t('reports.loading')}</p>;
   if (report === 'cumulative-flow' && flow) body = flowView(flow);
   else if (report === 'time-in-status' && times) body = timeView(times);
   else if (report === 'control-chart' && cycle) body = controlView(cycle);
@@ -536,7 +550,7 @@ export function FlowReportBody({
           {t('reports.failed')}
         </p>
       ) : (
-        <div className="reports-body">
+        <div className="glass-card reports-body">
           {current && (
             <p className="report-note">
               {t('reports.window', { from: day(current.from), to: day(current.to) })}

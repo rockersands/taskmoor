@@ -309,6 +309,11 @@ export const messagesEn = {
   'empty.trash.tickets': 'A deleted ticket waits here until it is restored or its time is up.',
   'empty.trash.tracks': 'A deleted track waits here until it is restored or its time is up.',
   'empty.reports.period': 'Choose a longer period, or come back when the board has seen more work.',
+  'empty.reports.noReleases':
+    'This report follows the tickets of a release. Add one in the track’s Releases section.',
+  'empty.reports.noSprints': 'This report follows sprints: it fills in once the board starts one.',
+  'empty.reports.outcome': 'A ticket shows here once it is placed under this outcome.',
+  'empty.release.tickets': 'A ticket joins a release through its Target releases field.',
   'about.home':
     'Assigned to you lists the open tickets where you are the assignee, the most recently changed first. Opened lately lists the tickets you viewed. You follow lists the tickets whose changes reach your inbox.',
   'about.board':

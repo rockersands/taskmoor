@@ -3,6 +3,8 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type Counted,
   notesFileHref,
@@ -83,7 +85,12 @@ export function ReleasePage({
 
   if (failed) {
     return (
-      <section className="release-page">
+      <section className="page release-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('track.section.releases')}
+          purpose={t('purpose.release')}
+        />
         <p className="board-problem" role="alert">
           {t('release.notFound')}
         </p>
@@ -91,7 +98,7 @@ export function ReleasePage({
     );
   }
   if (!release || !overview || !notes) {
-    return <p className="report-empty">{t('reports.loading')}</p>;
+    return <p className="report-loading">{t('reports.loading')}</p>;
   }
 
   const number = (c: Counted) =>
@@ -102,16 +109,21 @@ export function ReleasePage({
   const mayDecide = overview.viewer.approver !== null && !release.shipped;
 
   return (
-    <section className="release-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('release.title', { track: track.name, name: release.name })}
-        </h1>
-        <ReleaseState release={release} />
-        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/releases`)}>
-          {t('release.toReleases', { track: track.name })}
-        </a>
-      </div>
+    <section className="page release-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('release.title', { track: track.name, name: release.name })}
+        eyebrow={<ReleaseState release={release} />}
+        purpose={t('purpose.release')}
+        actions={
+          <a
+            className="button-quiet"
+            href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/releases`)}
+          >
+            {t('release.toReleases', { track: track.name })}
+          </a>
+        }
+      />
       <dl className="release-facts">
         <div>
           <dt>{t('release.startDate')}</dt>
@@ -133,7 +145,7 @@ export function ReleasePage({
         {notice}
       </p>
 
-      <section className="release-section" aria-labelledby={`${id}-progress`}>
+      <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
         <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
         <div className="release-bar" aria-hidden="true">
           {STAGES.map((s, i) =>
@@ -166,7 +178,7 @@ export function ReleasePage({
       </section>
 
       {overview.warnings.length > 0 && (
-        <section className="release-section" aria-labelledby={`${id}-warnings`}>
+        <section className="glass-card release-section" aria-labelledby={`${id}-warnings`}>
           <h2 id={`${id}-warnings`}>{t('release.warnings')}</h2>
           <ul className="release-warnings">
             {overview.warnings.map((w) => (
@@ -183,16 +195,25 @@ export function ReleasePage({
       )}
 
       {(release.requireApprovals || overview.approvers.length > 0) && (
-        <section className="release-section" aria-labelledby={`${id}-approvals`}>
+        <section className="glass-card release-section" aria-labelledby={`${id}-approvals`}>
           <h2 id={`${id}-approvals`}>{t('release.approvals')}</h2>
           {overview.approvers.length === 0 ? (
-            <p className="report-empty">{t('release.approval.nobody')}</p>
+            <EmptyState compact title={t('release.approval.nobody')} />
           ) : (
             <ul className="release-approvers">
               {overview.approvers.map((a) => (
                 <li key={a.user.id}>
                   <span className="release-approver">{a.user.name}</span>
-                  <span className="release-decision" data-decision={a.decision ?? 'none'}>
+                  <span
+                    className={`badge release-decision${
+                      a.decision === 'approved'
+                        ? ' badge-success'
+                        : a.decision === 'declined'
+                          ? ' badge-danger'
+                          : ''
+                    }`}
+                    data-decision={a.decision ?? 'none'}
+                  >
                     {t(DECISIONS[a.decision ?? 'none'])}
                   </span>
                   {a.comment && <span className="board-meta">{a.comment}</span>}
@@ -226,13 +247,15 @@ export function ReleasePage({
         />
       )}
 
-      <section className="release-section" aria-labelledby={`${id}-tickets`}>
+      <section className="glass-card release-section" aria-labelledby={`${id}-tickets`}>
         <h2 id={`${id}-tickets`}>{t('release.tickets')}</h2>
         {overview.tickets.length === 0 ? (
-          <p className="report-empty">{t('release.noTickets')}</p>
+          <EmptyState compact title={t('release.noTickets')}>
+            {t('empty.release.tickets')}
+          </EmptyState>
         ) : (
           <div className="release-table-wrap">
-            <table className="release-table">
+            <table className="data-table release-table">
               <thead>
                 <tr>
                   <th scope="col">{t('release.column.key')}</th>
@@ -398,7 +421,7 @@ function Ship({
 
   return (
     <section
-      className="release-section"
+      className="glass-card release-section"
       data-tutorial="release-ship"
       aria-labelledby={`${id}-ship`}
     >
@@ -489,7 +512,7 @@ function NotesView({
     );
   };
   return (
-    <section className="release-section" aria-labelledby={`${id}-notes`}>
+    <section className="glass-card release-section" aria-labelledby={`${id}-notes`}>
       <h2 id={`${id}-notes`}>{t('release.notes.title')}</h2>
       {notes.sections.length === 0 ? (
         <p className="report-empty">{t('release.notes.empty')}</p>

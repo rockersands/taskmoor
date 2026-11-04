@@ -78,14 +78,19 @@ export function TrackSummaryPage({
 
   if (failed) {
     return (
-      <section className="track-summary">
+      <section className="page track-summary" aria-labelledby={titleId}>
+        <PageHeader
+          titleId={titleId}
+          title={t('track.section.summary')}
+          purpose={t('summary.purpose')}
+        />
         <p className="board-problem" role="alert">
           {t('summary.notFound')}
         </p>
       </section>
     );
   }
-  if (!read) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!read) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const { custom } = read;
   // A Kanban track has no sprints: their widgets stay in the editor, to take away, and show nowhere.
@@ -174,7 +179,7 @@ export function TrackSummaryPage({
   const showWidgets = draft !== null || custom !== null;
 
   return (
-    <section className="track-summary" aria-labelledby={titleId}>
+    <section className="page track-summary" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
         title={t('summary.title', { name: read.track.name, key: read.track.key })}
@@ -183,7 +188,10 @@ export function TrackSummaryPage({
         actions={
           !draft && (
             <>
-              <a href={routeHref(`#/tracks/${encodeURIComponent(read.track.key)}/templates`)}>
+              <a
+                className="button-quiet"
+                href={routeHref(`#/tracks/${encodeURIComponent(read.track.key)}/templates`)}
+              >
                 {t('summary.templates')}
               </a>
               {read.mayCustomize && (
@@ -265,7 +273,7 @@ export function TrackSummaryPage({
             w.kind === 'track-summary' ? (
               <TrackNumbers key={refresh} trackKey={trackKey} client={client} />
             ) : draft && w.id.startsWith('new-') ? (
-              <p className="report-empty">{t('summary.unsaved')}</p>
+              <p className="report-note">{t('summary.unsaved')}</p>
             ) : (
               <WidgetView
                 // A new key reads the data again after a save.

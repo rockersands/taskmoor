@@ -1,7 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 /** The pointer this file's drags use: one no other test's clicks share. */
 const POINTER = 48;
@@ -174,5 +186,32 @@ export const EntryDropped: Story = {
       ).toBeVisible(),
     );
     await expect(canvas.getByRole('status')).toHaveTextContent('CAL-2 is now due on Nov 16, 2026.');
+  },
+};
+
+/** At a phone's width: the month becomes a list of days on one sheet of glass. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'November 2026' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A track that is not there, or not for this person: the page still says what it is. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakeCalendarClient(),
+      calendar: async () => {
+        throw new Error('not found');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
   },
 };

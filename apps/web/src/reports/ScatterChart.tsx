@@ -193,7 +193,7 @@ export function ScatterChart({
       <details className="chart-table">
         <summary>{labels.table}</summary>
         {note}
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               {labels.headers.map((h) => (

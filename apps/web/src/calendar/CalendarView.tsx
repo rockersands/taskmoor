@@ -308,7 +308,7 @@ export function CalendarView({
           {problem}
         </p>
       )}
-      <ul ref={grid} className="calendar-grid" aria-label={t('calendar.days')}>
+      <ul ref={grid} className="glass-card calendar-grid" aria-label={t('calendar.days')}>
         {weekdays.map((w) => (
           <li key={w} className="calendar-weekday" aria-hidden="true">
             {w}

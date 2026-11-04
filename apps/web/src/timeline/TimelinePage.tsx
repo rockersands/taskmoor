@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { PageHeader } from '../shell/PageHeader';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { type Timeline, type TimelineClient, timelineClient } from './client';
 import { TimelineView } from './TimelineView';
@@ -42,25 +43,35 @@ export function TimelinePage({
 
   if (failed) {
     return (
-      <section className="timeline-page">
+      <section className="page page-full timeline-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('track.section.timeline')}
+          purpose={t('purpose.timeline')}
+        />
         <p className="board-problem" role="alert">
           {t('timeline.notFound')}
         </p>
       </section>
     );
   }
-  if (!data) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
 
   return (
-    <section className="timeline-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('timeline.title', { name: data.track.name })}
-        </h1>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}>
-          {t('releases.toSummary')}
-        </a>
-      </div>
+    <section className="page page-full timeline-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('timeline.title', { name: data.track.name })}
+        purpose={t('purpose.timeline')}
+        actions={
+          <a
+            className="button-quiet"
+            href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}
+          >
+            {t('releases.toSummary')}
+          </a>
+        }
+      />
       <TimelineView
         data={data}
         reschedule={client.reschedule}

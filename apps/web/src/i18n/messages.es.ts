@@ -330,6 +330,12 @@ export const messagesEs: Record<MessageId, string> = {
   'empty.trash.tracks': 'Un track eliminado espera aquí hasta que se restaura o se acaba su plazo.',
   'empty.reports.period':
     'Elige un periodo más largo o vuelve cuando el tablero haya tenido más trabajo.',
+  'empty.reports.noReleases':
+    'Este informe sigue los tickets de una versión. Añade una en la sección Versiones del track.',
+  'empty.reports.noSprints':
+    'Este informe sigue los sprints: se llena cuando el tablero inicia uno.',
+  'empty.reports.outcome': 'Un ticket aparece aquí cuando se coloca bajo este resultado.',
+  'empty.release.tickets': 'Un ticket entra en una versión por su campo Versiones objetivo.',
   'about.home':
     'Asignado a ti muestra los tickets abiertos de los que eres responsable, primero los que cambiaron más recientemente. Abiertos recientemente muestra los tickets que viste. Sigues muestra los tickets cuyos cambios llegan a tu bandeja de entrada.',
   'about.board':

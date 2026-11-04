@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { type SummaryItem, type TrackClient, type TrackSummary, trackClient } from './client';
@@ -60,7 +61,7 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
       </p>
     );
   }
-  if (!summary) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!summary) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const number = (item: SummaryItem) =>
     item.exact ? intl.formatNumber(item.count) : t('summary.atLeast', { count: item.count });
@@ -72,10 +73,10 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
   ) => {
     const max = Math.max(1, ...items.map((i) => i.count));
     return (
-      <section className="summary-section" aria-labelledby={`${id}-${key}`}>
+      <section className="glass-card summary-section" aria-labelledby={`${id}-${key}`}>
         <h2 id={`${id}-${key}`}>{t(title)}</h2>
         {items.length === 0 ? (
-          <p className="report-empty">{t('summary.nothingOpen')}</p>
+          <EmptyState compact title={t('summary.nothingOpen')} />
         ) : (
           <ul className="summary-list">
             {items.map((item) => (

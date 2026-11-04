@@ -72,7 +72,7 @@ export function PlanSummaryPage({ id, filters, client }: PlanSectionProps) {
   ) => {
     const max = Math.max(1, ...items.map((i) => i.count));
     return (
-      <section className="summary-section" aria-labelledby={`${sectionId}-${key}`}>
+      <section className="glass-card summary-section" aria-labelledby={`${sectionId}-${key}`}>
         <h2 id={`${sectionId}-${key}`}>{t(title)}</h2>
         {items.length === 0 ? (
           <p className="report-empty">{t('summary.nothingOpen')}</p>

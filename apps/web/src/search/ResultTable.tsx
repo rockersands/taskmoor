@@ -79,9 +79,13 @@ export function ResultTable({
   }, [client, wantsPriorities, priorities]);
 
   return (
-    // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-    <section className="search-table-scroll" aria-label={t('search.table')} tabIndex={0}>
-      <table className="search-table">
+    <section
+      className="glass-card glass-scroller search-table-scroll"
+      aria-label={t('search.table')}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+      tabIndex={0}
+    >
+      <table className="data-table search-table">
         <thead>
           <tr>
             <th scope="col">{t('search.column.key')}</th>

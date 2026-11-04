@@ -351,7 +351,7 @@ describe('a track’s statistics (ADR-116)', () => {
       'workload-pie',
     ] as const) {
       const { container, errors } = open(report, SCRUM, { locale: 'en-XA' });
-      await waitFor(() => expect(container.querySelector('.report-empty')).toBeNull());
+      await waitFor(() => expect(container.querySelector('.report-loading')).toBeNull());
       const texts = visibleTexts(container).filter(
         (t) =>
           !data.test(t) &&

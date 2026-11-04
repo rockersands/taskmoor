@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeListClient, fakeListSearch } from './fixtures';
 import { ListPage } from './ListPage';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const search = fakeListSearch();
 const meta = {
@@ -47,5 +59,43 @@ export const GroupedWithRules: Story = {
       'Priority',
     );
     await expect(await canvas.findByRole('heading', { name: 'High (1 ticket)' })).toBeVisible();
+  },
+};
+
+/** At a phone's width: the table scrolls inside its own glass, the page never sideways. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: 'SHOP-41' })).toBeVisible();
+    await expect(canvas.getByText(/^This track’s tickets as rows/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A track with no tickets, or a filter that finds none: what would be here and how it gets here. */
+export const NoTickets: Story = {
+  args: { search: { ...search, search: async () => ({ tickets: [], next: null }) } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No tickets.')).toBeVisible();
+    await expect(canvas.getByText(/^Tickets of this track show here/)).toBeVisible();
+  },
+};
+
+/** A track that is not there, or not for this person: the page still says what it is. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakeListClient(search),
+      track: async () => {
+        throw new Error('not found');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'List', level: 1 })).toBeVisible();
   },
 };

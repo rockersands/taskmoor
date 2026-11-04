@@ -135,7 +135,7 @@
 }
 
 .chart-band {
-  fill: var(--color-surface-sunken);
+  fill: var(--glass-surface-sunken);
 }
 
 .chart-hit {
@@ -147,9 +147,12 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-2);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight-flat), var(--shadow-2);
   color: var(--color-text);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -170,16 +173,8 @@
   cursor: pointer;
 }
 
-.chart-table table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-200);
-}
-
-.chart-table th,
-.chart-table td {
+.chart-table :is(th, td) {
   padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
   text-align: end;
 }
 
@@ -200,12 +195,10 @@
   margin: var(--space-4) 0;
 }
 
-.sprint-charts > .chart,
-.sprint-charts > .chart-group {
+/* A chart on its own `glass-card`. */
+.sprint-chart {
+  min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 @media (pointer: coarse) {
@@ -252,32 +245,31 @@
   white-space: normal;
 }
 
-.reports-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
 .reports-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+/* The same idea as a track's tabs right above them, in the same look (surfaces.css). */
 .reports-tabs a {
   display: inline-flex;
   align-items: center;
   min-height: var(--hit-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
   color: var(--color-text);
+  font-size: var(--font-size-200);
   text-decoration: none;
 }
 
+.reports-tabs a:hover {
+  background: var(--glass-surface-sunken);
+}
+
 .reports-tabs a[aria-current="page"] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
   font-weight: var(--font-weight-strong);
 }
 
@@ -321,13 +313,16 @@
   gap: var(--space-1) var(--space-4);
   min-width: 0;
   margin: 0;
-  padding: var(--space-2) var(--space-4) var(--space-3);
-  border: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
+  background: var(--glass-surface-sunken);
 }
 
 .reports-choices legend {
-  padding: 0 var(--space-1);
+  float: inline-start;
+  width: 100%;
+  padding: 0;
   font-weight: var(--font-weight-strong);
 }
 
@@ -346,18 +341,18 @@
   accent-color: var(--color-accent);
 }
 
+/* A `glass-card`. */
 .reports-body {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
+/* `.report-loading`: the words while a page or a report is on its way, not an empty state. */
 .report-note,
-.report-empty {
+.report-empty,
+.report-loading {
   margin: 0;
   color: var(--color-text-muted);
 }
@@ -373,10 +368,12 @@
   margin: 0;
 }
 
+/* A well, on a card or straight on the canvas, with no blur of its own. */
 .report-stats div {
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .report-stats dt {
@@ -411,7 +408,7 @@
 .report-table th,
 .report-table td {
   padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--glass-edge);
   text-align: end;
 }
 
@@ -448,7 +445,7 @@
 
 .chart-donut-track {
   fill: none;
-  stroke: var(--color-surface-sunken);
+  stroke: var(--glass-surface-sunken);
   stroke-width: 28;
 }
 

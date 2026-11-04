@@ -386,3 +386,20 @@ export const CompleteSprintAtPhoneWidth: Story = {
     await fitsPhoneWidth(canvas);
   },
 };
+
+/** A board that could not be read: the page still says what it is. */
+export const Failed: Story = {
+  args: {
+    client: {
+      ...fakeBoardClient(),
+      board: async () => {
+        throw new Error('down');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Board', level: 1 })).toBeVisible();
+  },
+};

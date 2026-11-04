@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { type Release, type ReleaseClient, type ReleaseList, releaseClient } from './client';
 import { ReleaseState } from './ReleaseState';
 
@@ -51,14 +53,19 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
 
   if (failed) {
     return (
-      <section className="releases-page">
+      <section className="page releases-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('track.section.releases')}
+          purpose={t('purpose.releases')}
+        />
         <p className="board-problem" role="alert">
           {t('releases.notFound')}
         </p>
       </section>
     );
   }
-  if (!track || !list) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!track || !list) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const upcoming = list.releases.filter((r) => !r.shipped && !r.archived);
   const shipped = list.releases.filter((r) => r.shipped && !r.archived);
@@ -120,18 +127,20 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
   );
 
   return (
-    <section className="releases-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('releases.title', { name: track.name })}
-        </h1>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
-          {t('releases.toSummary')}
-        </a>
-      </div>
+    <section className="page releases-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('releases.title', { name: track.name })}
+        purpose={t('purpose.releases')}
+        actions={
+          <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
+            {t('releases.toSummary')}
+          </a>
+        }
+      />
       {list.mayManage && (
         <form
-          className="release-create"
+          className="glass-card release-create"
           data-tutorial="release-new"
           aria-label={t('releases.create.label')}
           onSubmit={(event) => {
@@ -163,24 +172,26 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
           )}
         </form>
       )}
-      <section className="release-group" aria-labelledby={`${id}-upcoming`}>
+      <section className="glass-card release-group" aria-labelledby={`${id}-upcoming`}>
         <h2 id={`${id}-upcoming`}>{t('releases.upcoming')}</h2>
         {upcoming.length === 0 ? (
-          <p className="report-empty">{t('releases.noneUpcoming')}</p>
+          <EmptyState title={t('releases.noneUpcoming')}>{t('empty.releases.upcoming')}</EmptyState>
         ) : (
           rows(upcoming)
         )}
       </section>
-      <section className="release-group" aria-labelledby={`${id}-shipped`}>
+      <section className="glass-card release-group" aria-labelledby={`${id}-shipped`}>
         <h2 id={`${id}-shipped`}>{t('releases.shipped')}</h2>
         {shipped.length === 0 ? (
-          <p className="report-empty">{t('releases.noneShipped')}</p>
+          <EmptyState compact title={t('releases.noneShipped')}>
+            {t('empty.releases.shipped')}
+          </EmptyState>
         ) : (
           rows([...shipped].reverse())
         )}
       </section>
       {archived.length > 0 && (
-        <details className="release-group">
+        <details className="glass-card release-group">
           <summary>{t('releases.archived', { count: archived.length })}</summary>
           {rows(archived)}
         </details>

@@ -133,7 +133,7 @@ export function SprintSettingsSection({
   const zoneId = `${id}-zone`;
 
   return (
-    <fieldset className="board-settings-section sprint-settings">
+    <fieldset className="glass-card board-settings-section">
       <legend>{t('sprints.settings.title')}</legend>
       <div className="form-field">
         <label htmlFor={statisticId} className="form-label">
