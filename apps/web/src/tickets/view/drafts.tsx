@@ -26,18 +26,28 @@ export function hasDraft(root: Element | null): boolean {
   return false;
 }
 
+/** What the dialog says, where a page other than a ticket asks (the layout sets page, UI-T15). */
+export interface DraftDialogWords {
+  title: string;
+  text: string;
+  keep: string;
+  discard: string;
+}
+
 /**
  * Asks before unsaved text goes. Keeping it is the first choice and the Escape. `over` lifts it
- * above a ticket pop-up, for the full page beneath one.
+ * above a ticket pop-up, for the full page beneath one. `words` replaces a ticket's wording.
  */
 export function DraftDialog({
   onKeep,
   onDiscard,
   over = false,
+  words,
 }: {
   onKeep: () => void;
   onDiscard: () => void;
   over?: boolean;
+  words?: DraftDialogWords;
 }) {
   const t = useT();
   const titleId = useId();
@@ -70,15 +80,15 @@ export function DraftDialog({
         }}
       >
         <h2 id={titleId} className="ticket-section-title">
-          {t('ticketPopup.draft.title')}
+          {words?.title ?? t('ticketPopup.draft.title')}
         </h2>
-        <p id={textId}>{t('ticketPopup.draft.text')}</p>
+        <p id={textId}>{words?.text ?? t('ticketPopup.draft.text')}</p>
         <div className="form-actions">
           <button ref={keep} type="button" className="button-primary" onClick={onKeep}>
-            {t('ticketPopup.draft.keep')}
+            {words?.keep ?? t('ticketPopup.draft.keep')}
           </button>
           <button ref={discard} type="button" className="button-secondary" onClick={onDiscard}>
-            {t('ticketPopup.draft.discard')}
+            {words?.discard ?? t('ticketPopup.draft.discard')}
           </button>
         </div>
       </div>

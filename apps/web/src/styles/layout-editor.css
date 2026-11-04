@@ -155,19 +155,10 @@
   min-width: 0;
 }
 
-.layout-palette > .layout-fields {
-  display: flex;
-  flex-wrap: wrap;
-}
-
 @container layout-edit (min-width: 46rem) {
   .layout-canvas {
     grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
     align-items: start;
-  }
-
-  .layout-palette > .layout-fields {
-    display: grid;
   }
 }
 
@@ -201,6 +192,18 @@
 
 .layout-tabs {
   gap: var(--space-4);
+}
+
+/* The fields not placed: rows of chips above the tabs, a list beside them (see .layout-canvas). */
+.layout-palette > .layout-fields {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+@container layout-edit (min-width: 46rem) {
+  .layout-palette > .layout-fields {
+    display: grid;
+  }
 }
 
 .layout-sections {

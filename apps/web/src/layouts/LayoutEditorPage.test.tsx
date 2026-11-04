@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ADMIN, CONFIG_ADMIN, MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
+import { currentRoute, router } from '../routing/router';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
@@ -445,5 +446,78 @@ describe('the layout editor (UI-T15)', () => {
       'How bad it is',
     ]);
     expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
+  });
+});
+
+describe('unsaved layouts are never lost in silence (UI-T15)', () => {
+  let stop = () => {};
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/#/admin');
+    window.history.pushState(null, '', '/#/admin/layouts');
+    stop = router.start();
+  });
+  afterEach(() => {
+    stop();
+    cleanup();
+  });
+
+  function renderWithNav() {
+    const client = fakeLayoutsClient();
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={CONFIG_ADMIN}>
+          <nav>
+            <a href="#/admin/tracks">Tracks</a>
+            <a href="#/admin/layouts?set=2">Support layouts</a>
+          </nav>
+          <main>
+            <LayoutEditorPage client={client} previewDelay={0} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+  const asked = () =>
+    screen.findByRole('alertdialog', { name: 'Discard your changes to these layouts?' });
+  /** Whether closing or reloading the tab would make the browser ask. */
+  const unloadAsks = () => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+
+  it('[NFR-005] a link out of the page asks first; keeping loses nothing and discarding leaves', async () => {
+    const user = userEvent.setup();
+    renderWithNav();
+    await editor();
+    expect(unloadAsks()).toBe(false);
+    await choose(user, 'Place Labels', `Put in ${MAIN}`);
+    expect(unloadAsks()).toBe(true);
+    await user.click(screen.getByRole('link', { name: 'Tracks' }));
+    const dialog = await asked();
+    expect(dialog).toHaveTextContent('Default layouts has changes you have not saved.');
+    await user.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(fieldsIn(MAIN)).toContain('Labels');
+    expect(currentRoute()).toBe('#/admin/layouts');
+
+    await user.click(screen.getByRole('link', { name: 'Tracks' }));
+    await user.click(within(await asked()).getByRole('button', { name: 'Discard them' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/admin/tracks'));
+  });
+
+  it('[NFR-005] with nothing changed, or within the page, nothing is asked', async () => {
+    const user = userEvent.setup();
+    renderWithNav();
+    await editor();
+    await user.click(screen.getByRole('link', { name: 'Support layouts' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/admin/layouts?set=2'));
+    await choose(user, 'Place Labels', `Put in ${MAIN}`);
+    await user.click(screen.getByRole('button', { name: 'Save the layouts' }));
+    expect(await screen.findByText('Default layouts was saved.')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Tracks' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/admin/tracks'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 });

@@ -1,11 +1,13 @@
-import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
-import { routeHref } from '../routing/router';
+import { guardLeave, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { PageHeader } from '../shell/PageHeader';
+import { DraftDialog } from '../tickets/view/drafts';
 import {
   type LayoutSet,
   type LayoutSetSummary,
@@ -32,6 +34,10 @@ import {
 
 /** Where the field rules are edited: the other half of how a form comes out. */
 export const FIELD_RULES_HREF = '#/admin/configuration-sets';
+/** This page's route; `?set=` opens a set. */
+export const LAYOUTS_ROUTE = '#/admin/layouts';
+const onThisPage = (route: string) =>
+  route === LAYOUTS_ROUTE || route.startsWith(`${LAYOUTS_ROUTE}?`);
 
 export interface LayoutEditorPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -328,10 +334,27 @@ function SetEditor({
     onDirty(dirty);
   }, [dirty, onDirty]);
   useEffect(() => () => onDirty(false), [onDirty]);
-  // Leaving the page with unsaved changes asks first.
+  // Leaving the page with unsaved changes asks first: a link or command inside the app, and Back
+  // or Forward, with the app's own question (the router holds the page meanwhile); a reload or
+  // closing the tab, with the browser's.
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
+  const unsaved = useRef(dirty);
+  unsaved.current = dirty;
+  useEffect(
+    () =>
+      guardLeave({
+        holds: (route) => unsaved.current && !onThisPage(route),
+        ask: (proceed) => setLeaving(() => proceed),
+      }),
+    [],
+  );
   useEffect(() => {
     if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Older browsers ask only when a value is set.
+      event.returnValue = '';
+    };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
@@ -622,6 +645,23 @@ function SetEditor({
             </button>
           ))}
       </div>
+      {leaving &&
+        createPortal(
+          <DraftDialog
+            words={{
+              title: t('layouts.leave.title'),
+              text: t('layouts.leave.text', { name: set.name }),
+              keep: t('layouts.leave.keep'),
+              discard: t('layouts.leave.discard'),
+            }}
+            onKeep={() => setLeaving(null)}
+            onDiscard={() => {
+              setLeaving(null);
+              leaving();
+            }}
+          />,
+          document.body,
+        )}
     </form>
   );
 }
