@@ -152,7 +152,39 @@ export const IntoAnEmptyColumn: Story = {
   },
 };
 
-/** On a phone the columns stack, and the grips are finger-sized. */
+/**
+ * On a phone the columns stack, nothing sticks out sideways, and a finger still drops a widget
+ * into a column below. Laid out by the browser at a phone's width: jsdom lays out nothing.
+ */
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const columns = [...canvasElement.querySelectorAll<HTMLElement>('[data-drop-column]')];
+    await expect(columns).toHaveLength(3);
+    // One above the other, from the same edge.
+    const boxes = columns.map((column) => column.getBoundingClientRect());
+    for (const [i, box] of boxes.entries()) {
+      const above = boxes[i - 1];
+      if (!above) continue;
+      await expect(box.left).toBe(above.left);
+      await expect(box.top).toBeGreaterThanOrEqual(above.bottom);
+    }
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    // Charlie, by its grip, into the empty third column under the second.
+    const empty = canvas.getByText('Column 3 is empty: drop a widget here.');
+    empty.scrollIntoView({ block: 'center' });
+    const grip = canvas
+      .getByRole('article', { name: 'Charlie' })
+      .querySelector('.dashboard-widget-grip') as Element;
+    window.dispatchEvent(pointer('pointerup', dragOver(grip, empty)));
+    const third = columns[2] as HTMLElement;
+    await waitFor(() =>
+      expect(within(third).getByRole('article', { name: 'Charlie' })).toBeVisible(),
+    );
+    await expect(canvasElement.querySelector('[aria-live="polite"]')).toHaveTextContent(
+      'Charlie is now in column 3, 1 of 1.',
+    );
+  },
 };

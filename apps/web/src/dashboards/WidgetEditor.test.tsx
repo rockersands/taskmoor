@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { setViewportWidth } from '../test/viewport';
 import type { Layout, Widget } from './client';
 import { placeWidget, WidgetGrid, widgetPlace } from './WidgetEditor';
 
@@ -177,9 +176,7 @@ describe('arranging widgets by drag and by keys (T-162; ADR-114, section 12)', (
   it('[RPT-004] a drop on the lower half of the widget’s own card leaves it where it is', () => {
     const { seen, container } = edit();
     // Bravo's card is tall: the grip at its top is let go of below the card's middle.
-    vi.spyOn(card('Bravo'), 'getBoundingClientRect').mockReturnValue(
-      new DOMRect(0, 80, 300, 200),
-    );
+    vi.spyOn(card('Bravo'), 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 80, 300, 200));
     dragTo(gripOf('Bravo'), card('Bravo'), { y: 250, up: false });
     // No place above Alpha is marked: the column's first place is not where it would go.
     expect(card('Alpha')).not.toHaveClass('is-drop-before');
@@ -191,15 +188,6 @@ describe('arranging widgets by drag and by keys (T-162; ADR-114, section 12)', (
         .map((a) => a.ariaLabel),
     ).toEqual(['Alpha', 'Bravo']);
     expect(said(container)).toBe('Bravo stays where it was.');
-  });
-
-  it('[RPT-004] on a phone, the stacked columns still take a finger’s drop, and nothing scrolls sideways', () => {
-    setViewportWidth(375);
-    const { last, container } = edit('three');
-    dragTo(gripOf('Charlie'), columnOf(container, 2));
-    expect(order(last())).toBe('a0 b0 c2');
-    expect(said(container)).toBe('Charlie is now in column 3, 1 of 1.');
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 
   it('[RPT-004] in one column, the hint and the keys speak only of up and down', async () => {
