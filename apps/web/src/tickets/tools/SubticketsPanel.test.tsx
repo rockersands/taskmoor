@@ -8,7 +8,8 @@ import type { SearchClient } from '../../search/client';
 import { ResultTable } from '../../search/ResultTable';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
-import { fakeToolsClient, STARTING_CHILDREN } from './fixtures';
+import type { Transition } from '../view/client';
+import { childTransitions, fakeToolsClient, STARTING_CHILDREN } from './fixtures';
 import { percentOf, SubticketProgressMini } from './Progress';
 import { SubticketsPanel } from './SubticketsPanel';
 
@@ -257,6 +258,129 @@ describe('SubticketsPanel', () => {
       (text) => !/SHOP|retry|slow network|^Done$|In progress/i.test(text),
     );
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('moving a subticket from its parent’s list (CORE-032; ADR-120, TT-6)', () => {
+  const statusOf = (key: string, status: string) =>
+    screen.findByRole('button', { name: `Status of ${key}: ${status}` });
+
+  it('[CORE-032] moves one by keyboard through its workflow, and the progress follows', async () => {
+    const user = userEvent.setup();
+    const changed: number[] = [];
+    const client = fakeToolsClient();
+    render(
+      <I18nProvider locale="en">
+        <SubticketsPanel
+          ticket={ticket(0)}
+          client={client}
+          revision={0}
+          onChanged={() => changed.push(1)}
+        />
+      </I18nProvider>,
+    );
+    const status = await statusOf('SHOP-202', 'In progress');
+    expect(status).toHaveAttribute('aria-haspopup', 'menu');
+    status.focus();
+    await user.keyboard('{ArrowDown}');
+    const menu = await screen.findByRole('menu', { name: 'Status of SHOP-202: In progress' });
+    // Where it can go from here, read as the menu opens; not where it already is.
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['To do', 'Done']);
+    expect(within(menu).getByRole('menuitem', { name: 'To do' })).toHaveFocus();
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(client.calls).toContainEqual({ action: 'moveChild', args: [202, 13, {}] });
+    expect(await screen.findByText('SHOP-202 is now Done.')).toBeInTheDocument();
+    expect(await screen.findByText('2 of 2 closed (100%)')).toBeVisible();
+    const moved = await statusOf('SHOP-202', 'Done');
+    await waitFor(() => expect(moved).toHaveFocus());
+    expect(changed).toEqual([1]);
+  });
+
+  it('[CORE-032] asks for a close reason when the move needs one, and Cancel goes back', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient({ transitions: childTransitions(true) });
+    renderPanel(client);
+    await user.click(await statusOf('SHOP-202', 'In progress'));
+    await user.click(await screen.findByRole('menuitem', { name: 'Done' }));
+    const form = await screen.findByRole('form', { name: 'Finish SHOP-202: what it needs' });
+    await user.click(within(form).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(await statusOf('SHOP-202', 'In progress')).toHaveFocus();
+    expect(client.calls.some((call) => call.action === 'moveChild')).toBe(false);
+
+    await user.click(await statusOf('SHOP-202', 'In progress'));
+    await user.click(await screen.findByRole('menuitem', { name: 'Done' }));
+    const again = await screen.findByRole('form', { name: 'Finish SHOP-202: what it needs' });
+    await user.selectOptions(within(again).getByRole('combobox', { name: 'Close reason' }), '2');
+    await user.click(within(again).getByRole('button', { name: 'Finish SHOP-202' }));
+    expect(client.calls).toContainEqual({
+      action: 'moveChild',
+      args: [202, 13, { 'close-reason': 2 }],
+    });
+    expect(await statusOf('SHOP-202', 'Done')).toBeVisible();
+    expect(screen.queryByRole('form')).toBeNull();
+  });
+
+  it('[CORE-032] sends the person to the ticket for a move that asks for more', async () => {
+    const user = userEvent.setup();
+    const [reopen] = childTransitions();
+    const client = fakeToolsClient({
+      transitions: [{ ...(reopen as Transition), layout: ['comment'] }],
+    });
+    renderPanel(client);
+    await user.click(await statusOf('SHOP-201', 'Done'));
+    await user.click(await screen.findByRole('menuitem', { name: 'To do' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'SHOP-201 needs more to move there: open it to move it.',
+    );
+    expect(client.calls.some((call) => call.action === 'moveChild')).toBe(false);
+  });
+
+  it('[CORE-032] says why the workflow refused a move, naming the ticket', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    client.moveChild = async () => {
+      throw new ApiError(403, { error: 'forbidden' });
+    };
+    renderPanel(client);
+    await user.click(await statusOf('SHOP-202', 'In progress'));
+    await user.click(await screen.findByRole('menuitem', { name: 'Done' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'SHOP-202: You may not make this change to this ticket.',
+    );
+    expect(await statusOf('SHOP-202', 'In progress')).toHaveFocus();
+  });
+
+  it('[CORE-032] says when a status has nowhere to go', async () => {
+    const user = userEvent.setup();
+    renderPanel(fakeToolsClient({ transitions: [] }));
+    await user.click(await statusOf('SHOP-202', 'In progress'));
+    const item = await screen.findByRole('menuitem', { name: 'Nowhere to go from In progress' });
+    expect(item).toHaveAttribute('aria-disabled', 'true');
+    expect(item).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(await statusOf('SHOP-202', 'In progress')).toHaveFocus();
+  });
+
+  it('[CORE-032] shows the status as text where the client cannot move tickets', async () => {
+    renderPanel(fakeToolsClient({ transitions: 'none' }));
+    expect(await screen.findByText('In progress')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^Status of/ })).toBeNull();
+  });
+
+  it('[CORE-032] moves one on a phone too', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    renderPanel(client);
+    await user.click(await statusOf('SHOP-201', 'Done'));
+    await user.click(await screen.findByRole('menuitem', { name: 'In progress' }));
+    expect(await statusOf('SHOP-201', 'In progress')).toBeVisible();
   });
 });
 

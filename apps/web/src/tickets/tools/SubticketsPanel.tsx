@@ -4,7 +4,11 @@ import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { navigate, openOverlay, overlayRoute, routeHref } from '../../routing/router';
 import { fieldName as seededFieldName } from '../../shell/seededNames';
+import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { customId, fieldErrors, SYSTEM_FIELDS } from '../form';
+import type { Transition } from '../view/client';
+import { FILLABLE_FIELDS, TransitionForm } from '../view/TransitionForm';
+import { ChildStatusMenu } from './ChildStatusMenu';
 import type { ChildTicket, ChildType, SubticketProgress, TicketToolsClient } from './client';
 import { ticketToolsClient } from './client';
 import { ProgressBar, percentOf } from './Progress';
@@ -31,7 +35,10 @@ export interface SubticketsPanelProps {
  * What sits under a ticket, on its page (CORE-032; M1-007): the tickets one level down with their
  * status, how many are in a closed stage as a percentage, a bar and the numbers, and a form that
  * makes another from a summary, then stays or opens it. They are ordinary tickets: their statuses
- * follow the track's workflow. A subticket has nothing under it, so it shows no such section.
+ * follow the track's workflow, and each status is a menu of where that ticket can go (TT-6), the
+ * ticket page's own routes, so the same conditions and rights apply. A move that asks for a close
+ * reason or a priority asks for it here; one that asks for more sends the person to the ticket.
+ * A subticket has nothing under it, so it shows no such section.
  */
 export function SubticketsPanel({
   ticket,
@@ -56,6 +63,8 @@ export function SubticketsPanel({
   const [loadingMore, setLoadingMore] = useState(false);
   /** The row whose link takes the focus once the last page is drawn and its button gone. */
   const [focusRow, setFocusRow] = useState<number | null>(null);
+  /** A move that asks for a close reason or a priority first (TT-6). */
+  const [asking, setAsking] = useState<{ child: ChildTicket; to: Transition } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const read = useRef(0);
@@ -239,6 +248,55 @@ export function SubticketsPanel({
     event.preventDefault();
     void add(false);
   };
+  /** What the form a move needs can ask for: the lists of close reasons and priorities. */
+  const formLists =
+    client.closeReasons && client.priorities
+      ? { closeReasons: client.closeReasons, priorities: client.priorities }
+      : null;
+  /** A subticket's status control takes the focus again after a move or a form. */
+  const focusStatus = (id: number) =>
+    list.current
+      ?.querySelector<HTMLButtonElement>(`[data-child="${id}"] .ticket-child-status`)
+      ?.focus();
+  const moveRefusal = (error: unknown, key: string) => {
+    let why = t('ticketView.problem.other');
+    if (error instanceof ApiError) {
+      const body = error.body as { error?: string; fields?: Record<string, string> } | null;
+      if (error.status === 403) why = t('ticketView.problem.forbidden');
+      else if (body?.error === 'transition_refused' && (body as Partial<TransitionRefusal>).by) {
+        why = refusalMessage(t, body as unknown as TransitionRefusal);
+      } else if (body?.error === 'transition_refused' || body?.error === 'transition_unavailable') {
+        why = t('ticketView.problem.transition');
+      } else if (body?.fields) {
+        return t('ticketTools.subtickets.moveOnPage', { key });
+      }
+    }
+    return t('ticketTools.subtickets.moveRefused', { key, why });
+  };
+  /** Moves a subticket through its workflow, asking first for what the move needs (TT-6). */
+  const move = async (child: ChildTicket, to: Transition, fields: Record<string, unknown> = {}) => {
+    const run = client.moveChild;
+    if (!run) return;
+    setProblem(null);
+    if (to.layout.some((field) => !(field in fields))) {
+      if (formLists && to.layout.every((field) => FILLABLE_FIELDS.includes(field))) {
+        setAsking({ child, to });
+      } else {
+        setProblem(t('ticketTools.subtickets.moveOnPage', { key: child.key }));
+      }
+      return;
+    }
+    try {
+      const moved = await run(child.id, to.id, fields);
+      setAsking(null);
+      setSaid(t('ticketTools.subtickets.moved', { key: moved.key, status: moved.status.name }));
+      await load();
+      onChanged?.();
+    } catch (error) {
+      setProblem(moveRefusal(error, child.key));
+    }
+    focusStatus(child.id);
+  };
 
   const more = async () => {
     // One page at a time: a second press while it loads would add the same page again.
@@ -289,7 +347,7 @@ export function SubticketsPanel({
       {children && children.length > 0 && (
         <ul ref={list} className="ticket-child-list">
           {children.map((child) => (
-            <li key={child.id} className="ticket-child">
+            <li key={child.id} className="ticket-child" data-child={child.id}>
               <a
                 href={routeHref(`#/tickets/${encodeURIComponent(child.key)}`)}
                 className={child.status.stage === 'closed' ? 'ticket-link-closed' : undefined}
@@ -297,12 +355,38 @@ export function SubticketsPanel({
                 {child.key}
               </a>
               <span className="ticket-child-summary">{child.summary}</span>
-              <span className="ticket-child-status" data-stage={child.status.stage}>
-                {child.status.name}
-              </span>
+              {client.childTransitions && client.moveChild ? (
+                <ChildStatusMenu
+                  child={child}
+                  load={client.childTransitions}
+                  onChoose={(which, to) => void move(which, to)}
+                />
+              ) : (
+                <span className="ticket-child-status" data-stage={child.status.stage}>
+                  {child.status.name}
+                </span>
+              )}
             </li>
           ))}
         </ul>
+      )}
+      {asking && formLists && (
+        <TransitionForm
+          key={`${asking.child.id}-${asking.to.id}`}
+          transition={{
+            name: t('ticketTools.subtickets.moveForm', {
+              key: asking.child.key,
+              name: asking.to.name,
+            }),
+            layout: asking.to.layout,
+          }}
+          client={formLists}
+          onRun={(fields) => void move(asking.child, asking.to, fields)}
+          onCancel={() => {
+            setAsking(null);
+            focusStatus(asking.child.id);
+          }}
+        />
       )}
       {next && (
         <button

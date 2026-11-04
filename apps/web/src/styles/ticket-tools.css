@@ -184,14 +184,36 @@
   font-size: var(--font-size-100);
 }
 
+/*
+ * A subticket's status as a menu of where it can go (TT-6): the ticket page's control, smaller,
+ * at the end of its row, its menu opening towards the row's inside.
+ */
+.ticket-child-status-menu {
+  justify-self: end;
+}
+
+.ticket-child-status-menu .status-menu-button {
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-100);
+}
+
+.ticket-child-status-menu .status-menu-popup {
+  inset-inline: auto 0;
+}
+
 @media (max-width: 40rem) {
   .ticket-child {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .ticket-child-status {
+  .ticket-child-status,
+  .ticket-child-status-menu {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .ticket-child-status-menu .status-menu-popup {
+    inset-inline: 0 auto;
   }
 }
 
@@ -323,6 +345,12 @@
   /* Every field in the tools is a 44px target, as the forms' fields are (forms.css). */
   .ticket-tool input:not([type="checkbox"]),
   .ticket-tool select {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* A subticket's status menu (TT-6) and its items. */
+  .ticket-child-status-menu .status-menu-button,
+  .ticket-child-status-menu .user-menu-item {
     min-height: var(--hit-target-touch);
   }
 

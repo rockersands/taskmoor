@@ -86,6 +86,11 @@ describe('touch targets in the ticket tools (ADR-033)', () => {
     const small = fields.filter((field) => !isTouchTarget(field, rules));
     expect(small.map((field) => field.outerHTML)).toEqual([]);
 
+    // A subticket's status menu (TT-6).
+    const statuses = screen.getAllByRole('button', { name: /^Status of SHOP-/ });
+    expect(statuses).toHaveLength(2);
+    expect(statuses.filter((button) => !isTouchTarget(button, rules))).toEqual([]);
+
     const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
     expect(boxes.length).toBeGreaterThan(0);
     for (const box of boxes) {

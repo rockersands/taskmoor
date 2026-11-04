@@ -1,6 +1,13 @@
 import { api } from '../../api/client';
 import type { TicketForm } from '../form';
-import type { TicketLink, WebLink } from '../view/client';
+import {
+  type Priority,
+  type TicketDetails,
+  type TicketLink,
+  type Transition,
+  ticketClient,
+  type WebLink,
+} from '../view/client';
 
 /** A ticket the picker offers: what a person may see, as search answers it. */
 export interface PickedTicket {
@@ -103,7 +110,8 @@ export interface ChildTicket {
   id: number;
   key: string;
   summary: string;
-  status: { name: string; stage: 'new' | 'active' | 'closed' };
+  /** Search answers the status's id too; the list tells it from where a move goes (TT-6). */
+  status: { id?: number; name: string; stage: 'new' | 'active' | 'closed' };
 }
 
 /** A ticket type that may sit one level under a ticket. */
@@ -187,6 +195,20 @@ export interface TicketToolsClient {
     ticketTypeId: number;
     summary: string;
   }) => Promise<{ id: number; key: string }>;
+  /**
+   * Where a subticket can go from its status, and moving it there (CORE-032; TT-6): the ticket
+   * page's own routes, so the workflow, its conditions and the person's rights all apply. Without
+   * them the list shows each status as text.
+   */
+  childTransitions?: (id: number) => Promise<Transition[]>;
+  moveChild?: (
+    id: number,
+    transitionId: number,
+    fields?: Record<string, unknown>,
+  ) => Promise<Pick<TicketDetails, 'id' | 'key' | 'status'>>;
+  /** What a move that asks for a close reason or a priority offers. */
+  closeReasons?: () => Promise<Priority[]>;
+  priorities?: () => Promise<Priority[]>;
 }
 
 /**
@@ -303,4 +325,8 @@ export const ticketToolsClient: TicketToolsClient = {
         body: ticket,
       })
     ).ticket,
+  childTransitions: (id) => ticketClient.transitions(id),
+  moveChild: (id, transitionId, fields) => ticketClient.transition(id, transitionId, fields),
+  closeReasons: () => ticketClient.closeReasons(),
+  priorities: () => ticketClient.priorities(),
 };

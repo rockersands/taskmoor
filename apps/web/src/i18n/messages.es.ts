@@ -6014,6 +6014,12 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.subtickets.add': 'Añadir',
   'ticketTools.subtickets.addOpen': 'Añadir y abrir',
   'ticketTools.subtickets.added': 'Se añadió {key}.',
+  'ticketTools.subtickets.statusOf': 'Estado de {key}: {status}',
+  'ticketTools.subtickets.nowhere': 'No hay adónde ir desde {status}',
+  'ticketTools.subtickets.moved': '{key} está ahora en {status}.',
+  'ticketTools.subtickets.moveForm': '{name} {key}',
+  'ticketTools.subtickets.moveOnPage': '{key} necesita más datos para ir ahí: ábrelo para moverlo.',
+  'ticketTools.subtickets.moveRefused': '{key}: {why}',
   'ticketTools.subtickets.more': 'Mostrar más',
   'ticketTools.subtickets.forbidden': 'No puedes crear tickets en este track.',
   'ticketTools.subtickets.fields':

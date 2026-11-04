@@ -5878,6 +5878,12 @@ export const messagesEn = {
   'ticketTools.subtickets.add': 'Add',
   'ticketTools.subtickets.addOpen': 'Add and open',
   'ticketTools.subtickets.added': '{key} was added.',
+  'ticketTools.subtickets.statusOf': 'Status of {key}: {status}',
+  'ticketTools.subtickets.nowhere': 'Nowhere to go from {status}',
+  'ticketTools.subtickets.moved': '{key} is now {status}.',
+  'ticketTools.subtickets.moveForm': '{name} {key}',
+  'ticketTools.subtickets.moveOnPage': '{key} needs more to move there: open it to move it.',
+  'ticketTools.subtickets.moveRefused': '{key}: {why}',
   'ticketTools.subtickets.more': 'Show more',
   'ticketTools.subtickets.forbidden': 'You may not create tickets in this track.',
   'ticketTools.subtickets.fields':
