@@ -51,6 +51,32 @@ them.
   leaving it clears the reason. A workflow an administrator edited, and any imported one, keeps its
   rules. Only such a rule brings up a form or a refusal, in plain words. A ticket's status is one
   control on its page.
+  - **2026-11-04, the user's decision: free moving is the default wherever a workflow starts.** That
+    is a new site (0089, and 0104 for the default workflows 0089 passed over because a seeded status
+    was renamed or a draft was open), a board-managed workflow, a workflow created with no
+    transitions (`POST /api/v1/workflows` with none builds a global transition into each status), a
+    status added in the editor to a workflow that moves freely, a column given a path on a shared
+    workflow (a closed-stage status sets Completed), and the sample data of `pnpm demo` and the AI
+    evals, whose tracks now use the default workflow (`seedEvalDataset` sets its chosen close reasons
+    by hand after the close; a demo seeded earlier has its tracks put back on the default map when it
+    starts). A drag to a column several free transitions lead to takes the column's first status, with
+    no question; the question stays where a candidate has a rule. A close reason a workflow sets
+    cannot be deleted without a replacement (`409 used_by_workflow`), and the replacement goes into
+    the workflow. Rules someone adds on purpose, and imported workflows, stay as they are.
+  - **What "Completed" means when it was renamed or replaced.** One answer on the server
+    (`closingReasonId`): the reason named Completed, else what the default workflow's published
+    version sets on entering a closed-stage status, which follows it through a rename and a
+    replacement; only with neither is a Completed made. The editor asks the server for it
+    (`POST /api/v1/workflows/:id/completed-reason`) when it adds a closing status to a workflow that
+    moves freely, rather than matching a name in a list that may be late or unreadable. If the
+    request fails the status is not added and the editor says why.
+  - **A definition cannot name a deleted reason.** Saving a draft, creating a workflow, restoring a
+    version and publishing all refuse one (`unknown_close_reason`). Earlier versions stay as they
+    were written, so a version from before a replacement cannot be restored, the same rule as a
+    version naming a deleted status: we considered swapping in the replacement on restore, but no
+    record says which reason replaced which. Migration 0105 repairs the sites where a reason was
+    deleted before this rule: a published version or draft that names a missing reason now names
+    Completed.
 - **A board stays inside its track** after it is made. A saved search a track's board stands on
   cannot be changed to a query that leaves the track (`409 board_outside_track`, naming the boards).
   An import writes a track's board only with a query confined to it: anything else becomes

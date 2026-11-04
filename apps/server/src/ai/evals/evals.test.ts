@@ -5,7 +5,7 @@ import { candidate as replay } from './candidates/replay';
 import { QUERY_PAIRS } from './query-corpus';
 import { type QueryCandidate, referenceCandidate, runAs, runQueryEval } from './query-eval';
 import { FEATURES, formatRun, runEvals, THRESHOLDS } from './runner';
-import { type EvalWorld, seedEvalDataset } from './seed';
+import { type EvalWorld, type SeededTicket, seedEvalDataset } from './seed';
 import { SUMMARY_CASES } from './summary-corpus';
 import { readable, runSummaryEval, type SummaryCandidate } from './summary-eval';
 
@@ -197,6 +197,93 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
     expect(scored.pending).toEqual([]);
     expect(formatRun(scored, 0, 'scattered')).toContain('below M1-079');
   });
+  it('[WF-008] the sample data leaves only the free-moving default', async () => {
+    const workflows = await world.db
+      .selectFrom('workflow as w')
+      .innerJoin('workflow_version as v', (join) =>
+        join.onRef('v.workflow_id', '=', 'w.id').onRef('v.version', '=', 'w.published_version'),
+      )
+      .select(['w.name', 'v.definition'])
+      .execute();
+    expect(workflows.map((w) => w.name)).toEqual(['Default workflow']);
+    const definition = workflows[0]?.definition as unknown as {
+      statuses: { statusId: number }[];
+      rules?: unknown;
+      transitions: {
+        id: number;
+        from: unknown;
+        to: number;
+        layout?: unknown;
+        checks?: unknown;
+        guards?: unknown;
+      }[];
+    };
+    expect(definition.rules).toBeUndefined();
+    // Any status reaches any status: one global transition into each, asking for nothing.
+    expect(definition.transitions.map((t) => t.to).sort()).toEqual(
+      definition.statuses.map((s) => s.statusId).sort(),
+    );
+    for (const t of definition.transitions) {
+      expect(t.from).toBe('any');
+      expect(t.layout).toBeUndefined();
+      expect(t.checks).toBeUndefined();
+      expect(t.guards).toBeUndefined();
+    }
+    // Every track of the sample data uses it.
+    const rows = await world.db.selectFrom('track').select(['key', 'workflow_map_id']).execute();
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.workflow_map_id, row.key).toBeNull();
+
+    const seeded = Object.values(world.tickets);
+    const move = async (t: SeededTicket, transitionId: number) => {
+      const res = await world.as(t.spec.assignee ?? t.spec.creator, {
+        method: 'POST',
+        url: `/api/v1/tickets/${t.id}/transitions`,
+        payload: { transitionId },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json().ticket as {
+        status: { name: string };
+        closeReason: { name: string } | null;
+        closedAt: string | null;
+      };
+    };
+    // What was refused: In Review back to Active, and out of Closed. Each ends where it began.
+    const inReview = seeded.find((t) => t.spec.status === 'In Review') as SeededTicket;
+    expect((await move(inReview, 1)).status.name).toBe('Active');
+    expect((await move(inReview, 2)).status.name).toBe('In Review');
+    const closed = seeded.find(
+      (t) => t.spec.status === 'Closed' && (t.spec.closeReason ?? 'Completed') === 'Completed',
+    ) as SeededTicket;
+    const reopened = await move(closed, 5);
+    expect([reopened.status.name, reopened.closeReason, reopened.closedAt]).toEqual([
+      'New',
+      null,
+      null,
+    ]);
+    const again = await move(closed, 4);
+    expect([again.status.name, again.closeReason?.name]).toEqual(['Closed', 'Completed']);
+    expect(again.closedAt).not.toBeNull();
+
+    // The evals still have tickets closed for each chosen reason.
+    const wanted = seeded.filter(
+      (t) => t.spec.status === 'Closed' && t.spec.closeReason && t.spec.closeReason !== 'Completed',
+    );
+    expect(wanted.length).toBeGreaterThan(0);
+    for (const t of wanted) {
+      const ticket = (
+        await world.as(t.spec.assignee ?? t.spec.creator, {
+          method: 'GET',
+          url: `/api/v1/tickets/${t.id}`,
+        })
+      ).json().ticket;
+      expect(ticket.closeReason?.name, t.key).toBe(t.spec.closeReason);
+      expect(ticket.closedAt, t.key).not.toBeNull();
+    }
+    const duplicates = await runAs(world, 'grace', 'closeReason = Duplicate');
+    expect(duplicates.ok && duplicates.ids.length).toBeGreaterThan(0);
+  });
+
   // Last: the injection run adds tickets to the dataset.
   it('[AI-013] [AI-014] [AI-016] [IAM-023] the product’s features score through the runner with a provider replaying recorded answers (M1-079)', async () => {
     const run = await runEvals({

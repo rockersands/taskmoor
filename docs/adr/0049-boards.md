@@ -60,7 +60,8 @@ backlog column and estimation (AGL-007, AGL-014 (1)) and the full board UI with 
 - **A move runs the ticket routes** (`POST /api/v1/boards/:id/moves`): the board finds the
   transitions the ticket offers (the `GET /tickets/:id/transitions` handler) whose target is in
   the column; one runs, several answer 409 `transition_choice` with the list unless
-  `transitionId` picks one, none answers 409 `no_transition`. Then `before` or `after` runs
+  `transitionId` picks one or they all move freely (ADR-116, 2026-11-04: the one into the column's
+  first status runs), none answers 409 `no_transition`. Then `before` or `after` runs
   the rank handler. Handlers are called as `ticketRoutes()` plain handlers (M1-021), so every
   check, layout field, event, history row and lock is the ticket routes' own; the move route
   has no event of its own. The transition and the rank are two writes: a refused rank leaves

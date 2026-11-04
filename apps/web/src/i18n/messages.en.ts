@@ -370,10 +370,10 @@ export const messagesEn = {
     'On the Workflows page in Administration, choose Create a workflow.',
   'tutorial.step.workflows.workflowForm.title': 'Name it and create it',
   'tutorial.step.workflows.workflowForm.body':
-    'Give it a name and choose how it starts: empty, or as a copy of a workflow you have. Creating it opens the editor.',
-  'tutorial.step.workflows.structure.title': 'Add a status and a transition',
+    'Give it a name and choose how it starts: moving freely, or as a copy of a workflow you have. Creating it opens the editor.',
+  'tutorial.step.workflows.structure.title': 'Add a status',
   'tutorial.step.workflows.structure.body':
-    'Add a status to the workflow, then a transition into it, and choose Save draft. A transition is a move a ticket can make.',
+    'Add a status to the workflow and choose Save draft. Tickets can reach it from any other status at once. A transition is a move a ticket can make: add one yourself only to name a step or restrict it.',
   'tutorial.step.workflows.publish.title': 'Publish it',
   'tutorial.step.workflows.publish.body':
     'Choose Publish. Until then the draft changes nothing; once published, it is the version tickets follow.',
@@ -3442,11 +3442,11 @@ export const messagesEn = {
   'admin.workflows.form.name': 'Name',
   'admin.workflows.form.description': 'Description',
   'admin.workflows.form.start': 'Start from',
-  'admin.workflows.form.empty': 'An empty workflow',
+  'admin.workflows.form.free': 'A workflow that moves freely',
   'admin.workflows.form.copyOf': 'A copy of {name}',
   'admin.workflows.form.initial': 'Initial status',
   'admin.workflows.form.initialHint':
-    'Where new tickets start. Add more statuses and transitions in the editor.',
+    'Where new tickets start. Add statuses in the editor: tickets can go from any one to any other until you add a rule.',
   'admin.workflows.form.submit': 'Create workflow',
   'admin.workflows.form.nameRequired': 'Enter a name.',
   'admin.workflows.form.nameTaken': 'A workflow with this name exists already.',
@@ -3619,6 +3619,8 @@ export const messagesEn = {
   'admin.workflow.status.confirmRemoveButton': 'Remove status',
   'admin.workflow.status.removed': 'Removed {name} from the workflow.',
   'admin.workflow.status.added': 'Added {name} to the workflow.',
+  'admin.workflow.status.addFailed':
+    '{name} was not added: its close reason could not be read. Try again.',
   'admin.workflow.transition.heading': 'Transition: {name}',
   'admin.workflow.transition.name': 'Name',
   'admin.workflow.transition.nameRequired': 'Enter a name.',
@@ -3851,6 +3853,7 @@ export const messagesEn = {
   'workflow.problem.unknown_field': '{where}: there is no field named {field}.',
   'workflow.problem.field_not_writable': '{where}: a workflow cannot write {field}.',
   'workflow.problem.invalid_value': '{where}: the value for {field} is not valid.',
+  'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
   'workflow.problem.onCreate': 'Creating a ticket',

@@ -295,6 +295,7 @@ export type DefinitionProblem =
   | { problem: 'unknown_field'; transitionId: number | null; field: string }
   | { problem: 'field_not_writable'; transitionId: number | null; field: string }
   | { problem: 'invalid_value'; transitionId: number | null; field: string }
+  | { problem: 'unknown_close_reason'; transitionId: number | null; reasonId: number }
   | { problem: 'invalid_pattern'; transitionId: number; pattern: string }
   | { problem: 'guards_too_deep'; transitionId: number };
 

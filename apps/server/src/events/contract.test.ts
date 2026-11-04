@@ -47,6 +47,8 @@ const REDIRECT_MUTATIONS = [
   'GET /api/v1/oauth/authorize',
 ];
 const EXEMPT: Record<string, string> = {
+  'POST /api/v1/workflows/:id/completed-reason':
+    'reads only, unless the workspace has no reason to close with: then one close_reason.created (free-moving.test.ts)',
   'POST /api/v1/audit/syslog/test':
     'sends one test message to a syslog receiver; stores nothing and moves no position',
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',

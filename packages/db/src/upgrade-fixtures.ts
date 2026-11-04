@@ -1747,6 +1747,18 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE name = 'Seed policy'`.execute(db);
     },
   },
+  '0104_default_workflow_left_strict': {
+    tables: {
+      workflow: 'is_default AND workspace_id = 1',
+    },
+    seed: async () => {},
+  },
+  '0105_close_reason_left_dangling': {
+    tables: {
+      close_reason: 'workspace_id = 1',
+    },
+    seed: async () => {},
+  },
 };
 
 /**

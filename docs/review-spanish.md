@@ -23,8 +23,10 @@ address, http://localhost:8080, and a one-time link per person to set a password
 administrator's link first: it can see and change everything. The other links sign you in as
 ordinary people, who see less. Each start prints new links.
 
-`Ctrl+C` stops it. The data stays in `.cache/demo`; `corepack pnpm demo --fresh` starts over, and
-`--port 9090` uses another port.
+`Ctrl+C` stops it. The tickets stay in the database under `.cache/pg-test/demo` and the attachments
+in `.cache/demo`. `corepack pnpm demo --fresh` removes only the attachments and keeps the database,
+and `--port 9090` uses another port. Sample tickets move freely between statuses; why one moved goes
+in a comment.
 
 ## What to look at
 

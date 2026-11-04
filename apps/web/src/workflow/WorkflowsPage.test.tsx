@@ -122,7 +122,7 @@ describe('workflows administration (M1-030)', () => {
     ).toHaveAttribute('aria-current', 'page');
   });
 
-  it('[WF-001] creates an empty workflow with an initial status and opens it', async () => {
+  it('[WF-001] [WF-008] starts a workflow with an initial status, moving freely unless told otherwise, and opens it', async () => {
     const user = userEvent.setup();
     const calls = openPage({
       'POST /workflows': (body) =>
@@ -134,6 +134,9 @@ describe('workflows administration (M1-030)', () => {
     window.location.hash = '#/admin/workflows';
     await user.click(await screen.findByRole('button', { name: 'Create a workflow' }));
     const form = screen.getByRole('form', { name: 'New workflow' });
+    expect(within(form).getByLabelText('Start from')).toHaveDisplayValue(
+      'A workflow that moves freely',
+    );
     expect(within(form).getByLabelText('Name')).toHaveFocus();
     await user.click(within(form).getByRole('button', { name: 'Create workflow' }));
     expect(within(form).getByRole('alert')).toHaveTextContent('Enter a name.');

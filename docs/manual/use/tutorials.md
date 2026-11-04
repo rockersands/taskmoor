@@ -2,7 +2,7 @@
 title: "Tutorials"
 audience: users
 sources: apps/web/src/tutorial/sections.ts, apps/web/src/tutorial/steps.ts, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/tutorial/CoachCard.tsx, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/client.ts, apps/web/src/api/changes.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/styles/surfaces.css, apps/web/src/shell/ModalDialog.tsx, apps/server/src/routes/tutorial.ts, packages/db/src/migrations/0084_tutorial_progress.ts, docs/adr/0115-guided-tutorial.md, docs/specs/01b-core-work-tracking.md
-accessed: 2026-11-03
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Tutorials
@@ -17,7 +17,7 @@ in every section is saved with your account, so it follows you to another device
 | Section | What you make | Offered to |
 |---|---|---|
 | **Tracks and tickets** | A track (if you may make one), a ticket in it, a comment and an attached file | Everyone |
-| **Workflows** | A workflow with a status and a transition, published, put in a workflow map and given to a track | Site and configuration administrators |
+| **Workflows** | A workflow that moves freely, with a status added, published, put in a workflow map and given to a track | Site and configuration administrators |
 | **Boards and sprints** | A card moved on a track's board, then a sprint planned and started in the backlog | Everyone |
 | **Search and saved searches** | A search with filters, then a query, saved under a name | Everyone |
 | **Dashboards** | A dashboard with a widget | Everyone |

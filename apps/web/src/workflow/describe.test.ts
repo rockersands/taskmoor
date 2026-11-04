@@ -47,6 +47,14 @@ describe('the editor words server refusals (M1-030)', () => {
       refused({ error: 'cannot_restore', detail: { problem: 'unknown_status', statusId: 7 } }),
     ).toBe('Version 1 cannot be restored: Status 7 no longer exists in the workspace.');
     expect(
+      refused({
+        error: 'cannot_restore',
+        detail: { problem: 'unknown_close_reason', transitionId: null, reasonId: 3 },
+      }),
+    ).toBe(
+      `Version 1 cannot be restored: ${messages['workflow.problem.onCreate']}: the close reason it sets no longer exists.`,
+    );
+    expect(
       refusalMessage(
         t,
         new ApiError(400, {

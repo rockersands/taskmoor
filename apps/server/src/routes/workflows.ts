@@ -7,6 +7,9 @@ import { requireGlobal, requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
+import { closingReasonId, completedReasonId } from '../workflows/board-managed';
+import { closeReasonProblem } from '../workflows/close-reasons';
+import { freeTransitions } from '../workflows/free-moving';
 import {
   defaultMapId,
   loadMap,
@@ -27,6 +30,7 @@ import {
   holdWorkflow,
   loadDefinition,
   remapStatuses,
+  statusInfo,
   ticketsInStatuses,
   writeVersion,
 } from '../workflows/store';
@@ -81,7 +85,13 @@ const createWorkflowBody = z
   .object({
     name,
     description: description.optional(),
-    definition: definitionSchema,
+    /**
+     * With no transitions, left out or empty, the workflow moves freely (WF-008 (4)): a global
+     * transition into each status. A list that names some is the administrator's choice.
+     */
+    definition: definitionSchema.extend({
+      transitions: definitionSchema.shape.transitions.optional(),
+    }),
     /** A local-mode track that owns it (M1-028); shared when left out. */
     trackId: id.optional(),
   })
@@ -614,10 +624,18 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       if (track.mode !== 'local')
         return invalid(reply, 'a shared-mode track uses shared workflows');
     }
-    const problem = definitionProblem(body.definition, await knownStatuses(db, ws));
+    const given: WorkflowDefinition = {
+      ...body.definition,
+      transitions: body.definition.transitions ?? [],
+    };
+    const problem =
+      definitionProblem(given, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, given));
     if (problem) return invalid(reply, problem);
     try {
       const workflowId = await db.transaction().execute(async (trx) => {
+        const definition =
+          given.transitions.length > 0 ? given : await movingFreely(trx, by(request), given);
         const row = await trx
           .insertInto('workflow')
           .values({
@@ -628,14 +646,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           })
           .returning('id')
           .executeTakeFirstOrThrow();
-        await writeVersion(trx, ws, row.id, 1, body.definition, user.id, true);
+        await writeVersion(trx, ws, row.id, 1, definition, user.id, true);
         await emit(trx, by(request), {
           type: 'workflow.created',
           subjectId: row.id,
           payload: {
             name: body.name,
-            statusIds: [...statusIdsOf(body.definition)],
-            transitionCount: body.definition.transitions.length,
+            statusIds: [...statusIdsOf(definition)],
+            transitionCount: definition.transitions.length,
             ...(trackId !== null ? { trackId } : {}),
           },
         });
@@ -694,6 +712,24 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     }
   });
 
+  /** The definition with a global transition into each of its statuses (WF-008 (4)). */
+  async function movingFreely(
+    trx: Transaction<Database>,
+    actor: { workspaceId: number; actorId: number | null },
+    definition: WorkflowDefinition,
+  ): Promise<WorkflowDefinition> {
+    const ids = definition.statuses.map((s) => s.statusId);
+    const info = await statusInfo(trx, actor.workspaceId, ids);
+    const statuses = ids.flatMap((id) => {
+      const status = info.get(id);
+      return status ? [{ id, ...status }] : [];
+    });
+    const completedId = statuses.some((s) => s.stage === 'closed')
+      ? await completedReasonId(trx, actor)
+      : null;
+    return { ...definition, transitions: freeTransitions(statuses, completedId) };
+  }
+
   /** Writes a definition as the draft, after the published version; its version, or null. */
   async function writeDraft(
     trx: Transaction<Database>,
@@ -746,12 +782,32 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const parsed = z.object({ definition: definitionSchema }).strict().safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
     const ws = request.workspaceId;
-    const problem = definitionProblem(parsed.data.definition, await knownStatuses(db, ws));
+    const problem =
+      definitionProblem(parsed.data.definition, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, parsed.data.definition));
     if (problem) return invalid(reply, problem);
     await enforceLimit(db, ws, 'statuses_per_workflow', parsed.data.definition.statuses.length);
     const version = await saveDraft(request, params.data.id, parsed.data.definition, null);
     if (version === null) return notFound(reply);
     return { workflow: await workflowView(ws, params.data.id) };
+  });
+
+  // What a closing status sets when the editor adds it to a workflow that moves freely (WF-008):
+  // the same answer the server's own paths use, made here if the workspace has no reason to name.
+  app.post('/api/v1/workflows/:id/completed-reason', async (request, reply) => {
+    if (!(await workflowAccess(request, reply, true))) return reply;
+    const closeReasonId = await db.transaction().execute(async (trx) => {
+      const found = await closingReasonId(trx, request.workspaceId);
+      if (found !== null) return found;
+      const made = await completedReasonId(trx, by(request));
+      await emit(trx, by(request), {
+        type: 'close_reason.created',
+        subjectId: made,
+        payload: { name: 'Completed' },
+      });
+      return made;
+    });
+    return { closeReasonId };
   });
 
   app.delete('/api/v1/workflows/:id/draft', async (request, reply) => {
@@ -823,6 +879,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       if (!held) return { missing: true as const };
       const impact = await impactOf(trx, ws, held.id);
       if (!impact) return { conflict: 'no_draft' };
+      // A reason deleted after the draft was saved would refuse every move into its status.
+      const closing = await closeReasonProblem(trx, ws, impact.draft);
+      if (closing) return { closing };
       // A status migration still moving tickets into this workflow keeps it as it is (M1-028).
       const running = await runningMigration(
         trx,
@@ -869,6 +928,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     });
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
+    if ('closing' in result) return invalid(reply, result.closing);
     if ('migrationRunning' in result) {
       return reply
         .code(409)
@@ -959,7 +1019,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       .executeTakeFirst();
     if (!source) return notFound(reply);
     const definition = definitionSchema.parse(source.definition);
-    const problem = definitionProblem(definition, await knownStatuses(db, ws));
+    const problem =
+      definitionProblem(definition, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, definition));
     if (problem) return reply.code(409).send({ error: 'cannot_restore', detail: problem });
     await saveDraft(request, row.id, definition, params.data.version);
     return { workflow: await workflowView(ws, row.id) };

@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
-accessed: 2026-11-03
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Workflows
@@ -59,8 +59,9 @@ The status says where a ticket stands; why it moved goes in a comment. New ticke
 The default workflow cannot be deleted.
 
 These are only the defaults. To require a field, a guard or a check, edit the workflow or make
-your own (below): a rule you add stays. A site that had already changed its default workflow
-before this version keeps its own rules, and so does every imported workflow.
+your own (below): a new workflow moves freely as well, until you add a rule, and a rule you add
+stays. A site that had already changed its default workflow before this version keeps its own
+rules, and so does every imported workflow.
 
 ## Transitions
 
@@ -192,7 +193,11 @@ status 7 only role 1 may edit and only group 4 may run transitions (ids are your
 
 **Administration**, **Workflows** lists the workflows with their published version, any draft and how
 many tracks use them. **Create a workflow** asks for a **Name**, a **Description**, **Start
-from** (**An empty workflow** or **A copy of** another one) and an **Initial status**.
+from** (**A workflow that moves freely** or **A copy of** another one) and an **Initial status**.
+A workflow that moves freely starts with that status and the global transition into it; a copy
+has whatever rules its source has. In the API, `POST /api/v1/workflows` with no `transitions`, or
+an empty list, builds one global transition into each status it names, and a list that names some
+is kept as written.
 **Delete** removes an unused workflow with all its versions; a workflow that a workflow map
 names cannot be deleted.
 
@@ -204,8 +209,13 @@ names cannot be deleted.
   **Show the diagram**.
 - **Text** mode shows the definition as JSON, with a key from status ids to names. Switching
   modes keeps every change.
-- **Add a status** puts one of the site's statuses into the workflow; **Add a transition** adds a
-  transition. A status's panel can **Make it the initial status** or remove it from the workflow.
+- **Add a status** puts one of the site's statuses into the workflow. On a workflow that moves
+  freely (every transition global, with no guard, check, field or rule) it also adds the global
+  transition into it, so tickets can enter it at once: a closed-stage status sets the close reason
+  Completed, or what took its place if it was renamed or replaced, and any other clears the reason.
+  On a workflow with rules it adds only the status, and the
+  steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
+  it the initial status** or remove it from the workflow.
 - **Discard draft** throws the draft away; the published version stays as it is.
 
 **Checks before publishing** list problems as you edit. Errors, such as a transition to a status
@@ -223,7 +233,9 @@ status the new version drops that holds tickets, choose where the tickets go, th
 **Publish now**. They move with their history; their close reason stays as it is.
 
 **Version history** lists every version with who saved and published it. **Restore as draft**
-replaces the draft with an earlier version; publish it to use it again.
+replaces the draft with an earlier version; publish it to use it again. A version that sets a close
+reason deleted since cannot be restored, nor can a draft name one: every move through that
+transition would be refused. Set the reason on the current version instead.
 
 Through the API: `PUT /api/v1/workflows/:id/draft` with `{ "definition": ... }`,
 `GET /api/v1/workflows/:id/impact`, then `POST /api/v1/workflows/:id/publish` with

@@ -121,6 +121,89 @@ export function addStatus(definition: WorkflowDefinition, statusId: number): Wor
   return { ...definition, statuses: [...definition.statuses, { statusId }] };
 }
 
+/**
+ * Whether a workflow moves freely as it stands (WF-008): every transition is global and nothing
+ * someone put on one asks anything of the person moving a ticket. A workflow with no transitions
+ * yet counts: nobody has chosen a rule.
+ */
+export function isFreeMoving(definition: WorkflowDefinition): boolean {
+  return (
+    Object.keys(definition.rules ?? {}).length === 0 &&
+    definition.transitions.every(
+      (t) =>
+        t.from === 'any' &&
+        !t.guards &&
+        (t.checks?.length ?? 0) === 0 &&
+        (t.layout?.length ?? 0) === 0,
+    )
+  );
+}
+
+/**
+ * The global transition into a status, named after it: a closed-stage status sets the close reason
+ * Completed, any other clears the reason.
+ */
+function freeTransition(
+  id: number,
+  status: Pick<Status, 'id' | 'name' | 'stage'>,
+  completedId: number | null,
+): Transition {
+  return {
+    id,
+    name: status.name,
+    from: 'any',
+    to: status.id,
+    effects:
+      status.stage === 'closed' && completedId !== null
+        ? [{ type: 'update-system-field', field: 'close-reason', value: String(completedId) }]
+        : [{ type: 'clear-field', field: 'close-reason' }],
+  };
+}
+
+/** The statuses that get a global transition when this one is added to a free-moving workflow. */
+function statusesGettingTransition(definition: WorkflowDefinition, statusId: number): number[] {
+  const added = addStatus(definition, statusId);
+  if (added === definition || !isFreeMoving(definition)) return [];
+  // A workflow with no transitions yet gets them for the statuses it already had, too.
+  const wanting = definition.transitions.length === 0 ? statusIdsOf(added) : [statusId];
+  return [...wanting].filter((id) => !definition.transitions.some((t) => t.to === id));
+}
+
+/** Whether adding this status gives a closing status a transition, which needs a reason to set. */
+export function addingNeedsCloseReason(
+  definition: WorkflowDefinition,
+  statusId: number,
+  statuses: readonly Status[],
+): boolean {
+  return statusesGettingTransition(definition, statusId).some(
+    (id) => statuses.find((s) => s.id === id)?.stage === 'closed',
+  );
+}
+
+/**
+ * Adds a status so a free-moving workflow stays free moving: tickets can enter it at once, from
+ * any status. On a workflow with rules it only adds the status: those rules were put there on
+ * purpose, or came with an import, and the steps into it are the administrator's to draw. A closing
+ * status with no reason to set gets no transition either, never one that closes nothing.
+ */
+export function addStatusFreely(
+  definition: WorkflowDefinition,
+  statusId: number,
+  statuses: readonly Status[],
+  completedId: number | null,
+  reserved: Iterable<number> = [],
+): WorkflowDefinition {
+  const used = [...reserved];
+  return statusesGettingTransition(definition, statusId).reduce(
+    (next, id) => {
+      const status = statuses.find((s) => s.id === id);
+      if (!status || (status.stage === 'closed' && completedId === null)) return next;
+      return addTransition(next, freeTransition(nextTransitionId(next, used), status, completedId));
+    },
+    addStatus(definition, statusId),
+  );
+}
+
 export function setInitialStatus(
   definition: WorkflowDefinition,
   statusId: number,

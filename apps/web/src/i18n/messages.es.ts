@@ -379,10 +379,10 @@ export const messagesEs: Record<MessageId, string> = {
     'En la página Flujos de trabajo de Administración, elige Crear un flujo de trabajo.',
   'tutorial.step.workflows.workflowForm.title': 'Ponle nombre y créalo',
   'tutorial.step.workflows.workflowForm.body':
-    'Dale un nombre y elige cómo empieza: vacío o como copia de un flujo que ya tengas. Al crearlo se abre el editor.',
-  'tutorial.step.workflows.structure.title': 'Añade un estado y una transición',
+    'Dale un nombre y elige cómo empieza: con movimiento libre o como copia de un flujo que ya tengas. Al crearlo se abre el editor.',
+  'tutorial.step.workflows.structure.title': 'Añade un estado',
   'tutorial.step.workflows.structure.body':
-    'Añade un estado al flujo, luego una transición hacia él, y elige Guardar el borrador. Una transición es un paso que puede dar un ticket.',
+    'Añade un estado al flujo y elige Guardar el borrador. Los tickets pueden llegar a él desde cualquier otro estado enseguida. Una transición es un paso que puede dar un ticket: añade una tú solo para ponerle nombre o restringirlo.',
   'tutorial.step.workflows.publish.title': 'Publícalo',
   'tutorial.step.workflows.publish.body':
     'Elige Publicar. Hasta entonces el borrador no cambia nada; una vez publicado, es la versión que siguen los tickets.',
@@ -3531,11 +3531,11 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.form.name': 'Nombre',
   'admin.workflows.form.description': 'Descripción',
   'admin.workflows.form.start': 'Empezar desde',
-  'admin.workflows.form.empty': 'Un flujo de trabajo vacío',
+  'admin.workflows.form.free': 'Un flujo de trabajo de movimiento libre',
   'admin.workflows.form.copyOf': 'Una copia de {name}',
   'admin.workflows.form.initial': 'Estado inicial',
   'admin.workflows.form.initialHint':
-    'Donde empiezan los tickets nuevos. Añade más estados y transiciones en el editor.',
+    'Donde empiezan los tickets nuevos. Añade estados en el editor: los tickets pueden pasar de uno a cualquier otro hasta que añadas una regla.',
   'admin.workflows.form.submit': 'Crear el flujo de trabajo',
   'admin.workflows.form.nameRequired': 'Introduce un nombre.',
   'admin.workflows.form.nameTaken': 'Ya existe un flujo de trabajo con este nombre.',
@@ -3711,6 +3711,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.status.confirmRemoveButton': 'Quitar el estado',
   'admin.workflow.status.removed': 'Se quitó {name} del flujo de trabajo.',
   'admin.workflow.status.added': 'Se añadió {name} al flujo de trabajo.',
+  'admin.workflow.status.addFailed':
+    '{name} no se añadió: no se pudo leer su motivo de cierre. Inténtalo de nuevo.',
   'admin.workflow.transition.heading': 'Transición: {name}',
   'admin.workflow.transition.name': 'Nombre',
   'admin.workflow.transition.nameRequired': 'Introduce un nombre.',
@@ -3950,6 +3952,8 @@ export const messagesEs: Record<MessageId, string> = {
   'workflow.problem.unknown_field': '{where}: no hay ningún campo llamado {field}.',
   'workflow.problem.field_not_writable': '{where}: un flujo de trabajo no puede escribir {field}.',
   'workflow.problem.invalid_value': '{where}: el valor de {field} no es válido.',
+  'workflow.problem.unknown_close_reason':
+    '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
   'workflow.problem.onCreate': 'Crear un ticket',

@@ -60,7 +60,7 @@ export interface EvalWorld {
 const DAY = 86_400_000;
 const at = (daysAgo: number) => new Date(EVAL_NOW.getTime() - daysAgo * DAY);
 
-/** The transitions of the dataset's workflow (`seedEvalDataset`) that reach each status. */
+/** The default workflow's transitions (migration 0089) a ticket goes through to reach a status. */
 const PATH: Record<TicketSpec['status'], number[]> = {
   New: [],
   Active: [1],
@@ -212,60 +212,6 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     }[]
   ).find((f) => f.name === 'Points')?.id as number;
 
-  // The dataset's tickets close for chosen reasons, so its tracks use a workflow that asks why,
-  // as an administrator can set up. The default workflow always closes as Completed.
-  const statuses = Object.fromEntries(
-    (
-      (await ok(admin({ method: 'GET', url: '/api/v1/statuses' }), 'statuses')).statuses as {
-        id: number;
-        name: string;
-      }[]
-    ).map((s) => [s.name, s.id]),
-  );
-  const [fresh, active, review, closed] = [
-    statuses.New as number,
-    statuses.Active as number,
-    statuses['In Review'] as number,
-    statuses.Closed as number,
-  ];
-  const workflow = await ok(
-    admin({
-      method: 'POST',
-      url: '/api/v1/workflows',
-      payload: {
-        name: 'Eval workflow',
-        definition: {
-          initialStatusId: fresh,
-          statuses: [fresh, active, review, closed].map((statusId) => ({ statusId })),
-          transitions: [
-            { id: 1, name: 'Start', from: [fresh], to: active },
-            { id: 2, name: 'Send to review', from: [active], to: review },
-            {
-              id: 4,
-              name: 'Close',
-              from: 'any',
-              to: closed,
-              layout: ['close-reason'],
-              checks: [{ type: 'field-required', field: 'close-reason' }],
-            },
-          ],
-        },
-      },
-    }),
-    'workflow',
-  );
-  const workflowMap = await ok(
-    admin({
-      method: 'POST',
-      url: '/api/v1/workflow-maps',
-      payload: {
-        name: 'Eval map',
-        defaultWorkflowId: (workflow.workflow as { id: number }).id,
-      },
-    }),
-    'workflow map',
-  );
-
   const tracks: Record<string, number> = {};
   const releases: Record<string, number> = {};
   const areas: Record<string, number> = {};
@@ -281,14 +227,6 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     );
     const id = (body.track as { id: number }).id;
     tracks[t.key] = id;
-    await ok(
-      admin({
-        method: 'PATCH',
-        url: `/api/v1/tracks/${id}`,
-        payload: { workflowMapId: (workflowMap.workflowMap as { id: number }).id },
-      }),
-      `map of ${t.key}`,
-    );
     for (const [role, list] of [
       ['Members', t.members],
       ['Viewers', t.viewers],
@@ -366,14 +304,21 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
         as(actor, {
           method: 'POST',
           url: `/api/v1/tickets/${t.id}/transitions`,
-          payload: {
-            transitionId,
-            ...(transitionId === 4
-              ? { fields: { 'close-reason': reasons[spec.closeReason ?? 'Completed'] } }
-              : {}),
-          },
+          payload: { transitionId },
         }),
         `transition ${spec.name} ${transitionId}`,
+      );
+    }
+    // The tracks use the default workflow, which moves freely and closes as Completed (WF-008). A
+    // ticket closed for another reason says so the way a person does, by setting it afterwards.
+    if (spec.status === 'Closed' && spec.closeReason && spec.closeReason !== 'Completed') {
+      await ok(
+        as(actor, {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${t.id}`,
+          payload: { closeReasonId: reasons[spec.closeReason] },
+        }),
+        `close reason ${spec.name}`,
       );
     }
     for (const c of spec.comments) {

@@ -127,6 +127,7 @@ export const DEFINITION_PROBLEMS: Record<string, MessageId> = {
   unknown_field: 'workflow.problem.unknown_field',
   field_not_writable: 'workflow.problem.field_not_writable',
   invalid_value: 'workflow.problem.invalid_value',
+  unknown_close_reason: 'workflow.problem.unknown_close_reason',
   invalid_pattern: 'workflow.problem.invalid_pattern',
   guards_too_deep: 'workflow.problem.guards_too_deep',
 };

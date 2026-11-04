@@ -901,7 +901,7 @@ describe('boards (M1-043)', () => {
     expect(d.columns[0]?.count).toBe(1);
   });
 
-  it('[AGL-002] moves a card along the matching transition, asking which when several', async () => {
+  it('[AGL-002] [WF-008] moves a card along the matching transition, asking nothing on a free-moving workflow', async () => {
     const board = await createBoard('alice', {
       name: 'Moves',
       kind: 'kanban',
@@ -925,25 +925,35 @@ describe('boards (M1-043)', () => {
     });
     const history = (await get('alice', `/api/v1/tickets/${T('a2').id}/history`)).json();
     expect(JSON.stringify(history)).toContain('Active');
-    // From Active, "In Review" and "Closed" both lead into the last column.
-    const ask = await move('alice', { ticket: T('a2').id, columnId: 'review' });
-    expect(ask.statusCode).toBe(409);
-    expect(ask.json().error).toBe('transition_choice');
-    expect(
-      ask
-        .json()
-        .transitions.map((t: { name: string }) => t.name)
-        .sort(),
-    ).toEqual(['Closed', 'In Review']);
-    const chosen = ask.json().transitions.find((t: { name: string }) => t.name === 'In Review');
+    // From Active, "In Review" and "Closed" both lead into the last column, and neither asks
+    // for anything: the card goes to the column's first status, with no question.
     const reviewed = await move('alice', {
       ticket: T('a2').id,
       columnId: 'review',
-      transitionId: chosen.id,
       before: T('a1').id,
     });
     expect(reviewed.statusCode, reviewed.body).toBe(200);
-    expect(reviewed.json()).toMatchObject({ transitioned: true, ranked: true });
+    expect(reviewed.json()).toMatchObject({
+      transitioned: true,
+      ranked: true,
+      ticket: { status: { name: 'In Review' } },
+    });
+    // A caller may still name one of them.
+    const named = await move('alice', { ticket: T('a2').id, columnId: 'doing' });
+    expect(named.statusCode, named.body).toBe(200);
+    const offered = (await get('alice', `/api/v1/tickets/${T('a2').id}/transitions`)).json();
+    const closes = offered.transitions.find((t: { name: string }) => t.name === 'Closed');
+    const closed = await move('alice', {
+      ticket: T('a2').id,
+      columnId: 'review',
+      transitionId: closes.id,
+    });
+    expect(closed.json()).toMatchObject({ ticket: { status: { name: 'Closed' } } });
+    const back = await move('alice', { ticket: T('a2').id, columnId: 'doing' });
+    expect(back.statusCode, back.body).toBe(200);
+    expect(
+      (await move('alice', { ticket: T('a2').id, columnId: 'review', before: T('a1').id })).json(),
+    ).toMatchObject({ ticket: { status: { name: 'In Review' } } });
     // Ranked before a1: it now leads the board.
     expect((await data('alice', board.id)).cards[0]?.key).toBe(T('a2').key);
     // Within a column, only the rank changes.
@@ -959,6 +969,109 @@ describe('boards (M1-043)', () => {
     const unseen = await move('bob', { ticket: T('c1').id, columnId: 'doing' });
     expect(unseen.json().fields).toEqual({ ticket: 'not_on_board' });
     await setStatus('a2', 'New');
+  });
+
+  it('[AGL-002] asks which transition only where one of them carries a rule', async () => {
+    const workflow = await post('admin', '/api/v1/workflows', {
+      name: 'Asks why',
+      definition: {
+        initialStatusId: S('New'),
+        statuses: [{ statusId: S('New') }, { statusId: S('In Review') }, { statusId: S('Closed') }],
+        transitions: [
+          { id: 1, name: 'Review', from: 'any', to: S('In Review') },
+          { id: 2, name: 'Close', from: 'any', to: S('Closed'), layout: ['close-reason'] },
+        ],
+      },
+    });
+    expect(workflow.statusCode, workflow.body).toBe(201);
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: 'Asks why',
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
+    const track = await post('admin', '/api/v1/tracks', {
+      key: 'BQ',
+      name: 'Track BQ',
+      mode: 'shared',
+    });
+    expect(track.statusCode, track.body).toBe(201);
+    const trackId = track.json().track.id as number;
+    const set = await patch('admin', `/api/v1/tracks/${trackId}`, {
+      workflowMapId: map.json().workflowMap.id,
+    });
+    expect(set.statusCode, set.body).toBe(200);
+    const board = await createBoard('admin', {
+      name: 'Asks',
+      kind: 'kanban',
+      trackId,
+      columns: [
+        { id: 'todo', name: 'To do', statusIds: [S('New')] },
+        { id: 'done', name: 'Done', statusIds: [S('In Review'), S('Closed')] },
+      ],
+    });
+    const ticket = await post('admin', '/api/v1/tickets', { track: 'BQ', summary: 'Which way' });
+    const id = ticket.json().ticket.id as number;
+    const ask = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: id,
+      columnId: 'done',
+    });
+    expect(ask.statusCode, ask.body).toBe(409);
+    expect(ask.json().error).toBe('transition_choice');
+    expect(
+      ask
+        .json()
+        .transitions.map((t: { name: string }) => t.name)
+        .sort(),
+    ).toEqual(['Close', 'Review']);
+    const chosen = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: id,
+      columnId: 'done',
+      transitionId: 1,
+    });
+    expect(chosen.statusCode, chosen.body).toBe(200);
+  });
+
+  it('[WF-008] a column reached through a shared workflow closes by its stage, and a new one holds cards', async () => {
+    const board = await createBoard('admin', {
+      name: 'Close path',
+      kind: 'kanban',
+      trackId: tracks.BC,
+    });
+    const current = (await get('admin', `/api/v1/boards/${board.id}`)).json();
+    const patched = await patch('admin', `/api/v1/boards/${board.id}`, {
+      columns: [
+        ...current.board.columns,
+        { id: 'cancelled', name: 'Cancelled', statusIds: [] },
+        { id: 'waiting', name: 'Waiting on legal', statusIds: [] },
+      ],
+    });
+    expect(patched.statusCode, patched.body).toBe(200);
+    for (const column of ['cancelled', 'waiting']) {
+      const fixed = await post('admin', `/api/v1/boards/${board.id}/columns/${column}/path`, {});
+      expect(fixed.statusCode, fixed.body).toBe(200);
+    }
+    const statuses = (await get('admin', '/api/v1/statuses')).json().statuses as {
+      name: string;
+      stage: string;
+    }[];
+    // The workflow has its closing status already, so the rightmost new column does not close.
+    expect(statuses.find((s) => s.name === 'Waiting on legal')?.stage).toBe('active');
+    const ticket = await post('admin', '/api/v1/tickets', { track: 'BC', summary: 'To cancel' });
+    const id = ticket.json().ticket.id as number;
+    const cancelled = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: id,
+      columnId: 'cancelled',
+    });
+    expect(cancelled.statusCode, cancelled.body).toBe(200);
+    expect(cancelled.json().ticket.closeReason?.name).toBe('Completed');
+    expect(cancelled.json().ticket.closedAt).not.toBeNull();
+    const waiting = await post('admin', `/api/v1/boards/${board.id}/moves`, {
+      ticket: id,
+      columnId: 'waiting',
+    });
+    expect(waiting.statusCode, waiting.body).toBe(200);
+    expect(waiting.json().ticket.closeReason).toBeNull();
+    expect(waiting.json().ticket.closedAt).toBeNull();
   });
 
   it('[AGL-002] refuses a move that no transition of the workflow leads to', async () => {

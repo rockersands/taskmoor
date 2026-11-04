@@ -23,7 +23,8 @@ import {
 } from './client';
 import { DefinitionText, legendOf } from './DefinitionText';
 import {
-  addStatus,
+  addingNeedsCloseReason,
+  addStatusFreely,
   addTransition,
   formatDefinition,
   nextTransitionId,
@@ -400,6 +401,37 @@ export function WorkflowEditorPage({
     }
   };
 
+  const addStatusToWorkflow = async (statusId: number) => {
+    setError(null);
+    let completedId: number | null = null;
+    if (addingNeedsCloseReason(working, statusId, statuses)) {
+      setBusy(true);
+      try {
+        completedId = await client.completedReason(workflow.id);
+      } catch (e) {
+        if (!refuse(e)) {
+          setError(t('admin.workflow.status.addFailed', { name: names.status(statusId) }));
+        }
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+    // The request may have let an edit in, so this builds on what is there now.
+    setWorking(
+      (current) =>
+        current &&
+        addStatusFreely(
+          current,
+          statusId,
+          statuses,
+          completedId,
+          transitionIdsOf(workflow.published.definition, workflow.draft?.definition),
+        ),
+    );
+    setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
+  };
+
   const newTransition = (from?: number) => {
     const ids = statusIdsOf(working);
     const source = from ?? (selection?.kind === 'status' ? selection.id : working.initialStatusId);
@@ -689,10 +721,7 @@ export function WorkflowEditorPage({
               onSelect={select}
               statusesHeadingRef={statusesHeading}
               transitionsHeadingRef={transitionsHeading}
-              onAddStatus={(statusId) => {
-                change(addStatus(working, statusId));
-                setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
-              }}
+              onAddStatus={addStatusToWorkflow}
               onAddTransition={() => newTransition()}
             />
           </div>

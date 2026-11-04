@@ -367,7 +367,7 @@ function WorkflowItem({
   );
 }
 
-/** A new workflow: empty with one initial status, or a copy of another's published version. */
+/** A new workflow: moving freely from one initial status, or a copy of another's published version. */
 function CreateWorkflowForm({
   client,
   workflows,
@@ -388,7 +388,7 @@ function CreateWorkflowForm({
   const nameInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [start, setStart] = useState('empty');
+  const [start, setStart] = useState('free');
   const [initial, setInitial] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -410,8 +410,9 @@ function CreateWorkflowForm({
     setError(null);
     try {
       let definition: WorkflowDefinition;
-      if (start === 'empty') {
+      if (start === 'free') {
         const statusId = Number(initialId);
+        // No transitions asked for: the server gives each status its global one (WF-008 (4)).
         definition = { initialStatusId: statusId, statuses: [{ statusId }], transitions: [] };
       } else {
         definition = (await client.get(Number(start))).published.definition;
@@ -467,7 +468,7 @@ function CreateWorkflowForm({
       <div className="form-field">
         <label htmlFor={`${id}-start`}>{t('admin.workflows.form.start')}</label>
         <select id={`${id}-start`} value={start} onChange={(e) => setStart(e.target.value)}>
-          <option value="empty">{t('admin.workflows.form.empty')}</option>
+          <option value="free">{t('admin.workflows.form.free')}</option>
           {workflows.map((w) => (
             <option key={w.id} value={String(w.id)}>
               {t('admin.workflows.form.copyOf', { name: t('common.value', { value: w.name }) })}
@@ -475,7 +476,7 @@ function CreateWorkflowForm({
           ))}
         </select>
       </div>
-      {start === 'empty' && (
+      {start === 'free' && (
         <div className="form-field">
           <label htmlFor={`${id}-initial`}>{t('admin.workflows.form.initial')}</label>
           <select
@@ -504,7 +505,7 @@ function CreateWorkflowForm({
         <button
           type="submit"
           className="button-primary"
-          disabled={busy || (start === 'empty' && !initialId)}
+          disabled={busy || (start === 'free' && !initialId)}
         >
           {t('admin.workflows.form.submit')}
         </button>

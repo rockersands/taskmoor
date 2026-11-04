@@ -7,6 +7,7 @@ import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { checkLabels, LABEL_MAX, lockList, rewriteTickets, writeOrder } from '../tickets/fields';
 import { priorityLevel } from '../tickets/priority-level';
+import { replaceCloseReason, workflowsSettingCloseReason } from '../workflows/close-reasons';
 
 /**
  * The workspace's lists of priorities and close reasons, priority sets, and labels (M1-014;
@@ -781,6 +782,8 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
     if (replacementId === reasonId) return invalid(reply, 'replacementId');
     const ws = request.workspaceId;
     const result = await db.transaction().execute(async (trx) => {
+      // A ticket write holds its workflow before the reason it sets: the same order here.
+      const workflows = await workflowsSettingCloseReason(trx, ws, reasonId);
       await lockList(trx, ws, 'close_reason');
       const held = await trx
         .selectFrom('close_reason')
@@ -801,6 +804,13 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
         .where('close_reason_id', '=', reasonId)
         .execute();
       if (tickets.length > 0 && replacementId === null) return { inUse: tickets.length };
+      // A workflow that sets this reason would refuse every move into its closing status.
+      if (workflows.length > 0 && replacementId === null) {
+        return { usedBy: workflows.map((w) => ({ id: w.id, name: w.name })) };
+      }
+      if (replacementId !== null) {
+        await replaceCloseReason(trx, ws, user.id, workflows, reasonId, replacementId);
+      }
       const ticketCount = await rewriteTickets(
         trx,
         ws,
@@ -824,7 +834,12 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
       await emit(trx, by(request), {
         type: 'close_reason.deleted',
         subjectId: reasonId,
-        payload: { name: current.name, replacementId, ticketCount },
+        payload: {
+          name: current.name,
+          replacementId,
+          ticketCount,
+          ...(workflows.length > 0 ? { workflowIds: workflows.map((w) => w.id) } : {}),
+        },
       });
       return { ticketCount };
     });
@@ -832,6 +847,9 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
     if ('badReplacement' in result) return invalid(reply, 'replacementId');
     if ('inUse' in result) {
       return reply.code(409).send({ error: 'in_use', ticketCount: result.inUse });
+    }
+    if ('usedBy' in result) {
+      return reply.code(409).send({ error: 'used_by_workflow', workflows: result.usedBy });
     }
     return reply.code(204).send();
   });

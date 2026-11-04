@@ -589,7 +589,11 @@ export const EVENT_TYPES = {
   },
   'close_reason.created': { subject: 'close_reason', payload: z.object({ name: z.string() }) },
   'close_reason.updated': { subject: 'close_reason', payload: z.object({ changes }) },
-  'close_reason.deleted': { subject: 'close_reason', payload: replaced },
+  'close_reason.deleted': {
+    subject: 'close_reason',
+    // Any workflows that set it and now set the replacement.
+    payload: replaced.extend({ workflowIds: z.array(id).optional() }),
+  },
   'close_reason.reordered': {
     subject: 'workspace',
     payload: z.object({ closeReasonIds: z.array(id) }),

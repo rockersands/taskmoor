@@ -1241,18 +1241,21 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
     await page.getByRole('button', { name: 'Save draft' }).click();
     await expect(page.getByText('Saved draft version 2.')).toBeVisible();
 
-    // Nothing leads to Closed yet: the checks say so, and a global transition fixes it.
+    // The workflow has a rule now, so a status added to it brings no step of its own (WF-008):
+    // nothing leads to it, the checks say so, and a global transition fixes it.
+    await page.getByLabel('Add a status').selectOption({ label: 'In Review' });
+    await page.getByRole('button', { name: 'Add to workflow' }).click();
     const checks = page.getByRole('region', { name: 'Checks before publishing' });
     await expect(
-      checks.getByText('No transition leads to Closed: tickets can never get there.'),
+      checks.getByText('No transition leads to In Review: tickets can never get there.'),
     ).toBeVisible();
-    await checks.getByRole('button', { name: 'Show Closed' }).click();
-    await expect(page.getByRole('heading', { name: 'Status: Closed' })).toBeFocused();
-    await page.getByRole('button', { name: 'Add a transition from Closed' }).click();
-    await page.getByLabel('Name', { exact: true }).fill('Close');
-    const close = page.getByRole('region', { name: 'Transition: Close' });
-    await close.getByRole('radio', { name: 'Any status (a global transition)' }).check();
-    await close.getByLabel('Goes to').selectOption({ label: 'Closed' });
+    await checks.getByRole('button', { name: 'Show In Review' }).click();
+    await expect(page.getByRole('heading', { name: 'Status: In Review' })).toBeFocused();
+    await page.getByRole('button', { name: 'Add a transition from In Review' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Review');
+    const review = page.getByRole('region', { name: 'Transition: Review' });
+    await review.getByRole('radio', { name: 'Any status (a global transition)' }).check();
+    await review.getByLabel('Goes to').selectOption({ label: 'In Review' });
     await expect(checks.getByText('No problems found.')).toBeVisible();
 
     // Publishing saves the draft first, then shows what it changes.
@@ -1289,14 +1292,18 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
     };
     expect(workflow.published.version).toBe(2);
     expect(workflow.draft).toBeNull();
-    expect(workflow.published.definition.statuses).toHaveLength(3);
+    expect(workflow.published.definition.statuses).toHaveLength(4);
     const start = workflow.published.definition.transitions.find((x) => x.name === 'Start work');
     expect(start?.guards).toEqual({
       all: [{ type: 'permission', permission: 'transition_tickets' }],
     });
     expect(start?.checks).toEqual([{ type: 'field-required', field: 'assignee' }]);
     expect(start?.effects).toEqual([{ type: 'assign-to-current-user' }]);
-    expect(workflow.published.definition.transitions.find((x) => x.name === 'Close')?.from).toBe(
+    expect(workflow.published.definition.transitions.find((x) => x.name === 'Review')?.from).toBe(
+      'any',
+    );
+    // Created with no rule, and the statuses added before there was one, it moved freely.
+    expect(workflow.published.definition.transitions.find((x) => x.name === 'Closed')?.from).toBe(
       'any',
     );
   } finally {

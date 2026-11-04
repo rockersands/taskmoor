@@ -84,6 +84,88 @@ describe('workflow editor (M1-030)', () => {
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
   });
 
+  it('[WF-008] a status added to a workflow that moves freely can be entered at once', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    const save = vi.spyOn(client, 'saveDraft');
+    renderEditor(client, 1);
+    const adding = await screen.findByLabelText('Add a status');
+    await user.selectOptions(adding, String(S.Approved));
+    await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
+    expect(within(transitionList()).getByText('Approved')).toBeVisible();
+    expect(within(checks()).getByText('No problems found.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText(/^Saved draft version/);
+    const saved = save.mock.calls[0]?.[1];
+    // Approved is a closed-stage status: entering it closes as Completed.
+    expect(saved?.transitions.at(-1)).toEqual({
+      id: 6,
+      name: 'Approved',
+      from: 'any',
+      to: S.Approved,
+      effects: [{ type: 'update-system-field', field: 'close-reason', value: '1' }],
+    });
+  });
+
+  it('[WF-008] a closing status sets the reason the server names, whatever it is called', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    // No reason in the lists has the name Completed, and the lists never arrive.
+    client.lookups = () => new Promise(() => {});
+    client.completedReason = vi.fn(async () => 42);
+    const save = vi.spyOn(client, 'saveDraft');
+    renderEditor(client, 1);
+    await user.selectOptions(await screen.findByLabelText('Add a status'), String(S.Approved));
+    await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
+    expect(await within(transitionList()).findByText('Approved')).toBeVisible();
+    expect(client.completedReason).toHaveBeenCalledWith(1);
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText(/^Saved draft version/);
+    expect(save.mock.calls[0]?.[1].transitions.at(-1)?.effects).toEqual([
+      { type: 'update-system-field', field: 'close-reason', value: '42' },
+    ]);
+  });
+
+  it('[WF-008] when the reason cannot be read the closing status waits, and it says so', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    client.completedReason = async () => {
+      throw new ApiError(500, {});
+    };
+    renderEditor(client, 1);
+    await user.selectOptions(await screen.findByLabelText('Add a status'), String(S.Approved));
+    await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Approved was not added: its close reason could not be read. Try again.',
+    );
+    expect(within(transitionList()).queryByText('Approved')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  });
+
+  it('[WF-008] an open status needs no close reason, so nothing is asked', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    client.completedReason = vi.fn(async () => 42);
+    renderEditor(client, 1);
+    await user.selectOptions(await screen.findByLabelText('Add a status'), String(S.Draft));
+    await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
+    expect(await within(transitionList()).findByText('Draft')).toBeVisible();
+    expect(client.completedReason).not.toHaveBeenCalled();
+  });
+
+  it('[WF-002] [WF-008] a status added to a workflow with rules brings no step of its own', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    const save = vi.spyOn(client, 'saveDraft');
+    renderEditor(client);
+    const adding = await screen.findByLabelText('Add a status');
+    await user.selectOptions(adding, String(S.Closed));
+    await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText(/^Saved draft version/);
+    expect(save.mock.calls[0]?.[1].transitions).toEqual(SUPPORT_DEFINITION.transitions);
+  });
+
   it('[WF-001] [WF-003] [WF-004] [WF-005] adds a transition with a guard, a check and an effect, and saves them in the draft', async () => {
     const user = userEvent.setup();
     const client = fakeWorkflowsClient();
