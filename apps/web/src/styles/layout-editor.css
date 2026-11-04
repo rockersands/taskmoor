@@ -65,6 +65,17 @@
   margin: 0;
 }
 
+/* A track's own page (T-163a): make the track use this set, and what that means. */
+.layout-assign {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.layout-assign > .form-hint {
+  margin: 0;
+}
+
 .layout-form-choice {
   display: flex;
   flex-wrap: wrap;

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { PageHeader } from '../shell/PageHeader';
 import {
   FIXED_FIELDS,
   type FieldRule,
@@ -16,6 +16,14 @@ import {
   setsClient,
   type TypeSet,
 } from './client';
+import {
+  ownLayoutsHref,
+  ownSetsHref,
+  ScopeNote,
+  type ScopeTrack,
+  TrackScopeLine,
+  useSetScope,
+} from './trackScope';
 
 /** The layout editor: where fields appear, the other half of how a form comes out. */
 const LAYOUTS_HREF = '#/admin/layouts';
@@ -23,21 +31,65 @@ const LAYOUTS_HREF = '#/admin/layouts';
 export interface ConfigurationSetsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: SetsClient;
+  /** A local-mode track's own page: only its type set and the rule sets it owns (T-163a). */
+  trackId?: number | null;
 }
 
 /**
- * Configuration sets (CORE-003, CORE-008), for administrators: type sets (which ticket types a
- * track offers) and field rule sets (which fields are required or hidden, with help text, for
- * every type). Layout sets have their own page (`layouts/LayoutEditorPage.tsx`, UI-T15), and the
- * field rules link to it and say how the two combine. Rules for one ticket type, who may edit a
- * field, and visibility and notification policies are set through the API for now; a save keeps
- * the rules it does not show.
+ * Configuration sets (CORE-003, CORE-008): type sets (which ticket types a track offers) and
+ * field rule sets (which fields are required or hidden, with help text, for every type). Layout
+ * sets have their own page (`layouts/LayoutEditorPage.tsx`, UI-T15), and the field rules link to
+ * it and say how the two combine. Rules for one ticket type, who may edit a field, and visibility
+ * and notification policies are set through the API for now; a save keeps the rules it does not
+ * show.
+ *
+ * Site and configuration administrators see the shared sets. On a local-mode track's own page
+ * (`trackId`; T-163a), whoever runs the track changes the types of its own type set (which is
+ * neither added nor deleted there, as the server holds) and adds, changes, uses and deletes the
+ * rule sets it owns, with the fields that reach it. Someone who runs tracks but is no
+ * administrator is offered those pages instead (`sets/trackScope.tsx`).
  */
-export function ConfigurationSetsPage({ client = setsClient }: ConfigurationSetsPageProps) {
+export function ConfigurationSetsPage({
+  client = setsClient,
+  trackId = null,
+}: ConfigurationSetsPageProps) {
+  const t = useT();
+  const titleId = useId();
+  const scope = useSetScope(trackId, client);
+  const track = scope.status === 'track' ? scope.track : null;
+  return (
+    <section aria-labelledby={titleId} className="admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.sets.title')}
+        {...(track
+          ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
+          : {})}
+      />
+      {scope.status === 'all' || track ? (
+        <Sets key={track?.id ?? 'all'} client={client} track={track} />
+      ) : (
+        <ScopeNote
+          scope={scope}
+          hrefOf={ownSetsHref}
+          words={{
+            chooseIntro: t('admin.sets.choose.intro'),
+            chooseNone: t('admin.sets.choose.none'),
+            chooseOpen: (run) => t('admin.sets.choose.open', { key: run.key, name: run.name }),
+            shared: (shared) => t('admin.sets.scope.shared', { key: shared.key }),
+            none: t('admin.sets.forbidden'),
+            failed: t('admin.sets.failed'),
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+/** The type sets and rule sets the page shows: every shared one, or one track's own. */
+function Sets({ client, track }: { client: SetsClient; track: ScopeTrack | null }) {
   const t = useT();
   const expired = useSessionExpiry();
-  const titleId = useId();
-  const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
     | {
@@ -49,17 +101,24 @@ export function ConfigurationSetsPage({ client = setsClient }: ConfigurationSets
       }
     | { status: 'failed' }
     | { status: 'forbidden' }
-  >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  >({ status: 'loading' });
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const owner = track?.id ?? null;
+  const ownTypeSet = track?.typeSetId ?? null;
 
   const load = useCallback(async () => {
     try {
       const [types, fields, typeSets, ruleSets] = await Promise.all([
-        client.ticketTypes(),
-        client.customFields(),
-        client.typeSets(),
-        client.ruleSets(),
+        client.ticketTypes(owner),
+        client.customFields(owner),
+        // A track's own page shows the type set it owns, which it reads by its id.
+        owner === null
+          ? client.typeSets()
+          : ownTypeSet === null
+            ? Promise.resolve([])
+            : client.typeSet(ownTypeSet).then((set) => (set.trackId === owner ? [set] : [])),
+        client.ruleSets(owner),
       ]);
       setState({ status: 'loaded', types, fields, typeSets, ruleSets });
     } catch (error) {
@@ -67,10 +126,10 @@ export function ConfigurationSetsPage({ client = setsClient }: ConfigurationSets
       if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
       else setState({ status: 'failed' });
     }
-  }, [client, expired]);
+  }, [client, owner, ownTypeSet, expired]);
   useEffect(() => {
-    if (!notAdmin) void load();
-  }, [load, notAdmin]);
+    void load();
+  }, [load]);
 
   const refusal = useCallback(
     (error: unknown) => {
@@ -95,53 +154,55 @@ export function ConfigurationSetsPage({ client = setsClient }: ConfigurationSets
     setProblem(null);
     void load();
   };
-  const failed = (error: unknown) => setProblem(refusal(error));
+  const failed = (error: unknown) => {
+    if (!expired(error)) setProblem(refusal(error));
+  };
 
+  if (state.status === 'forbidden') {
+    return <p className="page-note">{t('admin.sets.forbidden')}</p>;
+  }
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.sets.title')}
-      </h1>
-      {state.status === 'forbidden' ? (
-        <p className="page-note">{t('admin.sets.forbidden')}</p>
+    <>
+      {track ? (
+        <TrackScopeLine track={track} intro={t('admin.sets.trackIntro')} />
       ) : (
+        <p className="page-note">{t('admin.sets.intro')}</p>
+      )}
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('admin.sets.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('admin.sets.failed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
         <>
-          <p className="page-note">{t('admin.sets.intro')}</p>
-          <p role="status" className="form-status">
-            {message}
-          </p>
-          {problem && (
-            <p role="alert" className="form-error">
-              {problem}
-            </p>
-          )}
-          {state.status === 'loading' && <p className="page-note">{t('admin.sets.loading')}</p>}
-          {state.status === 'failed' && (
-            <p role="alert" className="form-error">
-              {t('admin.sets.failed')}
-            </p>
-          )}
-          {state.status === 'loaded' && (
-            <>
-              <TypeSetsSection
-                client={client}
-                types={state.types}
-                sets={state.typeSets}
-                said={said}
-                failed={failed}
-              />
-              <RuleSetsSection
-                client={client}
-                fields={state.fields}
-                sets={state.ruleSets}
-                said={said}
-                failed={failed}
-              />
-            </>
-          )}
+          <TypeSetsSection
+            client={client}
+            track={track}
+            types={state.types}
+            sets={state.typeSets}
+            said={said}
+            failed={failed}
+          />
+          <RuleSetsSection
+            client={client}
+            track={track}
+            fields={state.fields}
+            sets={state.ruleSets}
+            said={said}
+            failed={failed}
+          />
         </>
       )}
-    </section>
+    </>
   );
 }
 
@@ -189,11 +250,12 @@ function TypePicker({
 
 function TypeSetsSection({
   client,
+  track,
   types,
   sets,
   said,
   failed,
-}: Feedback & { client: SetsClient; types: Named[]; sets: TypeSet[] }) {
+}: Feedback & { client: SetsClient; track: ScopeTrack | null; types: Named[]; sets: TypeSet[] }) {
   const t = useT();
   const headingId = useId();
   const nameId = useId();
@@ -205,43 +267,48 @@ function TypeSetsSection({
       <h2 id={headingId} className="facts-title">
         {t('admin.sets.typeSets')}
       </h2>
-      <form
-        className="people-inline"
-        aria-label={t('admin.sets.addTypeSet')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted || chosen.length === 0) return;
-          client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
-            setName('');
-            setChosen([]);
-            setOpen(made.id);
-            said(t('admin.sets.added', { name: made.name }));
-          }, failed);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={nameId} className="form-label">
-            {t('admin.sets.typeSetName')}
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+      {/* A local-mode track keeps the one type set it was made with: no other is added for it. */}
+      {track ? (
+        <p className="page-note">{t('admin.sets.trackTypeSet')}</p>
+      ) : (
+        <form
+          className="people-inline"
+          aria-label={t('admin.sets.addTypeSet')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted || chosen.length === 0) return;
+            client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
+              setName('');
+              setChosen([]);
+              setOpen(made.id);
+              said(t('admin.sets.added', { name: made.name }));
+            }, failed);
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.sets.typeSetName')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <TypePicker
+            legend={t('admin.sets.typesIn')}
+            types={types}
+            chosen={chosen}
+            onChange={setChosen}
           />
-        </div>
-        <TypePicker
-          legend={t('admin.sets.typesIn')}
-          types={types}
-          chosen={chosen}
-          onChange={setChosen}
-        />
-        <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
-          {t('admin.sets.addTypeSet')}
-        </button>
-      </form>
+          <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
+            {t('admin.sets.addTypeSet')}
+          </button>
+        </form>
+      )}
       <ul className="people-list">
         {sets.map((set) => (
           <li key={set.id} className="people-item people-group">
@@ -275,6 +342,7 @@ function TypeSetsSection({
                 key={set.id}
                 set={set}
                 types={types}
+                deletable={!track}
                 client={client}
                 said={said}
                 failed={failed}
@@ -291,11 +359,19 @@ function TypeSetsSection({
 function TypeSetPanel({
   set,
   types,
+  deletable,
   client,
   said,
   failed,
   onDeleted,
-}: Feedback & { set: TypeSet; types: Named[]; client: SetsClient; onDeleted: () => void }) {
+}: Feedback & {
+  set: TypeSet;
+  types: Named[];
+  /** A track's own type set stays as long as the track: only shared ones are deleted. */
+  deletable: boolean;
+  client: SetsClient;
+  onDeleted: () => void;
+}) {
   const t = useT();
   const [chosen, setChosen] = useState(set.ticketTypes.map((type) => type.id));
   const [confirming, setConfirming] = useState(false);
@@ -330,7 +406,7 @@ function TypeSetPanel({
           name={set.name}
           confirming={confirming}
           setConfirming={setConfirming}
-          hidden={set.defaultFor.length > 0}
+          hidden={!deletable || set.defaultFor.length > 0}
           onDelete={() =>
             client.deleteTypeSet(set.id).then(() => {
               onDeleted();
@@ -392,11 +468,17 @@ function DeleteButton({
 
 function RuleSetsSection({
   client,
+  track,
   fields,
   sets,
   said,
   failed,
-}: Feedback & { client: SetsClient; fields: Named[]; sets: RuleSetSummary[] }) {
+}: Feedback & {
+  client: SetsClient;
+  track: ScopeTrack | null;
+  fields: Named[];
+  sets: RuleSetSummary[];
+}) {
   const t = useT();
   const headingId = useId();
   const nameId = useId();
@@ -409,8 +491,17 @@ function RuleSetsSection({
       </h2>
       <p className="page-note">
         {t('admin.sets.rulesAndLayouts')}{' '}
-        <a href={routeHref(LAYOUTS_HREF)}>{t('admin.sets.layoutsLink')}</a>
+        {track ? (
+          <a href={routeHref(ownLayoutsHref(track.id))}>
+            {t('admin.sets.layoutsLinkTrack', { key: track.key })}
+          </a>
+        ) : (
+          <a href={routeHref(LAYOUTS_HREF)}>{t('admin.sets.layoutsLink')}</a>
+        )}
       </p>
+      {track && sets.length === 0 && (
+        <p className="page-note">{t('admin.sets.trackNoRuleSets', { key: track.key })}</p>
+      )}
       <form
         className="people-inline"
         aria-label={t('admin.sets.addRuleSet')}
@@ -418,11 +509,13 @@ function RuleSetsSection({
           event.preventDefault();
           const wanted = name.trim();
           if (!wanted) return;
-          client.createRuleSet({ name: wanted }).then((made) => {
-            setName('');
-            setOpen(made.id);
-            said(t('admin.sets.added', { name: made.name }));
-          }, failed);
+          client
+            .createRuleSet({ name: wanted, ...(track ? { trackId: track.id } : {}) })
+            .then((made) => {
+              setName('');
+              setOpen(made.id);
+              said(t('admin.sets.added', { name: made.name }));
+            }, failed);
         }}
       >
         <div className="form-field">
@@ -464,6 +557,7 @@ function RuleSetsSection({
             {open === set.id && (
               <RuleSetPanel
                 id={set.id}
+                track={track}
                 fields={fields}
                 client={client}
                 said={said}
@@ -502,12 +596,19 @@ function rowsOf(set: RuleSet, keys: string[]): Row[] {
 
 function RuleSetPanel({
   id,
+  track,
   fields,
   client,
   said,
   failed,
   onDeleted,
-}: Feedback & { id: number; fields: Named[]; client: SetsClient; onDeleted: () => void }) {
+}: Feedback & {
+  id: number;
+  track: ScopeTrack | null;
+  fields: Named[];
+  client: SetsClient;
+  onDeleted: () => void;
+}) {
   const t = useT();
   const formId = useId();
   const [set, setSet] = useState<RuleSet | null>(null);
@@ -538,8 +639,9 @@ function RuleSetPanel({
       aria-label={t('admin.sets.editOf', { name: set.name })}
       onSubmit={(event) => {
         event.preventDefault();
-        // Rules for one ticket type are kept as they are; the every-type rules are the rows.
-        const typed = set.rules.filter((r) => r.ticketTypeId !== null);
+        // The every-type rules are the rows. Rules for one ticket type are kept as they are, and
+        // so are those of a field with no row, such as a shared field that does not reach the track.
+        const kept = set.rules.filter((r) => r.ticketTypeId !== null || !keys.includes(r.field));
         const shown: FieldRule[] = rows
           .filter((r) => !FIXED_FIELDS.has(r.field) || r.description)
           .filter((r) => r.required || r.hidden || r.description || r.editableBy)
@@ -551,7 +653,7 @@ function RuleSetPanel({
             description: r.description || null,
             editableBy: r.editableBy,
           }));
-        client.updateRuleSet(id, { rules: [...typed, ...shown] }).then((saved) => {
+        client.updateRuleSet(id, { rules: [...kept, ...shown] }).then((saved) => {
           show(saved);
           said(t('admin.sets.saved', { name: saved.name }));
         }, failed);
@@ -600,6 +702,30 @@ function RuleSetPanel({
         <p className="page-note">
           {t('admin.sets.usedBy', { tracks: set.usedBy.map((tr) => tr.key).join(', ') })}
         </p>
+      )}
+      {track && !set.usedBy.some((used) => used.id === track.id) && (
+        <div className="sets-assign">
+          <button
+            type="button"
+            className="button-secondary"
+            aria-describedby={`${formId}-assign-hint`}
+            onClick={() =>
+              // Only who uses it changes: the rules being edited stay as they are.
+              client
+                .assignRuleSet(track.id, id)
+                .then(() => client.ruleSet(id))
+                .then((fresh) => {
+                  setSet(fresh);
+                  said(t('admin.sets.usedFor', { key: track.key, name: fresh.name }));
+                }, failed)
+            }
+          >
+            {t('admin.sets.useFor', { key: track.key })}
+          </button>
+          <p id={`${formId}-assign-hint`} className="form-hint">
+            {t('ownSets.useHint')}
+          </p>
+        </div>
       )}
       <div className="form-actions">
         <button type="submit" className="button-primary">

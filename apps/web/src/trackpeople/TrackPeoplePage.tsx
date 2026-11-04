@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { ownLayoutsHref, ownSetsHref } from '../sets/trackScope';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import {
@@ -40,7 +41,8 @@ type State =
 /**
  * A track's Manage page (IAM-030), for whoever runs that track, site administrator or not: who
  * holds which role, giving and taking roles, inviting people (IAM-027), and whether the track's
- * followers hear of checklist changes (NTF-015).
+ * followers hear of checklist changes (NTF-015). A local-mode track's page also leads to its own
+ * layout sets and configuration sets (T-163a).
  */
 export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPeoplePageProps) {
   const t = useT();
@@ -183,6 +185,22 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
       <p className="page-note">
         <a href={routeHref('#/manage/tracks')}>{t('trackPeople.backToList')}</a>
       </p>
+      {track.mode === 'local' && (
+        <section aria-labelledby={`${id}-own`}>
+          <h2 id={`${id}-own`} className="facts-title">
+            {t('trackPeople.ownConfig')}
+          </h2>
+          <p className="page-note">{t('trackPeople.ownConfigIntro', { key: track.key })}</p>
+          <ul className="link-list">
+            <li>
+              <a href={routeHref(ownLayoutsHref(track.id))}>{t('trackPeople.layoutsLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownSetsHref(track.id))}>{t('trackPeople.setsLink')}</a>
+            </li>
+          </ul>
+        </section>
+      )}
       <p role="status" className="form-status">
         {message}
       </p>

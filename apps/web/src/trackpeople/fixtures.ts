@@ -12,6 +12,8 @@ import type {
 } from './client';
 
 export const SHOP: ManagedTrack = { id: 3, key: 'SHOP', name: 'Shop', mode: 'shared' };
+/** A track with its own configuration, whose Manage page leads to its own sets (T-163a). */
+export const OPS: ManagedTrack = { id: 4, key: 'OPS', name: 'Operations', mode: 'local' };
 
 export const ROLES: TrackRole[] = [
   { id: 7, name: 'Administrators', description: '', runsTrack: true, givable: true },
@@ -76,8 +78,8 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
   let notices = options.checklistNotices ?? false;
   return {
     calls,
-    managedTracks: async () => [SHOP, { id: 4, key: 'OPS', name: 'Operations', mode: 'local' }],
-    track: async () => ({ ...SHOP, checklistNotices: notices }),
+    managedTracks: async () => [SHOP, OPS],
+    track: async (id) => ({ ...(id === OPS.id ? OPS : SHOP), checklistNotices: notices }),
     setChecklistNotices: async (trackId, on) => {
       log('setChecklistNotices', trackId, on);
       if (options.refuseNotices) throw new ApiError(409, { error: 'track_archived' });

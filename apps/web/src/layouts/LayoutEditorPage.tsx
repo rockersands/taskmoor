@@ -1,11 +1,18 @@
 import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { guardLeave, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import {
+  ownLayoutsHref,
+  ownSetsHref,
+  ScopeNote,
+  type ScopeTrack,
+  TrackScopeLine,
+  useSetScope,
+} from '../sets/trackScope';
 import { PageHeader } from '../shell/PageHeader';
 import { DraftDialog } from '../tickets/view/drafts';
 import {
@@ -35,62 +42,129 @@ import { layoutRefusal } from './refusal';
 
 /** Where the field rules are edited: the other half of how a form comes out. */
 export const FIELD_RULES_HREF = '#/admin/configuration-sets';
-/** This page's route; `?set=` opens a set. */
+/** This page's route; `?set=` opens a set. A track's own page is `ownLayoutsHref`. */
 export const LAYOUTS_ROUTE = '#/admin/layouts';
-const onThisPage = (route: string) =>
-  route === LAYOUTS_ROUTE || route.startsWith(`${LAYOUTS_ROUTE}?`);
+const onPage = (route: string, base: string) => route === base || route.startsWith(`${base}?`);
 
 export interface LayoutEditorPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: LayoutsClient;
-  /** The set to open first; the default set otherwise. */
+  /** The set to open first; the default set otherwise, or the set the track uses. */
   initialSetId?: number | null;
   /** How long the preview waits for typing to settle, in milliseconds. */
   previewDelay?: number;
+  /** A local-mode track's own page: only the sets it owns (T-163a). */
+  trackId?: number | null;
 }
 
 /**
- * Layouts (UI-T15; ADR-114 section 8; CORE-008, CORE-013), for site and configuration
- * administrators: a layout set's create, edit and view forms, per ticket type or for every type.
- * Fields are dragged into tabs and sections, or moved with each grip's menu and Alt with the
- * arrow keys; a live preview shows the form the server would give. Saving sends the set's
- * layouts as a whole, and the server judges them as it judges any save.
+ * Layouts (UI-T15; ADR-114 section 8; CORE-008, CORE-013): a layout set's create, edit and view
+ * forms, per ticket type or for every type. Fields are dragged into tabs and sections, or moved
+ * with each grip's menu and Alt with the arrow keys; a live preview shows the form the server
+ * would give. Saving sends the set's layouts as a whole, and the server judges them as it judges
+ * any save.
+ *
+ * Site and configuration administrators see every set. On a local-mode track's own page
+ * (`trackId`; T-163a), whoever runs the track sees only the sets it owns, adds sets for it, makes
+ * it use one, and previews with its fields and ticket types. Someone who runs tracks but is no
+ * administrator is offered those pages instead of every set (`sets/trackScope.tsx`).
  */
 export function LayoutEditorPage({
   client = layoutsClient,
   initialSetId = null,
   previewDelay,
+  trackId = null,
 }: LayoutEditorPageProps) {
   const t = useT();
-  const expired = useSessionExpiry();
   const titleId = useId();
+  const scope = useSetScope(trackId, client);
+  const track = scope.status === 'track' ? scope.track : null;
+  return (
+    <section aria-labelledby={titleId} className="admin-page layout-editor-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('layouts.title')}
+        {...(track
+          ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
+          : {})}
+        purpose={t('layouts.purpose')}
+        about={t('layouts.about')}
+      />
+      {scope.status === 'all' || track ? (
+        <LayoutSets
+          key={track?.id ?? 'all'}
+          client={client}
+          track={track}
+          initialSetId={initialSetId}
+          previewDelay={previewDelay}
+        />
+      ) : (
+        <ScopeNote
+          scope={scope}
+          hrefOf={ownLayoutsHref}
+          words={{
+            chooseIntro: t('layouts.choose.intro'),
+            chooseNone: t('layouts.choose.none'),
+            chooseOpen: (run) => t('layouts.choose.open', { key: run.key, name: run.name }),
+            shared: (shared) => t('layouts.scope.shared', { key: shared.key }),
+            none: t('layouts.forbidden'),
+            failed: t('layouts.failed'),
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+interface LayoutSetsProps {
+  client: LayoutsClient;
+  /** A local-mode track's own sets; every set when null. */
+  track: ScopeTrack | null;
+  initialSetId: number | null;
+  previewDelay: number | undefined;
+}
+
+/** The sets the page shows, the one open, adding one, and the editor of the open one. */
+function LayoutSets({ client, track, initialSetId, previewDelay }: LayoutSetsProps) {
+  const t = useT();
+  const expired = useSessionExpiry();
   const id = useId();
-  const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'loaded'; sets: LayoutSetSummary[]; fields: Owned[] }
     | { status: 'failed' }
     | { status: 'forbidden' }
-  >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  >({ status: 'loading' });
   const [selected, setSelected] = useState<number | null>(initialSetId);
   const [dirty, setDirty] = useState(false);
   const unsaved = useRef(dirty);
   unsaved.current = dirty;
+  // The set the track uses opens first; it changes when the person makes the track use another.
+  const inUse = useRef(track?.layoutSetId ?? null);
   const [newName, setNewName] = useState('');
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const owner = track?.id ?? null;
+  const base = track ? ownLayoutsHref(track.id) : LAYOUTS_ROUTE;
 
   const load = useCallback(
     async (choose?: number | null) => {
       try {
-        const [sets, fields] = await Promise.all([client.layoutSets(), client.customFields()]);
+        const [listed, fields] = await Promise.all([
+          client.layoutSets(owner),
+          client.customFields(owner),
+        ]);
+        // On a track's own page, only the sets it owns: the shared ones are not its to change.
+        const sets = owner === null ? listed : listed.filter((s) => s.trackId === owner);
         setState({ status: 'loaded', sets, fields });
         setSelected((current) => {
           // A draft begun while the list was being read keeps its set open: switching would drop
           // it without asking.
           const wanted = choose === undefined || unsaved.current ? current : choose;
           if (wanted !== null && sets.some((s) => s.id === wanted)) return wanted;
-          return (sets.find((s) => s.isDefault) ?? sets[0])?.id ?? null;
+          const first =
+            sets.find((s) => s.id === inUse.current) ?? sets.find((s) => s.isDefault) ?? sets[0];
+          return first?.id ?? null;
         });
       } catch (error) {
         if (expired(error)) return;
@@ -99,11 +173,11 @@ export function LayoutEditorPage({
         });
       }
     },
-    [client, expired],
+    [client, owner, expired],
   );
   useEffect(() => {
-    if (!notAdmin) void load();
-  }, [load, notAdmin]);
+    void load();
+  }, [load]);
 
   const add = (event: FormEvent) => {
     event.preventDefault();
@@ -112,7 +186,7 @@ export function LayoutEditorPage({
     // discarded: opening it would drop the draft without asking.
     if (!name || unsaved.current) return;
     setProblem(null);
-    client.createLayoutSet({ name }).then(
+    client.createLayoutSet({ name, ...(owner === null ? {} : { trackId: owner }) }).then(
       (made) => {
         setNewName('');
         setMessage(t('layouts.added', { name: made.name }));
@@ -125,124 +199,134 @@ export function LayoutEditorPage({
     );
   };
 
+  if (state.status === 'forbidden') return <p className="page-note">{t('layouts.forbidden')}</p>;
   const set =
     state.status === 'loaded' ? (state.sets.find((s) => s.id === selected) ?? null) : null;
   return (
-    <section aria-labelledby={titleId} className="admin-page layout-editor-page">
-      <PageHeader
-        titleId={titleId}
-        title={t('layouts.title')}
-        purpose={t('layouts.purpose')}
-        about={t('layouts.about')}
-      />
-      {state.status === 'forbidden' ? (
-        <p className="page-note">{t('layouts.forbidden')}</p>
-      ) : (
+    <>
+      {track && <TrackScopeLine track={track} intro={t('layouts.trackIntro')} />}
+      <p className="page-note">
+        {t('layouts.combine')}{' '}
+        {track ? (
+          <a href={routeHref(ownSetsHref(track.id))}>
+            {t('layouts.fieldRulesLinkTrack', { key: track.key })}
+          </a>
+        ) : (
+          <a href={routeHref(FIELD_RULES_HREF)}>{t('layouts.fieldRulesLink')}</a>
+        )}
+      </p>
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('layouts.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('layouts.failed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
         <>
-          <p className="page-note">
-            {t('layouts.combine')}{' '}
-            <a href={routeHref(FIELD_RULES_HREF)}>{t('layouts.fieldRulesLink')}</a>
-          </p>
-          <p role="status" className="form-status">
-            {message}
-          </p>
-          {problem && (
-            <p role="alert" className="form-error">
-              {problem}
-            </p>
+          {track && state.sets.length === 0 && (
+            <p className="page-note">{t('layouts.trackNoSets', { key: track.key })}</p>
           )}
-          {state.status === 'loading' && <p className="page-note">{t('layouts.loading')}</p>}
-          {state.status === 'failed' && (
-            <p role="alert" className="form-error">
-              {t('layouts.failed')}
-            </p>
-          )}
-          {state.status === 'loaded' && (
-            <>
-              <div className="layout-set-bar">
-                <div className="form-field">
-                  <label htmlFor={`${id}-set`} className="form-label">
-                    {t('layouts.set')}
-                  </label>
-                  <select
-                    id={`${id}-set`}
-                    value={selected ?? ''}
-                    disabled={dirty}
-                    aria-describedby={dirty ? `${id}-set-hint` : undefined}
-                    onChange={(event) => {
-                      setMessage('');
-                      setProblem(null);
-                      setSelected(Number(event.target.value));
-                    }}
-                  >
-                    {state.sets.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.trackId !== null
+          <div className="layout-set-bar">
+            {state.sets.length > 0 && (
+              <div className="form-field">
+                <label htmlFor={`${id}-set`} className="form-label">
+                  {t('layouts.set')}
+                </label>
+                <select
+                  id={`${id}-set`}
+                  value={selected ?? ''}
+                  disabled={dirty}
+                  aria-describedby={dirty ? `${id}-set-hint` : undefined}
+                  onChange={(event) => {
+                    setMessage('');
+                    setProblem(null);
+                    setSelected(Number(event.target.value));
+                  }}
+                >
+                  {state.sets.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {track
+                        ? s.name
+                        : s.trackId !== null
                           ? t('layouts.ownSet', { name: s.name })
                           : s.isDefault
                             ? t('layouts.defaultSet', { name: s.name })
                             : s.name}
-                      </option>
-                    ))}
-                  </select>
-                  {dirty && (
-                    <p id={`${id}-set-hint`} className="form-hint">
-                      {t('layouts.setLocked')}
-                    </p>
-                  )}
-                </div>
-                <form className="layout-set-add" aria-label={t('layouts.add')} onSubmit={add}>
-                  <div className="form-field">
-                    <label htmlFor={`${id}-new`} className="form-label">
-                      {t('layouts.newSetName')}
-                    </label>
-                    <input
-                      id={`${id}-new`}
-                      type="text"
-                      required
-                      maxLength={255}
-                      value={newName}
-                      disabled={dirty}
-                      aria-describedby={dirty ? `${id}-set-hint` : undefined}
-                      onChange={(event) => setNewName(event.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="button-secondary"
-                    disabled={dirty}
-                    aria-describedby={dirty ? `${id}-set-hint` : undefined}
-                  >
-                    {t('layouts.add')}
-                  </button>
-                </form>
+                    </option>
+                  ))}
+                </select>
+                {dirty && (
+                  <p id={`${id}-set-hint`} className="form-hint">
+                    {t('layouts.setLocked')}
+                  </p>
+                )}
               </div>
-              {set && (
-                <SetLoader
-                  key={set.id}
-                  summary={set}
-                  client={client}
-                  fields={state.fields}
-                  onDirty={setDirty}
-                  previewDelay={previewDelay}
-                  onSaved={(saved) => {
-                    setMessage(t('layouts.saved', { name: saved.name }));
-                    setProblem(null);
-                    void load(saved.id);
-                  }}
-                  onDeleted={(name) => {
-                    setDirty(false);
-                    setMessage(t('layouts.deleted', { name }));
-                    setProblem(null);
-                    void load(null);
-                  }}
+            )}
+            <form className="layout-set-add" aria-label={t('layouts.add')} onSubmit={add}>
+              <div className="form-field">
+                <label htmlFor={`${id}-new`} className="form-label">
+                  {t('layouts.newSetName')}
+                </label>
+                <input
+                  id={`${id}-new`}
+                  type="text"
+                  required
+                  maxLength={255}
+                  value={newName}
+                  disabled={dirty}
+                  aria-describedby={dirty ? `${id}-set-hint` : undefined}
+                  onChange={(event) => setNewName(event.target.value)}
                 />
-              )}
-            </>
+              </div>
+              <button
+                type="submit"
+                className="button-secondary"
+                disabled={dirty}
+                aria-describedby={dirty ? `${id}-set-hint` : undefined}
+              >
+                {t('layouts.add')}
+              </button>
+            </form>
+          </div>
+          {set && (
+            <SetLoader
+              key={set.id}
+              summary={set}
+              client={client}
+              track={track}
+              base={base}
+              fields={state.fields}
+              onDirty={setDirty}
+              previewDelay={previewDelay}
+              onSaved={(saved) => {
+                setMessage(t('layouts.saved', { name: saved.name }));
+                setProblem(null);
+                void load(saved.id);
+              }}
+              onAssigned={(used) => {
+                inUse.current = used.id;
+                setMessage(t('layouts.usedFor', { key: track?.key ?? '', name: used.name }));
+                setProblem(null);
+              }}
+              onDeleted={(name) => {
+                setDirty(false);
+                setMessage(t('layouts.deleted', { name }));
+                setProblem(null);
+                void load(null);
+              }}
+            />
           )}
         </>
       )}
-    </section>
+    </>
   );
 }
 
@@ -272,21 +356,34 @@ function refusal(
 interface SetLoaderProps {
   summary: LayoutSetSummary;
   client: LayoutsClient;
+  /** A local-mode track's own page: the track the set belongs to. */
+  track: ScopeTrack | null;
+  /** The page's route, which the leave guard lets the person move within. */
+  base: string;
   fields: Owned[];
   onDirty: (dirty: boolean) => void;
   onSaved: (set: LayoutSet) => void;
+  /** The track now uses the set. */
+  onAssigned: (set: LayoutSet) => void;
   onDeleted: (name: string) => void;
   previewDelay?: number | undefined;
 }
 
-/** Reads a set and the ticket types it may name, then edits it. */
-function SetLoader({ summary, client, ...rest }: SetLoaderProps) {
+/**
+ * Reads a set and the ticket types it may name, then edits it. On a track's own page the types
+ * are those the track offers, its type set's, when it has one.
+ */
+function SetLoader({ summary, client, track, ...rest }: SetLoaderProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const [loaded, setLoaded] = useState<{ set: LayoutSet; types: Owned[] } | 'failed' | null>(null);
+  const typeSetId = track?.typeSetId ?? null;
   useEffect(() => {
     let live = true;
-    Promise.all([client.layoutSet(summary.id), client.ticketTypes(summary.trackId)]).then(
+    Promise.all([
+      client.layoutSet(summary.id),
+      typeSetId === null ? client.ticketTypes(summary.trackId) : client.typeSetTypes(typeSetId),
+    ]).then(
       ([set, types]) => {
         if (live) setLoaded({ set, types });
       },
@@ -297,7 +394,7 @@ function SetLoader({ summary, client, ...rest }: SetLoaderProps) {
     return () => {
       live = false;
     };
-  }, [client, summary.id, summary.trackId, expired]);
+  }, [client, summary.id, summary.trackId, typeSetId, expired]);
   if (loaded === 'failed') {
     return (
       <p role="alert" className="form-error">
@@ -311,11 +408,17 @@ function SetLoader({ summary, client, ...rest }: SetLoaderProps) {
       set={loaded.set}
       types={loaded.types}
       client={client}
+      track={track}
       {...rest}
       onSaved={(saved) => {
         // The editor goes on from what was saved: its name and the tracks that use it.
         setLoaded({ set: saved, types: loaded.types });
         rest.onSaved(saved);
+      }}
+      onAssigned={(used) => {
+        // The tracks that use it now name this track; the draft stays as it is.
+        setLoaded({ set: used, types: loaded.types });
+        rest.onAssigned(used);
       }}
     />
   );
@@ -332,9 +435,12 @@ function SetEditor({
   set,
   types,
   client,
+  track,
+  base,
   fields,
   onDirty,
   onSaved,
+  onAssigned,
   onDeleted,
   previewDelay,
 }: Omit<SetLoaderProps, 'summary'> & { set: LayoutSet; types: Owned[] }) {
@@ -364,10 +470,10 @@ function SetEditor({
   useEffect(
     () =>
       guardLeave({
-        holds: (route) => unsaved.current && !onThisPage(route),
+        holds: (route) => unsaved.current && !onPage(route, base),
         ask: (proceed) => setLeaving(() => proceed),
       }),
-    [],
+    [base],
   );
   useEffect(() => {
     if (!dirty) return;
@@ -466,6 +572,19 @@ function SetEditor({
     }
   };
 
+  // A track's own page offers to make the track use this set; the server says whether it may.
+  const assignable = track !== null && !set.usedBy.some((used) => used.id === track.id);
+  const assign = () => {
+    if (!track) return;
+    setProblem(null);
+    client
+      .assignLayoutSet(track.id, set.id)
+      .then(() => client.layoutSet(set.id))
+      .then(onAssigned, (error) => {
+        if (!expired(error)) setProblem(refusal(t, error));
+      });
+  };
+
   return (
     <form
       className="layout-set-editor"
@@ -499,6 +618,21 @@ function SetEditor({
             : t('layouts.usedByNone')}
           {set.isDefault ? ` ${t('layouts.defaultHint')}` : ''}
         </p>
+        {track && assignable && (
+          <div className="layout-assign">
+            <button
+              type="button"
+              className="button-secondary"
+              aria-describedby={`${id}-assign-hint`}
+              onClick={assign}
+            >
+              {t('layouts.useFor', { key: track.key })}
+            </button>
+            <p id={`${id}-assign-hint`} className="form-hint">
+              {t('ownSets.useHint')}
+            </p>
+          </div>
+        )}
         <fieldset className="layout-form-choice">
           <legend>{t('layouts.form')}</legend>
           <div className="form-field">
@@ -602,6 +736,7 @@ function SetEditor({
           types={types}
           tracks={set.usedBy}
           ownerTrackId={set.trackId}
+          fixedTrack={track}
           fieldName={fieldName}
           knownName={knownName}
           {...(previewDelay !== undefined ? { delay: previewDelay } : {})}

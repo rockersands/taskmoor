@@ -1,4 +1,5 @@
 import { ApiError } from '../api/client';
+import type { RunTrack, ScopeTrack } from '../sets/trackScope';
 import type {
   LayoutSet,
   LayoutsClient,
@@ -21,7 +22,51 @@ export const LAYOUT_FIELDS: Owned[] = [
   { id: 12, name: 'Severity', trackId: null },
   { id: 13, name: 'Customer', trackId: null },
   { id: 40, name: 'Ops notes', trackId: 4 },
+  { id: 41, name: 'Lab notes', trackId: 6 },
 ];
+
+/**
+ * The tracks: SHOP is in shared mode; OPS and LAB are local-mode tracks with their own type sets,
+ * OPS's offering Feature, Bug and its own Runbook (not Chore).
+ */
+export const LAYOUT_TRACKS: ScopeTrack[] = [
+  {
+    id: 3,
+    key: 'SHOP',
+    name: 'Shop',
+    mode: 'shared',
+    archived: false,
+    typeSetId: 1,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+  },
+  {
+    id: 4,
+    key: 'OPS',
+    name: 'Operations',
+    mode: 'local',
+    archived: false,
+    typeSetId: 30,
+    fieldRuleSetId: null,
+    layoutSetId: 5,
+  },
+  {
+    id: 6,
+    key: 'LAB',
+    name: 'Lab',
+    mode: 'local',
+    archived: false,
+    typeSetId: 31,
+    fieldRuleSetId: null,
+    layoutSetId: 7,
+  },
+];
+const TYPE_SETS: Record<number, number[]> = { 1: [1, 2, 3], 30: [1, 2, 9], 31: [1, 3] };
+
+/** The tracks the person of the track administrator's stories runs: OPS and SHOP, not LAB. */
+export const RUN_TRACKS: RunTrack[] = LAYOUT_TRACKS.filter((t) => t.key !== 'LAB').map(
+  ({ id, key, name, mode }) => ({ id, key, name, mode }),
+);
 
 const DETAILS: LayoutDefinition = {
   tabs: [
@@ -64,6 +109,15 @@ export function layoutSetsFixture(): LayoutSet[] {
       trackId: 4,
       isDefault: false,
       usedBy: [{ id: 4, key: 'OPS', name: 'Operations' }],
+      layouts: [],
+    },
+    {
+      id: 7,
+      name: 'Lab layouts',
+      description: '',
+      trackId: 6,
+      isDefault: false,
+      usedBy: [{ id: 6, key: 'LAB', name: 'Lab' }],
       layouts: [],
     },
   ];
@@ -166,12 +220,17 @@ export interface FakeLayoutsClient extends LayoutsClient {
   sets: LayoutSet[];
   saved: { id: number; change: { name?: string; layouts?: LayoutEntry[] } }[];
   previews: PreviewRequest[];
+  /** What was made, with the track that owns it. */
+  made: { name: string; trackId?: number }[];
+  /** Each track and the set it was made to use. */
+  assigned: { trackId: number; setId: number }[];
+  tracks: ScopeTrack[];
 }
 
 /** An in-memory backend for the layout editor's stories and tests. */
 export function fakeLayoutsClient(
   sets: LayoutSet[] = layoutSetsFixture(),
-  options: { failPreview?: boolean } = {},
+  options: { failPreview?: boolean; runs?: RunTrack[] } = {},
 ): FakeLayoutsClient {
   const find = (id: number) => {
     const set = client.sets.find((s) => s.id === id);
@@ -183,19 +242,28 @@ export function fakeLayoutsClient(
     sets,
     saved: [],
     previews: [],
+    made: [],
+    assigned: [],
+    tracks: structuredClone(LAYOUT_TRACKS),
     ticketTypes: async (trackId) =>
       LAYOUT_TYPES.filter((t) => t.trackId === null || t.trackId === trackId),
-    customFields: async () => LAYOUT_FIELDS,
-    layoutSets: async () =>
-      client.sets.map(({ id, name, description, trackId, isDefault }) => ({
-        id,
-        name,
-        description,
-        trackId,
-        isDefault,
-      })),
+    typeSetTypes: async (typeSetId) =>
+      LAYOUT_TYPES.filter((t) => (TYPE_SETS[typeSetId] ?? []).includes(t.id)),
+    customFields: async (trackId) =>
+      LAYOUT_FIELDS.filter((f) => trackId === null || f.trackId === null || f.trackId === trackId),
+    layoutSets: async (trackId) =>
+      client.sets
+        .filter((s) => trackId === null || s.trackId === null || s.trackId === trackId)
+        .map(({ id, name, description, trackId: owner, isDefault }) => ({
+          id,
+          name,
+          description,
+          trackId: owner,
+          isDefault,
+        })),
     layoutSet: async (id) => copy(find(id)),
-    createLayoutSet: async ({ name }) => {
+    createLayoutSet: async ({ name, trackId }) => {
+      client.made.push({ name, ...(trackId === undefined ? {} : { trackId }) });
       if (client.sets.some((s) => s.name === name)) {
         throw new ApiError(409, { error: 'name_taken' });
       }
@@ -203,7 +271,7 @@ export function fakeLayoutsClient(
         id: Math.max(0, ...client.sets.map((s) => s.id)) + 1,
         name,
         description: '',
-        trackId: null,
+        trackId: trackId ?? null,
         isDefault: false,
         usedBy: [],
         layouts: [],
@@ -239,6 +307,30 @@ export function fakeLayoutsClient(
       if (options.failPreview) throw new ApiError(500, { error: 'internal' });
       return fakePreview(find(id), body);
     },
+    assignLayoutSet: async (trackId, setId) => {
+      const set = find(setId);
+      const track = client.tracks.find((t) => t.id === trackId);
+      if (!track) throw new ApiError(404, { error: 'not_found' });
+      if (set.trackId !== null && set.trackId !== trackId) {
+        throw new ApiError(400, { error: 'invalid_request', detail: 'layoutSetId' });
+      }
+      client.assigned.push({ trackId, setId });
+      track.layoutSetId = setId;
+      const named = { id: track.id, key: track.key, name: track.name };
+      client.sets = client.sets.map((s) => ({
+        ...s,
+        usedBy:
+          s.id === setId
+            ? [...s.usedBy.filter((u) => u.id !== trackId), named]
+            : s.usedBy.filter((u) => u.id !== trackId),
+      }));
+    },
+    track: async (id) => {
+      const track = client.tracks.find((t) => t.id === id);
+      if (!track) throw new ApiError(404, { error: 'not_found' });
+      return copy(track);
+    },
+    managedTracks: async () => copy(options.runs ?? RUN_TRACKS),
   };
   return client;
 }

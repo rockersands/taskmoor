@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { type TrackScopeClient, trackScopeClient } from '../sets/trackScope';
 import type { LayoutEntry, Operation, SectionKind } from './model';
 
 export interface Named {
@@ -58,37 +59,59 @@ export interface PreviewRequest {
 }
 
 /** The endpoints the layout editor uses. Stories and tests pass their own. */
-export interface LayoutsClient {
+export interface LayoutsClient extends TrackScopeClient {
   /** The shared ticket types, and a local-mode track's own with its id. */
   ticketTypes: (trackId: number | null) => Promise<Owned[]>;
-  /** Every custom field the person sees: shared, and local-mode tracks' own. */
-  customFields: () => Promise<Owned[]>;
-  layoutSets: () => Promise<LayoutSetSummary[]>;
+  /** The ticket types a type set offers: what a local-mode track's own page previews. */
+  typeSetTypes: (typeSetId: number) => Promise<Owned[]>;
+  /**
+   * Null: every custom field the person sees, shared and local-mode tracks' own. A track: the
+   * fields that reach it, its own and the shared ones whose context covers it.
+   */
+  customFields: (trackId: number | null) => Promise<Owned[]>;
+  /** Null: every set the person sees. A track: the shared sets and that track's own. */
+  layoutSets: (trackId: number | null) => Promise<LayoutSetSummary[]>;
   layoutSet: (id: number) => Promise<LayoutSet>;
-  createLayoutSet: (body: { name: string }) => Promise<LayoutSet>;
+  /** With a track: a set that local-mode track owns. */
+  createLayoutSet: (body: { name: string; trackId?: number }) => Promise<LayoutSet>;
   updateLayoutSet: (
     id: number,
     change: { name?: string; layouts?: LayoutEntry[] },
   ) => Promise<LayoutSet>;
   deleteLayoutSet: (id: number) => Promise<void>;
   preview: (id: number, body: PreviewRequest) => Promise<Preview>;
+  /** Makes a track use one of its own sets (`PATCH /api/v1/tracks/:id`). */
+  assignLayoutSet: (trackId: number, setId: number) => Promise<void>;
 }
 
 export const layoutsClient: LayoutsClient = {
+  ...trackScopeClient,
   ticketTypes: async (trackId) =>
     (
       await api<{ ticketTypes: (Named & { trackId?: number | null })[] }>(
         trackId === null ? '/ticket-types' : `/ticket-types?trackId=${trackId}`,
       )
     ).ticketTypes.map((t) => ({ id: t.id, name: t.name, trackId: t.trackId ?? null })),
-  customFields: async () =>
-    (await api<{ fields: Owned[] }>('/fields')).fields.map((f) => ({
+  typeSetTypes: async (typeSetId) =>
+    (
+      await api<{ typeSet: { ticketTypes: (Named & { trackId?: number | null })[] } }>(
+        `/type-sets/${typeSetId}`,
+      )
+    ).typeSet.ticketTypes.map((t) => ({ id: t.id, name: t.name, trackId: t.trackId ?? null })),
+  customFields: async (trackId) =>
+    (
+      await api<{ fields: Owned[] }>(trackId === null ? '/fields' : `/fields?trackId=${trackId}`)
+    ).fields.map((f) => ({
       id: f.id,
       name: f.name,
       trackId: f.trackId ?? null,
     })),
-  layoutSets: async () =>
-    (await api<{ layoutSets: LayoutSetSummary[] }>('/layout-sets')).layoutSets,
+  layoutSets: async (trackId) =>
+    (
+      await api<{ layoutSets: LayoutSetSummary[] }>(
+        trackId === null ? '/layout-sets' : `/layout-sets?trackId=${trackId}`,
+      )
+    ).layoutSets,
   layoutSet: async (id) => (await api<{ layoutSet: LayoutSet }>(`/layout-sets/${id}`)).layoutSet,
   createLayoutSet: async (body) =>
     (await api<{ layoutSet: LayoutSet }>('/layout-sets', { method: 'POST', body })).layoutSet,
@@ -101,4 +124,7 @@ export const layoutsClient: LayoutsClient = {
   preview: async (id, body) =>
     (await api<{ preview: Preview }>(`/layout-sets/${id}/preview`, { method: 'POST', body }))
       .preview,
+  assignLayoutSet: async (trackId, setId) => {
+    await api<unknown>(`/tracks/${trackId}`, { method: 'PATCH', body: { layoutSetId: setId } });
+  },
 };

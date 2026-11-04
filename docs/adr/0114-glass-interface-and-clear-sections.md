@@ -289,11 +289,55 @@ had no web page. A page under Settings, Configuration sets edits them:
   asks before a reload, and the set list is locked until the draft is saved or discarded. So is
   adding a set, since a new set opens in the draft's place; one added while a draft was begun
   meanwhile is listed and not opened.
-- **Open:** a local-mode track's own layout sets are listed and edited here, but its administrators
-  who are neither site nor configuration administrators are refused by the page (the server lets
-  them change their own sets), as on Configuration sets; giving them the page is a question for the
-  user. The preview offers the tracks that use the set, or none; any other track is through the
-  API.
+- **Was open, now decided (T-163a, below):** a local-mode track's administrators who are neither
+  site nor configuration administrators were refused by the page, though the server let them
+  change their own sets. The preview offers the tracks that use the set, or none; any other track
+  is through the API.
+
+**A track's own administrators (T-163a, the user's decision of 2026-11-04):**
+
+- **Who sees what.** Site and configuration administrators keep every set on **Layout sets** and
+  **Configuration sets**, as before. Someone who runs a local-mode track sees that track's own sets
+  and nothing else: never a shared set, never another track's. The rule is the web app's
+  (`sets/trackScope.tsx`); the server stays the judge of every read and change, and nothing about
+  it changed: its tests now pin that such a person changes their own track's layout and field rule
+  sets and its type set's types, and is refused (`403`) every change to a shared set, every change
+  to the sets of a track they are only a member of, and answered `404` for any set of a track they
+  do not see. A shared set they may still read, as everyone signed in may. The same tests pin that
+  nothing opens to anyone else: someone who runs a shared-mode track makes no set for it
+  (`409 track_not_local`), changes no shared set and puts none on the track (`403`), and an ordinary
+  member of a local-mode track changes nothing of it (`403`).
+- **Where.** Each local-mode track has its own pages beside its **Manage** page:
+  `#/manage/tracks/<id>/layouts` (`?set=<id>` opens a set) and
+  `#/manage/tracks/<id>/configuration-sets`. **Manage** on such a track links to both, under **Its
+  own configuration**; a shared-mode track's page has no such links, since it owns no sets.
+  Administration places these pages under **Tracks you run**, which is the group such a person
+  sees. The shared pages, `#/admin/layouts` and `#/admin/configuration-sets`, show someone who runs
+  tracks and is no administrator the local-mode tracks they run, each a link to its own page, and
+  no set. A track they do not run, one in shared mode and an archived one each get a sentence
+  instead of sets; the sentence for an archived track also reaches someone who runs it, since the
+  tracks someone runs leave archived ones out. An administrator who opens a track's own page sees
+  only its sets too.
+- **Layouts on a track's page.** The list holds the track's own sets; a new set belongs to the
+  track (`trackId` on create). The fields offered are those that reach the track
+  (`GET /api/v1/fields?trackId=`), the ticket types those its type set offers, and the preview uses
+  that track's fields and rules alone, saying so, with no choice of track. **Use this set for
+  <key>** makes the track use a set it owns (`PATCH /api/v1/tracks/:id` with `layoutSetId`, the
+  existing route and its one `track.updated` event); going back to a shared set stays with
+  administrators, as the server holds, and the button's hint says so. The set the track uses opens
+  first.
+- **Configuration sets on a track's page.** The track's own type set, read by its id
+  (`GET /api/v1/type-sets/:id`; the list of every type set stays for administrators), with the
+  shared ticket types and the track's own to choose from. No type set is added or deleted there:
+  the server keeps a track's own type set for as long as the track. The field rule sets it owns,
+  added for it, changed, deleted when unused and made the track's with **Use this set for <key>**
+  (`fieldRuleSetId`), with the fields that reach it. A save keeps the rules the page has no row
+  for, such as one for a shared field that does not reach the track. Each page links to the other's
+  track page.
+- No new route, migration, event or requirement ID: CORE-003, CORE-005, CORE-008, CORE-013 and
+  IAM-030 cover it. Tests: the server's in `routes/layouts.test.ts`; the pages' component tests and
+  stories, with the track administrator's session; `e2e/layouts-track-admin.spec.ts` signed in as
+  someone who runs one track, on a desktop and a phone.
 
 ### 9. Board columns
 

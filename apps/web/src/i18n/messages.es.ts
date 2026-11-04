@@ -2656,6 +2656,10 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.forbidden': 'Solo quienes administran este track pueden gestionarlo.',
   'trackPeople.failed': 'No se pudo leer el track. Inténtalo de nuevo en un momento.',
   'trackPeople.backToList': 'Todos los tracks que administras',
+  'trackPeople.ownConfig': 'Su configuración propia',
+  'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
+  'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
+  'trackPeople.setsLink': 'Conjuntos de configuración: sus tipos de ticket y reglas de campos',
   'trackPeople.invite': 'Invitar personas',
   'trackPeople.inviteOff':
     'Las invitaciones están desactivadas en este track. Un administrador del sitio puede activarlas.',
@@ -2893,7 +2897,24 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sets.title': 'Conjuntos de configuración',
   'admin.sets.intro':
     'Los conjuntos de tipos dicen qué tipos de ticket ofrece un track; los conjuntos de reglas de campos dicen qué campos son obligatorios u ocultos y qué ayuda muestran. Los tracks nombran los conjuntos que usan.',
-  'admin.sets.forbidden': 'Solo los administradores gestionan los conjuntos de configuración.',
+  'admin.sets.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes administran un track con configuración propia, gestionan los conjuntos de configuración.',
+  'admin.sets.trackIntro':
+    'El conjunto de tipos y los conjuntos de reglas de campos propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
+  'admin.sets.trackTypeSet':
+    'Un track con configuración propia tiene un único conjunto de tipos propio: elige aquí sus tipos de ticket.',
+  'admin.sets.trackNoRuleSets':
+    '{key} aún no tiene un conjunto de reglas de campos propio, así que sus campos siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
+  'admin.sets.useFor': 'Usar este conjunto para {key}',
+  'admin.sets.usedFor': '{key} usa ahora {name}.',
+  'admin.sets.layoutsLinkTrack': 'Organiza los formularios de {key} en sus conjuntos de diseños.',
+  'admin.sets.choose.intro':
+    'Administras estos tracks con configuración propia. Elige uno para gestionar su conjunto de tipos y sus reglas de campos.',
+  'admin.sets.choose.none':
+    'Ninguno de los tracks que administras tiene configuración propia. Sus conjuntos de tipos y sus reglas de campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'admin.sets.choose.open': 'Conjuntos de configuración de {key} · {name}',
+  'admin.sets.scope.shared':
+    '{key} usa configuración compartida, así que su conjunto de tipos y sus reglas de campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
   'admin.sets.loading': 'Leyendo los conjuntos de configuración…',
   'admin.sets.failed':
     'No se pudieron leer los conjuntos de configuración. Inténtalo de nuevo en un momento.',
@@ -6294,7 +6315,30 @@ export const messagesEs: Record<MessageId, string> = {
     'Los diseños deciden dónde aparecen los campos y en qué orden. Las reglas de campos deciden si un campo es obligatorio, está oculto o tiene texto de ayuda: un campo oculto nunca aparece, aunque un diseño lo coloque, y uno obligatorio siempre aparece, tras los colocados cuando un diseño lo deja fuera.',
   'layouts.fieldRulesLink': 'Las reglas de campos están en Conjuntos de configuración.',
   'layouts.forbidden':
-    'Solo los administradores del sitio y de la configuración cambian los diseños.',
+    'Solo los administradores del sitio y de la configuración, y quienes administran un track con configuración propia, cambian los diseños.',
+  'layouts.fieldRulesLinkTrack':
+    'Las reglas de campos de {key} están en sus conjuntos de configuración.',
+  'layouts.trackIntro':
+    'Los conjuntos de diseños propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
+  'layouts.trackNoSets':
+    '{key} aún no tiene un conjunto de diseños propio, así que sus formularios siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
+  'layouts.useFor': 'Usar este conjunto para {key}',
+  'layouts.usedFor': '{key} usa ahora {name}.',
+  'layouts.choose.intro':
+    'Administras estos tracks con configuración propia. Elige uno para organizar sus formularios.',
+  'layouts.choose.none':
+    'Ninguno de los tracks que administras tiene configuración propia. Sus formularios siguen conjuntos de diseños compartidos, que cambian los administradores del sitio y de la configuración.',
+  'layouts.choose.open': 'Conjuntos de diseños de {key} · {name}',
+  'layouts.scope.shared':
+    '{key} usa configuración compartida, así que sus formularios siguen conjuntos de diseños compartidos, que cambian los administradores del sitio y de la configuración.',
+  'ownSets.loading': 'Leyendo el track…',
+  'ownSets.trackName': '{key} · {name}',
+  'ownSets.backToTrack': 'Volver a gestionar {key}.',
+  'ownSets.notYours':
+    'Solo quienes administran este track, y los administradores del sitio y de la configuración, cambian su configuración.',
+  'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
+  'ownSets.useHint':
+    'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
   'layouts.loading': 'Leyendo los diseños…',
   'layouts.failed':
     'No se pudieron leer los conjuntos de diseños. Inténtalo de nuevo en un momento.',
@@ -6440,6 +6484,8 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.preview.ownerTrack': 'El track al que pertenece este conjunto',
   'layouts.preview.trackHint':
     'Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
+  'layouts.preview.fixedTrack':
+    'Con los campos y las reglas de {key} · {name}, el track al que pertenece este conjunto.',
   'layouts.preview.noTypes': 'No hay tipos de ticket para la vista previa.',
   'layouts.preview.loading': 'Actualizando la vista previa…',
   'layouts.preview.refused': 'El servidor rechazaría este diseño tal como está.',

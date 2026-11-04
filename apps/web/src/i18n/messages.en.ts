@@ -2587,6 +2587,10 @@ export const messagesEn = {
   'trackPeople.forbidden': 'Only people who run this track can manage it.',
   'trackPeople.failed': 'The track could not be read. Try again in a moment.',
   'trackPeople.backToList': 'All the tracks you run',
+  'trackPeople.ownConfig': 'Its own configuration',
+  'trackPeople.ownConfigIntro': '{key} has its own configuration, and you can change it here:',
+  'trackPeople.layoutsLink': 'Layout sets: where fields appear on its forms',
+  'trackPeople.setsLink': 'Configuration sets: its ticket types and field rules',
   'trackPeople.invite': 'Invite people',
   'trackPeople.inviteOff': 'Inviting is off for this track. A site administrator can turn it on.',
   'trackPeople.inviteOffAdmin':
@@ -2817,7 +2821,24 @@ export const messagesEn = {
   'admin.sets.title': 'Configuration sets',
   'admin.sets.intro':
     'Type sets say which ticket types a track offers; field rule sets say which fields are required or hidden and what help they show. Tracks name the sets they use.',
-  'admin.sets.forbidden': 'Only administrators manage configuration sets.',
+  'admin.sets.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage configuration sets.',
+  'admin.sets.trackIntro':
+    'The type set and the field rule sets this track owns. Shared sets are for site and configuration administrators.',
+  'admin.sets.trackTypeSet':
+    'A track with its own configuration keeps one type set of its own: choose its ticket types here.',
+  'admin.sets.trackNoRuleSets':
+    '{key} has no field rule set of its own yet, so its fields follow a shared one. Add a set here, then use it for {key}.',
+  'admin.sets.useFor': 'Use this set for {key}',
+  'admin.sets.usedFor': '{key} now uses {name}.',
+  'admin.sets.layoutsLinkTrack': 'Arrange the forms of {key} on its layout sets.',
+  'admin.sets.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its type set and field rules.',
+  'admin.sets.choose.none':
+    'None of the tracks you run has its own configuration. Their type sets and field rules are shared, and site and configuration administrators change them.',
+  'admin.sets.choose.open': 'Configuration sets of {key} · {name}',
+  'admin.sets.scope.shared':
+    '{key} uses shared configuration, so its type set and field rules are shared, and site and configuration administrators change them.',
   'admin.sets.loading': 'Reading the configuration sets…',
   'admin.sets.failed': 'The configuration sets could not be read. Try again in a moment.',
   'admin.sets.typeSets': 'Type sets',
@@ -6156,7 +6177,30 @@ export const messagesEn = {
   'layouts.combine':
     'Layouts decide where fields appear and in what order. Field rules decide whether a field is required, hidden or has help text: a hidden field never appears, even where a layout places it, and a required field always does, after the placed ones when a layout leaves it out.',
   'layouts.fieldRulesLink': 'Field rules are on Configuration sets.',
-  'layouts.forbidden': 'Only site and configuration administrators change layouts.',
+  'layouts.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, change layouts.',
+  'layouts.fieldRulesLinkTrack': 'The field rules of {key} are on its configuration sets.',
+  'layouts.trackIntro':
+    'The layout sets this track owns. Shared sets are for site and configuration administrators.',
+  'layouts.trackNoSets':
+    '{key} has no layout set of its own yet, so its forms follow a shared one. Add a set here, then use it for {key}.',
+  'layouts.useFor': 'Use this set for {key}',
+  'layouts.usedFor': '{key} now uses {name}.',
+  'layouts.choose.intro':
+    'You run these tracks with their own configuration. Choose one to arrange its forms.',
+  'layouts.choose.none':
+    'None of the tracks you run has its own configuration. Their forms follow shared layout sets, which site and configuration administrators change.',
+  'layouts.choose.open': 'Layout sets of {key} · {name}',
+  'layouts.scope.shared':
+    '{key} uses shared configuration, so its forms follow shared layout sets, which site and configuration administrators change.',
+  'ownSets.loading': 'Reading the track…',
+  'ownSets.trackName': '{key} · {name}',
+  'ownSets.backToTrack': 'Back to managing {key}.',
+  'ownSets.notYours':
+    'Only the people who run this track, and site and configuration administrators, change its configuration.',
+  'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
+  'ownSets.useHint':
+    'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
   'layouts.loading': 'Reading the layouts…',
   'layouts.failed': 'The layout sets could not be read. Try again in a moment.',
   'layouts.setFailed': 'This layout set could not be read. Try again in a moment.',
@@ -6295,6 +6339,8 @@ export const messagesEn = {
   'layouts.preview.ownerTrack': 'The track this set belongs to',
   'layouts.preview.trackHint':
     'Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
+  'layouts.preview.fixedTrack':
+    'With the fields and rules of {key} · {name}, the track this set belongs to.',
   'layouts.preview.noTypes': 'There are no ticket types to preview.',
   'layouts.preview.loading': 'Updating the preview…',
   'layouts.preview.refused': 'The server would refuse this layout as it is.',

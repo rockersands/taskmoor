@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx
 accessed: 2026-11-04
 attestation: own-words
 ---
@@ -12,9 +12,11 @@ types and hierarchy levels, and the configuration sets that tell each track whic
 priorities, rules and forms it uses.
 
 In the web app, site and configuration administrators use **Administration**, **Fields**,
-**Administration**, **Configuration sets** and **Administration**, **Layout sets**. The rest is done through the [REST API](rest-api.md); a token that
-changes shared configuration needs the `admin` scope ([API tokens](api-tokens.md)). Everyone
-signed in may read these lists.
+**Administration**, **Configuration sets** and **Administration**, **Layout sets**. The people
+who run a track with its own configuration (local mode) change that track's own sets on its own
+pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
+[REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
+([API tokens](api-tokens.md)). Everyone signed in may read these lists.
 
 ## Built-in fields
 
@@ -289,8 +291,8 @@ to enter. When the server would refuse the layout as it stands, the preview says
 language and keeps the last form it could show; a refused save says why in the same words.
 
 A local-mode track's own layout sets are on the same page, marked **(a track's own)**: they
-place the shared fields and the track's own, and the preview starts on that track. Its
-administrators who are not site or configuration administrators change them through the API.
+place the shared fields and the track's own, and the preview starts on that track. The people who
+run the track change them on its own page; see [A track's own sets](#a-tracks-own-sets).
 
 ### Through the API
 
@@ -397,8 +399,35 @@ some may become visible to more people.
 
 - A shared set is changed by site and configuration administrators. A local-mode track owns its
   type set, access policy and workflow map, and may own field rule and layout sets (`trackId` on
-  create) that name shared fields or its own; its administrators change them.
+  create) that name shared fields or its own; its administrators change them, in the web app on
+  the track's own pages below.
 - A default set and a set that a track uses are not deleted.
 - [Tracks](tracks.md#configuration-sets) says how a track switches sets, and
   [permissions and access](permissions.md) and
   [email and notification policies](notifications.md) cover the policies.
+
+### A track's own sets
+
+The people who run a track with its own configuration (local mode) change its own sets without
+being site or configuration administrators. On **Administration** > **Tracks you run**, **Manage**
+the track: under **Its own configuration** are two links.
+
+- **Layout sets** (`#/manage/tracks/<id>/layouts`) is the layout sets page for that track alone.
+  The track's name is above the title, and the list holds only the sets it owns; the set it uses
+  opens first. **Add a layout set** makes a set of the track's own. The fields to place are those
+  that reach the track, its own and the shared ones it has, and **Ticket type** offers the types
+  its type set holds. The **Preview** uses that track's fields and rules, and says so: there is no
+  choice of track. A set the track does not use yet has **Use this set for** the track; from then
+  on the track's forms follow it.
+- **Configuration sets** (`#/manage/tracks/<id>/configuration-sets`) shows the track's own type
+  set: **Manage** it to choose its ticket types, the shared ones and the track's own. A track keeps
+  this one type set, so none is added or deleted here. Below are the field rule sets the track
+  owns: add one, set its rules as on the shared page, delete one the track does not use, and
+  **Use this set for** the track.
+
+Going back to a shared set, and anything about a shared set or another track's, is for site and
+configuration administrators; the server refuses the rest whatever the page shows. The shared
+pages, **Administration** > **Layout sets** and **Configuration sets**, show someone who runs
+tracks but is no administrator only links to the tracks they run that have their own
+configuration. A track in shared mode owns no sets, and its page says so: whoever runs it, or works
+in it, gains nothing here. An archived track's sets wait until it is restored.
