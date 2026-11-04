@@ -31,6 +31,25 @@
   align-items: center;
 }
 
+/*
+ * A list is as wide as its longest choice ("No particular track (shared fields, default rules)"):
+ * in these rows a field shrinks to its place instead, so the preview's column never pushes the
+ * page sideways.
+ */
+.layout-editor-page .form-field {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.layout-editor-page .form-field select {
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.layout-preview-choices > .form-field {
+  flex: 1 1 14rem;
+}
+
 .layout-form-state > .page-note {
   flex: 1 1 20rem;
   margin: 0;
@@ -96,6 +115,22 @@
   outline-offset: 2px;
 }
 
+/*
+ * The parts take their shape from the room the editor has, not from the window's width:
+ * Administration's navigation and the app's sidebar take more or less of it.
+ */
+.layout-set-editor {
+  container: layout-set / inline-size;
+}
+
+.layout-edit {
+  container: layout-edit / inline-size;
+}
+
+.layout-preview {
+  container: layout-preview / inline-size;
+}
+
 /* The layout and the preview: side by side when there is room, one under the other otherwise. */
 .layout-workspace {
   display: grid;
@@ -103,24 +138,36 @@
   min-width: 0;
 }
 
-@media (min-width: 90rem) {
+@container layout-set (min-width: 52rem) {
   .layout-workspace:has(.layout-edit) {
-    grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr);
+    grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
     align-items: start;
   }
 }
 
-/* The fields not placed beside the tabs, when there is room. */
+/*
+ * The fields not placed: above the tabs as a few rows of chips, or beside them as a list when
+ * the layout is wide.
+ */
 .layout-canvas {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
 }
 
-@media (min-width: 48rem) {
+.layout-palette > .layout-fields {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+@container layout-edit (min-width: 46rem) {
   .layout-canvas {
     grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
     align-items: start;
+  }
+
+  .layout-palette > .layout-fields {
+    display: grid;
   }
 }
 
@@ -157,7 +204,7 @@
 }
 
 .layout-sections {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--space-3);
 }
 
@@ -173,9 +220,11 @@
   min-width: 0;
 }
 
+/* A narrow card keeps its title in words: its Remove button goes under it rather than squeeze it. */
 .layout-tab-head,
 .layout-section-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
@@ -183,10 +232,10 @@
 
 .layout-tab-title,
 .layout-section-title {
-  flex: 1 1 auto;
+  flex: 1 1 8rem;
   min-width: 0;
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .layout-tab-title {
@@ -249,7 +298,7 @@
 
 .layout-field-name {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .layout-field.is-unplaced {
@@ -376,7 +425,7 @@
   min-width: 0;
 }
 
-@media (min-width: 40rem) {
+@container layout-preview (min-width: 30rem) {
   .layout-preview-sections:has(.is-context) {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     grid-auto-flow: dense;
@@ -420,7 +469,7 @@
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
   font-weight: 600;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .layout-preview-required {

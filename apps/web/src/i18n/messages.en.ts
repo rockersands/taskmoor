@@ -6042,6 +6042,8 @@ export const messagesEn = {
   'layouts.noTabs': 'This layout has no tabs yet: add one, then put fields in its sections.',
   'layouts.sectionName':
     '{tab}, section {position}: {kind, select, main {main column} other {side column}}',
+  'layouts.sectionTitle':
+    'Section {position}: {kind, select, main {main column} other {side column}}',
   'layouts.sectionActions': 'Move {section}',
   'layouts.removeSection': 'Remove {section}',
   'layouts.addSection': 'Add a section',

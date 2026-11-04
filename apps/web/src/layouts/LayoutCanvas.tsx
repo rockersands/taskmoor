@@ -392,6 +392,8 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
   }
 
   function sectionCard(tab: DraftTab, section: DraftSection, index: number) {
+    // The full name, with its tab, labels the section and its controls; the heading inside a
+    // tab's card says only which section it is.
     const title = sectionName(draft, section.id);
     const titleId = `${id}-section-${section.id}`;
     const hintId = `${id}-section-${section.id}-hint`;
@@ -401,7 +403,7 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
         {/* biome-ignore lint/a11y/useSemanticElements: it holds a grip, a heading and fields to move, not one set of form fields */}
         <div
           role="group"
-          aria-labelledby={titleId}
+          aria-label={title}
           className={`layout-section-box is-${section.kind}${
             isOverSection(section.id) ? ' is-drop-target' : ''
           }`}
@@ -419,8 +421,8 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
                 beginDrag(event, { kind: 'section', id: section.id, name: title })
               }
             />
-            <h3 id={titleId} className="layout-section-title">
-              {title}
+            <h3 className="layout-section-title">
+              {t('layouts.sectionTitle', { position: index + 1, kind: section.kind })}
             </h3>
             <button
               type="button"

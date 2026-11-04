@@ -6183,6 +6183,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Este diseño todavía no tiene pestañas: añade una y luego pon campos en sus secciones.',
   'layouts.sectionName':
     '{tab}, sección {position}: {kind, select, main {columna principal} other {columna lateral}}',
+  'layouts.sectionTitle':
+    'Sección {position}: {kind, select, main {columna principal} other {columna lateral}}',
   'layouts.sectionActions': 'Mover {section}',
   'layouts.removeSection': 'Quitar {section}',
   'layouts.addSection': 'Añadir una sección',
