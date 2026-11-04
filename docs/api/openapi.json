@@ -34765,6 +34765,49 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/workflows/{id}/completed-reason": {
+      "post": {
+        "operationId": "internal-post-workflows-by-id-completed-reason",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/workflows/{id}/draft": {
       "delete": {
         "operationId": "internal-delete-workflows-by-id-draft",
