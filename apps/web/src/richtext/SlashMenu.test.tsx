@@ -482,6 +482,42 @@ describe('the slash menu (NTF-013)', () => {
     });
   });
 
+  it('[NTF-013] keeps the option the arrow keys reach in sight in a long list (TT-8)', async () => {
+    // jsdom has no layout and no scrolling: what was asked to come into view is recorded.
+    const scrolled = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrolled,
+      configurable: true,
+    });
+    const last = () => scrolled.mock.contexts.at(-1) as HTMLElement | undefined;
+    try {
+      const user = userEvent.setup();
+      const first = renderEditor();
+      await choose(first.textbox, 'code');
+      await screen.findByRole('combobox', { name: 'Code language (optional)' });
+      const list = screen.getByRole('listbox', { name: 'Common languages' });
+      const options = within(list).getAllByRole('option');
+      // Up from what was typed goes to the last of about thirty, far below the few in sight.
+      await user.keyboard('{ArrowUp}');
+      expect(options.at(-1)).toHaveAttribute('aria-selected', 'true');
+      expect(last()).toBe(options.at(-1));
+      expect(scrolled).toHaveBeenLastCalledWith({ block: 'nearest' });
+      await user.keyboard('{ArrowDown}{ArrowDown}');
+      expect(last()).toBe(options[1]);
+
+      document.body.innerHTML = '';
+      const second = renderEditor();
+      await choose(second.textbox, 'emoji');
+      await screen.findByRole('combobox', { name: 'Emoji' });
+      const emoji = within(screen.getByRole('listbox', { name: 'Emoji' })).getAllByRole('option');
+      await user.keyboard('{ArrowUp}');
+      expect(emoji.at(-1)).toHaveAttribute('aria-selected', 'true');
+      expect(last()).toBe(emoji.at(-1));
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
   it('[NTF-013] still takes any one word for a language, and a pointer can pick one (TT-8)', async () => {
     const user = userEvent.setup();
     const first = renderEditor();

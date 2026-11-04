@@ -90,6 +90,17 @@ export function BlockPrompt({ kind, editor, onClose }: BlockPromptProps) {
   );
 }
 
+/**
+ * Keeps the option the arrow keys reached in sight: a prompt's list shows only a few at a time,
+ * and a browser does not scroll a list for its field's `aria-activedescendant` (TT-8).
+ */
+function useKeptInView(listId: string, at: number) {
+  useEffect(() => {
+    if (at < 0) return;
+    document.getElementById(`${listId}-${at}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [listId, at]);
+}
+
 interface PartProps {
   onInsert: (content: PmJson | PmJson[]) => void;
   onCancel: () => void;
@@ -125,6 +136,7 @@ function CodePrompt({
   const [active, setActive] = useState(-1);
   const shown = matchingLanguages(CODE_LANGUAGES, language);
   const at = active < shown.length ? active : -1;
+  useKeptInView(listId, at);
   const apply = (value: string) => {
     if (value !== '' && !LANGUAGE.test(value)) {
       setBad(true);
@@ -381,6 +393,7 @@ function FilterList<T>({
   const wanted = text.trim().toLowerCase();
   const shown = items.filter((item) => name(item).toLowerCase().includes(wanted));
   const at = Math.min(active, Math.max(0, shown.length - 1));
+  useKeptInView(listId, at);
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && shown.length > 0) {
       event.preventDefault();
