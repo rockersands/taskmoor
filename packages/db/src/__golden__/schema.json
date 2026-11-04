@@ -2711,7 +2711,8 @@
       "layout_set_id integer",
       "visibility_policy_id integer",
       "notification_policy_id integer",
-      "workflow_map_id integer"
+      "workflow_map_id integer",
+      "notify_checklist_changes boolean not null default false"
     ],
     "indexes": [
       "CREATE INDEX track_archived_idx ON public.track USING btree (workspace_id) WHERE (archived_at IS NOT NULL)",

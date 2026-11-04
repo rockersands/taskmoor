@@ -266,7 +266,9 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
     box.focus();
     await user.keyboard(' ');
     expect(
-      await screen.findByText('Followers of tickets in SHOP no longer hear when a checklist changes.'),
+      await screen.findByText(
+        'Followers of tickets in SHOP no longer hear when a checklist changes.',
+      ),
     ).toBeInTheDocument();
     expect(box).not.toBeChecked();
     expect(box).toHaveFocus();
@@ -360,12 +362,12 @@ describe('the permission to create tracks with the role that runs the track (IAM
     renderPeople({}, CREATOR);
     await screen.findByText('Kalo Reyes: Administrators');
     await user.selectOptions(screen.getByLabelText('Role'), 'Members');
-    expect(screen.queryByRole('checkbox')).toBe(null);
+    expect(screen.queryByRole('checkbox', { name: 'Also let them create tracks' })).toBe(null);
     cleanup();
     renderPeople({}, MEMBER);
     await screen.findByText('Kalo Reyes: Administrators');
     expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
-    expect(screen.queryByRole('checkbox')).toBe(null);
+    expect(screen.queryByRole('checkbox', { name: 'Also let them create tracks' })).toBe(null);
   });
 
   it('[IAM-033] a site administrator is offered the box', async () => {

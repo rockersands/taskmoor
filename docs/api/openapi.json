@@ -3387,6 +3387,10 @@
           "archived": {
             "type": "boolean"
           },
+          "checklistNotices": {
+            "description": "Whether the followers of its tickets hear of changes to checklists, in their inbox and by email as each chooses. Off unless the track’s administrators turn it on.",
+            "type": "boolean"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -3455,6 +3459,7 @@
           "owner",
           "archived",
           "features",
+          "checklistNotices",
           "createdAt",
           "updatedAt"
         ],

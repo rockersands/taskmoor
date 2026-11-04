@@ -56,7 +56,10 @@ export interface ChecklistNotice {
 }
 
 /** How many changes a notice gathers and how many other people made them, from its payload. */
-export function noticeCounts(payload: Record<string, unknown>): { changes: number; others: number } {
+export function noticeCounts(payload: Record<string, unknown>): {
+  changes: number;
+  others: number;
+} {
   const changes =
     typeof payload.changes === 'number' && Number.isSafeInteger(payload.changes)
       ? Math.max(1, payload.changes)
@@ -101,7 +104,7 @@ export async function notifyChecklist(
     .where('k.workspace_id', '=', ws)
     .executeTakeFirst();
   // Off for the track, or the ticket gone or in the trash since: nobody to tell.
-  if (!ticket || !ticket.notify_checklist_changes || ticket.deleted_at) return 0;
+  if (!ticket?.notify_checklist_changes || ticket.deleted_at) return 0;
 
   // The followers, active, never the one who made the change.
   let followers = db

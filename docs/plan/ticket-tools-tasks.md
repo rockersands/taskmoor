@@ -33,6 +33,11 @@ requirement ID; T-196b adds migration 0103 and NTF-015.
 
 ## Handoff
 
+**T-196b (2026-11-04).** TT-7 is built: a track's administrators can turn on a notice to followers
+of checklist changes, off by default (`apps/server/src/notifications/checklists.ts`, migration 0103,
+NTF-015, ADR-120 "Checklist notices"). The note below that TT-7 waits is from before the user's
+answer.
+
 **T-196 (2026-11-03).** The follow-ups above are on `wave5/t196-ticket-tools-follow-ups`, in steps:
 the text formats and email text (`packages/richtext`, `comments.ts`), the editor (TT-1, TT-2, TT-4,
 TT-8), the subticket status menu (TT-6), the checklist drag (TT-5), then the e2e journeys, the

@@ -142,9 +142,7 @@ test('[NTF-015] whoever runs a track turns checklist notices on, and a follower 
   );
   const list = made.checklists[0];
   for (const item of list?.items ?? []) {
-    await ok(
-      api.patch(`${lists}/${list?.id}/items/${item.id}`, { data: { state: 'done' } }),
-    );
+    await ok(api.patch(`${lists}/${list?.id}/items/${item.id}`, { data: { state: 'done' } }));
   }
 
   // Fan finds one item for the three changes, with nothing an item says, and opens the ticket.
@@ -157,7 +155,10 @@ test('[NTF-015] whoever runs a track turns checklist notices on, and a follower 
   await expect(page.getByText('Secret steps')).toHaveCount(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
-  await page.getByRole('link', { name: new RegExp(ticket.key) }).first().click();
+  await page
+    .getByRole('link', { name: new RegExp(ticket.key) })
+    .first()
+    .click();
   await expect(page.getByRole('heading', { level: 1, name: new RegExp(ticket.key) })).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Checklists' }).getByText('2 of 2 done (100%)'),

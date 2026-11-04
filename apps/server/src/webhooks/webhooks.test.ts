@@ -486,6 +486,61 @@ describe('webhooks (M1-067)', () => {
     expect(at('/once')).toHaveLength(1);
   });
 
+  it('[API-009][NTF-015] takes a checklist change whether or not the track tells its followers', async () => {
+    const hook = await webhook({
+      name: 'Checklists',
+      url: `${base}/checklists`,
+      events: ['ticket.checklist_changed'],
+    });
+    const t = await ticket('WH', 'Checklist for a receiver');
+    const follow = await as('alice', {
+      method: 'PUT',
+      url: `/api/v1/tickets/${t.id}/followers/${users.alice?.id}`,
+    });
+    expect(follow.statusCode, follow.body).toBe(204);
+    const addList = async (name: string) => {
+      const res = await admin({
+        method: 'POST',
+        url: `/api/v1/tickets/${t.id}/checklists`,
+        payload: { name, items: [] },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    };
+    const setNotices = async (on: boolean) => {
+      const res = await admin({
+        method: 'PATCH',
+        url: `/api/v1/tracks/${tracks.WH}`,
+        payload: { checklistNotices: on },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+    };
+    const toldAlice = async () =>
+      (
+        await database.db
+          .selectFrom('notification')
+          .select('id')
+          .where('ticket_id', '=', t.id)
+          .where('user_id', '=', users.alice?.id as number)
+          .where('event', '=', 'checklist_changed')
+          .execute()
+      ).length;
+
+    // Off, as a track starts: the receiver hears, the follower does not.
+    await addList('Off');
+    await pump();
+    expect(await deliveriesOf(hook.id)).toHaveLength(1);
+    expect(await toldAlice()).toBe(0);
+    // On: the receiver hears the same, and the follower hears too.
+    await setNotices(true);
+    await addList('On');
+    await pump();
+    expect(await deliveriesOf(hook.id)).toHaveLength(2);
+    expect(at('/checklists')).toHaveLength(2);
+    expect(await toldAlice()).toBeGreaterThan(0);
+    await setNotices(false);
+    await pump();
+  });
+
   it('[API-009] sends nothing for a disabled webhook, and fails what a deleted one left', async () => {
     const off = await webhook({
       name: 'Off',

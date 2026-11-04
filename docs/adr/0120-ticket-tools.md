@@ -146,8 +146,8 @@ track's administrators turn on, off by default.
 
 ## Follow-ups (T-196, 2026-11-03)
 
-The task file named eight things left out of the first build (TT-1 to TT-8). Seven are built;
-one waits on the user.
+The task file named eight things left out of the first build (TT-1 to TT-8). T-196 built seven;
+the eighth waited on the user and has since been built too (TT-7 below).
 
 ### TT-1: hiding a section's text while editing
 
@@ -220,18 +220,12 @@ one waits on the user.
   now reads a date as its day, a status label in brackets, an emoji as itself and a kept inline node
   by its text; they were left out. Columns read as their blocks in order, a file as its name.
 
-### Open question for the user: TT-7, telling followers of checklist changes
+### TT-7: answered by the user
 
-Followers are not notified when a checklist changes; the `ticket.checklist_changed` event is there
-for webhooks. **Should they be, and how?** The options:
-
-| Option | For | Against |
-|---|---|---|
-| A. Keep it as it is (built) | No flood of ticks | A follower learns of checklist changes only from the page or its history |
-| B. A notification event "Checklist changed" that schemes can name, in no default scheme | Administrators choose per track; people choose channels; email already gathers a ticket's changes into one message | One more event to understand |
-| C. Notify only when a checklist is completed | One message per list, when it matters | A rejected or reopened item says nothing |
-
-Recommended: B. Nothing is built until the user answers (T-196).
+Whether followers hear of checklist changes waited on the user, with three options: leave it as
+built, a choice per track, or a notice only when a checklist is completed. On 2026-11-04 (T-196a)
+they chose the choice per track, off by default. It is built: see
+[Checklist notices](#checklist-notices-ntf-015).
 
 ## Options considered
 
@@ -249,4 +243,4 @@ Recommended: B. Nothing is built until the user answers (T-196).
 
 Checklists, links and subtickets need no new permission. A new document node needs every writer in
 `packages/richtext` updated, and the corpus says so when one is missed. What would make us revisit
-this: people asking for a ticket reference that shows its summary, or the user's answer on TT-7.
+this: people asking for a ticket reference that shows its summary.

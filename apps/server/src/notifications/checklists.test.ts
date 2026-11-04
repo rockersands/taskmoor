@@ -97,9 +97,7 @@ describe('checklist notices (NTF-015)', () => {
   }
   const reached = async (ticketId: number, channel: 'inbox' | 'email') =>
     [
-      ...new Set(
-        (await notices(ticketId)).filter((n) => n.channel === channel).map((n) => n.who),
-      ),
+      ...new Set((await notices(ticketId)).filter((n) => n.channel === channel).map((n) => n.who)),
     ].sort();
 
   const setNotices = (who: Person, on: boolean) =>
@@ -155,9 +153,8 @@ describe('checklist notices (NTF-015)', () => {
     expect(res.statusCode, res.body).toBe(200);
   }
   const inboxOf = async (who: Person) =>
-    (
-      await as(who, { method: 'GET', url: `/api/v1/inbox?event=${CHECKLIST_EVENT}` })
-    ).json().items as InboxJson[];
+    (await as(who, { method: 'GET', url: `/api/v1/inbox?event=${CHECKLIST_EVENT}` })).json()
+      .items as InboxJson[];
 
   beforeAll(async () => {
     app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
@@ -327,9 +324,7 @@ describe('checklist notices (NTF-015)', () => {
     await addList('max', ticket.id, 'After', ['Tell people']);
     await deliver();
     const item = (await inboxOf('finn')).filter((i) => i.ticket?.key === ticket.key);
-    expect(item).toEqual([
-      expect.objectContaining({ actor: { id: users.ana.id, name: 'ana' } }),
-    ]);
+    expect(item).toEqual([expect.objectContaining({ actor: { id: users.ana.id, name: 'ana' } })]);
     expect(item[0]?.checklist).toEqual({ changes: 6, others: 1 });
     // Max made a change and so follows now, but hears nothing of his own.
     expect((await notices(ticket.id)).filter((r) => r.who === 'max')).toEqual([]);
@@ -406,7 +401,7 @@ describe('checklist notices (NTF-015)', () => {
     // A full notice takes no more: the next change starts another.
     await database.db
       .updateTable('notification')
-      .set({ payload: sql`payload || jsonb_build_object('changes', ${MAX_NOTICE_CHANGES})` })
+      .set({ payload: sql`payload || jsonb_build_object('changes', ${MAX_NOTICE_CHANGES}::int)` })
       .where('ticket_id', '=', ticket.id)
       .where('event', '=', CHECKLIST_EVENT)
       .execute();
@@ -495,6 +490,102 @@ describe('checklist notices (NTF-015)', () => {
     await deliver();
     expect(await notices(ticket.id)).toEqual([]);
     expect((await setNotices('lead', true)).statusCode).toBe(200);
+  });
+
+  it('[NTF-015] a copy of a track takes the source’s choice', async () => {
+    const copy = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/tracks',
+      payload: { key: 'CLC', name: 'A copy', mode: 'shared', copyFrom: trackId },
+    });
+    expect(copy.statusCode, copy.body).toBe(201);
+    expect(copy.json().track.checklistNotices).toBe(true);
+  });
+
+  it('[NTF-015] (3) a ticket restricted to a visibility level tells only those in the level, and a notice written before it was restricted is neither shown nor sent', async () => {
+    const policy = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/visibility-policies',
+      payload: {
+        name: 'Checklist secrets',
+        levels: [
+          {
+            name: 'Only Ana and Uma',
+            members: [
+              { grantee: 'user', userId: users.ana.id },
+              { grantee: 'user', userId: users.uma.id },
+            ],
+          },
+        ],
+      },
+    });
+    expect(policy.statusCode, policy.body).toBe(201);
+    const level = policy.json().visibilityPolicy.levels[0].id as number;
+    const applied = await as('admin', {
+      method: 'PATCH',
+      url: `/api/v1/tracks/${trackId}`,
+      payload: { visibilityPolicyId: policy.json().visibilityPolicy.id },
+    });
+    expect(applied.statusCode, applied.body).toBe(200);
+    const restrict = async (key: string, to: number | null) => {
+      const res = await as('admin', {
+        method: 'PATCH',
+        url: `/api/v1/tickets/${key}`,
+        payload: { visibilityLevelId: to },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+    };
+    const unreadOf = async (who: Person) =>
+      (await as(who, { method: 'GET', url: '/api/v1/inbox/count' })).json().unread.all as number;
+
+    // Restricted first: Finn, Gil and Hal follow it but are outside the level, so nothing at all.
+    const hidden = await followedTicket('Restricted before the change');
+    await restrict(hidden.key, level);
+    await deliver();
+    await addList('ana', hidden.id, 'Hidden steps', ['Hidden item']);
+    await deliver();
+    expect(await reached(hidden.id, 'inbox')).toEqual(['uma']);
+    expect(await reached(hidden.id, 'email')).toEqual(['uma']);
+
+    // Restricted after a notice was written: it goes from the inbox and its count, a further
+    // change does not extend it, and the mailer drops it.
+    const later = await followedTicket('Restricted after the notice');
+    const list = await addList('ana', later.id, 'Steps', ['One']);
+    await deliver();
+    expect((await inboxOf('finn')).some((i) => i.ticket?.key === later.key)).toBe(true);
+    const unreadBefore = await unreadOf('finn');
+    await restrict(later.key, level);
+    await deliver();
+    expect((await inboxOf('finn')).some((i) => i.ticket?.key === later.key)).toBe(false);
+    expect(await unreadOf('finn')).toBeLessThan(unreadBefore);
+    await tick('ana', later.id, list.id, list.items[0]?.id as number);
+    await deliver();
+    const finn = (await notices(later.id)).filter((n) => n.who === 'finn');
+    expect(finn.map((n) => n.payload.changes)).toEqual([1, 1]);
+    const uma = (await notices(later.id)).filter((n) => n.who === 'uma');
+    expect(uma.map((n) => n.payload.changes)).toEqual([2, 2]);
+
+    const sent: OutgoingEmail[] = [];
+    const run = await deliverEmail(database.db, new Authorizer(database.db), {
+      transport: {
+        send: async (email) => {
+          sent.push(email);
+          return { messageId: null };
+        },
+      },
+      from: 'Taskmoor <taskmoor@example.com>',
+      publicUrl: 'https://taskmoor.example.com',
+      now: new Date(Date.now() + 10 * MINUTE),
+    });
+    expect(run.failed).toBe(0);
+    for (const key of [hidden.key, later.key]) {
+      // Ana hears of her own other changes, so she is here too, though not of her checklists.
+      const about = sent.filter((e) => e.text.includes(key));
+      expect(about.map((e) => e.to).sort()).toEqual(['ana@example.com', 'uma@example.com']);
+      const toUma = about.find((e) => e.to === 'uma@example.com');
+      expect(toUma?.text).toMatch(/checklist/);
+      expect(about.find((e) => e.to === 'ana@example.com')?.text).not.toMatch(/checklist/);
+    }
   });
 
   it('[NTF-015] offers its own row in each person’s settings, on for both channels to begin with', async () => {

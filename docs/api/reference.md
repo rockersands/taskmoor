@@ -2297,6 +2297,7 @@ Read-only info fields, computed from comments and history. Only comments everyon
 | `owner` | [PersonRef](#schema-personref) or null | yes |  |
 | `archived` | boolean | yes |  |
 | `features` | object | yes |  |
+| `checklistNotices` | boolean | yes | Whether the followers of its tickets hear of changes to checklists, in their inbox and by email as each chooses. Off unless the track’s administrators turn it on. |
 | `createdAt` | string | yes |  |
 | `updatedAt` | string | yes |  |
 
