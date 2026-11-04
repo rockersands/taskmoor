@@ -7,9 +7,11 @@ import { type APIRequestContext, expect, type Locator, type Page, test } from '@
  * names the group, by mouse on a desktop and by a real finger on a phone; puts a third in and
  * reorders it from the keyboard; minimizes the group and finds it so after a reload; shares it
  * with a role, which the other person gets only on the tracks the first one runs; and takes it
- * back. Someone a group is shared with is told in the inbox and leaves it, after a dialog that
- * says which role goes (T-204, T-206). No serious axe issue and no sideways scroll. It uses the attachments database (preview
- * 4174), whose administrator (Ada Attach) the API server made; everyone else is made here.
+ * back. Someone a group is shared with is told in the inbox and leaves it from the keyboard,
+ * after a dialog that says which role goes, and is told it went with focus still on the page
+ * (T-204, T-206). No serious axe issue and no sideways scroll. It uses the attachments database
+ * (preview 4174), whose administrator (Ada Attach) the API server made; everyone else is made
+ * here.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -352,13 +354,16 @@ test('[IAM-034] a person told of a group shared with them leaves it, and what it
   await expect(ask).toContainText(`Only ${people.lead} can share it with you again.`);
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
-  await ask.getByRole('button', { name: 'Leave group' }).click();
+  await ask.getByRole('button', { name: 'Leave group' }).press('Enter');
 
   // The group goes, and so do the tracks it opened, without a reload.
   await expect(page.getByRole('region', { name: group })).toHaveCount(0);
   for (const name of Object.values(names)) {
     await expect(page.getByRole('link', { name: new RegExp(name) })).toHaveCount(0);
   }
+  // The page says so, and focus stays on it rather than going with those tracks.
+  await expect(page.getByRole('status').filter({ hasText: `You left ${group}.` })).toHaveCount(1);
+  await expect(page.locator('main :focus')).toHaveCount(1);
   await visit(page, '#/tracks');
   await expect(page.getByText('No tracks yet').or(page.getByLabel('Find a track'))).toBeVisible();
   await expect(page.getByRole('region', { name: group })).toHaveCount(0);

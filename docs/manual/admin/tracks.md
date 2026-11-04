@@ -89,11 +89,13 @@ notice names the group and you, and the role if you chose one; never its tracks.
 ### Leaving a group shared with you
 
 A group someone shared with you has **Leave group…** in its menu. It first says what goes: the
-group leaves your page, and the role it gave you goes from as many tracks as the share alone gave
-it on. A role you hold any other way stays, the same as when the owner takes the share back, and
-nothing is taken that would leave a track with nobody to run it. Once you leave, the tracks it
-opened to you go from the page at once, and only the owner can share it with you again. The
-owner's audit log records who left and which roles went.
+group leaves your page, and the role it gave you goes from as many of the tracks you see in it as
+the share alone gave it on. A role you hold any other way stays, the same as when the owner takes
+the share back, and nothing is taken that would leave a track with nobody to run it. Once you
+leave, the tracks it opened to you go from the page at once, the page says you left, and the
+keyboard stays on the page: on a group or track still there, or on the note that no track is left
+when the group was all you had. Only the owner can share it with you again. The owner's audit log
+records who left and which roles went.
 
 ### Setting a group on someone
 
@@ -114,9 +116,10 @@ optional `position`, counted among the tracks you see) and out, and
 `GET`, `POST /api/v1/track-groups/:id/shares` and `DELETE …/shares/:userId` list, make and take
 back shares (`userId`, `roleId` or `null`); `POST /api/v1/track-groups/:id/copies` sets the group
 on someone; `POST /api/v1/track-groups/:id/leave` leaves a group shared with you, answering your
-groups (`403` for your own group). A group shared with you carries `holds`: on how many tracks
-its role is yours through that share alone. A refusal to take back answers `409` with `last_track_admin` and the tracks; a
-deactivated person answers `400` with `person_inactive`. Reading needs a token's `read` scope and
+groups (`403` for your own group). A group shared with you carries `holds`: on how many of the
+tracks it shows you its role is yours through that share alone. A refusal to take back answers
+`409` with `last_track_admin` and the tracks; a deactivated person, or one erased while the share
+waited, answers `400` with `person_inactive`. Reading needs a token's `read` scope and
 changing its `write` scope; finding people (`GET /api/v1/track-groups/people?q=`) needs the
 **Browse users** permission.
 

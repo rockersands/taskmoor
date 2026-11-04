@@ -156,7 +156,8 @@ permanently** then:
 - deletes their [groups of tracks](tracks.md#groups-of-tracks), taking back the roles those
   groups' shares gave others, and removes the groups shared with them, with the roles those
   shares gave them; roles given on a track's **Who does what** page stay, as for anyone
-  deactivated;
+  deactivated. Someone sharing a group with the person while the erasure runs either finishes
+  first, and the erasure removes that share too, or is refused as for anyone deactivated;
 - deactivates the account for good: it cannot be edited, reactivated or signed in to.
 
 It cannot be undone, so download the person's data first when they asked for it. Taskmoor

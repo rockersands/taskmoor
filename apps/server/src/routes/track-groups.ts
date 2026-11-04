@@ -65,8 +65,9 @@ export interface GroupView {
   /** A group shared with the caller: the role it gave them, if any. */
   role?: { id: number; name: string } | null;
   /**
-   * A group shared with the caller: on how many tracks the role is theirs through this share
-   * alone, which leaving the group takes away (T-204).
+   * A group shared with the caller: on how many of the tracks it shows the role is theirs
+   * through this share alone, which leaving the group takes away (T-204). A track the caller may
+   * not see is never counted, as it is never shown.
    */
   holds?: number;
   /** The caller's own group: how many people it is shared with. */
@@ -130,12 +131,13 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
       shared_with: number;
       given_by: number | null;
       given_by_name: string | null;
-      holds: number;
+      /** A group shared with the caller: the tracks whose role this share alone holds. */
+      holds: number[];
     }>`
       SELECT g.id, g.name, g.owner_id, o.name AS owner_name, true AS mine, g.position,
              g.minimized, NULL::int AS role_id, NULL::text AS role_name,
              (SELECT count(*)::int FROM track_group_share s WHERE s.group_id = g.id) AS shared_with,
-             g.given_by, gb.name AS given_by_name, 0 AS holds
+             g.given_by, gb.name AS given_by_name, '{}'::int[] AS holds
         FROM track_group g
         JOIN app_user o ON o.id = g.owner_id
         LEFT JOIN app_user gb ON gb.id = g.given_by
@@ -144,11 +146,11 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
       SELECT g.id, g.name, g.owner_id, o.name, false, s.position, s.minimized, s.role_id, r.name,
              0, NULL, NULL,
              -- Roles this share alone holds: another share's stay when this one goes.
-             (SELECT count(*)::int FROM track_group_access a
-               WHERE a.share_id = s.id
-                 AND NOT EXISTS (SELECT 1 FROM track_group_access b
-                                  WHERE b.share_id <> s.id AND b.track_id = a.track_id
-                                    AND b.role_id = a.role_id AND b.user_id = a.user_id))
+             ARRAY(SELECT a.track_id FROM track_group_access a
+                    WHERE a.share_id = s.id
+                      AND NOT EXISTS (SELECT 1 FROM track_group_access b
+                                       WHERE b.share_id <> s.id AND b.track_id = a.track_id
+                                         AND b.role_id = a.role_id AND b.user_id = a.user_id))
         FROM track_group_share s
         JOIN track_group g ON g.id = s.group_id
         JOIN app_user o ON o.id = g.owner_id
@@ -189,7 +191,8 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
             }
           : {
               role: r.role_id === null ? null : { id: r.role_id, name: r.role_name ?? '' },
-              holds: r.holds,
+              // Only tracks the group shows: one the caller may not see is never counted.
+              holds: r.holds.filter((t) => visible.has(t)).length,
             }),
         tracks: tracks.get(r.id) ?? [],
       })),
@@ -371,6 +374,20 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     return true;
   }
 
+  /**
+   * Whether the person a group goes to is still active, read under their arrangement's lock:
+   * erasing someone holds that lock until they are deactivated, so a share or a copy waiting on
+   * it never reaches an erased person (ADR-121).
+   */
+  const stillActive = async (trx: Trx, userId: number) =>
+    (
+      await trx
+        .selectFrom('app_user')
+        .select('deactivated_at')
+        .where('id', '=', userId)
+        .executeTakeFirst()
+    )?.deactivated_at === null;
+
   async function roleExists(request: FastifyRequest, roleId: number | null) {
     if (roleId === null) return true;
     const row = await db
@@ -384,10 +401,10 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
 
   /**
    * Locks what a change touches before it reads anything: the arrangement of each person whose
-   * groups it changes (an advisory lock per person, in id order), then the group itself. Changes
-   * to one person's groups, or to one group and its shares, run one after another, so a role a
-   * share gave never loses its record and a track never lands in two of a person's groups.
-   * Throws `Gone` when the group went in the meantime.
+   * groups it changes or whom a group goes to (an advisory lock per person, in id order), then
+   * the group itself. Changes to one person's groups, or to one group and its shares, run one
+   * after another, so a role a share gave never loses its record and a track never lands in two
+   * of a person's groups. Throws `Gone` when the group went in the meantime.
    */
   async function lockFor(trx: Trx, ownerIds: readonly number[], groupId?: number) {
     await lockArrangements(trx, ownerIds);
@@ -793,7 +810,9 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     if (!(await roleExists(request, roleId))) return notFound(reply);
     const result = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
-        await lockFor(trx, [group.owner_id], group.id);
+        // The person's lock too, as their erasure takes it: see `stillActive`.
+        await lockFor(trx, [group.owner_id, userId], group.id);
+        if (!(await stillActive(trx, userId))) return 'person_inactive' as const;
         const { trackIds, givable } = await reachOf(trx, request, group.id, roleId);
         const share = await trx
           .insertInto('track_group_share')
@@ -826,6 +845,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
       }),
     );
     if (result === null) return reply;
+    if (result === 'person_inactive') return reply.code(400).send({ error: 'person_inactive' });
     if (result === 'already_shared') return reply.code(409).send({ error: 'already_shared' });
     return reply.code(201).send({
       tracks: result.tracks,
@@ -927,6 +947,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     const result = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
         await lockFor(trx, [group.owner_id, userId], group.id);
+        if (!(await stillActive(trx, userId))) return 'person_inactive' as const;
         const { trackIds, givable } = await reachOf(trx, request, group.id, roleId);
         const copy = await trx
           .insertInto('track_group')
@@ -984,6 +1005,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
       }),
     );
     if (result === null) return reply;
+    if (result === 'person_inactive') return reply.code(400).send({ error: 'person_inactive' });
     return reply.code(201).send({
       groupId: result.groupId,
       tracks: result.tracks,

@@ -88,7 +88,10 @@ and surfaces (ADR-114) and nothing else.
   person's arrangement and a row lock on the group before it reads anything, and every write of
   a person's role in a track (shares, the People page, invitations, imports) first locks the
   track row. A give, a take-back and a role made the person's own therefore never interleave,
-  and a share's record never outlives or misses the role it stands for.
+  and a share's record never outlives or misses the role it stands for. Sharing a group with
+  someone, or setting one on them, also takes that person's arrangement lock and checks under it
+  that they are still active. Locks go in one order everywhere: arrangements (in id order), then
+  the group, then tracks, and only then a write that refers to a person's account row.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.
@@ -123,10 +126,12 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
 - One event, `track_group.left`, with the owner's group as subject, the owner (`ownerId`), the
   role and the roles that went (`removed`). It is audited, so the trail of the owner's group
   says who left and what went.
-- A group shared with the person carries `holds`: on how many tracks its role is theirs
-  through this share alone, which is what leaving takes. The page asks first and says which role
-  goes from how many tracks, and reads its track list again afterwards, since tracks the share
-  opened go with it.
+- A group shared with the person carries `holds`: on how many of the tracks it shows them its
+  role is theirs through this share alone, which is what leaving takes (a track they may not see
+  is never counted, as it is never shown). The page asks first and says which role goes from how
+  many tracks. It reads its track list again before the change shows, since tracks the share
+  opened go with it, so focus lands on a group or track still there; when no track is left, the
+  page's empty state takes focus and the page says the group was left.
 
 ### A person's data and erasure (T-205; ADR-111)
 
@@ -143,6 +148,12 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
   they received gave them goes without that check: once deactivated their roles run nothing.
   Copies they set on others stay, as the others' own; `user.erased` lists the roles that went
   (`groupAccess`).
+- The erasure takes the routes' locks in the routes' order before it locks the person's account
+  row: the arrangements of the person and of everyone whose group they received, then the tracks
+  those shares and the shares of their groups hold roles on. Someone who shared with the person
+  while the erasure read who had starts the arrangement locks again from a savepoint, so they stay
+  in id order. A share or copy waiting on the person's lock finds them deactivated and is refused
+  (`person_inactive`), so nothing reaches an erased account.
 
 ### Telling the person (T-206)
 

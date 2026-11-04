@@ -30,9 +30,11 @@ export interface TrackArrangementProps {
   onGroups: (groups: TrackGroup[]) => void;
   /**
    * After a change that may change which tracks the person sees: leaving a shared group takes
-   * the roles it gave (T-204), so the page reads its tracks again.
+   * the roles it gave (T-204), so the page reads its tracks again. The change shows once this
+   * settles, so focus lands on a track still there. `said` is what the change announces, for the
+   * page to say itself when no track is left and this arrangement gives way to its empty state.
    */
-  onAccessChanged?: () => void;
+  onAccessChanged?: (said: string) => Promise<void>;
 }
 
 /** What is being dragged. */
@@ -206,6 +208,9 @@ export function TrackArrangement({
   const dragEnded = useRef({ handle: '', at: Number.NEGATIVE_INFINITY });
   const live = useRef(groups);
   live.current = groups;
+  /** The tracks as the page shows them now, for focus chosen after a change has shown. */
+  const liveTracks = useRef(tracks);
+  liveTracks.current = tracks;
 
   const mine = groups.filter((g) => g.mine);
   const groupOf = new Map<number, TrackGroup>();
@@ -528,12 +533,13 @@ export function TrackArrangement({
 
   /**
    * Where focus goes once a group has left the page: the next group, the one before, the first
-   * track in no group, or the page's hint when nothing else is left.
+   * track in no group, or the page's hint when nothing else is left. The tracks are those shown
+   * then, which leaving a shared group may have changed.
    */
   const focusAfterRemoving = (at: number) => (next: TrackGroup[]) => {
     const near = next[at] ?? next[at - 1];
     if (near) return `group-${near.id}`;
-    const first = tracks.find(
+    const first = liveTracks.current.find(
       (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
     );
     return first ? `track-${first.id}` : 'hint';
@@ -822,14 +828,19 @@ export function TrackArrangement({
               onClick={() => {
                 const group = leaving;
                 const at = groups.findIndex((g) => g.id === group.id);
+                const said = t('trackGroups.announce.left', { name: group.name });
                 setLeaving(null);
                 void run(
-                  () => client.leave(group.id),
-                  () => t('trackGroups.announce.left', { name: group.name }),
+                  async () => {
+                    const next = await client.leave(group.id);
+                    // The roles the share gave went with it: the tracks are read again before
+                    // the change shows, so focus never lands on a track about to go.
+                    await onAccessChanged?.(said).catch(() => {});
+                    return next;
+                  },
+                  () => said,
                   focusAfterRemoving(at),
-                ).then((left) => {
-                  if (left) onAccessChanged?.();
-                });
+                );
               }}
             >
               {t('trackGroups.leave.do')}

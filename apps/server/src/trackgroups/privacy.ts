@@ -1,7 +1,7 @@
 import type { Database } from '@taskmoor/db';
-import type { Kysely, Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
-import { type AccessChange, lockArrangements, releaseShares } from './access';
+import { type AccessChange, lockArrangements, lockTracks, releaseShares } from './access';
 
 type Db = Kysely<Database>;
 
@@ -16,7 +16,8 @@ type Db = Kysely<Database>;
  *
  * Erasing the person deletes their groups, taking back what the shares of those groups gave by
  * the rules of taking a share back (never the last one to run a track: the erasure is refused),
- * and removes the shares they received with what those gave them.
+ * and removes the shares they received with what those gave them. It takes the locks the routes
+ * take, in their order, before it locks the person's account (`lockForErasure`).
  */
 export interface PersonalTrackGroups {
   groups: {
@@ -183,27 +184,80 @@ export interface ErasedTrackGroups {
   removed: AccessChange[];
 }
 
+/** Everyone whose group was shared with the person. */
+const sharersWith = async (db: Db, workspaceId: number, userId: number) =>
+  (
+    await db
+      .selectFrom('track_group_share as s')
+      .innerJoin('track_group as g', 'g.id', 's.group_id')
+      .select('g.owner_id')
+      .distinct()
+      .where('s.workspace_id', '=', workspaceId)
+      .where('s.user_id', '=', userId)
+      .execute()
+  ).map((r) => r.owner_id);
+
+/**
+ * Takes what erasing a person's track groups locks, in the caller's transaction, before the
+ * erasure locks the person's account row (ADR-121). The routes take their locks in this order:
+ * the arrangements first (an advisory lock per person, in id order), then the tracks, and only
+ * then do their writes reach the account row (a share's or a role's reference to the person).
+ * Taking these after the account row would make a share in progress and the erasure wait on
+ * each other.
+ *
+ * - The arrangement of the person and of everyone whose group they received, so no change to
+ *   those groups and shares runs alongside. Sharing with someone, or setting a group on them,
+ *   holds their lock too and checks under it that they are still active, so once this holds no
+ *   new share reaches the person: the erasure deactivates them before it lets go.
+ * - A group shared with the person by someone else before the lock was in hand starts the
+ *   locking again from a savepoint, which lets go of what it took, so the locks stay in id order.
+ * - Then the tracks whose roles the shares the person gave and received hold, which taking those
+ *   shares back locks again: the People page locks a track before it writes a role there.
+ */
+export async function lockForErasure(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  userId: number,
+): Promise<void> {
+  let sharers = await sharersWith(trx, workspaceId, userId);
+  await sql`SAVEPOINT track_group_erasure`.execute(trx);
+  for (;;) {
+    await lockArrangements(trx, [userId, ...sharers]);
+    const now = await sharersWith(trx, workspaceId, userId);
+    if (now.every((owner) => sharers.includes(owner))) break;
+    // Back to the savepoint, which stays: the locks taken since go, and the next round starts
+    // with everyone in id order.
+    await sql`ROLLBACK TO SAVEPOINT track_group_erasure`.execute(trx);
+    sharers = [...new Set([...sharers, ...now])];
+  }
+  await sql`RELEASE SAVEPOINT track_group_erasure`.execute(trx);
+  const held = await trx
+    .selectFrom('track_group_access as a')
+    .innerJoin('track_group_share as s', 's.id', 'a.share_id')
+    .innerJoin('track_group as g', 'g.id', 's.group_id')
+    .select('a.track_id')
+    .distinct()
+    .where('a.workspace_id', '=', workspaceId)
+    .where((eb) => eb.or([eb('s.user_id', '=', userId), eb('g.owner_id', '=', userId)]))
+    .execute();
+  await lockTracks(
+    trx,
+    held.map((h) => h.track_id),
+  );
+}
+
 /**
  * Removes a person's track groups in the caller's transaction, before the person is erased:
  * their groups go, taking back what the groups' shares gave by the rules of taking a share back
  * (throws `LastTrackAdministrator` when that would leave a track with nobody to run it), and the
- * shares they received go with what those gave them.
+ * shares they received go with what those gave them. The caller holds `lockForErasure`'s locks,
+ * taken before it locked the person's account row.
  */
 export async function eraseTrackGroups(
   trx: Transaction<Database>,
   workspaceId: number,
   userId: number,
 ): Promise<ErasedTrackGroups> {
-  const received = await trx
-    .selectFrom('track_group_share as s')
-    .innerJoin('track_group as g', 'g.id', 's.group_id')
-    .select(['s.id', 'g.owner_id'])
-    .where('s.workspace_id', '=', workspaceId)
-    .where('s.user_id', '=', userId)
-    .execute();
-  // The person's arrangement and that of everyone whose group they received, as the routes
-  // take them, so no change to these groups runs alongside.
-  await lockArrangements(trx, [userId, ...received.map((r) => r.owner_id)]);
   const owned = await trx
     .selectFrom('track_group')
     .select('id')
@@ -224,8 +278,8 @@ export async function eraseTrackGroups(
             owned.map((g) => g.id),
           )
           .execute();
-  // Read again under the locks: a share made meanwhile goes too.
-  const receivedNow = await trx
+  // Under `lockForErasure`'s locks no share reaches the person any more.
+  const received = await trx
     .selectFrom('track_group_share')
     .select('id')
     .where('workspace_id', '=', workspaceId)
@@ -241,18 +295,18 @@ export async function eraseTrackGroups(
     ...(await releaseShares(
       trx,
       workspaceId,
-      receivedNow.map((s) => s.id),
+      received.map((s) => s.id),
       null,
       { keepAdministrators: false },
     )),
   ];
-  if (receivedNow.length > 0) {
+  if (received.length > 0) {
     await trx
       .deleteFrom('track_group_share')
       .where(
         'id',
         'in',
-        receivedNow.map((s) => s.id),
+        received.map((s) => s.id),
       )
       .execute();
   }
@@ -269,7 +323,7 @@ export async function eraseTrackGroups(
   return {
     groups: owned.length,
     sharesGiven: given.length,
-    sharesReceived: receivedNow.length,
+    sharesReceived: received.length,
     removed,
   };
 }

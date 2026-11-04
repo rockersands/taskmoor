@@ -1,12 +1,13 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createDb, type Database } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { passwordHasher, pepperFromSecret, pepperRing } from '@taskmoor/iam';
 import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
-import { sql } from 'kysely';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { type Kysely, sql, type Transaction } from 'kysely';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
@@ -1062,7 +1063,7 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
 
   describe('leaving a group shared with you (IAM-034, T-204)', () => {
     beforeAll(async () => {
-      for (const name of ['hal', 'ivy']) await addUser(name);
+      for (const name of ['hal', 'ivy', 'jay']) await addUser(name);
     });
 
     it('[IAM-034] a person leaves a group shared with them, and only what that share gave goes', async () => {
@@ -1141,6 +1142,43 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${one}` });
       await as('ivy', { method: 'DELETE', url: `/api/v1/track-groups/${hers}` });
       await take('DELTA', 'Administrators', 'ivy');
+    });
+
+    it('[IAM-034] what leaving would take counts only the tracks the group shows the person', async () => {
+      // Owen runs a track of his own here, which goes to the trash once shared.
+      const policy = await database.db
+        .selectFrom('access_policy')
+        .select('id')
+        .where('name', '=', 'Default access policy')
+        .executeTakeFirstOrThrow();
+      tracks.BIN = (
+        await database.db
+          .insertInto('track')
+          .values({ workspace_id: 1, key: 'BIN', name: 'Bin', access_policy_id: policy.id })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      expect((await give('BIN', 'Administrators', 'owen')).statusCode).toBe(204);
+      const two = await makeGroup('owen', 'Two', ['ALPHA', 'BIN']);
+      expect((await share('owen', two, 'jay', 'Members')).json()).toMatchObject({ given: 2 });
+      expect((await layout('jay')).find((g) => g.id === two)).toMatchObject({
+        holds: 2,
+        tracks: [{ key: 'ALPHA' }, { key: 'BIN' }],
+      });
+      await database.db
+        .updateTable('track')
+        .set({ deleted_at: new Date() })
+        .where('id', '=', tracks.BIN as number)
+        .execute();
+      // BIN is in the trash: the group no longer shows it, and the count never mentions it.
+      expect((await layout('jay')).find((g) => g.id === two)).toMatchObject({
+        holds: 1,
+        tracks: [{ key: 'ALPHA' }],
+      });
+      // Leaving still takes the role on both, as taking the share back would.
+      expect((await leave('jay', two)).statusCode).toBe(200);
+      expect(await rolesOf('jay')).toEqual([]);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${two}` });
     });
 
     it('[IAM-034] leaving never leaves a track with nobody to run it', async () => {
@@ -1444,6 +1482,232 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       await as('owen', {
         method: 'DELETE',
         url: `/api/v1/track-groups/${owens.find((g) => g.name === 'For Kai')?.id}`,
+      });
+    });
+
+    /**
+     * An erasure that runs while a group is being shared with the person, or a role given them.
+     * A second client holds locks in its own transactions, as a change half done would, and
+     * watches who waits on what.
+     */
+    describe('while other changes run (IAM-008, IAM-034)', () => {
+      let side: Kysely<Database>;
+      beforeAll(async () => {
+        for (const name of ['nia', 'oli', 'pat', 'qin']) await addUser(name);
+        side = createDb({ connectionString: database.url, maxConnections: 4 });
+      });
+      /** What a test holds open, let go of even when it fails, so the side client can close. */
+      const releases: (() => void)[] = [];
+      afterEach(() => {
+        for (const release of releases.splice(0)) release();
+      });
+      afterAll(async () => {
+        await side.destroy();
+      });
+
+      const eraseOf = (user: string) =>
+        as('admin', {
+          method: 'POST',
+          url: `/api/v1/users/${ids[user]}/erase`,
+          payload: { confirmEmail: `${user}@example.com` },
+        });
+      const sharesWith = (user: string) =>
+        database.db
+          .selectFrom('track_group_share')
+          .select('id')
+          .where('user_id', '=', ids[user] as number)
+          .execute();
+      const arrangementLock = (trx: Transaction<Database>, user: string) =>
+        sql`SELECT pg_advisory_xact_lock(hashtext('track-groups'), ${ids[user]}::int)`.execute(trx);
+
+      /** Until this many of the database's sessions wait on an advisory lock, a row, or either. */
+      async function untilWaiting(count: number, on: 'advisory' | 'row' | 'any') {
+        const events = [
+          ...(on === 'row' ? [] : ['advisory']),
+          ...(on === 'advisory' ? [] : ['transactionid', 'tuple']),
+        ];
+        for (let tries = 0; tries < 200; tries++) {
+          const { rows } = await sql<{ n: number }>`
+            SELECT count(*)::int AS n FROM pg_stat_activity
+             WHERE datname = current_database() AND wait_event_type = 'Lock'
+               AND wait_event = ANY(${events})`.execute(side);
+          if ((rows[0]?.n ?? 0) >= count) return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error(`fewer than ${count} sessions wait on ${on}`);
+      }
+
+      /** A transaction on the side client that takes its locks and keeps them until `release`. */
+      function holding(take: (trx: Transaction<Database>) => Promise<unknown>) {
+        let release!: () => void;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let held!: () => void;
+        const ready = new Promise<void>((resolve) => {
+          held = resolve;
+        });
+        releases.push(release);
+        const done = side.transaction().execute(async (trx) => {
+          await take(trx);
+          held();
+          await released;
+        });
+        return { ready: Promise.race([ready, done]), release, done };
+      }
+
+      it('[IAM-008] a share in progress and the erasure of the person it goes to both finish, the share then erased', async () => {
+        const first = await makeGroup('owen', 'Nia one', ['ALPHA']);
+        expect((await share('owen', first, 'nia', 'Members')).statusCode).toBe(201);
+        const second = await makeGroup('owen', 'Nia two', ['BETA']);
+        // The share of the second group stops at the group's row, holding Owen's lock and Nia's.
+        const row = holding((trx) =>
+          trx.selectFrom('track_group').select('id').where('id', '=', second).forShare().execute(),
+        );
+        await row.ready;
+        const sharing = share('owen', second, 'nia', 'Members');
+        await untilWaiting(1, 'row');
+        // The erasure waits for those locks before it locks Nia's account, so neither waits on
+        // the other once the share goes on.
+        const erasing = eraseOf('nia');
+        await untilWaiting(1, 'advisory');
+        row.release();
+        await row.done;
+        const [shared, erased] = await Promise.all([sharing, erasing]);
+        expect(shared.statusCode, shared.body).toBe(201);
+        expect(erased.statusCode, erased.body).toBe(200);
+        expect(erased.json().erased.removed).toMatchObject({ track_group_share: 2 });
+        expect(await sharesWith('nia')).toEqual([]);
+        expect(await rolesOf('nia')).toEqual([]);
+        for (const group of [first, second]) {
+          await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${group}` });
+        }
+      });
+
+      it('[IAM-008] a share that waits on an erasure never reaches the erased person', async () => {
+        const group = await makeGroup('owen', 'Oli', ['ALPHA']);
+        // Something holds Oli's arrangement: the erasure waits for it, then the share does.
+        const oli = holding((trx) => arrangementLock(trx, 'oli'));
+        await oli.ready;
+        const erasing = eraseOf('oli');
+        await untilWaiting(1, 'advisory');
+        const sharing = share('owen', group, 'oli', 'Members');
+        await untilWaiting(2, 'any');
+        oli.release();
+        await oli.done;
+        const erased = await erasing;
+        expect(erased.statusCode, erased.body).toBe(200);
+        // The share finds Oli deactivated by the erasure, and gives nothing.
+        const shared = await sharing;
+        expect(shared.statusCode, shared.body).toBe(400);
+        expect(shared.json()).toEqual({ error: 'person_inactive' });
+        expect(await sharesWith('oli')).toEqual([]);
+        expect(await rolesOf('oli')).toEqual([]);
+        await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${group}` });
+      });
+
+      it('[IAM-008] the erasure holds the lock of someone who shared a group with the person while it waited', async () => {
+        const group = await makeGroup('owen', 'Pat', ['GAMMA']);
+        // Pat's account is held, so the erasure stops there with its other locks in hand.
+        const account = holding((trx) =>
+          trx
+            .selectFrom('app_user')
+            .select('id')
+            .where('id', '=', ids.pat as number)
+            .forShare()
+            .execute(),
+        );
+        await account.ready;
+        // A share to Pat half done, holding Owen's lock and Pat's as the route does.
+        const inFlight = holding(async (trx) => {
+          for (const user of ['owen', 'pat'].sort((a, b) => (ids[a] ?? 0) - (ids[b] ?? 0))) {
+            await arrangementLock(trx, user);
+          }
+          await trx
+            .insertInto('track_group_share')
+            .values({
+              workspace_id: 1,
+              group_id: group,
+              user_id: ids.pat as number,
+              role_id: null,
+              shared_by: ids.owen as number,
+              position: 0,
+            })
+            .execute();
+        });
+        await inFlight.ready;
+        // The erasure reads who shared with Pat before the share is in, and waits for Pat's lock.
+        const erasing = eraseOf('pat');
+        await untilWaiting(1, 'advisory');
+        inFlight.release();
+        await inFlight.done;
+        await untilWaiting(1, 'row');
+        // Owen shared with Pat meanwhile: the erasure took Owen's lock too before going on.
+        const free = await side.connection().execute(async (c) => {
+          const { rows } = await sql<{ free: boolean }>`
+            SELECT pg_try_advisory_lock(hashtext('track-groups'), ${ids.owen}::int) AS free`.execute(
+            c,
+          );
+          if (rows[0]?.free) {
+            await sql`SELECT pg_advisory_unlock(hashtext('track-groups'), ${ids.owen}::int)`.execute(
+              c,
+            );
+          }
+          return rows[0]?.free;
+        });
+        expect(free).toBe(false);
+        account.release();
+        await account.done;
+        const erased = await erasing;
+        expect(erased.statusCode, erased.body).toBe(200);
+        expect(await sharesWith('pat')).toEqual([]);
+        await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${group}` });
+      });
+
+      it('[IAM-008] a role given on a track’s People page while the person is erased goes through', async () => {
+        const group = await makeGroup('owen', 'Qin', ['ALPHA']);
+        expect((await share('owen', group, 'qin', 'Members')).statusCode).toBe(201);
+        // The People page gives Qin a role on ALPHA, half done: it has locked the track, and
+        // writes the role, which refers to Qin's account, once the erasure waits.
+        let write!: () => void;
+        const writing = new Promise<void>((resolve) => {
+          write = resolve;
+        });
+        releases.push(write);
+        let locked!: () => void;
+        const trackLocked = new Promise<void>((resolve) => {
+          locked = resolve;
+        });
+        const people = side.transaction().execute(async (trx) => {
+          await trx
+            .selectFrom('track')
+            .select('id')
+            .where('id', '=', tracks.ALPHA as number)
+            .forUpdate()
+            .execute();
+          locked();
+          await writing;
+          await trx
+            .insertInto('track_role_actor')
+            .values({
+              workspace_id: 1,
+              track_id: tracks.ALPHA as number,
+              role_id: roles.Viewers as number,
+              user_id: ids.qin as number,
+            })
+            .execute();
+        });
+        await Promise.race([trackLocked, people]);
+        // The erasure waits for the track before it locks Qin's account, so the role goes in.
+        const erasing = eraseOf('qin');
+        await untilWaiting(1, 'row');
+        write();
+        await people;
+        const erased = await erasing;
+        expect(erased.statusCode, erased.body).toBe(200);
+        // The share's role went; the one given on the People page stays, as erasure keeps roles.
+        expect(await rolesOf('qin')).toEqual(['ALPHA:Viewers']);
+        await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${group}` });
       });
     });
   });

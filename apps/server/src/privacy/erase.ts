@@ -5,7 +5,7 @@ import { activeAdminCount } from '../directory';
 import { emit } from '../events/bus';
 import { enqueue, type JobRunner } from '../events/queue';
 import { canonicalJson } from '../tickets/model';
-import { eraseTrackGroups } from '../trackgroups/privacy';
+import { eraseTrackGroups, lockForErasure } from '../trackgroups/privacy';
 import { erasedEmail, erasedName } from './placeholder';
 
 export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
@@ -110,6 +110,9 @@ export async function eraseUser(
   options: { workspaceId: number; userId: number; actorId: number; confirmEmail: string },
 ): Promise<ErasedReport | EraseRefusal> {
   const { workspaceId: ws, userId } = options;
+  // The track groups' locks come first, as the routes take them before any write of theirs
+  // reaches the account row (ADR-121): taken after it, a share in progress would deadlock.
+  await lockForErasure(trx, ws, userId);
   const user = await trx
     .selectFrom('app_user')
     .select(['id', 'email', 'name', 'is_site_admin', 'deactivated_at', 'erased_at'])
