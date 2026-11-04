@@ -2,7 +2,7 @@
 title: "The REST API"
 audience: admins
 jira-names: the Jira-compatible API's paths, and the scripts written for Jira that call them
-sources: apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/webhooks/client.ts, apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, docs/adr/0091-wiki-markup-converter.md
+sources: apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/webhooks/client.ts, apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, packages/richtext/src/markdown.ts, docs/adr/0091-wiki-markup-converter.md, docs/adr/0120-ticket-tools.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -135,6 +135,15 @@ Every format can say less than the stored document. What each one drops on the w
   it shows the person's id rather than their name.
 - Neither can merge table cells. A list item or a table cell holds one line in wiki markup:
   blocks after the first line join it with line breaks.
+- Columns are written in Markdown as a quote that starts `[!COLUMNS]` holding one quote per column
+  that starts `[!COLUMN]`, with its width after it (`[!COLUMN] 25%`), and in wiki markup as
+  `{section}` holding `{column:width=25%}` ... `{column}` blocks. Columns inside a column lose their
+  frame in wiki markup.
+- A file of the ticket is `![name](attachment:name)` in Markdown, and `!name!` for a picture or
+  `[^name]` for another file in wiki markup; a reference to another ticket is `[PAY-42](ticket:PAY-42)`
+  and `[PAY-42|/browse/PAY-42]`. When two files share a name, Markdown keeps which one after `#`;
+  wiki markup cannot, so its reference reads back as the first file of that name. A file name wiki
+  markup cannot hold, such as one with `|` in it, is written as text.
 - Web and email addresses written as text come back as links.
 
 ## The TypeScript SDK

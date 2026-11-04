@@ -11,22 +11,31 @@ CORE-031, CORE-032, CORE-033, NTF-013, NTF-014. Migration 0096.
 | 3 | Checklists: four states, percentage, history, clone, export, import, personal data (CORE-033) | Built |
 | 4 | Slash menu and four new blocks in the rich-text editor (NTF-013, NTF-014) | Built |
 
-## Not built: named for later
+## Follow-ups: TT-1 to TT-8 (T-196)
 
-None of these blocks 1.0. Each was left out on purpose, to keep to what is safe.
+Each was first left out on purpose. T-196 (2026-11-03, branch `wave5/t196-ticket-tools-follow-ups`)
+built all but TT-7, which waits on the user. Decisions are in ADR-120, section "Follow-ups"; no
+migration and no new requirement ID were needed.
 
-| Ticket | What | Why it waits |
+| Ticket | What | State |
 |---|---|---|
-| TT-1 | A collapsible section that also collapses while editing | In the editor it stays open with its title as a field; it collapses where it is read. Hiding content under the caret needs its own keyboard and co-editing design |
-| TT-2 | Setting a column's width in the editor | Columns are equal on screen. Widths from the other format are kept for export only, because a style attribute would need a change to the content security policy |
-| TT-3 | Columns in Markdown and wiki markup; files and ticket references in wiki markup | The formats have no place for them: the losses are listed in ADR-120 |
-| TT-4 | Two files of one name told apart | A reference holds the name, and shows the first file of that name |
-| TT-5 | Dragging checklist items with a pointer | Move up and Move down work with both keyboard and pointer, which is what was asked for |
-| TT-6 | Changing a subticket's status from its parent's list | The list shows the status; moving it happens on its own page or on a board |
-| TT-7 | Notifying followers of checklist changes | Left out so a run of ticks does not flood them; the event is there for webhooks. The user can ask for it |
-| TT-8 | A language list for the code block's prompt | It takes one word, such as `sql`, and the editor does not highlight by language yet |
+| TT-1 | A collapsible section that also collapses while editing | Built: a toggle hides its text for this person only, never in the document; hidden text takes others' changes and says so; the caret never stays in hidden text (`expandView.ts`) |
+| TT-2 | Setting a column's width in the editor | Built: "Column widths" in the slash menu inside columns. The content security policy already allowed style attributes; the width property is built from numbers only |
+| TT-3 | Columns in Markdown and wiki markup; files and ticket references in wiki markup | Built: `> [!COLUMNS]` quotes, `{section}`/`{column}`, `!name!`, `[^name]`, `[KEY\|/browse/KEY]`, each reading back (corpus cases) |
+| TT-4 | Two files of one name told apart | Built: a reference may hold the first 16 hex digits of the file's SHA-256; the picker lists both with size, date and who added it |
+| TT-5 | Dragging checklist items with a pointer | Built: a grip for mouse and finger; Move up and Move down stay the keyboard's way |
+| TT-6 | Changing a subticket's status from its parent's list | Built: each status is a menu of where that ticket can go, through the ticket page's own routes |
+| TT-7 | Notifying followers of checklist changes | **Waiting on the user**: the question and options are in ADR-120 ("Open question for the user") |
+| TT-8 | A language list for the code block's prompt | Built: about thirty common languages, narrowed as you type; any one word still goes in |
+| Email | The new blocks in an email's quote of a comment | Built: dates, status labels, emoji and kept inline nodes read as text (they were left out) |
 
 ## Handoff
+
+**T-196 (2026-11-03).** The follow-ups above are on `wave5/t196-ticket-tools-follow-ups`, in steps:
+the text formats and email text (`packages/richtext`, `comments.ts`), the editor (TT-1, TT-2, TT-4,
+TT-8), the subticket status menu (TT-6), the checklist drag (TT-5), then the e2e journeys, the
+manual and ADR-120. The new Markdown and wiki forms have not been through `pnpm fuzz` (T-197 should
+cover them with the slash menu's blocks). Only TT-7 waits, on the user's answer.
 
 **Where it stands (2026-11-03).** All four parts are committed, and `origin/main` (at `6015efc`, with
 the ticket pop-up and migrations through 0095) is merged into this branch. Nothing is known to fail.

@@ -1,7 +1,7 @@
 ---
 title: "Notifications and your inbox"
 audience: users
-sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md
+sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/comments.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -59,7 +59,10 @@ second or so, without reloading.
 **Track** to one track. The page says how many items are unread.
 
 Each item says who did what ("Ana mentioned you in a comment", "Ana assigned it to you"), links
-the ticket, and quotes the comment when there is one you may read. Unread items are marked, and
+the ticket, and quotes the comment when there is one you may read. A quote, here and in email, is
+the comment's text without formatting: a collapsible section's title before its text, columns one
+after the other, a date as its day, a status label in brackets such as `[BLOCKED]`, an emoji as
+itself, and a file or another ticket by its name or key. Unread items are marked, and
 direct asks carry the **Direct ask** badge. Opening the ticket from an item marks it as read and
 takes you to the comment it is about.
 
