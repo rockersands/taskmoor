@@ -34,7 +34,8 @@ on, and a trigger refuses updates anyway.
   as an upload first so a dying job leaves no file behind (ADR-040). It holds `profile.json`
   (account, groups, teams, single sign-on identities, second factors by kind and name, API tokens
   by name and scope, sessions), `preferences.json` (notification and email settings, properties,
-  saved searches), `tickets.ndjson` (reported, created or assigned, with the roles),
+  saved searches), `track-groups.json` (the person's track groups and those shared with them,
+  ADR-121), `tickets.ndjson` (reported, created or assigned, with the roles),
   `comments.ndjson`, `time-entries.ndjson`, `attachments.ndjson` with the files themselves,
   `audit.ndjson` (records the person caused or that are about them) and `manifest.json` last,
   with each file's records, bytes and SHA-256. Secrets never: no hash, token, sealed secret or
@@ -54,7 +55,9 @@ administrators only, in one transaction, emitting `user.erased`:
 
 - Refused: the last active site administrator, oneself, service accounts (not people), an
   account a directory or SCIM still manages (the next sync would bring it back: remove the person
-  there first), an erased account, and a confirmation that is not the account's email.
+  there first), an erased account, a confirmation that is not the account's email, and an
+  erasure whose track groups' shares gave the role to run a track to the only other person
+  running it (`last_track_admin` with the tracks; ADR-121, T-205).
 - The `app_user` row stays, so every reference keeps working: name `Former user <id>`, email
   `erased-<id>@erased.invalid` (a reserved domain, so it can never receive mail or match a real
   address), no password, time zone or locale, not an administrator, deactivated, `erased_at`
@@ -65,6 +68,9 @@ administrators only, in one transaction, emitting `user.erased`:
   preferences, notification settings, notifications and the record of emails sent, unsubscribe links, saved-search mailings to them, recently viewed tickets, stars, outbox receipts, the AI notice acknowledgement,
   properties, imported-identity mappings, sign-in counters under the email, and the person's
   downloads with their files. Taskmoor stores no avatar (IAM-008 lists one; none is built yet).
+- Their track groups go, with what their shares gave others, and the shares they received go
+  with what those gave them, by ADR-121's rules for taking a share back; `user.erased` lists those
+  roles (`groupAccess`). Roles given otherwise are kept, as below.
 - Kept: tickets, comments, time, attachments, group and team memberships, grants, saved searches
   and dashboards they own, all attributed to the placeholder.
 - Domain events about the person (created, updated, provisioned) have the old name and email

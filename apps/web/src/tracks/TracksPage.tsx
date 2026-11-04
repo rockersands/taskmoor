@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type ConfigurationClient, configurationClient } from '../configuration/client';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, navigate, onRouteChange, replaceRoute, routeHref } from '../routing/router';
@@ -44,10 +44,38 @@ export function TracksPage({
   const [groupsFailed, setGroupsFailed] = useState(false);
   const [words, setWords] = useState('');
   const [creating, setCreating] = useState(() => asksForNew(currentRoute()));
+  /** What a change in the groups said as it took the last track away, said here instead. */
+  const [said, setSaid] = useState('');
+  const emptyTitle = useRef<HTMLParagraphElement>(null);
+  const focusEmpty = useRef(false);
 
   useEffect(() => {
     client.list().then(setTracks, () => setFailed(true));
   }, [client]);
+
+  /**
+   * Leaving a shared group can take tracks away (T-204): the list is read again. When none is
+   * left, the groups give way to the empty state, which takes focus, and the page says what the
+   * change said, since the groups' own status went with them.
+   */
+  const readTracksAgain = useCallback(
+    async (announced: string) => {
+      const list = await client.list().catch(() => null);
+      if (list === null) return;
+      if (list.length === 0) {
+        focusEmpty.current = true;
+        setSaid(announced);
+      }
+      setTracks(list);
+    },
+    [client],
+  );
+
+  useEffect(() => {
+    if (!focusEmpty.current || tracks?.length !== 0) return;
+    focusEmpty.current = false;
+    emptyTitle.current?.focus();
+  }, [tracks]);
 
   // Without the groups the tracks still show, in the directory's order.
   useEffect(() => {
@@ -84,6 +112,9 @@ export function TracksPage({
         purpose={t('purpose.tracks')}
         {...(modes.length > 0 ? { actions: newTrackButton } : {})}
       />
+      <p role="status" className="visually-hidden">
+        {said}
+      </p>
       {failed && (
         <p className="form-error" role="alert">
           {t('tracks.failed')}
@@ -92,11 +123,13 @@ export function TracksPage({
       {tracks &&
         tracks.length === 0 &&
         (modes.length > 0 ? (
-          <EmptyState title={t('tracks.emptyTitle')} action={newTrackButton}>
+          <EmptyState title={t('tracks.emptyTitle')} action={newTrackButton} titleRef={emptyTitle}>
             {t('tracks.emptyMayCreate')}
           </EmptyState>
         ) : (
-          <EmptyState title={t('tracks.emptyTitle')}>{t('tracks.empty')}</EmptyState>
+          <EmptyState title={t('tracks.emptyTitle')} titleRef={emptyTitle}>
+            {t('tracks.empty')}
+          </EmptyState>
         ))}
       {tracks && tracks.length > 0 && (
         <>
@@ -122,6 +155,7 @@ export function TracksPage({
               groups={groups}
               client={groupClient}
               onGroups={setGroups}
+              onAccessChanged={readTracksAgain}
             />
           ) : (
             <>

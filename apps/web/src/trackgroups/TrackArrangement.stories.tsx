@@ -146,3 +146,28 @@ export const NothingToGive: Story = {
     await expect(within(dialog).getByText('Not shared with anyone yet.')).toBeVisible();
   },
 };
+
+/** Leaving a group shared with you (T-204): what goes with it, asked first. */
+export const LeaveDialog: Story = {
+  args: { client: fakeTrackGroupClient({ groups: ARRANGED }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Move or change the group Grace’s picks' }),
+    );
+    await userEvent.click(await canvas.findByRole('menuitem', { name: 'Leave group…' }));
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog', {
+      name: 'Leave Grace’s picks?',
+    });
+    await expect(
+      within(dialog).getByText(/the Members role it gave you goes from 1 track/),
+    ).toBeVisible();
+    await expect(within(dialog).getByRole('button', { name: 'Leave group' })).toBeVisible();
+  },
+};
+
+/** The same on a phone: the dialog across the screen, its buttons 44px under a finger. */
+export const LeaveDialogPhone: Story = {
+  ...LeaveDialog,
+  globals: { viewport: { value: 'mobile1' } },
+};

@@ -88,7 +88,13 @@ and surfaces (ADR-114) and nothing else.
   person's arrangement and a row lock on the group before it reads anything, and every write of
   a person's role in a track (shares, the People page, invitations, imports) first locks the
   track row. A give, a take-back and a role made the person's own therefore never interleave,
-  and a share's record never outlives or misses the role it stands for.
+  and a share's record never outlives or misses the role it stands for. Sharing a group with
+  someone, or setting one on them, also takes that person's arrangement lock and checks under it
+  that they are still active. Locks start in one order everywhere: arrangements (in id order),
+  then the group, then tracks. The share and copy routes write their row that names the person
+  before they lock tracks; an erasure is still safe against them because both take the person's
+  arrangement lock first. The track locks matter for the writers that take no arrangement lock
+  (the People page, invitations, imports), which lock the track before they write a role.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.
@@ -112,11 +118,61 @@ takes nothing, and a track's administrators remove it on its People page. A role
 held only through shares becomes theirs too, and `track_group.copied` lists it as `kept`. This is a reading the
 user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/copies`.
 
+### Leaving a group shared with you (T-204)
+
+- The person a group is shared with may leave it (`POST /api/v1/track-groups/:id/leave`). The
+  share goes, and what it held goes exactly as when the owner takes it back: only roles no other
+  share holds, never a role the person had otherwise, and never the last one to run a track
+  (`409 last_track_admin` with the tracks, and nothing changes). The change takes the owner's
+  and the leaver's arrangement locks and the group's row, as the owner's changes do. One's own
+  group is deleted, not left (`403`).
+- One event, `track_group.left`, with the owner's group as subject, the owner (`ownerId`), the
+  role and the roles that went (`removed`). It is audited, so the trail of the owner's group
+  says who left and what went.
+- A group shared with the person carries `holds`: on how many of the tracks it shows them its
+  role is theirs through this share alone, which is what leaving takes (a track they may not see
+  is never counted, as it is never shown). The page asks first and says which role goes from how
+  many tracks. It reads its track list again before the change shows, since tracks the share
+  opened go with it, so focus lands on a group or track still there; when no track is left, the
+  page's empty state takes focus and the page says the group was left.
+
+### A person's data and erasure (T-205; ADR-111)
+
+- The data download has `track-groups.json`: the groups the person owns (name, when, minimized,
+  who set a copy on them, tracks by key, and whom each is shared with and the role) and those
+  shared with them (name, owner, role, when, tracks by key and the roles the share gave). A
+  download the person asked for lists only the tracks they see in the track list now, as their
+  page does; a site administrator's lists every track.
+- Erasure removes the person's groups and the shares they received, after the person is
+  deactivated in the erasure's transaction, so they no longer count as running a track. What
+  their groups' shares gave others is taken back by the rules above, and a share that gave the
+  only other person who runs a track refuses the erasure (`last_track_admin`, the whole
+  transaction rolled back): an administrator gives someone else that role first. What the shares
+  they received gave them goes without that check: once deactivated their roles run nothing.
+  Copies they set on others stay, as the others' own; `user.erased` lists the roles that went
+  (`groupAccess`).
+- The erasure takes the routes' locks in the routes' order before it locks the person's account
+  row: the arrangements of the person and of everyone whose group they received, then the tracks
+  those shares and the shares of their groups hold roles on. Someone who shared with the person
+  while the erasure read who had starts the arrangement locks again from a savepoint, so they stay
+  in id order. A share or copy waiting on the person's lock finds them deactivated and is refused
+  (`person_inactive`), so nothing reaches an erased account.
+
+### Telling the person (T-206)
+
+- A share and a copy tell the person they reach, as the product event `track_group_shared`
+  (outside notification policies, like a mention): an inbox item, and an email as their
+  preferences say (the event's two boxes, and their email delivery). Nobody else hears of it.
+- The item names the group by its name now, who shared it, how (shared, or set on them as a copy)
+  and the role if one came with it. It never names a track, so it shows nothing the person may
+  not see. It shows, and its email goes, only while the group is still theirs: taken back, left
+  or deleted, it goes. It is not a direct ask; the Priority tab stays mentions and assignments.
+
 ### Events, audit and tokens
 
 - One event per change, `track_group.*`, with ids and names only and the roles a change gave or
   took (`given`, `removed`). The audit log records those that can change access (`created`,
-  `deleted`, `track_moved`, `shared`, `unshared`, `copied`); renaming, minimizing and ordering
+  `deleted`, `track_moved`, `shared`, `unshared`, `left`, `copied`); renaming, minimizing and ordering
   are a person's own arrangement and are not audited.
 - Every route is read for GET and write otherwise. Sharing gives roles, as the People page does
   with a write token; the per-track check above still applies.
@@ -138,5 +194,6 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
 - Any new way of giving or removing a person's track role must lock the track (`lockTracks`)
   and call `keepRole` (both in `apps/server/src/trackgroups/access.ts`) so the shares' record
   stays exact.
-- Revisit if the user wants "set on" to mean something else, wants a person to leave a group
-  shared with them, or wants a share to follow later changes in the sharer's rights.
+- Revisit if the user wants "set on" to mean something else, or wants a share to follow later
+  changes in the sharer's rights. Leaving a shared group (T-204), the data download and erasure
+  (T-205) and telling the person (T-206) were added on 2026-11-03, in the sections above.

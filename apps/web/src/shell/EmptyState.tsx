@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode, SVGProps } from 'react';
+import type { ComponentType, ReactNode, Ref, SVGProps } from 'react';
 
 interface EmptyStateProps {
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
@@ -8,13 +8,18 @@ interface EmptyStateProps {
   children?: ReactNode;
   /** The next step: usually one link or button. */
   action?: ReactNode;
+  /**
+   * Lets the page move focus to the title, for a list that empties under the person's hands:
+   * what they were on is gone, and the title says what is there now.
+   */
+  titleRef?: Ref<HTMLParagraphElement>;
 }
 
 /**
  * An empty list or page that explains itself (ADR-114): what would be here, how it gets here and
  * the step that puts it there.
  */
-export function EmptyState({ icon: Icon, title, children, action }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, children, action, titleRef }: EmptyStateProps) {
   return (
     <div className="empty-state">
       {Icon && (
@@ -22,7 +27,9 @@ export function EmptyState({ icon: Icon, title, children, action }: EmptyStatePr
           <Icon />
         </span>
       )}
-      <p className="empty-state-title">{title}</p>
+      <p className="empty-state-title" {...(titleRef ? { ref: titleRef, tabIndex: -1 } : {})}>
+        {title}
+      </p>
       {children && <p className="empty-state-body">{children}</p>}
       {action && <div className="empty-state-action">{action}</div>}
     </div>

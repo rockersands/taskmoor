@@ -28,6 +28,13 @@ export interface TrackArrangementProps {
   client: TrackGroupClient;
   /** The arrangement after a change, as the server answered it. */
   onGroups: (groups: TrackGroup[]) => void;
+  /**
+   * After a change that may change which tracks the person sees: leaving a shared group takes
+   * the roles it gave (T-204), so the page reads its tracks again. The change shows once this
+   * settles, so focus lands on a track still there. `said` is what the change announces, for the
+   * page to say itself when no track is left and this arrangement gives way to its empty state.
+   */
+  onAccessChanged?: (said: string) => Promise<void>;
 }
 
 /** What is being dragged. */
@@ -160,7 +167,13 @@ function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: Mo
  * another to take its place. Pointer events carry the drags, so a mouse and a finger work alike,
  * and every drag is also in the handle's menu and on Alt and the arrow keys.
  */
-export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArrangementProps) {
+export function TrackArrangement({
+  tracks,
+  groups,
+  client,
+  onGroups,
+  onAccessChanged,
+}: TrackArrangementProps) {
   const t = useT();
   const id = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -175,6 +188,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     null,
   );
   const [deleting, setDeleting] = useState<TrackGroup | null>(null);
+  const [leaving, setLeaving] = useState<TrackGroup | null>(null);
   const [said, setSaid] = useState('');
   const saying = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /**
@@ -194,6 +208,9 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
   const dragEnded = useRef({ handle: '', at: Number.NEGATIVE_INFINITY });
   const live = useRef(groups);
   live.current = groups;
+  /** The tracks as the page shows them now, for focus chosen after a change has shown. */
+  const liveTracks = useRef(tracks);
+  liveTracks.current = tracks;
 
   const mine = groups.filter((g) => g.mine);
   const groupOf = new Map<number, TrackGroup>();
@@ -215,11 +232,12 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     return holder?.minimized ? `group-${holder.id}` : `track-${trackId}`;
   };
 
+  /** Runs a change and shows what the server answered; true when it went through. */
   const run = async (
     work: () => Promise<TrackGroup[]>,
     announce: (next: TrackGroup[]) => string,
     focus?: (next: TrackGroup[]) => string | null,
-  ) => {
+  ): Promise<boolean> => {
     setBusy(true);
     setProblem(null);
     try {
@@ -227,6 +245,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       pendingFocus.current = focus ?? null;
       onGroups(next);
       say(announce(next));
+      return true;
     } catch (error) {
       setProblem(
         error instanceof ApiError && error.code === 'last_track_admin'
@@ -238,6 +257,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
         client.layout().then(onGroups, () => {});
       }
+      return false;
     } finally {
       setBusy(false);
     }
@@ -500,9 +520,40 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
         },
         { key: 'delete', label: t('trackGroups.delete'), onSelect: () => setDeleting(group) },
       );
+    } else {
+      // A group shared with the person: theirs to leave, after saying what goes with it (T-204).
+      items.push({
+        key: 'leave',
+        label: t('trackGroups.leave'),
+        onSelect: () => setLeaving(group),
+      });
     }
     return items;
   };
+
+  /**
+   * Where focus goes once a group has left the page: the next group, the one before, the first
+   * track in no group, or the page's hint when nothing else is left. The tracks are those shown
+   * then, which leaving a shared group may have changed.
+   */
+  const focusAfterRemoving = (at: number) => (next: TrackGroup[]) => {
+    const near = next[at] ?? next[at - 1];
+    if (near) return `group-${near.id}`;
+    const first = liveTracks.current.find(
+      (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
+    );
+    return first ? `track-${first.id}` : 'hint';
+  };
+
+  /** What leaving a shared group takes: the role it alone gave, on how many tracks. */
+  const leavingBody = (group: TrackGroup) =>
+    group.role && (group.holds ?? 0) > 0
+      ? t('trackGroups.leave.bodyRole', {
+          name: group.name,
+          role: group.role.name,
+          count: group.holds ?? 0,
+        })
+      : t('trackGroups.leave.body', { name: group.name });
 
   const isOver = (drop: Drop) =>
     over !== null &&
@@ -746,22 +797,55 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
                 void run(
                   () => client.remove(group.id),
                   () => t('trackGroups.announce.deleted', { name: group.name }),
-                  // Focus stays where the person was: the next group, the one before, the
-                  // first track in no group, or the page's hint when nothing else is left.
-                  (next) => {
-                    const near = next[at] ?? next[at - 1];
-                    if (near) return `group-${near.id}`;
-                    const first = tracks.find(
-                      (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
-                    );
-                    return first ? `track-${first.id}` : 'hint';
-                  },
+                  // Focus stays where the person was.
+                  focusAfterRemoving(at),
                 );
               }}
             >
               {t('trackGroups.delete.do')}
             </button>
             <button type="button" className="button-secondary" onClick={() => setDeleting(null)}>
+              {t('trackGroups.cancel')}
+            </button>
+          </div>
+        </ModalDialog>
+      )}
+      {leaving && (
+        <ModalDialog
+          onClose={() => setLeaving(null)}
+          labelledBy={`${id}-leave`}
+          closeLabel={t('trackGroups.closeDialog')}
+        >
+          <h2 id={`${id}-leave`} className="section-title">
+            {t('trackGroups.leave.title', { name: leaving.name })}
+          </h2>
+          <p className="page-note">{leavingBody(leaving)}</p>
+          <p className="page-note">{t('trackGroups.leave.again', { name: leaving.owner.name })}</p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button-danger"
+              onClick={() => {
+                const group = leaving;
+                const at = groups.findIndex((g) => g.id === group.id);
+                const said = t('trackGroups.announce.left', { name: group.name });
+                setLeaving(null);
+                void run(
+                  async () => {
+                    const next = await client.leave(group.id);
+                    // The roles the share gave went with it: the tracks are read again before
+                    // the change shows, so focus never lands on a track about to go.
+                    await onAccessChanged?.(said).catch(() => {});
+                    return next;
+                  },
+                  () => said,
+                  focusAfterRemoving(at),
+                );
+              }}
+            >
+              {t('trackGroups.leave.do')}
+            </button>
+            <button type="button" className="button-secondary" onClick={() => setLeaving(null)}>
               {t('trackGroups.cancel')}
             </button>
           </div>

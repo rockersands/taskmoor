@@ -7,6 +7,7 @@ import type { Authorizer } from '../authz/authorizer';
 import { enqueue, extendLock, type JobRunner } from '../events/queue';
 import { type ExportSink, zipSink } from '../export/sinks';
 import { ticketKey } from '../tickets/model';
+import { personalTrackGroups } from '../trackgroups/privacy';
 
 /**
  * A person's own data as a download (ASVS 8.3.2; IAM-008; ADR-111). The person asks on their
@@ -19,6 +20,8 @@ import { ticketKey } from '../tickets/model';
  *   and sessions (when, address, browser);
  * - `preferences.json`: notification and email settings, the person's properties, their saved
  *   searches;
+ * - `track-groups.json`: the track groups they own (tracks by key, and whom each is shared with)
+ *   and those shared with them (owner, role, tracks and the roles the share gave);
  * - `tickets.ndjson`: tickets the person reported, created or is assigned, with their roles;
  * - `comments.ndjson`, `checklist-items.ndjson`, `time-entries.ndjson`: what they wrote and
  *   logged;
@@ -388,6 +391,19 @@ export async function writePersonalData(
         createdAt: iso(p.created_at),
       })),
     }),
+  );
+  // Track groups (T-205; ADR-121): the person's own, with whom they shared them, and those
+  // others shared with them; tracks by key, only those the person sees when they asked.
+  files.push(
+    await writeJson(
+      sink,
+      'track-groups.json',
+      await personalTrackGroups(db, options.authorizer, {
+        workspaceId: ws,
+        userId,
+        self: options.self,
+      }),
+    ),
   );
   options.heartbeat?.();
 

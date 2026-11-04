@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import { isNotificationEvent, isPreferenceEvent } from '../notifications/model';
 import { bumpInbox } from '../notifications/subscriber';
+import { TRACK_GROUP_EVENT } from '../notifications/track-groups';
 import { ALERT_INBOX_EVENTS } from '../security/notices';
 import { commentText } from '../tickets/comments';
 import { priorityLevel } from '../tickets/priority-level';
@@ -25,6 +26,8 @@ import { resolveTrack } from '../tickets/store';
  *   apply the same rule. A comment is quoted only to those who may read it.
  * - Security and AI spend alerts (ADR-109) are about no ticket (`ticket: null`, with `alert`):
  *   they show while the reader is a site administrator.
+ * - A track group shared with the reader or set on them (T-206) is about no ticket either
+ *   (`ticket: null`, with `group`): it shows while the group is still theirs, under its name now.
  * - `PATCH /api/v1/inbox/:id` `{read?, snoozedUntil?}`: read or unread; snoozed until a time
  *   (it comes back unread then) or back now (`null`). Marking read also marks the same
  *   notification's email read, so a digest leaves it out (NTF-003 (2)).
@@ -138,8 +141,11 @@ interface ItemRow {
   sort_at: string;
   actor_id: number | null;
   actor_name: string | null;
-  /** Null for an alert to site administrators (ADR-109), which is about no ticket. */
+  /** Null for an alert to site administrators (ADR-109) or a track group, about no ticket. */
   ticket_id: number | null;
+  /** A track group shared with or set on the reader (T-206), while it is still theirs. */
+  group_id: number | null;
+  group_name: string | null;
   ticket_key: string | null;
   summary: string | null;
   type_name: string | null;
@@ -159,15 +165,20 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
   /**
    * The statement part every inbox read shares: the person's inbox items whose ticket they may
    * see now (outside the trash) and, for an item about a comment, whose comment they may read;
-   * and, while the person is a site administrator, the security and AI spend alerts they were
-   * sent (ADR-109), which are about no ticket.
+   * while the person is a site administrator, the security and AI spend alerts they were sent
+   * (ADR-109); and the track groups shared with or set on them that are still theirs (T-206).
+   * The last two are about no ticket.
    */
   async function visibleItems(request: FastifyRequest, userId: number) {
     const ws = request.workspaceId;
     const filter = await request.authz.ticketFilter();
     const admin = await request.authz.isSiteAdmin();
     const noTickets = filter.tracks !== 'all' && filter.tracks.length === 0;
-    if (noTickets && !admin) return null;
+    // A share or copy the reader still has: a copy is theirs, a shared group has their share.
+    const trackGroups = sql<boolean>`(n.ticket_id IS NULL AND n.event = ${TRACK_GROUP_EVENT}
+      AND gr.id IS NOT NULL AND gr.workspace_id = ${ws}
+      AND (gr.owner_id = ${userId} OR EXISTS (SELECT 1 FROM track_group_share gs
+             WHERE gs.group_id = gr.id AND gs.user_id = ${userId})))`;
     const alerts = admin
       ? sql<boolean>`(n.ticket_id IS NULL AND n.event IN (${sql.join([...ALERT_INBOX_EVENTS])}))`
       : sql<boolean>`false`;
@@ -195,9 +206,11 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
         LEFT JOIN ticket k ON k.id = n.ticket_id
         LEFT JOIN track t ON t.id = k.track_id
         LEFT JOIN ticket_comment c ON c.ticket_id = k.id AND c.id = coalesce(
-          (n.payload->>'commentId')::int, (n.payload->>'quotedCommentId')::int)`,
+          (n.payload->>'commentId')::int, (n.payload->>'quotedCommentId')::int)
+        LEFT JOIN track_group gr ON n.event = ${TRACK_GROUP_EVENT}
+          AND gr.id = (n.payload->>'groupId')::int`,
       where: sql<boolean>`n.user_id = ${userId} AND n.workspace_id = ${ws}
-        AND n.channel = 'inbox' AND (${tickets} OR ${alerts})`,
+        AND n.channel = 'inbox' AND (${tickets} OR ${alerts} OR ${trackGroups})`,
       readable,
     };
   }
@@ -242,8 +255,20 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
                     },
               track: { id: r.track_id ?? 0, key: r.track_key ?? '' },
             },
-      // An alert to site administrators (ADR-109): the rule and whom it is about.
-      ...(r.ticket_id === null ? { alert: alertView(r.payload) } : {}),
+      // A track group shared with or set on the reader (T-206): by its name now, never its
+      // tracks; otherwise an alert to site administrators (ADR-109), its rule and whom it is about.
+      ...(r.ticket_id !== null
+        ? {}
+        : r.group_id !== null
+          ? {
+              group: {
+                id: r.group_id,
+                name: r.group_name ?? '',
+                how: r.payload.how === 'set' ? 'set' : 'shared',
+                role: typeof r.payload.role === 'string' ? r.payload.role : null,
+              },
+            }
+          : { alert: alertView(r.payload) }),
       actor: r.actor_id === null ? null : { id: r.actor_id, name: r.actor_name ?? '' },
       ...(fields ? { fields } : {}),
       ...(mentionedIn ? { mentionedIn } : {}),
@@ -283,6 +308,7 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
              (SELECT count(*)::int FROM priority WHERE workspace_id = ${request.workspaceId})
                AS priority_total,
              k.track_id, t.key AS track_key,
+             gr.id AS group_id, gr.name AS group_name,
              c.id AS comment_id, CASE WHEN ${items.readable} THEN c.body END AS comment_body,
              ${items.readable} AS comment_readable
         FROM ${items.from}

@@ -1,7 +1,7 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -133,12 +133,14 @@ Only the administrator who asked can download it, for seven days; after that the
 deleted. Downloads need file storage (the same as attachments).
 
 The ZIP holds JSON files: the profile (with groups, teams, single sign-on links, the kinds of
-second factors, API tokens by name, and sessions), settings and saved searches, the tickets the
-person reported, created or is assigned, their comments and time entries, the files they
+second factors, API tokens by name, and sessions), settings and saved searches, their groups of
+tracks and the groups shared with them (`track-groups.json`), the tickets the person reported,
+created or is assigned, their comments and time entries, the files they
 uploaded, and the audit records about them. `manifest.json` lists every file with its size and
 checksum. No password, token or secret is ever in it. An administrator's download has every
 ticket in full; the person's own download shows only the tickets they can still see (the others
-appear with their number and the person's role).
+appear with their number and the person's role). The same goes for the tracks of their groups:
+an administrator's download lists every one, the person's own only those they can see now.
 
 ### Erasing a person
 
@@ -151,12 +153,19 @@ permanently** then:
 - removes their password, profile settings, sessions, API tokens, second factors and recovery
   codes, single sign-on links, notification settings and inbox, recently viewed tickets, and
   their data downloads;
+- deletes their [groups of tracks](tracks.md#groups-of-tracks), taking back the roles those
+  groups' shares gave others, and removes the groups shared with them, with the roles those
+  shares gave them; roles given on a track's **Who does what** page stay, as for anyone
+  deactivated. Someone sharing a group with the person while the erasure runs either finishes
+  first, and the erasure removes that share too, or is refused as for anyone deactivated;
 - deactivates the account for good: it cannot be edited, reactivated or signed in to.
 
 It cannot be undone, so download the person's data first when they asked for it. Taskmoor
 refuses to erase yourself, the last active site administrator, and a person a directory or SCIM
 still provides: remove them in the directory or the identity provider first, or the next sync
-brings them back. A name someone typed as plain text (not as a mention) is not found: edit it
+brings them back. It also refuses when one of the person's shared groups gave the role to run a
+track to the only other person who runs it: give someone else a role that runs that track
+first. A name someone typed as plain text (not as a mention) is not found: edit it
 by hand.
 
 The audit log is never rewritten, so it stays verifiable (`node cli.mjs audit-verify`). Its

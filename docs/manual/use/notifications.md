@@ -1,14 +1,14 @@
 ---
 title: "Notifications and your inbox"
 audience: users
-sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
-accessed: 2026-11-02
+sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Notifications and your inbox
 
-Taskmoor tells you about changes to the tickets you work on and follow, and about every time
-someone mentions you. It tells you in two places: the inbox inside Taskmoor, and email. You
+Taskmoor tells you about changes to the tickets you work on and follow, about every time
+someone mentions you, and when someone shares a group of tracks with you. It tells you in two places: the inbox inside Taskmoor, and email. You
 choose which events reach each.
 
 ## Who hears about what
@@ -23,6 +23,7 @@ Some rules hold whatever the policy says:
 - You hear only about tickets you may see, and about comments you may read. Taskmoor checks this
   again just before showing or sending each notification.
 - Mentions always reach the person mentioned, never the writer.
+- A group of tracks shared with you, or set on you, reaches you and nobody else.
 - By default you do not hear about changes you make yourself (see [Your notification
   settings](#your-notification-settings)).
 
@@ -74,6 +75,13 @@ to you afterwards, digests included.
 
 If a ticket becomes hidden from you, its items leave your inbox and its unread count.
 
+When someone shares one of their [groups of tracks](../admin/tracks.md#groups-of-tracks) with
+you, or sets one on you as a copy of your own, an item says who and how ("Ana shared a track
+group with you, with the role Members") and names the group as it is called now. It links to
+your **Tracks** page. It never names the group's tracks, so it tells you of none you may not
+see. If the share is taken back, or you leave the group, the item goes. **Type** finds these
+items under **A track group is shared with you or set on you**.
+
 Site administrators also get **security alerts** and **AI spend alerts** here, under
 **Priority**: an item names the rule ("Failed sign-ins for one account: 10 in 60 minutes") and
 whom it is about, and links to the audit log (or the AI usage page). They are about no ticket,
@@ -106,6 +114,7 @@ one for **Inbox**:
 | Event | When |
 |---|---|
 | **Someone mentions you** | You are mentioned in a description or comment |
+| **A track group is shared with you or set on you** | Someone shares a group of tracks with you, or gives you a copy |
 | **Ticket created** | A ticket is created |
 | **Ticket updated** | A field changes |
 | **Assignee changed** | The assignee changes |
@@ -120,6 +129,10 @@ one for **Inbox**:
 | **Other changes** | Anything else the policy sends |
 
 Turning a box off stops that event on that channel for you, whatever the policy says.
+
+An email about a track group names the group and who shared it, and the role if one came with
+it, and links to your **Tracks** page. It follows your choice under **Email** like any other, and
+it is not sent if the group is no longer yours by the time it would go.
 
 ## Unsubscribing from email
 

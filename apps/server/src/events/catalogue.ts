@@ -137,6 +137,11 @@ export const EVENT_TYPES = {
       label: z.string(),
       endedSessions: z.number().int().min(0),
       removed: z.record(z.string(), z.number().int().min(0)),
+      /**
+       * Roles in tracks that track group shares had given, taken back with the person's groups
+       * and the shares they gave or received (T-205; ADR-121). Absent when there were none.
+       */
+      groupAccess: groupAccess.optional(),
     }),
   },
   /** A download of a person's data was asked for (ASVS 8.3.2): by them, or by an administrator. */
@@ -1735,6 +1740,20 @@ export const EVENT_TYPES = {
   'track_group.unshared': {
     subject: 'track_group',
     payload: z.object({ shareId: id, userId: id, roleId: id.nullable(), removed: groupAccess }),
+  },
+  /**
+   * The person a group was shared with left it (T-204): the owner's group is the subject, and
+   * `removed` the roles the share alone gave them, taken back as taking the share back would.
+   */
+  'track_group.left': {
+    subject: 'track_group',
+    payload: z.object({
+      shareId: id,
+      userId: id,
+      ownerId: id,
+      roleId: id.nullable(),
+      removed: groupAccess,
+    }),
   },
   /** A group set on someone: their own copy (the subject), and the roles given outright. */
   'track_group.copied': {

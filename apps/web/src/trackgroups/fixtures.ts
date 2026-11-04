@@ -58,6 +58,7 @@ export const sharedGroup = (
     mine: false,
     owner: { id: 7, name: 'Grace Hopper' },
     role: { id: 2, name: 'Members' },
+    holds: trackIds.length,
     tracks: trackIds.map(track),
     ...over,
   }) satisfies TrackGroup;
@@ -176,6 +177,10 @@ export function fakeTrackGroupClient(options: FakeTrackGroupOptions = {}): FakeT
         sharing.shares = sharing.shares.filter((s) => s.userId !== userId);
       });
     },
+    leave: (groupId) =>
+      answer('leave', [groupId], () => {
+        groups = groups.filter((g) => g.id !== groupId);
+      }),
     setOn: async (groupId, userId, roleId) => {
       await answer('setOn', [groupId, userId, roleId], () => {});
       return outcome;

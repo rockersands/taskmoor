@@ -25,6 +25,11 @@ export interface TrackGroup {
   owner: Named;
   /** Shared with the person: the role it gave them, or null. */
   role?: Named | null;
+  /**
+   * Shared with the person: on how many tracks the role is theirs through this share alone,
+   * which leaving takes away (T-204). Older servers leave it out.
+   */
+  holds?: number;
   /** The person's own: how many people it is shared with. */
   sharedWith?: number;
   /** A copy someone set on the person. */
@@ -71,6 +76,8 @@ export interface TrackGroupClient {
   sharing(groupId: number): Promise<GroupSharing>;
   share(groupId: number, userId: number, roleId: number | null): Promise<ShareOutcome>;
   unshare(groupId: number, userId: number): Promise<void>;
+  /** Leaves a group shared with the person, and what it gave them (T-204). */
+  leave(groupId: number): Promise<TrackGroup[]>;
   /** A copy of the group of the person's own (ADR-121). */
   setOn(groupId: number, userId: number, roleId: number | null): Promise<ShareOutcome>;
   findPeople(query: string): Promise<Named[]>;
@@ -104,6 +111,7 @@ export const trackGroupClient: TrackGroupClient = {
   unshare: async (groupId, userId) => {
     await api<unknown>(`${path(groupId)}/shares/${userId}`, { method: 'DELETE' });
   },
+  leave: (groupId) => groups(api<Layout>(`${path(groupId)}/leave`, { method: 'POST' })),
   setOn: (groupId, userId, roleId) =>
     api<ShareOutcome>(`${path(groupId)}/copies`, { method: 'POST', body: { userId, roleId } }),
   findPeople: async (query) =>

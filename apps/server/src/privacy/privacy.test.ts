@@ -314,6 +314,7 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     expect(Object.keys(zip)).toEqual([
       'profile.json',
       'preferences.json',
+      'track-groups.json',
       'tickets.ndjson',
       'comments.ndjson',
       'checklist-items.ndjson',

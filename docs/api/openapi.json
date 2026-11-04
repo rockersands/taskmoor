@@ -28937,6 +28937,49 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/track-groups/{id}/leave": {
+      "post": {
+        "operationId": "internal-post-track-groups-by-id-leave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/track-groups/{id}/shares": {
       "get": {
         "operationId": "internal-get-track-groups-by-id-shares",

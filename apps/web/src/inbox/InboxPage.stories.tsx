@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { ALERT_ITEM, fakeInboxClient, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 const meta = {
@@ -69,6 +69,21 @@ export const SecurityAlert: Story = {
     await expect(canvas.getByRole('link', { name: /Kalo Smith/ })).toHaveAttribute(
       'href',
       expect.stringContaining('admin/audit'),
+    );
+  },
+};
+
+/** A track group shared with the reader (T-206): who shared it and the role, never its tracks. */
+export const GroupShared: Story = {
+  args: { client: fakeInboxClient([GROUP_ITEM, ...ITEMS]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Ana Ruiz shared a track group with you, with the role Members'),
+    ).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Quarter plan' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('tracks'),
     );
   },
 };

@@ -86,6 +86,20 @@ export const ALERT_ITEM: InboxItem = {
   snoozedUntil: null,
 };
 
+/** A track group shared with the reader, with a role (T-206): about no ticket. */
+export const GROUP_ITEM: InboxItem = {
+  id: '17',
+  event: 'track_group_shared',
+  direct: false,
+  ticket: null,
+  group: { id: 4, name: 'Quarter plan', how: 'shared', role: 'Members' },
+  actor: { id: 2, name: 'Ana Ruiz' },
+  comment: null,
+  createdAt: '2026-10-29T09:58:00Z',
+  read: false,
+  snoozedUntil: null,
+};
+
 const shown = (item: InboxItem, now: Date) =>
   item.snoozedUntil === null || Date.parse(item.snoozedUntil) <= now.getTime();
 

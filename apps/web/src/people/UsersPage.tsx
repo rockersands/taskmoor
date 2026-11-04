@@ -73,6 +73,8 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
       return t('admin.users.problem.managed');
     }
     if (code === 'already_erased' || code === 'erased') return t('admin.users.problem.erased');
+    // Their shared track groups gave the only other person who runs a track its role (ADR-121).
+    if (code === 'last_track_admin') return t('admin.users.problem.lastTrackAdmin');
     if (code === 'directory_managed' || code === 'read_only') {
       return t('admin.users.problem.directory');
     }

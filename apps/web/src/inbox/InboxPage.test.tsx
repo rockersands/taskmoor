@@ -16,7 +16,7 @@ import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { listPath, snoozeTimes } from './client';
-import { ALERT_ITEM, fakeInboxClient, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 function renderInbox(client = fakeInboxClient()) {
@@ -43,6 +43,39 @@ describe('the inbox page (M1-058)', () => {
     expect(page.getByRole('button', { name: 'Priority 3', pressed: false })).toBeVisible();
     await user.click(within(card).getByRole('button', { name: 'Mark this alert as read' }));
     await waitFor(() => expect(client.items()[0]?.read).toBe(true));
+  });
+
+  it('[IAM-034] a track group shared with the reader names the group and who shared it, and leads to the Tracks page', async () => {
+    const user = userEvent.setup();
+    const { page, client } = renderInbox(
+      fakeInboxClient([
+        GROUP_ITEM,
+        { ...GROUP_ITEM, id: '18', group: { id: 5, name: 'Handover', how: 'set', role: null } },
+        ...ITEMS,
+      ]),
+    );
+    const [shared, set] = (await cards(page)) as HTMLElement[];
+    expect(shared).toHaveTextContent(
+      'Ana Ruiz shared a track group with you, with the role Members',
+    );
+    const link = within(shared as HTMLElement).getByRole('link');
+    expect(link).toHaveTextContent('Quarter plan');
+    expect(link).toHaveAttribute('href', '#/tracks');
+    expect(set).toHaveTextContent('Ana Ruiz set a track group on you, a copy of your own');
+    await user.click(
+      within(shared as HTMLElement).getByRole('button', {
+        name: 'Mark the group Quarter plan as read',
+      }),
+    );
+    await waitFor(() => expect(client.items()[0]?.read).toBe(true));
+    // The Type filter offers it.
+    await user.selectOptions(
+      page.getByRole('combobox', { name: 'Type' }),
+      'A track group is shared with you or set on you',
+    );
+    expect(client.calls.filter((c) => c.method === 'list').at(-1)?.args[0]).toMatchObject({
+      event: 'track_group_shared',
+    });
   });
 
   it('[NTF-003] lists mentions and changes newest first, unread marked, quoting comments', async () => {

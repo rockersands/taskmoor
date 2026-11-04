@@ -1,7 +1,7 @@
 ---
 title: "Your account"
 audience: users
-sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css
+sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -169,13 +169,18 @@ service accounts](../admin/api-tokens.md).
 ## Your data
 
 **Your data**, at the end of the page, downloads everything Taskmoor keeps about you: your
-profile and settings, your sessions and the names of your API tokens, the tickets you reported,
-created or are assigned, your comments and time entries, the files you uploaded, and the audit
-records about you. **Prepare a download** makes it in the background; it shows **Ready** in the
+profile and settings, your sessions and the names of your API tokens, your groups of tracks
+and the groups shared with you, the tickets you reported, created or are assigned, your comments
+and time entries, the files you uploaded, and the audit records about you. **Prepare a download** makes it in the background; it shows **Ready** in the
 list after a short while, and **Download** saves it as a ZIP file of JSON files, with
 `manifest.json` listing what is inside. The download is kept for seven days and only you can
 fetch it. It shows the content of tickets you can see now; a ticket you no longer have access
 to appears only with its number and your role on it.
+
+`track-groups.json` lists your [groups of tracks](../admin/tracks.md#groups-of-tracks), with
+their tracks by key and the people you shared each with and the role, and the groups others
+shared with you, with their owner, the role and the roles that share gave you. Like your
+**Tracks** page, it lists only the tracks you can see now.
 
 To have your data erased, ask a site administrator (see [People, groups and
 teams](../admin/people-and-groups.md#erasing-a-person)).
