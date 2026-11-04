@@ -4717,6 +4717,7 @@ export const messagesEn = {
   'plans.capacity.over': 'Over capacity by {amount}',
   'plans.capacity.tickets': '{count, plural, one {# ticket} other {# tickets}}',
   'plans.capacity.nothingDue': 'Nothing due',
+  'plans.capacity.noneOpen': 'None',
   'plans.capacity.elsewhere':
     '+{amount} in {count, plural, one {# ticket} other {# tickets}} elsewhere',
   'plans.capacity.unestimated':

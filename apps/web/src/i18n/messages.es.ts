@@ -4830,6 +4830,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.capacity.over': 'Supera la capacidad en {amount}',
   'plans.capacity.tickets': '{count, plural, one {# ticket} other {# tickets}}',
   'plans.capacity.nothingDue': 'Nada vence',
+  'plans.capacity.noneOpen': 'Ninguno',
   'plans.capacity.elsewhere':
     '+{amount} en {count, plural, one {# ticket} other {# tickets}} en otra parte',
   'plans.capacity.unestimated': '{count, plural, one {# sin estimación} other {# sin estimación}}',

@@ -158,10 +158,14 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
     unscheduled: data.others.unscheduled,
   });
 
-  const link = (row: Row, clause: string, work: CapacityWork, period: string) => {
+  const link = (row: Row, clause: string, work: CapacityWork, period: string, due = true) => {
     const tickets = t('plans.capacity.tickets', { count: work.count });
     if (work.count === 0 || data.query === null) {
-      return <span className="capacity-count">{t('plans.capacity.nothingDue')}</span>;
+      return (
+        <span className="capacity-count">
+          {t(due ? 'plans.capacity.nothingDue' : 'plans.capacity.noneOpen')}
+        </span>
+      );
     }
     return (
       <a
@@ -236,7 +240,7 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
       {row.unscheduled.count > 0 && (
         <span className="capacity-load">{amount(row.unscheduled.amount)}</span>
       )}
-      {link(row, data.unscheduledClause, row.unscheduled, t('plans.capacity.unscheduled'))}
+      {link(row, data.unscheduledClause, row.unscheduled, t('plans.capacity.unscheduled'), false)}
       {row.unscheduled.unestimated > 0 && (
         <span className="capacity-muted">
           {t('plans.capacity.unestimated', { count: row.unscheduled.unestimated })}

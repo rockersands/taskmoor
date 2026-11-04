@@ -228,13 +228,128 @@ decision; the Timeline's answer grows one field, read with the timeline's own sc
   both sizes, then ask which counted blockers are the plan's, and the test checks the answer:
   one counted as the plan's own (`unlisted`), one as outside.
 
+### Stage 3 (T-089b): teams and capacity
+
+PLN-005 and PLN-009, reworded to what is built and moved to M1. A plan plans with site teams
+(ADR-076) and shows, per team and per person, the work due in each period against what they can
+take on.
+
+#### What is stored (migration 0102)
+
+- `plan` gains its settings: `capacity_unit` (`points` or `hours`) and its periods,
+  `period_kind` `weeks` (every `period_weeks`, 1 to 6, from `period_anchor`, any day; periods
+  repeat from it both ways) or `month` (calendar months). Existing plans get two-week periods
+  from Monday 2024-01-01, in points.
+- `plan_team`: the teams a plan plans with, in order (at most 50). A team gives no access: it
+  only says whose work the Capacity view lists. A deleted team leaves the plan.
+- `plan_capacity`: a team's or a person's capacity in the plan's unit, `period_start` null for
+  every period or one period's first day for that period alone, with a note of up to 200
+  characters (leave, a holiday). One row per plan, subject and period. A person's capacity is
+  the plan's, whichever of its teams they are in. Amounts are `numeric(8, 2)`, 0 to 100,000.
+- Changing the unit clears every capacity of the plan (amounts in points mean nothing in hours);
+  changing the periods clears the capacity set for single periods, unless the anchor only moved
+  by whole periods, which makes the same periods. A team that leaves the plan takes its
+  capacity, and that of people in none of the teams left. `plan.updated` says how many went
+  (`capacityCleared`).
+
+#### What is counted
+
+- **Work** is the plan's tickets as the viewer sees them, with the filters (`planTickets`, so
+  no ticket the viewer may not see is listed), in the plan's unit: points from the workspace's
+  own Points field (the oldest shared number field named Points, as boards read it), hours from
+  the original estimate. A ticket counts whole in the period that holds its due day, for its
+  assignee and for every plan team that person is in. Spreading a ticket over the days between
+  its start and due was considered: it gives fractions no search can show, so a number would
+  no longer equal its search. Tickets without an estimate count in the ticket count and are
+  shown as "without an estimate". Open tickets without a due day have a column of their own.
+- **Every count equals a search:** each row has a `clause` (`assignee = 12`,
+  `assignee IN membersOf("id:3")`, `assignee IS EMPTY`, or the plan's people in none of its
+  teams as `assignee NOT IN membersOf(...)`), each period a `clause` (`due >= "..." AND due <=
+  "..."`), and the open work `stage != closed AND due IS EMPTY`; the plan's `query` ANDed with
+  them is the link, and the test checks the count and the sum of points of each against the
+  search, for three viewers.
+- **Work elsewhere** (`elsewhere`, per person and period): the rest of a team member's work due
+  in the period, outside the plan, left out by the filters or in tracks the viewer may not see,
+  outside the trash and archived tracks. It counts against their capacity, since they have to do
+  it all, as one count and one amount, never a key, summary, track or date: the rule of hidden
+  sources (stage 1) and blockers outside the plan (stage 2). So a viewer learns how much hidden
+  work a person has due, but not what. Only the plan's team members have this number; unassigned
+  work and people in none of the teams have no capacity, so nothing elsewhere is read for them.
+- **Capacity in a period** is that period's own row, else the row for every period. A team
+  without either has its members' summed, when any member has one (`from: members`). Someone
+  with no capacity is never over.
+- **Over capacity**: the work here and elsewhere (`load`) is more than the capacity. The cell
+  is red and says "Over capacity by 8 points" in words, so colour is never the only sign.
+
+#### Routes, events and records
+
+- `GET /api/v1/plans/:id/capacity?from=&periods=` with the views' filters: up to 12 periods
+  from the one holding `from` (today by default), with `previous` and `next` for paging. A read,
+  for everyone who sees the plan. It runs in the views' read-only transaction with their timeout,
+  in two statements: the plan's work grouped by assignee and due day, and the members' work
+  elsewhere the same way.
+- `PUT /api/v1/plans/:id/capacity` with `entries` (at most 200): a team's or a member's capacity
+  for every period (`period` null) or one period's first day, `amount` null to remove it. Only
+  the plan's owner and site administrators (`forbidden` with `edit_plan` otherwise), only its
+  teams and their members, only first days of its periods (`not_in_plan`,
+  `not_a_period_start`). The plan row is locked while it writes, so two editors never
+  interleave. One `plan.capacity_set` event lists every change with its amount and note before
+  and after; nothing changed records nothing. Audited, as `plan.updated` is: capacity is
+  configuration others see.
+- Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
+  `capacityUnit`, `period`), in `plan.updated`.
+- Both routes are internal in the API document, as the other plan routes. Token scopes: read for
+  the GET, write for the PUT.
+- A person's data download lists their capacity in plans with its notes, by the plan's id (the
+  plan may be hidden from them); erasure deletes it (`PERSONAL_TABLES`), as notes may say why
+  someone was away. The plan stays.
+
+#### The page
+
+- **Capacity** is a tab of the plan, after Calendar: a table of teams, each followed by its
+  people, then unassigned work and people in none of the teams; a column per period (six in
+  view, the one holding today marked "Now" in words) and one for open work without a due day.
+  Each cell says "16 of 10 points" with a bar, "Over capacity by 6 points" when over,
+  "+13 points in 1 ticket elsewhere", the period's note, and the count as a link to its search.
+  On a phone each row is a card with the periods as a list. It reads again when a ticket changes.
+- The plan's editors open **Set capacity** on a team or person: a dialog with the capacity and
+  note for every period, and one for each period in view, which replace it there. It sends only
+  what changed, in one request.
+- **Settings** gains **Teams and capacity**: the teams, ticked in order, the unit and the
+  periods; a new unit or new periods ask first, saying what will be cleared.
+
+#### Kept, not built
+
+The first wordings of PLN-005 and PLN-009 asked for more than this stage builds. These wait for a
+requirement of their own (the coordinator's to number; not taken here, as this stage was given
+only PLN-005 and PLN-009) and for the user's decision of when:
+
+- velocity from history (the last three completed sprints) as a team's default capacity, and
+  other teams' sprints as external iterations, which need the sprint as a period;
+- capacity in days, percent allocations and a configurable working week (32 hours, say);
+- allocating time to outcomes, level-2 tickets and free-text entries (leave as an entry rather
+  than a period's note), people and work views of allocations, bulk copy, paste and fill, and
+  CSV import;
+- re-running scheduling previews when capacity changes, which belongs to the auto-scheduler
+  (PLN-004, MT-07): it will read capacity from `plan_capacity`.
+
+#### Measured
+
+`plans.large.test.ts` now gives the plan a team of its member, with 30 points a period, and reads
+the Capacity view over six periods five times, checking the team's first count against its
+search. Medians of five reads, a Mac, 2026-11-03: 8 ms at 10,000 tickets (every gate) and
+23 ms at 100,000 (`TASKMOOR_LARGE_PLANS=1`; the Timeline took 155 ms in the same run, the
+machine being busier than for stage 2's 136 ms). Both statements answer counts grouped by
+assignee and due day, so what reaches the server follows the people and days in view, never
+the plan's tickets one by one.
+
 ### Later stages
 
-Each adds its section here when it starts: teams and capacity (T-089b; PLN-005, PLN-009),
-cross-track releases (T-089c; PLN-007), the program board (T-089d; PLN-008), draft changes and
+Each adds its section here when it starts: cross-track releases (T-089c; PLN-007), the program board (T-089d; PLN-008), draft changes and
 scenarios (T-089e; PLN-002, PLN-003), the auto-scheduler (T-089f; PLN-004), duplicating a plan, a
 link to a view and exports (T-089g). PLN-002 to PLN-009 move to M1 in the spec with their stage,
-so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2. PLN-013 (other link
+so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009
+with stage 3. PLN-013 (other link
 types as dependencies, dependencies within one sprint) has no stage yet: the user's answer in
 `decisions.csv` decides it.
 
@@ -248,6 +363,10 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
 | Filters with several values each | Fewer clicks for some views | The user chose one value at first |
 | Group by outcome in the List | Asked in the first plan | The query language cannot yet say "under this outcome", so a group could not link to its search |
 | A stored list of the plan's tickets | Fast to read | Out of date at once, and the same for every viewer |
+| Capacity: a ticket whole in the period of its due day (chosen, stage 3) | Every number is a search's count; the same rule for points and hours | A long ticket weighs on its last period only |
+| Capacity: a ticket spread over its days from start to due | Closer to how work is done | Fractions no search can show; tickets without a start need a rule of their own |
+| Capacity: periods as the tracks' sprints | Matches how teams plan | A plan spans tracks with different sprints, or none; kept for velocity and external iterations, later |
+| Capacity: work elsewhere left out of the load | Nothing about hidden work reaches the viewer | A person looks free while their hidden work fills the period; the plan's leader plans wrong |
 
 ## Consequences
 
@@ -268,3 +387,9 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
   same kind of number as the count of hidden sources. Should the user want hidden blockers left
   out of the count altogether, `outside` would count only blockers the viewer may see, one
   statement more.
+- A viewer of a plan learns how much work a team member has due in a period outside their view
+  (a count and a sum of points or hours), though not which. Should the user want hidden work
+  left out, `elsewhere` would count only work the viewer may see, and over-capacity would then
+  differ between viewers.
+- Capacity follows the plan's teams as they are now: someone who leaves a team drops out of the
+  view at once, and their capacity rows stay until the team leaves the plan or they come back.
