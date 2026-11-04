@@ -86,7 +86,9 @@ export function LayoutEditorPage({
         const [sets, fields] = await Promise.all([client.layoutSets(), client.customFields()]);
         setState({ status: 'loaded', sets, fields });
         setSelected((current) => {
-          const wanted = choose === undefined ? current : choose;
+          // A draft begun while the list was being read keeps its set open: switching would drop
+          // it without asking.
+          const wanted = choose === undefined || unsaved.current ? current : choose;
           if (wanted !== null && sets.some((s) => s.id === wanted)) return wanted;
           return (sets.find((s) => s.isDefault) ?? sets[0])?.id ?? null;
         });

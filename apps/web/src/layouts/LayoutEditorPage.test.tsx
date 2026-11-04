@@ -597,6 +597,33 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
     expect(screen.getByText('Unsaved changes')).toBeVisible();
   });
 
+  it('[NFR-005] a draft begun while the list is read again after an add stays open', async () => {
+    const user = userEvent.setup();
+    const client = renderWithNav();
+    await editor();
+    const list = client.layoutSets;
+    let read = () => {};
+    client.createLayoutSet = ((create) => async (body) => {
+      const made = await create(body);
+      // The list is read again after the set is made: hold that read back.
+      client.layoutSets = () =>
+        new Promise((resolve, reject) => {
+          read = () => list().then(resolve, reject);
+        });
+      return made;
+    })(client.createLayoutSet);
+    const add = screen.getByRole('form', { name: 'Add a layout set' });
+    await user.type(within(add).getByLabelText('New set name'), 'Release layouts');
+    await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
+    expect(await screen.findByText('Release layouts was added.')).toBeInTheDocument();
+    await choose(user, 'Place Labels', `Put in ${MAIN}`);
+    read();
+    expect(await screen.findByRole('option', { name: 'Release layouts' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Layout set')).toHaveValue('1');
+    expect(fieldsIn(MAIN)).toContain('Labels');
+    expect(screen.getByText('Unsaved changes')).toBeVisible();
+  });
+
   it('[NFR-005] with nothing changed, or within the page, nothing is asked', async () => {
     const user = userEvent.setup();
     renderWithNav();
