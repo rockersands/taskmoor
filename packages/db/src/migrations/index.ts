@@ -87,6 +87,7 @@ import * as m0100 from './0100_track_groups';
 import * as m0101 from './0101_plans';
 import * as m0102 from './0102_plan_capacity';
 import * as m0103 from './0103_default_workflow_left_strict';
+import * as m0104 from './0104_close_reason_left_dangling';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -184,4 +185,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0101_plans': m0101,
   '0102_plan_capacity': m0102,
   '0103_default_workflow_left_strict': m0103,
+  '0104_close_reason_left_dangling': m0104,
 };

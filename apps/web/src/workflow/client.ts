@@ -64,7 +64,6 @@ export interface Lookups {
   roles: Named[] | null;
   groups: Named[] | null;
   permissions: string[] | null;
-  closeReasons: Named[] | null;
 }
 
 /** How a status of an imported file came in (M1-127): matched by name, or created. */
@@ -123,6 +122,8 @@ export interface WorkflowsClient {
   deleteStatus: (id: number) => Promise<void>;
   orderStatuses: (ids: number[]) => Promise<Status[]>;
   lookups: () => Promise<Lookups>;
+  /** The close reason a closing status that moves freely sets (WF-008), from the server. */
+  completedReason: (id: number) => Promise<number>;
   /** Where a workflow's published version downloads as a file (M1-127). */
   exportHref: (id: number) => string;
   /** A workflow file as a new workflow, named as the file names it unless `name` is given. */
@@ -194,7 +195,7 @@ export const workflowsClient: WorkflowsClient = {
       })
     ).statuses,
   lookups: async () => {
-    const [roles, groups, catalogue, closeReasons] = await Promise.all([
+    const [roles, groups, catalogue] = await Promise.all([
       optional(async () => (await api<{ roles: Named[] }>('/roles')).roles),
       optional(async () => (await api<{ groups: Named[] }>('/groups')).groups),
       optional(() =>
@@ -202,10 +203,15 @@ export const workflowsClient: WorkflowsClient = {
           Object.values(c.track).flat(),
         ),
       ),
-      optional(async () => (await api<{ closeReasons: Named[] }>('/close-reasons')).closeReasons),
     ]);
-    return { roles, groups, permissions: catalogue, closeReasons };
+    return { roles, groups, permissions: catalogue };
   },
+  completedReason: async (id) =>
+    (
+      await api<{ closeReasonId: number }>(`/workflows/${id}/completed-reason`, {
+        method: 'POST',
+      })
+    ).closeReasonId,
   exportHref: (id) => `${API_BASE}/admin/workflows/${id}/export`,
   importNew: (document, name) =>
     api<Imported>('/admin/workflows/import', {

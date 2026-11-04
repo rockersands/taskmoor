@@ -212,7 +212,8 @@ names cannot be deleted.
 - **Add a status** puts one of the site's statuses into the workflow. On a workflow that moves
   freely (every transition global, with no guard, check, field or rule) it also adds the global
   transition into it, so tickets can enter it at once: a closed-stage status sets the close reason
-  Completed, any other clears the reason. On a workflow with rules it adds only the status, and the
+  Completed, or what took its place if it was renamed or replaced, and any other clears the reason.
+  On a workflow with rules it adds only the status, and the
   steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
   it the initial status** or remove it from the workflow.
 - **Discard draft** throws the draft away; the published version stays as it is.
@@ -232,7 +233,9 @@ status the new version drops that holds tickets, choose where the tickets go, th
 **Publish now**. They move with their history; their close reason stays as it is.
 
 **Version history** lists every version with who saved and published it. **Restore as draft**
-replaces the draft with an earlier version; publish it to use it again.
+replaces the draft with an earlier version; publish it to use it again. A version that sets a close
+reason deleted since cannot be restored, nor can a draft name one: every move through that
+transition would be refused. Set the reason on the current version instead.
 
 Through the API: `PUT /api/v1/workflows/:id/draft` with `{ "definition": ... }`,
 `GET /api/v1/workflows/:id/impact`, then `POST /api/v1/workflows/:id/publish` with

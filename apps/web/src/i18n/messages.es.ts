@@ -3698,6 +3698,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.status.confirmRemoveButton': 'Quitar el estado',
   'admin.workflow.status.removed': 'Se quitó {name} del flujo de trabajo.',
   'admin.workflow.status.added': 'Se añadió {name} al flujo de trabajo.',
+  'admin.workflow.status.addFailed':
+    '{name} no se añadió: no se pudo leer su motivo de cierre. Inténtalo de nuevo.',
   'admin.workflow.transition.heading': 'Transición: {name}',
   'admin.workflow.transition.name': 'Nombre',
   'admin.workflow.transition.nameRequired': 'Introduce un nombre.',
@@ -3937,6 +3939,8 @@ export const messagesEs: Record<MessageId, string> = {
   'workflow.problem.unknown_field': '{where}: no hay ningún campo llamado {field}.',
   'workflow.problem.field_not_writable': '{where}: un flujo de trabajo no puede escribir {field}.',
   'workflow.problem.invalid_value': '{where}: el valor de {field} no es válido.',
+  'workflow.problem.unknown_close_reason':
+    '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
   'workflow.problem.onCreate': 'Crear un ticket',

@@ -235,4 +235,178 @@ describe('free moving as the default (WF-008)', () => {
     expect(closed.json().ticket.closeReason?.name).toBe('Done');
     expect(closed.json().ticket.closedAt).not.toBeNull();
   });
+
+  // From here on Completed is gone and the default workflow closes as Done, as the test above left it.
+  describe('after Completed was replaced', () => {
+    const reasonNames = async () =>
+      (
+        (await get('/api/v1/close-reasons')).json().closeReasons as { id: number; name: string }[]
+      ).map((r) => r.name);
+    const reasonOf = async (name: string) =>
+      (
+        (await get('/api/v1/close-reasons')).json().closeReasons as { id: number; name: string }[]
+      ).find((r) => r.name === name)?.id as number;
+    const statuses = () =>
+      [status.New, status.Closed].map((statusId) => ({ statusId: statusId as number }));
+    const closingSet = (definition: Definition) =>
+      definition.transitions.find((t) => t.to === status.Closed)?.effects;
+    const setting = (value: number) => [
+      { type: 'update-system-field', field: 'close-reason', value: String(value) },
+    ];
+
+    it('[WF-008] a version that names the deleted reason cannot be restored', async () => {
+      const workflowId = await defaultId();
+      const before = (await get(`/api/v1/workflows/${workflowId}`)).json().workflow;
+      const versions = (await get(`/api/v1/workflows/${workflowId}/versions`)).json().versions as {
+        version: number;
+      }[];
+      const named: number[] = [];
+      for (const { version } of versions) {
+        const read = await get(`/api/v1/workflows/${workflowId}/versions/${version}`);
+        if (
+          JSON.stringify(closingSet(read.json().definition)) ===
+          JSON.stringify(setting(reason.Completed as number))
+        ) {
+          named.push(version);
+        }
+      }
+      expect(named.length).toBeGreaterThan(0);
+      const refused = await post(`/api/v1/workflows/${workflowId}/versions/${named[0]}/restore`);
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(refused.json()).toMatchObject({
+        error: 'cannot_restore',
+        detail: { problem: 'unknown_close_reason', reasonId: reason.Completed },
+      });
+      const after = (await get(`/api/v1/workflows/${workflowId}`)).json().workflow;
+      expect(after.draft.version).toBe(before.draft.version);
+      expect(after.published.version).toBe(before.published.version);
+    });
+
+    it('[WF-008] a draft or a new workflow cannot name the deleted reason', async () => {
+      const workflowId = await defaultId();
+      const published = await publishedOf(workflowId);
+      const naming = {
+        ...published,
+        transitions: published.transitions.map((t) =>
+          t.to === status.Closed ? { ...t, effects: setting(reason.Completed as number) } : t,
+        ),
+      };
+      const draft = await as({
+        method: 'PUT',
+        url: `/api/v1/workflows/${workflowId}/draft`,
+        payload: { definition: naming },
+      });
+      expect(draft.statusCode, draft.body).toBe(400);
+      expect(draft.json().detail).toMatchObject({
+        problem: 'unknown_close_reason',
+        reasonId: reason.Completed,
+      });
+      const created = await post('/api/v1/workflows', {
+        name: 'Names a deleted reason',
+        definition: { ...naming, transitions: naming.transitions },
+      });
+      expect(created.statusCode, created.body).toBe(400);
+      expect(created.json().detail.problem).toBe('unknown_close_reason');
+    });
+
+    it('[WF-008] a draft that came to name a deleted reason does not publish', async () => {
+      const workflowId = await defaultId();
+      const before = (await get(`/api/v1/workflows/${workflowId}`)).json().workflow;
+      const { definition, version } = before.draft as { definition: Definition; version: number };
+      const naming = {
+        ...definition,
+        transitions: definition.transitions.map((t) =>
+          t.to === status.Closed ? { ...t, effects: setting(reason.Completed as number) } : t,
+        ),
+      };
+      await database.db
+        .updateTable('workflow_version')
+        .set({ definition: JSON.stringify(naming) as never })
+        .where('workflow_id', '=', workflowId)
+        .where('version', '=', version)
+        .execute();
+      const refused = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(refused.json().detail.problem).toBe('unknown_close_reason');
+      const after = (await get(`/api/v1/workflows/${workflowId}`)).json().workflow;
+      expect(after.published.version).toBe(before.published.version);
+      // Thrown away, so nothing later in this file meets it.
+      const discarded = await del(`/api/v1/workflows/${workflowId}/draft`);
+      expect(discarded.statusCode, discarded.body).toBe(204);
+    });
+
+    it('[WF-008] the replacement, renamed or not, is what a new closing status sets, with no second Completed', async () => {
+      const done = await reasonOf('Done');
+      const asked = await post(`/api/v1/workflows/${await defaultId()}/completed-reason`);
+      expect(asked.statusCode, asked.body).toBe(200);
+      expect(asked.json()).toEqual({ closeReasonId: done });
+
+      const renamed = await as({
+        method: 'PATCH',
+        url: `/api/v1/close-reasons/${done}`,
+        payload: { name: 'Finished' },
+      });
+      expect(renamed.statusCode, renamed.body).toBe(200);
+      const created = await post('/api/v1/workflows', {
+        name: 'Closes after a rename',
+        definition: { initialStatusId: status.New, statuses: statuses() },
+      });
+      expect(created.statusCode, created.body).toBe(201);
+      expect(closingSet(await publishedOf(created.json().workflow.id))).toEqual(setting(done));
+      const again = await post(`/api/v1/workflows/${created.json().workflow.id}/completed-reason`);
+      expect(again.json()).toEqual({ closeReasonId: done });
+      expect(await reasonNames()).not.toContain('Completed');
+      expect((await reasonNames()).filter((n) => n === 'Finished')).toHaveLength(1);
+    });
+
+    it('[WF-008] asking for the reason needs write access to the workflow', async () => {
+      const workflowId = await defaultId();
+      const anonymous = await app.inject({
+        method: 'POST',
+        url: `/api/v1/workflows/${workflowId}/completed-reason`,
+        remoteAddress: nextAddress(),
+      });
+      expect(anonymous.statusCode).toBe(401);
+      const missing = await post('/api/v1/workflows/999999/completed-reason');
+      expect(missing.statusCode).toBe(404);
+    });
+
+    it('[WF-008] with no reason to name, Completed is made once, with its event', async () => {
+      const workflowId = await defaultId();
+      const published = await publishedOf(workflowId);
+      const view = (await get(`/api/v1/workflows/${workflowId}`)).json().workflow;
+      const draft = await as({
+        method: 'PUT',
+        url: `/api/v1/workflows/${workflowId}/draft`,
+        payload: {
+          definition: {
+            ...view.published.definition,
+            transitions: published.transitions.map((t) =>
+              t.to === status.Closed
+                ? { ...t, effects: [{ type: 'clear-field', field: 'close-reason' }] }
+                : t,
+            ),
+          },
+        },
+      });
+      expect(draft.statusCode, draft.body).toBe(200);
+      const done = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(done.statusCode, done.body).toBe(200);
+
+      const events = () =>
+        database.db
+          .selectFrom('domain_event')
+          .select('subject_id')
+          .where('type', '=', 'close_reason.created')
+          .execute();
+      const before = await events();
+      const first = await post(`/api/v1/workflows/${workflowId}/completed-reason`);
+      expect(first.statusCode, first.body).toBe(200);
+      const made = first.json().closeReasonId as number;
+      expect(made).toBe(await reasonOf('Completed'));
+      const second = await post(`/api/v1/workflows/${workflowId}/completed-reason`);
+      expect(second.json().closeReasonId).toBe(made);
+      expect((await events()).length).toBe(before.length + 1);
+    });
+  });
 });

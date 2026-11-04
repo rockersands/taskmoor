@@ -3609,6 +3609,8 @@ export const messagesEn = {
   'admin.workflow.status.confirmRemoveButton': 'Remove status',
   'admin.workflow.status.removed': 'Removed {name} from the workflow.',
   'admin.workflow.status.added': 'Added {name} to the workflow.',
+  'admin.workflow.status.addFailed':
+    '{name} was not added: its close reason could not be read. Try again.',
   'admin.workflow.transition.heading': 'Transition: {name}',
   'admin.workflow.transition.name': 'Name',
   'admin.workflow.transition.nameRequired': 'Enter a name.',
@@ -3841,6 +3843,7 @@ export const messagesEn = {
   'workflow.problem.unknown_field': '{where}: there is no field named {field}.',
   'workflow.problem.field_not_writable': '{where}: a workflow cannot write {field}.',
   'workflow.problem.invalid_value': '{where}: the value for {field} is not valid.',
+  'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
   'workflow.problem.onCreate': 'Creating a ticket',

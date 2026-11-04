@@ -7,7 +7,8 @@ import { requireGlobal, requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
-import { completedReasonId } from '../workflows/board-managed';
+import { closingReasonId, completedReasonId } from '../workflows/board-managed';
+import { closeReasonProblem } from '../workflows/close-reasons';
 import { freeTransitions } from '../workflows/free-moving';
 import {
   defaultMapId,
@@ -627,7 +628,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       ...body.definition,
       transitions: body.definition.transitions ?? [],
     };
-    const problem = definitionProblem(given, await knownStatuses(db, ws));
+    const problem =
+      definitionProblem(given, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, given));
     if (problem) return invalid(reply, problem);
     try {
       const workflowId = await db.transaction().execute(async (trx) => {
@@ -779,12 +782,32 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const parsed = z.object({ definition: definitionSchema }).strict().safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
     const ws = request.workspaceId;
-    const problem = definitionProblem(parsed.data.definition, await knownStatuses(db, ws));
+    const problem =
+      definitionProblem(parsed.data.definition, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, parsed.data.definition));
     if (problem) return invalid(reply, problem);
     await enforceLimit(db, ws, 'statuses_per_workflow', parsed.data.definition.statuses.length);
     const version = await saveDraft(request, params.data.id, parsed.data.definition, null);
     if (version === null) return notFound(reply);
     return { workflow: await workflowView(ws, params.data.id) };
+  });
+
+  // What a closing status sets when the editor adds it to a workflow that moves freely (WF-008):
+  // the same answer the server's own paths use, made here if the workspace has no reason to name.
+  app.post('/api/v1/workflows/:id/completed-reason', async (request, reply) => {
+    if (!(await workflowAccess(request, reply, true))) return reply;
+    const closeReasonId = await db.transaction().execute(async (trx) => {
+      const found = await closingReasonId(trx, request.workspaceId);
+      if (found !== null) return found;
+      const made = await completedReasonId(trx, by(request));
+      await emit(trx, by(request), {
+        type: 'close_reason.created',
+        subjectId: made,
+        payload: { name: 'Completed' },
+      });
+      return made;
+    });
+    return { closeReasonId };
   });
 
   app.delete('/api/v1/workflows/:id/draft', async (request, reply) => {
@@ -856,6 +879,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       if (!held) return { missing: true as const };
       const impact = await impactOf(trx, ws, held.id);
       if (!impact) return { conflict: 'no_draft' };
+      // A reason deleted after the draft was saved would refuse every move into its status.
+      const closing = await closeReasonProblem(trx, ws, impact.draft);
+      if (closing) return { closing };
       // A status migration still moving tickets into this workflow keeps it as it is (M1-028).
       const running = await runningMigration(
         trx,
@@ -902,6 +928,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     });
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
+    if ('closing' in result) return invalid(reply, result.closing);
     if ('migrationRunning' in result) {
       return reply
         .code(409)
@@ -992,7 +1019,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       .executeTakeFirst();
     if (!source) return notFound(reply);
     const definition = definitionSchema.parse(source.definition);
-    const problem = definitionProblem(definition, await knownStatuses(db, ws));
+    const problem =
+      definitionProblem(definition, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, definition));
     if (problem) return reply.code(409).send({ error: 'cannot_restore', detail: problem });
     await saveDraft(request, row.id, definition, params.data.version);
     return { workflow: await workflowView(ws, row.id) };

@@ -141,9 +141,9 @@ export function isFreeMoving(definition: WorkflowDefinition): boolean {
 
 /**
  * The global transition into a status, named after it: a closed-stage status sets the close reason
- * Completed, any other clears the reason. With no Completed reason to name, it only clears.
+ * Completed, any other clears the reason.
  */
-export function freeTransition(
+function freeTransition(
   id: number,
   status: Pick<Status, 'id' | 'name' | 'stage'>,
   completedId: number | null,
@@ -160,10 +160,31 @@ export function freeTransition(
   };
 }
 
+/** The statuses that get a global transition when this one is added to a free-moving workflow. */
+function statusesGettingTransition(definition: WorkflowDefinition, statusId: number): number[] {
+  const added = addStatus(definition, statusId);
+  if (added === definition || !isFreeMoving(definition)) return [];
+  // A workflow with no transitions yet gets them for the statuses it already had, too.
+  const wanting = definition.transitions.length === 0 ? statusIdsOf(added) : [statusId];
+  return [...wanting].filter((id) => !definition.transitions.some((t) => t.to === id));
+}
+
+/** Whether adding this status gives a closing status a transition, which needs a reason to set. */
+export function addingNeedsCloseReason(
+  definition: WorkflowDefinition,
+  statusId: number,
+  statuses: readonly Status[],
+): boolean {
+  return statusesGettingTransition(definition, statusId).some(
+    (id) => statuses.find((s) => s.id === id)?.stage === 'closed',
+  );
+}
+
 /**
  * Adds a status so a free-moving workflow stays free moving: tickets can enter it at once, from
  * any status. On a workflow with rules it only adds the status: those rules were put there on
- * purpose, or came with an import, and the steps into it are the administrator's to draw.
+ * purpose, or came with an import, and the steps into it are the administrator's to draw. A closing
+ * status with no reason to set gets no transition either, never one that closes nothing.
  */
 export function addStatusFreely(
   definition: WorkflowDefinition,
@@ -172,16 +193,15 @@ export function addStatusFreely(
   completedId: number | null,
   reserved: Iterable<number> = [],
 ): WorkflowDefinition {
-  const added = addStatus(definition, statusId);
-  if (added === definition || !isFreeMoving(definition)) return added;
   const used = [...reserved];
-  // A workflow with no transitions yet gets them for the statuses it already had, too.
-  const wanting = definition.transitions.length === 0 ? statusIdsOf(added) : [statusId];
-  return wanting.reduce((next, id) => {
-    const status = statuses.find((s) => s.id === id);
-    if (!status || next.transitions.some((t) => t.to === id)) return next;
-    return addTransition(next, freeTransition(nextTransitionId(next, used), status, completedId));
-  }, added);
+  return statusesGettingTransition(definition, statusId).reduce(
+    (next, id) => {
+      const status = statuses.find((s) => s.id === id);
+      if (!status || (status.stage === 'closed' && completedId === null)) return next;
+      return addTransition(next, freeTransition(nextTransitionId(next, used), status, completedId));
+    },
+    addStatus(definition, statusId),
+  );
 }
 
 export function setInitialStatus(

@@ -66,7 +66,7 @@ export const GlobalTransition: Story = { args: { transitionId: 4 } };
 export const IdsWithoutNames: Story = {
   args: {
     transitionId: 1,
-    lookups: { roles: null, groups: null, permissions: null, closeReasons: null },
+    lookups: { roles: null, groups: null, permissions: null },
   },
 };
 

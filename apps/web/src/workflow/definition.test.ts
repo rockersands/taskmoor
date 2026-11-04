@@ -2,6 +2,7 @@ import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { richDefinitionArb, workflowArb } from '../test/workflow';
 import {
+  addingNeedsCloseReason,
   addStatus,
   addStatusFreely,
   formatDefinition,
@@ -184,6 +185,33 @@ describe('workflow definitions in the editor (M1-030)', () => {
       expect(open.transitions.at(-1)?.effects).toEqual([
         { type: 'clear-field', field: 'close-reason' },
       ]);
+    });
+
+    it('[WF-008] a closing status with no reason to set gets no transition, never one that clears', () => {
+      const added = addStatusFreely(FREE_DEFINITION, S.Approved as number, STATUSES, null);
+      expect(added.statuses.at(-1)).toEqual({ statusId: S.Approved });
+      expect(added.transitions).toEqual(FREE_DEFINITION.transitions);
+      const open = addStatusFreely(FREE_DEFINITION, S.Draft as number, STATUSES, null);
+      expect(open.transitions.at(-1)?.effects).toEqual([
+        { type: 'clear-field', field: 'close-reason' },
+      ]);
+    });
+
+    it('[WF-008] says when an addition needs a close reason', () => {
+      const needs = (definition: WorkflowDefinition, id: number | undefined) =>
+        addingNeedsCloseReason(definition, id as number, STATUSES);
+      expect(needs(FREE_DEFINITION, S.Approved)).toBe(true);
+      expect(needs(FREE_DEFINITION, S.Draft)).toBe(false);
+      expect(needs(STEPPED_DEFINITION, S.Approved)).toBe(false);
+      // Already there: nothing is added.
+      expect(needs(FREE_DEFINITION, S.Closed)).toBe(false);
+      // A workflow with no transitions yet: the closing status it already had gets one too.
+      const start: WorkflowDefinition = {
+        initialStatusId: S.Closed as number,
+        statuses: [{ statusId: S.Closed as number }],
+        transitions: [],
+      };
+      expect(needs(start, S.Draft)).toBe(true);
     });
 
     it('[WF-008] a workflow with no transitions yet gets one into every status', () => {

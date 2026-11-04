@@ -23,6 +23,7 @@ import {
 } from './client';
 import { DefinitionText, legendOf } from './DefinitionText';
 import {
+  addingNeedsCloseReason,
   addStatusFreely,
   addTransition,
   formatDefinition,
@@ -66,7 +67,7 @@ type Load =
 
 type Panel = 'publish' | 'history' | 'discard' | null;
 
-const NO_LOOKUPS: Lookups = { roles: null, groups: null, permissions: null, closeReasons: null };
+const NO_LOOKUPS: Lookups = { roles: null, groups: null, permissions: null };
 
 /** The definition the editor starts from: the draft when there is one, else the published one. */
 const baseOf = (workflow: WorkflowView) => (workflow.draft ?? workflow.published).definition;
@@ -400,6 +401,37 @@ export function WorkflowEditorPage({
     }
   };
 
+  const addStatusToWorkflow = async (statusId: number) => {
+    setError(null);
+    let completedId: number | null = null;
+    if (addingNeedsCloseReason(working, statusId, statuses)) {
+      setBusy(true);
+      try {
+        completedId = await client.completedReason(workflow.id);
+      } catch (e) {
+        if (!refuse(e)) {
+          setError(t('admin.workflow.status.addFailed', { name: names.status(statusId) }));
+        }
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+    // The request may have let an edit in, so this builds on what is there now.
+    setWorking(
+      (current) =>
+        current &&
+        addStatusFreely(
+          current,
+          statusId,
+          statuses,
+          completedId,
+          transitionIdsOf(workflow.published.definition, workflow.draft?.definition),
+        ),
+    );
+    setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
+  };
+
   const newTransition = (from?: number) => {
     const ids = statusIdsOf(working);
     const source = from ?? (selection?.kind === 'status' ? selection.id : working.initialStatusId);
@@ -689,21 +721,7 @@ export function WorkflowEditorPage({
               onSelect={select}
               statusesHeadingRef={statusesHeading}
               transitionsHeadingRef={transitionsHeading}
-              onAddStatus={(statusId) => {
-                const completed = lookups.closeReasons?.find(
-                  (r) => r.name.toLowerCase() === 'completed',
-                );
-                change(
-                  addStatusFreely(
-                    working,
-                    statusId,
-                    statuses,
-                    completed?.id ?? null,
-                    transitionIdsOf(workflow.published.definition, workflow.draft?.definition),
-                  ),
-                );
-                setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
-              }}
+              onAddStatus={addStatusToWorkflow}
               onAddTransition={() => newTransition()}
             />
           </div>

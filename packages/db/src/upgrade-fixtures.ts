@@ -1743,6 +1743,12 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async () => {},
   },
+  '0104_close_reason_left_dangling': {
+    tables: {
+      close_reason: 'workspace_id = 1',
+    },
+    seed: async () => {},
+  },
 };
 
 /**

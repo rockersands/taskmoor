@@ -209,10 +209,6 @@ export const LOOKUPS: Lookups = {
     { id: 2, name: 'Change board' },
   ],
   permissions: ['browse_track', 'edit_tickets', 'transition_tickets', 'close_tickets'],
-  closeReasons: [
-    { id: 1, name: 'Completed' },
-    { id: 2, name: 'Duplicate' },
-  ],
 };
 
 interface VersionRecord {
@@ -560,5 +556,6 @@ export function fakeWorkflowsClient(
       return clone(statuses);
     },
     lookups: async () => clone(options.lookups ?? LOOKUPS),
+    completedReason: async () => 1,
   };
 }

@@ -2,6 +2,7 @@ import type { Database, StatusStage } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Column } from '../boards/model';
 import { lockList } from '../tickets/fields';
+import { defaultClosingReason } from './close-reasons';
 import { freeTransition } from './free-moving';
 import { loadMap, trackMapId } from './maps';
 import { runningMigration } from './migration';
@@ -293,16 +294,35 @@ export async function columnsWithStatuses(
   return { columns: out, merged, made };
 }
 
-/** The workspace's close reason Completed, made when there is none. */
+const reasonNamedCompleted = async (trx: Trx, workspaceId: number) =>
+  (
+    await trx
+      .selectFrom('close_reason')
+      .select('id')
+      .where('workspace_id', '=', workspaceId)
+      .where(sql`lower(name)`, '=', 'completed')
+      .executeTakeFirst()
+  )?.id ?? null;
+
+/**
+ * The reason a closing status that moves freely sets, or null when the workspace has none to name:
+ * Completed by name, or what the default workflow closes with, so a renamed or replaced Completed
+ * stays the one reason and no second Completed appears beside it.
+ */
+export async function closingReasonId(trx: Trx, workspaceId: number): Promise<number | null> {
+  return (
+    (await reasonNamedCompleted(trx, workspaceId)) ?? (await defaultClosingReason(trx, workspaceId))
+  );
+}
+
+/** The reason a closing status that moves freely sets, with Completed made when there is none. */
 export async function completedReasonId(trx: Trx, by: Actor): Promise<number> {
-  const found = await trx
-    .selectFrom('close_reason')
-    .select('id')
-    .where('workspace_id', '=', by.workspaceId)
-    .where(sql`lower(name)`, '=', 'completed')
-    .executeTakeFirst();
-  if (found) return found.id;
+  const found = await closingReasonId(trx, by.workspaceId);
+  if (found !== null) return found;
   await lockList(trx, by.workspaceId, 'close_reason');
+  // Someone else may have made it while this waited for the list.
+  const made = await reasonNamedCompleted(trx, by.workspaceId);
+  if (made !== null) return made;
   const last = await trx
     .selectFrom('close_reason')
     .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
