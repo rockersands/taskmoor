@@ -5,6 +5,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import type { LayoutsClient, Named, Preview } from './client';
 import { type DraftSet, entriesOf, type FormChoice } from './model';
+import { layoutRefusal } from './refusal';
 
 export interface LayoutPreviewProps {
   client: LayoutsClient;
@@ -18,6 +19,8 @@ export interface LayoutPreviewProps {
   /** A local-mode track's own set: that track, where the preview starts. */
   ownerTrackId: number | null;
   fieldName: (key: string) => string;
+  /** A custom field's name when the page knows it, for saying why the server refuses a draft. */
+  knownName?: (key: string) => string | undefined;
   /** How long typing settles before the server is asked, in milliseconds. */
   delay?: number;
 }
@@ -25,7 +28,7 @@ export interface LayoutPreviewProps {
 type State =
   | { status: 'loading'; last: Preview | null }
   | { status: 'ready'; preview: Preview }
-  | { status: 'refused'; detail: string | null; last: Preview | null }
+  | { status: 'refused'; answer: unknown; last: Preview | null }
   | { status: 'failed'; last: Preview | null };
 
 const REASONS: Record<Preview['leftOut'][number]['reason'], MessageId> = {
@@ -49,6 +52,7 @@ export function LayoutPreview({
   tracks,
   ownerTrackId,
   fieldName,
+  knownName = () => undefined,
   delay = 250,
 }: LayoutPreviewProps) {
   const t = useT();
@@ -79,12 +83,7 @@ export function LayoutPreview({
           (error) => {
             if (!live || expired(error)) return;
             if (error instanceof ApiError && error.status === 400) {
-              const body = error.body as { detail?: string } | null;
-              setState((s) => ({
-                status: 'refused',
-                detail: body?.detail ?? null,
-                last: lastOf(s),
-              }));
+              setState((s) => ({ status: 'refused', answer: error.body, last: lastOf(s) }));
             } else {
               setState((s) => ({ status: 'failed', last: lastOf(s) }));
             }
@@ -98,6 +97,8 @@ export function LayoutPreview({
   }, [client, setId, typeId, form.operation, trackId, layouts, delay, expired]);
 
   const shown = state.status === 'ready' ? state.preview : state.last;
+  // Why, in the catalogue's words; a refusal the editor does not know is said in general.
+  const reason = state.status === 'refused' ? layoutRefusal(t, state.answer, knownName) : null;
   const typeName = types.find((x) => x.id === typeId)?.name ?? '';
   const nameOf = (key: string) => {
     const custom = /^cf\[(\d+)\]$/.exec(key)?.[1];
@@ -167,7 +168,7 @@ export function LayoutPreview({
           {state.status === 'refused' && (
             <div role="alert" className="form-error">
               <p>{t('layouts.preview.refused')}</p>
-              {state.detail && <p className="layout-preview-detail">{state.detail}</p>}
+              {reason && <p className="layout-preview-detail">{reason}</p>}
             </div>
           )}
           {state.status === 'failed' && (

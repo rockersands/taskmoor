@@ -8,7 +8,7 @@ import { currentRoute, router } from '../routing/router';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { type FakeLayoutsClient, fakeLayoutsClient } from './fixtures';
+import { type FakeLayoutsClient, fakeLayoutsClient, layoutSetsFixture } from './fixtures';
 import { LayoutEditorPage } from './LayoutEditorPage';
 
 function renderPage(
@@ -340,14 +340,55 @@ describe('the layout editor (UI-T15)', () => {
     const tabName = within(form).getByRole('textbox', { name: 'Tab name' });
     await user.clear(tabName);
     expect(within(form).getAllByText('Every tab needs a name.')[0]).toBeVisible();
-    expect(
-      await within(preview()).findByText('The server would refuse this layout as it is:'),
-    ).toBeVisible();
-    expect(within(preview()).getByText(/a name is needed/)).toBeVisible();
+    const refused = await within(preview()).findByRole('alert');
+    expect(refused).toHaveTextContent(
+      'The server would refuse this layout as it is.Every tab needs a name of up to 100 characters.',
+    );
     // The last good form stays in view meanwhile.
     expect(previewed()).toContain('Summary');
     await user.click(within(form).getByRole('button', { name: 'Save the layouts' }));
     expect(client.saved).toEqual([]);
+  });
+
+  it('[CORE-013] says why the server refuses layouts in the person’s language, not the server’s words', async () => {
+    const user = userEvent.setup();
+    const sets = structuredClone(layoutSetsFixture());
+    // The default set's saved layout places the OPS track's own field and one deleted since.
+    sets[0]?.layouts[0]?.definition.tabs[0]?.sections[1]?.fields.push('cf[40]', 'cf[99]');
+    renderPage(CONFIG_ADMIN, { client: fakeLayoutsClient(sets), locale: 'es' });
+    const form = await screen.findByRole('form', { name: 'Diseños de Default layouts' });
+    const region = () => screen.getByRole('region', { name: 'Vista previa' });
+    const raw = /belongs|unknown field|Too small|layouts\.\d/;
+    // The preview: the field is named as the canvas names it, and why it may not be here.
+    const other = await within(region()).findByRole('alert');
+    expect(other).toHaveTextContent(
+      'El servidor rechazaría este diseño tal como está.' +
+        'Ops notes pertenece a otro track, así que este conjunto no puede colocarlo. Quítalo del diseño.',
+    );
+    expect(other).not.toHaveTextContent(raw);
+    expect(within(form).getByRole('button', { name: 'Mover Ops notes' })).toBeVisible();
+    await choose(user, 'Mover Ops notes', 'Quitar del diseño');
+    await waitFor(() =>
+      expect(within(region()).getByRole('alert')).toHaveTextContent(
+        'cf[99] ya no existe. Quítalo del diseño.',
+      ),
+    );
+    // A save refused for the same reason says it in the same words.
+    await user.click(within(form).getByRole('button', { name: 'Guardar los diseños' }));
+    const problem = await within(form).findByText(/^El servidor rechazó estos diseños/);
+    expect(problem).toHaveTextContent(
+      'El servidor rechazó estos diseños: cf[99] ya no existe. Quítalo del diseño.',
+    );
+    expect(problem).not.toHaveTextContent(raw);
+    // A tab name cleared to retype it.
+    await choose(user, 'Mover Un campo que ya no existe (cf[99])', 'Quitar del diseño');
+    await user.clear(within(form).getByRole('textbox', { name: 'Nombre de la pestaña' }));
+    await waitFor(() =>
+      expect(within(region()).getByRole('alert')).toHaveTextContent(
+        'Cada pestaña necesita un nombre de hasta 100 caracteres.',
+      ),
+    );
+    expect(within(region()).getByRole('alert')).not.toHaveTextContent(raw);
   });
 
   it('[CORE-013] adds a set and deletes it; a set a track uses stays, and says why', async () => {

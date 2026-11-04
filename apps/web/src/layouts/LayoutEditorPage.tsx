@@ -31,6 +31,7 @@ import {
   sameLayouts,
   starterFor,
 } from './model';
+import { layoutRefusal } from './refusal';
 
 /** Where the field rules are edited: the other half of how a form comes out. */
 export const FIELD_RULES_HREF = '#/admin/configuration-sets';
@@ -243,17 +244,23 @@ export function LayoutEditorPage({
   );
 }
 
-/** What a refused change says, from the server's answer. */
-function refusal(t: ReturnType<typeof useT>, error: unknown): string {
+/**
+ * What a refused change says, from the server's answer: a refused save in the catalogue's words
+ * (`layoutRefusal`), with `nameOf` naming the custom fields it is about.
+ */
+function refusal(
+  t: ReturnType<typeof useT>,
+  error: unknown,
+  nameOf: (key: string) => string | undefined = () => undefined,
+): string {
   if (!(error instanceof ApiError)) return t('layouts.problem.other');
-  const body = error.body as { error?: string; trackCount?: number; detail?: string } | null;
+  const body = error.body as { error?: string; trackCount?: number } | null;
   if (body?.error === 'in_use') return t('layouts.problem.inUse', { tracks: body.trackCount ?? 0 });
   if (body?.error === 'default') return t('layouts.problem.default');
   if (body?.error === 'name_taken') return t('layouts.problem.nameTaken');
   if (error.status === 400) {
-    return body?.detail
-      ? t('layouts.problem.invalidDetail', { detail: body.detail })
-      : t('layouts.problem.invalid');
+    const reason = layoutRefusal(t, body, nameOf);
+    return reason ? t('layouts.problem.invalidBecause', { reason }) : t('layouts.problem.invalid');
   }
   if (error.status === 403) return t('layouts.problem.forbidden');
   if (error.status === 409) return t('layouts.problem.conflict');
@@ -380,17 +387,21 @@ function SetEditor({
     () => [...SYSTEM_FIELD_KEYS, ...customs.map((f) => `cf[${f.id}]`)],
     [customs],
   );
-  const fieldName = useCallback(
+  // A custom field's name when the page knows it, whichever track owns it, so a field this set
+  // may not place is named as the server's refusal names it.
+  const knownName = useCallback(
     (key: string) => {
       const custom = /^cf\[(\d+)\]$/.exec(key)?.[1];
-      if (custom) {
-        return (
-          customs.find((f) => f.id === Number(custom))?.name ?? t('layouts.unknownField', { key })
-        );
-      }
+      return custom ? fields.find((f) => f.id === Number(custom))?.name : undefined;
+    },
+    [fields],
+  );
+  const fieldName = useCallback(
+    (key: string) => {
+      if (/^cf\[\d+\]$/.test(key)) return knownName(key) ?? t('layouts.unknownField', { key });
       return t(`workflow.field.${key}` as MessageId);
     },
-    [customs, t],
+    [knownName, t],
   );
   const typeName = (typeId: number | null) =>
     typeId === null
@@ -447,7 +458,7 @@ function SetEditor({
       onDirty(false);
       onSaved(saved);
     } catch (error) {
-      if (!expired(error)) setProblem(refusal(t, error));
+      if (!expired(error)) setProblem(refusal(t, error, knownName));
     } finally {
       setBusy(false);
     }
@@ -590,6 +601,7 @@ function SetEditor({
           tracks={set.usedBy}
           ownerTrackId={set.trackId}
           fieldName={fieldName}
+          knownName={knownName}
           {...(previewDelay !== undefined ? { delay: previewDelay } : {})}
         />
       </div>

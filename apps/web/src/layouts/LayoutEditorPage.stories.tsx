@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { CONFIG_ADMIN, MEMBER } from '../admin/fixtures';
 import { type Session, SessionProvider } from '../session/SessionProvider';
-import { fakeLayoutsClient } from './fixtures';
+import { fakeLayoutsClient, layoutSetsFixture } from './fixtures';
 import { LayoutEditorPage } from './LayoutEditorPage';
 
 const meta = {
@@ -66,6 +66,25 @@ export const PreviewFails: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText('The preview could not be made. Try again in a moment.'),
+    ).toBeVisible();
+  },
+};
+
+/** A saved layout the server would now refuse: the preview says why, in the catalogue's words. */
+export const PreviewRefuses: Story = {
+  args: {
+    client: fakeLayoutsClient(
+      (() => {
+        const sets = structuredClone(layoutSetsFixture());
+        sets[0]?.layouts[0]?.definition.tabs[0]?.sections[1]?.fields.push('cf[99]');
+        return sets;
+      })(),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('cf[99] no longer exists. Take it off the layout.'),
     ).toBeVisible();
   },
 };

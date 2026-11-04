@@ -531,6 +531,28 @@ describe('field rules and layouts (M1-012)', () => {
         ],
       });
       expect(pairs.statusCode).toBe(400);
+      // The places the layout editor tells its reasons by (`apps/web/src/layouts/refusal.ts`).
+      const detailOf = async (definition: Record<string, unknown>) =>
+        (
+          await preview('admin', set.id, {
+            ticketTypeId: types.Feature,
+            operation: 'edit',
+            layouts: [{ ticketTypeId: null, operation: 'edit', definition }],
+          })
+        ).json().detail as string;
+      expect(await detailOf({ tabs: [{ name: ' ', sections: [] }] })).toMatch(
+        /^layouts\.0\.definition\.tabs\.0\.name: /,
+      );
+      const many = Array.from({ length: 21 }, (_, i) => i);
+      expect(await detailOf({ tabs: many.map((i) => ({ name: `T${i}`, sections: [] })) })).toMatch(
+        /^layouts\.0\.definition\.tabs: /,
+      );
+      expect(
+        await detailOf({ tabs: [{ name: 'A', sections: many.map(() => ({ fields: [] })) }] }),
+      ).toMatch(/^layouts\.0\.definition\.tabs\.0\.sections: /);
+      expect(
+        await detailOf({ tabs: [{ name: 'A', sections: [{ fields: ['labels', 'labels'] }] }] }),
+      ).toBe('layouts.0.definition: each field once');
       expect(
         (await preview('admin', set.id, { ticketTypeId: 999999, operation: 'edit' })).json(),
       ).toEqual({ error: 'unknown_ticket_type' });

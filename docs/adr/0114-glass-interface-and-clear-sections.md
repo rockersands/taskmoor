@@ -257,7 +257,18 @@ had no web page. A page under Settings, Configuration sets edits them:
   event (exempt in the contract test as a read), is not audited, and its scope class is `read`
   (`READ_ONLY_ROUTES`). Its OpenAPI entry is internal. No migration and no new requirement ID:
   CORE-008 (forms) and CORE-013 (layouts) cover it. The preview waits 250 ms after a change, keeps
-  the last good form while the server refuses a draft, and says why.
+  the last good form while the server refuses a draft, and says why. Anyone who reads the set
+  may preview its saved layouts, but a draft comes only from those who may change the set (a
+  `403` otherwise), and the ticket type must be one the person sees (`unknown_ticket_type`
+  otherwise, as for one that does not exist): a draft's verdict tells a hidden local-mode track's
+  own field or type from one that does not exist, which only those who could save it learn, as a
+  save already told them.
+- **Refusals in the person's words.** The server's `detail` is English with the request's paths
+  in it, so the page never shows it as it comes: `layouts/refusal.ts` tells the refusals the
+  editor can meet (a field placed twice, a field that no longer exists or belongs to another
+  track, a tab name, too many tabs or sections, a ticket type gone) by the place and words the
+  server's schema and `checkLayouts` use, in the catalogue's words, and anything else in general
+  terms. The server's tests pin those places.
 - **Drags** use pointer events, so a mouse and a finger work alike (HTML drag and drop has no
   touch): a grip turns a press into a drag after 6 px, shows a glass chip under the pointer, marks
   the drop place with the focus colour and scrolls the window near its top or bottom. A field drops

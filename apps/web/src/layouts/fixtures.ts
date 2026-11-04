@@ -84,6 +84,12 @@ function ruleOf(key: string, typeId: number, trackId: number | null) {
 /** The checks a save makes, enough of them for the page's tests: each field once, known fields. */
 function problemOf(layouts: readonly LayoutEntry[], ownerTrackId: number | null): string | null {
   for (const [i, l] of layouts.entries()) {
+    // The schema first, as the server says it: the place in the request, then English words.
+    for (const [j, tab] of l.definition.tabs.entries()) {
+      if (!tab.name.trim()) {
+        return `layouts.${i}.definition.tabs.${j}.name: Too small: expected string to have >=1 characters`;
+      }
+    }
     const all = l.definition.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields));
     if (new Set(all).size !== all.length) return `layouts.${i}.definition: each field once`;
     for (const key of all) {
@@ -93,9 +99,6 @@ function problemOf(layouts: readonly LayoutEntry[], ownerTrackId: number | null)
       if (field && field.trackId !== null && field.trackId !== ownerTrackId) {
         return `${key} belongs to another track`;
       }
-    }
-    for (const tab of l.definition.tabs) {
-      if (!tab.name.trim()) return `layouts.${i}.definition.tabs: a name is needed`;
     }
   }
   return null;

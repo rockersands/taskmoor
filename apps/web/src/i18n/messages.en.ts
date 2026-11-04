@@ -6103,13 +6103,22 @@ export const messagesEn = {
   'layouts.problem.default': 'The default set is not deleted.',
   'layouts.problem.nameTaken': 'There is a layout set with that name already.',
   'layouts.problem.invalid': 'The server refused these layouts.',
-  'layouts.problem.invalidDetail': 'The server refused these layouts: {detail}',
+  'layouts.problem.invalidBecause': 'The server refused these layouts: {reason}',
   'layouts.problem.forbidden': 'You may not change this set.',
   'layouts.problem.conflict':
     'That clashes with a change made meanwhile. Read the page again and retry.',
   'layouts.problem.other': 'That did not work. Try again in a moment.',
   'layouts.problem.noName': 'Give the set a name.',
   'layouts.problem.blankTab': 'Every tab needs a name.',
+  'layouts.refusal.fieldTwice': 'A field is placed twice. Each field goes on a form once.',
+  'layouts.refusal.unknownField': '{field} no longer exists. Take it off the layout.',
+  'layouts.refusal.otherTrack':
+    '{field} belongs to another track, so this set cannot place it. Take it off the layout.',
+  'layouts.refusal.tabName': 'Every tab needs a name of up to {count} characters.',
+  'layouts.refusal.tooManyTabs': 'A form has at most {count} tabs.',
+  'layouts.refusal.tooManySections': 'A tab has at most {count} sections.',
+  'layouts.refusal.unknownType':
+    'A ticket type here no longer exists. Load the page again to see the current ones.',
   'layouts.preview.title': 'Preview',
   'layouts.preview.intro':
     'The form as the server will give it, with the field rules applied. It follows your changes before you save.',
@@ -6121,7 +6130,7 @@ export const messagesEn = {
     'Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
   'layouts.preview.noTypes': 'There are no ticket types to preview.',
   'layouts.preview.loading': 'Updating the preview…',
-  'layouts.preview.refused': 'The server would refuse this layout as it is:',
+  'layouts.preview.refused': 'The server would refuse this layout as it is.',
   'layouts.preview.failed': 'The preview could not be made. Try again in a moment.',
   'layouts.preview.formOf':
     'Preview of the {operation, select, create {create} edit {edit} other {view}} form for {type}',

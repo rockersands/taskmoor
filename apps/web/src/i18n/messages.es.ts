@@ -6245,13 +6245,23 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.problem.default': 'El conjunto predeterminado no se elimina.',
   'layouts.problem.nameTaken': 'Ya hay un conjunto de diseños con ese nombre.',
   'layouts.problem.invalid': 'El servidor rechazó estos diseños.',
-  'layouts.problem.invalidDetail': 'El servidor rechazó estos diseños: {detail}',
+  'layouts.problem.invalidBecause': 'El servidor rechazó estos diseños: {reason}',
   'layouts.problem.forbidden': 'No puedes cambiar este conjunto.',
   'layouts.problem.conflict':
     'Choca con un cambio hecho mientras tanto. Vuelve a leer la página e inténtalo otra vez.',
   'layouts.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
   'layouts.problem.noName': 'Ponle un nombre al conjunto.',
   'layouts.problem.blankTab': 'Cada pestaña necesita un nombre.',
+  'layouts.refusal.fieldTwice':
+    'Hay un campo colocado dos veces. Cada campo va una sola vez en un formulario.',
+  'layouts.refusal.unknownField': '{field} ya no existe. Quítalo del diseño.',
+  'layouts.refusal.otherTrack':
+    '{field} pertenece a otro track, así que este conjunto no puede colocarlo. Quítalo del diseño.',
+  'layouts.refusal.tabName': 'Cada pestaña necesita un nombre de hasta {count} caracteres.',
+  'layouts.refusal.tooManyTabs': 'Un formulario tiene como máximo {count} pestañas.',
+  'layouts.refusal.tooManySections': 'Una pestaña tiene como máximo {count} secciones.',
+  'layouts.refusal.unknownType':
+    'Un tipo de ticket de aquí ya no existe. Vuelve a cargar la página para ver los actuales.',
   'layouts.preview.title': 'Vista previa',
   'layouts.preview.intro':
     'El formulario tal como lo dará el servidor, con las reglas de campos aplicadas. Sigue tus cambios antes de que guardes.',
@@ -6264,7 +6274,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
   'layouts.preview.noTypes': 'No hay tipos de ticket para la vista previa.',
   'layouts.preview.loading': 'Actualizando la vista previa…',
-  'layouts.preview.refused': 'El servidor rechazaría este diseño tal como está:',
+  'layouts.preview.refused': 'El servidor rechazaría este diseño tal como está.',
   'layouts.preview.failed': 'No se pudo hacer la vista previa. Inténtalo de nuevo en un momento.',
   'layouts.preview.formOf':
     'Vista previa del formulario de {operation, select, create {crear} edit {editar} other {ver}} para {type}',
