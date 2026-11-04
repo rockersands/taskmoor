@@ -57,6 +57,7 @@ export function TrackLayout({
             <li key={s.id}>
               <a
                 href={routeHref(trackHref(trackKey, s.id))}
+                data-tutorial={`track-tab-${s.id}`}
                 aria-current={s.id === section ? 'page' : undefined}
               >
                 {t(s.labelId)}

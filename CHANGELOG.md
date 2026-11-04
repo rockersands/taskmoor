@@ -45,6 +45,9 @@ security fixes for 24 months.
 ### Collaboration
 - Home page, inbox, mentions and activity; notification rules and email notifications with
   digests; live updates on every open screen; works offline and catches up.
+- A guided tutorial in eight sections, offered once at the first sign-in and always in Settings,
+  Tutorials: a coach card leads the person through making one real thing in each part, waits for
+  them to do it, and keeps their place with their account.
 
 ### Identity and administration
 - Invitations into a track by email or copied link, with a set role, off until a site

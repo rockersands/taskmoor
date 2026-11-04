@@ -1045,6 +1045,194 @@
   }
 }
 
+/* The first-run offer (ADR-115): in Home's flow, not over it, so nothing waits behind it. */
+.tutorial-offer {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+}
+
+.tutorial-offer-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+  font-weight: 650;
+}
+
+.tutorial-offer-body {
+  max-width: 52rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.tutorial-offer-note:focus {
+  outline: none;
+}
+
+/*
+ * The coach card (ADR-115): floating glass at the end corner, moved by the ring's position to the
+ * other corner or the top so it never hides the control; docked at the bottom on a phone.
+ */
+.coach-card {
+  --motion-origin: calc(50% + var(--motion-side) * 50%) 100%;
+  position: fixed;
+  inset-block-end: var(--space-6);
+  inset-inline-end: var(--space-6);
+  z-index: 84;
+  box-sizing: border-box;
+  width: min(25rem, calc(100vw - 2 * var(--space-6)));
+  max-height: calc(100dvh - var(--topbar-height) - 3 * var(--space-6));
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+}
+
+.coach-card:focus {
+  outline: none;
+}
+
+.coach-card[data-place="start"] {
+  --motion-origin: calc(50% - var(--motion-side) * 50%) 100%;
+  inset-inline-end: auto;
+  inset-inline-start: var(--space-6);
+}
+
+.coach-card[data-place="top"] {
+  --motion-origin: calc(50% + var(--motion-side) * 50%) 0%;
+  inset-block-end: auto;
+  inset-block-start: calc(var(--topbar-height) + var(--shell-gap) + var(--space-4));
+}
+
+.coach-eyebrow {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.coach-title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-400);
+  font-weight: 650;
+}
+
+.coach-body {
+  margin: var(--space-2) 0 0;
+  line-height: 1.5;
+}
+
+.coach-waiting {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.45;
+}
+
+.coach-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+}
+
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* The ring around the control to use; the shadow dims the rest, and no click stops here. */
+.coach-ring {
+  position: fixed;
+  z-index: 83;
+  box-sizing: border-box;
+  border-radius: var(--radius-2);
+  box-shadow:
+    0 0 0 3px var(--color-accent),
+    0 0 0 200vmax var(--color-backdrop);
+  pointer-events: none;
+}
+
+/* A paused tutorial: its place and the way back in, small at the end corner. */
+.coach-paused {
+  position: fixed;
+  inset-block-end: var(--space-6);
+  inset-inline-end: var(--space-6);
+  z-index: 84;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  max-width: calc(100vw - 2 * var(--space-6));
+  padding: var(--space-3) var(--space-4);
+}
+
+.coach-paused-text {
+  margin: 0;
+  font-size: var(--font-size-200);
+  font-weight: 550;
+}
+
+.coach-paused-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 767px) {
+  .coach-card,
+  .coach-card[data-place] {
+    --motion-origin: 50% 100%;
+    inset: auto 0 0;
+    width: auto;
+    max-height: 55dvh;
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--radius-3) var(--radius-3) 0 0;
+    animation-name: motion-dock;
+  }
+
+  .coach-paused {
+    inset: auto var(--space-3) var(--space-3);
+    max-width: none;
+  }
+
+  /* Room under the page for the docked card, so what it covers can scroll above it. */
+  :root[data-coach="open"] {
+    scroll-padding-bottom: var(--coach-space, 0px);
+  }
+
+  :root[data-coach="open"] .shell-main {
+    padding-bottom: calc(var(--coach-space, 0px) + var(--space-6));
+  }
+}
+
+@media (pointer: coarse) {
+  .coach-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+}
+
+@media (forced-colors: active) {
+  .coach-ring {
+    outline: 3px solid Highlight;
+    box-shadow: none;
+  }
+
+  .coach-card,
+  .coach-paused {
+    border-color: CanvasText;
+  }
+}
+
 /*
  * Liquid glass details (ADR-114): a rim that catches the light, drawn as a 1px gradient ring
  * masked out of the middle, on the floating surfaces. Purely decorative: no pointer events, gone

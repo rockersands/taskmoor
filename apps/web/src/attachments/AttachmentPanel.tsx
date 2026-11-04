@@ -260,7 +260,7 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
       {loaded && (
         <>
           {loaded.canCreate ? (
-            <div className="attachment-drop">
+            <div className="attachment-drop" data-tutorial="ticket-attach">
               <p id={hintId} className="attachment-hint">
                 {t('attachments.dropHint', { limit: size(loaded.maxFileSize) })}
               </p>

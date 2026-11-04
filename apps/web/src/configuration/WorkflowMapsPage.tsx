@@ -98,6 +98,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
           <p className="page-note">{t('admin.maps.intro')}</p>
           <form
             className="people-form"
+            data-tutorial="workflow-map-new"
             aria-label={t('admin.maps.add')}
             onSubmit={(event) => {
               event.preventDefault();

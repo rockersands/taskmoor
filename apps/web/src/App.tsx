@@ -117,6 +117,8 @@ import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
 import { newTrackModes } from './tracks/trackAccess';
+import { FirstRunOffer } from './tutorial/FirstRunOffer';
+import { TutorialCoach, TutorialProvider } from './tutorial/TutorialProvider';
 import { TutorialsPage } from './tutorial/TutorialsPage';
 import { WebhooksPage } from './webhooks/WebhooksPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
@@ -313,7 +315,8 @@ function Pages() {
       ) {
         return;
       }
-      if (document.querySelector('[role="dialog"]')) return;
+      // The tutorial's coach card is a dialog that leaves the page usable, so it does not count.
+      if (document.querySelector('[role="dialog"]:not(.coach-card)')) return;
       event.preventDefault();
       setCreating(true);
     };
@@ -924,7 +927,7 @@ function Pages() {
       ) : active === 'inbox' ? (
         <InboxPage />
       ) : active === 'home' && signedIn ? (
-        <HomePage />
+        <HomePage intro={<FirstRunOffer />} />
       ) : active === 'home' && session.status === 'anonymous' ? (
         // Signed out, as on a fresh install's first visit: say where to start (M1-113). Not
         // while the session is still being checked, or a signed-in person would see it flash.
@@ -974,6 +977,7 @@ function Pages() {
             <button
               type="button"
               className="button-primary create-open"
+              data-tutorial="create-ticket"
               title={t('tickets.create.openDialogHint')}
               aria-haspopup="dialog"
               onClick={() => setCreating(true)}
@@ -994,6 +998,7 @@ function Pages() {
       {guarded ? <RequireSession>{content}</RequireSession> : content}
       {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
       <TicketPopup />
+      <TutorialCoach />
     </AppShell>
   );
 }
@@ -1039,7 +1044,9 @@ export function App({ locale, session, onI18nError, metaClient }: AppProps) {
         <SyncProvider>
           <PaletteCommandsProvider>
             <VersionGate {...(metaClient ? { client: metaClient } : {})}>
-              <Pages />
+              <TutorialProvider>
+                <Pages />
+              </TutorialProvider>
             </VersionGate>
           </PaletteCommandsProvider>
         </SyncProvider>

@@ -219,7 +219,7 @@ export function SearchPage({
           searchFor(query);
         }}
       />
-      <fieldset className="search-modes">
+      <fieldset className="search-modes" data-tutorial="search-modes">
         <legend className="visually-hidden">{t('search.mode')}</legend>
         <button
           type="button"
@@ -332,6 +332,7 @@ function BasicForm({
   return (
     <form
       className="search-basic glass-card"
+      data-tutorial="search-basic"
       aria-label={t('search.basic')}
       onSubmit={(event) => {
         event.preventDefault();
@@ -492,7 +493,12 @@ function AdvancedForm({
   const errorId = `${id}-error`;
   const open = offer !== null && offer.items.length > 0;
   return (
-    <form className="search-advanced" aria-label={t('search.advanced')} onSubmit={submit}>
+    <form
+      className="search-advanced"
+      data-tutorial="search-advanced"
+      aria-label={t('search.advanced')}
+      onSubmit={submit}
+    >
       <div className="form-field search-editor">
         <label htmlFor={`${id}-query`} className="form-label">
           {t('search.query')}

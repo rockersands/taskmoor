@@ -976,6 +976,7 @@ export function BoardPage({
       <section
         ref={scrollRegion}
         className="board-scroll"
+        data-tutorial="board-columns"
         aria-label={t('boards.columns')}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region is reached by keyboard to scroll it
         tabIndex={0}

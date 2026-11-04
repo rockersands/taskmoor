@@ -1,4 +1,11 @@
-import { type ComponentType, type SVGProps, useEffect, useId, useState } from 'react';
+import {
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+  useEffect,
+  useId,
+  useState,
+} from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -26,6 +33,8 @@ export interface HomePageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: HomeClient;
   tracks?: () => Promise<HomeTrack[]>;
+  /** Shown under the header, before the tracks: the tutorial's first-run offer (ADR-115). */
+  intro?: ReactNode;
 }
 
 type Loaded<T> = { status: 'loading' } | { status: 'failed' } | { status: 'loaded'; items: T[] };
@@ -91,7 +100,7 @@ const STARTS: {
  * start, the open tickets assigned to them, the ones they opened lately and the ones they follow.
  * Each list loads on its own, so one that fails leaves the others; an empty one says how it fills.
  */
-export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageProps) {
+export function HomePage({ client = homeClient, tracks = homeTracks, intro }: HomePageProps) {
   const t = useT();
   const titleId = useId();
   const startId = useId();
@@ -132,6 +141,8 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
         purpose={t('purpose.home')}
         about={t('about.home')}
       />
+
+      {intro}
 
       <HomeTracks list={trackList} />
 

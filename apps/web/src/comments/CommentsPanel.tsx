@@ -357,6 +357,7 @@ function Composer({ id, client, audiences, mentions, problemText, onAdded }: Com
   return (
     <form
       className="comment-composer"
+      data-tutorial="ticket-comment"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

@@ -44,14 +44,15 @@ to merge: new work stopped on the coordinator's word, and what is not built wait
   page-by-page pass is T-143.
 - UI-T16: reach, closing column and removal are built; adding, renaming and reordering by drag on the
   board are not.
-- UI-T11: the picker and page exist; the Start buttons still do nothing.
+- UI-T11 to UI-T13 (T-161, branch `wave4/t161-tutorial`): the picker and Settings, Tutorials read
+  and save progress and start, resume and replay; the first-run offer and the coach card with the
+  eight sections' steps are built (AGL-025; ADR-115, "As built"). Waiting for review and merge.
 
 **Left as tickets, not started:** personal track groups and sharing them with access (T-084 to T-087;
 their migration takes whatever number is next free when they start, not a fixed one); creating tracks off
 by default with a ticked box when giving the manager role (T-087a: it needs a rule for who may tick it, an
 audit record, an event and a contract scenario, and every fixture that makes a local track as an ordinary
-person changes); the page-by-page glass pass (T-143); the tutorial's offer and steps (UI-T12, UI-T13); drag
-and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone and accessibility pass
+person changes); the page-by-page glass pass (T-143); drag and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone and accessibility pass
 (UI-T09); the route sweep (UI-T22); the manual's overview pages (UI-T14).
 
 **Known gaps to carry:**
@@ -184,11 +185,11 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | UI-T08 | Drag and drop with a keyboard path: board columns, dashboard widgets; restyle the existing drags | todo | Columns reorder by drag and by Move left/right; widgets by drag and by the existing buttons; every drop announced; tests for both paths | |
 | UI-T09 | Phones and accessibility pass across the app | todo | No sideways scroll at 360 px on every page; 44 px targets under a coarse pointer; axe clean in both skins on every story; `pnpm verify --e2e` green | |
 | UI-T10 | Tutorial progress on the server: migration 0084 (exactly), `GET` and `PUT /api/v1/account/tutorial` | doneo | Table type in `schema.ts`, schema golden reviewed; routes session-only with a strict body, own progress only, a domain event and its contract scenario, route tests | |
-| UI-T11 | Tutorial picker and Settings, Tutorials page | in progress (picker with test and story; page without storage) | Page and picker built (prototype, no storage); then reads and saves progress, starts, resumes and replays a section; story and tests | 265af8b (page without storage) |
-| UI-T12 | First-run offer: Start, Not now, Don't offer again | todo | Offered once at a person's first sign-in; skipping leaves every section in Settings, Tutorials; story, tests and an e2e | |
-| UI-T13 | Coach card and the steps of the eight sections | todo | Card highlights `data-tutorial` targets, waits for real actions, Back, Next, Pause, Skip, Escape pauses, docks on phones; a test walks every section's steps; one section end to end in e2e | |
+| UI-T11 | Tutorial picker and Settings, Tutorials page | done (T-161, `wave4/t161-tutorial`, not merged) | Page and picker built (prototype, no storage); then reads and saves progress, starts, resumes and replays a section; story and tests | 265af8b (page without storage); `tutorial/TutorialsPage.tsx` with `TutorialsPage.test.tsx` and stories; the picker offers sections by who may do them |
+| UI-T12 | First-run offer: Start, Not now, Don't offer again | done (T-161, `wave4/t161-tutorial`, not merged) | Offered once at a person's first sign-in; skipping leaves every section in Settings, Tutorials; story, tests and an e2e | `tutorial/FirstRunOffer.tsx`: a panel at the top of Home, not a modal (ADR-115, "As built"); `FirstRunOffer.test.tsx`, stories, `e2e/tutorial.spec.ts` on desktop and phone |
+| UI-T13 | Coach card and the steps of the eight sections | done (T-161, `wave4/t161-tutorial`, not merged) | Card highlights `data-tutorial` targets, waits for real actions, Back, Next, Pause, Skip, Escape pauses, docks on phones; a test walks every section's steps; one section end to end in e2e | `tutorial/TutorialProvider.tsx`, `CoachCard.tsx`, `steps.ts`, `api/changes.ts`; `TutorialProvider.test.tsx` walks all eight sections, `steps.test.ts` checks every marker in the source; Dashboards end to end in `e2e/tutorial.spec.ts` |
 | UI-T22 | Route sweep: the whole app reads as one design | todo | Every route gone through in Chrome in both skins and at phone width, including sign-in, first-run setup, invitation and password pages, error and not-found pages, the update notice, the Builder page, the imports wizard and printed views; differences listed and fixed from tokens and shared components; a cheap guard if one exists (raw colours outside tokens, unstyled native controls) | |
-| UI-T14 | Manual and HANDOFF | todo | A "Getting around" page and a "Tutorials" page in `docs/manual`; changed pages updated; HANDOFF says what changed and what is next | |
+| UI-T14 | Manual and HANDOFF | partly done (the Tutorials page, T-161) | A "Getting around" page and a "Tutorials" page in `docs/manual`; changed pages updated; HANDOFF says what changed and what is next | `docs/manual/use/tutorials.md`; "Getting around" is still a section of `use/tickets.md` |
 | UI-T15 | Layout editor page under Settings, Configuration sets (confirmed by the user 2026-11-03) | todo | A page for layout sets (`/api/v1/layout-sets`): drag fields into tabs and sections (main or side column), reorder them, mark a section "hide when empty"; "show only the fields I placed" maps to `others: "omit"`; a live preview per ticket type and per operation (create, edit, view); a keyboard path for every drag; the field rules page and this one link to each other and each explains what it does and how the two combine; manual `admin/fields.md` updated (the "no web page yet" line goes); story, tests and an e2e | |
 | UI-T16 | Board columns easy to manage (confirmed by the user 2026-11-03) | partly done (reach, closing column, removal); drag on the board is noto | On the board and in its settings: add, rename, reorder by drag (and by Move left/right), set minimum and maximum; the limit stays 30 (`MAX_COLUMNS` in `apps/server/src/boards/model.ts`) and the page says so when it is reached; tests for drag and keyboard paths. Overlaps UI-T08's column drag | |
 | UI-T17 | Administration: visibility policies and the permission explainer (first new page) | done | Policies and levels managed in the web app; the explainer answers who can do what and why; story, tests; `admin/permissions.md` updated | |

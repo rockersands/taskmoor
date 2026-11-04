@@ -286,21 +286,216 @@ export const messagesEs: Record<MessageId, string> = {
     'Dibuja un flujo de trabajo con tus propios estados y transiciones, publícalo y asígnalo a un track.',
   'tutorial.section.boards': 'Tableros y sprints',
   'tutorial.section.boardsHint':
-    'Crea un tablero, arrastra tarjetas por él y después planifica un sprint en el backlog e inícialo.',
+    'Mueve una tarjeta por el tablero de tu track y después planifica un sprint en el backlog e inícialo.',
   'tutorial.section.search': 'Búsqueda y búsquedas guardadas',
   'tutorial.section.searchHint':
     'Encuentra tickets con filtros y con el lenguaje de consultas, y guarda la búsqueda para reutilizarla.',
   'tutorial.section.dashboards': 'Paneles',
-  'tutorial.section.dashboardsHint':
-    'Crea un panel, añade algunos widgets y ordénalos arrastrándolos.',
+  'tutorial.section.dashboardsHint': 'Crea un panel, añade un widget y colócalo arrastrándolo.',
   'tutorial.section.releases': 'Versiones',
-  'tutorial.section.releasesHint': 'Crea una versión, asígnale tickets y márcala como publicada.',
+  'tutorial.section.releasesHint': 'Crea una versión, asígnale un ticket y márcala como entregada.',
   'tutorial.section.admin': 'Administración',
   'tutorial.section.adminHint':
-    'Añade una persona, ponla en un grupo y da acceso al grupo a un track.',
+    'Añade una persona, ponla en un grupo y dale al grupo un rol en un track.',
   'tutorial.section.import': 'Importación',
   'tutorial.section.importHint':
     'Trae tickets desde un archivo CSV, con una prueba previa para comprobar qué pasará.',
+  'tutorial.setupOnly': 'Para administradores',
+  'tutorial.actionOn': '{action}: {title}',
+  'tutorial.loading': 'Leyendo tu progreso…',
+  'tutorial.loadFailed':
+    'No se pudo leer tu progreso. Puedes empezar cualquier sección igualmente; aparece como sin empezar.',
+  'tutorial.runningNote':
+    'Hay un tutorial abierto en su tarjeta. Si empiezas otro, ocupa su lugar; el abierto conserva su progreso.',
+  'tutorial.offer.title': 'Te damos la bienvenida a Taskmoor, {name}',
+  'tutorial.offer.body':
+    'Apréndelo haciendo. Marca lo que quieres aprender y un tutorial corto te guía para crear algo real en cada parte. Puedes pausarlo o saltarlo cuando quieras.',
+  'tutorial.offer.notNow': 'Ahora no',
+  'tutorial.offer.never': 'No volver a ofrecerlo',
+  'tutorial.offer.later':
+    'De acuerdo. Todos los tutoriales te esperan en Configuración, Tutoriales, y en el menú Ayuda, cuando quieras.',
+  'tutorial.offer.neverNote':
+    'No volveremos a ofrecerte el tutorial. Todas las secciones siguen en Configuración, Tutoriales por si cambias de idea.',
+  'tutorial.offer.open': 'Abrir Tutoriales',
+  'tutorial.offer.failed': 'No se pudo guardar tu respuesta. Inténtalo de nuevo.',
+  'tutorial.coach.progress': '{section} · Paso {step} de {count}',
+  'tutorial.coach.announce': '{progress}: {title}',
+  'tutorial.coach.waiting':
+    'Hazlo en la página y el tutorial avanza solo. Siguiente salta este paso; Escape lo pausa.',
+  'tutorial.coach.goThere': 'Llévame allí',
+  'tutorial.coach.openMade': 'Abrir lo que creaste',
+  'tutorial.coach.back': 'Atrás',
+  'tutorial.coach.next': 'Siguiente',
+  'tutorial.coach.finish': 'Terminar',
+  'tutorial.coach.pause': 'Pausar',
+  'tutorial.coach.skip': 'Saltar la sección',
+  'tutorial.coach.paused': 'Tutorial en pausa: {section}, paso {step} de {count}',
+  'tutorial.coach.resume': 'Continuar',
+  'tutorial.coach.close': 'Cerrar por ahora',
+  'tutorial.step.tracks.intro.title': 'Tracks y tickets',
+  'tutorial.step.tracks.intro.body':
+    'Un track reúne un trabajo y sus tickets. Vas a crear un ticket, comentarlo y adjuntarle un archivo. Lo que crees es real y se queda en esta instancia, así que al final puedes conservarlo o borrarlo.',
+  'tutorial.step.tracks.newTrack.title': 'Empieza un track nuevo',
+  'tutorial.step.tracks.newTrack.body':
+    'En la página Tracks, elige Nuevo track. Cada track tiene su propio tablero, su backlog y una clave para sus tickets.',
+  'tutorial.step.tracks.trackForm.title': 'Ponle nombre a tu track',
+  'tutorial.step.tracks.trackForm.body':
+    'Dale un nombre y una clave corta, como WEB, y créalo. Todos sus tickets empiezan con esa clave.',
+  'tutorial.step.tracks.openTrack.title': 'Abre un track',
+  'tutorial.step.tracks.openTrack.body':
+    'Abre desde la página Tracks un track del que formes parte. Allí están sus tickets, su tablero y sus versiones.',
+  'tutorial.step.tracks.newTicket.title': 'Abre el diálogo de creación',
+  'tutorial.step.tracks.newTicket.body':
+    'Elige Ticket nuevo en la barra superior o pulsa C. Funciona desde cualquier página, así no pierdes tu sitio.',
+  'tutorial.step.tracks.ticketForm.title': 'Rellena el ticket',
+  'tutorial.step.tracks.ticketForm.body':
+    'Elige tu track y un tipo, escribe un resumen y elige Crear. Para empezar solo hace falta el resumen; lo demás puede esperar.',
+  'tutorial.step.tracks.openTicket.title': 'Abre tu ticket',
+  'tutorial.step.tracks.openTicket.body':
+    'Usa el enlace bajo el formulario para abrir el ticket que acabas de crear. Todo lo de un trabajo está en un solo sitio.',
+  'tutorial.step.tracks.comment.title': 'Deja un comentario',
+  'tutorial.step.tracks.comment.body':
+    'Escribe un comentario y elige Comentar. Los comentarios mantienen la conversación junto al trabajo, y una @mención avisa a la persona.',
+  'tutorial.step.tracks.attach.title': 'Adjunta un archivo',
+  'tutorial.step.tracks.attach.body':
+    'Elige Adjuntar archivos o suelta un archivo en el ticket. Los archivos se quedan con el ticket para todos los que pueden verlo.',
+  'tutorial.step.tracks.finish.title': 'Tu ticket está listo',
+  'tutorial.step.tracks.finish.body':
+    'Lo que creaste se queda en esta instancia. Consérvalo para probar más, o abre el ticket para borrarlo.',
+  'tutorial.step.workflows.intro.title': 'Flujos de trabajo',
+  'tutorial.step.workflows.intro.body':
+    'Un flujo de trabajo enumera los estados por los que pasan los tickets y los pasos entre ellos. Vas a dibujar uno, publicarlo y dárselo a un track. Es real y se queda en esta instancia.',
+  'tutorial.step.workflows.newWorkflow.title': 'Empieza un flujo de trabajo nuevo',
+  'tutorial.step.workflows.newWorkflow.body':
+    'En la página Flujos de trabajo de Administración, elige Crear un flujo de trabajo.',
+  'tutorial.step.workflows.workflowForm.title': 'Ponle nombre y créalo',
+  'tutorial.step.workflows.workflowForm.body':
+    'Dale un nombre y elige cómo empieza: vacío o como copia de un flujo que ya tengas. Al crearlo se abre el editor.',
+  'tutorial.step.workflows.structure.title': 'Añade un estado y una transición',
+  'tutorial.step.workflows.structure.body':
+    'Añade un estado al flujo, luego una transición hacia él, y elige Guardar el borrador. Una transición es un paso que puede dar un ticket.',
+  'tutorial.step.workflows.publish.title': 'Publícalo',
+  'tutorial.step.workflows.publish.body':
+    'Elige Publicar. Hasta entonces el borrador no cambia nada; una vez publicado, es la versión que siguen los tickets.',
+  'tutorial.step.workflows.map.title': 'Ponlo en un mapa de flujos',
+  'tutorial.step.workflows.map.body':
+    'En Mapas de flujos, elige Añadir un mapa de flujos con tu flujo de trabajo. Un mapa dice qué flujo sigue cada tipo de ticket.',
+  'tutorial.step.workflows.trackMap.title': 'Dale el mapa a un track',
+  'tutorial.step.workflows.trackMap.body':
+    'En Tracks de Administración, abre un track y elige tu mapa como su mapa de flujos. Sus tickets seguirán entonces tu flujo de trabajo.',
+  'tutorial.step.workflows.finish.title': 'Tu flujo de trabajo está en uso',
+  'tutorial.step.workflows.finish.body':
+    'Se queda en esta instancia. Ábrelo para volver a cambiarlo; se puede borrar cuando ningún track lo use.',
+  'tutorial.step.boards.intro.title': 'Tableros y sprints',
+  'tutorial.step.boards.intro.body':
+    'Cada track tiene un tablero que muestra sus tickets por estado, y un backlog para planificar. Vas a mover una tarjeta y después planificar un sprint e iniciarlo. Lo que cambies es real.',
+  'tutorial.step.boards.openBoard.title': 'Abre un tablero',
+  'tutorial.step.boards.openBoard.body':
+    'Abre un track y elige su pestaña Tablero. Cada columna es un estado.',
+  'tutorial.step.boards.moveCard.title': 'Mueve una tarjeta',
+  'tutorial.step.boards.moveCard.body':
+    'Arrastra una tarjeta a otra columna, o abre su menú y muévela. Mover una tarjeta cambia el estado del ticket para todos.',
+  'tutorial.step.boards.openBacklog.title': 'Abre el backlog',
+  'tutorial.step.boards.openBacklog.body':
+    'Elige la pestaña Backlog. Un track Kanban no tiene backlog ni sprints: elige Siguiente para saltar este paso.',
+  'tutorial.step.boards.newSprint.title': 'Crea un sprint',
+  'tutorial.step.boards.newSprint.body':
+    'Elige Crear el sprint. Un sprint es un tramo corto de trabajo con un inicio y un final.',
+  'tutorial.step.boards.planSprint.title': 'Planifica el sprint',
+  'tutorial.step.boards.planSprint.body':
+    'Arrastra un ticket del backlog al sprint, o márcalo y muévelo allí.',
+  'tutorial.step.boards.startSprint.title': 'Inicia el sprint',
+  'tutorial.step.boards.startSprint.body':
+    'Elige Empezar el sprint. Sus tickets llenan entonces el tablero hasta que lo completes.',
+  'tutorial.step.boards.finish.title': 'Tu sprint está en curso',
+  'tutorial.step.boards.finish.body':
+    'Se queda en esta instancia. Complétalo desde el tablero o el backlog cuando el trabajo esté hecho.',
+  'tutorial.step.search.intro.title': 'Búsqueda y búsquedas guardadas',
+  'tutorial.step.search.intro.body':
+    'La búsqueda encuentra tickets en todos los tracks que puedes ver. Vas a buscar de dos formas y guardar una búsqueda para volver a usarla. La búsqueda guardada es real y se queda.',
+  'tutorial.step.search.openSearch.title': 'Abre Buscar',
+  'tutorial.step.search.openSearch.body': 'Elige Buscar en la navegación.',
+  'tutorial.step.search.basic.title': 'Busca con filtros',
+  'tutorial.step.search.basic.body':
+    'Elige un track, un estado o una persona, o escribe unas palabras, y elige Buscar.',
+  'tutorial.step.search.advanced.title': 'Cambia a una consulta',
+  'tutorial.step.search.advanced.body':
+    'Elige Avanzada. Una consulta dice exactamente lo que quieres, y los filtros que elegiste pasan a ella.',
+  'tutorial.step.search.query.title': 'Escribe una consulta y ejecútala',
+  'tutorial.step.search.query.body':
+    'Cambia la consulta y elige Buscar. Las sugerencias siguen lo que escribes, y un error se marca donde está.',
+  'tutorial.step.search.save.title': 'Guarda la búsqueda',
+  'tutorial.step.search.save.body':
+    'Elige Guardar como nueva y ponle un nombre. Una búsqueda guardada puede alimentar un tablero, un panel o un correo.',
+  'tutorial.step.search.finish.title': 'Tu búsqueda está guardada',
+  'tutorial.step.search.finish.body':
+    'Se queda en esta instancia. Vuelve a abrirla desde las búsquedas guardadas de esta página cuando la necesites.',
+  'tutorial.step.dashboards.intro.title': 'Paneles',
+  'tutorial.step.dashboards.intro.body':
+    'Un panel reúne en una página las listas y cifras que miras a menudo. Vas a crear uno y añadirle un widget. Es real y se queda en esta instancia.',
+  'tutorial.step.dashboards.openDashboards.title': 'Abre Paneles',
+  'tutorial.step.dashboards.openDashboards.body': 'Elige Paneles en la navegación.',
+  'tutorial.step.dashboards.newDashboard.title': 'Crea un panel',
+  'tutorial.step.dashboards.newDashboard.body':
+    'Escribe un nombre y elige Crear el panel. Solo tú lo ves hasta que lo compartas.',
+  'tutorial.step.dashboards.edit.title': 'Edítalo',
+  'tutorial.step.dashboards.edit.body':
+    'Elige Editar el panel para añadir widgets y cambiar la disposición.',
+  'tutorial.step.dashboards.widget.title': 'Añade un widget y guarda',
+  'tutorial.step.dashboards.widget.body':
+    'Elige un widget, añádelo, configúralo y elige Guardar el panel. Mientras editas, arrastra los widgets para colocarlos.',
+  'tutorial.step.dashboards.finish.title': 'Tu panel está listo',
+  'tutorial.step.dashboards.finish.body':
+    'Se queda en esta instancia. En su página puedes compartirlo, mostrarlo como pantalla mural o borrarlo.',
+  'tutorial.step.releases.intro.title': 'Versiones',
+  'tutorial.step.releases.intro.body':
+    'Una versión reúne los tickets que se entregan juntos. Vas a crear una, asignarle un ticket y marcarla como entregada. Es real y se queda en esta instancia.',
+  'tutorial.step.releases.openReleases.title': 'Abre las versiones de un track',
+  'tutorial.step.releases.openReleases.body': 'Abre un track y elige su pestaña Versiones.',
+  'tutorial.step.releases.newRelease.title': 'Crea una versión',
+  'tutorial.step.releases.newRelease.body':
+    'Dale un nombre, como 1.0, y una fecha si la tienes, y elige Añadir la versión.',
+  'tutorial.step.releases.aim.title': 'Asígnale un ticket',
+  'tutorial.step.releases.aim.body':
+    'En el backlog, marca un ticket y añádelo a tu versión, o pon la versión en el propio ticket.',
+  'tutorial.step.releases.ship.title': 'Márcala como entregada',
+  'tutorial.step.releases.ship.body':
+    'Abre la versión, elige Entregar esta versión y confírmalo. Sus tickets cuentan entonces como entregados.',
+  'tutorial.step.releases.finish.title': 'Tu versión está entregada',
+  'tutorial.step.releases.finish.body':
+    'Se queda en esta instancia con sus notas, en las versiones del track.',
+  'tutorial.step.admin.intro.title': 'Administración',
+  'tutorial.step.admin.intro.body':
+    'Vas a añadir una persona, ponerla en un grupo y dar al grupo un rol en un track, para que el acceso siga al grupo. Todo es real y se queda.',
+  'tutorial.step.admin.newUser.title': 'Añade una persona',
+  'tutorial.step.admin.newUser.body':
+    'En Personas de Administración, elige Añadir una persona y escribe un nombre y un correo.',
+  'tutorial.step.admin.newGroup.title': 'Crea un grupo',
+  'tutorial.step.admin.newGroup.body': 'En Grupos, añade un grupo, como Diseño.',
+  'tutorial.step.admin.member.title': 'Pon a la persona en el grupo',
+  'tutorial.step.admin.member.body':
+    'Abre tu grupo y añade a la persona que acabas de añadir. Es más fácil dar acceso a un grupo que a muchas personas.',
+  'tutorial.step.admin.access.title': 'Dale al grupo un rol en un track',
+  'tutorial.step.admin.access.body':
+    'En Tracks de Administración, abre un track y da el rol a tu grupo. Todos los del grupo reciben el acceso de ese rol.',
+  'tutorial.step.admin.finish.title': 'El acceso está listo',
+  'tutorial.step.admin.finish.body':
+    'La persona, el grupo y el rol se quedan en esta instancia. Cámbialos o quítalos en las mismas páginas.',
+  'tutorial.step.import.intro.title': 'Importación',
+  'tutorial.step.import.intro.body':
+    'Vas a traer tickets desde un archivo CSV. Una prueba revisa antes el archivo y no cambia nada; la importación en sí es real.',
+  'tutorial.step.import.source.title': 'Elige el archivo',
+  'tutorial.step.import.source.body':
+    'En Importaciones, sube un archivo CSV, o elige uno que ya esté en la carpeta de importación y elige Siguiente.',
+  'tutorial.step.import.dryRun.title': 'Haz una prueba',
+  'tutorial.step.import.dryRun.body':
+    'Elige Prueba. Lee el archivo entero e informa de lo que pasaría, sin cambiar nada.',
+  'tutorial.step.import.run.title': 'Importa de verdad',
+  'tutorial.step.import.run.body':
+    'Si el informe se ve bien, elige Importar. El informe se queda con la ejecución.',
+  'tutorial.step.import.finish.title': 'Tus tickets están dentro',
+  'tutorial.step.import.finish.body':
+    'Se quedan en esta instancia. El informe de la importación enumera todo lo que entró.',
   'boards.emptyScrumTitle': 'No hay ningún sprint en curso',
   'boards.emptyScrumBody':
     'Un tablero Scrum muestra los tickets de su sprint en curso. Planifica un sprint en el backlog e inícialo; sus tickets aparecerán aquí.',

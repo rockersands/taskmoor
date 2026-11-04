@@ -657,7 +657,12 @@ export function CreateTicketPage({
         <p className="page-note">{t('tickets.create.noTracks')}</p>
       )}
       {tracks.status === 'loaded' && tracks.value.length > 0 && (
-        <form className="create-form" onSubmit={(e) => void submit(e)} noValidate>
+        <form
+          className="create-form"
+          data-tutorial="create-ticket-form"
+          onSubmit={(e) => void submit(e)}
+          noValidate
+        >
           <div className="create-choosers">
             <div className="form-field">
               <label htmlFor={`${prefix}-track`} className="form-label">
@@ -779,7 +784,11 @@ export function CreateTicketPage({
           </p>
           {created && (
             <p className="page-note">
-              <a href={routeHref(`#/tickets/${encodeURIComponent(created)}`)} onClick={onClose}>
+              <a
+                href={routeHref(`#/tickets/${encodeURIComponent(created)}`)}
+                data-tutorial="ticket-created"
+                onClick={onClose}
+              >
                 {t('tickets.create.open', { key: created })}
               </a>
             </p>

@@ -553,6 +553,7 @@ export function WorkflowEditorPage({
             ref={publishButton}
             type="button"
             className="button-secondary"
+            data-tutorial="workflow-publish"
             disabled={busy || (!dirty && !workflow.draft)}
             onClick={() => void startPublish()}
           >

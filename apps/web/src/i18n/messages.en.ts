@@ -273,21 +273,219 @@ export const messagesEn = {
     'Draw a workflow with your own statuses and transitions, publish it and give it to a track.',
   'tutorial.section.boards': 'Boards and sprints',
   'tutorial.section.boardsHint':
-    'Make a board, drag cards across it, then plan a sprint in the backlog and start it.',
+    'Move a card across your track’s board, then plan a sprint in the backlog and start it.',
   'tutorial.section.search': 'Search and saved searches',
   'tutorial.section.searchHint':
     'Find tickets with filters and with the query language, then save the search to reuse it.',
   'tutorial.section.dashboards': 'Dashboards',
-  'tutorial.section.dashboardsHint':
-    'Build a dashboard, add a few widgets and arrange them by dragging.',
+  'tutorial.section.dashboardsHint': 'Build a dashboard, add a widget and arrange it by dragging.',
   'tutorial.section.releases': 'Releases',
-  'tutorial.section.releasesHint': 'Make a release, aim tickets at it and mark it released.',
+  'tutorial.section.releasesHint': 'Make a release, aim a ticket at it and mark it shipped.',
   'tutorial.section.admin': 'Administration',
   'tutorial.section.adminHint':
-    'Add a person, put them in a group and give the group access to a track.',
+    'Add a person, put them in a group and give the group a role in a track.',
   'tutorial.section.import': 'Import',
   'tutorial.section.importHint':
     'Bring tickets in from a CSV file, with a dry run first to check what will happen.',
+  'tutorial.setupOnly': 'For administrators',
+  'tutorial.actionOn': '{action}: {title}',
+  'tutorial.loading': 'Reading your progress…',
+  'tutorial.loadFailed':
+    'Your progress could not be read. Every section can still be started; it shows as not started.',
+  'tutorial.runningNote':
+    'A tutorial is open in its card. Starting another one takes its place; the one open keeps its progress.',
+  // The first-run offer at the top of Home (ADR-115): answered once, then never shown again.
+  'tutorial.offer.title': 'Welcome to Taskmoor, {name}',
+  'tutorial.offer.body':
+    'Learn it by doing. Tick what you want to learn, and a short tutorial walks you through making one real thing in each part. You can pause or skip at any time.',
+  'tutorial.offer.notNow': 'Not now',
+  'tutorial.offer.never': 'Don’t offer again',
+  'tutorial.offer.later':
+    'All right. Every tutorial waits in Settings, Tutorials, and in the Help menu, whenever you want one.',
+  'tutorial.offer.neverNote':
+    'We won’t offer the tutorial again. Every section stays in Settings, Tutorials if you change your mind.',
+  'tutorial.offer.open': 'Open Tutorials',
+  'tutorial.offer.failed': 'Your answer could not be saved. Try again.',
+  // The coach card (ADR-115).
+  'tutorial.coach.progress': '{section} · Step {step} of {count}',
+  'tutorial.coach.announce': '{progress}: {title}',
+  'tutorial.coach.waiting':
+    'Do it on the page and the tutorial moves on by itself. Next skips ahead; Escape pauses.',
+  'tutorial.coach.goThere': 'Take me there',
+  'tutorial.coach.openMade': 'Open what you made',
+  'tutorial.coach.back': 'Back',
+  'tutorial.coach.next': 'Next',
+  'tutorial.coach.finish': 'Finish',
+  'tutorial.coach.pause': 'Pause',
+  'tutorial.coach.skip': 'Skip section',
+  'tutorial.coach.paused': 'Tutorial paused: {section}, step {step} of {count}',
+  'tutorial.coach.resume': 'Resume',
+  'tutorial.coach.close': 'Close for now',
+  // The steps of each section: what to do, and why it matters.
+  'tutorial.step.tracks.intro.title': 'Tracks and tickets',
+  'tutorial.step.tracks.intro.body':
+    'A track holds one piece of work and its tickets. You will make a ticket, comment on it and attach a file. What you make is real and stays in this instance, so you can keep it or delete it at the end.',
+  'tutorial.step.tracks.newTrack.title': 'Start a new track',
+  'tutorial.step.tracks.newTrack.body':
+    'On the Tracks page, choose New track. Each track gets its own board, backlog and key for its tickets.',
+  'tutorial.step.tracks.trackForm.title': 'Name your track',
+  'tutorial.step.tracks.trackForm.body':
+    'Give it a name and a short key, such as WEB, and create it. Every ticket in it starts with that key.',
+  'tutorial.step.tracks.openTrack.title': 'Open a track',
+  'tutorial.step.tracks.openTrack.body':
+    'Open a track you belong to from the Tracks page. Its tickets, board and releases all live there.',
+  'tutorial.step.tracks.newTicket.title': 'Open the create dialog',
+  'tutorial.step.tracks.newTicket.body':
+    'Choose New ticket in the top bar, or press C. It works from any page, so you never lose your place.',
+  'tutorial.step.tracks.ticketForm.title': 'Fill in the ticket',
+  'tutorial.step.tracks.ticketForm.body':
+    'Pick your track and a type, write a summary and choose Create. Only the summary is needed to start; the rest can wait.',
+  'tutorial.step.tracks.openTicket.title': 'Open your ticket',
+  'tutorial.step.tracks.openTicket.body':
+    'Use the link under the form to open the ticket you just made. Everything about a piece of work is in one place.',
+  'tutorial.step.tracks.comment.title': 'Leave a comment',
+  'tutorial.step.tracks.comment.body':
+    'Write a comment and choose Comment. Comments keep the conversation next to the work, and an @mention tells the person.',
+  'tutorial.step.tracks.attach.title': 'Attach a file',
+  'tutorial.step.tracks.attach.body':
+    'Choose Attach files, or drop a file on the ticket. Files stay with the ticket for everyone who can see it.',
+  'tutorial.step.tracks.finish.title': 'Your ticket is ready',
+  'tutorial.step.tracks.finish.body':
+    'What you made stays in this instance. Keep it to try more, or open the ticket to delete it.',
+  'tutorial.step.workflows.intro.title': 'Workflows',
+  'tutorial.step.workflows.intro.body':
+    'A workflow lists the statuses tickets move through and the moves between them. You will draw one, publish it and give it to a track. It is real and stays in this instance.',
+  'tutorial.step.workflows.newWorkflow.title': 'Start a new workflow',
+  'tutorial.step.workflows.newWorkflow.body':
+    'On the Workflows page in Administration, choose Create a workflow.',
+  'tutorial.step.workflows.workflowForm.title': 'Name it and create it',
+  'tutorial.step.workflows.workflowForm.body':
+    'Give it a name and choose how it starts: empty, or as a copy of a workflow you have. Creating it opens the editor.',
+  'tutorial.step.workflows.structure.title': 'Add a status and a transition',
+  'tutorial.step.workflows.structure.body':
+    'Add a status to the workflow, then a transition into it, and choose Save draft. A transition is a move a ticket can make.',
+  'tutorial.step.workflows.publish.title': 'Publish it',
+  'tutorial.step.workflows.publish.body':
+    'Choose Publish. Until then the draft changes nothing; once published, it is the version tickets follow.',
+  'tutorial.step.workflows.map.title': 'Put it in a workflow map',
+  'tutorial.step.workflows.map.body':
+    'On Workflow maps, choose Add a workflow map with your workflow. A map says which workflow each ticket type follows.',
+  'tutorial.step.workflows.trackMap.title': 'Give the map to a track',
+  'tutorial.step.workflows.trackMap.body':
+    'On Tracks in Administration, open a track and choose your map as its workflow map. Its tickets then follow your workflow.',
+  'tutorial.step.workflows.finish.title': 'Your workflow is in use',
+  'tutorial.step.workflows.finish.body':
+    'It stays in this instance. Open it to change it again; it can be deleted once no track uses it.',
+  'tutorial.step.boards.intro.title': 'Boards and sprints',
+  'tutorial.step.boards.intro.body':
+    'Each track has a board that shows its tickets by status, and a backlog to plan in. You will move a card, then plan a sprint and start it. What you change is real.',
+  'tutorial.step.boards.openBoard.title': 'Open a board',
+  'tutorial.step.boards.openBoard.body':
+    'Open a track and choose its Board tab. Each column is a status.',
+  'tutorial.step.boards.moveCard.title': 'Move a card',
+  'tutorial.step.boards.moveCard.body':
+    'Drag a card to another column, or open its menu and move it. Moving a card changes the ticket’s status for everyone.',
+  'tutorial.step.boards.openBacklog.title': 'Open the backlog',
+  'tutorial.step.boards.openBacklog.body':
+    'Choose the Backlog tab. A Kanban track has no backlog or sprints: choose Next to skip ahead.',
+  'tutorial.step.boards.newSprint.title': 'Make a sprint',
+  'tutorial.step.boards.newSprint.body':
+    'Choose Create sprint. A sprint is a short stretch of work with a start and an end.',
+  'tutorial.step.boards.planSprint.title': 'Plan the sprint',
+  'tutorial.step.boards.planSprint.body':
+    'Drag a ticket from the backlog into the sprint, or tick it and move it there.',
+  'tutorial.step.boards.startSprint.title': 'Start the sprint',
+  'tutorial.step.boards.startSprint.body':
+    'Choose Start sprint. Its tickets then fill the board until you complete it.',
+  'tutorial.step.boards.finish.title': 'Your sprint is running',
+  'tutorial.step.boards.finish.body':
+    'It stays in this instance. Complete it from the board or the backlog whenever the work is done.',
+  'tutorial.step.search.intro.title': 'Search and saved searches',
+  'tutorial.step.search.intro.body':
+    'Search finds tickets in every track you can see. You will search two ways and save a search to use again. The saved search is real and stays.',
+  'tutorial.step.search.openSearch.title': 'Open Search',
+  'tutorial.step.search.openSearch.body': 'Choose Search in the navigation.',
+  'tutorial.step.search.basic.title': 'Search with filters',
+  'tutorial.step.search.basic.body':
+    'Pick a track, a status or a person, or type a few words, and choose Search.',
+  'tutorial.step.search.advanced.title': 'Switch to a query',
+  'tutorial.step.search.advanced.body':
+    'Choose Advanced. A query says exactly what you want, and the filters you picked carry over into it.',
+  'tutorial.step.search.query.title': 'Write a query and run it',
+  'tutorial.step.search.query.body':
+    'Change the query and choose Search. Suggestions follow your typing, and a mistake is marked where it is.',
+  'tutorial.step.search.save.title': 'Save the search',
+  'tutorial.step.search.save.body':
+    'Choose Save as new and give it a name. A saved search can feed a board, a dashboard or an email.',
+  'tutorial.step.search.finish.title': 'Your search is saved',
+  'tutorial.step.search.finish.body':
+    'It stays in this instance. Open it again from the saved searches on this page whenever you need it.',
+  'tutorial.step.dashboards.intro.title': 'Dashboards',
+  'tutorial.step.dashboards.intro.body':
+    'A dashboard puts the lists and numbers you check often on one page. You will make one and add a widget. It is real and stays in this instance.',
+  'tutorial.step.dashboards.openDashboards.title': 'Open Dashboards',
+  'tutorial.step.dashboards.openDashboards.body': 'Choose Dashboards in the navigation.',
+  'tutorial.step.dashboards.newDashboard.title': 'Make a dashboard',
+  'tutorial.step.dashboards.newDashboard.body':
+    'Type a name and choose Create dashboard. Only you see it until you share it.',
+  'tutorial.step.dashboards.edit.title': 'Edit it',
+  'tutorial.step.dashboards.edit.body':
+    'Choose Edit dashboard to add widgets and change the layout.',
+  'tutorial.step.dashboards.widget.title': 'Add a widget and save',
+  'tutorial.step.dashboards.widget.body':
+    'Pick a widget, add it, set it up and choose Save dashboard. While editing, drag widgets to arrange them.',
+  'tutorial.step.dashboards.finish.title': 'Your dashboard is ready',
+  'tutorial.step.dashboards.finish.body':
+    'It stays in this instance. On its page you can share it, show it as a wallboard or delete it.',
+  'tutorial.step.releases.intro.title': 'Releases',
+  'tutorial.step.releases.intro.body':
+    'A release gathers the tickets that ship together. You will make one, aim a ticket at it and mark it shipped. It is real and stays in this instance.',
+  'tutorial.step.releases.openReleases.title': 'Open a track’s releases',
+  'tutorial.step.releases.openReleases.body': 'Open a track and choose its Releases tab.',
+  'tutorial.step.releases.newRelease.title': 'Make a release',
+  'tutorial.step.releases.newRelease.body':
+    'Give it a name, such as 1.0, and a date if you have one, and choose Add release.',
+  'tutorial.step.releases.aim.title': 'Aim a ticket at it',
+  'tutorial.step.releases.aim.body':
+    'In the backlog, tick a ticket and add it to your release, or set the release on a ticket itself.',
+  'tutorial.step.releases.ship.title': 'Mark it shipped',
+  'tutorial.step.releases.ship.body':
+    'Open the release, choose Ship this release and confirm. Its tickets then count as shipped.',
+  'tutorial.step.releases.finish.title': 'Your release has shipped',
+  'tutorial.step.releases.finish.body':
+    'It stays in this instance with its notes, in the track’s releases.',
+  'tutorial.step.admin.intro.title': 'Administration',
+  'tutorial.step.admin.intro.body':
+    'You will add a person, put them in a group and give the group a role in a track, so access follows the group. All of it is real and stays.',
+  'tutorial.step.admin.newUser.title': 'Add a person',
+  'tutorial.step.admin.newUser.body':
+    'On People in Administration, choose Add a person and give a name and an email.',
+  'tutorial.step.admin.newGroup.title': 'Make a group',
+  'tutorial.step.admin.newGroup.body': 'On Groups, add a group, such as Designers.',
+  'tutorial.step.admin.member.title': 'Put the person in the group',
+  'tutorial.step.admin.member.body':
+    'Open your group and add the person you just added. A group is easier to give access to than many people.',
+  'tutorial.step.admin.access.title': 'Give the group a role in a track',
+  'tutorial.step.admin.access.body':
+    'On Tracks in Administration, open a track and give the role to your group. Everyone in the group gets that role’s access.',
+  'tutorial.step.admin.finish.title': 'Access is set',
+  'tutorial.step.admin.finish.body':
+    'The person, the group and the role stay in this instance. Change or remove them on the same pages.',
+  'tutorial.step.import.intro.title': 'Import',
+  'tutorial.step.import.intro.body':
+    'You will bring tickets in from a CSV file. A dry run checks the file first and changes nothing; the import itself is real.',
+  'tutorial.step.import.source.title': 'Choose the file',
+  'tutorial.step.import.source.body':
+    'On Imports, upload a CSV file, or pick one already in the import folder and choose Next.',
+  'tutorial.step.import.dryRun.title': 'Try a dry run',
+  'tutorial.step.import.dryRun.body':
+    'Choose Dry run. It reads the whole file and reports what would happen, without changing anything.',
+  'tutorial.step.import.run.title': 'Import for real',
+  'tutorial.step.import.run.body':
+    'If the report looks right, choose Import. The report stays with the run.',
+  'tutorial.step.import.finish.title': 'Your tickets are in',
+  'tutorial.step.import.finish.body':
+    'They stay in this instance. The import’s report lists everything that came in.',
   'boards.emptyScrumTitle': 'No sprint is running',
   'boards.emptyScrumBody':
     'A Scrum board shows the tickets of its running sprint. Plan a sprint in the backlog and start it; its tickets then show here.',

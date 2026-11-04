@@ -93,6 +93,7 @@ export function NewTrackForm({
   return (
     <form
       className="people-form"
+      data-tutorial="new-track-form"
       aria-label={label}
       onSubmit={(event) => {
         event.preventDefault();
