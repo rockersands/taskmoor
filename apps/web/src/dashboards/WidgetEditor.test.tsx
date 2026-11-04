@@ -174,6 +174,25 @@ describe('arranging widgets by drag and by keys (T-162; ADR-114, section 12)', (
     expect(said(container)).toBe('Alpha stays where it was.');
   });
 
+  it('[RPT-004] a drop on the lower half of the widget’s own card leaves it where it is', () => {
+    const { seen, container } = edit();
+    // Bravo's card is tall: the grip at its top is let go of below the card's middle.
+    vi.spyOn(card('Bravo'), 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 80, 300, 200),
+    );
+    dragTo(gripOf('Bravo'), card('Bravo'), { y: 250, up: false });
+    // No place above Alpha is marked: the column's first place is not where it would go.
+    expect(card('Alpha')).not.toHaveClass('is-drop-before');
+    fireEvent.pointerUp(window, { pointerId: 5, pointerType: 'touch', clientX: 90, clientY: 250 });
+    expect(seen).toEqual([]);
+    expect(
+      within(columnOf(container, 0))
+        .getAllByRole('article')
+        .map((a) => a.ariaLabel),
+    ).toEqual(['Alpha', 'Bravo']);
+    expect(said(container)).toBe('Bravo stays where it was.');
+  });
+
   it('[RPT-004] on a phone, the stacked columns still take a finger’s drop, and nothing scrolls sideways', () => {
     setViewportWidth(375);
     const { last, container } = edit('three');

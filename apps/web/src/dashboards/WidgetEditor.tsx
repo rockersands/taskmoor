@@ -268,7 +268,9 @@ export function WidgetGrid({
     const target = card.dataset.widgetId ?? '';
     const rect = card.getBoundingClientRect();
     if (y < rect.top + rect.height / 2) return { column, before: target };
-    const inColumn = widgets.filter((w) => w.column === column && w.id !== widgetId);
+    // Below a card's middle: before the widget after it, the dragged one included, so a drop on
+    // the lower half of its own card, or of the card above it, leaves it where it is.
+    const inColumn = widgets.filter((w) => w.column === column);
     const next = inColumn[inColumn.findIndex((w) => w.id === target) + 1];
     return { column, before: next?.id ?? null };
   }
