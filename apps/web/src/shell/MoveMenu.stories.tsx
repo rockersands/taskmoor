@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { MoveMenu } from './MoveMenu';
 
-/** Three rows, each led by a grip whose menu and Alt with the arrows reorder them. */
-function Rows({ onDragStart }: { onDragStart: () => void }) {
-  const [rows, setRows] = useState(['Card payments', 'Order total', 'Gift cards']);
+/** Rows, each led by a grip whose menu and Alt with the arrows reorder them. */
+function Rows({ onDragStart, start }: { onDragStart: () => void; start: string[] }) {
+  const [rows, setRows] = useState(start);
   const move = (from: number, to: number) => {
     if (to < 0 || to >= rows.length) return;
     const next = rows.filter((_, i) => i !== from);
@@ -38,7 +38,7 @@ function Rows({ onDragStart }: { onDragStart: () => void }) {
 const meta = {
   title: 'Shell/MoveMenu',
   component: Rows,
-  args: { onDragStart: fn() },
+  args: { onDragStart: fn(), start: ['Card payments', 'Order total', 'Gift cards'] },
   decorators: [
     (Story) => (
       <main style={{ padding: 24, minHeight: 320 }}>
@@ -87,5 +87,18 @@ export const ByKeyboard: Story = {
       'Order total',
     ]);
     await expect(canvas.getByRole('button', { name: 'Move Gift cards' })).toHaveFocus();
+  },
+};
+
+/** A row alone, with no move to offer: its grip opens no empty menu and says it is unavailable. */
+export const NothingToMove: Story = {
+  args: { start: ['Card payments'] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = canvas.getByRole('button', { name: 'Move Card payments' });
+    await expect(grip).toHaveAttribute('aria-disabled', 'true');
+    await expect(grip).not.toHaveAttribute('aria-haspopup');
+    await userEvent.click(grip);
+    await expect(canvas.queryByRole('menu')).toBeNull();
   },
 };

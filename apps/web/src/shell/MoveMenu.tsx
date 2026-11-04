@@ -40,7 +40,9 @@ export interface MoveMenuProps {
 /**
  * A grip that moves what it belongs to (ADR-114, section 7; T-162): drag it with a mouse or a
  * finger, or press it for a menu of the same moves; Alt and the arrow keys move it too. Every
- * drag has this keyboard path. The Tracks page's groups (CORE-034) and the backlog use it.
+ * drag has this keyboard path. The Tracks page's groups (CORE-034) and the backlog use it. With
+ * no moves to offer, a press opens nothing: the grip says it is unavailable, and still drags,
+ * since a drop may have somewhere to go that its menu does not list.
  */
 export function MoveMenu({
   label,
@@ -53,6 +55,7 @@ export function MoveMenu({
 }: MoveMenuProps) {
   const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
     useMenuButton();
+  const none = items.length === 0;
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const step =
       event.key === 'ArrowUp' || event.key === 'ArrowLeft'
@@ -66,7 +69,7 @@ export function MoveMenu({
       onStep?.(step);
       return;
     }
-    keys.onButtonKeyDown(event);
+    if (!none) keys.onButtonKeyDown(event);
   };
   return (
     <div className={className ? `move-grip ${className}` : 'move-grip'} ref={container}>
@@ -77,10 +80,12 @@ export function MoveMenu({
         className="move-grip-handle"
         data-handle={handle}
         aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        {...(open ? { 'aria-controls': menuId } : {})}
+        aria-haspopup={none ? undefined : 'menu'}
+        aria-expanded={none ? undefined : open}
+        aria-disabled={none || undefined}
+        {...(open && !none ? { 'aria-controls': menuId } : {})}
         onClick={(event) => {
+          if (none) return;
           // A pointer's click right after a drag is the drag's; Enter or Space never is.
           if (event.detail > 0 && justDragged?.(handle)) return;
           if (open) close(false);
@@ -91,7 +96,7 @@ export function MoveMenu({
       >
         <GripIcon />
       </button>
-      {open && (
+      {open && !none && (
         <div ref={leaveMotion} className="user-menu-popup move-grip-popup">
           <div
             ref={menu}

@@ -336,6 +336,30 @@ describe('planning on the backlog (M1-047)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('CHK-5 moved up.');
   });
 
+  it('[AGL-009] a grip with no move to offer opens no empty menu, and says it is unavailable', async () => {
+    const user = userEvent.setup();
+    // A new board: no sprints yet, and one ticket in its backlog.
+    const client = fakeSprintClient();
+    const first = client.state();
+    client.backlog = async () =>
+      structuredClone({
+        ...first,
+        sprints: [],
+        backlog: { ...first.backlog, tickets: first.backlog.tickets.slice(0, 1) },
+      });
+    renderBacklog(client);
+    const grip = await screen.findByRole('button', { name: 'Move CHK-4' });
+    expect(grip).toHaveAttribute('aria-disabled', 'true');
+    expect(grip).not.toHaveAttribute('aria-haspopup');
+    await user.click(grip);
+    expect(screen.queryByRole('menu')).toBeNull();
+    grip.focus();
+    await user.keyboard('{Enter}');
+    await user.keyboard('{ArrowDown}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(grip).toHaveFocus();
+  });
+
   it('[AGL-008] puts tickets under an outcome by a drop on the panel, and filters by it', async () => {
     const user = userEvent.setup();
     const client = fakeSprintClient();
