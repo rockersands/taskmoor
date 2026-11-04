@@ -1159,8 +1159,11 @@
   pointer-events: none;
 }
 
-/* A paused tutorial: its place and the way back in, small at the end corner. */
-.coach-paused {
+/*
+ * A paused tutorial: its place and the way back in, small at the end corner. Both classes, so it
+ * stays fixed over the glass card's own `position: relative` further down.
+ */
+.coach-paused.glass-card {
   position: fixed;
   inset-block-end: var(--space-6);
   inset-inline-end: var(--space-6);
@@ -1198,18 +1201,27 @@
     animation-name: motion-dock;
   }
 
-  .coach-paused {
+  .coach-paused.glass-card {
     inset: auto var(--space-3) var(--space-3);
     max-width: none;
   }
 
-  /* Room under the page for the docked card, so what it covers can scroll above it. */
-  :root[data-coach="open"] {
+  /*
+   * Room under the page for the docked card or paused panel, so what it covers can scroll above
+   * it; and the same at the end of a dialog over the page that scrolls inside itself (the create
+   * dialog, the ticket pop-up), whose sheet the card sits over.
+   */
+  :root[data-coach] {
     scroll-padding-bottom: var(--coach-space, 0px);
   }
 
-  :root[data-coach="open"] .shell-main {
+  :root[data-coach] .shell-main {
     padding-bottom: calc(var(--coach-space, 0px) + var(--space-6));
+  }
+
+  :root[data-coach] .create-dialog {
+    padding-bottom: calc(var(--coach-space, 0px) + var(--space-3));
+    scroll-padding-bottom: var(--coach-space, 0px);
   }
 }
 

@@ -91,20 +91,30 @@ decision above, this section wins.
   opened), or the server accepting a change. For the last, `apiFetch` tells listeners of every
   successful request other than a read, as its method and path (`api/changes.ts`), so the step
   moves on whichever page or control made the thing. Only changes after the step began count.
-  Back marks a step to wait for Next; Next is always there, so nothing traps the person.
+  Back marks a step to wait for Next, and the card then drops its line about moving on by
+  itself; Next is always there, so nothing traps the person.
 - **Boards and sprints** no longer makes a board: since ADR-116 each track has one. It moves a
   card on the track's board, then plans and starts a sprint.
 - **Where the run lives:** the section showing, its step and what the person opened along the
   way (to offer Take me there and Open what you made) are kept in the tab's session storage, so a
-  reload keeps the card. Another tab or device shows nothing until the person resumes from
+  reload keeps the card. Every change to the run applies to it as it stands, so one change of
+  route that both finishes a step and names what the person opened (the ticket opened over the
+  page) keeps both. Another tab or device shows nothing until the person resumes from
   Settings, Tutorials; the server keeps each section's state and step, saved at every step.
 - **Focus:** the card takes focus when a section starts and after Back, Next and Resume. When a
   step moves on by itself while focus is in a field, a menu or another dialog, focus stays and
-  the card's status line announces the step. Escape pauses (in the card, or with nothing else
-  focused); pausing and finishing give focus back to where it was.
+  the card's status line announces the step. Escape pauses wherever focus is (the card, the
+  page, a link or a button on it), except in a field, a menu or list or what opens one, or another
+  dialog, which keep Escape for themselves; a modal dialog over the page takes it first. Pausing
+  and finishing give focus back to where it was.
 - **Layout:** the card sits at the end corner and moves to the other corner, or the top, when it
-  would cover the ringed control. On a phone it docks across the bottom, and the main area gains
-  padding of the card's height so what it covers can scroll above it.
+  would cover the ringed control. On a phone it docks across the bottom, as does the paused
+  panel; the main area, and any dialog over the page that scrolls inside itself (the create
+  dialog, the ticket pop-up: `.create-dialog`), gain padding of the docked one's height
+  (`--coach-space`, with `data-coach` on the root), so what it covers can scroll above it. The
+  paused panel is fixed over the glass card's own `position: relative`.
 - **Checks:** `steps.test.ts` reads the app's source for every marker a step uses, so a page that
   drops one fails before release; `TutorialProvider.test.tsx` walks every section's steps;
-  `e2e/tutorial.spec.ts` walks the offer and the Dashboards section on a desktop and a phone.
+  `CoachCard.stories.tsx` checks in a phone-sized browser that a sheet's end scrolls above the
+  docked card and the paused panel; `e2e/tutorial.spec.ts` walks the offer and the Dashboards
+  section on a desktop and a phone.

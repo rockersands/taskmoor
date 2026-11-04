@@ -126,8 +126,25 @@ export interface PausedCoachProps {
 export function PausedCoach({ sectionTitle, index, count, onResume, onClose }: PausedCoachProps) {
   const t = useT();
   const id = useId();
+  const own = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // The panel and the gap beneath it, docked on a phone: the page and any dialog over it keep
+    // that much room, so what it covers can scroll above it. Its layout size, not its motion's.
+    const measure = () => {
+      const node = own.current;
+      if (!node) return;
+      const below = Number.parseFloat(getComputedStyle(node).bottom) || 0;
+      document.documentElement.style.setProperty(
+        '--coach-space',
+        `${Math.ceil(node.offsetHeight + below)}px`,
+      );
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
   return (
-    <section className="coach-paused glass-card motion-settle" aria-labelledby={id}>
+    <section ref={own} className="coach-paused glass-card motion-settle" aria-labelledby={id}>
       <p id={id} className="coach-paused-text">
         {t('tutorial.coach.paused', { section: sectionTitle, step: index + 1, count })}
       </p>

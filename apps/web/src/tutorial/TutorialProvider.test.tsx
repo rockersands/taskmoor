@@ -5,7 +5,7 @@ import { ADMIN, MEMBER } from '../admin/fixtures';
 import { announceApiChange } from '../api/changes';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { type MessageId, messagesEn } from '../i18n/messages.en';
-import { navigate } from '../routing/router';
+import { navigate, openOverlay } from '../routing/router';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { setViewportWidth } from '../test/viewport';
 import type { TutorialClient } from './client';
@@ -14,6 +14,16 @@ import { type StepDone, stepsFor, stepTitleId, type TutorialStep } from './steps
 import { TutorialCoach, TutorialProvider, useTutorial } from './TutorialProvider';
 
 const en = (id: MessageId) => messagesEn[id] as string;
+
+const adminSteps = (section: TutorialSectionId) =>
+  stepsFor(section, audienceOf(ADMIN.status === 'signed-in' ? ADMIN.user : null));
+
+/** A step's title as the card shows it, by the step's id. */
+function titleOf(section: TutorialSectionId, id: string): string {
+  const step = adminSteps(section).find((s) => s.id === id);
+  if (!step) throw new Error(`no step ${section}.${id}`);
+  return en(stepTitleId(section, step));
+}
 
 function fakeClient(): TutorialClient & { save: ReturnType<typeof vi.fn> } {
   return {
@@ -37,6 +47,17 @@ function Starters() {
       </button>
       <button type="button" onClick={() => start(['dashboards'], 3)}>
         Resume dashboards
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          start(
+            ['tracks'],
+            adminSteps('tracks').findIndex((s) => s.id === 'openTicket'),
+          )
+        }
+      >
+        Resume tracks
       </button>
     </div>
   );
@@ -222,6 +243,8 @@ describe('the coach card (ADR-115)', () => {
     await user.click(opener);
     const intro = await screen.findByRole('dialog', { name: 'Dashboards' });
     expect(intro).toHaveFocus();
+    // Docked on a phone: the page and any dialog over it keep room for it (surfaces.css).
+    expect(document.documentElement.dataset.coach).toBe('open');
     expect(within(intro).getByRole('status')).toHaveTextContent(
       'Dashboards · Step 1 of 6: Dashboards',
     );
@@ -241,6 +264,7 @@ describe('the coach card (ADR-115)', () => {
     const paused = screen.getByRole('region', {
       name: 'Tutorial paused: Dashboards, step 2 of 6',
     });
+    expect(document.documentElement.dataset.coach).toBe('paused');
     await user.click(within(paused).getByRole('button', { name: 'Resume' }));
     expect(await screen.findByRole('dialog', { name: 'Open Dashboards' })).toHaveFocus();
 
@@ -248,7 +272,34 @@ describe('the coach card (ADR-115)', () => {
     await user.click(screen.getByRole('button', { name: 'Pause' }));
     await user.click(screen.getByRole('button', { name: 'Close for now' }));
     expect(screen.queryByRole('region', { name: /Tutorial paused/ })).toBeNull();
+    expect(document.documentElement.dataset.coach).toBeUndefined();
     expect(client.save).toHaveBeenLastCalledWith('dashboards', 'active', 1);
+  });
+
+  it('[AGL-025] Escape pauses from a link or button on the page, and stays with a field', async () => {
+    const user = userEvent.setup();
+    renderRunner();
+    await user.click(screen.getByRole('button', { name: 'Start dashboards' }));
+    await user.click(await screen.findByRole('button', { name: 'Next' }));
+    const open = await screen.findByRole('dialog', { name: 'Open Dashboards' });
+    expect(within(open).getByText(/Escape pauses/)).toBeVisible();
+
+    // In a field, Escape is the field's own.
+    const field = document.createElement('input');
+    field.setAttribute('aria-label', 'Notes');
+    document.body.append(field);
+    added.push(field);
+    field.focus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'Open Dashboards' })).toBe(open);
+
+    // On a button of the page, as after clicking one, Escape means nothing else: it pauses.
+    screen.getByRole('button', { name: 'Start search' }).focus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      screen.getByRole('region', { name: 'Tutorial paused: Dashboards, step 2 of 6' }),
+    ).toBeVisible();
   });
 
   it('[AGL-025] Back shows the step again without moving on by itself; Next skips a waiting step', async () => {
@@ -259,10 +310,12 @@ describe('the coach card (ADR-115)', () => {
     await go('#/dashboards');
     const make = await screen.findByRole('dialog', { name: 'Make a dashboard' });
     await user.click(within(make).getByRole('button', { name: 'Back' }));
-    // Already on Dashboards, but entered with Back: it waits for Next.
+    // Already on Dashboards, but entered with Back: it waits for Next, and does not say otherwise.
     const again = await screen.findByRole('dialog', { name: 'Open Dashboards' });
+    expect(within(again).queryByText(/moves on by itself/)).toBeNull();
     await user.click(within(again).getByRole('button', { name: 'Next' }));
     const skipped = await screen.findByRole('dialog', { name: 'Make a dashboard' });
+    expect(within(skipped).getByText(/moves on by itself/)).toBeVisible();
     await user.click(within(skipped).getByRole('button', { name: 'Next' }));
     expect(await screen.findByRole('dialog', { name: 'Edit it' })).toBeVisible();
   });
@@ -287,6 +340,31 @@ describe('the coach card (ADR-115)', () => {
       'href',
       '#/dashboards/7',
     );
+  });
+
+  it('[AGL-025] remembers the ticket opened over the page by the route that finishes the step', async () => {
+    const user = userEvent.setup();
+    renderRunner();
+    await user.click(screen.getByRole('button', { name: 'Resume tracks' }));
+    await screen.findByRole('dialog', { name: titleOf('tracks', 'openTicket') });
+    try {
+      // The ringed link to the new ticket opens it over the page: one change of route, which
+      // both finishes the step and tells the tutorial which ticket is the person's.
+      await act(async () => openOverlay('#/tickets/WEB-5'));
+      await screen.findByRole('dialog', { name: titleOf('tracks', 'comment') });
+      await act(async () => announceApiChange({ method: 'POST', path: '/tickets/WEB-5/comments' }));
+      await screen.findByRole('dialog', { name: titleOf('tracks', 'attach') });
+      await act(async () =>
+        announceApiChange({ method: 'POST', path: '/tickets/WEB-5/attachments' }),
+      );
+      const finish = await screen.findByRole('dialog', { name: titleOf('tracks', 'finish') });
+      expect(within(finish).getByRole('link', { name: 'Open what you made' })).toHaveAttribute(
+        'href',
+        '#/tickets/WEB-5',
+      );
+    } finally {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   });
 
   it('[AGL-025] skipping a section saves it as skipped and starts the next one picked', async () => {

@@ -1,7 +1,7 @@
 ---
 title: "Tutorials"
 audience: users
-sources: apps/web/src/tutorial/sections.ts, apps/web/src/tutorial/steps.ts, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/tutorial/CoachCard.tsx, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/client.ts, apps/web/src/api/changes.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tutorial.ts, packages/db/src/migrations/0084_tutorial_progress.ts, docs/adr/0115-guided-tutorial.md, docs/specs/01b-core-work-tracking.md
+sources: apps/web/src/tutorial/sections.ts, apps/web/src/tutorial/steps.ts, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/tutorial/CoachCard.tsx, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/client.ts, apps/web/src/api/changes.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/styles/surfaces.css, apps/web/src/shell/ModalDialog.tsx, apps/server/src/routes/tutorial.ts, packages/db/src/migrations/0084_tutorial_progress.ts, docs/adr/0115-guided-tutorial.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -63,7 +63,8 @@ A card floats at the bottom corner of the window. It shows the section and the s
 of 6**), what to do and why it matters. The control to use has a ring around it and the rest of
 the page is dimmed, but everything stays usable: you can click anywhere, and the card moves to
 the other corner if it would cover the control. On a phone the card sits across the bottom of
-the screen, and the page leaves room so you can scroll what it covers into view.
+the screen. The page, and a dialog open over it such as the create dialog or a ticket, leave
+room at the end, so you can scroll what the card covers into view above it.
 
 Steps that ask you to do something wait for you. Do it your own way, from any page; once the
 server has it (the ticket made, the dashboard saved) the card moves on by itself. A step that
@@ -71,13 +72,14 @@ happens on another page shows **Take me there**.
 
 | Control | What it does |
 |---|---|
-| **Back** | Shows the step before again; it then waits for **Next** |
+| **Back** | Shows the step before again; it then waits for **Next**, even after you do what it asks |
 | **Next** | Goes on, also past a step you did differently or want to skip; on the last step it is **Finish** |
 | **Pause** | Hides the card and keeps your place |
 | **Skip section** | Marks the section skipped and starts the next one you picked, if any |
-| Escape | Pauses, like **Pause** |
+| Escape | Pauses, like **Pause**, wherever you are, except in a field, a menu or another dialog, which use Escape themselves |
 
-While paused, a small panel says where you are, with **Resume** and **Close for now**. Closing
+While paused, a small panel at the bottom corner (across the bottom of a phone, with the same
+room kept) says where you are, with **Resume** and **Close for now**. Closing
 keeps the section in progress, to resume from Settings, Tutorials. A reload of the page keeps the
 card where it was in that browser tab; another tab or device starts nothing until you resume.
 

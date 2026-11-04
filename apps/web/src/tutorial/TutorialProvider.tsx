@@ -108,6 +108,30 @@ function busyElsewhere(card: Element | null): boolean {
   return !card?.contains(active);
 }
 
+/** What keeps Escape for itself: a field, a menu or list and what opens one, another dialog. */
+const OWN_ESCAPE = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[role="menu"]',
+  '[role="menubar"]',
+  '[role="listbox"]',
+  '[role="combobox"]',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+  '[aria-expanded="true"]',
+].join(', ');
+
+/**
+ * Whether Escape is the focused element's own: it pauses the tutorial everywhere else, a link
+ * or a button on the page included, as the card says.
+ */
+function escapeTakenBy(active: Element | null, card: Element | null): boolean {
+  if (!active || active === document.body || card?.contains(active)) return false;
+  return active.closest(OWN_ESCAPE) !== null;
+}
+
 function satisfied(done: StepDone): boolean {
   if ('route' in done) {
     return [currentRoute(), overlayRoute()].some((r) => r !== null && done.route.test(r));
@@ -223,7 +247,8 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
       const rest = run.queue.slice(1);
       setManual(false);
       if (rest[0]) {
-        setRun({ ...run, queue: rest, step: 0, paused: false });
+        // From the run as it now stands: a route noted in the same moment stays remembered.
+        setRun((r) => (r ? { ...r, queue: r.queue.slice(1), step: 0, paused: false } : r));
         save(rest[0], 'active', 0);
         setFocusKey((k) => k + 1);
       } else {
@@ -237,7 +262,9 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
   const goTo = useCallback(
     (next: number, how: 'button' | 'back' | 'auto') => {
       if (!run || !current) return;
-      setRun({ ...run, step: next, paused: false });
+      // From the run as it now stands, not as last drawn: the route that finished the step may
+      // also have told the run what the person opened, in the same moment.
+      setRun((r) => (r ? { ...r, step: next, paused: false } : r));
       setManual(how === 'back');
       save(current, 'active', next);
       if (how !== 'auto' || !busyElsewhere(card.current)) setFocusKey((k) => k + 1);
@@ -255,7 +282,7 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
 
   const pause = useCallback(() => {
     if (!run) return;
-    setRun({ ...run, paused: true });
+    setRun((r) => (r ? { ...r, paused: true } : r));
     giveFocusBack();
   }, [run, giveFocusBack]);
 
@@ -263,7 +290,7 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
     if (!run) return;
     const active = document.activeElement;
     returnFocus.current = active instanceof HTMLElement ? active : null;
-    setRun({ ...run, paused: false });
+    setRun((r) => (r ? { ...r, paused: false } : r));
     setFocusKey((k) => k + 1);
   }, [run]);
 
@@ -333,8 +360,7 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       // A modal dialog over the page takes its own Escape first.
       if (document.querySelector('[aria-modal="true"]')) return;
-      const active = document.activeElement;
-      if (active && active !== document.body && !card.current?.contains(active)) return;
+      if (escapeTakenBy(document.activeElement, card.current)) return;
       event.preventDefault();
       pause();
     };
@@ -359,6 +385,7 @@ export function TutorialProvider({ client = tutorialClient, children }: Tutorial
           index,
           count: steps.length,
           paused: run.paused,
+          manual,
           memory: run.memory,
           focusKey,
           card,
@@ -384,6 +411,8 @@ type CoachState = {
   index: number;
   count: number;
   paused: boolean;
+  /** Entered with Back: it waits for Next, whatever the person does on the page. */
+  manual: boolean;
   memory: TutorialMemory;
   focusKey: number;
   card: MutableRefObject<HTMLDivElement | null>;
@@ -407,15 +436,17 @@ export function TutorialCoach() {
   // Read again on every change of page: the way back to the step's page shows only when away.
   const route = useRoute();
   const overlay = useOverlayRoute();
-  const open = coach !== null && !coach.paused;
+  // What is docked at the bottom of a phone, the card or the paused panel: the page and any
+  // dialog over it keep room of its height (`--coach-space`) to scroll what it covers above it.
+  const docked = coach === null ? null : coach.paused ? 'paused' : 'open';
   useEffect(() => {
-    if (!open) return;
-    document.documentElement.dataset.coach = 'open';
+    if (!docked) return;
+    document.documentElement.dataset.coach = docked;
     return () => {
       delete document.documentElement.dataset.coach;
       document.documentElement.style.removeProperty('--coach-space');
     };
-  }, [open]);
+  }, [docked]);
   if (!coach) return null;
   const section = sectionById(coach.section);
   if (!section) return null;
@@ -446,7 +477,7 @@ export function TutorialCoach() {
         body={t(stepBodyId(coach.section, step))}
         index={coach.index}
         count={coach.count}
-        waiting={Boolean(step.done?.length)}
+        waiting={Boolean(step.done?.length) && !coach.manual}
         goThere={goThere}
         made={made}
         focusKey={coach.focusKey}
