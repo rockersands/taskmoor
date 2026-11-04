@@ -234,7 +234,7 @@ reported, and the coordinator checked that it was pushed.
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
 | T-160 | Help menu with tutorials and keyboard shortcuts | Done | `claude/ui-overhaul` |
-| T-161 | Tutorial: first-run offer, sections to pick, one of everything | To do | Waits for the merges; progress and picker exist |
+| T-161 | Tutorial: first-run offer, sections to pick, one of everything | Done | On `main` (ADR-115, AGL-025): an offer on Home at first sign-in, Settings, Tutorials to start, resume and replay, and a coach card through the eight sections, each making one real thing |
 | T-162 | Drag and drop with a keyboard path beyond boards | To do | Backlog, dashboard widgets, files onto tickets |
 | T-163 | Layout editor page | To do | UI-T15 |
 | T-164 | Phone and accessibility pass | To do | UI-T09 |
