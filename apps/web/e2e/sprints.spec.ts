@@ -4,9 +4,9 @@ import { expect, type Page, test } from '@playwright/test';
 
 /**
  * Sprints end to end (M1-044; AGL-008, AGL-010, AGL-011): on a Scrum board made through the
- * API, a sprint is created in the backlog, two tickets are moved into it with the menu, it is
- * started, the board shows its tickets only, its report opens, and it is completed with the
- * unfinished tickets sent back to the backlog; no serious axe issue and no sideways page
+ * API, a sprint is created in the backlog, two tickets are moved into it with their grip menus,
+ * it is started, the board shows its tickets only, its report opens, and it is completed with
+ * the unfinished tickets sent back to the backlog; no serious axe issue and no sideways page
  * scroll, on a phone either. Then a sprint is completed from its board (T-106): the pop-up
  * counts its done and open tickets, Escape cancels, and the open ones go to a planned sprint.
  * It uses the attachments database (preview 4174), whose administrator (Ada Attach) the API
@@ -81,11 +81,10 @@ test('[AGL-010] [AGL-008] a sprint planned, started, reported and completed from
   const sprintName = `Sprint ${word} Sprint 1`;
   await expect(section(sprintName)).toBeVisible();
 
-  // Two tickets into the sprint with the move menu (the keyboard works the same select).
+  // Two tickets into the sprint with each one's grip menu (T-162; the keyboard opens the same).
   for (const key of [first, second]) {
-    await section('Backlog')
-      .getByRole('combobox', { name: `Move ${key} to` })
-      .selectOption({ label: sprintName });
+    await section('Backlog').getByRole('button', { name: `Move ${key}`, exact: true }).click();
+    await page.getByRole('menuitem', { name: `Move to ${sprintName}` }).click();
     await expect(section(sprintName).getByRole('link', { name: key })).toBeVisible();
   }
   await expect(section(sprintName).getByText('2 tickets, estimate 4h, 4h remaining')).toBeVisible();

@@ -21,6 +21,61 @@
   background: var(--color-accent-soft);
 }
 
+/*
+ * Files over a ticket (T-162; ADR-114, section 12): the whole ticket is the target, outlined, with
+ * a card that stays in view naming the ticket and the limit, or why nothing can be attached. The
+ * layer lets the pointer through, so the browser keeps telling the ticket where the files are.
+ */
+.ticket-view.is-file-drop {
+  position: relative;
+}
+
+.file-drop-overlay {
+  position: absolute;
+  inset: calc(-1 * var(--space-2));
+  z-index: 40;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  border: 3px dashed var(--color-accent);
+  border-radius: var(--radius-3);
+  background: var(--glass-tint-accent);
+  pointer-events: none;
+}
+
+.file-drop-overlay:not([data-ready]) {
+  border-color: var(--color-danger);
+}
+
+.file-drop-card {
+  position: sticky;
+  top: calc(50dvh - 5rem);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  max-width: min(24rem, calc(100% - 2 * var(--space-4)));
+  margin-block: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  background: var(--color-surface-raised);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.file-drop-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.file-drop-limit {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
 .attachment-header {
   display: flex;
   flex-wrap: wrap;

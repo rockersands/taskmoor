@@ -1,6 +1,6 @@
 import {
-  type DragEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useId,
@@ -9,6 +9,9 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
+import { playMotion } from '../shell/motion';
+import { followPointerDrag } from '../shell/pointerDrag';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { useTrackSections } from '../tracks/trackSections';
@@ -47,6 +50,25 @@ interface Shown {
   tickets: BacklogTicket[];
 }
 
+/** Where a drag would land: before a ticket of a section or at its end, or on a panel's item. */
+type Drop =
+  | { kind: 'section'; section: SectionKey; before: number | null }
+  | { kind: 'panel'; target: PanelTarget; name: string };
+
+const sameDrop = (a: Drop | null, b: Drop | null) =>
+  a === b ||
+  (a !== null &&
+    b !== null &&
+    (a.kind === 'section' && b.kind === 'section'
+      ? a.section === b.section && a.before === b.before
+      : a.kind === 'panel' &&
+        b.kind === 'panel' &&
+        a.target.kind === b.target.kind &&
+        a.target.id === b.target.id));
+
+/** A press on these is theirs: a mouse drags a row from anywhere else on it. */
+const OWN_PRESS = 'button, input, select, textarea, label';
+
 /**
  * A Scrum board's backlog (M1-044, M1-047; AGL-008, AGL-009, AGL-010, AGL-011): the active and
  * future sprints as sections, then the backlog, each with its tickets in rank order and the
@@ -57,9 +79,15 @@ interface Shown {
  * (or one ticket) is dragged to a place in any section, which moves it into that sprint or the
  * backlog and ranks it there as a block, or onto an outcome or a release in the panels. Every
  * drag has a keyboard way: the selection's menus (move to a section, to the top or the bottom,
- * under an outcome, into a release), each ticket's Move menu, and Alt with the up and down arrows
- * to rank one ticket past its neighbour. Choosing a panel item filters the sections to its
- * tickets. Tickets are made inline in any section from a summary.
+ * under an outcome, into a release), each ticket's grip menu (up, down, top, bottom, another
+ * section), and Alt with the up and down arrows to rank one ticket past its neighbour. Choosing a
+ * panel item filters the sections to its tickets. Tickets are made inline in any section from a
+ * summary.
+ *
+ * Drags use pointer events (T-162; ADR-114, section 12): a mouse drags a row from anywhere but
+ * its controls, and a finger or a mouse drags it by its grip. The section and the place it would
+ * land are marked as on the board, the page says what is in hand, Escape cancels, and the
+ * server's rank and sprint rules judge every drop as they judge the menus.
  */
 export function BacklogPage({
   boardId,
@@ -83,11 +111,18 @@ export function BacklogPage({
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [filter, setFilter] = useState<{ target: PanelTarget; name: string } | null>(null);
-  /** The tickets being dragged, and where they would land: before a ticket, or at the end. */
+  /** The tickets being dragged, and where they would land: a place in a section, or a panel. */
   const [dragging, setDragging] = useState<number[] | null>(null);
-  const [dropAt, setDropAt] = useState<{ section: SectionKey; before: number | null } | null>(null);
-  /** The ticket to focus again once the backlog is read after a keyboard rank. */
-  const refocus = useRef<number | null>(null);
+  const [over, setOver] = useState<Drop | null>(null);
+  /** Where the pointer is while dragging, for the label that follows it. */
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  /** What to focus again once the backlog is read after a keyboard move: a ticket's key or grip. */
+  const refocus = useRef<{ id: number; part: 'key' | 'grip' } | null>(null);
+  /** The ticket a drop has just placed: it settles in once the backlog is read again. */
+  const landed = useRef<number | null>(null);
+  /** Stops following a drag, should the page go while one is under way. */
+  const stopDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopDrag.current?.(), []);
 
   const load = useCallback(() => {
     client.backlog(boardId).then(
@@ -119,10 +154,21 @@ export function BacklogPage({
       current.every((x) => present.has(x)) ? current : current.filter((x) => present.has(x)),
     );
     if (refocus.current !== null) {
+      const { id: ticket, part } = refocus.current;
       page.current
-        ?.querySelector<HTMLElement>(`[data-ticket-id="${refocus.current}"] .sprint-ticket-key`)
+        ?.querySelector<HTMLElement>(
+          part === 'grip'
+            ? `[data-handle="ticket-${ticket}"]`
+            : `[data-ticket-id="${ticket}"] .sprint-ticket-key`,
+        )
         ?.focus();
       refocus.current = null;
+    }
+    if (landed.current !== null) {
+      const row = page.current?.querySelector(`[data-ticket-id="${landed.current}"]`);
+      // Only the ticket that has just dropped moves, as on the board.
+      if (row) playMotion(row, 'motion-drop');
+      landed.current = null;
     }
   }, [data]);
 
@@ -181,7 +227,13 @@ export function BacklogPage({
       ]
     : [];
   const sectionOf = new Map<number, SectionKey>();
-  for (const s of sections) for (const x of s.tickets) sectionOf.set(x.id, s.key);
+  const ticketOf = new Map<number, BacklogTicket>();
+  for (const s of sections) {
+    for (const x of s.tickets) {
+      sectionOf.set(x.id, s.key);
+      ticketOf.set(x.id, x);
+    }
+  }
   const chosen = new Set(selected);
   const inHand = new Set(dragging ?? []);
   /** Tickets in the order the page shows them. */
@@ -265,67 +317,161 @@ export function BacklogPage({
     );
   };
 
-  /** Where a drag over a section would put the block: before the ticket under the pointer's half. */
-  function overSection(event: DragEvent, section: SectionKey, shown: BacklogTicket[]) {
-    if (dragging === null) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    const over = (event.target as HTMLElement).closest<HTMLElement>('[data-ticket-id]');
-    let before: number | null = null;
-    if (over) {
-      const ticket = Number(over.dataset.ticketId);
-      const rect = over.getBoundingClientRect();
-      if (event.clientY < rect.top + rect.height / 2) before = ticket;
-      else before = shown[shown.findIndex((x) => x.id === ticket) + 1]?.id ?? null;
+  /** What is under the pointer, as a place a dragged block may land (T-162). */
+  function dropAt(x: number, y: number): Drop | null {
+    const element = document.elementFromPoint?.(x, y);
+    if (!element) return null;
+    const item = element.closest<HTMLElement>('[data-drop-panel]');
+    if (item) {
+      return {
+        kind: 'panel',
+        target: {
+          kind: item.dataset.dropPanel === 'release' ? 'release' : 'outcome',
+          id: Number(item.dataset.targetId),
+        },
+        name: item.dataset.name ?? '',
+      };
     }
-    if (dropAt?.section !== section || dropAt.before !== before) setDropAt({ section, before });
+    const holder = element.closest<HTMLElement>('[data-drop-section]');
+    if (!holder) return null;
+    const key =
+      holder.dataset.dropSection === 'backlog' ? null : Number(holder.dataset.dropSection);
+    const section = sections.find((s) => s.key === key);
+    if (!section) return null;
+    // Before the ticket under the pointer's upper half, or the one after; anywhere else, the end.
+    const row = element.closest<HTMLElement>('[data-ticket-id]');
+    let before: number | null = null;
+    if (row && holder.contains(row)) {
+      const shown = shownOf(section.tickets);
+      const ticket = Number(row.dataset.ticketId);
+      const rect = row.getBoundingClientRect();
+      before =
+        y < rect.top + rect.height / 2
+          ? ticket
+          : (shown[shown.findIndex((x) => x.id === ticket) + 1]?.id ?? null);
+    }
+    return { kind: 'section', section: key, before };
   }
 
   function endDrag() {
     setDragging(null);
-    setDropAt(null);
+    setOver(null);
+    setGhost(null);
   }
 
   /** A drop on a section: the same move as the menus', to the place shown. */
-  function dropOnSection(event: DragEvent, section: Shown) {
-    event.preventDefault();
-    const block = dragging;
-    let before = dropAt?.section === section.key ? dropAt.before : null;
-    endDrag();
-    if (!block || busy) return;
+  function dropOnSection(block: number[], section: Shown, at: number | null) {
+    let before = at;
     // Dropped before a ticket of the block itself: before the next one that is not.
     if (before !== null && block.includes(before)) {
       const from = section.tickets.findIndex((x) => x.id === before);
       before = section.tickets.slice(from).find((x) => !block.includes(x.id))?.id ?? null;
     }
     const rest = section.tickets.filter((x) => !block.includes(x.id));
-    const at = before === null ? rest.length : rest.findIndex((x) => x.id === before);
+    const place = before === null ? rest.length : rest.findIndex((x) => x.id === before);
     const after = [
-      ...rest.slice(0, at).map((x) => x.id),
+      ...rest.slice(0, place).map((x) => x.id),
       ...block,
-      ...rest.slice(at).map((x) => x.id),
+      ...rest.slice(place).map((x) => x.id),
     ];
     const within = block.every((x) => sectionOf.get(x) === section.key);
-    // Dropped where it already was, in that order: nothing to do.
-    if (within && after.join() === section.tickets.map((x) => x.id).join()) return;
+    // Dropped where it already was, in that order: nothing to ask of the server.
+    if (within && after.join() === section.tickets.map((x) => x.id).join()) {
+      setNotice(
+        t('sprints.drag.cancelled', {
+          count: block.length,
+          key: ticketOf.get(block[0] as number)?.key ?? '',
+        }),
+      );
+      return;
+    }
     const last = rest[rest.length - 1];
-    const place: RankPlace | null = before !== null ? { before } : last ? { after: last.id } : null;
+    const rank: RankPlace | null = before !== null ? { before } : last ? { after: last.id } : null;
+    landed.current = block[0] ?? null;
     void moveBlock(
       block,
       section.key,
-      place,
+      rank,
       within
         ? t('sprints.planned.ranked', { count: block.length })
         : t('sprints.planned.moved', { count: block.length, section: section.name }),
     );
   }
 
-  function dropOnPanel(target: PanelTarget, name: string) {
-    const block = dragging;
-    endDrag();
-    if (!block || busy) return;
-    if (target.kind === 'outcome') void toOutcome(block, target.id, name);
-    else void toRelease(block, target.id, name);
+  /** Where a drop lands: a place in a section, or the outcome or release of a panel. */
+  function dropOn(block: number[], to: Drop) {
+    if (busy) return;
+    if (to.kind === 'panel') {
+      if (to.target.kind === 'outcome') void toOutcome(block, to.target.id, to.name);
+      else void toRelease(block, to.target.id, to.name);
+      return;
+    }
+    const section = sections.find((s) => s.key === to.section);
+    if (section) dropOnSection(block, section, to.before);
+  }
+
+  // A drag outlives the drawing it began in: it asks the latest one where it is and what to do.
+  const live = useRef({ dropAt, dropOn });
+  live.current = { dropAt, dropOn };
+
+  /**
+   * A press on a row (by mouse) or on its grip (by anything) that may become a drag. The
+   * selection moves as one block when the ticket is part of it; otherwise the ticket alone.
+   */
+  function beginDrag(event: ReactPointerEvent, ticket: BacklogTicket) {
+    if (busy || stopDrag.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    const block = chosen.has(ticket.id) ? inOrder(chosen) : [ticket.id];
+    const words = { count: block.length, key: ticket.key };
+    stopDrag.current = followPointerDrag(event, {
+      start: (x, y) => {
+        setDragging(block);
+        setGhost({ x, y });
+        setProblem(null);
+        setNotice(t('sprints.drag.start', words));
+      },
+      move: (x, y) => {
+        setGhost({ x, y });
+        const to = live.current.dropAt(x, y);
+        setOver((current) => (sameDrop(current, to) ? current : to));
+      },
+      drop: (x, y) => {
+        const to = live.current.dropAt(x, y);
+        endDrag();
+        if (to) live.current.dropOn(block, to);
+        else setNotice(t('sprints.drag.cancelled', words));
+      },
+      cancel: () => {
+        endDrag();
+        setNotice(t('sprints.drag.cancelled', words));
+      },
+      end: () => {
+        stopDrag.current = null;
+      },
+    });
+  }
+
+  /** One ticket past its neighbour in its section as shown, or to an end of the rank. */
+  function rankOne(
+    ticket: BacklogTicket,
+    shown: BacklogTicket[],
+    to: 'up' | 'down' | 'top' | 'bottom',
+    part: 'key' | 'grip',
+  ) {
+    if (busy) return;
+    const at = shown.findIndex((x) => x.id === ticket.id);
+    let place: RankPlace;
+    if (to === 'top' || to === 'bottom') {
+      place = { position: to };
+    } else {
+      const neighbour = shown[at + (to === 'up' ? -1 : 1)];
+      if (!neighbour) return;
+      place = to === 'up' ? { before: neighbour.id } : { after: neighbour.id };
+    }
+    refocus.current = { id: ticket.id, part };
+    void run(async () => {
+      flag(await client.rank(boardId, [ticket.id], place));
+      return t(`sprints.rank.${to}`, { key: ticket.key });
+    }, t('sprints.move.failed'));
   }
 
   /** Alt with an arrow: one ticket past its neighbour in the section, as shown. */
@@ -333,20 +479,45 @@ export function BacklogPage({
     if (!event.altKey || busy) return;
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     event.preventDefault();
-    const up = event.key === 'ArrowUp';
-    const neighbour = shown[shown.findIndex((x) => x.id === ticket.id) + (up ? -1 : 1)];
-    if (!neighbour) return;
-    refocus.current = ticket.id;
-    void run(async () => {
-      flag(
-        await client.rank(
-          boardId,
-          [ticket.id],
-          up ? { before: neighbour.id } : { after: neighbour.id },
-        ),
+    const onGrip = (event.target as HTMLElement).closest('[data-handle]') !== null;
+    rankOne(ticket, shown, event.key === 'ArrowUp' ? 'up' : 'down', onGrip ? 'grip' : 'key');
+  }
+
+  /** A ticket's grip menu: every move a drag makes, one at a time (T-162). */
+  function gripItems(ticket: BacklogTicket, section: Shown, shown: BacklogTicket[]) {
+    const at = shown.findIndex((x) => x.id === ticket.id);
+    const items: MoveMenuItem[] = [];
+    const rank = (to: 'up' | 'down' | 'top' | 'bottom') => () => rankOne(ticket, shown, to, 'grip');
+    if (at > 0) {
+      items.push(
+        { key: 'up', label: t('sprints.grip.up'), onSelect: rank('up') },
+        { key: 'top', label: t('sprints.grip.top'), onSelect: rank('top') },
       );
-      return t(up ? 'sprints.rank.up' : 'sprints.rank.down', { key: ticket.key });
-    }, t('sprints.move.failed'));
+    }
+    if (at < shown.length - 1) {
+      items.push(
+        { key: 'down', label: t('sprints.grip.down'), onSelect: rank('down') },
+        { key: 'bottom', label: t('sprints.grip.bottom'), onSelect: rank('bottom') },
+      );
+    }
+    for (const other of sections) {
+      if (other.key === section.key) continue;
+      items.push({
+        key: `to-${other.key ?? 'backlog'}`,
+        label: t('sprints.grip.to', { section: other.name }),
+        onSelect: () => {
+          if (busy) return;
+          refocus.current = { id: ticket.id, part: 'grip' };
+          void moveBlock(
+            [ticket.id],
+            other.key,
+            null,
+            t('sprints.planned.moved', { count: 1, section: other.name }),
+          );
+        },
+      });
+    }
+    return items;
   }
 
   const ticketList = (section: Shown) => {
@@ -358,21 +529,27 @@ export function BacklogPage({
           <li
             key={ticket.id}
             className={`sprint-ticket${inHand.has(ticket.id) ? ' is-dragging' : ''}${
-              dropAt?.section === section.key && dropAt.before === ticket.id
+              over?.kind === 'section' && over.section === section.key && over.before === ticket.id
                 ? ' is-drop-before'
                 : ''
             }`}
             data-ticket-id={ticket.id}
             data-done={ticket.done || undefined}
-            draggable={!busy}
-            onDragStart={(event) => {
-              event.dataTransfer.setData('text/plain', ticket.key);
-              event.dataTransfer.effectAllowed = 'move';
-              setDragging(chosen.has(ticket.id) ? inOrder(chosen) : [ticket.id]);
+            onPointerDown={(event) => {
+              // A mouse drags the row from anywhere but its controls; a finger, by the grip.
+              if (event.pointerType !== 'mouse') return;
+              if ((event.target as HTMLElement).closest(OWN_PRESS)) return;
+              beginDrag(event, ticket);
             }}
-            onDragEnd={endDrag}
             onKeyDown={(event) => onTicketKey(event, ticket, shown)}
           >
+            <MoveMenu
+              className="sprint-ticket-grip"
+              label={t('sprints.grip.label', { key: ticket.key })}
+              handle={`ticket-${ticket.id}`}
+              items={gripItems(ticket, section, shown)}
+              onDragStart={(event) => beginDrag(event, ticket)}
+            />
             <input
               type="checkbox"
               className="sprint-ticket-select"
@@ -390,6 +567,8 @@ export function BacklogPage({
               href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
               className="sprint-ticket-key"
               aria-describedby={`${id}-hint`}
+              // The row is dragged, not the link's address.
+              draggable={false}
             >
               {ticket.key}
             </a>
@@ -398,45 +577,13 @@ export function BacklogPage({
             <span className="sprint-ticket-estimate">
               {estimateText(t, ticket.estimate, statistic)}
             </span>
-            <label className="sprint-ticket-move">
-              <span className="visually-hidden">
-                {t('sprints.move.label', { key: ticket.key })}
-              </span>
-              <select
-                value=""
-                disabled={busy}
-                onChange={(event) => {
-                  const to = event.target.value;
-                  if (to === '' || (to === 'backlog' && section.key === null)) return;
-                  const target = to === 'backlog' ? null : Number(to);
-                  void moveBlock(
-                    [ticket.id],
-                    target,
-                    null,
-                    t('sprints.planned.moved', { count: 1, section: nameOf(target) }),
-                  );
-                }}
-              >
-                <option value="">{t('sprints.move.placeholder')}</option>
-                {data?.sprints
-                  .filter((s) => s.id !== section.key)
-                  .map((s) => (
-                    <option key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </option>
-                  ))}
-                {section.key !== null && (
-                  <option value="backlog">{t('sprints.backlog.title')}</option>
-                )}
-              </select>
-            </label>
           </li>
         ))}
       </ul>
     );
   };
 
-  /** A section's own parts: select-all, its tickets, a drop zone and inline create. */
+  /** A section's own parts: select-all, its tickets, its drop place and inline create. */
   const sectionBody = (section: Shown) => {
     const shown = shownOf(section.tickets);
     return {
@@ -454,14 +601,10 @@ export function BacklogPage({
           </label>
         ) : null,
       drop: {
-        className: `sprint-section${dropAt?.section === section.key ? ' is-drop-target' : ''}`,
-        onDragOver: (event: DragEvent) => overSection(event, section.key, shown),
-        onDragLeave: (event: DragEvent) => {
-          if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
-            setDropAt((current) => (current?.section === section.key ? null : current));
-          }
-        },
-        onDrop: (event: DragEvent) => dropOnSection(event, section),
+        className: `sprint-section${
+          over?.kind === 'section' && over.section === section.key ? ' is-drop-target' : ''
+        }`,
+        'data-drop-section': section.key === null ? 'backlog' : String(section.key),
       },
       list: (
         <>
@@ -483,6 +626,7 @@ export function BacklogPage({
     const o = panels?.outcomes.find((x) => x.id === outcome);
     return o ? `${o.key} ${o.summary}` : '';
   };
+  const first = dragging?.[0] !== undefined ? ticketOf.get(dragging[0]) : undefined;
 
   return (
     <section ref={page} className="backlog-page" aria-labelledby={`${id}-title`}>
@@ -690,9 +834,19 @@ export function BacklogPage({
             failed={panelsFailed}
             filter={filter?.target ?? null}
             onFilter={(target, name) => setFilter(target ? { target, name } : null)}
-            dragging={dragging !== null}
-            onDrop={dropOnPanel}
+            over={over?.kind === 'panel' ? over.target : null}
           />
+        </div>
+      )}
+      {dragging && ghost && (
+        <div
+          className="drag-ghost"
+          aria-hidden="true"
+          style={{ transform: `translate(${ghost.x + 12}px, ${ghost.y + 12}px)` }}
+        >
+          {dragging.length === 1 && first
+            ? `${first.key} ${first.summary}`
+            : t('sprints.drag.many', { count: dragging.length })}
         </div>
       )}
     </section>
@@ -750,12 +904,10 @@ interface SprintPanelProps {
   busy: boolean;
   totals: string;
   selectAll: React.ReactNode;
-  /** The section's drop handlers and class (M1-047). */
+  /** The section as a drop place: its class while a drag is over it, and its key (T-162). */
   drop: {
     className: string;
-    onDragOver: (event: DragEvent) => void;
-    onDragLeave: (event: DragEvent) => void;
-    onDrop: (event: DragEvent) => void;
+    'data-drop-section': string;
   };
   onStart: () => void;
   onComplete: (target: CompleteTarget) => void;

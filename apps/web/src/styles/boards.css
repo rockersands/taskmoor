@@ -578,7 +578,7 @@
 
 /*
  * Sprints (M1-044): the backlog's sprint sections and the sprint report. Rows wrap on narrow
- * screens; the move menus and lifecycle buttons keep 44px targets on touch.
+ * screens; the grips and lifecycle buttons keep 44px targets on touch.
  */
 .backlog-page {
   min-width: 0;
@@ -667,7 +667,6 @@
   margin: var(--space-2) 0;
 }
 
-.sprint-ticket-move select,
 .sprint-complete select {
   max-width: 100%;
 }
@@ -700,7 +699,6 @@
 }
 
 @media (pointer: coarse) {
-  .sprint-ticket-move select,
   .sprint-ticket-key,
   .sprint-complete select,
   .sprint-complete button,
@@ -849,8 +847,23 @@
   font-size: var(--font-size-200);
 }
 
-.sprint-ticket[draggable="true"] {
-  cursor: grab;
+/*
+ * A row drags by its grip, and by mouse from anywhere but its controls (T-162): no text is
+ * selected on the way. The grip leads the row, so its menu opens towards the end.
+ */
+.sprint-ticket {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (pointer: fine) {
+  .sprint-ticket {
+    cursor: grab;
+  }
+}
+
+.sprint-ticket-grip .move-grip-popup {
+  inset-inline: 0 auto;
 }
 
 .sprint-ticket.is-dragging {

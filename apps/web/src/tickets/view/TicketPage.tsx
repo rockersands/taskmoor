@@ -9,6 +9,7 @@ import { SummaryPanel } from '../../ai/SummaryPanel';
 import { ApiError } from '../../api/client';
 import { AttachmentPanel } from '../../attachments/AttachmentPanel';
 import { type AttachmentClient, attachmentClient } from '../../attachments/client';
+import { FileDropProvider, useTicketFileDrop } from '../../attachments/FileDrop';
 import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
@@ -311,6 +312,8 @@ export function TicketView({
 
   // The pop-up is named after its ticket, whatever the view is showing or editing at the time.
   const shownKey = state.status === 'loaded' ? state.ticket.key : null;
+  // Files dropped anywhere on the ticket go to its attachments (T-162).
+  const fileDrop = useTicketFileDrop(shownKey);
   const shownSummary = state.status === 'loaded' ? state.ticket.summary : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: told when the name changes
   useEffect(() => {
@@ -688,7 +691,12 @@ export function TicketView({
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <article ref={article} aria-labelledby={titleId} className="ticket-page ticket-view">
+    <article
+      ref={article}
+      aria-labelledby={titleId}
+      className={`ticket-page ticket-view${fileDrop.over ? ' is-file-drop' : ''}`}
+      {...fileDrop.areaProps}
+    >
       <header className="ticket-header">
         {behind && (
           <a
@@ -865,7 +873,12 @@ export function TicketView({
                 onChanged={toolChanged}
               />
             )}
-            <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
+            <FileDropProvider value={fileDrop.register}>
+              <AttachmentPanel
+                ticket={shown.id}
+                {...(attachments ? { client: attachments } : {})}
+              />
+            </FileDropProvider>
             <ActivityPanel
               ticket={{ id: shown.id, key: shown.key }}
               client={client}
@@ -928,6 +941,7 @@ export function TicketView({
           }}
         />
       )}
+      {fileDrop.overlay}
     </article>
   );
 }

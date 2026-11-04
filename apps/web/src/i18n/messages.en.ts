@@ -3319,6 +3319,12 @@ export const messagesEn = {
   'attachments.uploadFailed': '{name} could not be attached. Try again in a moment.',
   'attachments.forbidden': 'You may not attach files to this ticket.',
   'attachments.pastedName': 'pasted-{time}',
+  // Files dropped anywhere on a ticket (T-162).
+  'attachments.dropHintTicket':
+    'Drop files anywhere on this ticket, paste them here, or choose them. Up to {limit} each.',
+  'attachments.dropTarget': 'Drop to attach to {key}',
+  'attachments.dropLimit': 'Up to {limit} a file',
+  'attachments.dropOver': 'Files over {key}: let go to attach them.',
   'attachments.download': 'Download {name}',
   'attachments.preview': 'Preview',
   'attachments.previewOf': 'Preview {name}',
@@ -4220,14 +4226,26 @@ export const messagesEn = {
   'sprints.completeDialog.target': 'Open tickets go to',
   'sprints.completeDialog.cancel': 'Cancel',
   'sprints.completeDialog.close': 'Close without completing',
-  'sprints.move.label': 'Move {key} to',
-  'sprints.move.placeholder': 'Move to…',
   'sprints.move.failed': 'The tickets could not be moved.',
   // Planning on the backlog (M1-047): selection, drag and drop, panels and inline create.
   'sprints.rank.hint':
-    'Drag tickets to rank them or move them to another section, an outcome or a release. With the keyboard, Alt and the up or down arrow move a ticket past its neighbour, and the menus of the selection do the rest.',
+    'Drag a ticket by its grip, or with a mouse from anywhere on its row, to rank it or move it to another section, an outcome or a release; a selected ticket takes the whole selection with it, and Escape cancels. With the keyboard, the grip opens a menu of the same moves, Alt and the up or down arrow move a ticket past its neighbour, and the menus of the selection do the rest.',
   'sprints.rank.up': '{key} moved up.',
   'sprints.rank.down': '{key} moved down.',
+  'sprints.rank.top': '{key} moved to the top.',
+  'sprints.rank.bottom': '{key} moved to the bottom.',
+  // A ticket's grip (T-162): dragged by mouse or finger, or pressed for a menu of the same moves.
+  'sprints.grip.label': 'Move {key}',
+  'sprints.grip.up': 'Move up',
+  'sprints.grip.down': 'Move down',
+  'sprints.grip.top': 'Move to the top',
+  'sprints.grip.bottom': 'Move to the bottom',
+  'sprints.grip.to': 'Move to {section}',
+  'sprints.drag.start':
+    '{count, plural, one {Moving {key}} other {Moving # tickets}}: drop on a place in a sprint or the backlog, or on an outcome or a release. Escape cancels.',
+  'sprints.drag.cancelled':
+    '{count, plural, one {{key} stays where it was.} other {# tickets stay where they were.}}',
+  'sprints.drag.many': '{count, plural, one {# ticket} other {# tickets}}',
   'sprints.select.label': 'Select {key}',
   'sprints.select.all': 'Select every ticket shown in {section}',
   'sprints.selection.label': 'Selected tickets',
@@ -4590,6 +4608,15 @@ export const messagesEn = {
   'dashboards.toolShort.left': 'Left',
   'dashboards.toolShort.right': 'Right',
   'dashboards.toolShort.remove': 'Remove',
+  // Arranging widgets by drag (T-162): every move is announced, and Escape cancels a drag.
+  'dashboards.drag.hint':
+    'Drag a widget by its grip, or by its title with a mouse, to another place or column; Escape cancels. Its Up, Down, Left and Right buttons, or Alt with the arrow keys on them, move it too.',
+  'dashboards.drag.hintOne':
+    'Drag a widget by its grip, or by its title with a mouse, to another place; Escape cancels. Its Up and Down buttons, or Alt with the up and down arrows on them, move it too.',
+  'dashboards.drag.start': 'Moving {name}: drop it on a place in a column. Escape cancels.',
+  'dashboards.stayed': '{name} stays where it was.',
+  'dashboards.moved': '{name} is now in column {column}, {place} of {count}.',
+  'dashboards.column.empty': 'Column {column} is empty: drop a widget here.',
   'dashboards.newName': 'New dashboard',
   'dashboards.create': 'Create dashboard',
   'dashboards.listFailed': 'The dashboards could not be loaded.',

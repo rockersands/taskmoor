@@ -20,13 +20,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The active sprint, a planned one and the backlog, with totals and the move menus. */
+/** The active sprint, a planned one and the backlog, with totals and each ticket's grip. */
 export const Backlog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Checkout Sprint 1' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Complete sprint' })).toBeVisible();
-    await expect(canvas.getByRole('combobox', { name: 'Move CHK-4 to' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Move CHK-4' })).toBeVisible();
+  },
+};
+
+/** A ticket's grip pressed: its menu of the moves a drag makes (T-162). */
+export const GripMenu: Story = {
+  args: { client: fakeSprintClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Move CHK-5' }));
+    const menu = within(await canvas.findByRole('menu'));
+    await expect(menu.getByRole('menuitem', { name: 'Move to the top' })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Move to Checkout Sprint 2' })).toBeVisible();
   },
 };
 
