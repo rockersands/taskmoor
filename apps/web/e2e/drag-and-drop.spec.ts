@@ -16,24 +16,36 @@ const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
-async function seriousAxeViolations(page: Page): Promise<string[]> {
+/**
+ * Serious axe issues, with where they are. `skip` leaves out what a drag fades on purpose: the
+ * item in hand stays at its old place, dimmed as on the board, while the label that follows the
+ * pointer names it.
+ */
+async function seriousAxeViolations(page: Page, skip: string[] = []): Promise<string[]> {
   // Evaluated, not a script element, which the app's content security policy refuses (M1-107).
   await page.evaluate(readFileSync(AXE, 'utf8'));
-  return page.evaluate(async () => {
+  return page.evaluate(async (exclude) => {
     const axe = (
       window as unknown as {
         axe: {
-          run: (context: Document) => Promise<{
-            violations: { id: string; impact?: string | null; nodes: unknown[] }[];
+          run: (context: unknown) => Promise<{
+            violations: {
+              id: string;
+              impact?: string | null;
+              nodes: { target: unknown[] }[];
+            }[];
           }>;
         };
       }
     ).axe;
-    const { violations } = await axe.run(document);
+    const { violations } = await axe.run({
+      include: [document],
+      exclude: exclude.map((selector) => [selector]),
+    });
     return violations
       .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-      .map((v) => `${v.id} (${v.nodes.length})`);
-  });
+      .map((v) => `${v.id} (${v.nodes.map((n) => n.target.join(' ')).join(', ')})`);
+  }, skip);
 }
 
 const noSidewaysScroll = (page: Page) =>
@@ -61,6 +73,25 @@ async function pointOn(locator: Locator, at = { x: 0.5, y: 0.5 }) {
   };
 }
 
+/**
+ * Whether every item of the open menu is on the screen and is what a press at its centre hits:
+ * not off the page's sides, and not under the rows and sections that follow it.
+ */
+async function menuReachable(page: Page): Promise<string[]> {
+  await expect(page.getByRole('menu')).toBeVisible();
+  return page.evaluate(() => {
+    const problems: string[] = [];
+    for (const item of document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')) {
+      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const box = item.getBoundingClientRect();
+      if (box.left < 0 || box.right > innerWidth) problems.push(`${item.textContent}: off screen`);
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      if (hit?.closest('[role="menuitem"]') !== item) problems.push(`${item.textContent}: covered`);
+    }
+    return problems;
+  });
+}
+
 const CENTRE = { x: 0.5, y: 0.5 };
 /** Near the top of a row or a widget: a drop there goes before it. */
 const TOP = { x: 0.5, y: 0.2 };
@@ -68,7 +99,7 @@ const TOP = { x: 0.5, y: 0.2 };
 /**
  * Holds `from` and moves it over `to`: a mouse on a desktop, a finger on a phone, which the
  * browser turns into pointer events of type "touch". Both are in view first, clear of the edges
- * where a drag scrolls the page. Returns the way to let go there.
+ * where a drag scrolls the page (the two must fit on one screen). Returns the way to let go there.
  */
 async function hold(
   page: Page,
@@ -77,10 +108,28 @@ async function hold(
   touch: boolean,
   at = CENTRE,
 ): Promise<() => Promise<void>> {
+  // The point halfway between the two in the middle of the screen.
   await from.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const height = page.viewportSize()?.height ?? 0;
+  const halfway = ((await pointOn(from)).y + (await pointOn(to, at)).y) / 2;
+  await from.evaluate(
+    (element, by) => {
+      let scroller = element.parentElement;
+      while (
+        scroller &&
+        !(
+          scroller.scrollHeight > scroller.clientHeight &&
+          /auto|scroll/.test(getComputedStyle(scroller).overflowY)
+        )
+      ) {
+        scroller = scroller.parentElement;
+      }
+      (scroller ?? document.scrollingElement)?.scrollBy(0, by);
+    },
+    halfway - height / 2,
+  );
   const a = await pointOn(from);
   const b = await pointOn(to, at);
-  const height = page.viewportSize()?.height ?? 0;
   expect(b.y, 'the place to drop on is in view').toBeGreaterThan(80);
   expect(b.y, 'the place to drop on is in view').toBeLessThan(height - 80);
   const steps = 12;
@@ -176,7 +225,7 @@ test('[AGL-008] [AGL-009] the backlog by drag: into a sprint and ranked, Escape 
   const letGo = await hold(page, grip(first), section(sprintName), touch);
   await expect(section(sprintName)).toHaveClass(/is-drop-target/);
   await expect(status).toHaveText(new RegExp(`^Moving ${first}: drop on a place`));
-  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await seriousAxeViolations(page, ['.is-dragging'])).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(section(sprintName)).not.toHaveClass(/is-drop-target/);
   await letGo();
@@ -186,6 +235,7 @@ test('[AGL-008] [AGL-009] the backlog by drag: into a sprint and ranked, Escape 
   // The grip's menu, from the keyboard: the same moves one at a time.
   await grip(first).focus();
   await page.keyboard.press('Enter');
+  expect(await menuReachable(page)).toEqual([]);
   await page.getByRole('menuitem', { name: 'Move to the top' }).press('Enter');
   await expect(status).toHaveText(`${first} moved to the top.`);
   await expect.poll(() => keysIn('Backlog')).toEqual([first, second]);
@@ -253,7 +303,7 @@ test('[RPT-004] dashboard widgets dragged into another column and moved by keys,
     touch,
   );
   await expect(column(1)).toHaveClass(/is-drop-target/);
-  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await seriousAxeViolations(page, ['.is-dragging'])).toEqual([]);
   await page.keyboard.press('Escape');
   await letGo();
   await expect(said).toHaveText('Bravo stays where it was.');

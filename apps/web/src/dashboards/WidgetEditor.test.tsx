@@ -165,6 +165,14 @@ describe('arranging widgets by drag and by keys (T-162; ADR-114, section 12)', (
     expect(screen.getByRole('button', { name: 'Move Alpha down' })).toHaveFocus();
   });
 
+  it('[RPT-004] a drop that changes no column says the widget stayed, and changes nothing', () => {
+    const { seen, container } = edit('two', [note('a', 0, 'Alpha'), note('c', 1, 'Charlie')]);
+    // At the end of its own column, where it already is.
+    dragTo(gripOf('Alpha'), columnOf(container, 0));
+    expect(seen).toEqual([]);
+    expect(said(container)).toBe('Alpha stays where it was.');
+  });
+
   it('[RPT-004] in one column, the hint and the keys speak only of up and down', async () => {
     const user = userEvent.setup();
     const { seen } = edit('one', [note('a', 0, 'Alpha'), note('b', 0, 'Bravo')]);

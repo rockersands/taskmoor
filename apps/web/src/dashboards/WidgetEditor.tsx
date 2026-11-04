@@ -235,13 +235,19 @@ export function WidgetGrid({
     if (where) setSaid(t('dashboards.moved', { name: nameOf(moved.widget), ...where }));
   });
 
-  /** Changes the list and, if anything moved, says where the widget is now. */
+  /**
+   * Changes the list and, if anything moved, says where the widget is now. What is shown is each
+   * column's widgets in order: a change to the list that leaves those as they were moves nothing.
+   */
   const apply = (widgetId: string, change: (list: Widget[]) => Widget[], tool: Tool | null) => {
-    const next = change(widgets);
-    const same =
-      next.length === widgets.length &&
-      next.every((w, i) => w.id === widgets[i]?.id && w.column === widgets[i]?.column);
-    if (same) {
+    const shown = (list: Widget[]) =>
+      Array.from({ length: columns }, (_, c) =>
+        list
+          .filter((w) => w.column === c)
+          .map((w) => w.id)
+          .join(),
+      ).join('|');
+    if (shown(change(widgets)) === shown(widgets)) {
       setSaid(t('dashboards.stayed', { name: nameOf(widgetId) }));
       return;
     }
