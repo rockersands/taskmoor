@@ -274,7 +274,9 @@ had no web page. A page under Settings, Configuration sets edits them:
   Grips are 44 px under a coarse pointer.
 - **Unsaved work** is guarded: the router's leave guard asks before a link, a command, Back or
   Forward leaves the page (the full ticket page's rule and dialog, with its own words), the browser
-  asks before a reload, and the set list is locked until the draft is saved or discarded.
+  asks before a reload, and the set list is locked until the draft is saved or discarded. So is
+  adding a set, since a new set opens in the draft's place; one added while a draft was begun
+  meanwhile is listed and not opened.
 - **Open:** a local-mode track's own layout sets are listed and edited here, but its administrators
   who are neither site nor configuration administrators are refused by the page (the server lets
   them change their own sets), as on Configuration sets; giving them the page is a question for the

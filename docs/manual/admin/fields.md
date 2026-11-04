@@ -252,7 +252,7 @@ field that applies, in one tab.
 administrators:
 
 1. Pick the **Layout set**, or type a **New set name** and press **Add a layout set**. While a
-   set has unsaved changes the list is locked: save or discard first.
+   set has unsaved changes the list and adding a set are locked: save or discard first.
 2. Under **Form**, choose the **Ticket type** (or **Every ticket type**) and the operation:
    **Create**, **Edit** or **View**. A line says which layout that form uses now. A type with a
    layout of its own is marked **(own layout)** in the list.

@@ -73,6 +73,8 @@ export function LayoutEditorPage({
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [selected, setSelected] = useState<number | null>(initialSetId);
   const [dirty, setDirty] = useState(false);
+  const unsaved = useRef(dirty);
+  unsaved.current = dirty;
   const [newName, setNewName] = useState('');
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -103,13 +105,16 @@ export function LayoutEditorPage({
   const add = (event: FormEvent) => {
     event.preventDefault();
     const name = newName.trim();
-    if (!name) return;
+    // A new set opens at once, so it waits, as the set list does, for a draft to be saved or
+    // discarded: opening it would drop the draft without asking.
+    if (!name || unsaved.current) return;
     setProblem(null);
     client.createLayoutSet({ name }).then(
       (made) => {
         setNewName('');
         setMessage(t('layouts.added', { name: made.name }));
-        void load(made.id);
+        // A draft begun while the set was being made stays open; the new set is in the list.
+        void load(unsaved.current ? undefined : made.id);
       },
       (error) => {
         if (!expired(error)) setProblem(refusal(t, error));
@@ -194,10 +199,17 @@ export function LayoutEditorPage({
                       required
                       maxLength={255}
                       value={newName}
+                      disabled={dirty}
+                      aria-describedby={dirty ? `${id}-set-hint` : undefined}
                       onChange={(event) => setNewName(event.target.value)}
                     />
                   </div>
-                  <button type="submit" className="button-secondary">
+                  <button
+                    type="submit"
+                    className="button-secondary"
+                    disabled={dirty}
+                    aria-describedby={dirty ? `${id}-set-hint` : undefined}
+                  >
                     {t('layouts.add')}
                   </button>
                 </form>

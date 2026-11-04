@@ -6135,7 +6135,7 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.set': 'Conjunto de diseños',
   'layouts.defaultSet': '{name} (predeterminado)',
   'layouts.ownSet': '{name} (propio de un track)',
-  'layouts.setLocked': 'Guarda o descarta tus cambios para elegir otro conjunto.',
+  'layouts.setLocked': 'Guarda o descarta tus cambios para elegir o añadir otro conjunto.',
   'layouts.add': 'Añadir un conjunto de diseños',
   'layouts.newSetName': 'Nombre del nuevo conjunto',
   'layouts.added': 'Se añadió {name}.',

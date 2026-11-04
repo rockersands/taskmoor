@@ -5996,7 +5996,7 @@ export const messagesEn = {
   'layouts.set': 'Layout set',
   'layouts.defaultSet': '{name} (default)',
   'layouts.ownSet': '{name} (a track’s own)',
-  'layouts.setLocked': 'Save or discard your changes to choose another set.',
+  'layouts.setLocked': 'Save or discard your changes to choose or add another set.',
   'layouts.add': 'Add a layout set',
   'layouts.newSetName': 'New set name',
   'layouts.added': '{name} was added.',

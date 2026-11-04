@@ -244,7 +244,9 @@ describe('the layout editor (UI-T15)', () => {
     await user.click(within(form).getByLabelText('Show only the fields I placed'));
     expect(within(form).getByText('Unsaved changes')).toBeVisible();
     expect(screen.getByLabelText('Layout set')).toBeDisabled();
-    expect(screen.getByText('Save or discard your changes to choose another set.')).toBeVisible();
+    expect(
+      screen.getByText('Save or discard your changes to choose or add another set.'),
+    ).toBeVisible();
     // The preview leaves out what is not placed, except what is required.
     await waitFor(() => expect(previewed()).not.toContain('Severity'));
     await user.click(within(form).getByRole('button', { name: 'Save the layouts' }));
@@ -505,6 +507,53 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
     await user.click(screen.getByRole('link', { name: 'Tracks' }));
     await user.click(within(await asked()).getByRole('button', { name: 'Discard them' }));
     await waitFor(() => expect(currentRoute()).toBe('#/admin/tracks'));
+  });
+
+  it('[NFR-005] adding a set waits for the draft, since the new set would open in its place', async () => {
+    const user = userEvent.setup();
+    const client = renderWithNav();
+    await editor();
+    const add = screen.getByRole('form', { name: 'Add a layout set' });
+    const newName = within(add).getByLabelText('New set name');
+    await user.type(newName, 'Release layouts');
+    await choose(user, 'Place Labels', `Put in ${MAIN}`);
+    const button = within(add).getByRole('button', { name: 'Add a layout set' });
+    expect(newName).toBeDisabled();
+    expect(button).toBeDisabled();
+    const why = 'Save or discard your changes to choose or add another set.';
+    expect(newName).toHaveAccessibleDescription(why);
+    expect(button).toHaveAccessibleDescription(why);
+    fireEvent.submit(add);
+    expect(client.sets.map((s) => s.name)).not.toContain('Release layouts');
+    expect(fieldsIn(MAIN)).toContain('Labels');
+    // Once the draft is discarded, adding works and opens the new set.
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(button).toBeEnabled();
+    await user.click(button);
+    expect(await editor('Release layouts')).toBeVisible();
+  });
+
+  it('[NFR-005] a draft begun while a set is being added stays open', async () => {
+    const user = userEvent.setup();
+    const client = renderWithNav();
+    await editor();
+    const create = client.createLayoutSet;
+    let made = () => {};
+    client.createLayoutSet = (body) =>
+      new Promise((resolve, reject) => {
+        made = () => create(body).then(resolve, reject);
+      });
+    const add = screen.getByRole('form', { name: 'Add a layout set' });
+    await user.type(within(add).getByLabelText('New set name'), 'Release layouts');
+    await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
+    await choose(user, 'Place Labels', `Put in ${MAIN}`);
+    made();
+    expect(await screen.findByText('Release layouts was added.')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Release layouts' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Layout set')).toHaveValue('1');
+    expect(await editor()).toBeVisible();
+    expect(fieldsIn(MAIN)).toContain('Labels');
+    expect(screen.getByText('Unsaved changes')).toBeVisible();
   });
 
   it('[NFR-005] with nothing changed, or within the page, nothing is asked', async () => {
