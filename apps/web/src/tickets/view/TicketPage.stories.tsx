@@ -170,3 +170,58 @@ export const Shortcuts: Story = {
 export const NotFound: Story = {
   args: { client: fakeTicketClient({ missing: true }) },
 };
+
+/** Files from outside the page held over the ticket's title, as a browser reports them. */
+function filesOver(element: Element) {
+  const transfer = new DataTransfer();
+  transfer.items.add(new File(['bytes'], 'screen.png', { type: 'image/png' }));
+  for (const type of ['dragenter', 'dragover']) {
+    element.dispatchEvent(
+      new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer }),
+    );
+  }
+}
+
+/**
+ * Files held over the ticket (T-162; CORE-021): the whole ticket is outlined, with a card that
+ * names it and the size limit; let go anywhere on it, they go to its attachments.
+ */
+export const FilesOver: Story = {
+  args: { attachments: fakeAttachmentClient() },
+  beforeEach: () => () => {
+    window.dispatchEvent(new Event('dragend'));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const title = await canvas.findByRole('heading', {
+      level: 1,
+      name: 'SHOP-41 Checkout fails for expired cards',
+    });
+    await canvas.findByLabelText('Attach files');
+    filesOver(title);
+    await expect(await canvas.findByText('Drop to attach to SHOP-41')).toBeVisible();
+    await expect(canvas.getByText('Up to 1 GB a file')).toBeVisible();
+  },
+};
+
+/** Files held over a ticket the person may not add files to: the card says why. */
+export const FilesOverRefused: Story = {
+  args: { attachments: fakeAttachmentClient({ canCreate: false }) },
+  beforeEach: () => () => {
+    window.dispatchEvent(new Event('dragend'));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const title = await canvas.findByRole('heading', {
+      level: 1,
+      name: 'SHOP-41 Checkout fails for expired cards',
+    });
+    await canvas.findByText('6 attachments');
+    filesOver(title);
+    await expect(
+      await canvas.findByText('You may not attach files to this ticket.', {
+        selector: '.file-drop-title',
+      }),
+    ).toBeVisible();
+  },
+};

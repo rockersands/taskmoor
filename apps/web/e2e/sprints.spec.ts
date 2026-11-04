@@ -83,7 +83,9 @@ test('[AGL-010] [AGL-008] a sprint planned, started, reported and completed from
 
   // Two tickets into the sprint with each one's grip menu (T-162; the keyboard opens the same).
   for (const key of [first, second]) {
-    await section('Backlog').getByRole('button', { name: `Move ${key}`, exact: true }).click();
+    await section('Backlog')
+      .getByRole('button', { name: `Move ${key}`, exact: true })
+      .click();
     await page.getByRole('menuitem', { name: `Move to ${sprintName}` }).click();
     await expect(section(sprintName).getByRole('link', { name: key })).toBeVisible();
   }
