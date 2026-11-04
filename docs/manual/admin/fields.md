@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -11,8 +11,8 @@ This page covers the fields a ticket holds, the custom fields you add, formula f
 types and hierarchy levels, and the configuration sets that tell each track which types,
 priorities, rules and forms it uses.
 
-In the web app, site and configuration administrators use **Administration**, **Fields** and
-**Administration**, **Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
+In the web app, site and configuration administrators use **Administration**, **Fields**,
+**Administration**, **Configuration sets** and **Administration**, **Layout sets**. The rest is done through the [REST API](rest-api.md); a token that
 changes shared configuration needs the `admin` scope ([API tokens](api-tokens.md)). Everyone
 signed in may read these lists.
 
@@ -230,6 +230,11 @@ On **Administration**, **Configuration sets**, **Field rule sets**: **Add a fiel
 - A required field must have a value when a ticket is created, cannot be emptied by an edit,
   and must be filled in when a transition asks for it.
 
+Field rules and layouts work together, and each page says so and links to the other. A layout
+decides where a field appears and in what order; a rule decides whether it is required, hidden or
+has help text. A hidden field never appears, even where a layout places it, and a required field
+always does: after the placed ones when a layout leaves it out.
+
 Through `/api/v1/field-rule-sets`, a rule can also name a `ticketTypeId`, and `editableBy`: the
 roles and groups that alone may set the field (`[{ "roleId": 2 }, { "groupId": 5 }]`). A field
 limited to some editors is neither required nor hidden. A save replaces all of a set's rules at
@@ -237,8 +242,59 @@ once.
 
 ## Layouts and layout sets
 
-A layout set arranges the create, edit and view forms, per ticket type or for every type. There
-is no web page for layout sets yet; use `/api/v1/layout-sets`.
+A layout set arranges the create, edit and view forms, per ticket type or for every type. A form
+uses its type's own layout, else the set's layout for every type; with neither, it shows every
+field that applies, in one tab.
+
+### The Layout sets page
+
+**Administration** > **Layout sets** (`#/admin/layouts`), for site and configuration
+administrators:
+
+1. Pick the **Layout set**, or type a **New set name** and press **Add a layout set**. While a
+   set has unsaved changes the list and adding a set are locked: save or discard first.
+2. Under **Form**, choose the **Ticket type** (or **Every ticket type**) and the operation:
+   **Create**, **Edit** or **View**. A line says which layout that form uses now. A type with a
+   layout of its own is marked **(own layout)** in the list.
+3. **Make a layout for this form** starts one tab, **Details**, with a main and a side column.
+   For one type, **Make its own layout from the one for every type** starts from a copy of that.
+   **Remove this type's layout** sends the type back to the layout for every type.
+4. Put fields in place. **Fields not placed** lists the rest. Each field, section and tab has a
+   grip (six dots):
+   - Drag the grip with a mouse or a finger: a field into a section, onto another field to go
+     beside it, or back to **Fields not placed** to take it off; a section onto another section or
+     into another tab; a tab onto another tab. Near the top or bottom of the window, a drag
+     scrolls the page.
+   - Or press the grip (Enter or Space) for a menu of the same moves: **Move earlier**, **Move
+     later**, **Move to** a section or a tab, **Put in** a section, **Take off the layout**.
+   - Or hold Alt and press an arrow key on a grip: a field moves one place, and from the end of a
+     section into the next one; a section moves within its tab; a tab moves among the tabs.
+   Screen readers hear where each move left the field, section or tab.
+5. **Add a tab** and **Add a section** (up to 20 of each), rename a tab in **Tab name**, set a
+   section's **Column** (main or side) and **Hide when empty**, and **Remove** a tab or section;
+   its fields go back to **Fields not placed**.
+6. **Show only the fields I placed** leaves the other fields off the form; required ones still
+   appear.
+7. **Save the layouts** sends the set's layouts as a whole, and the server checks them as it
+   checks any save. **Discard changes** goes back to what was saved. **Delete set** removes a set
+   that is not the default and that no track uses.
+
+The **Preview** beside or under the layout shows the form as the server will give it, with the
+field rules applied, and follows each change before you save. **Preview as** picks the ticket type
+when you edit the layout for every type; **Fields and rules of** picks a track that uses the set,
+since tracks can differ in custom fields and rules, or none for the shared fields and the default
+rules. Under the form it lists fields you placed that this form leaves out, and why: a rule hides
+it, it does not apply to that type there, or its value is computed, so a create form has nothing
+to enter. When the server would refuse the layout as it stands, the preview says why in your
+language and keeps the last form it could show; a refused save says why in the same words.
+
+A local-mode track's own layout sets are on the same page, marked **(a track's own)**: they
+place the shared fields and the track's own, and the preview starts on that track. Its
+administrators who are not site or configuration administrators change them through the API.
+
+### Through the API
+
+`/api/v1/layout-sets` takes and gives each layout like this:
 
 ```json
 {
@@ -262,6 +318,13 @@ is no web page for layout sets yet; use `/api/v1/layout-sets`.
 - Without a layout, a form shows every field that applies, in one tab. Hidden fields never
   appear, and required fields always do.
 - `GET /api/v1/tracks/:id/layout?ticketTypeId=` shows the form a track gives.
+- `POST /api/v1/layout-sets/:id/preview` with `ticketTypeId`, `operation`, an optional `trackId`
+  (`null` for none) and optional draft `layouts` answers the form they would give, the fields
+  placed but left out with the reason, and the custom fields named. It checks a draft as a save
+  would and stores nothing, so a token with the `read` scope may call it. Anyone who reads the set
+  may preview its saved layouts; draft `layouts` come only from those who may change the set
+  (`403` otherwise). A ticket type of a local-mode track you do not see is `unknown_ticket_type`,
+  as one that does not exist is.
 
 Fields asked for on a transition are set on the transition itself; see
 [workflows](workflows.md#transitions).
@@ -307,7 +370,7 @@ every one of those tracks.
 |---|---|---|---|
 | Type set | `typeSetId` | The track type's default set | **Configuration sets** |
 | Field rule set | `fieldRuleSetId` | Default field rules | **Configuration sets** |
-| Layout set | `layoutSetId` | Default layouts | Chosen on **Which sets a track uses**; made through the API |
+| Layout set | `layoutSetId` | Default layouts | **Layout sets**; chosen on **Which sets a track uses** |
 | Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made through the API |
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
 | Access policy | `accessPolicyId` | Default access policy | **Permissions** |

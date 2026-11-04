@@ -41,6 +41,7 @@ import {
   resolveLocale,
 } from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
+import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
 import { VersionGate } from './meta/VersionGate';
@@ -214,6 +215,8 @@ const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_VISIBILITY = '#/admin/visibility';
 const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
+/** The layout editor (UI-T15): a set by id with `?set=`. */
+const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
@@ -578,6 +581,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-layouts',
+              labelId: 'layouts.title' as const,
+              keywords: ['layout', 'screen', 'form', 'tabs', 'sections', 'arrange fields'],
+              run: () => {
+                navigate(ADMIN_LAYOUTS);
+              },
+            },
+            {
               id: 'go-imports',
               labelId: 'admin.imports.title' as const,
               keywords: ['import', 'migrate', 'backup', 'csv', 'cloud', 'delta'],
@@ -694,6 +705,9 @@ function Pages() {
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
+  } else if (isRoute(hash, ADMIN_LAYOUTS)) {
+    const setId = Number(/[?&]set=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
+    content = <LayoutEditorPage {...(setId ? { initialSetId: setId } : {})} />;
   } else if (isRoute(hash, ADMIN_IMPORTS)) {
     content = <ImportsPage />;
   } else if (isRoute(hash, ADMIN_GUARDRAILS)) {

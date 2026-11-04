@@ -3,6 +3,7 @@ import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
   FIXED_FIELDS,
@@ -16,6 +17,9 @@ import {
   type TypeSet,
 } from './client';
 
+/** The layout editor: where fields appear, the other half of how a form comes out. */
+const LAYOUTS_HREF = '#/admin/layouts';
+
 export interface ConfigurationSetsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: SetsClient;
@@ -24,8 +28,10 @@ export interface ConfigurationSetsPageProps {
 /**
  * Configuration sets (CORE-003, CORE-008), for administrators: type sets (which ticket types a
  * track offers) and field rule sets (which fields are required or hidden, with help text, for
- * every type). Rules for one ticket type, who may edit a field, layout sets, and visibility and
- * notification policies are set through the API for now; a save keeps the rules it does not show.
+ * every type). Layout sets have their own page (`layouts/LayoutEditorPage.tsx`, UI-T15), and the
+ * field rules link to it and say how the two combine. Rules for one ticket type, who may edit a
+ * field, and visibility and notification policies are set through the API for now; a save keeps
+ * the rules it does not show.
  */
 export function ConfigurationSetsPage({ client = setsClient }: ConfigurationSetsPageProps) {
   const t = useT();
@@ -401,6 +407,10 @@ function RuleSetsSection({
       <h2 id={headingId} className="facts-title">
         {t('admin.sets.ruleSets')}
       </h2>
+      <p className="page-note">
+        {t('admin.sets.rulesAndLayouts')}{' '}
+        <a href={routeHref(LAYOUTS_HREF)}>{t('admin.sets.layoutsLink')}</a>
+      </p>
       <form
         className="people-inline"
         aria-label={t('admin.sets.addRuleSet')}

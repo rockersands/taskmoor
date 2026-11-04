@@ -62,8 +62,10 @@ describe('field rules and layouts (M1-012)', () => {
     form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key)));
 
   /** A shared track whose members are Alice and Bob; Carol administers it. */
-  async function track(extra: Record<string, unknown> = {}): Promise<string> {
-    const key = `L${++trackCount}`;
+  async function track(
+    extra: Record<string, unknown> = {},
+    key = `L${++trackCount}`,
+  ): Promise<string> {
     const res = await post('admin', '/api/v1/tracks', { key, name: key, mode: 'shared', ...extra });
     expect(res.statusCode, res.body).toBe(201);
     tracks[key] = res.json().track.id;
@@ -352,6 +354,315 @@ describe('field rules and layouts (M1-012)', () => {
       ],
     });
     expect(twice.statusCode).toBe(400);
+  });
+
+  describe('the layout editor’s preview (UI-T15)', () => {
+    interface PreviewJson {
+      source: 'type' | 'every_type' | 'none';
+      layout: FormJson['layout'];
+      leftOut: { field: string; reason: string }[];
+      customFields: { id: number; name: string }[];
+    }
+    const preview = async (who: string, setId: number, body: Record<string, unknown>) =>
+      post(who, `/api/v1/layout-sets/${setId}/preview`, body);
+    const keysIn = (p: PreviewJson) =>
+      p.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key)));
+
+    it('[CORE-008] shows the form a draft would give, per type and operation, and stores nothing', async () => {
+      const key = await track();
+      const rules = await ruleSet([
+        { ticketTypeId: null, field: 'environment', hidden: true },
+        { ticketTypeId: types.Bug, field: 'dueDate', required: true },
+      ]);
+      await use(key, { fieldRuleSetId: rules.id });
+      const set = await layoutSet([], `Preview ${key}`);
+      const draft = [
+        {
+          ticketTypeId: null,
+          operation: 'create',
+          definition: {
+            tabs: [
+              {
+                name: 'Details',
+                sections: [
+                  { kind: 'main', fields: ['summary', 'environment', 'labels'] },
+                  { kind: 'context', hideWhenEmpty: true, fields: ['priority'] },
+                ],
+              },
+            ],
+            others: 'omit',
+          },
+        },
+        {
+          ticketTypeId: types.Chore,
+          operation: 'create',
+          definition: { tabs: [{ name: 'Short', sections: [{ fields: ['summary'] }] }] },
+        },
+      ];
+      const bug = await preview('admin', set.id, {
+        ticketTypeId: types.Bug,
+        operation: 'create',
+        trackId: tracks[key],
+        layouts: draft,
+      });
+      expect(bug.statusCode, bug.body).toBe(200);
+      const shown = bug.json().preview as PreviewJson;
+      // The layout for every type; the hidden field stays off, the required one is added.
+      expect(shown.source).toBe('every_type');
+      expect(shown.layout.tabs.map((t) => t.name)).toEqual(['Details', null]);
+      expect(shown.layout.tabs[0]?.sections.map((s) => [s.kind, s.hideWhenEmpty])).toEqual([
+        ['main', false],
+        ['context', true],
+      ]);
+      expect(keysIn(shown)).toEqual(['summary', 'labels', 'priority', 'dueDate']);
+      expect(shown.layout.tabs[1]?.sections[0]?.fields).toEqual([
+        { key: 'dueDate', required: true, description: null },
+      ]);
+      expect(shown.leftOut).toEqual([{ field: 'environment', reason: 'hidden' }]);
+      // A type's own layout wins; with `others: show`, the rest follows it.
+      const chore = (
+        await preview('admin', set.id, {
+          ticketTypeId: types.Chore,
+          operation: 'create',
+          trackId: tracks[key],
+          layouts: draft,
+        })
+      ).json().preview as PreviewJson;
+      expect(chore.source).toBe('type');
+      expect(chore.layout.tabs[0]?.name).toBe('Short');
+      expect(keysIn(chore)).toContain('labels');
+      expect(keysIn(chore)).not.toContain('environment');
+      // No layout for the operation: every field in one tab.
+      const view = (
+        await preview('admin', set.id, {
+          ticketTypeId: types.Bug,
+          operation: 'view',
+          trackId: tracks[key],
+          layouts: draft,
+        })
+      ).json().preview as PreviewJson;
+      expect(view.source).toBe('none');
+      expect(view.layout.tabs).toHaveLength(1);
+      // Nothing was saved, and nothing was announced.
+      const saved = (await get('admin', `/api/v1/layout-sets/${set.id}`)).json().layoutSet;
+      expect(saved.layouts).toEqual([]);
+      const events = await database.db
+        .selectFrom('domain_event')
+        .select('type')
+        .where('type', '=', 'layout_set.updated')
+        .where('subject_id', '=', String(set.id))
+        .execute();
+      expect(events).toEqual([]);
+    });
+
+    it('[CORE-013] checks a draft as a save would, and answers only about what the person sees', async () => {
+      const key = await track();
+      const notes = (
+        await post('admin', '/api/v1/fields', { name: `Preview notes ${key}`, type: 'text' })
+      ).json().field;
+      const set = await layoutSet(
+        [
+          {
+            ticketTypeId: null,
+            operation: 'edit',
+            definition: {
+              tabs: [{ name: 'Saved', sections: [{ fields: ['summary', `cf[${notes.id}]`] }] }],
+              others: 'omit',
+            },
+          },
+        ],
+        `Judged ${key}`,
+      );
+      // Without a draft, the saved layouts; a member who reads sets may ask, of a track they see.
+      const saved = await preview('alice', set.id, {
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        trackId: tracks[key],
+      });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(saved.json().preview.layout.tabs[0].name).toBe('Saved');
+      expect(saved.json().preview.customFields).toEqual([
+        { id: notes.id, name: `Preview notes ${key}` },
+      ]);
+      // Without a track: the fields every track has and the default rules.
+      const anywhere = await preview('admin', set.id, {
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        trackId: null,
+      });
+      expect(keysIn(anywhere.json().preview as PreviewJson)).toEqual([
+        'summary',
+        `cf[${notes.id}]`,
+      ]);
+      const twice = await preview('admin', set.id, {
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        layouts: [
+          {
+            ticketTypeId: null,
+            operation: 'edit',
+            definition: { tabs: [{ name: 'A', sections: [{ fields: ['summary', 'summary'] }] }] },
+          },
+        ],
+      });
+      expect(twice.statusCode).toBe(400);
+      expect(twice.json().detail).toContain('each field once');
+      const unknown = await preview('admin', set.id, {
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        layouts: [
+          {
+            ticketTypeId: null,
+            operation: 'edit',
+            definition: { tabs: [{ name: 'A', sections: [{ fields: ['cf[999999]'] }] }] },
+          },
+        ],
+      });
+      expect(unknown.json()).toEqual({
+        error: 'invalid_request',
+        detail: 'unknown field cf[999999]',
+      });
+      const pairs = await preview('admin', set.id, {
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        layouts: [
+          { ticketTypeId: null, operation: 'edit', definition: { tabs: [] } },
+          { ticketTypeId: null, operation: 'edit', definition: { tabs: [] } },
+        ],
+      });
+      expect(pairs.statusCode).toBe(400);
+      // The places the layout editor tells its reasons by (`apps/web/src/layouts/refusal.ts`).
+      const detailOf = async (definition: Record<string, unknown>) =>
+        (
+          await preview('admin', set.id, {
+            ticketTypeId: types.Feature,
+            operation: 'edit',
+            layouts: [{ ticketTypeId: null, operation: 'edit', definition }],
+          })
+        ).json().detail as string;
+      expect(await detailOf({ tabs: [{ name: ' ', sections: [] }] })).toMatch(
+        /^layouts\.0\.definition\.tabs\.0\.name: /,
+      );
+      const many = Array.from({ length: 21 }, (_, i) => i);
+      expect(await detailOf({ tabs: many.map((i) => ({ name: `T${i}`, sections: [] })) })).toMatch(
+        /^layouts\.0\.definition\.tabs: /,
+      );
+      expect(
+        await detailOf({ tabs: [{ name: 'A', sections: many.map(() => ({ fields: [] })) }] }),
+      ).toMatch(/^layouts\.0\.definition\.tabs\.0\.sections: /);
+      expect(
+        await detailOf({ tabs: [{ name: 'A', sections: [{ fields: ['labels', 'labels'] }] }] }),
+      ).toBe('layouts.0.definition: each field once');
+      expect(
+        (await preview('admin', set.id, { ticketTypeId: 999999, operation: 'edit' })).json(),
+      ).toEqual({ error: 'unknown_ticket_type' });
+      // A track the person does not see, and a set that is not there, are not found.
+      const hidden = await track();
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', tracks[hidden] as number)
+        .where('user_id', '=', users.bob?.id as number)
+        .execute();
+      expect(
+        (
+          await preview('bob', set.id, {
+            ticketTypeId: types.Feature,
+            operation: 'edit',
+            trackId: tracks[hidden],
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (await preview('admin', 999999, { ticketTypeId: types.Feature, operation: 'edit' }))
+          .statusCode,
+      ).toBe(404);
+      // Signed out: refused.
+      const out = await app.inject({
+        method: 'POST',
+        url: `/api/v1/layout-sets/${set.id}/preview`,
+        payload: { ticketTypeId: types.Feature, operation: 'edit' },
+        remoteAddress: nextAddress(),
+      });
+      expect(out.statusCode).toBe(401);
+    });
+
+    it('[CORE-013] tells nobody about the fields and types of a track they do not see', async () => {
+      // SECRET is a local-mode track Bob is not in, with a field and a ticket type of its own.
+      const secret = await track({ mode: 'local' }, 'PSECRET');
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', tracks[secret] as number)
+        .where('user_id', '=', users.bob?.id as number)
+        .execute();
+      const field = await post('admin', '/api/v1/fields', {
+        name: `Secret notes ${secret}`,
+        type: 'text',
+        trackId: tracks[secret],
+      });
+      expect(field.statusCode, field.body).toBe(201);
+      const fieldId = field.json().field.id as number;
+      const level = await database.db
+        .selectFrom('hierarchy_level')
+        .select('id')
+        .where('kind', '=', 'standard')
+        .executeTakeFirstOrThrow();
+      const made = await post('admin', '/api/v1/ticket-types', {
+        name: `Secret type ${secret}`,
+        levelId: level.id,
+        trackId: tracks[secret],
+      });
+      expect(made.statusCode, made.body).toBe(201);
+      const typeId = made.json().ticketType.id as number;
+      const set = await layoutSet([], `Probed ${secret}`);
+      const draftWith = (key: string) => ({
+        ticketTypeId: types.Feature,
+        operation: 'edit',
+        layouts: [
+          {
+            ticketTypeId: null,
+            operation: 'edit',
+            definition: { tabs: [{ name: 'A', sections: [{ fields: [key] }] }] },
+          },
+        ],
+      });
+      // A draft is judged as a save is, so only those who could save the set send one: Bob's
+      // answer is the same for SECRET's field and for a field that does not exist.
+      const hidden = await preview('bob', set.id, draftWith(`cf[${fieldId}]`));
+      const missing = await preview('bob', set.id, draftWith('cf[999999]'));
+      expect([hidden.statusCode, hidden.json()]).toEqual([403, { error: 'forbidden' }]);
+      expect([missing.statusCode, missing.json()]).toEqual([403, { error: 'forbidden' }]);
+      // Carol administers tracks, but a shared set is for site and configuration administrators.
+      expect((await preview('carol', set.id, draftWith('summary'))).statusCode).toBe(403);
+      // The administrators who may change the set hear the verdict.
+      expect((await preview('admin', set.id, draftWith(`cf[${fieldId}]`))).json()).toEqual({
+        error: 'invalid_request',
+        detail: `cf[${fieldId}] belongs to another track`,
+      });
+      // A local-mode track's administrators preview drafts of its own set.
+      const own = await track({ mode: 'local' }, 'POWN');
+      const ownSet = await post('admin', '/api/v1/layout-sets', {
+        name: `Own ${own}`,
+        trackId: tracks[own],
+      });
+      expect(ownSet.statusCode, ownSet.body).toBe(201);
+      const carols = await preview('carol', ownSet.json().layoutSet.id, draftWith('summary'));
+      expect(carols.statusCode, carols.body).toBe(200);
+      // SECRET's own type is unknown to Bob, as a type that does not exist is; not to admin.
+      const saved = (ticketTypeId: number) => ({ ticketTypeId, operation: 'edit' });
+      const hiddenType = await preview('bob', set.id, saved(typeId));
+      const missingType = await preview('bob', set.id, saved(999999));
+      expect([hiddenType.statusCode, hiddenType.json()]).toEqual([
+        400,
+        { error: 'unknown_ticket_type' },
+      ]);
+      expect([missingType.statusCode, missingType.json()]).toEqual([
+        400,
+        { error: 'unknown_ticket_type' },
+      ]);
+      expect((await preview('admin', set.id, saved(typeId))).statusCode).toBe(200);
+      // Alice is in SECRET, so its type is hers to preview.
+      expect((await preview('alice', set.id, saved(typeId))).statusCode).toBe(200);
+    });
   });
 
   it('[CORE-003] a shared set names every track it reaches; defaults and sets in use stay', async () => {

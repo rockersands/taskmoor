@@ -122,9 +122,44 @@ function layoutOf(
   const forms = catalog.forms;
   const set = forms.layoutSets.get(at.layoutSetId ?? forms.defaultLayoutSetId ?? 0);
   if (!set) return null;
-  return (
-    set.layouts.get(`${at.ticketTypeId}|${operation}`) ?? set.layouts.get(`0|${operation}`) ?? null
-  );
+  return layoutFor(set.layouts, at.ticketTypeId, operation)?.definition ?? null;
+}
+
+/**
+ * Which of a set's layouts a form of a type uses: the type's own, else the one for every type,
+ * else none (`source` says which). The layout editor's preview (UI-T15) asks this of a draft.
+ */
+export function layoutFor(
+  layouts: ReadonlyMap<string, LayoutDefinition>,
+  ticketTypeId: number,
+  operation: Operation,
+): { definition: LayoutDefinition; source: 'type' | 'every_type' } | null {
+  const own = layouts.get(`${ticketTypeId}|${operation}`);
+  if (own) return { definition: own, source: 'type' };
+  const every = layouts.get(`0|${operation}`);
+  return every ? { definition: every, source: 'every_type' } : null;
+}
+
+/**
+ * Why a field is not on an operation's form whatever a layout says, or null: it does not apply
+ * to the type in the track, a rule hides it, or it is computed and the ticket does not exist
+ * yet. `applies` is `applicableKeys` as a set, for callers asking of many fields.
+ */
+export function leftOutBecause(
+  catalog: Catalog,
+  at: FormPlacement,
+  operation: Operation,
+  key: string,
+  applies: ReadonlySet<string> = new Set(applicableKeys(catalog, at)),
+): 'not_applicable' | 'hidden' | 'computed' | null {
+  if (!applies.has(key)) return 'not_applicable';
+  if (ruleOf(catalog, at, key).hidden) return 'hidden';
+  const id = customFieldId(key);
+  // There is nothing to enter for a computed value before the ticket exists.
+  if (operation === 'create' && id !== null && catalog.fields.get(id)?.type === 'formula') {
+    return 'computed';
+  }
+  return null;
 }
 
 /** The form for an operation on a ticket of a type in a track. */
@@ -133,18 +168,27 @@ export function resolveLayout(
   at: FormPlacement,
   operation: Operation,
 ): ResolvedLayout {
+  return resolveDefinition(catalog, at, operation, layoutOf(catalog, at, operation));
+}
+
+/**
+ * The form a layout definition gives (null: no layout, so every field in one tab), with the
+ * rules of the placement's rule set. `resolveLayout` passes the set's own; the layout editor's
+ * preview passes a draft that is not saved.
+ */
+export function resolveDefinition(
+  catalog: Catalog,
+  at: FormPlacement,
+  operation: Operation,
+  layout: LayoutDefinition | null,
+): ResolvedLayout {
   const applicable = applicableKeys(catalog, at);
   const applies = new Set(applicable);
   const field = (key: string): ResolvedField | null => {
-    if (!applies.has(key)) return null;
+    if (leftOutBecause(catalog, at, operation, key, applies) !== null) return null;
     const rule = ruleOf(catalog, at, key);
-    if (rule.hidden) return null;
     let description = rule.description;
     const id = customFieldId(key);
-    // There is nothing to enter for a computed value before the ticket exists.
-    if (operation === 'create' && id !== null && catalog.fields.get(id)?.type === 'formula') {
-      return null;
-    }
     if (description === null && id !== null) {
       const def = catalog.fields.get(id) as FieldDef;
       const context = catalog.contextOf(id, at.trackId, at.ticketTypeId) as ContextDef;
@@ -152,7 +196,7 @@ export function resolveLayout(
     }
     return { key, required: rule.required, description };
   };
-  const definition = layoutOf(catalog, at, operation) ?? { tabs: [], others: 'show' as const };
+  const definition = layout ?? { tabs: [], others: 'show' as const };
   const placed = new Set<string>();
   const tabs: ResolvedLayout['tabs'] = definition.tabs.map((tab) => ({
     name: tab.name,

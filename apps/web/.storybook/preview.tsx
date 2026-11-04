@@ -34,6 +34,7 @@ import '../src/styles/ai.css';
 import '../src/styles/surfaces.css';
 import '../src/styles/track-groups.css';
 import '../src/styles/drag.css';
+import '../src/styles/layout-editor.css';
 import '../src/styles/motion.css';
 import '../src/builder/builder.css';
 

@@ -92,6 +92,18 @@ describe('configuration set administration (M1-053)', () => {
     expect(screen.queryByRole('button', { name: 'Delete set Software types' })).toBeNull();
   });
 
+  it('[CORE-008] says how field rules and layouts combine, and links to the layout sets (UI-T15)', async () => {
+    renderPage();
+    const rules = await screen.findByRole('heading', { name: 'Field rule sets' });
+    const note = rules.nextElementSibling as HTMLElement;
+    expect(note).toHaveTextContent(
+      'a hidden field never appears, even where a layout places it, and a required field always does.',
+    );
+    expect(
+      within(note).getByRole('link', { name: 'Arrange the forms on Layout sets.' }),
+    ).toHaveAttribute('href', '#/admin/layouts');
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage();

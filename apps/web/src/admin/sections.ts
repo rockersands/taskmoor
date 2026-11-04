@@ -20,7 +20,7 @@ export const ADMIN_HOME = '#/admin';
 
 /**
  * Administration's groups and pages (ADR-114). A control that has no page yet is not listed:
- * layout sets (UI-T15), priorities and notification policies join their groups with their pages.
+ * priorities and notification policies join their groups with their pages.
  * The tracks someone runs lead the list, and are all a track's manager sees here.
  */
 export const ADMIN_GROUPS: readonly AdminGroup[] = [
@@ -120,6 +120,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/configuration-sets',
         labelId: 'settings.sets',
         hintId: 'settings.setsHint',
+      },
+      {
+        id: 'layouts',
+        href: '#/admin/layouts',
+        labelId: 'settings.layouts',
+        hintId: 'settings.layoutsHint',
       },
       {
         id: 'track-sets',
