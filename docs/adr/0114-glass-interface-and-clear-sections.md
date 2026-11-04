@@ -238,6 +238,49 @@ had no web page. A page under Settings, Configuration sets edits them:
   field is required, hidden or has help text; a hidden field never appears even when a layout
   places it, and a required field always appears.
 
+**As built (T-163, UI-T15, 2026-11-03):**
+
+- **Where:** **Administration** > **Tracks and setup** > **Layout sets** (`#/admin/layouts`;
+  `?set=<id>` opens a set), beside Configuration sets, under the name section 1 gives it. Settings
+  became Administration before this was built, so "under Settings, Configuration sets" means this
+  place. Site and configuration administrators use it; the command palette offers it.
+- **The server judges.** Saving is the existing `PATCH /api/v1/layout-sets/:id` with every layout
+  of the set (one `layout_set.updated` event, audited as before); adding and deleting are the
+  existing routes. The page keeps a draft the right shape (each field once, at most 20 tabs and
+  20 sections) and nothing more: a tab with no name is said at once, everything else is the
+  server's answer.
+- **The live preview** is one new route, `POST /api/v1/layout-sets/:id/preview`: a ticket type, an
+  operation, a track or none, and the draft layouts (or none, for the saved ones). It checks the
+  draft with the same schema and `checkLayouts` a save uses, resolves it with the code the forms use
+  (`resolveDefinition`, `layoutFor` in `fields/layouts.ts`), and lists the placed fields the form
+  leaves out and why (`hidden`, `not_applicable`, `computed`). It stores nothing, so it emits no
+  event (exempt in the contract test as a read), is not audited, and its scope class is `read`
+  (`READ_ONLY_ROUTES`). Its OpenAPI entry is internal. No migration and no new requirement ID:
+  CORE-008 (forms) and CORE-013 (layouts) cover it. The preview waits 250 ms after a change, keeps
+  the last good form while the server refuses a draft, and says why.
+- **Drags** use pointer events, so a mouse and a finger work alike (HTML drag and drop has no
+  touch): a grip turns a press into a drag after 6 px, shows a glass chip under the pointer, marks
+  the drop place with the focus colour and scrolls the window near its top or bottom. A field drops
+  into a section, beside a field or back on the list of fields not placed; a section onto a section
+  or into a tab; a tab onto a tab.
+- **The keyboard path** is the grip itself, a menu button as the person's menu is: Enter, Space or
+  Down opens the same moves (Move earlier, Move later, Move to a section or tab, Put in, Take off
+  the layout); Alt with an arrow moves one place, a field across sections and tabs at an edge.
+  Focus follows what moved, a polite status says where it is now, and a grip with nowhere to go
+  says so in a disabled item.
+- **Phones and room:** the parts take their shape from the editor's own width (container queries,
+  the first in the app): the preview sits beside the layout from 52 rem, else under it; the fields
+  not placed are a list beside the tabs from 46 rem of layout, else rows of chips above them.
+  Grips are 44 px under a coarse pointer.
+- **Unsaved work** is guarded: the router's leave guard asks before a link, a command, Back or
+  Forward leaves the page (the full ticket page's rule and dialog, with its own words), the browser
+  asks before a reload, and the set list is locked until the draft is saved or discarded.
+- **Open:** a local-mode track's own layout sets are listed and edited here, but its administrators
+  who are neither site nor configuration administrators are refused by the page (the server lets
+  them change their own sets), as on Configuration sets; giving them the page is a question for the
+  user. The preview offers the tracks that use the set, or none; any other track is through the
+  API.
+
 ### 9. Board columns
 
 On the board and in its settings, columns are added, renamed, reordered by drag (and by Move
