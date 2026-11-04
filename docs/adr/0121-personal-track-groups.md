@@ -90,8 +90,11 @@ and surfaces (ADR-114) and nothing else.
   track row. A give, a take-back and a role made the person's own therefore never interleave,
   and a share's record never outlives or misses the role it stands for. Sharing a group with
   someone, or setting one on them, also takes that person's arrangement lock and checks under it
-  that they are still active. Locks go in one order everywhere: arrangements (in id order), then
-  the group, then tracks, and only then a write that refers to a person's account row.
+  that they are still active. Locks start in one order everywhere: arrangements (in id order),
+  then the group, then tracks. The share and copy routes write their row that names the person
+  before they lock tracks; an erasure is still safe against them because both take the person's
+  arrangement lock first. The track locks matter for the writers that take no arrangement lock
+  (the People page, invitations, imports), which lock the track before they write a role.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.

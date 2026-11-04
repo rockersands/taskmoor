@@ -199,11 +199,13 @@ const sharersWith = async (db: Db, workspaceId: number, userId: number) =>
 
 /**
  * Takes what erasing a person's track groups locks, in the caller's transaction, before the
- * erasure locks the person's account row (ADR-121). The routes take their locks in this order:
- * the arrangements first (an advisory lock per person, in id order), then the tracks, and only
- * then do their writes reach the account row (a share's or a role's reference to the person).
- * Taking these after the account row would make a share in progress and the erasure wait on
- * each other.
+ * erasure locks the person's account row (ADR-121). The group routes take the person's
+ * arrangement lock first (an advisory lock per person, in id order), as this does, so a share or
+ * copy in progress and the erasure never hold each other's locks, even though those routes write
+ * their row naming the person before they lock tracks. The track locks below stop the writers
+ * that take no arrangement lock (the People page, invitations, imports) from adding a role while
+ * the erasure takes the shares back. Taking these after the account row would make a share in
+ * progress and the erasure wait on each other.
  *
  * - The arrangement of the person and of everyone whose group they received, so no change to
  *   those groups and shares runs alongside. Sharing with someone, or setting a group on them,
