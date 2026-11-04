@@ -134,7 +134,8 @@ reported, and the coordinator checked that it was pushed.
 | T-088a | One plan is called a "plan" in the interface; the terminology file had "roadmap". Keep "plan"? | You | A strings and manual change only |
 | T-089 | Multi-track: dependencies view | Done | On `main` (ADR-122, PLN-006): blocking links drawn as lines and badges on the plan Timeline, late ones in red with a label, a list for keyboards and screen readers; blockers outside the plan or hidden from the viewer are only counted |
 | T-089i | Dependencies: build PLN-013 (other link types, flags within one sprint) in 1.0, and keep outside blockers a count only? | You | The user put all of PLN-001 to PLN-009 in 1.0; T-089 narrowed PLN-006 to blocking links and moved the rest to PLN-013. Recommendation: build PLN-013 with the program board (T-089d); keep outside blockers a count, since naming the visible ones would set the hidden ones apart |
-| T-089b | Multi-track: teams and capacity | To do | In 1.0 |
+| T-089b | Multi-track: teams and capacity | Done | On `main` (ADR-122 stage 3, PLN-005, PLN-009, migration 0102): capacity per team and person by period in points or hours, over-capacity flagged with a label; hidden work only counted, never named |
+| T-089j | Multi-track capacity: the parts of PLN-005 and PLN-009 not built (velocity from history, days and percentages, allocations to outcomes, bulk fill and CSV import), and two questions in ADR-122 (hidden work counted in "elsewhere"; notes kept in the event payload after erasure) | You | Need a requirement ID and a stage if wanted in 1.0 |
 | T-089c | Multi-track: releases across tracks | To do | In 1.0 |
 | T-089d | Multi-track: program board with live editing | To do | In 1.0 |
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
