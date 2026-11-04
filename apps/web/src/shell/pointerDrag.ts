@@ -139,10 +139,12 @@ export function followPointerDrag(
     window.removeEventListener('keydown', onKey, true);
     if (frame) cancelFrame(frame);
     frame = 0;
-    document.body.classList.remove('is-pointer-dragging');
+    // The page's drop reads what is under the finger, so the drag's styles stay until it has:
+    // without them a phone's columns snap back and the column under the finger is another one.
     try {
       then?.();
     } finally {
+      document.body.classList.remove('is-pointer-dragging');
       handlers.end?.();
     }
   };

@@ -137,7 +137,13 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   // A tap on the grip is its own: the Move menu, with the same moves as a drag.
-  await page.getByRole('button', { name: `Move ${ticket.key}` }).tap();
+  // Chromium's simulated touch makes no click of the first tap after an earlier gesture, so the
+  // tap is tried again until the menu is open.
+  const menuGrip = page.getByRole('button', { name: `Move ${ticket.key}` });
+  await expect(async () => {
+    if ((await menuGrip.getAttribute('aria-expanded')) !== 'true') await menuGrip.tap();
+    await expect(menuGrip).toHaveAttribute('aria-expanded', 'true', { timeout: 1_000 });
+  }).toPass();
   await page.getByRole('button', { name: 'Back to New' }).tap();
   await expect(
     page.getByRole('list', { name: 'New', exact: true }).getByRole('link', {

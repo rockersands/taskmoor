@@ -37,6 +37,28 @@ afterEach(async () => {
 });
 
 describe('a press that may become a drag (T-162)', () => {
+  it('[NFR-005] keeps the page styled for a drag until the drop has read what lies under the pointer', () => {
+    // Without them a phone's columns snap back as the drop looks, and it lands on another column.
+    const seen: boolean[] = [];
+    const handle = document.createElement('button');
+    document.body.append(handle);
+    const stop = followPointerDrag(
+      new PointerEvent('pointerdown', { pointerId: 1, clientX: 10, clientY: 10 }),
+      {
+        start: () => {},
+        move: () => {},
+        drop: () => seen.push(document.body.classList.contains('is-pointer-dragging')),
+        cancel: () => {},
+      },
+    );
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 40, clientY: 10, buttons: 1 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 40, clientY: 10 });
+    stop();
+    handle.remove();
+    expect(seen).toEqual([true]);
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+
   it('[NFR-005] stays a press until it moves far enough, and its click goes through', () => {
     const { handle, calls, at } = press();
     fireEvent.pointerMove(window, at(10 + DRAG_START - 1, 10));
