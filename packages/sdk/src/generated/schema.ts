@@ -2022,6 +2022,8 @@ export interface components {
         };
         Track: {
             archived: boolean;
+            /** @description Whether the followers of its tickets hear of changes to checklists, in their inbox and by email as each chooses. Off unless the track’s administrators turn it on. */
+            checklistNotices: boolean;
             /** Format: date-time */
             createdAt: string;
             description: string;

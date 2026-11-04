@@ -4,6 +4,7 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
+import { CHECKLIST_EVENT, noticeCounts } from '../notifications/checklists';
 import { isNotificationEvent, isPreferenceEvent } from '../notifications/model';
 import { bumpInbox } from '../notifications/subscriber';
 import { TRACK_GROUP_EVENT } from '../notifications/track-groups';
@@ -28,6 +29,8 @@ import { resolveTrack } from '../tickets/store';
  *   they show while the reader is a site administrator.
  * - A track group shared with the reader or set on them (T-206) is about no ticket either
  *   (`ticket: null`, with `group`): it shows while the group is still theirs, under its name now.
+ * - A checklist notice (NTF-015) is one item for a run of changes to a ticket's checklists, with
+ *   `checklist: {changes, others}`: how many, and how many people besides `actor` made them.
  * - `PATCH /api/v1/inbox/:id` `{read?, snoozedUntil?}`: read or unread; snoozed until a time
  *   (it comes back unread then) or back now (`null`). Marking read also marks the same
  *   notification's email read, so a digest leaves it out (NTF-003 (2)).
@@ -272,6 +275,9 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
       actor: r.actor_id === null ? null : { id: r.actor_id, name: r.actor_name ?? '' },
       ...(fields ? { fields } : {}),
       ...(mentionedIn ? { mentionedIn } : {}),
+      // A run of checklist changes (NTF-015): how many, and how many people besides the actor;
+      // never a list's name or an item's text.
+      ...(r.event === CHECKLIST_EVENT ? { checklist: noticeCounts(r.payload) } : {}),
       // Quoted only to those who may read it.
       comment:
         r.comment_id !== null && r.comment_readable
@@ -376,15 +382,28 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
     return { unread: await counts(request, user.id) };
   });
 
-  /** Marks the email of the same notifications read or unread too (NTF-003 (2)). */
+  /**
+   * Marks the email of the same notifications read or unread too (NTF-003 (2)). A checklist notice
+   * gathers many events and can cover several emails, each with the domain event that opened it
+   * (NTF-015), so those are found by the events the notice holds.
+   */
   async function mirrorEmail(trx: Db, userId: number, ids: readonly string[], read: Date | null) {
     if (ids.length === 0) return;
+    const inbox = ids.map(Number);
     await sql`
       UPDATE notification e SET read_at = ${read}
         FROM notification i
-       WHERE i.id = ANY(${ids.map(Number)}::bigint[]) AND i.user_id = ${userId}
+       WHERE i.id = ANY(${inbox}::bigint[]) AND i.user_id = ${userId}
          AND e.domain_event_id = i.domain_event_id AND e.user_id = i.user_id
          AND e.channel = 'email'`.execute(trx);
+    await sql`
+      UPDATE notification e SET read_at = ${read}
+        FROM notification i
+       WHERE i.id = ANY(${inbox}::bigint[]) AND i.user_id = ${userId}
+         AND i.event = ${CHECKLIST_EVENT}
+         AND e.user_id = i.user_id AND e.channel = 'email' AND e.event = i.event
+         AND e.ticket_id = i.ticket_id
+         AND (e.payload->'events') <@ (i.payload->'events')`.execute(trx);
   }
 
   app.patch('/api/v1/inbox/:id', async (request, reply) => {

@@ -1013,6 +1013,8 @@ export const messagesEs: Record<MessageId, string> = {
   'notifications.event.generic': 'Otros cambios',
   'notifications.event.track_group_shared':
     'Alguien comparte contigo un grupo de tracks o te lo asigna',
+  'notifications.event.checklist_changed':
+    'Cambia una lista de comprobación de un ticket que sigues',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
   'unsubscribe.invalid':
@@ -2732,6 +2734,17 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.problem.createTracks':
     'Solo los administradores del sitio y quienes pueden crear tracks pueden dar ese permiso.',
   'trackPeople.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'trackPeople.problem.archived':
+    'El track está archivado, así que su configuración no puede cambiar.',
+  'trackPeople.notices': 'Avisos a quienes siguen tickets',
+  'trackPeople.checklistNotices':
+    'Avisar a quienes siguen un ticket cuando cambia una lista de comprobación',
+  'trackPeople.checklistNoticesHint':
+    'Quienes siguen un ticket se enteran de los cambios en sus listas de comprobación y sus elementos, en su bandeja de entrada y por correo, según elija cada persona. Nadie recibe avisos de sus propios cambios, y los cambios seguidos llegan en un solo aviso.',
+  'trackPeople.noticesOnSaid':
+    'Quienes siguen tickets de {key} ahora se enteran cuando cambia una lista de comprobación.',
+  'trackPeople.noticesOffSaid':
+    'Quienes siguen tickets de {key} ya no se enteran cuando cambia una lista de comprobación.',
   'invite.title': 'Tu invitación',
   'invite.titleFor': 'Tu invitación a {key} · {name}',
   'invite.intro': 'Te han invitado como {role}, en {email}.',
@@ -4024,6 +4037,10 @@ export const messagesEs: Record<MessageId, string> = {
   'inbox.what.groupSetRole':
     '{actor} te asignó un grupo de tracks, una copia tuya, con el rol {role}',
   'inbox.group.label': 'el grupo {name}',
+  'inbox.what.checklist':
+    '{changes, plural, one {{actor} cambió una lista de comprobación} other {{actor} hizo # cambios en listas de comprobación}}',
+  'inbox.what.checklistOthers':
+    '{actor} y {others, plural, one {# persona más} other {# personas más}} hicieron {changes} cambios en listas de comprobación',
   'inbox.unreadMark': 'Sin leer',
   'inbox.direct': 'Petición directa',
   'inbox.snoozedUntil': 'Pospuesto hasta {time}',

@@ -26,10 +26,14 @@ const VIEWS: readonly { id: InboxView; label: MessageId }[] = [
   { id: 'priority', label: 'inbox.view.priority' },
   { id: 'snoozed', label: 'inbox.view.snoozed' },
 ];
-/** The types the Type filter offers: mentions and groups first, then the policy events. */
+/**
+ * The types the Type filter offers: mentions, groups and checklist notices first, then the
+ * policy events.
+ */
 const TYPES = [
   'mentioned',
   'track_group_shared',
+  'checklist_changed',
   'ticket_assigned',
   'ticket_commented',
   'ticket_created',
@@ -119,6 +123,14 @@ function whatHappened(t: Translate, item: InboxItem): string {
   }
   if (item.event === 'ticket_assigned' && item.direct)
     return t('inbox.what.assignedYou', { actor });
+  if (item.event === 'checklist_changed') {
+    // A run of changes as one item (NTF-015): who and how many, never what the items say.
+    const changes = Math.max(1, item.checklist?.changes ?? 1);
+    const others = Math.max(0, item.checklist?.others ?? 0);
+    return others > 0
+      ? t('inbox.what.checklistOthers', { actor, others, changes })
+      : t('inbox.what.checklist', { actor, changes });
+  }
   if (item.event.startsWith(CUSTOM)) {
     return t('inbox.what.custom', { actor, name: item.event.slice(CUSTOM.length) });
   }

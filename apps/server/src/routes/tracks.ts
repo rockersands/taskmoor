@@ -60,7 +60,9 @@ import type { BoardRoutes } from './boards';
  * - The creator becomes owner (unless another owner is named) and joins the role the policy
  *   lets administer the track (Administrators by default).
  * - Track administrators edit the track; changing its access policy or its type set is
- *   configuration administration; the mode is fixed at creation.
+ *   configuration administration; the mode is fixed at creation. Among their choices is
+ *   `checklistNotices` (NTF-015): whether its tickets' followers hear of checklist changes, off
+ *   until they turn it on; a copy (`copyFrom`) takes the source's choice.
  * - A shared-mode track uses a shared type set (the default of its track type unless one is
  *   named); a local-mode track gets its own copy of that default (M1-007). Everyone who sees a
  *   track reads the ticket types it offers, in set order with the default preselected.
@@ -152,6 +154,8 @@ const updateBody = z
     visibilityPolicyId: id.nullable().optional(),
     /** Null for the workspace's default notification policy (M1-056). */
     notificationPolicyId: id.nullable().optional(),
+    /** Followers hear of checklist changes (NTF-015); a choice of the track's administrators. */
+    checklistNotices: z.boolean().optional(),
     /** For each status a new map's workflows lack that tickets are in: where they go. */
     statusMapping: statusMappingSchema.optional(),
     /** The same for one ticket type, where its tickets go elsewhere than the rest. */
@@ -241,6 +245,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.layout_set_id',
       't.visibility_policy_id',
       't.notification_policy_id',
+      't.notify_checklist_changes',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -290,6 +295,7 @@ function trackView(row: TrackRow) {
     layoutSetId: row.layout_set_id,
     visibilityPolicyId: row.visibility_policy_id,
     notificationPolicyId: row.notification_policy_id,
+    checklistNotices: row.notify_checklist_changes,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -639,6 +645,7 @@ export function registerTrackRoutes(
                   layout_set_id: source.layout_set_id,
                   visibility_policy_id: source.visibility_policy_id,
                   notification_policy_id: source.notification_policy_id,
+                  notify_checklist_changes: source.notify_checklist_changes,
                 }
               : {}),
             ...Object.fromEntries(TRACK_FEATURES.map((f) => [featureColumn(f), chosen[f]])),
@@ -906,6 +913,7 @@ export function registerTrackRoutes(
           layoutSetId: locked.layout_set_id,
           visibilityPolicyId: locked.visibility_policy_id,
           notificationPolicyId: locked.notification_policy_id,
+          checklistNotices: locked.notify_checklist_changes,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -927,6 +935,7 @@ export function registerTrackRoutes(
           layoutSetId: body.layoutSetId,
           visibilityPolicyId: body.visibilityPolicyId,
           notificationPolicyId: body.notificationPolicyId,
+          checklistNotices: body.checklistNotices,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -1103,6 +1112,9 @@ export function registerTrackRoutes(
           }
           if (changes.notificationPolicyId && body.notificationPolicyId !== undefined) {
             set.notification_policy_id = body.notificationPolicyId;
+          }
+          if (changes.checklistNotices && body.checklistNotices !== undefined) {
+            set.notify_checklist_changes = body.checklistNotices;
           }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];

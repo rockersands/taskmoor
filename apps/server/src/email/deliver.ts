@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Database, EmailDelivery } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
+import { CHECKLIST_EVENT, noticeCounts } from '../notifications/checklists';
 import { noticeGroupId, TRACK_GROUP_EVENT } from '../notifications/track-groups';
 import { commentText, readsComment } from '../tickets/comments';
 import {
@@ -31,6 +32,8 @@ import type { MailTransport } from './transport';
  * - A track group shared with the person or set on them (T-206) is about no ticket: it goes
  *   while the group is still theirs, under its name at send time, and is dropped otherwise.
  *   Instant ones within the window go together in one email.
+ * - A checklist notice (NTF-015) already gathers a run of changes to one ticket; it is one line
+ *   of its ticket's email, saying how many changes and by whom, never what an item says.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -408,6 +411,7 @@ export async function deliverEmail(
             ...(quotedOf(n.payload) !== null
               ? { quote: quotes.get(quotedOf(n.payload) as number) ?? '' }
               : {}),
+            ...(n.event === CHECKLIST_EVENT ? { checklist: noticeCounts(n.payload) } : {}),
           });
           byTicket.set(ticket.id, entry);
         }

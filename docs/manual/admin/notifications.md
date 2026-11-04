@@ -1,8 +1,8 @@
 ---
 title: "Email and notification policies"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts
-accessed: 2026-11-03
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md
+accessed: 2026-11-04
 attestation: own-words
 ---
 # Email and notification policies
@@ -131,6 +131,14 @@ transition would otherwise stand for.
 
 Mentions are not part of policies. A person or team mentioned in a description or comment
 hears of it whatever the policy says, if they may see the ticket and read the comment.
+
+Checklist changes are not part of policies either. A track's administrators turn them on for
+their track (`checklistNotices`, see [Inviting people and running a
+track](invitations.md#tracks-you-run)); then the followers of its tickets who may see them hear of
+changes to checklists and items as `checklist_changed`, never of their own. Changes to one ticket
+within the batch window below join one notice, which counts them and names who made them, never a
+checklist or an item. People choose its channels like any other event. See [Checklist
+changes](../use/notifications.md#checklist-changes).
 
 ### Recipients
 

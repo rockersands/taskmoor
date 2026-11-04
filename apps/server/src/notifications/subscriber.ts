@@ -6,6 +6,7 @@ import { fieldIdOf } from '../authz/visibility';
 import type { Subscriber } from '../events/bus';
 import type { DomainEvent, EventType } from '../events/catalogue';
 import { readsComment } from '../tickets/comments';
+import { CHECKLIST_NOTICES, notifyChecklist } from './checklists';
 import { addedMentions, hasMentions, type Mentions, mergeMentions } from './mentions';
 import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
 import { notifyTrackGroup, TRACK_GROUP_NOTICES } from './track-groups';
@@ -29,6 +30,10 @@ import { notifyTrackGroup, TRACK_GROUP_NOTICES } from './track-groups';
  * A track group shared with someone or set on them (T-206) tells that person, as the product
  * event `track_group_shared` (`track-groups.ts`).
  *
+ * A change to a ticket's checklists tells its followers, as the product event `checklist_changed`,
+ * only on a track whose administrators turned that on, and a run of changes as one notice
+ * (NTF-015; `checklists.ts`).
+ *
  * Recipients are judged when the event is handled, a moment after the change: the ticket as it
  * then is decides who hears of it. Delivery is at least once; a notification is unique per
  * event, person and channel, so a second delivery writes nothing. Each person whose inbox got
@@ -38,6 +43,8 @@ import { notifyTrackGroup, TRACK_GROUP_NOTICES } from './track-groups';
 const HANDLED: readonly EventType[] = [
   // A track group shared with or set on someone (T-206): `track-groups.ts` tells them.
   ...TRACK_GROUP_NOTICES,
+  // A checklist change, for followers where the track turns it on (NTF-015): `checklists.ts`.
+  ...CHECKLIST_NOTICES,
   'ticket.created',
   'ticket.updated',
   'ticket.transitioned',
@@ -559,6 +566,10 @@ export function notificationSubscriber(db: Db): Subscriber {
     handle: async (event) => {
       if ((TRACK_GROUP_NOTICES as readonly string[]).includes(event.type)) {
         await notifyTrackGroup(db, event, bumpInbox);
+        return;
+      }
+      if ((CHECKLIST_NOTICES as readonly string[]).includes(event.type)) {
+        await notifyChecklist(db, authorizer, event, bumpInbox);
         return;
       }
       await notify(db, authorizer, event);

@@ -2,7 +2,8 @@ import { CUSTOM_PREFIX } from '../notifications/model';
 
 /**
  * Notification emails as text and HTML (M1-057; NTF-002): one ticket's changes gathered into
- * one email, or a digest of many tickets, and the track groups shared with the person (T-206). Every email links to its tickets, to the
+ * one email, or a digest of many tickets, and the track groups shared with the person (T-206). A
+ * checklist notice (NTF-015) is one line for its run of changes, with no item's text. Every email links to its tickets, to the
  * notification settings and to a one-click unsubscribe. Strings come from `EMAIL_MESSAGES` per
  * locale (English only so far, which other locales fall back to); everything taken from data
  * is escaped in HTML.
@@ -15,6 +16,8 @@ export interface EmailItem {
   at: Date;
   /** A comment's text, for a comment the person may read (M1-018). */
   quote?: string;
+  /** A checklist notice (NTF-015): how many changes, and how many other people made them. */
+  checklist?: { changes: number; others: number };
 }
 export interface EmailTicket {
   key: string;
@@ -58,6 +61,9 @@ const EN = {
   'event.work_stopped': 'stopped work',
   'event.generic': 'changed the ticket',
   'event.mentioned': 'mentioned you',
+  'event.checklist_changed': 'changed a checklist',
+  'event.checklistChanges': 'made {count} changes to checklists',
+  'checklist.others': '{actor} and {others} more',
   'event.custom': 'fired {name}',
   someone: 'Someone',
   changed: 'Changed: {fields}',
@@ -106,6 +112,14 @@ function groupText(t: ReturnType<typeof translator>, item: EmailGroupItem): stri
 
 function eventText(t: ReturnType<typeof translator>, item: EmailItem): string {
   const who = item.actorName ?? t('someone');
+  if (item.checklist) {
+    // A run of checklist changes (NTF-015): who and how many, never what the items say.
+    const { changes, others } = item.checklist;
+    const people = others > 0 ? t('checklist.others', { actor: who, others }) : who;
+    const did =
+      changes > 1 ? t('event.checklistChanges', { count: changes }) : t('event.checklist_changed');
+    return `${people} ${did}`;
+  }
   const what = item.event.startsWith(CUSTOM_PREFIX)
     ? t('event.custom', { name: item.event.slice(CUSTOM_PREFIX.length) })
     : t(`event.${item.event}` as MessageId);

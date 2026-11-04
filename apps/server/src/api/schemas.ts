@@ -181,6 +181,10 @@ export const track = z
     owner: nullable(person),
     archived: z.boolean(),
     features: z.record(z.string(), z.boolean()),
+    checklistNotices: z.boolean().meta({
+      description:
+        'Whether the followers of its tickets hear of changes to checklists, in their inbox and by email as each chooses. Off unless the track’s administrators turn it on.',
+    }),
     createdAt: instant,
     updatedAt: instant,
   })

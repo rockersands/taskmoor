@@ -991,6 +991,7 @@ export const messagesEn = {
   'notifications.event.work_stopped': 'Work stopped',
   'notifications.event.generic': 'Other changes',
   'notifications.event.track_group_shared': 'A track group is shared with you or set on you',
+  'notifications.event.checklist_changed': 'A checklist changes on a ticket you follow',
   'unsubscribe.title': 'Unsubscribe',
   'unsubscribe.checking': 'Checking the link…',
   'unsubscribe.invalid':
@@ -2661,6 +2662,15 @@ export const messagesEn = {
   'trackPeople.problem.createTracks':
     'Only site administrators and people who can create tracks themselves can give that permission.',
   'trackPeople.problem.other': 'That did not work. Try again in a moment.',
+  'trackPeople.problem.archived': 'The track is archived, so its settings cannot change.',
+  // Checklist notices, a choice of the track's administrators (NTF-015).
+  'trackPeople.notices': 'Notices to followers',
+  'trackPeople.checklistNotices': 'Tell followers when a checklist changes',
+  'trackPeople.checklistNoticesHint':
+    'The followers of a ticket hear of changes to its checklists and their items, in their inbox and by email as each of them chooses. Nobody hears of their own changes, and changes close together come as one notice.',
+  'trackPeople.noticesOnSaid': 'Followers of tickets in {key} now hear when a checklist changes.',
+  'trackPeople.noticesOffSaid':
+    'Followers of tickets in {key} no longer hear when a checklist changes.',
   'invite.title': 'Your invitation',
   'invite.titleFor': 'Your invitation to {key} · {name}',
   'invite.intro': 'You are invited as {role}, at {email}.',
@@ -3926,6 +3936,10 @@ export const messagesEn = {
   'inbox.what.groupSetRole':
     '{actor} set a track group on you, a copy of your own, with the role {role}',
   'inbox.group.label': 'the group {name}',
+  // A run of checklist changes on a ticket the reader follows (NTF-015).
+  'inbox.what.checklist':
+    '{changes, plural, one {{actor} changed a checklist} other {{actor} made # changes to checklists}}',
+  'inbox.what.checklistOthers': '{actor} and {others} more made {changes} changes to checklists',
   'inbox.unreadMark': 'Unread',
   'inbox.direct': 'Direct ask',
   'inbox.snoozedUntil': 'Snoozed until {time}',

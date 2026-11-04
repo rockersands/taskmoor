@@ -1737,6 +1737,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0103_checklist_notices': {
+    tables: { track: "key = 'SEEDCHK' AND notify_checklist_changes" },
+    seed: async (db) => {
+      // A track whose followers hear of checklist changes (NTF-015; ADR-120).
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id,
+          notify_checklist_changes)
+        SELECT 1, 'SEEDCHK', 'Seed checklist notices', id, true FROM access_policy
+         WHERE name = 'Seed policy'`.execute(db);
+    },
+  },
 };
 
 /**

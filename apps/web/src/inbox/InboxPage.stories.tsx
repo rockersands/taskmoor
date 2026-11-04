@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { ALERT_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 const meta = {
@@ -85,5 +85,23 @@ export const GroupShared: Story = {
       'href',
       expect.stringContaining('tracks'),
     );
+  },
+};
+
+/** A run of checklist changes as one item (NTF-015): who and how many, never what items say. */
+export const ChecklistChanged: Story = {
+  args: {
+    client: fakeInboxClient([
+      CHECKLIST_ITEM,
+      { ...CHECKLIST_ITEM, id: '21', checklist: { changes: 3, others: 1 }, read: true },
+      ...ITEMS,
+    ]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Mi Rivera made 5 changes to checklists')).toBeVisible();
+    await expect(
+      canvas.getByText('Mi Rivera and 1 more made 3 changes to checklists'),
+    ).toBeVisible();
   },
 };
