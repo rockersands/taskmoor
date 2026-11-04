@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import {
+  applicableKeys,
   customFieldId,
   type FormPlacement,
   fieldLocks,
@@ -13,11 +14,15 @@ import {
   holdersJson,
   holdersOf,
   isFieldKey,
+  type LayoutDefinition,
   layoutDefinition,
+  layoutFor,
+  leftOutBecause,
   OPERATIONS,
+  resolveDefinition,
   resolveLayout,
 } from '../fields/layouts';
-import { writeLayouts, writeRules } from '../fields/sets';
+import { checkLayouts, writeLayouts, writeRules } from '../fields/sets';
 import { describeFields } from '../fields/values';
 import { trackPrioritySet } from '../tickets/fields';
 import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tickets/store';
@@ -44,6 +49,9 @@ import {
  * - The default sets cannot be deleted; a set in use by a track is not deleted either.
  * - `GET /api/v1/tracks/:id/layout` and `GET /api/v1/tickets/:id/layout` give the form an
  *   operation shows, with required marks, help text and the custom fields it needs.
+ * - `POST /api/v1/layout-sets/:id/preview` gives the form a set's layouts, or a draft of them,
+ *   would show for a ticket type and operation in a track (the layout editor's live preview,
+ *   UI-T15; ADR-114). It checks a draft as a save would and stores nothing: a read.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -98,6 +106,19 @@ const createLayoutSetBody = z
 const updateLayoutSetBody = z
   .object({ name, description, layouts: z.array(layoutBody).max(1000) })
   .partial()
+  .strict();
+/**
+ * A preview: the form for a type and operation, in a track (null: none, so the fields every
+ * track has and the default rules; left out: a local set's own track, else none), from the
+ * draft layouts given or, without them, the set's saved ones.
+ */
+export const previewBody = z
+  .object({
+    ticketTypeId: idValue,
+    operation: z.enum(OPERATIONS),
+    trackId: idValue.nullable().optional(),
+    layouts: z.array(layoutBody).max(1000).optional(),
+  })
   .strict();
 const listQuery = z.object({ trackId: id.optional() }).strict();
 const trackLayoutQuery = z
@@ -500,6 +521,91 @@ export function registerLayoutRoutes(
       return reply.code(204).send();
     });
   }
+
+  // The layout editor's live preview (UI-T15; ADR-114 section 8; CORE-008, CORE-013): what a
+  // set's layouts, or a draft of them, would show. Whoever may read the set may ask; the track
+  // must be one they see. The draft is checked as a save checks it, so the editor hears the
+  // server's verdict before saving; nothing is stored and no event is emitted.
+  app.post('/api/v1/layout-sets/:id/preview', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = z.object({ id }).safeParse(request.params);
+    const parsed = previewBody.safeParse(request.body);
+    if (!p.success) return invalid(reply);
+    if (!parsed.success) return invalid(reply, zodDetail(parsed.error));
+    const ws = request.workspaceId;
+    const body = parsed.data;
+    const set = await db
+      .selectFrom('layout_set')
+      .select(['id', 'track_id'])
+      .where('id', '=', p.data.id)
+      .where('workspace_id', '=', ws)
+      .executeTakeFirst();
+    if (!set || (set.track_id !== null && !(await canSeeTrack(request, set.track_id)))) {
+      return notFound(reply);
+    }
+    const trackId = body.trackId === undefined ? set.track_id : body.trackId;
+    let ruleSetId: number | null = null;
+    if (trackId !== null) {
+      const track = await db
+        .selectFrom('track')
+        .select(['field_rule_set_id', 'deleted_at'])
+        .where('id', '=', trackId)
+        .where('workspace_id', '=', ws)
+        .executeTakeFirst();
+      if (!track || track.deleted_at || !(await canSeeTrack(request, trackId))) {
+        return notFound(reply);
+      }
+      ruleSetId = track.field_rule_set_id;
+    }
+    const type = await db
+      .selectFrom('ticket_type')
+      .select('id')
+      .where('id', '=', body.ticketTypeId)
+      .where('workspace_id', '=', ws)
+      .executeTakeFirst();
+    if (!type) return reply.code(400).send({ error: 'unknown_ticket_type' });
+    const catalog = await catalogs.get(ws);
+    let layouts: ReadonlyMap<string, LayoutDefinition>;
+    if (body.layouts) {
+      const problem = await checkLayouts(db, ws, catalog, set.track_id, body.layouts);
+      if (problem) return reply.code(problem.status).send(problem.body);
+      layouts = new Map(
+        body.layouts.map((l) => [`${l.ticketTypeId ?? 0}|${l.operation}`, l.definition]),
+      );
+    } else {
+      layouts = catalog.forms.layoutSets.get(set.id)?.layouts ?? new Map();
+    }
+    // Without a track, the fields every track has: track 0 matches no track's own context.
+    const at: FormPlacement = {
+      trackId: trackId ?? 0,
+      ticketTypeId: body.ticketTypeId,
+      ruleSetId,
+      layoutSetId: set.id,
+    };
+    const chosen = layoutFor(layouts, body.ticketTypeId, body.operation);
+    const layout = resolveDefinition(catalog, at, body.operation, chosen?.definition ?? null);
+    // What the layout places that the form will not show, and why.
+    const applies = new Set(applicableKeys(catalog, at));
+    const leftOut = (chosen?.definition.tabs ?? []).flatMap((tab) =>
+      tab.sections.flatMap((section) =>
+        section.fields.flatMap((field) => {
+          const reason = leftOutBecause(catalog, at, body.operation, field, applies);
+          return reason ? [{ field, reason }] : [];
+        }),
+      ),
+    );
+    const keys = [
+      ...layout.tabs.flatMap((tab) => tab.sections.flatMap((s) => s.fields.map((f) => f.key))),
+      ...leftOut.map((l) => l.field),
+    ];
+    const customFields = [...new Set(keys.map(customFieldId))]
+      .filter((fieldId): fieldId is number => fieldId !== null)
+      .flatMap((fieldId) => {
+        const def = catalog.fields.get(fieldId);
+        return def ? [{ id: def.id, name: def.name }] : [];
+      });
+    return { preview: { source: chosen?.source ?? 'none', layout, leftOut, customFields } };
+  });
 
   // The form an operation shows (CORE-008, CORE-013)
 

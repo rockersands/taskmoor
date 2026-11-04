@@ -115,6 +115,11 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['DELETE /api/v1/workflow-maps/:id']).toBe('write');
     expect(classes['POST /api/v1/workflow-maps/:id/impact']).toBe('write');
     expect(classes['GET /api/v1/tracks/:id/workflow-map']).toBe('read');
+    // Layout sets (CORE-013): track configuration, read and write; the layout editor's preview
+    // of a draft is a read, its save a write (UI-T15).
+    expect(classes['GET /api/v1/layout-sets']).toBe('read');
+    expect(classes['PATCH /api/v1/layout-sets/:id']).toBe('write');
+    expect(classes['POST /api/v1/layout-sets/:id/preview']).toBe('read');
     expect(classes['GET /api/v1/tracks/:id/workflow-map/impact']).toBe('read');
     expect(classes['GET /api/v1/workflow-migrations/:id']).toBe('read');
     // Imports (M1-086): administration, reads of progress and reports included.

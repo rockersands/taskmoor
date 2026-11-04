@@ -70,6 +70,8 @@ const EXEMPT: Record<string, string> = {
     'reads only: tries directory settings (connect, bind, read a first page), stores nothing',
   'POST /api/v1/workflow-maps/:id/impact':
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
+  'POST /api/v1/layout-sets/:id/preview':
+    'reads only: the form a draft of a layout set would show, checked as a save would be; stores nothing (UI-T15)',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
   'POST /api/v1/tickets/similar':
     'reads only: the tickets most similar to a text being written, stores nothing (M1-078)',

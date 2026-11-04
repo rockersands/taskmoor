@@ -107,6 +107,9 @@ export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/tickets/subticket-progress',
   // Tickets similar to a text being written (M1-078): a read, with the text in the body.
   'POST /api/v1/tickets/similar',
+  // The form a layout set's draft would show (UI-T15): a read, with the draft in the body; saving
+  // it is PATCH /api/v1/layout-sets/:id, which needs write.
+  'POST /api/v1/layout-sets/:id/preview',
   // The AI features (M1-079): each answers text or proposals and changes no ticket; drafts and
   // breakdowns are created afterwards through the ticket routes, which need write.
   'POST /api/v1/tickets/:id/ai/summary',
