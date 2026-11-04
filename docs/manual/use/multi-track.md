@@ -1,7 +1,7 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -9,8 +9,8 @@ attestation: own-words
 
 Multi-track brings the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
-shows them as a **Summary**, a **Timeline**, a **List** and a **Calendar**. Open **Multi-track**
-in the sidebar, under **Plan and track**.
+shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar** and its teams'
+**Capacity**. Open **Multi-track** in the sidebar, under **Plan and track**.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
@@ -88,6 +88,55 @@ narrows the list, and **List of dependencies**, beside the zoom buttons, takes y
 it. Choosing a bar also shows, in its side panel, which of its blockers are late and how many
 are elsewhere.
 
+## Teams and capacity
+
+**Capacity** shows how much work each team and person has due in each period, against how much
+they can take on. It uses the site's [teams](../admin/people-and-groups.md#teams); a team gives
+nobody access.
+
+### Choosing the teams, the unit and the periods
+
+In the plan's **Settings**, under **Teams and capacity**:
+
+- **Teams**: tick the teams the plan plans with, in the order Capacity should list them.
+- **Count work in**: **Points**, from the site's Points field, or **Hours of original estimate**.
+- **Periods**: every 1 to 6 weeks from the day in **A period starts on** (periods repeat from it
+  both ways, so any day of any period will do), or **Every calendar month**.
+
+Changing the unit clears every capacity set in the plan, since amounts in one unit mean nothing in
+another; changing the periods clears the capacity set for single periods. Settings asks first. A
+team that leaves the plan takes its capacity, and that of its people who are in none of the
+remaining teams, with it.
+
+### Reading Capacity
+
+Each team has a row, followed by a row for each of its people; then **Unassigned** and **People in
+none of these teams**. Each column is a period, the one holding today marked **Now**, and the
+last column is the open work without a due date. **Earlier periods**, **Later periods** and **This
+period** move through time, six periods at a time. On a phone, each row is a card.
+
+In each period:
+
+- A ticket counts whole in the period that holds its due date, in the plan's unit, for the person
+  it is assigned to and for each of the plan's teams that person is in. Tickets without an
+  estimate are counted and shown as **without an estimate**.
+- **"16 of 10 points"** is the work due against the capacity. Over capacity, the cell turns red
+  and says **Over capacity by** how much in words.
+- **"+13 points in 1 ticket elsewhere"** is the rest of that person's work due then: outside the
+  plan, left out by your filters, or in tracks you may not see. It counts against their capacity,
+  because they have to do it all, but it is never named, dated or linked.
+- **"3 tickets"** links to the search that finds exactly those tickets of the plan, as you may see
+  them. The filters above narrow the plan's work as in every view.
+- A team without a capacity of its own in a period has its people's, summed, marked **Its members'
+  capacity**. A row without any says **No capacity set**, and is never over.
+
+### Setting capacity
+
+The plan's owner and site administrators see **Set capacity** on each team and person. In the
+dialog, **Capacity for every period** is what they can take on in any period, with a note; below
+it, each period in view can have its own capacity and note instead, for leave or a holiday. Leave
+a field empty for none. **Save capacity** saves only what changed.
+
 ## Filtering and grouping
 
 Above every view, choose one **Track**, one **Assignee** (**Me**, **Nobody** or a person), one
@@ -122,6 +171,8 @@ nothing from it. Share those as well when they should.
 
 ## Not yet in Multi-track
 
-Teams and capacity, releases across tracks, the program board, draft changes and scenarios, the
-auto-scheduler, and copying or exporting a plan come in later versions. Dependencies are the
-**Blocks** links only: other link types do not count as dependencies.
+Releases across tracks, the program board, draft changes and scenarios, the auto-scheduler, and
+copying or exporting a plan come in later versions. Dependencies are the **Blocks** links only:
+other link types do not count as dependencies. Capacity counts work by its due date, in points or
+hours: velocity from past sprints, capacity in days or as a percentage of a working week, time set
+aside for leave as its own entry, and copying capacity between periods are not in Multi-track yet.
