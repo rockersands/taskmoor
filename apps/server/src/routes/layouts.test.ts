@@ -448,7 +448,7 @@ describe('field rules and layouts (M1-012)', () => {
         .selectFrom('domain_event')
         .select('type')
         .where('type', '=', 'layout_set.updated')
-        .where('subject_id', '=', set.id)
+        .where('subject_id', '=', String(set.id))
         .execute();
       expect(events).toEqual([]);
     });

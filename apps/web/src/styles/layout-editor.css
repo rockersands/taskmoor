@@ -1,0 +1,467 @@
+/*
+ * The layout editor (UI-T15; ADR-114 section 8) in the glass language of ADR-114: the fields not
+ * placed, the tabs as glass cards holding their sections, and a preview of the form. Wide screens
+ * set the preview beside the layout; phones stack everything in one column with no sideways
+ * scrolling. Only tokens: where glass cannot blur, tokens.css makes every glass surface opaque.
+ */
+.layout-editor-page,
+.layout-set-editor,
+.layout-edit,
+.layout-board {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.layout-set-bar,
+.layout-set-add,
+.layout-form-state,
+.layout-save-bar,
+.layout-tab-actions,
+.layout-preview-choices,
+.layout-section-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+
+.layout-form-state {
+  align-items: center;
+}
+
+.layout-form-state > .page-note {
+  flex: 1 1 20rem;
+  margin: 0;
+}
+
+.layout-set-head {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.layout-set-head > .form-hint {
+  margin: 0;
+}
+
+.layout-form-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.layout-form-choice > legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: 650;
+}
+
+/* The operations as one row of pills: a radio each, the whole pill its target. */
+.layout-operations {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+}
+
+.layout-operation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-soft);
+}
+
+.layout-operation:has(input:checked) {
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  font-weight: 650;
+}
+
+.layout-operation:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The layout and the preview: side by side when there is room, one under the other otherwise. */
+.layout-workspace {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (min-width: 90rem) {
+  .layout-workspace:has(.layout-edit) {
+    grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr);
+    align-items: start;
+  }
+}
+
+/* The fields not placed beside the tabs, when there is room. */
+.layout-canvas {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (min-width: 48rem) {
+  .layout-canvas {
+    grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.layout-palette,
+.layout-preview {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.layout-palette > .section-title,
+.layout-palette > .form-hint,
+.layout-palette > .page-note,
+.layout-preview > .section-title,
+.layout-preview > .form-hint {
+  margin: 0;
+}
+
+.layout-tabs,
+.layout-sections,
+.layout-fields,
+.layout-preview-fields {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layout-tabs {
+  gap: var(--space-4);
+}
+
+.layout-sections {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-3);
+}
+
+.layout-tab {
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.layout-tab-box,
+.layout-section-box {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.layout-tab-head,
+.layout-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.layout-tab-title,
+.layout-section-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.layout-tab-title {
+  font-size: var(--font-size-300);
+  font-weight: 650;
+}
+
+.layout-section-title {
+  font-size: var(--font-size-200);
+  font-weight: 600;
+}
+
+.layout-tab-name {
+  margin: 0;
+}
+
+.layout-remove {
+  flex: none;
+}
+
+/* A section: the main column plain, the side column sunken, as on the form. */
+.layout-section-box {
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px dashed var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+}
+
+.layout-section-box.is-context {
+  border-style: solid;
+  background: var(--glass-fill);
+}
+
+.layout-section-settings > .form-field {
+  margin: 0;
+}
+
+.layout-section-settings > .form-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.layout-section-empty {
+  margin: 0;
+}
+
+/* A field: its grip and its name, one chip of strong glass. */
+.layout-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-1);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+}
+
+.layout-field-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.layout-field.is-unplaced {
+  background: var(--glass-fill);
+}
+
+.layout-grip {
+  position: relative;
+  flex: none;
+}
+
+.layout-grip-handle {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: grab;
+  /* A finger on the grip drags rather than scrolling the page or selecting text. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--motion-fast) var(--ease-soft);
+}
+
+.layout-grip-handle:hover,
+.layout-grip-handle[aria-expanded="true"] {
+  border-color: var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+/* A grip leads what it moves, so its menu opens towards the end; it never runs off the page. */
+.layout-grip-popup {
+  inset-inline: 0 auto;
+  max-height: min(24rem, 60vh);
+  overflow-y: auto;
+}
+
+/* An open menu's card rises above the glass cards after it, which would cover the menu. */
+.layout-tab:has(.layout-grip-popup),
+.layout-section:has(.layout-grip-popup),
+.layout-field:has(.layout-grip-popup),
+.layout-palette:has(.layout-grip-popup) {
+  position: relative;
+  z-index: 2;
+}
+
+/* While dragging: what moves fades, and where it would land is marked. */
+.layout-field.is-dragging,
+.layout-section.is-dragging,
+.layout-tab.is-dragging {
+  opacity: 0.55;
+}
+
+.layout-field.is-drop-before {
+  box-shadow:
+    0 -3px 0 var(--color-focus),
+    var(--glass-highlight-flat);
+}
+
+.layout-section-box.is-drop-target,
+.layout-tab.is-drop-target,
+.layout-palette.is-drop-target {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.layout-drag-ghost {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 60;
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.layout-others {
+  margin: 0;
+}
+
+/* The preview: the form as the server gives it, its fields drawn as empty boxes. */
+.layout-preview-form {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.layout-preview-form[aria-busy="true"] {
+  opacity: 0.7;
+}
+
+.layout-preview-form > .form-hint {
+  margin: 0;
+}
+
+.layout-preview-tab {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.layout-preview-tab > .facts-title {
+  margin: 0;
+}
+
+.layout-preview-sections {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+@media (min-width: 40rem) {
+  .layout-preview-sections:has(.is-context) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-auto-flow: dense;
+  }
+
+  .layout-preview-section.is-main {
+    grid-column: 1;
+  }
+
+  .layout-preview-section.is-context {
+    grid-column: 2;
+  }
+}
+
+.layout-preview-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.layout-preview-section.is-context {
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+}
+
+.layout-preview-section > .form-hint {
+  margin: 0;
+}
+
+.layout-preview-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.layout-preview-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.layout-preview-required {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 500;
+}
+
+.layout-preview-input {
+  display: block;
+  height: 2rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-1);
+  background: var(--glass-fill-strong);
+}
+
+.layout-preview-detail {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-100);
+  overflow-wrap: anywhere;
+}
+
+.layout-preview-left > .form-label {
+  margin: 0;
+}
+
+.layout-preview-left > ul {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-5);
+}
+
+@media (pointer: coarse) {
+  .layout-grip-handle {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
+  .layout-operation,
+  .layout-set-editor :is(.button-primary, .button-secondary, .button-danger),
+  .layout-set-add .button-secondary {
+    min-height: var(--hit-target-touch);
+  }
+}
