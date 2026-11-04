@@ -135,7 +135,8 @@ In each period:
 The plan's owner and site administrators see **Set capacity** on each team and person. In the
 dialog, **Capacity for every period** is what they can take on in any period, with a note; below
 it, each period in view can have its own capacity and note instead, for leave or a holiday. Leave
-a field empty for none. **Save capacity** saves only what changed.
+a field empty for none. **Save capacity** saves only what changed. Each change is kept in the
+plan's history with its note, so a note should say what planning needs ("Leave"), not why.
 
 ## Filtering and grouping
 
