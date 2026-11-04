@@ -216,9 +216,9 @@ sentences. Examples:
 |---|---|---|
 | Board cards (between columns and within one) | kept, restyled | Alt+arrows and the card's ⋯ menu (kept) |
 | Board columns (order) | new, on the board and in settings | Move left and Move right in the column's menu |
-| Backlog ranking and sprint planning | kept, restyled | kept (move menus, Alt+arrows) |
-| Dashboard widgets | new | Move up, down, left and right buttons (kept) |
-| Files on a ticket | kept, the whole ticket accepts a drop | Attach files button (kept) |
+| Backlog ranking and sprint planning | kept, restyled; by finger too (section 12) | each ticket's grip menu, the selection's menus, Alt+arrows |
+| Dashboard widgets | new (section 12) | Move up, down, left and right buttons (kept), Alt+arrows on them |
+| Files on a ticket | kept, the whole ticket accepts a drop (section 12) | Attach files button and paste (kept) |
 
 Every drop is announced in a live region, as the board does now.
 
@@ -286,6 +286,62 @@ as if liquid. It is the default for new work.
 - **The check:** `styles/motion.test.ts` fails on a duration or easing that is not a token, on another
   property being animated, on `will-change` and on a second reduced-motion rule. Its exceptions are a
   short named list, each with a reason, and its header says what it does not catch.
+
+### 12. Drag and drop beyond the board (T-162, 2026-11-03)
+
+Section 7 carried out for the backlog, dashboard widgets and files on a ticket, with the board's
+habits: the place a drop would land is outlined, the page says what is in hand and what happened,
+Escape cancels, and every move also has a menu or keys. Requirements: AGL-008 and AGL-009 (the
+backlog), RPT-004 (dashboards), CORE-021 (attachments), NFR-005 and NFR-007; no new one was needed.
+
+- **Pointer events, not the browser's drag and drop, for things the page moves.** A finger never
+  starts a native drag on most phones, so the backlog leaves it and the widgets never take it up.
+  `shell/pointerDrag.ts` follows one press: it becomes a drag after 6 px (a shorter press is a click
+  as usual), Escape cancels it and goes no further (an open dialog stays open), the pointer near the
+  top or bottom of the scrolling area scrolls it (a finger's drag cannot scroll the page itself), no
+  text is selected on the way, and the click a drag ends with is swallowed. What is under the
+  pointer is asked of the page (`elementFromPoint`, with `data-drop-*` attributes on the targets),
+  so a mouse, a pen and a finger take one path. Board cards keep the native drag of ADR-049 for now;
+  moving them onto this follower would give them a finger drag too (an open question below).
+- **One grip.** `shell/MoveMenu.tsx` is the grip the Tracks page's groups had (CORE-034), moved to
+  the shell and shared: a button a mouse or a finger drags, which pressed opens a menu of the same
+  moves, with Alt and the arrow keys stepping it. It is 44 px under a coarse pointer and carries
+  `touch-action: none`, so a finger on it drags rather than scrolls; elsewhere a finger scrolls.
+- **The backlog.** A mouse drags a row from anywhere but its controls, a finger by its grip; a
+  ticket that is part of the selection takes the whole selection, in order. The section and the
+  place are outlined as on the board (`is-drop-target`, `is-drop-before`), the outcome or release
+  under the pointer likewise, and a label with the ticket's key and summary (or the count) follows
+  the pointer. The status line says what is in hand, then what the server did, or that the tickets
+  stayed where they were. Each ticket's "Move to…" select became its grip's menu: up, down, to the
+  top, to the bottom, and to each other sprint or the backlog. A drop calls exactly what the menus
+  call (`addTickets`, `removeTickets`, `rank`, `setParent`, `addRelease`), so the server's rank and
+  sprint rules judge it, and a refusal reads as it does for the menus.
+- **Dashboard widgets.** While a dashboard or a track's Summary is edited, a widget drags by its
+  grip (mouse or finger) or by its title (mouse) to a place in any column; an empty column says it
+  takes a drop. The Up, Down, Left and Right buttons stay, and Alt with an arrow key on any of a
+  widget's buttons makes the same move with the keyboard left on the button of that arrow. Every
+  move is announced with where the widget now is ("Alpha is now in column 2, 1 of 2."), and a drop
+  where it already was says it stayed. Nothing is saved until **Save dashboard**; the server checks
+  the layout and its version then, as before.
+- **Files on a ticket.** The whole ticket view, on its page and in the pop-up, takes files
+  (`attachments/FileDrop.tsx`): while files from outside are over any part of it, an outline goes
+  round the whole ticket with a card naming it and the size limit, or saying why nothing can be
+  attached (no permission, a status lock, files turned off). A file let go anywhere goes to the
+  attachments panel as a chosen file would (the same size check, one upload each) and the panel
+  comes into view. A drag that carries no files, such as text or a link, is left to whatever is
+  under it. The ticket takes a refused drop too, so the file never opens in the browser in place of
+  the page. The outline is hidden from screen readers; a live region says the same words. **Attach
+  files** and pasting stay the keyboard's way.
+- **Nothing new on the server.** No route, event, migration or audit decision changes: every drop
+  is a call that already existed, with its event and audit entry.
+- **Tests.** Component tests drive pointer events (`setViewportWidth` for phones); stories drag in
+  a real browser and are checked by axe in both skins, mid-drag and dropped; `e2e/drag-and-drop.spec.ts`
+  drags by mouse on a desktop and by touch input through the DevTools protocol on a phone, as
+  `e2e/track-groups.spec.ts` does.
+- **Open question for the user.** Whether board cards (and calendar entries) should move onto the
+  same pointer follower, so a finger drags them on a phone as it now drags backlog tickets and
+  widgets; their menus and keys already work there. A backlog row, like a board card, no longer
+  selects its summary as text, since a mouse drags the row from it.
 
 ## Options considered
 

@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -206,16 +206,22 @@ when time tracking is on, the remaining estimate).
 
 ### Ranking and moving tickets
 
-- Drag tickets to rank them, or drop them in another sprint or the backlog.
-- Each ticket has a **Move PAY-42 to** menu.
-- Alt with the up or down arrow moves a focused ticket past its neighbour.
+- Drag a ticket to rank it, or drop it in another sprint or the backlog. With a mouse, drag the
+  row from anywhere but its check box and buttons; with a finger, drag it by its grip (the six
+  dots at its start), since a finger elsewhere on the row scrolls the page. The section and the
+  place it would land are outlined, and the page says what you are moving. Hold it near the top
+  or bottom of the screen to scroll there. **Escape** puts it back where it was.
+- Each ticket's grip, pressed or tapped, opens **Move PAY-42**: **Move up**, **Move down**, **Move
+  to the top**, **Move to the bottom** and **Move to** each other sprint or the backlog.
+- Alt with the up or down arrow moves a focused ticket (its key or its grip) past its neighbour.
 - Tick tickets one by one, or a whole section with **Select every ticket shown in** that
   section. The selection bar then offers **Move selected to…**, **Move to the top**, **Move to
   the bottom**, **Put selected under…** (an outcome, or **No outcome**), **Add selected to
   release…** and **Clear selection**. A selection moves as one block and keeps its order.
 
 The **Outcomes** and **Releases** panels list the open outcomes and the unshipped releases of
-the board's track. Drop tickets on one to put them under that outcome or into that release.
+the board's track. Drop tickets on one to put them under that outcome or into that release; a
+ticket that is part of the selection takes the whole selection with it.
 Choose one to show only its tickets; **Show all tickets** brings the rest back.
 
 To add a ticket, type its summary in **New ticket…** at the end of any section and press **Add
