@@ -122,6 +122,8 @@ export function TracksPage({
               groups={groups}
               client={groupClient}
               onGroups={setGroups}
+              // Leaving a shared group can take tracks away: the list is read again.
+              onAccessChanged={() => void client.list().then(setTracks, () => {})}
             />
           ) : (
             <>

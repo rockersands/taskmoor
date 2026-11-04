@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, MEMBER } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
@@ -173,6 +174,25 @@ describe('people (M1-053, IAM-008)', () => {
     const erased = (await screen.findByText('Former user 3')).closest('li') as HTMLElement;
     expect(within(erased).getByText('Erased')).toBeVisible();
     expect(within(erased).queryByRole('button')).toBeNull();
+  });
+
+  it('[IAM-034] says why an erasure is refused when a shared track group gave the last one to run a track', async () => {
+    const client = renderPage('users');
+    client.erase = async () => {
+      throw new ApiError(409, { error: 'last_track_admin', trackIds: [4] });
+    };
+    await list();
+    await userEvent.click(screen.getByRole('button', { name: 'Erase Bo Rivera' }));
+    const form = screen.getByRole('form', { name: 'Erase Bo Rivera' });
+    await userEvent.type(
+      within(form).getByLabelText('Type bo@example.com to confirm'),
+      'bo@example.com',
+    );
+    await userEvent.click(within(form).getByRole('button', { name: 'Erase permanently' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Erasing them would take back a role their shared track groups gave the only other person running a track.',
+    );
+    expect(screen.getByText('Bo Rivera')).toBeVisible();
   });
 
   it('fits a small phone', async () => {

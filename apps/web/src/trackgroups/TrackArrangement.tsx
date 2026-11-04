@@ -28,6 +28,11 @@ export interface TrackArrangementProps {
   client: TrackGroupClient;
   /** The arrangement after a change, as the server answered it. */
   onGroups: (groups: TrackGroup[]) => void;
+  /**
+   * After a change that may change which tracks the person sees: leaving a shared group takes
+   * the roles it gave (T-204), so the page reads its tracks again.
+   */
+  onAccessChanged?: () => void;
 }
 
 /** What is being dragged. */
@@ -160,7 +165,13 @@ function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: Mo
  * another to take its place. Pointer events carry the drags, so a mouse and a finger work alike,
  * and every drag is also in the handle's menu and on Alt and the arrow keys.
  */
-export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArrangementProps) {
+export function TrackArrangement({
+  tracks,
+  groups,
+  client,
+  onGroups,
+  onAccessChanged,
+}: TrackArrangementProps) {
   const t = useT();
   const id = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -216,11 +227,12 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     return holder?.minimized ? `group-${holder.id}` : `track-${trackId}`;
   };
 
+  /** Runs a change and shows what the server answered; true when it went through. */
   const run = async (
     work: () => Promise<TrackGroup[]>,
     announce: (next: TrackGroup[]) => string,
     focus?: (next: TrackGroup[]) => string | null,
-  ) => {
+  ): Promise<boolean> => {
     setBusy(true);
     setProblem(null);
     try {
@@ -228,6 +240,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       pendingFocus.current = focus ?? null;
       onGroups(next);
       say(announce(next));
+      return true;
     } catch (error) {
       setProblem(
         error instanceof ApiError && error.code === 'last_track_admin'
@@ -239,6 +252,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
         client.layout().then(onGroups, () => {});
       }
+      return false;
     } finally {
       setBusy(false);
     }
@@ -813,7 +827,9 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
                   () => client.leave(group.id),
                   () => t('trackGroups.announce.left', { name: group.name }),
                   focusAfterRemoving(at),
-                );
+                ).then((left) => {
+                  if (left) onAccessChanged?.();
+                });
               }}
             >
               {t('trackGroups.leave.do')}

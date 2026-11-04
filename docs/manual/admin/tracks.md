@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -82,6 +82,19 @@ To change the role, take the share back and share again. The roles a share gives
 roles: they show on each track's **Who does what** page, where its administrators can remove
 them, and every share, take-back and role that came or went is in the audit log.
 
+The person you share a group with, or set it on, hears of it in their
+[inbox](../use/notifications.md#the-inbox) and by email, as their notification settings say. The
+notice names the group and you, and the role if you chose one; never its tracks.
+
+### Leaving a group shared with you
+
+A group someone shared with you has **Leave group…** in its menu. It first says what goes: the
+group leaves your page, and the role it gave you goes from as many tracks as the share alone gave
+it on. A role you hold any other way stays, the same as when the owner takes the share back, and
+nothing is taken that would leave a track with nobody to run it. Once you leave, the tracks it
+opened to you go from the page at once, and only the owner can share it with you again. The
+owner's audit log records who left and which roles went.
+
 ### Setting a group on someone
 
 **Set on someone…** gives a person a group of their own: a copy with the same name and tracks,
@@ -100,7 +113,9 @@ optional `position`, counted among the tracks you see) and out, and
 `DELETE /api/v1/track-groups/:id` deletes a group.
 `GET`, `POST /api/v1/track-groups/:id/shares` and `DELETE …/shares/:userId` list, make and take
 back shares (`userId`, `roleId` or `null`); `POST /api/v1/track-groups/:id/copies` sets the group
-on someone. A refusal to take back answers `409` with `last_track_admin` and the tracks; a
+on someone; `POST /api/v1/track-groups/:id/leave` leaves a group shared with you, answering your
+groups (`403` for your own group). A group shared with you carries `holds`: on how many tracks
+its role is yours through that share alone. A refusal to take back answers `409` with `last_track_admin` and the tracks; a
 deactivated person answers `400` with `person_inactive`. Reading needs a token's `read` scope and
 changing its `write` scope; finding people (`GET /api/v1/track-groups/people?q=`) needs the
 **Browse users** permission.

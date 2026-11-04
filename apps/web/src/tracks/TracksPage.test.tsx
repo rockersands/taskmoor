@@ -6,7 +6,7 @@ import type { ConfigurationClient, Track } from '../configuration/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { type Session, SessionProvider, type SessionUser } from '../session/SessionProvider';
 import type { TrackGroupClient } from '../trackgroups/client';
-import { fakeTrackGroupClient, ownGroup } from '../trackgroups/fixtures';
+import { fakeTrackGroupClient, ownGroup, sharedGroup } from '../trackgroups/fixtures';
 import { fakeTrackClient } from './fixtures';
 import { TracksPage } from './TracksPage';
 import { newTrackModes } from './trackAccess';
@@ -44,10 +44,16 @@ function fakeCreator(create: ConfigurationClient['createTrack'] = vi.fn()) {
 
 function open(
   session: Session,
-  options: { creator?: ConfigurationClient; empty?: boolean; groups?: TrackGroupClient } = {},
+  options: {
+    creator?: ConfigurationClient;
+    empty?: boolean;
+    groups?: TrackGroupClient;
+    list?: () => Promise<{ id: number; key: string; name: string; owner: null }[]>;
+  } = {},
 ) {
   const client = fakeTrackClient();
   if (options.empty) client.list = async () => [];
+  if (options.list) client.list = options.list;
   render(
     <I18nProvider locale="en">
       <SessionProvider session={session}>
@@ -230,6 +236,30 @@ describe('the directory in the person’s groups (CORE-034)', () => {
     await user.type(screen.getByLabelText('Find a track'), 'sh');
     expect(screen.queryByRole('region', { name: 'Launch' })).toBeNull();
     expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['SHOPShop']);
+  });
+
+  it('[IAM-034] leaving a shared group reads the tracks again: those it opened go', async () => {
+    const user = userEvent.setup();
+    const web = { id: 2, key: 'WEB', name: 'Web', owner: null };
+    const shop = { id: 1, key: 'SHOP', name: 'Shop', owner: null };
+    // The share opened Web; once left, the server lists only Shop.
+    const list = vi.fn().mockResolvedValueOnce([shop, web]).mockResolvedValue([shop]);
+    open(signedIn(), {
+      list,
+      groups: fakeTrackGroupClient({ groups: [sharedGroup(5, 'Grace’s picks', [2])] }),
+    });
+    await user.click(
+      await screen.findByRole('button', { name: 'Move or change the group Grace’s picks' }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Leave group…' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Leave Grace’s picks?' })).getByRole('button', {
+        name: 'Leave group',
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole('link', { name: /Web/ })).toBeNull());
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('link', { name: /Shop/ })).toBeVisible();
   });
 
   it('[CORE-034] without its groups the page still lists every track, and says so', async () => {
