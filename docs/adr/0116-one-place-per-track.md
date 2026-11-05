@@ -77,6 +77,53 @@ them.
     record says which reason replaced which. Migration 0105 repairs the sites where a reason was
     deleted before this rule: a published version or draft that names a missing reason now names
     Completed.
+  - **2026-11-05: the edges the T-207 review found (T-209, T-210, T-234).** A free move here is a
+    global transition with no guard, check, field or rule whose only effect sets or clears the close
+    reason.
+    - *A status that changes stage takes its free moves along* (T-209). Changing a status's stage
+      (allowed only while no ticket is in it) rewrites the free moves into it on every workflow whose
+      published version or draft has one: entering a status made closed-stage sets the reason free
+      moves close with, so the ticket gets its Closed time, as a new closing column does; entering
+      one that left the closed stage clears the reason. A changed published version becomes a new
+      published version and the draft is rewritten in place or moved above it, as when a close
+      reason is replaced. The status's one event, `status.updated`, names those workflows
+      (`workflowIds`). A move with a rule, another effect or a reason someone chose stays as it is,
+      and so does a board-managed workflow, whose board says which column closes. With no reason to
+      close with, nothing changes. We considered deciding the effect at move time from the status's
+      stage, with nothing rewritten; rejected because the definition, the editor and an exported
+      file would then say something other than what happens.
+    - *A status added through the draft API gets its free move* (T-210). Saving a draft
+      (`PUT /api/v1/workflows/:id/draft`) on a workflow that moves freely, with a draft that still
+      does, gives each status the draft adds and no transition reaches its global transition, as the
+      editor's Add a status does. A draft with no transitions, or one saved on a workflow left with
+      none, gets one into every status no transition reaches, as a new workflow does. New
+      transitions number above every id any version of the workflow used. A closing status gets one
+      only when there is a reason to set; no reason is made here, so the save stays one event. We
+      chose this over a warning in the draft's answer because WF-008 (4) names any status added to a
+      workflow that moves freely, not only the editor's. The server only adds: a status that was
+      already in the workflow, a step someone drew and any draft with a rule stay as sent. An old
+      workflow with no transitions gets its moves when its next draft is saved; nothing rewrites it
+      before that.
+    - *One closing reason after a replacement* (T-234). The reason free moves close with
+      (`closingReasonId`) is now what the default workflow's published version sets on entering a
+      closed-stage status (Completed by name when it sets several), and the reason named Completed
+      only when it sets none. Before, the name came first: a reason named Completed made after
+      Completed was replaced took every new free move while every existing one kept the
+      replacement, two reasons for one rule. Now the replacement an administrator chose stays the
+      closing reason everywhere. To close with the new Completed, set it on the default workflow's
+      closing step and publish: new free moves follow. We considered rewriting the workflows when a
+      reason named Completed appears; rejected, because creating a reason should not publish
+      workflows, and the replacement was a choice.
+    - *A default workflow's draft from the strict seed* (T-234). Migration 0104 left an open draft as
+      its author saved it, so the editor showed the first, strict steps, and publishing them brought
+      the old rules back. When the default workflow's draft still has the five seeded steps exactly
+      as seeded (Start, Send to review, Back to active, Close with its required close reason, and
+      Reopen), the editor says so and offers to replace them with the free moves the published
+      version has, numbered as the steps they replace, with the reason free moves close with. Steps
+      the author drew stay; when the rest moves freely too, a status no transition reaches gets its
+      free move. It is an offer, not done on opening, because version 1 restored as the draft is a
+      deliberate choice; nothing changes until the draft is saved. Another workflow with those steps
+      is a copy someone made, and keeps them.
 - **A board stays inside its track** after it is made. A saved search a track's board stands on
   cannot be changed to a query that leaves the track (`409 board_outside_track`, naming the boards).
   An import writes a track's board only with a query confined to it: anything else becomes
