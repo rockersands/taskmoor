@@ -33,9 +33,13 @@ LIMIT_SECONDS=900
 mkdir -p .cache
 WORK=$(mktemp -d "$PWD/.cache/fresh-vm.XXXXXX")
 STATIC_PID=
+PINNED=
 cleanup() {
   [ -n "$STATIC_PID" ] && kill "$STATIC_PID" 2>/dev/null || true
   docker rm -f -v "$VM" >/dev/null 2>&1 || true
+  # The stand-in's tag only (the image stays as $TAG): left behind, it would keep each old
+  # build alive after the next one replaces $TAG.
+  [ -n "$PINNED" ] && docker rmi "$PINNED" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -65,6 +69,7 @@ for image in $others; do
 done
 # The kit names the image it was made for; this run's image stands in for it.
 pinned=$(unzip -p "$WORK/kits/taskmoor-backend-kit.zip" .env | sed -n 's/^TASKMOOR_IMAGE=//p')
+PINNED=$pinned
 docker tag "$TAG" "$pinned"
 # shellcheck disable=SC2086
 docker save "$TAG" "$pinned" $others -o "$WORK/images.tar"

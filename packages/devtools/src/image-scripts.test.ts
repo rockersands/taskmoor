@@ -124,4 +124,35 @@ describe('image and air-gap scripts', () => {
     );
     expect(keeping).toEqual([]);
   });
+
+  // fresh-vm.sh tagged the image as the version its kit pins and left the tag, so every run
+  // kept the build before it alive once smoke.sh replaced taskmoor:dev (T-023).
+  it('[OPS-001] remove the tags they add', () => {
+    const scripts = [...shellScripts('tools/image'), ...shellScripts('tools/airgap')];
+    const tagging: string[] = [];
+    const left: string[] = [];
+    for (const script of scripts) {
+      const text = readFileSync(join(ROOT, script), 'utf8');
+      for (const [, name = ''] of text.matchAll(/\bdocker tag \S+ "\$(\w+)"/g)) {
+        tagging.push(script);
+        // The tag's own variable, or one the script copies it into for its clean-up.
+        const names = [
+          name,
+          ...[...text.matchAll(new RegExp(`^\\s*(\\w+)=\\$${name}\\s*$`, 'gm'))].map(
+            (m) => m[1] ?? '',
+          ),
+        ];
+        const removed = text
+          .split('\n')
+          .some(
+            (line) => /\bdocker rmi\b/.test(line) && names.some((n) => line.includes(`"$${n}"`)),
+          );
+        if (!removed) left.push(`${script}: ${name}`);
+      }
+    }
+    expect(tagging).toEqual(
+      expect.arrayContaining(['tools/image/fresh-vm.sh', 'tools/airgap/test-offline.sh']),
+    );
+    expect(left).toEqual([]);
+  });
 });
