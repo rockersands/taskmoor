@@ -325,7 +325,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
    * The free moves into a status that changed stage follow it (T-209; WF-008): on every workflow
    * whose published version or draft has one, entering a status made closed-stage sets the reason
    * free moves close with, and so stamps the Closed time, as a new closing column does; entering
-   * one that left the closed stage clears the reason. A changed published version becomes a new
+   * one that left the closed stage clears that reason. A changed published version becomes a new
    * one and the draft is rewritten, as when a close reason is replaced; no ticket is in the status
    * (the stage cannot change while one is), so none moves. With no reason to close with, nothing
    * changes. The ids of the workflows changed, for the status's one event.
@@ -343,8 +343,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
        WHERE w.workspace_id = ${actor.workspaceId} AND s.status_id = ${statusId}`.execute(trx);
     if (rows.length === 0) return [];
-    const completedId = closes ? await closingReasonId(trx, actor.workspaceId) : null;
-    if (closes && completedId === null) return [];
+    // Both ways the reason matters: a move out of the closed stage clears only this one.
+    const completedId = await closingReasonId(trx, actor.workspaceId);
+    if (completedId === null) return [];
     const changed: number[] = [];
     for (const w of await holdCurrentVersions(
       trx,

@@ -232,12 +232,15 @@ describe('free moving at its edges (WF-008)', () => {
     it('[WF-008] a move with a rule or a reason someone chose stays as it was, and a status no workflow uses changes alone', async () => {
       const qa = await newStatus('QA', 'active');
       const rejected = await newStatus('Turned down', 'active');
+      const dropped = await newStatus('Dropped', 'closed');
       const notPlanned = reason['Not planned'] as number;
       const created = await post('/api/v1/workflows', {
         name: 'With a rule',
         definition: {
           initialStatusId: status.New,
-          statuses: [status.New as number, qa, rejected].map((statusId) => ({ statusId })),
+          statuses: [status.New as number, qa, rejected, dropped].map((statusId) => ({
+            statusId,
+          })),
           transitions: [
             { id: 1, name: 'New', from: 'any', to: status.New, effects: CLEAR },
             {
@@ -249,6 +252,7 @@ describe('free moving at its edges (WF-008)', () => {
               effects: CLEAR,
             },
             { id: 3, name: 'Reject', from: 'any', to: rejected, effects: setting(notPlanned) },
+            { id: 4, name: 'Drop', from: 'any', to: dropped, effects: setting(notPlanned) },
           ],
         },
       });
@@ -261,10 +265,13 @@ describe('free moving at its edges (WF-008)', () => {
       // choosing keeps that reason.
       const rejecting = await patch(`/api/v1/statuses/${rejected}`, { stage: 'closed' });
       expect(rejecting.statusCode, rejecting.body).toBe(200);
-      const after = await view(id);
-      expect(after.published).toEqual(before.published);
       const [event] = (await events('status.updated')).slice(-1);
       expect(event?.payload).toEqual({ changes: { stage: { from: 'active', to: 'closed' } } });
+      // Out of the closed stage a reason someone chose stays too: only the free moves' one clears.
+      const reopened = await patch(`/api/v1/statuses/${dropped}`, { stage: 'active' });
+      expect(reopened.statusCode, reopened.body).toBe(200);
+      const after = await view(id);
+      expect(after.published).toEqual(before.published);
 
       const unused = await newStatus('Parked', 'active');
       const alone = await patch(`/api/v1/statuses/${unused}`, { stage: 'closed' });

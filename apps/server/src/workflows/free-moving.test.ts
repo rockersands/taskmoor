@@ -25,15 +25,18 @@ describe('free moves follow a status stage (WF-008)', () => {
     expect(closing?.transitions.filter((t) => t.id !== 2)).toEqual(
       free.transitions.filter((t) => t.id !== 2),
     );
-    const opening = followingStage(free, 3, false, null);
+    const opening = followingStage(free, 3, false, 9);
     expect(opening?.transitions[2]?.effects).toEqual(CLEAR);
   });
 
   it('[WF-008] nothing changes without a reason, on a board, or where someone chose otherwise', () => {
     expect(followingStage(free, 2, true, null)).toBeNull();
+    expect(followingStage(free, 3, false, null)).toBeNull();
     // Already what the stage asks: nothing to do.
     expect(followingStage(free, 3, true, 9)).toBeNull();
-    expect(followingStage(free, 1, false, null)).toBeNull();
+    expect(followingStage(free, 1, false, 9)).toBeNull();
+    // Another reason someone chose stays, in whichever stage.
+    expect(followingStage(free, 3, false, 8)).toBeNull();
     expect(
       followingStage({ ...free, board: { boardId: 1, columns: [1, 2, 3] } }, 2, true, 9),
     ).toBeNull();

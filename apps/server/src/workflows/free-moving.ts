@@ -57,24 +57,30 @@ export const workflowMovesFreely = (definition: WorkflowDefinition): boolean =>
 const CLOSE_REASON = 'close-reason';
 
 /**
- * Whether these effects are exactly what a free move into a status of that kind does: setting
- * one close reason, or clearing it. Anything else someone put there on purpose.
+ * Whether these effects are exactly what a free move does: setting the reason free moves close
+ * with (`completedId`) when `closes`, clearing the reason otherwise. Anything else, another reason
+ * included, someone put there on purpose.
  */
-function freeMoveShaped(effects: readonly EffectDef[] | undefined, closes: boolean): boolean {
+function freeMoveShaped(
+  effects: readonly EffectDef[] | undefined,
+  closes: boolean,
+  completedId: number,
+): boolean {
   if (effects?.length !== 1) return false;
   const [effect] = effects;
   if (!effect || !('field' in effect) || effect.field !== CLOSE_REASON) return false;
   return closes
-    ? effect.type === 'update-system-field' && typeof effect.value === 'string'
+    ? effect.type === 'update-system-field' && effect.value === String(completedId)
     : effect.type === 'clear-field';
 }
 
 /**
  * The definition with its free moves into a status following the status's new stage (T-209;
- * WF-008): one that cleared the close reason now sets `completedId` when the status became
- * closed-stage, and one that set a reason clears it when the status left the closed stage. A move
- * with a rule, a different effect or a different reason someone chose stays as it is, and so does
- * a board-managed workflow, whose board says which column closes. Null when nothing changes.
+ * WF-008): one that cleared the close reason sets `completedId`, the reason free moves close with,
+ * when the status became closed-stage, and one that set that reason clears it when the status left
+ * the closed stage. A move with a rule, another effect or another reason someone chose stays as it
+ * is, and so does a board-managed workflow, whose board says which column closes. Null when nothing
+ * changes, or when there is no reason to close with.
  */
 export function followingStage(
   definition: WorkflowDefinition,
@@ -82,10 +88,14 @@ export function followingStage(
   closes: boolean,
   completedId: number | null,
 ): WorkflowDefinition | null {
-  if (definition.board || (closes && completedId === null)) return null;
+  if (definition.board || completedId === null) return null;
   let changed = false;
   const transitions = definition.transitions.map((t) => {
-    if (t.to !== statusId || !movesFreely(t, definition) || !freeMoveShaped(t.effects, !closes)) {
+    if (
+      t.to !== statusId ||
+      !movesFreely(t, definition) ||
+      !freeMoveShaped(t.effects, !closes, completedId)
+    ) {
       return t;
     }
     changed = true;
