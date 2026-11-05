@@ -43,7 +43,8 @@ trap cleanup EXIT
 echo "== the fresh machine's image"
 secret=()
 [ -n "${BUILD_CA:-}" ] && secret=(--secret "id=build_ca,src=$BUILD_CA" --network host)
-docker build -q "${secret[@]}" -t "$VM_IMAGE" tools/image/vm >/dev/null
+# ${a[@]+"${a[@]}"}: an empty array is "unbound" under set -u in bash 3.2, a Mac's own bash.
+docker build -q ${secret[@]+"${secret[@]}"} -t "$VM_IMAGE" tools/image/vm >/dev/null
 
 echo "== the kits ($TAG)"
 VERSION=$(docker run --rm --entrypoint cat "$TAG" /app/web/version.json |

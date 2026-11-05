@@ -1,11 +1,20 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { importedLinkRoute } from '@taskmoor/webconfig';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SMOKE = readFileSync(join(ROOT, 'tools/image/smoke.sh'), 'utf8');
+
+/** The bash scripts of the repository's tools and install kits. */
+function shellScripts(dir: string): string[] {
+  return readdirSync(join(ROOT, dir), { withFileTypes: true, recursive: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.sh'))
+    .map((e) => relative(ROOT, join(e.parentPath, e.name)).replaceAll('\\', '/'))
+    .filter((path) => !path.includes('node_modules/'))
+    .sort();
+}
 
 /**
  * Where the backend sends a page request for `path` when it serves the frontend at the root, by
@@ -44,5 +53,31 @@ describe('tools/image/smoke.sh against the server it probes', () => {
   it('[IMP-011] checks an imported link in both routing modes', () => {
     const browse = probes().filter((p) => p.path === '/browse/ABC-1');
     expect(browse.map((p) => p.location).sort()).toEqual(['/#/tickets/ABC-1', '/tickets/ABC-1']);
+  });
+});
+
+// A Mac's own bash is 3.2, where "${a[@]}" of an empty array is an "unbound variable" under
+// set -u: tools/image/smoke-kits.sh stopped there on its first run on a Mac (T-023). An array
+// that starts empty is expanded as ${a[@]+"${a[@]}"}, which is the same on every bash.
+describe('bash scripts on a Mac', () => {
+  it('[OPS-001] expand arrays that can be empty in the form bash 3.2 accepts under set -u', () => {
+    const scripts = [...shellScripts('tools'), ...shellScripts('deploy')];
+    expect(scripts).toEqual(
+      expect.arrayContaining(['tools/image/smoke-kits.sh', 'tools/image/fresh-vm.sh']),
+    );
+    const unguarded: string[] = [];
+    for (const script of scripts) {
+      const text = readFileSync(join(ROOT, script), 'utf8');
+      if (!/^set -[a-z]*u/m.test(text)) continue;
+      const empty = [...text.matchAll(/^\s*([A-Za-z_]\w*)=\(\)\s*$/gm)].map((m) => m[1] ?? '');
+      for (const name of empty) {
+        const bare = text.split('\n').filter((line) => {
+          const guarded = line.replaceAll(`\${${name}[@]+"\${${name}[@]}"}`, '');
+          return guarded.includes(`"\${${name}[@]}"`);
+        });
+        for (const line of bare) unguarded.push(`${script}: ${line.trim()}`);
+      }
+    }
+    expect(unguarded).toEqual([]);
   });
 });

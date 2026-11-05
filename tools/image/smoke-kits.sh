@@ -49,7 +49,8 @@ echo "== all-in-one image"
 secret=()
 [ -n "${BUILD_CA:-}" ] && secret=(--secret "id=build_ca,src=$BUILD_CA" --network host)
 [ -n "${HTTPS_PROXY:-}" ] && secret+=(--build-arg "HTTPS_PROXY=$HTTPS_PROXY" --build-arg "https_proxy=$HTTPS_PROXY")
-docker build "${secret[@]}" -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
+# ${a[@]+"${a[@]}"}: an empty array is "unbound" under set -u in bash 3.2, a Mac's own bash.
+docker build ${secret[@]+"${secret[@]}"} -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
 size=$(docker image inspect "$AIO" --format '{{.Size}}')
 echo "all-in-one size: $((size / 1000000)) MB"
 docker volume create "$VOL" >/dev/null
