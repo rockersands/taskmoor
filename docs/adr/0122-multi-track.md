@@ -475,8 +475,9 @@ have moved themselves.
 #### Where it shows
 
 - **Release pages (CORE-016, ADR-061):** `GET /releases/:id` and `GET /tracks/:id/releases` gain
-  `crossTrack: { id, name, endRule, date } | null` from a join on the unique `release_id`. By the
-  rule above, anyone who sees the release sees this. The release page shows a fact row with a link,
+  `crossTrack: { id, name, endRule, date } | null` from a join on the unique `release_id`, a field
+  added to the release's schema in the API document and its golden file. By the rule above, anyone
+  who sees the release sees this. The release page shows a fact row with a link,
   a new warning `cross_track_out_of_step` with **Align**, and for the track's administrators
   **Add to a release across tracks** and **Remove**. The hub's rows carry a small label, and the
   hub links to the list. The overview's own numbers do not change.
