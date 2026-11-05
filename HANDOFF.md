@@ -49,8 +49,16 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   its first real touch run found a real bug, fixed) and T-163b (layouts for a local-mode track's own
   administrators). The last gate had 7,436 tests and 244 e2e. Finger drags were only run in
   Chromium's simulated touch, not yet on a real phone.
-- **In progress:** T-143 and T-144, in `G:/tm-t143` on `wave7/t143-glass-every-page`, from
-  `7d459c5`. They touch every page, so they run alone.
+- **The glass pass is on `main` (`3e59102`, 2026-11-05):** T-143 and T-144, glass and one design on
+  every route, with shared styles (`shared.css`) and a guard (`styles/design.test.ts`). Its gate found
+  that a drag start moved the calendar and backlog under the finger (fixed). Gate: 7,714 tests, 244
+  e2e. It has only been seen as stories and signed-out pages; T-220 sees it signed in.
+- **In progress, a merge wave (both from `3e59102`, merged together when both are done):** the route
+  sweep and phone pass (T-220, T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) in
+  `G:/tm-t164` on `wave8/t164-phone-accessibility`; Multi-track's T-089c and T-089g in `G:/tm-plans`
+  on `wave8/multi-track-stages`.
+- **Chrome's window minimized:** the tab has a zero-size viewport, draws no frames and screenshots
+  time out, while scripts still run. That looks like a frozen page and is not one.
 - **The demo** runs from `G:/tm-demo` at `http://localhost:8080`, with the real Backend, Front and
   Flutter tracks and their tickets, its database in `.cache/pg-test/demo` there. Its one-time links
   are in `.cache/demo.log`: never put them in chat.
@@ -82,10 +90,9 @@ corepack pnpm install
 ### Next, in order
 
 1. Nothing waits to merge.
-2. Each reviewed first: the glass pass and the
-   sweep of every route (T-143, T-144, in progress), the phone and accessibility pass
-   (T-164, T-212), Multi-track's remaining stages (T-089c to T-089g, and T-089j once the user answers),
-   T-013a, T-195, T-203, T-208 to T-211. Questions for the user are the rows marked You in `tickets.md`; T-089j was
+2. Each reviewed first: the wave above, then Multi-track's T-089d, T-089e, T-089f (and T-089j once
+   the user answers), T-013a, T-195, T-203, T-208 to T-211, T-223 to T-225, T-227, T-230, T-232 to
+   T-234. Questions for the user are the rows marked You in `tickets.md`; T-089j was
    explained to them on 2026-11-04 (unbuilt capacity parts; whether hidden work counts toward
    "elsewhere"; notes in the history after erasure; whole-week counting), awaiting their answer.
 3. The fuzz stages, on the final code (T-019; the user's decision).
