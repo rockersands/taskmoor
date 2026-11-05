@@ -97,10 +97,10 @@ describe('free moves a saved draft gets (WF-008)', () => {
       transitions: free.transitions.map((t) => (t.id === 1 ? { ...t, layout: ['assignee'] } : t)),
     };
     expect(statusesWantingFreeMove(free, ruledDraft)).toEqual([]);
-    const ruledBase = {
+    const ruledBase: WorkflowDefinition = {
       ...free,
-      transitions: [{ ...(free.transitions[0] as never), guards: { type: 'only-assignee' } }],
+      transitions: [{ id: 1, name: 'New', from: 'any', to: 1, guards: { type: 'only-assignee' } }],
     };
-    expect(statusesWantingFreeMove(ruledBase as never, added)).toEqual([]);
+    expect(statusesWantingFreeMove(ruledBase, added)).toEqual([]);
   });
 });
