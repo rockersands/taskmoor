@@ -136,11 +136,11 @@ reported, and the coordinator checked that it was pushed.
 | T-089i | Dependencies: build PLN-013 (other link types, flags within one sprint) in 1.0, and keep outside blockers a count only? | You | The user put all of PLN-001 to PLN-009 in 1.0; T-089 narrowed PLN-006 to blocking links and moved the rest to PLN-013. Recommendation: build PLN-013 with the program board (T-089d); keep outside blockers a count, since naming the visible ones would set the hidden ones apart |
 | T-089b | Multi-track: teams and capacity | Done | On `main` (ADR-122 stage 3, PLN-005, PLN-009, migration 0102): capacity per team and person by period in points or hours, over-capacity flagged with a label; hidden work only counted, never named |
 | T-089j | Multi-track capacity: the parts of PLN-005 and PLN-009 not built (velocity from history, days and percentages, allocations to outcomes, bulk fill and CSV import), and two questions in ADR-122 (hidden work counted in "elsewhere"; notes kept in the event payload after erasure) | You | Need a requirement ID and a stage if wanted in 1.0 |
-| T-089c | Multi-track: releases across tracks | To do | In 1.0 |
+| T-089c | Multi-track: releases across tracks | In progress | In 1.0 |
 | T-089d | Multi-track: program board with live editing | To do | In 1.0 |
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
 | T-089f | Multi-track: auto-scheduler | To do | In 1.0 |
-| T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | To do | In 1.0 |
+| T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | In progress | In 1.0 |
 | T-089h | A "Your tracks" section at the top of Home | Done | On `main`; shows tracks the person can see, as the track list cannot yet say which they belong to |
 | T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 
@@ -242,7 +242,7 @@ reported, and the coordinator checked that it was pushed.
 | T-163 | Layout editor page | Done | On `main` (ADR-114, UI-T15): fields dragged or moved by keys into tabs and sections, a live preview per ticket type and operation, the server the judge |
 | T-163a | Open the layout editor to a local-mode track's own administrators? | Done | Decided by the user on 2026-11-04: yes (decisions.csv) |
 | T-163b | The layout editor for a local-mode track's own administrators | Done | On `main` (ADR-114): the server refuses other tracks and shared sets, with tests in `layouts.test.ts` |
-| T-164 | Phone and accessibility pass | To do | UI-T09 |
+| T-164 | Phone and accessibility pass | In progress | UI-T09 |
 | T-165 | Update the e2e specs the rework broke | Done | The e2e specs pass: 239 in the gate of 2026-11-04 |
 
 ## Waiting on the user, for later
@@ -271,7 +271,7 @@ reported, and the coordinator checked that it was pushed.
 | T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | To do | T-207 review (low): an empty In Review made closed-stage gets no close reason and no Closed time |
 | T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | To do | T-207 review (low): only the web editor's Add a status adds the free move; a warning in the draft's answer may be enough |
 | T-211 | `pnpm demo` keeps an older built frontend | To do | T-207 review (low): it rebuilds only when `apps/web/dist/index.html` is missing, so a checkout can serve an old editor |
-| T-212 | Sweep for buttons whose spoken name leaves out the words they show (WCAG 2.5.3) | To do | Found on the inbox; axe only reports it where a test runs it. Part of T-164 |
+| T-212 | Sweep for buttons whose spoken name leaves out the words they show (WCAG 2.5.3) | In progress | Found on the inbox; axe only reports it where a test runs it. Part of T-164 |
 | T-213 | Sticky cells of the timeline and the capacity table: stay opaque inside glass, or the whole table on an opaque panel? | You | T-143 survey; built as opaque cells. The backlog's selection bar is sticky too and is floating glass |
 | T-214 | A not-found page, and the words "This area is under construction" on signed-out Search and on Home while the session is checked | You | T-143 survey: an unknown address shows Home. Signed-out `/tracks` says "No tracks yet" |
 | T-215 | The release page and a track's templates sit outside the track's tab bar, and List, Calendar, Timeline and Releases have a "Track summary" link that repeats a tab | You | T-143 survey; kept as they were, the links now in the page header |
@@ -279,18 +279,18 @@ reported, and the coordinator checked that it was pushed.
 | T-217 | The ticket page's purpose line, and the waves on stand-alone pages over the Soft canvas: keep or drop? | You | T-143 survey; no line on the ticket page (`purpose.ticket` is unused), waves kept |
 | T-218 | On a phone, a long paragraph about Alt+arrow keys comes before the work on Board, Backlog, Calendar and Timeline | You | T-143 review; hiding it on touch changes what the page says |
 | T-219 | Account and the Administration pages lost their narrower widths (48 to 60 rem) and now use the page width (76 rem): keep? | You | T-143 sweep |
-| T-220 | Look at every route signed in, in Chrome, in both skins and at both widths (UI-T22) | To do | The sweep saw stories and signed-out pages. Includes a real `.create-dialog`, a pop-over inside a dialog on a phone, inline fields, and rim overflow on `.ai-breakdown` and `.attachment-preview` |
-| T-221 | Phone looks left by the glass pass: List's Summary breaks mid-word, Backlog's selection boxes are 44 px native squares | To do | T-143 review (low); part of T-164. The box needs a label wrapper to keep the target |
-| T-222 | Small leftovers of the glass pass | To do | T-143: `.board-choice` is not ModalDialog; `WidgetView` tables have no quiet head; `plans/*` and dashboards use `.report-empty` for loading; the workflow editor's way back is a text link where others use a pill; "Yours" and "Shared with you" look larger than card titles; `McpPage` has no forbidden state; `noX` sentences the guard does not match (`layouts.noTabs`, `tickets.create.noTracks`, `admin.network.noGroups`) |
+| T-220 | Look at every route signed in, in Chrome, in both skins and at both widths (UI-T22) | In progress | The sweep saw stories and signed-out pages. Includes a real `.create-dialog`, a pop-over inside a dialog on a phone, inline fields, and rim overflow on `.ai-breakdown` and `.attachment-preview` |
+| T-221 | Phone looks left by the glass pass: List's Summary breaks mid-word, Backlog's selection boxes are 44 px native squares | In progress | T-143 review (low); part of T-164. The box needs a label wrapper to keep the target |
+| T-222 | Small leftovers of the glass pass | In progress | T-143: `.board-choice` is not ModalDialog; `WidgetView` tables have no quiet head; `plans/*` and dashboards use `.report-empty` for loading; the workflow editor's way back is a text link where others use a pill; "Yours" and "Shared with you" look larger than card titles; `McpPage` has no forbidden state; `noX` sentences the guard does not match (`layouts.noTabs`, `tickets.create.noTracks`, `admin.network.noGroups`) |
 | T-223 | Rule set panel: rules with no row are compared against fields that refresh while the panel is open | To do | Wave 6 review (low): `ConfigurationSetsPage.tsx:644` |
 | T-224 | Someone whose only track to run is archived is told they have no access, not that the track is archived | To do | Wave 6 review (low): `trackScope.tsx`; session `managesTracks` is false |
 | T-225 | Keyboard focus falls to the page after "Use this set for KEY" | To do | Wave 6 review (low): the button that had focus goes away |
-| T-226 | "Back to managing KEY" and the field rule links are under 44 px on a phone | To do | Wave 6 review (low): inline links in `.page-note`; part of T-164 |
+| T-226 | "Back to managing KEY" and the field rule links are under 44 px on a phone | In progress | Wave 6 review (low): inline links in `.page-note`; part of T-164 |
 | T-227 | A person who runs tracks and is no administrator sees a breadcrumb to a Setup page that refuses them | To do | Wave 6 review (low): `adminPlace`, `AdminBreadcrumb` |
-| T-228 | Calendar grip: the menu stays open during a drag, Alt+Arrow in the menu moves the ticket, a flick starting on a grip does not scroll | To do | Wave 6 review (low): the flick lands as a move, so check on a real phone first; part of T-164 |
-| T-229 | Calendar: the keyboard does not always stay with the entry on its new day, as the manual says it does | To do | Wave 6 review (low): the target day can be hidden on a phone |
+| T-228 | Calendar grip: the menu stays open during a drag, Alt+Arrow in the menu moves the ticket, a flick starting on a grip does not scroll | In progress | Wave 6 review (low): the flick lands as a move, so check on a real phone first; part of T-164 |
+| T-229 | Calendar: the keyboard does not always stay with the entry on its new day, as the manual says it does | In progress | Wave 6 review (low): the target day can be hidden on a phone |
 | T-230 | Board: another person's change that arrives while a card is held stays unseen when the drag is cancelled | To do | Wave 6 review (low): `BoardPage.tsx:361`; no reload after a cancel or a drop on its own place |
-| T-231 | No automated check of the 44 px grips on touch | To do | Wave 6 review (low): the rule was once hidden behind a width query with every test green. `test/touch.ts` from T-143 can hold it |
+| T-231 | No automated check of the 44 px grips on touch | In progress | Wave 6 review (low): the rule was once hidden behind a width query with every test green. `test/touch.ts` from T-143 can hold it |
 | T-232 | Checklist notices: the batch can wait on an older notification of the ticket, and a refusal shows above where the person is looking | To do | Wave 6 review (low): NTF-015 (2), `deliver.ts:311`; `TrackPeoplePage.tsx:186` against `:404` |
 | T-233 | Tests that prove less than they say | To do | Wave 6 and T-207 reviews (low): the checklist notices' phone test runs in jsdom, two closing conditions have no test, the sample workflow's `fits` and the null-completed branch of the free transition are untested, the eval golden's close dates moved |
 | T-234 | Free-moving edge cases after a close reason's deletion or an old draft | To do | T-207 review (low): a new Completed reason after Completed was replaced; a default workflow's open draft from the strict seed stays strict in the editor |
