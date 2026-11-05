@@ -53,7 +53,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`), the offline Builder page that carries it (`apps/web/dist-builder/index.html`, ADR-088) and the bundled server (`apps/server/dist/server.mjs`), all stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/update.sh [version] [--dry-run]` | The newest verified release, then `upgrade.sh` |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
-| `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (the host's architecture, then the other of amd64 and arm64 under emulation; last run on a Mac: `docs/ops/image-and-kits-mac.md`) |
+| `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
 | `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `upgrade [--dry-run]`, `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`, `report-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
 | `pnpm builder --project <file>` | The Builder CLI (ADR-031): backend kit, frontend kit zip and single file from a project file (or `--backend-url` and `--frontend-url`); `--seed` for byte-identical rebuilds |

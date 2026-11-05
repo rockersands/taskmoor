@@ -49,6 +49,10 @@ Every release, on every channel but preview:
   `update.sh`, `upgrade.sh` or a Compose file: an installed kit keeps its own until it is
   replaced.
 
+Before a release, the image and kit scripts in `tools/image` and the air-gap test
+(`tools/airgap/test-offline.sh`) check what it ships; `image-and-kits-mac.md` records their
+last run, on a Mac, and how to run them again.
+
 ## Signing
 
 Releases are signed with the release key (ECDSA P-256, cosign blob format). The public key is
