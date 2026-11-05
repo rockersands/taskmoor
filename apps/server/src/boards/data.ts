@@ -8,6 +8,7 @@ import { searchPerson, searchScope } from '../routes/search';
 import { bindPlan } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
 import { compileCond } from '../search/compile';
+import { SEES_EVERY } from '../search/cross-track';
 import type { Cond } from '../search/model';
 import { functionNames, loginTimes, readOnly } from '../search/run';
 import { expandSavedSearches } from '../search/saved';
@@ -132,6 +133,7 @@ export async function workspaceScope(
       timeZone: null,
       sessionId: null,
       allowedTracks: async () => 'all' as const,
+      crossTrackSight: SEES_EVERY,
     },
   };
 }
@@ -188,6 +190,7 @@ export async function bindCondition(
       currentUserId: person.currentUserId,
       filter: scope.filter.sql,
       allowedTracks: person.allowedTracks,
+      crossTrackSight: person.crossTrackSight,
       boardId,
     },
   );

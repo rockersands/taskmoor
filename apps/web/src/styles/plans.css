@@ -383,6 +383,59 @@
   }
 }
 
+/* Copying, linking and downloading a plan (T-089g; PLN-014). */
+.plan-page .page-header-actions {
+  align-items: flex-start;
+}
+
+.plan-share-status {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.plan-share-status .board-hint {
+  margin: 0;
+}
+
+.plan-share-status input {
+  width: 100%;
+}
+
+.plan-view-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+
+.plan-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+/* The menu opens from the button's start, so it stays on the page wherever the tools wrap. */
+.plan-download-menu .user-menu-popup {
+  inset-inline: 0 auto;
+  min-width: 10rem;
+}
+
+.plan-download-note {
+  margin: 0;
+}
+
+.plan-duplicate-dialog h2 {
+  margin-block-start: 0;
+}
+
+@media (max-width: 767px) {
+  .plan-download {
+    flex-basis: 100%;
+  }
+}
+
 @media (pointer: coarse) {
   .plan-total a {
     display: inline-flex;
@@ -402,6 +455,15 @@
   .capacity-count {
     display: inline-flex;
     align-items: center;
+  }
+
+  .plan-page .page-header-actions button,
+  .plan-download button,
+  .plan-share-status input,
+  .plan-duplicate-dialog input,
+  .plan-duplicate-dialog button,
+  .plan-duplicate-dialog a {
+    min-height: var(--hit-target-touch);
   }
 
   .plan-filters select,

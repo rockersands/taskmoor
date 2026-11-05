@@ -92,6 +92,16 @@ export const NotFound: Story = {
   },
 };
 
+/** A finger reaches the release across tracks a release is in (ADR-033). */
+export const LinkedOnATouchScreen: Story = {
+  args: { client: fakeReleaseClient({ linked: true }) },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: /Spring launch/ });
+    await expect(tooSmallForAFinger(canvasElement, ['.release-cross-track'])).toEqual([]);
+  },
+};
+
 /** A finger reaches each release and the fold-out of the archived ones (ADR-033). */
 export const OnATouchScreen: Story = {
   beforeEach: asOnATouchScreen,

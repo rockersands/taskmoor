@@ -222,7 +222,7 @@ export function* records(buf: Buffer, delimiter: string): Generator<CsvRecord> {
 
 /** A cell as written, without the formula guard an export added. */
 export function cellText(raw: string): string {
-  return /^'[=+\-@\t\r]/.test(raw) ? raw.slice(1) : raw;
+  return /^'[=+\-@\t\r＝＋－＠]/.test(raw) ? raw.slice(1) : raw;
 }
 
 // --- The source -------------------------------------------------------------------------------

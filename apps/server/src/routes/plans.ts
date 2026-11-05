@@ -7,6 +7,9 @@ import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import {
   createBody,
+  duplicateBody,
+  EXPORT_SORTS,
+  exportQuery,
   filterQuery,
   idParam,
   listQuery,
@@ -38,6 +41,7 @@ import {
   writeShares,
 } from '../sharing/shares';
 import { searchRefusal } from './search';
+import { sendTicketExport } from './search-export';
 
 /**
  * Multi-track plans (T-088; PLN-001, PLN-012; ADR-122).
@@ -54,6 +58,11 @@ import { searchRefusal } from './search';
  * - `GET /api/v1/plans/:id` takes the views' filters and answers the plan's `query` with them,
  *   the search a List runs; `GET /api/v1/plans/:id/choices` is what the filters offer: the
  *   plan's tracks, ticket types and up to 50 assignees, counted in one statement.
+ * - `POST /api/v1/plans/:id/duplicate` copies a plan for anyone who sees it (PLN-014): the sources
+ *   they may see, the settings and the teams; never hidden sources (only counted), shares or
+ *   capacity. The copy is private to them and has no tie to the original.
+ * - `GET /api/v1/plans/:id/export` is the List's file (PLN-014): every ticket of the plan the person
+ *   sees, through the search export's stream.
  *
  * Every view reads the plan's tickets as the viewer (`routes/plan-views.ts`). Each write emits
  * one `plan.*` event in its transaction.
@@ -79,6 +88,15 @@ export const periodOf = (row: Pick<Row, 'period_kind' | 'period_weeks' | 'period
   row.period_kind === 'month'
     ? ({ kind: 'month' } as const)
     : ({ kind: 'weeks', weeks: row.period_weeks, anchor: row.period_anchor } as const);
+
+/** A plan's name as a file's: safe characters only, as release notes do; never empty. */
+export const planFile = (name: string) => {
+  const safe = name
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '')
+    .slice(0, 80);
+  return `${safe || 'plan'}-list`;
+};
 
 /** How many assignees the filters offer; the rest are reached by a search. */
 const CHOICE_PEOPLE = 50;
@@ -468,6 +486,110 @@ export function registerPlanRoutes(
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
     return answer(request, reply, row, f.data);
+  });
+
+  // A copy for whoever sees the plan (PLN-014). What they may not see stays behind, only counted.
+  app.post('/api/v1/plans/:id/duplicate', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return notFound(reply);
+    const parsed = duplicateBody.safeParse(request.body ?? {});
+    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
+    const row = await visible(request, p.data.id);
+    if (!row) return notFound(reply);
+    const ws = request.workspaceId;
+    // What they see of the sources is decided first: permissions read on their own connections.
+    const scope = await planScope(db, options.catalogs, request);
+    const seen = await viewerSources(db, request, scope, await sourceRows(db, [row.id]));
+    const offered: SourceInput[] = seen.sources.map((s) =>
+      s.kind === 'track'
+        ? { kind: 'track', trackId: s.id }
+        : { kind: 'savedSearch', savedSearchId: s.id },
+    );
+    // A plan copied never holds what its maker could not add by hand.
+    const refused = await sourceErrors(request, offered);
+    const allowed = new Set(
+      offered
+        .filter((_, i) => !Object.keys(refused).some((k) => k.startsWith(`sources.${i}.`)))
+        .map(sourceKey),
+    );
+    const made = await db.transaction().execute(async (trx) => {
+      const held = await trx
+        .selectFrom('plan')
+        .select(['description', 'capacity_unit', 'period_kind', 'period_weeks', 'period_anchor'])
+        .where('id', '=', row.id)
+        .forShare()
+        .executeTakeFirst();
+      if (!held) return null;
+      // Read again under the lock: one added meanwhile was not decided on, so it stays behind.
+      const current = await sourceRows(trx, [row.id]);
+      const sources = current.map(inputOf).filter((s) => allowed.has(sourceKey(s)));
+      const teams = (await planTeams(trx, row.id)).map((t) => t.id);
+      const copy = await trx
+        .insertInto('plan')
+        .values({
+          workspace_id: ws,
+          owner_id: user.id,
+          name: parsed.data.name,
+          description: held.description,
+          capacity_unit: held.capacity_unit,
+          period_kind: held.period_kind,
+          period_weeks: held.period_weeks,
+          period_anchor: held.period_anchor,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await writeSources(trx, ws, copy.id, sources);
+      await writeTeams(trx, ws, copy.id, teams);
+      const hiddenSources = current.length - sources.length;
+      await emit(trx, by(request), {
+        type: 'plan.duplicated',
+        subjectId: copy.id,
+        payload: {
+          name: parsed.data.name,
+          from: row.id,
+          sources: sources.map(sourceKey),
+          teams,
+          hiddenSources,
+        },
+      });
+      return { id: copy.id, hiddenSources };
+    });
+    if (!made) return notFound(reply);
+    const answered = await answer(request, reply, await fresh(made.id, ws));
+    return reply.code(201).send({ ...answered, left: { hiddenSources: made.hiddenSources } });
+  });
+
+  // The List's file (PLN-014): composed here, as a plan's query can pass what an address holds.
+  app.get('/api/v1/plans/:id/export', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return notFound(reply);
+    const q = exportQuery.safeParse(request.query ?? {});
+    if (!q.success) return invalidFields(reply, shapeErrors(q.error));
+    const { format, columns, sort, ...filters } = q.data;
+    const row = await visible(request, p.data.id);
+    if (!row) return notFound(reply);
+    let query: string | null;
+    try {
+      ({ query } = await planTickets(
+        db,
+        options.catalogs,
+        request,
+        await sourceRows(db, [row.id]),
+        filters,
+      ));
+    } catch (error) {
+      return searchRefusal(reply, error, timeoutMs);
+    }
+    return sendTicketExport(db, options.catalogs, request, reply, {
+      q: query === null ? null : `${query} ORDER BY ${EXPORT_SORTS[sort]}`,
+      format,
+      columns,
+      file: planFile(row.name),
+      timeoutMs,
+    });
   });
 
   // What the filters offer: the plan's tracks, types and most frequent assignees (PLN-012).

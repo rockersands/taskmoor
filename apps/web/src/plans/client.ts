@@ -1,5 +1,11 @@
-import { ApiError, api } from '../api/client';
+import { API_BASE, ApiError, api } from '../api/client';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
+import type {
+  CrossTrackEndRule,
+  CrossTrackStateName,
+  HiddenWork,
+  Progress,
+} from '../releases/crossTrackClient';
 import {
   type Timeline,
   type TimelineClient,
@@ -7,6 +13,7 @@ import {
   timelineClient,
 } from '../timeline/client';
 import type { BlockersElsewhere } from '../timeline/dependencies';
+import type { ReleaseMarker } from '../timeline/markers';
 
 /** A source of a plan as one viewer sees it (ADR-122); those hidden from them are only counted. */
 export type PlanSource =
@@ -199,7 +206,37 @@ export interface PlanCalendar {
   tickets: (CalendarTicket & { trackId: number })[];
   tracks: PlanTrack[];
   sprints: { id: number; name: string; state: string; start: string; end: string }[];
-  releases: { id: number; name: string; date: string; shipped: boolean }[];
+  releases: ReleaseMarker[];
+  truncated: boolean;
+}
+
+/** A row of a plan's Releases tab (PLN-007), a track's release or a linked one. */
+export interface PlanRelease {
+  id: number;
+  name: string;
+  /** A linked release says its track; a track's own are already under its name. */
+  track?: { id: number; key: string; name: string };
+  releaseDate: string | null;
+  shipped: boolean;
+  archived: boolean;
+  overdue: boolean;
+  outOfStep?: boolean;
+  progress: Progress;
+}
+
+/** `GET /api/v1/plans/:id/releases`: those of a release across tracks first, then by track. */
+export interface PlanReleases {
+  crossTrack: {
+    id: number;
+    name: string;
+    endRule: CrossTrackEndRule;
+    date: string | null;
+    state: CrossTrackStateName;
+    progress: Progress;
+    hidden: HiddenWork;
+    releases: PlanRelease[];
+  }[];
+  tracks: { track: { id: number; key: string; name: string }; releases: PlanRelease[] }[];
   truncated: boolean;
 }
 
@@ -231,16 +268,41 @@ export interface SourceOptions {
   savedSearches: { id: number; name: string }[];
 }
 
+/** What a copy answers (PLN-014): the copy, and how many sources stayed behind. */
+export type PlanDuplicated =
+  | { ok: true; plan: Plan; left: { hiddenSources: number } }
+  | { ok: false; error: string; fields: Record<string, string> };
+
+/** The List's file: its columns and its order (PLN-014). */
+export interface PlanListFile {
+  filters: PlanFilters;
+  columns: readonly string[];
+  sort: 'created' | 'updated' | 'due' | 'priority';
+}
+
 export interface PlanClient {
   list(): Promise<PlanRow[]>;
   get(id: number, filters?: PlanFilters): Promise<Plan>;
   create(input: PlanInput): Promise<PlanSaved>;
   update(id: number, input: Partial<PlanInput> & { version: number }): Promise<PlanSaved>;
   remove(id: number): Promise<void>;
+  /** A private copy for the person, of what they may see of the plan (PLN-014). */
+  duplicate(id: number, name: string): Promise<PlanDuplicated>;
+  /** The address of the List's file: every ticket of the plan the person sees (PLN-014). */
+  exportHref(id: number, file: PlanListFile): string;
   choices(id: number): Promise<PlanChoices>;
+  /** The Releases tab; of the filters only the track applies. */
+  releases(id: number, track?: string): Promise<PlanReleases>;
   summary(id: number, filters: PlanFilters): Promise<PlanSummary>;
-  timeline(id: number, filters: PlanFilters): Promise<PlanTimeline>;
-  calendar(id: number, filters: PlanFilters, from: string, to: string): Promise<PlanCalendar>;
+  /** With `exporting`, read fresh for a file: the same answer, counted as a bulk export. */
+  timeline(id: number, filters: PlanFilters, exporting?: boolean): Promise<PlanTimeline>;
+  calendar(
+    id: number,
+    filters: PlanFilters,
+    from: string,
+    to: string,
+    exporting?: boolean,
+  ): Promise<PlanCalendar>;
   /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
   capacity(id: number, filters: PlanFilters, from: string, periods: number): Promise<PlanCapacity>;
   /**
@@ -297,11 +359,42 @@ export const planClient: PlanClient = {
   remove: async (id) => {
     await api(`/plans/${id}`, { method: 'DELETE' });
   },
+  duplicate: async (id, name) => {
+    try {
+      const answer = await api<{ plan: Plan; left: { hiddenSources: number } }>(
+        `/plans/${id}/duplicate`,
+        { method: 'POST', body: { name } },
+      );
+      return { ok: true, plan: answer.plan, left: answer.left };
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      const body = error.body as { fields?: Record<string, string> } | null;
+      return { ok: false, error: error.code ?? String(error.status), fields: body?.fields ?? {} };
+    }
+  },
+  exportHref: (id, { filters, columns, sort }) => {
+    const params = filterParams(filters);
+    params.set('format', 'csv');
+    params.set('columns', ['key', ...columns].join(','));
+    params.set('sort', sort);
+    return `${API_BASE}/plans/${id}/export?${params}`;
+  },
   choices: (id) => api<PlanChoices>(`/plans/${id}/choices`),
+  releases: (id, track) =>
+    api<PlanReleases>(`/plans/${id}/releases${track ? `?track=${encodeURIComponent(track)}` : ''}`),
   summary: (id, filters) => api<PlanSummary>(withFilters(`/plans/${id}/summary`, filters)),
-  timeline: (id, filters) => api<PlanTimeline>(withFilters(`/plans/${id}/timeline`, filters)),
-  calendar: (id, filters, from, to) =>
-    api<PlanCalendar>(withFilters(`/plans/${id}/calendar`, filters, { from, to })),
+  timeline: (id, filters, exporting) =>
+    api<PlanTimeline>(
+      withFilters(`/plans/${id}/timeline`, filters, exporting ? { export: 'true' } : {}),
+    ),
+  calendar: (id, filters, from, to, exporting) =>
+    api<PlanCalendar>(
+      withFilters(`/plans/${id}/calendar`, filters, {
+        from,
+        to,
+        ...(exporting ? { export: 'true' } : {}),
+      }),
+    ),
   capacity: (id, filters, from, periods) =>
     api<PlanCapacity>(
       withFilters(`/plans/${id}/capacity`, filters, { from, periods: String(periods) }),

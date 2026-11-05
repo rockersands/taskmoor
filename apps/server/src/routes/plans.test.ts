@@ -1,10 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { AUDITED_EVENTS } from '../audit/subscriber';
 import { SESSION_COOKIE } from '../auth';
 
 // Made for this run: no password is written in the repository.
@@ -779,5 +781,413 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
         .execute();
     }
     await get('bo', `/api/v1/plans/${plan.id}`, 404);
+  });
+
+  /** A plan of the administrator's over three tracks and a saved search, shared with everyone. */
+  async function shared(name: string, extra: Record<string, unknown> = {}) {
+    return (
+      await make('admin', {
+        name,
+        description: 'Copied words',
+        sources: [
+          { kind: 'track', trackId: tracks.PLA },
+          { kind: 'track', trackId: tracks.PLC },
+          { kind: 'savedSearch', savedSearchId: saved },
+        ],
+        shares: [{ scope: 'any_user' }],
+        ...extra,
+      })
+    ).plan as { id: number; version: number };
+  }
+  const duplicate = (who: string, id: number, name: string, code = 201) =>
+    call(who, { method: 'POST', url: `/api/v1/plans/${id}/duplicate`, payload: { name } }, code);
+  const exported = (who: string, id: number, query: Record<string, string> = {}) =>
+    as(who, { method: 'GET', url: `/api/v1/plans/${id}/export?${new URLSearchParams(query)}` });
+  /** A simple file's rows, its cells split at commas and quotes taken off. */
+  const rowsOf = (body: string) =>
+    body
+      .trimEnd()
+      .split('\r\n')
+      .map((line) => line.split(',').map((cell) => cell.replace(/^"|"$/g, '')));
+  /** The keys a search finds as that person, each once. */
+  const searchKeys = async (who: string, q: string) => {
+    const found: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: { tickets: { key: string }[]; next: string | null } = await call(who, {
+        method: 'POST',
+        url: '/api/v1/search',
+        payload: { q, limit: 100, ...(cursor ? { cursor } : {}) },
+      });
+      found.push(...page.tickets.map((t) => t.key));
+      cursor = page.next ?? null;
+    } while (cursor);
+    return found;
+  };
+  /** How many bulk exports count against that person, in every window. */
+  const bulkExports = async (who: string) => {
+    const rows = await database.db
+      .selectFrom('security_counter')
+      .select('count')
+      .where('rule', '=', 'bulk_exports')
+      .where('key', '=', `user:${users[who]?.id}`)
+      .execute();
+    return rows.reduce((sum, r) => sum + r.count, 0);
+  };
+
+  it('[PLN-014] a copy holds what its maker sees, with the settings and teams, and is private to them', async () => {
+    const team = (
+      await call(
+        'admin',
+        { method: 'POST', url: '/api/v1/teams', payload: { name: 'Copied team' } },
+        201,
+      )
+    ).team.id as number;
+    const original = await shared('Spring original');
+    await patch('admin', original.id, {
+      teams: [team],
+      capacityUnit: 'hours',
+      period: { kind: 'weeks', weeks: 3, anchor: '2027-01-04' },
+    });
+    await call('admin', {
+      method: 'PUT',
+      url: `/api/v1/plans/${original.id}/capacity`,
+      payload: { entries: [{ teamId: team, period: null, amount: 40, note: 'Parental leave' }] },
+    });
+    const before = await get('admin', `/api/v1/plans/${original.id}`);
+
+    const res = await duplicate('bo', original.id, 'Bo copy');
+    expect(res.left).toEqual({ hiddenSources: 1 });
+    expect(res.plan).toMatchObject({
+      name: 'Bo copy',
+      description: 'Copied words',
+      owner: { id: users.bo?.id, name: 'bo' },
+      editable: true,
+      shares: [],
+      hiddenSources: 0,
+      version: 1,
+      capacityUnit: 'hours',
+      period: { kind: 'weeks', weeks: 3, anchor: '2027-01-04' },
+      teams: [{ id: team, name: 'Copied team' }],
+      sources: [
+        { kind: 'track', id: tracks.PLA, key: 'PLA', name: 'Apps', state: 'visible' },
+        { kind: 'savedSearch', id: saved, name: 'Billing due', state: 'visible' },
+      ],
+    });
+    expect(res.plan.id).not.toBe(original.id);
+    // Hidden sources are only counted: no name, key or id of the track Bo may not see.
+    const said = JSON.stringify(res);
+    expect(said).not.toContain('PLC');
+    expect(said).not.toContain('Core');
+
+    // Capacity stays behind: its amounts and notes do not reach a second plan.
+    const capacity = await database.db
+      .selectFrom('plan_capacity')
+      .select('id')
+      .where('plan_id', '=', res.plan.id)
+      .execute();
+    expect(capacity).toEqual([]);
+
+    // Private to its maker, and the event says what it took and how many it left, a number.
+    await get('ana', `/api/v1/plans/${res.plan.id}`, 404);
+    const event = (await events('plan.duplicated')).at(-1);
+    expect(event).toEqual({
+      subject: String(res.plan.id),
+      payload: {
+        name: 'Bo copy',
+        from: original.id,
+        sources: [`track:${tracks.PLA}`, `saved_search:${saved}`],
+        teams: [team],
+        hiddenSources: 1,
+      },
+    });
+    expect(AUDITED_EVENTS).toContain('plan.duplicated');
+
+    // The original is as it was, for its owner and for its viewers.
+    expect(await get('admin', `/api/v1/plans/${original.id}`)).toEqual(before);
+    expect((await get('bo', '/api/v1/plans?filter=mine')).plans).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: res.plan.id })]),
+    );
+    expect(
+      (await get('admin', '/api/v1/plans?filter=mine')).plans.map((p: { id: number }) => p.id),
+    ).not.toContain(res.plan.id);
+
+    // A later change of the original does not reach the copy.
+    await patch('admin', original.id, { description: 'Changed afterwards' });
+    const copy = await get('bo', `/api/v1/plans/${res.plan.id}`);
+    expect(copy.plan.description).toBe('Copied words');
+
+    // Someone who sees neither hidden track gets less again; the administrator gets it all.
+    const cy = await duplicate('cy', original.id, 'Cy copy');
+    expect(cy.left).toEqual({ hiddenSources: 2 });
+    // Its saved search names a track Cy may not search: it comes, flagged as on the original.
+    expect(cy.plan.sources).toEqual([
+      { kind: 'savedSearch', id: saved, name: 'Billing due', state: 'broken' },
+    ]);
+    const all = await duplicate('admin', original.id, 'Everything');
+    expect(all.left).toEqual({ hiddenSources: 0 });
+    expect(all.plan.sources).toHaveLength(3);
+    expect(all.plan.shares).toEqual([]);
+  });
+
+  it('[PLN-014] [PLN-012] copies a plan of 500 sources and 50 teams within a second', async () => {
+    const ana = users.ana?.id as number;
+    const plan = (await make('ana', { name: 'At its limits' })).plan as { id: number };
+    const searches = await database.db
+      .insertInto('saved_search')
+      .values(
+        Array.from({ length: 500 }, (_, i) => ({
+          workspace_id: 1,
+          owner_id: ana,
+          name: `At limits ${i}`,
+          query: 'track = PLA',
+        })),
+      )
+      .returning('id')
+      .execute();
+    await database.db
+      .insertInto('plan_source')
+      .values(
+        searches.map((s, position) => ({
+          workspace_id: 1,
+          plan_id: plan.id,
+          kind: 'saved_search' as const,
+          saved_search_id: s.id,
+          track_id: null,
+          position,
+        })),
+      )
+      .execute();
+    const teams = await database.db
+      .insertInto('team')
+      .values(
+        Array.from({ length: 50 }, (_, i) => ({
+          workspace_id: 1,
+          name: `Limit ${i}`,
+          lead_id: null,
+        })),
+      )
+      .returning('id')
+      .execute();
+    await database.db
+      .insertInto('plan_team')
+      .values(
+        teams.map((x, position) => ({
+          workspace_id: 1,
+          plan_id: plan.id,
+          team_id: x.id,
+          position,
+        })),
+      )
+      .execute();
+    const started = performance.now();
+    const copy = await duplicate('ana', plan.id, 'Limits, copied');
+    const ms = performance.now() - started;
+    expect(copy.plan.sources).toHaveLength(500);
+    expect(copy.plan.teams).toHaveLength(50);
+    expect(copy.left).toEqual({ hiddenSources: 0 });
+    process.stdout.write(`PLN-014 duplicate of 500 sources and 50 teams: ${Math.round(ms)} ms\n`);
+    expectWithinBudget(ms, 1000, 'plan duplicate, 500 sources and 50 teams (ms)');
+  });
+
+  it('[PLN-014] a plan the person may not see answers as a missing one, and a name is required', async () => {
+    const mine = (
+      await make('ana', { name: 'Private', sources: [{ kind: 'track', trackId: tracks.PLA }] })
+    ).plan as { id: number };
+    const hidden = await as('bo', {
+      method: 'POST',
+      url: `/api/v1/plans/${mine.id}/duplicate`,
+      payload: { name: 'Mine now' },
+    });
+    const missing = await as('bo', {
+      method: 'POST',
+      url: '/api/v1/plans/99999999/duplicate',
+      payload: { name: 'Mine now' },
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.body).toBe(missing.body);
+    const file = await exported('bo', mine.id);
+    expect(file.statusCode).toBe(404);
+    expect(file.body).toBe((await exported('bo', 99999999)).body);
+    const blank = await duplicate('ana', mine.id, '   ', 400);
+    expect(blank.error).toBe('invalid_fields');
+    await call(
+      'ana',
+      {
+        method: 'POST',
+        url: `/api/v1/plans/${mine.id}/duplicate`,
+        payload: { name: 'Mine', include: ['capacity'] },
+      },
+      400,
+    );
+    const signedOut = await app.inject({
+      method: 'POST',
+      url: `/api/v1/plans/${mine.id}/duplicate`,
+      payload: { name: 'Nobody' },
+      remoteAddress: nextAddress(),
+    });
+    expect(signedOut.statusCode).toBe(401);
+  });
+
+  it("[PLN-014] [PLN-012] the List's file holds exactly what each viewer finds, whatever the filters", async () => {
+    const plan = await shared('Exported "plan": año/2027');
+    for (const who of ['admin', 'ana', 'bo', 'cy']) {
+      const { plan: seen } = await get(who, `/api/v1/plans/${plan.id}`);
+      const res = await exported(who, plan.id, { columns: 'summary,status', sort: 'updated' });
+      expect(res.statusCode, res.body.slice(0, 200)).toBe(200);
+      expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
+      expect(res.headers['cache-control']).toBe('no-store');
+      const rows = rowsOf(res.body);
+      expect(rows[0]).toEqual(['key', 'summary', 'status']);
+      const keysInFile = rows.slice(1).map((r) => r[0]);
+      if (seen.query === null) {
+        expect(keysInFile).toEqual([]);
+        continue;
+      }
+      // The same tickets, in the order asked for, as a search of the plan's query finds them.
+      expect(keysInFile).toEqual(await searchKeys(who, `${seen.query} ORDER BY updated DESC`));
+    }
+    const admin = await exported('admin', plan.id);
+    expect(admin.headers['content-disposition']).toMatch(
+      /^attachment; filename="Exported-plan-a-o-2027-list-\d{4}-\d{2}-\d{2}\.csv"$/,
+    );
+    expect(rowsOf(admin.body)[0]).toEqual([
+      'key',
+      'summary',
+      'status',
+      'assignee',
+      'priority',
+      'updatedAt',
+    ]);
+    // PLC's tickets are in the administrator's file and nobody else's.
+    expect(admin.body).toContain('PLC-');
+    for (const who of ['ana', 'bo', 'cy']) {
+      expect((await exported(who, plan.id)).body).not.toContain('PLC-');
+    }
+    // The views' filters narrow it.
+    const narrowed = await exported('ana', plan.id, { track: 'PLA', assignee: 'me' });
+    const expected = await searchKeys('ana', 'track = PLA AND assignee = currentUser()');
+    expect(
+      rowsOf(narrowed.body)
+        .slice(1)
+        .map((r) => r[0])
+        .sort(),
+    ).toEqual(expected.sort());
+    // A filter that does not read answers as it does on the views; bad input is refused.
+    expect((await exported('ana', plan.id, { track: 'PLC' })).statusCode).toBe(400);
+    expect((await exported('ana', plan.id, { format: 'xml' })).statusCode).toBe(400);
+    expect((await exported('ana', plan.id, { sort: 'summary' })).statusCode).toBe(400);
+    expect((await exported('ana', plan.id, { other: '1' })).statusCode).toBe(400);
+    const signedOut = await app.inject({
+      method: 'GET',
+      url: `/api/v1/plans/${plan.id}/export`,
+      remoteAddress: nextAddress(),
+    });
+    expect(signedOut.statusCode).toBe(401);
+  });
+
+  it('[PLN-014] no file holds a hidden column, a formula that would run, or anything from nothing', async () => {
+    const local = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'PLL', name: 'Hush', mode: 'local' },
+        },
+        201,
+      )
+    ).track.id as number;
+    const field = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/fields',
+          payload: { name: 'Hidden note', type: 'text', trackId: local },
+        },
+        201,
+      )
+    ).field.id as number;
+    const risky = await ticket('PLA', { summary: '=HYPERLINK("http://example.test")' });
+    const plan = (
+      await make('ana', {
+        name: 'Guarded',
+        sources: [{ kind: 'track', trackId: tracks.PLA }],
+        shares: [{ scope: 'any_user' }],
+      })
+    ).plan as { id: number };
+    const column = `cf[${field}]`;
+    const refused = await exported('ana', plan.id, { columns: column });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.body).toBe(
+      (await exported('ana', plan.id, { columns: 'cf[99999999]' })).body.replace(
+        '99999999',
+        String(field),
+      ),
+    );
+    expect(refused.body).not.toContain('Hidden note');
+    expect((await exported('ana', plan.id, { columns: 'nosuch' })).statusCode).toBe(400);
+
+    const guarded = await exported('ana', plan.id, { columns: 'summary' });
+    expect(guarded.body).toContain(`${risky.key},"'=HYPERLINK(""http://example.test"")"`);
+
+    // Cy sees none of the plan's sources: a header row alone, in the columns asked for.
+    const nothing = await exported('cy', plan.id, { columns: 'summary' });
+    expect(nothing.statusCode).toBe(200);
+    expect(nothing.body).toBe('key,summary\r\n');
+    // An empty plan too.
+    const empty = (await make('ana', { name: 'Empty', sources: [] })).plan as { id: number };
+    expect((await exported('ana', empty.id, { columns: 'summary' })).body).toBe('key,summary\r\n');
+  });
+
+  it('[QRY-015] [PLN-014] a file counts as a bulk export; export=true answers the same and counts once', async () => {
+    const plan = await shared('Counted');
+    const url = `/api/v1/plans/${plan.id}`;
+    const calendar = 'from=2027-03-01&to=2027-03-31';
+    const start = await bulkExports('ana');
+
+    // Reading the views counts nothing.
+    const timeline = await get('ana', `${url}/timeline`);
+    const month = await get('ana', `${url}/calendar?${calendar}`);
+    expect(await bulkExports('ana')).toBe(start);
+
+    expect(await get('ana', `${url}/timeline?export=true`)).toEqual(timeline);
+    expect(await bulkExports('ana')).toBe(start + 1);
+    expect(await get('ana', `${url}/calendar?${calendar}&export=true`)).toEqual(month);
+    expect(await bulkExports('ana')).toBe(start + 2);
+    expect((await exported('ana', plan.id)).statusCode).toBe(200);
+    expect(await bulkExports('ana')).toBe(start + 3);
+
+    // The filters apply to a file's read as to the view's.
+    expect(await get('ana', `${url}/timeline?track=PLA&export=true`)).toEqual(
+      await get('ana', `${url}/timeline?track=PLA`),
+    );
+    expect((await get('cy', `${url}/timeline?export=true`)).items.map((i: Item) => i.key)).toEqual(
+      (await get('cy', `${url}/timeline`)).items.map((i: Item) => i.key),
+    );
+
+    // Only `true` means it, and a plan nobody may read counts nothing.
+    await get('ana', `${url}/timeline?export=false`, 400);
+    const mine = (await make('admin', { name: 'Not for Ana' })).plan as { id: number };
+    const counted = await bulkExports('ana');
+    await get('ana', `/api/v1/plans/${mine.id}/timeline?export=true`, 404);
+    expect((await exported('ana', mine.id)).statusCode).toBe(404);
+    expect(await bulkExports('ana')).toBe(counted);
+
+    // The rule raises its alert from these as from the search export (ADR-109).
+    await call('admin', {
+      method: 'PUT',
+      url: '/api/v1/security/alerts',
+      payload: { rules: { bulk_exports: { enabled: true, threshold: 1, windowMinutes: 60 } } },
+    });
+    await exported('bo', plan.id);
+    const raised = await database.db
+      .selectFrom('security_alert')
+      .select('key')
+      .where('rule', '=', 'bulk_exports')
+      .where('key', '=', `user:${users.bo?.id}`)
+      .execute();
+    expect(raised).toHaveLength(1);
   });
 });

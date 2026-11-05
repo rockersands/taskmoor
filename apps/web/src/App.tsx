@@ -57,6 +57,8 @@ import { VisibilityPage } from './permissions/VisibilityPage';
 import { PLAN_ROUTE, type PlanSection } from './plans/address';
 import { PlanPage } from './plans/PlanPage';
 import { PlansPage } from './plans/PlansPage';
+import { CrossTrackReleasePage } from './releases/CrossTrackReleasePage';
+import { CrossTrackReleasesPage } from './releases/CrossTrackReleasesPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
@@ -243,6 +245,9 @@ const TRACK_BOARD_SECTION =
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** Releases across tracks (PLN-007): the list and one of them. */
+const CROSS_TRACK_RELEASES = '#/cross-track-releases';
+const CROSS_TRACK_RELEASE = /^#\/cross-track-releases\/(\d{1,10})(?:[/?]|$)/;
 /** A track's ticket templates (CORE-029). */
 const TRACK_TEMPLATES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/templates(?:[/?]|$)/;
 /** A track's calendar (M1-049). */
@@ -848,6 +853,15 @@ function Pages() {
     guarded = true;
     const releaseId = Number(RELEASE.exec(hash)?.[1]);
     content = <ReleasePage key={releaseId} releaseId={releaseId} />;
+  } else if (isRoute(hash, CROSS_TRACK_RELEASES)) {
+    active = 'plans';
+    guarded = true;
+    const one = CROSS_TRACK_RELEASE.exec(hash)?.[1];
+    content = one ? (
+      <CrossTrackReleasePage key={one} id={Number(one)} />
+    ) : (
+      <CrossTrackReleasesPage />
+    );
   } else if (TRACK_FILES.test(hash)) {
     active = 'tracks';
     guarded = true;

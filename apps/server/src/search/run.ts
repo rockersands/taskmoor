@@ -15,6 +15,7 @@ import { commentReadableSql } from '../tickets/comments';
 import { bindPlan } from './bind';
 import { type CompiledSearch, type Cursor, compileSearch, type PageRow } from './compile';
 import { COUNT_CAP, countMatches, type Total } from './count';
+import type { CrossTrackSight } from './cross-track';
 import type { Bound, Scalar } from './model';
 import { type ExpandOptions, expandSavedSearches } from './saved';
 
@@ -47,6 +48,8 @@ export interface PrepareInput {
   sessionId?: number | null;
   /** The tracks where the person holds a permission (`tracksWhereUserHasPermission()`). */
   allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
+  /** Which releases across tracks the person sees (`crossTrackRelease`; PLN-007). */
+  crossTrackSight?: CrossTrackSight;
   /** False keeps the plain ticket-table form (tests compare both). */
   anchor?: boolean;
   /** False keeps one statement instead of value branches (tests compare both). */
@@ -91,6 +94,7 @@ export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
     currentUserId: input.currentUserId,
     filter: input.filter.sql,
     ...(input.allowedTracks ? { allowedTracks: input.allowedTracks } : {}),
+    ...(input.crossTrackSight ? { crossTrackSight: input.crossTrackSight } : {}),
   });
   const compiled = compileSearch(bound, {
     workspaceId: input.workspaceId,

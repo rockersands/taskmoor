@@ -27,6 +27,8 @@ export type SystemType =
   | 'sprint'
   | 'attachments'
   | 'savedSearch'
+  /** A release across tracks (PLN-007): by id or name; only `=`, `!=`, `IN` and `NOT IN`. */
+  | 'crossTrackRelease'
   /** How well a ticket matches the query's text searches (M1-040): only ORDER BY takes it. */
   | 'relevance';
 
@@ -135,6 +137,7 @@ export const OPERATORS_BY_TYPE: Readonly<Record<FieldType, readonly OperatorFami
   sprint: ALL,
   attachments: ['empty'],
   savedSearch: ALL,
+  crossTrackRelease: ['equality', 'list'],
   relevance: [],
 };
 
@@ -251,6 +254,14 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     aliases: ['affectedVersion', 'Found in release'],
     type: 'release',
     sortable: true,
+  }),
+  // Its linked releases' target tickets (PLN-007; ADR-122 stage 4). No IS EMPTY: it would mark a
+  // ticket seen through a grant as linked to something hidden. No history and no order.
+  system({
+    name: 'crossTrackRelease',
+    aliases: ['Release across tracks'],
+    type: 'crossTrackRelease',
+    history: null,
   }),
   system({
     name: 'parent',

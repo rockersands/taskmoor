@@ -511,6 +511,15 @@ export const release = z
       .object({ tickets: z.number().int(), closed: z.number().int(), open: z.number().int() })
       .loose(),
     overdue: z.boolean(),
+    /** The release across tracks it is in (PLN-007); null for none. */
+    crossTrack: z
+      .object({
+        id,
+        name: z.string(),
+        endRule: z.enum(['fixed_date', 'work_complete']),
+        date: nullable(day),
+      })
+      .nullable(),
   })
   .loose()
   .meta({ id: 'Release' });

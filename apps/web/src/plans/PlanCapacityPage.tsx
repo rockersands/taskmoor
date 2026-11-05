@@ -15,7 +15,10 @@ import type {
   PlanCapacity,
   PlanPeriod,
 } from './client';
+import { DownloadMenu } from './DownloadMenu';
+import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
+import { capacityCsv } from './planExport';
 
 /** How many periods the view shows at once. */
 const PERIODS = 6;
@@ -44,13 +47,27 @@ const isCell = (c: CapacityCell | CapacityWork): c is CapacityCell => 'load' in 
  * from the viewer) counts against their capacity as a number, never named. The plan's editors set
  * capacity per row in a dialog, for every period or one. On a phone each row is a card.
  */
-export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSectionProps) {
+export function PlanCapacityPage({
+  id,
+  plan,
+  filters,
+  client,
+  now,
+  position,
+  onPosition,
+}: PlanSectionProps) {
   const t = useT();
   const intl = useIntl();
   const headingId = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
   const today = now().toISOString().slice(0, 10);
-  const [from, setFrom] = useState(today);
+  // Kept in the address on a plan's page, so a link opens the same periods.
+  const [fromHere, setFromHere] = useState(today);
+  const from = position?.from ?? fromHere;
+  const setFrom = (next: string) => {
+    setFromHere(next);
+    onPosition?.({ from: next === today ? undefined : next });
+  };
   const [data, setData] = useState<PlanCapacity | null>(null);
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -294,6 +311,19 @@ export function PlanCapacityPage({ id, plan, filters, client, now }: PlanSection
         <button type="button" className="button-secondary" onClick={() => setFrom(today)}>
           {t('plans.capacity.current')}
         </button>
+        <DownloadMenu
+          items={[
+            {
+              key: 'csv',
+              label: t('plans.download.csv'),
+              make: async () => {
+                const name = fileName(plan.name, 'capacity', today, 'csv');
+                saveBlob(name, new Blob([capacityCsv(t, data)], { type: 'text/csv' }));
+                return name;
+              },
+            },
+          ]}
+        />
       </div>
       <p className="board-hint">
         {data.unit === 'hours'

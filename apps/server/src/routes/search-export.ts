@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { csvField } from '../audit/query';
@@ -176,38 +176,48 @@ function csvRow(view: TicketView, columns: readonly Column[]): string {
   return `${cells.map(csvField).join(',')}\r\n`;
 }
 
-export function registerSearchExportRoutes(
-  app: FastifyInstance,
+/** What one export streams, for the search's route and a plan's (PLN-014). */
+export interface TicketExport {
+  /** The query; null finds nothing, and the file holds the header row alone. */
+  q: string | null;
+  format: 'csv' | 'json';
+  /** The columns as the results list names them; none for the default. */
+  columns: string | undefined;
+  /** The file's name before its day: already safe in a header. */
+  file: string;
+  timeoutMs: number;
+}
+
+/**
+ * Sends the tickets a query finds as a stream, as the person making the request may see them.
+ * Refusals go out as answers: an unknown or hidden column, a query that does not read.
+ */
+export async function sendTicketExport(
   db: Kysely<Database>,
   catalogs: FieldCatalogs,
-  options: { timeoutMs?: number } = {},
-): void {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
-
-  app.get('/api/v1/search/export', async (request, reply) => {
-    const user = requireUser(request, reply);
-    if (!user) return reply;
-    const parsed = exportInput.safeParse(request.query);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { q, format } = parsed.data;
-    const columns = readColumns(parsed.data.columns);
-    if (typeof columns === 'string') {
-      return reply
-        .code(400)
-        .send({ error: 'invalid_request', message: `Unknown column "${columns}"` });
-    }
-    const chosen: readonly Column[] = columns;
-    const { ws, filter, catalog, catalogue } = await searchScope(db, catalogs, request, false);
-    // Custom columns are the fields the person's queries may name: shared ones and the local
-    // fields of tracks they see. Another name would tell them of a field they cannot see.
-    const visibleFields = new Map(catalogue.customs.map((f) => [f.id, f.name]));
-    const hidden = columns.find((c) => c.kind === 'custom' && !visibleFields.has(c.field));
-    if (hidden) {
-      return reply
-        .code(400)
-        .send({ error: 'invalid_request', message: `Unknown column "${hidden.id}"` });
-    }
-    let compiled: Awaited<ReturnType<typeof prepareSearch>>['compiled'];
+  request: FastifyRequest,
+  reply: FastifyReply,
+  { q, format, columns: asked, file, timeoutMs }: TicketExport,
+) {
+  const columns = readColumns(asked);
+  if (typeof columns === 'string') {
+    return reply
+      .code(400)
+      .send({ error: 'invalid_request', message: `Unknown column "${columns}"` });
+  }
+  const chosen: readonly Column[] = columns;
+  const { ws, filter, catalog, catalogue } = await searchScope(db, catalogs, request, false);
+  // Custom columns are the fields the person's queries may name: shared ones and the local
+  // fields of tracks they see. Another name would tell them of a field they cannot see.
+  const visibleFields = new Map(catalogue.customs.map((f) => [f.id, f.name]));
+  const hidden = columns.find((c) => c.kind === 'custom' && !visibleFields.has(c.field));
+  if (hidden) {
+    return reply
+      .code(400)
+      .send({ error: 'invalid_request', message: `Unknown column "${hidden.id}"` });
+  }
+  let compiled: Awaited<ReturnType<typeof prepareSearch>>['compiled'] | null = null;
+  if (q !== null) {
     try {
       ({ compiled } = await prepareSearch({
         db,
@@ -221,57 +231,81 @@ export function registerSearchExportRoutes(
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
     }
-    const nothing = filter.tracks !== 'all' && filter.tracks.length === 0;
-    // A bulk export by this person (ASVS 11.1.7; ADR-109): counted for the alert rule.
-    await countBulkExport(db, ws, user.id);
-    const shape = projection(columns.filter((c) => c.id !== 'key').map((c) => c.id));
-    const header = columns.map((c) =>
-      c.kind === 'system' ? c.id : (visibleFields.get(c.field) ?? c.id),
-    );
+  }
+  const query = filter.tracks !== 'all' && filter.tracks.length === 0 ? null : compiled;
+  // A bulk export by this person (ASVS 11.1.7; ADR-109): counted for the alert rule.
+  await countBulkExport(db, ws, request.user?.id as number);
+  const shape = projection(columns.filter((c) => c.id !== 'key').map((c) => c.id));
+  const header = columns.map((c) =>
+    c.kind === 'system' ? c.id : (visibleFields.get(c.field) ?? c.id),
+  );
 
-    async function* chunks(): AsyncGenerator<string> {
-      let buffer = format === 'csv' ? `${header.map(csvField).join(',')}\r\n` : '[';
-      let rows = 0;
-      let after: Cursor | undefined;
-      while (!nothing) {
-        const page = await readOnly(
-          db,
-          timeoutMs,
-          async (trx) => (await compiled.page(EXPORT_PAGE, after).execute(trx)).rows,
-        );
-        const views = await searchViews(
-          db,
-          catalogs,
-          request,
-          page.map((r) => r.id),
-          filter.sql,
-        );
-        for (const view of views) {
-          if (format === 'csv') buffer += csvRow(view, chosen);
-          else {
-            const shown = typeof shape === 'object' ? project(view, shape) : view;
-            buffer += `${rows === 0 ? '\n' : ',\n'}${JSON.stringify(shown)}`;
-          }
-          rows += 1;
+  async function* chunks(): AsyncGenerator<string> {
+    let buffer = format === 'csv' ? `${header.map(csvField).join(',')}\r\n` : '[';
+    let rows = 0;
+    let after: Cursor | undefined;
+    while (query) {
+      const page = await readOnly(
+        db,
+        timeoutMs,
+        async (trx) => (await query.page(EXPORT_PAGE, after).execute(trx)).rows,
+      );
+      const views = await searchViews(
+        db,
+        catalogs,
+        request,
+        page.map((r) => r.id),
+        filter.sql,
+      );
+      for (const view of views) {
+        if (format === 'csv') buffer += csvRow(view, chosen);
+        else {
+          const shown = typeof shape === 'object' ? project(view, shape) : view;
+          buffer += `${rows === 0 ? '\n' : ',\n'}${JSON.stringify(shown)}`;
         }
-        yield buffer;
-        buffer = '';
-        const last = page[page.length - 1];
-        if (page.length < EXPORT_PAGE || !last) break;
-        after = { values: compiled.keys.map((_, i) => last[`c${i}`] ?? null), id: last.id };
+        rows += 1;
       }
-      if (format === 'json') buffer += rows === 0 ? ']\n' : '\n]\n';
-      if (buffer) yield buffer;
+      yield buffer;
+      buffer = '';
+      const last = page[page.length - 1];
+      if (page.length < EXPORT_PAGE || !last) break;
+      after = { values: query.keys.map((_, i) => last[`c${i}`] ?? null), id: last.id };
     }
+    if (format === 'json') buffer += rows === 0 ? ']\n' : '\n]\n';
+    if (buffer) yield buffer;
+  }
 
-    const day = new Date().toISOString().slice(0, 10);
-    return reply
-      .header(
-        'content-type',
-        format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8',
-      )
-      .header('content-disposition', `attachment; filename="tickets-${day}.${format}"`)
-      .header('cache-control', 'no-store')
-      .send(Readable.from(chunks()));
+  const day = new Date().toISOString().slice(0, 10);
+  return reply
+    .header(
+      'content-type',
+      format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8',
+    )
+    .header('content-disposition', `attachment; filename="${file}-${day}.${format}"`)
+    .header('cache-control', 'no-store')
+    .send(Readable.from(chunks()));
+}
+
+export function registerSearchExportRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+  options: { timeoutMs?: number } = {},
+): void {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
+
+  app.get('/api/v1/search/export', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const parsed = exportInput.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+    const { q, format, columns } = parsed.data;
+    return sendTicketExport(db, catalogs, request, reply, {
+      q,
+      format,
+      columns,
+      file: 'tickets',
+      timeoutMs,
+    });
   });
 }

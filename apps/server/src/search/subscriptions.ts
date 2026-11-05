@@ -7,6 +7,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { SearchError } from './bind';
 import { queryCatalogue } from './catalogue';
 import type { Total } from './count';
+import { authorizerSight } from './cross-track';
 import { DEFAULT_QUERY_TIMEOUT_MS, type PageResult, prepareSearch, runPage } from './run';
 import { savedSearchVisible } from './saved';
 import { nextRun } from './schedule';
@@ -163,6 +164,7 @@ export async function deliverSubscriptions(
           timeZone: person.time_zone,
           now,
           allowedTracks: (permission) => authorizer.allowedTracks(ws, principal, permission),
+          crossTrackSight: authorizerSight(authorizer, ws, principal),
         });
         const nothing = filter.tracks !== 'all' && filter.tracks.length === 0;
         const page: PageResult = nothing

@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import type { ReleaseMarker } from './markers';
 
 /** A ticket on a track's timeline (M1-048; AGL-015). Dates are calendar days (YYYY-MM-DD). */
 export interface TimelineItem {
@@ -25,7 +26,7 @@ export interface Timeline {
   links: { from: number; to: number }[];
   markers: {
     sprints: { id: number; name: string; state: string; start: string; end: string }[];
-    releases: { id: number; name: string; date: string; shipped: boolean }[];
+    releases: ReleaseMarker[];
   };
   truncated: boolean;
 }

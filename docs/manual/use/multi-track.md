@@ -1,16 +1,16 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-04
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-05
 attestation: own-words
 ---
 # Multi-track
 
 Multi-track brings the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
-shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar** and its teams'
-**Capacity**. Open **Multi-track** in the sidebar, under **Plan and track**.
+shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
+**Capacity** and its tracks' **Releases**. Open **Multi-track** in the sidebar, under **Plan and track**.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
@@ -178,10 +178,167 @@ they are.
 Sharing a plan does not share its tracks or saved searches: someone who may not see a source sees
 nothing from it. Share those as well when they should.
 
+## Releases across tracks
+
+A **release across tracks** lines up several tracks' own releases on one end, so that people can
+see whether they will land together. It belongs to the workspace, not to a plan, and a plan only
+shows it. It holds no tickets: its work is the target tickets of its linked releases. Each linked
+release stays its track's own, with its approvals, shipping, notes and page, and its track's
+administrators keep every right they have over it.
+
+The link **Releases across tracks** leads to all of them. It is on a track's **Releases**, on the
+**Multi-track** page, on a plan's **Releases** tab, and on the page of a release that is not in one
+yet. A release that is in one links to it among its facts.
+
+### Who sees what
+
+- **Who sees one:** the person who made it, site and configuration administrators, and anyone who
+  may see one of its linked tracks. Everyone else is told it does not exist. Seeing a few of a
+  track's tickets, as their requester for example, is not seeing the track, so it shows you no
+  release across tracks, and no ticket you see that way ever reads as part of one.
+- **What you are told:** its name, description, end, state and owner, and of each linked release
+  whose track you may see, its track, name, dates, state and how many tickets you see in it.
+- **What is only counted:** how many linked releases you may not see and how many open tickets you
+  may not see across all of it, as one number each, never per release and never named. Nothing lets
+  anyone narrow that count: no filter or period applies, and only a track's administrators can link
+  its releases.
+
+### Its end and its state
+
+Choose its end when you make it: **On a fixed date**, or **When its work completes**. Its state is
+worked out each time it is read, from all its work, hidden work too, so it says the same to
+everyone: **No releases**, **Upcoming**, **Ready to ship** (it has tickets and none is open),
+**Overdue** (its date has passed and not all have shipped) or **Shipped** (all have). An archived
+release, or a release of an archived track, stops counting towards it, and a track in the trash
+drops out for everyone until it is restored.
+
+**Nothing ships by itself.** **Ready to ship** is an announcement: each track's administrators still
+ship their own release, with its approvals and its question about open tickets.
+
+### Making one and linking releases
+
+Someone who administers a track chooses **New release across tracks**, gives it a name and an end,
+and ticks upcoming releases of tracks they administer: one per track, and a release can be in only
+one. **Link a release** on its page, offered if you administer a track, and **Add to a release
+across tracks…** on a release's page do the same later. Joining two tracks takes someone who
+administers both, or a site administrator. The list stops at 500 releases and says so; type a word
+of a track's or a release's name in the filter and the rest can be found too.
+
+Linking moves no date. A release on another day reads as **Out of step** until someone moves it.
+Its track's administrators, its owner and administrators can **Remove** it, which changes no date
+either. Nobody removes a release they may not see. A release merged into another or deleted leaves
+by itself.
+
+### Changing or deleting it
+
+Its owner and administrators see **Edit** and **Delete**. **Edit** changes its name and description,
+and can make it end **When its work completes**, which clears its date and moves nothing. If someone
+changed it while you typed, nothing is saved: what you typed stays in the dialog, the page behind it
+reads itself again, and you check it and save again. **Delete** removes the release across tracks and
+leaves all its releases as they are, on their own days.
+
+### Moving its date
+
+Its owner and administrators choose **Move date**, then a **New date** and **Show what changes**. The
+list changes nothing: it says, line by line, what the move would do. **Move 3 releases** does it, and
+the dialog stays open with what happened. **Move date** is also the only way to give a release across
+tracks a date again after it was set to end when its work completes. Once all its releases have
+shipped, its date no longer moves and the button is gone.
+
+The field starts on the date it already has. That is how to bring back releases that are out of step:
+**Show what changes** lists those that would come back, and the move does it. With none to bring back,
+it says nothing changes, offers no move and records nothing.
+
+A release moves only if you could have moved it yourself: it is upcoming, not archived, its track
+is not archived, you administer that track, and it does not start after the new date. The others
+stay on their day, each with the reason in words, and read as **Out of step**. Releases hidden from
+you never move, and are only counted. If someone changed it while you read the list, it lists again,
+so what you confirm is what happens. If the connection drops, the dialog says the move may not have
+happened: check the page, then try again.
+
+On a linked release's own page, its track's administrators get **Align to** the date, which is the
+release's ordinary change. Nobody loses the right to move their own release away: it just reads as
+out of step.
+
+### Where it shows
+
+- **A release's page** names it and warns when the release is out of step; **a track's Releases**
+  labels each release that is in one.
+- **Search:** `crossTrackRelease = 5` or `crossTrackRelease = "Spring launch"` finds its work, as the
+  person searching sees it (see [Search](search.md)). A bare number is its id; to find one named with
+  a number, put the name in quotes.
+- **A plan's Releases tab:** the releases of the plan's tracks you may browse, those of a release
+  across tracks gathered under it first with its own whole numbers, then the rest by track, upcoming
+  first, at most 200. Only the **Track** filter applies here, and the tab says so.
+- **The Timeline and the Calendar:** linked releases on its date become one marker, "Spring launch,
+  3 releases"; those on another day keep their own, marked "out of step" in words. They are not
+  dragged there.
+
+Its name and description go in your data download when you own it. If your account is erased it
+stays, owned by the placeholder account. Its changes are in the audit log; each release a move
+changed also records its own change, so its track's trail and webhooks hear of it. Webhooks do not
+hear of the release across tracks itself, and a full export leaves it out; a backup holds it.
+
+## Copying a plan
+
+Anyone who sees a plan may copy it, and the copy is theirs alone. Choose **Duplicate plan** at the top
+of any of its tabs and give the copy a name.
+
+- **What comes:** the description, the sources you may see, in their order, the unit, the periods and
+  the teams. Saved searches come by reference, so the copy changes when they do. Sources that are
+  archived or no longer run come too, and say so as usual.
+- **What does not:** sources hidden from you, which are only counted ("2 sources you may not see
+  were left out"), never named; who it is shared with, since a copy should not reach anyone by
+  itself; and capacity, since the amounts and notes are about people.
+- **Afterwards** the two plans have no tie: a change to one does not reach the other.
+
+## Linking to a view
+
+Choose **Copy link** at the top of any tab. The link holds the view as it stands: the tab, the
+filters, the grouping, and where the view is, which means the Timeline's zoom, the Calendar's month,
+the first period of Capacity and the order of the List. Columns stay yours, in this browser.
+
+A link gives no access. It is only an address:
+
+- Someone who may not see the plan gets the page that says it does not exist or they cannot see it.
+- Someone who may sees it as they may see it, so two people can get different rows from one link.
+- Someone signed out signs in first and comes back to it.
+- The assignee **Me** means whoever opens the link, not whoever copied it.
+
+Moving through a view does not fill your browser's history: the back button still undoes a change of
+filters, not every month you stepped through. If your browser refuses the clipboard, as it may on a
+plain `http` address, a field shows the link, selected, to copy by hand.
+
+## Downloading a view
+
+Each view has a **Download** menu. What you get is what you may see: nothing in a file names a ticket
+hidden from you, and a cell that a spreadsheet would run as a formula starts with an apostrophe.
+
+| View | File | What it holds |
+|---|---|---|
+| **Summary** | CSV | Each number, what it counts and the search that finds those tickets |
+| **Timeline** | CSV | The first 10,000 tickets, as the view lists them, with their days, where the days come from, their children's span and their blockers. Blockers the view does not list stay two numbers |
+| **Timeline** | Image (PNG) | The picture of up to 400 rows, group headings among them. It says how many it holds of how many, and late dependencies are dashed and say "late" in words |
+| **List** | CSV | **Every** ticket of the plan you may see, however many, in your columns and order. Grouping does not change it |
+| **Calendar** | CSV | The tickets of the month shown, at most 10,000 |
+| **Capacity** | CSV | One line per team or person and period, and one for open work with no due date. Other work due then stays a count and an amount, counted by whole weeks. Notes stay on the page |
+| **Releases** | CSV | The tab's releases, each release across tracks before those linked to it. What is hidden stays two numbers |
+
+Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
+cannot draw it, the page says that too and no file comes. Headers are in your language, and the image
+is drawn in light colours whatever your skin.
+
+Downloading the Timeline, the Calendar or the List counts as a bulk export for your administrators'
+security alerts. Keep in mind that a saved file leaves Taskmoor's permissions: whoever
+you send it to reads what it holds.
+
 ## Not yet in Multi-track
 
-Releases across tracks, the program board, draft changes and scenarios, the auto-scheduler, and
-copying or exporting a plan come in later versions. Dependencies are the **Blocks** links only:
+The program board, draft changes and scenarios, and the auto-scheduler come in later versions. A
+link cannot be named and saved as a view, or made public; files come as CSV and PNG only, by hand,
+with no schedule; and a copy cannot follow its original. Dependencies are the **Blocks** links only:
 other link types do not count as dependencies. Capacity counts work by its due date, in points or
 hours: velocity from past sprints, capacity in days or as a percentage of a working week, time set
 aside for leave as its own entry, and copying capacity between periods are not in Multi-track yet.
+Releases across tracks cannot yet be shipped together, have no combined notes, burndown or forecast
+date, gather no approvals in one place and send no notifications.

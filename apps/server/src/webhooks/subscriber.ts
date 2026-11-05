@@ -9,6 +9,7 @@ import { enqueue } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
 import { queryCatalogue } from '../search/catalogue';
 import { compileCond } from '../search/compile';
+import { authorizerSight } from '../search/cross-track';
 import { commentReadableSql } from '../tickets/comments';
 import { ticketKey } from '../tickets/model';
 import { eventMatches, MAX_ATTEMPTS, ticketOf, WEBHOOK_EVENTS, type WebhookFormat } from './model';
@@ -77,6 +78,7 @@ export function webhookSubscriber(
           timeZone: owner.time_zone,
           sessionId: null,
           allowedTracks: (permission) => authorizer.allowedTracks(ws, principal, permission),
+          crossTrackSight: authorizerSight(authorizer, ws, principal),
         },
       };
       try {

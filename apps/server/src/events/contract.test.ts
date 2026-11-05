@@ -148,6 +148,8 @@ function sessionCookie(res: LightMyRequestResponse): string {
 interface Scenario {
   route: string;
   expect: EventType;
+  /** Events the route also emits on purpose, on other objects' trails (a moved release's). */
+  also?: readonly EventType[];
   /** Setup the call needs; its events are not counted. */
   prepare?: () => Promise<void>;
   run: () => Promise<LightMyRequestResponse>;
@@ -3581,6 +3583,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/plans/:id/duplicate',
+      expect: 'plan.duplicated',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/duplicate`,
+          payload: { name: 'Contract plan, copied' },
+        }),
+    },
+    {
       route: 'PUT /api/v1/plans/:id/capacity',
       expect: 'plan.capacity_set',
       // The plan plans with a team first (its own events, before the one counted here).
@@ -3603,6 +3615,83 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/plans/${state.plan}/capacity`,
           payload: { entries: [{ teamId: state.capacityTeam, period: null, amount: 30 }] },
         }),
+    },
+    // Releases across tracks (PLN-007; ADR-122 stage 4).
+    {
+      route: 'POST /api/v1/cross-track-releases',
+      expect: 'cross_track_release.created',
+      prepare: async () => {
+        const release = async (name: string) =>
+          (
+            await admin({
+              method: 'POST',
+              url: `/api/v1/tracks/${state.track}/releases`,
+              payload: { name, releaseDate: '2027-06-01' },
+            })
+          ).json().release?.id;
+        state.crossFirst = await release('Contract linked');
+        state.crossSecond = await release('Contract to link');
+      },
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/cross-track-releases',
+          payload: {
+            name: 'Contract release across tracks',
+            endRule: 'fixed_date',
+            date: '2027-06-01',
+            releaseIds: [state.crossFirst],
+          },
+        });
+        state.cross = res.json().id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/cross-track-releases/:id',
+      expect: 'cross_track_release.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/cross-track-releases/${state.cross}`,
+          payload: { description: 'Lines them up', version: 1 },
+        }),
+    },
+    {
+      route: 'POST /api/v1/cross-track-releases/:id/move',
+      expect: 'cross_track_release.moved',
+      // Each release it moved tells its own track's trail too (ADR-122 stage 4).
+      also: ['release.updated'],
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/cross-track-releases/${state.cross}/move`,
+          payload: { date: '2027-07-01', version: 2 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/cross-track-releases/:id/members/:releaseId',
+      expect: 'cross_track_release.member_removed',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/cross-track-releases/${state.cross}/members/${state.crossFirst}`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/cross-track-releases/:id/members',
+      expect: 'cross_track_release.member_added',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/cross-track-releases/${state.cross}/members`,
+          payload: { releaseId: state.crossSecond },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/cross-track-releases/:id',
+      expect: 'cross_track_release.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/cross-track-releases/${state.cross}` }),
     },
     {
       route: 'DELETE /api/v1/plans/:id',
@@ -4268,11 +4357,19 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         .where('id', '>', String(from))
         .orderBy('id')
         .execute();
-      expect(
-        events.length,
-        `${scenario.route} emitted ${events.map((e) => e.type).join(', ')}`,
-      ).toBe(1);
-      const [event] = events;
+      // A route's own event, once. A change that also touches other objects' trails names those.
+      const also: readonly string[] = scenario.also ?? [];
+      const own = events.filter((e) => !also.includes(e.type));
+      expect(own.length, `${scenario.route} emitted ${events.map((e) => e.type).join(', ')}`).toBe(
+        1,
+      );
+      for (const type of also) {
+        expect(
+          events.some((e) => e.type === type),
+          `${scenario.route} also emits ${type}`,
+        ).toBe(true);
+      }
+      const [event] = own;
       expect(event?.type, scenario.route).toBe(scenario.expect);
       const spec = EVENT_TYPES[scenario.expect];
       expect(event?.subject_type).toBe(spec.subject);

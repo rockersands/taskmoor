@@ -54,6 +54,7 @@ import { registerBulkRoutes } from './routes/bulk';
 import { registerChecklistRoutes } from './routes/checklists';
 import { registerCloneRoutes } from './routes/clone';
 import { registerCommentRoutes } from './routes/comments';
+import { registerCrossTrackReleaseRoutes } from './routes/cross-track-releases';
 import { registerDashboardRoutes } from './routes/dashboards';
 import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
@@ -597,6 +598,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerPlanCapacityRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    registerCrossTrackReleaseRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

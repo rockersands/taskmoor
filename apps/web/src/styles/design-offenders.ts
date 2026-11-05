@@ -18,6 +18,8 @@ const STICKY = 'a sticky cell: rows scroll under it, so glass would show them th
 const SKIN_PREVIEW = 'a miniature of a skin, drawn in the colours it shows, with no text on it';
 const FACT = 'a fact with no value, beside others that have one';
 const SETTING_HINT = 'a hint on a setting, about sections left empty: no list is empty here';
+const PRINTED =
+  'a Timeline image: fixed light colours chosen for print, since the skin must not change a file';
 const CARET_MENU = 'a line in the small menu at the caret, which closes as the person types on';
 
 export const ALLOWED = {
@@ -27,6 +29,16 @@ export const ALLOWED = {
     'boards/fixtures.ts #2f6fdb': SAMPLE_DATA,
     'boards/fixtures.ts #c4314b': SAMPLE_DATA,
     'builder/form.ts #6d5bd0': 'the accent a kit starts with, written into what the Builder makes',
+    'plans/planImage.ts #ffffff': PRINTED,
+    'plans/planImage.ts #1c2230': PRINTED,
+    'plans/planImage.ts #566072': PRINTED,
+    'plans/planImage.ts #d9dde5': PRINTED,
+    'plans/planImage.ts #f2f4f8': PRINTED,
+    'plans/planImage.ts #3f6fc4': PRINTED,
+    'plans/planImage.ts #8a97ad': PRINTED,
+    'plans/planImage.ts #0f7b6c': PRINTED,
+    'plans/planImage.ts #7a4fb5': PRINTED,
+    'plans/planImage.ts #b3261e': PRINTED,
     'richtext/CollaborativeEditor.tsx #a1452a': CARET,
     'richtext/CollaborativeEditor.tsx #2f5f8f': CARET,
     'richtext/CollaborativeEditor.tsx #9b3550': CARET,

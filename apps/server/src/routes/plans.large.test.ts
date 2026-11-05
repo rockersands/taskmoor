@@ -22,7 +22,9 @@ const nextAddress = () => `100.89.${Math.floor(++address / 250)}.${(address % 25
  * the M1 bar of 100,000 runs with
  *   TASKMOOR_LARGE_PLANS=1 npx vitest run --project=server apps/server/src/routes/plans.large.test.ts
  * Each view, and the List's search and groups, is read five times; the median must stay under a
- * second.
+ * second. A release in each track, half the tickets as its targets, all linked as one release
+ * across tracks (PLN-007), holds its page, the list and the plan's Releases tab to the same bar, and
+ * so does a move of 100 linked releases, with its 101 events.
  */
 const LARGE = Boolean(process.env.TASKMOOR_LARGE_PLANS);
 const TRACKS = 20;
@@ -41,6 +43,10 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
   /** Listed tickets blocked by one the first 10,000 leave out, and by one outside the plan. */
   let cutBlocks = 0;
   let outsideBlocks = 0;
+  /** The release across tracks over every track, and one of 100 releases to move. */
+  let crossAll = 0;
+  let crossHundred = 0;
+  let adminCookie = '';
 
   const read = async (options: InjectOptions) => {
     const res = await app.inject({
@@ -269,6 +275,66 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
       payload: { entries: [{ teamId, period: null, amount: 30 }] },
     });
     expect(set.statusCode, set.body).toBe(200);
+    // Releases across tracks (PLN-007): a release in each track, half the tickets as its targets,
+    // all linked as one, for the member, who sees them all.
+    adminCookie = admin;
+    const linked: number[] = [];
+    for (const trackId of trackIds) {
+      const release = await as({
+        method: 'POST',
+        url: `/api/v1/tracks/${trackId}/releases`,
+        payload: { name: 'Big 1.0', releaseDate: '2027-06-01' },
+      });
+      expect(release.statusCode, release.body).toBe(201);
+      const releaseId = release.json().release.id as number;
+      linked.push(releaseId);
+      await sql`
+        INSERT INTO ticket_release (workspace_id, ticket_id, release_id, role)
+        SELECT workspace_id, id, ${releaseId}::int, 'target' FROM ticket
+         WHERE track_id = ${trackId}::int AND number % 2 = 0`.execute(database.db);
+    }
+    const cross = await as({
+      method: 'POST',
+      url: '/api/v1/cross-track-releases',
+      payload: {
+        name: 'Big launch',
+        endRule: 'fixed_date',
+        date: '2027-06-01',
+        releaseIds: linked,
+      },
+    });
+    expect(cross.statusCode, cross.body).toBe(201);
+    crossAll = cross.json().id;
+    // A hundred tracks' releases, for the largest move the limit allows.
+    const hundred: number[] = [];
+    for (let t = 1; t <= 100; t++) {
+      const track = await as({
+        method: 'POST',
+        url: '/api/v1/tracks',
+        payload: { key: `MV${t}`, name: `Move ${t}`, mode: 'shared' },
+      });
+      expect(track.statusCode, track.body).toBe(201);
+      const release = await as({
+        method: 'POST',
+        url: `/api/v1/tracks/${track.json().track.id}/releases`,
+        payload: { name: 'Move 1.0', releaseDate: '2027-06-01' },
+      });
+      expect(release.statusCode, release.body).toBe(201);
+      hundred.push(release.json().release.id as number);
+    }
+    const many = await as({
+      method: 'POST',
+      url: '/api/v1/cross-track-releases',
+      payload: {
+        name: 'Hundred',
+        endRule: 'fixed_date',
+        date: '2027-06-01',
+        releaseIds: hundred,
+      },
+    });
+    expect(many.statusCode, many.body).toBe(201);
+    crossHundred = many.json().id;
+    await sql`ANALYZE`.execute(database.db);
   }, 900_000);
   afterAll(async () => {
     await app.close();
@@ -333,5 +399,90 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
       method: 'GET',
       url: `/api/v1/reports/two-dimensional?${new URLSearchParams({ query, x: 'track', y: 'track' })}`,
     });
+  }, 900_000);
+
+  it(`[PLN-014] [PLN-012] a file of all ${TICKETS} tickets starts within a second and holds them all`, async () => {
+    const address = await app.listen({ host: '127.0.0.1', port: 0 });
+    const started = performance.now();
+    const res = await fetch(`${address}/api/v1/plans/${plan}/export?columns=summary,status`, {
+      headers: { cookie },
+    });
+    expect(res.status).toBe(200);
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    let firstByte = 0;
+    let lines = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (firstByte === 0) firstByte = performance.now() - started;
+      for (const b of value) if (b === 10) lines += 1;
+    }
+    const total = performance.now() - started;
+    process.stdout.write(
+      `PLN-014 export, ${TICKETS} tickets: first byte ${Math.round(firstByte)} ms, all ${Math.round(total)} ms\n`,
+    );
+    // A header and a line per ticket, past the 10,000 a view lists at this size or at any other.
+    expect(lines).toBe(TRACKS * (PER_TRACK + 1) + 1);
+    expectWithinBudget(firstByte, 1000, `plan export, ${TICKETS} tickets, first byte (ms)`);
+  }, 900_000);
+
+  it(`[PLN-014] copies a plan of ${TRACKS} tracks in under a second`, async () => {
+    const started = performance.now();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/plans/${plan}/duplicate`,
+      payload: { name: 'A copy at size' },
+      remoteAddress: nextAddress(),
+      headers: { cookie },
+    });
+    const ms = performance.now() - started;
+    expect(res.statusCode, res.body).toBe(201);
+    expect(res.json().plan.sources).toHaveLength(TRACKS);
+    process.stdout.write(`PLN-014 duplicate, ${TRACKS} tracks: ${Math.round(ms)} ms\n`);
+    expectWithinBudget(ms, 1000, `plan duplicate, ${TRACKS} tracks (ms)`);
+  }, 60_000);
+
+  it(`[PLN-007] [PLN-012] answers a release across ${TRACKS} tracks and ${TICKETS} tickets in under a second`, async () => {
+    const page = await timed('release across tracks', {
+      method: 'GET',
+      url: `/api/v1/cross-track-releases/${crossAll}`,
+    });
+    expect((page.open as { count: number }).count).toBeGreaterThan(0);
+    expect((page.members as unknown[]).length).toBe(TRACKS);
+    await timed('releases across tracks', { method: 'GET', url: '/api/v1/cross-track-releases' });
+    const tab = await timed('releases tab', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/releases`,
+    });
+    expect((tab.crossTrack as { id: number }[]).map((c) => c.id)).toContain(crossAll);
+    await timed('timeline, with its markers', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/timeline`,
+    });
+    await timed('calendar, with its markers', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/calendar?from=2027-05-22&to=2027-07-04`,
+    });
+    // A move of 100 releases, as a site administrator, five times.
+    const times: number[] = [];
+    let version = 1;
+    for (let i = 1; i <= RUNS; i++) {
+      const started = performance.now();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/cross-track-releases/${crossHundred}/move`,
+        payload: { date: `2027-07-0${i}`, version },
+        remoteAddress: nextAddress(),
+        headers: { cookie: adminCookie },
+      });
+      times.push(performance.now() - started);
+      expect(res.statusCode, res.body).toBe(200);
+      const moved = res.json() as { version: number; lines: { outcome: string }[] };
+      expect(moved.lines.filter((l) => l.outcome === 'moves')).toHaveLength(100);
+      version = moved.version;
+    }
+    const m = median(times);
+    process.stdout.write(`PLN-007 a move of 100 releases: median ${Math.round(m)} ms\n`);
+    expectWithinBudget(m, 1000, 'a move of 100 linked releases, with its 101 events, median (ms)');
   }, 900_000);
 });

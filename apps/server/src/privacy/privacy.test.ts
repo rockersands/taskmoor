@@ -208,6 +208,17 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         description: 'Looked at the tray',
       })
       .execute();
+    // [PLN-007] A release across tracks Kalo owns.
+    await database.db
+      .insertInto('cross_track_release')
+      .values({
+        workspace_id: 1,
+        owner_id: kalo,
+        name: 'Kalo’s launch',
+        end_rule: 'fixed_date',
+        release_date: '2027-05-10',
+      })
+      .execute();
     // [PLN-009] Kalo's capacity in Mi's plan, with its note.
     const plan = await database.db
       .insertInto('plan')
@@ -354,6 +365,14 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     // Their capacity in plans, by the plan's id: the plan may be hidden from them.
     expect(JSON.parse(String(zip['preferences.json'])).planCapacity).toEqual([
       { planId: plan.id, period: '2026-11-02', amount: 12.5, note: 'Leave' },
+    ]);
+    // [PLN-007] Those they own: what they named them, not the work they hold.
+    expect(JSON.parse(String(zip['preferences.json'])).crossTrackReleases).toEqual([
+      expect.objectContaining({
+        name: 'Kalo’s launch',
+        endRule: 'fixed_date',
+        date: '2027-05-10',
+      }),
     ]);
     const tickets = lines(zip['tickets.ndjson']);
     expect(tickets).toEqual([
@@ -514,6 +533,12 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         expires_at: new Date(Date.now() + 86_400_000),
       })
       .execute();
+    // [PLN-007] A release across tracks Kalo owns: it stays, with the placeholder as its owner.
+    const kept = await database.db
+      .insertInto('cross_track_release')
+      .values({ workspace_id: 1, owner_id: kalo, name: 'Kept launch', end_rule: 'work_complete' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     // [PLN-009] Kalo's capacity in a plan, with a note about Kalo.
     const plan = await database.db
       .insertInto('plan')
@@ -569,6 +594,14 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     expect(
       await database.db.selectFrom('plan').select('id').where('id', '=', plan.id).execute(),
     ).toHaveLength(1);
+    // [PLN-007] Erasure keeps it: its owner's id now names the placeholder account.
+    expect(
+      await database.db
+        .selectFrom('cross_track_release')
+        .select('owner_id')
+        .where('id', '=', kept.id)
+        .execute(),
+    ).toEqual([{ owner_id: kalo }]);
     // The old session no longer works and the old email signs nobody in.
     expect((await get('kalo', '/api/v1/session')).json().user ?? null).toBeNull();
     expect((await signIn('kalo@example.com')).statusCode).toBe(401);

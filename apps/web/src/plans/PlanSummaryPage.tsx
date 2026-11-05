@@ -4,7 +4,11 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { searchHref } from '../releases/client';
 import { EmptyState } from '../shell/EmptyState';
+import type { PlanPosition } from './address';
 import type { Plan, PlanClient, PlanCount, PlanFilters, PlanSummary } from './client';
+import { DownloadMenu } from './DownloadMenu';
+import { fileName, saveBlob } from './download';
+import { summaryCsv } from './planExport';
 
 export interface PlanSectionProps {
   id: number;
@@ -12,6 +16,9 @@ export interface PlanSectionProps {
   filters: PlanFilters;
   client: PlanClient;
   now: () => Date;
+  /** Where the view stands, kept in the page's address so a link holds it (PLN-014). */
+  position?: PlanPosition;
+  onPosition?: (change: PlanPosition) => void;
 }
 
 const OVERVIEW: Record<string, MessageId> = {
@@ -33,7 +40,7 @@ const STAGES: Record<string, MessageId> = {
  * most open tickets. Each number links to the search that finds exactly those tickets, and is that
  * search's count, as the person may see them.
  */
-export function PlanSummaryPage({ id, filters, client }: PlanSectionProps) {
+export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionProps) {
   const t = useT();
   const intl = useIntl();
   const sectionId = useId();
@@ -101,6 +108,26 @@ export function PlanSummaryPage({ id, filters, client }: PlanSectionProps) {
 
   return (
     <>
+      <div className="plan-view-tools">
+        <DownloadMenu
+          items={[
+            {
+              key: 'csv',
+              label: t('plans.download.csv'),
+              make: async () => {
+                const name = fileName(
+                  plan.name,
+                  'summary',
+                  now().toISOString().slice(0, 10),
+                  'csv',
+                );
+                saveBlob(name, new Blob([summaryCsv(t, summary)], { type: 'text/csv' }));
+                return name;
+              },
+            },
+          ]}
+        />
+      </div>
       <p className="plan-total">
         <a href={searchHref(summary.total.query)}>
           {t('plans.summary.total', { count: summary.total.count })}

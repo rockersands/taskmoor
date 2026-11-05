@@ -5,9 +5,9 @@
     "total": 262
   },
   "fields": {
-    "pass": 476,
+    "pass": 480,
     "rate": 100,
-    "total": 476
+    "total": 480
   },
   "functions": {
     "pass": 298,
@@ -25,9 +25,9 @@
     "total": 254
   },
   "operators": {
-    "pass": 665,
+    "pass": 675,
     "rate": 100,
-    "total": 665
+    "total": 675
   },
   "ordering": {
     "pass": 190,

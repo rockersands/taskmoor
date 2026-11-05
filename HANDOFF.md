@@ -22,6 +22,30 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 
 ### Where things are
 
+- **T-089c is built, not merged** (2026-11-04, on `wave8/multi-track-stages`, from `3e59102`):
+  releases across tracks (ADR-122 stage 4, PLN-007 moved to M1, migration 0106). Next free
+  migration is 0107. It needs the full gate, an independent review and the 100,000-ticket bar
+  (`TASKMOOR_LARGE_PLANS=1`), none of them run. ADR-122 holds eight questions for the user; the
+  build takes the first answer each.
+- **T-089g is built, not merged** (2026-11-04, on the same branch): copy a plan, a link to a view,
+  each view's CSV and the Timeline as a PNG (ADR-122 stage 8, PLN-014, no migration, one event,
+  `plan.duplicated`, and two routes). Not run: the full gate, an independent review, the stories in a
+  browser, the 100,000-ticket bar, a real phone's canvas, and a person looking at the picture. The
+  ADR holds seven questions for the user, the first six built with the first answer each and the
+  seventh added by the review.
+
+- **The independent review of T-089c and T-089g was repaired on 2026-11-05** (same branch; ADR-122
+  "As built" says what it changed: a ticket seen through a grant is never tied to a release across
+  tracks, an id cannot be taken over by a name, the same day brings back what is out of step, a word
+  finds candidates past the limit of 500, no answer is said in words, touch targets, status lines,
+  Spanish). 30 of the fixes were taken out one at a time and each made its test fail. Run after the
+  repair: the affected test files and stories one at a time, lint, types, and three e2e specs on the
+  mobile project only (`cross-track-releases`, `plan-share-and-export`, `releases`). Still not run:
+  the full gate, the desktop e2e project, the 100,000-ticket bar, a real phone, a real screen reader,
+  a spreadsheet. Left for tickets: the no-op `scrollWidth` checks in 23 other test files (jsdom always
+  answers 0), and a release page's own dates still reading 2026-12-01. Stage 8's question 7 (a
+  byte-order mark) is new, for the user.
+
 - **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
   the import results and all the front work so far. Each merge passed a full gate.
 - **Coordinator branch:** `claude/api-key-upload-prevention-9ucz4x`. It is `main` plus documents.
