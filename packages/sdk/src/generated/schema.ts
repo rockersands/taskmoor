@@ -1582,6 +1582,13 @@ export interface components {
         });
         Release: {
             archived: boolean;
+            crossTrack: {
+                date: string | null;
+                /** @enum {string} */
+                endRule: "fixed_date" | "work_complete";
+                id: number;
+                name: string;
+            } | null;
             description: string;
             id: number;
             name: string;

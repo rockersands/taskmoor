@@ -115,6 +115,6 @@ test('[QRY-014] [QRY-015] columns, edits in place and a CSV export of the result
   expect(lines[0]).toBe('key,summary,ticketType,status,assignee,priority,labels,updatedAt');
   expect(lines).toHaveLength(2);
   expect(lines[1]).toContain(`${ticket.key},Edited ${word},`);
-  expect(lines[1]).toContain(',alpha; beta,');
+  expect(lines[1]).toContain(',"alpha; beta",');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
