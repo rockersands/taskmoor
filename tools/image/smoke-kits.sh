@@ -17,7 +17,7 @@ cleanup() {
   docker rm -f -v "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
-  docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
+  docker rm -f -v "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
   docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_postgres-ca" "ts-smoke-${ID}_postgres-tls" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
   docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
@@ -71,7 +71,7 @@ wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
 docker logs "$AIO_NAME" 2>&1 | grep -c "initialising PostgreSQL" | grep -qx 1 && echo "data kept: initialised once"
 # Removed without a clean stop, as an out-of-memory kill would: the next start finds
 # PostgreSQL's stale lock file and must still come up.
-docker rm -f "$AIO_NAME" >/dev/null
+docker rm -f -v "$AIO_NAME" >/dev/null
 # OPS-006: the upgrade by hand, with the container stopped (never beside a running one: both
 # would start PostgreSQL on the same files). Same image, so nothing to apply.
 out=$(docker run --rm -v "$VOL:/data" "$AIO" upgrade)

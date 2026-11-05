@@ -106,3 +106,22 @@ describe('bash scripts on a Mac', () => {
     expect(unguarded).toEqual([]);
   });
 });
+
+// A container removed with `docker rm` keeps the anonymous volumes of the image's VOLUME lines
+// (Taskmoor's /data, PostgreSQL's data directory), even one started with --rm: the T-023 runs
+// left 20 behind. The image and air-gap scripts remove them with the container.
+describe('image and air-gap scripts', () => {
+  it('[OPS-001] remove their containers with their anonymous volumes', () => {
+    const scripts = [...shellScripts('tools/image'), ...shellScripts('tools/airgap')];
+    expect(scripts).toEqual(
+      expect.arrayContaining(['tools/image/smoke.sh', 'tools/airgap/bundle.sh']),
+    );
+    const keeping = scripts.flatMap((script) =>
+      readFileSync(join(ROOT, script), 'utf8')
+        .split('\n')
+        .filter((line) => /\bdocker rm\b/.test(line) && !/\bdocker rm (-f )?-v\b/.test(line))
+        .map((line) => `${script}: ${line.trim()}`),
+    );
+    expect(keeping).toEqual([]);
+  });
+});

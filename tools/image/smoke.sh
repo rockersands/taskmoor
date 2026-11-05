@@ -71,7 +71,7 @@ echo "frontend artefact and server are both $VERSION"
 redirects_to /tickets/ABC-1 /#/tickets/ABC-1
 redirects_to /browse/ABC-1 /#/tickets/ABC-1
 echo "deep links redirect to their hash routes, imported links to their tickets"
-docker rm -f "$APP" >/dev/null
+docker rm -f -v "$APP" >/dev/null
 
 echo "== web-only container, clean URLs"
 docker run -d --rm --name "$APP" -e TASKMOOR_ROLE=web -e TASKMOOR_WEB_ROUTING=path \
@@ -84,7 +84,7 @@ fi
 echo "deep link serves the app shell with its runtime configuration"
 redirects_to /browse/ABC-1 /tickets/ABC-1
 echo "an imported link redirects to its ticket's clean URL"
-docker rm -f "$APP" >/dev/null
+docker rm -f -v "$APP" >/dev/null
 
 echo "== all roles next to Postgres 16"
 docker network create "$NET" >/dev/null
@@ -107,6 +107,6 @@ if [ "${SKIP_EMULATED:-${SKIP_ARM64:-}}" != "1" ]; then
   curl -fsS http://127.0.0.1:18082/health; echo
   arch=$(docker image inspect "$TAG-$OTHER" --format '{{.Architecture}}')
   [ "$arch" = "$OTHER" ] || { echo "the emulated image is $arch, not $OTHER"; exit 1; }
-  docker rm -f "$APP" >/dev/null
+  docker rm -f -v "$APP" >/dev/null
 fi
 echo "== smoke passed"
