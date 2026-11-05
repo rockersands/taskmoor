@@ -56,6 +56,31 @@ describe('tools/image/smoke.sh against the server it probes', () => {
   });
 });
 
+// The Builder CLI reads apps/web/dist unless told otherwise, and a checkout has none until
+// `pnpm build`: smoke-backend-kit.sh stopped there in a fresh worktree (T-023). The image
+// scripts give it the image's own web build, which is also the version the kit pins.
+describe('image scripts that make kits', () => {
+  it('[OPS-015] give the Builder CLI the web build taken from the image', () => {
+    const scripts = shellScripts('tools').filter((path) =>
+      readFileSync(join(ROOT, path), 'utf8').includes('packages/devtools/src/cli/builder.ts'),
+    );
+    expect(scripts).toEqual(
+      expect.arrayContaining(['tools/image/fresh-vm.sh', 'tools/image/smoke-backend-kit.sh']),
+    );
+    for (const script of scripts) {
+      const text = readFileSync(join(ROOT, script), 'utf8');
+      expect({
+        script,
+        copiesWeb: /docker cp "\$cid:\/app\/web" "\$WORK\/web"/.test(text),
+      }).toEqual({ script, copiesWeb: true });
+      expect({ script, passesWeb: /--web "\$WORK\/web"/.test(text) }).toEqual({
+        script,
+        passesWeb: true,
+      });
+    }
+  });
+});
+
 // A Mac's own bash is 3.2, where "${a[@]}" of an empty array is an "unbound variable" under
 // set -u: tools/image/smoke-kits.sh stopped there on its first run on a Mac (T-023). An array
 // that starts empty is expanded as ${a[@]+"${a[@]}"}, which is the same on every bash.
