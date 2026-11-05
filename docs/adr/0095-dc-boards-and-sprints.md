@@ -65,7 +65,10 @@ releases and areas are M1-014's.
   so two "Team" select fields usually become one, and the loader then names that one field. Only
   when they became different fields (one of them arrived as "Team (imported)", say) does the
   loader leave the query out (`query_names_ambiguous_field` with the name), since which one the
-  source read cannot be told. Saved filters refuse such a name in either case (ADR-096): they are
+  source read cannot be told. A dry run makes no fields, so it tells from its plans: a field
+  that exists beside one it would make are two, and fields it would make are one when they have
+  one type and multiplicity, which the stage keeps per board (`fieldTypes`) for the mapper to
+  compare; so it leaves out what the real run leaves out. Saved filters refuse such a name in either case (ADR-096): they are
   kept with the problem, where a board's query is left out. Then the loader binds
   every query as a board would read it with no viewer (a viewer id nobody has, so
   `currentUser()` resolves and finds no one); a query that does not resolve (an app's field or

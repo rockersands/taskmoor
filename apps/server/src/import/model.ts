@@ -512,9 +512,12 @@ export interface BoardCommand {
   /**
    * Names the queries use that several custom fields of the source have (in lower case), with
    * those fields (T-195): the loader names a name by the one field here they all became, and
-   * leaves out a query that names it when they became different fields.
+   * leaves out a query that names it when they became different fields. `oneShape` says whether
+   * the fields have one type and multiplicity, which is what makes them one field (a field joins
+   * one of its name and shape), so a dry run, which makes none, can tell; absent when the source
+   * does not say.
    */
-  sharedNames?: { name: string; fields: Ref[] }[];
+  sharedNames?: { name: string; fields: Ref[]; oneShape?: boolean }[];
 }
 
 /**

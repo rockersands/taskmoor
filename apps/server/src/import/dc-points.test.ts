@@ -130,8 +130,8 @@ describe('Data Center backup import: queries naming a field that arrived under a
       headers: { ...(options.headers ?? {}), cookie },
     });
 
-  /** Imports a hand-written backup with the given custom fields, board queries and filters. */
-  async function importBackup(file: string, key: string, backup: Backup) {
+  /** The report of a run over a hand-written backup with the given fields, queries and filters. */
+  async function runBackup(file: string, key: string, backup: Backup, dryRun: boolean) {
     const customFields = backup.fields.map(
       ([id, name, type]) =>
         `<CustomField id="${id}" cfname="${xmlText(name)}" customfieldtypekey="${type}"/>`,
@@ -172,7 +172,7 @@ describe('Data Center backup import: queries naming a field that arrived under a
       url: '/api/v1/admin/imports',
       payload: {
         name: file,
-        dryRun: false,
+        dryRun,
         source: { format: 'dc-backup', path: file, system: key.toLowerCase(), scope: 'all' },
       },
     });
@@ -184,9 +184,14 @@ describe('Data Center backup import: queries naming a field that arrived under a
     const view = (await as({ method: 'GET', url: `/api/v1/admin/imports/${run.id}` })).json()
       .importRun as { status: string; lastError: string | null };
     expect(view.status, view.lastError ?? '').toBe('done');
-    const report = fidelityReport.parse(
+    return fidelityReport.parse(
       (await as({ method: 'GET', url: `/api/v1/admin/imports/${run.id}/report` })).json().report,
     );
+  }
+
+  /** Imports a hand-written backup with the given custom fields, board queries and filters. */
+  async function importBackup(file: string, key: string, backup: Backup) {
+    const report = await runBackup(file, key, backup, false);
     // The target field each of the backup's custom fields became, by the backup's id.
     const imported = await database.db
       .selectFrom('import_external_id')
@@ -435,5 +440,55 @@ describe('Data Center backup import: queries naming a field that arrived under a
       `cf[${field}] IS NOT EMPTY`,
       `cf[${field}] IS NOT EMPTY`,
     ]);
+  });
+  /**
+   * A dry run makes no field, so it cannot look up what the backup's fields of one name became;
+   * it says what the real run would do from what it plans: a field that exists beside one it
+   * would make are two fields, and fields it would make are one when they have one shape.
+   */
+  it('[IMP-006] [IMP-005] a dry run leaves out the board queries the real run leaves out', async () => {
+    // "Points" twice: a number, which joins the seeded Points, and text, which arrives as
+    // "Points (imported)".
+    const mixed: Backup = {
+      ...pointsBackup(NUMBER_FIELD),
+      fields: [
+        ['10100', 'Points', NUMBER_FIELD],
+        ['10101', 'Points', TEXT_FIELD],
+      ],
+      quickFilters: [['Pointed', 'points IS NOT EMPTY']],
+      savedFilters: [],
+    };
+    // Each query names the field as it is written there.
+    const ambiguous = [
+      'board_filter_not_imported: Pointed: query_names_ambiguous_field (points)',
+      'board_query_not_imported: query_names_ambiguous_field (Points)',
+      'board_sub_query_not_imported: query_names_ambiguous_field (Points)',
+    ];
+    const dry = await runBackup('mixed-dry.zip', 'MXD', mixed, true);
+    expect(dry.run.dryRun).toBe(true);
+    expect(boardWarnings(dry).sort()).toEqual(ambiguous);
+    const real = await importBackup('mixed.zip', 'MXD', mixed);
+    expect(real.fields['10100']).not.toBe(real.fields['10101']);
+    expect(boardWarnings(real.report).sort()).toEqual(ambiguous);
+
+    // Two "Squad" fields the run would make: two fields when their types differ, one when not.
+    const two = await runBackup(
+      'squad-two-dry.zip',
+      'SQD',
+      squadBackup(TEXT_FIELD, NUMBER_FIELD),
+      true,
+    );
+    expect(boardWarnings(two).sort()).toEqual([
+      'board_filter_not_imported: Squadded: query_names_ambiguous_field (Squad)',
+      'board_query_not_imported: query_names_ambiguous_field (Squad)',
+      'board_sub_query_not_imported: query_names_ambiguous_field (squad)',
+    ]);
+    const one = await runBackup(
+      'squad-one-dry.zip',
+      'SQE',
+      squadBackup(TEXT_FIELD, TEXT_FIELD),
+      true,
+    );
+    expect(boardWarnings(one)).toEqual([]);
   });
 });

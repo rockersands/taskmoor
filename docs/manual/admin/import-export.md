@@ -398,7 +398,8 @@ starts with. When the backup has several custom fields of that name, the query r
 they became here, which is one field when they have the same type (each joins the first). When
 they arrived as different fields, such as `Team` and "Team (imported)", the query is not kept, since
 which one the backup read cannot be told, and the warning says `query_names_ambiguous_field` with
-the name. A saved search keeps such a query and says `ambiguous_field` in either case.
+the name. A dry run gives the same warning for the same queries, before any field exists. A
+saved search keeps such a query and says `ambiguous_field` in either case.
 
 Under "Not imported", the report counts each part of the backup the importer does not handle
 yet: saved filters, other kinds of associations, rows of the agile plugin that name a board,

@@ -946,6 +946,7 @@ async function stageWith(
         .filter((f) => f.name.toLowerCase() === name.toLowerCase())
         .map((f) => f.id)
         .sort(compareIds),
+    fieldType: (id: string) => collector.fieldPart.fields.get(id)?.typeKey ?? null,
   };
   const agileRecords = {
     ...collector.agilePart.configuration(agileResolve),

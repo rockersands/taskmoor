@@ -176,7 +176,7 @@ type Shared = NonNullable<BoardCommand['sharedNames']>;
  * several of the source's custom fields have (`shared`, T-195) becomes the one field here they
  * all became, as when a field joined another of its name and type; when they became different
  * fields, which one the source read cannot be told (`query_names_ambiguous_field`, with the
- * name). A dry run keeps the source ids, and a shared name when its fields are not made yet.
+ * name). A dry run keeps the source ids, and a shared name whose fields it would make as one.
  */
 function withTargetFields(
   ctx: LoadContext,
@@ -199,9 +199,14 @@ function withTargetFields(
     const targets = of.fields.map((r) => ctx.refs.get(r));
     if (targets.includes(null)) problem ??= 'field_not_imported';
     const made = new Set(targets.filter((t): t is number => t !== null && t !== PENDING));
-    if (made.size > 1) problem ??= `query_names_ambiguous_field (${f.name})`;
+    // A dry run's PENDING is a field the run would make: beside one that exists, a different
+    // field; with only other PENDING ones, one field when they have one shape.
+    const pending = targets.includes(PENDING);
+    const several =
+      made.size > 1 || (pending && (made.size === 1 || (made.size === 0 && of.oneShape === false)));
+    if (several) problem ??= `query_names_ambiguous_field (${f.name})`;
     const [one] = made;
-    return one === undefined || made.size > 1 ? f : { name: 'cf', custom: one, span: f.span };
+    return one === undefined || several ? f : { name: 'cf', custom: one, span: f.span };
   };
   const visit = (e: NonNullable<typeof query.where>): typeof e => {
     switch (e.kind) {

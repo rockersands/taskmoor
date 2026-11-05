@@ -27,7 +27,7 @@ import type {
 } from './dc-backup/stage-agile';
 import type { StagedField } from './dc-backup/stage-fields';
 import type { StagedIssue } from './dc-backup/stage-issues';
-import { instantOf } from './dc-fields';
+import { instantOf, targetShape } from './dc-fields';
 import type { BoardCommand, Mapped, Ref, TicketCommand, Warning } from './model';
 
 /**
@@ -225,6 +225,18 @@ export function translateQuery(
     : { query, fields, shared: named.shared };
 }
 
+/**
+ * Whether the backup's custom fields of one name become one field here: they do when they have
+ * one type and multiplicity, as a field joins one of its name and shape (`load-config.ts`).
+ */
+function oneShape(ids: readonly string[], types: Readonly<Record<string, string>>): boolean {
+  const shapes = ids.map((id) => targetShape(types[id] ?? null));
+  const [first] = shapes;
+  return shapes.every(
+    (s) => s !== null && first != null && s.type === first.type && s.multiple === first.multiple,
+  );
+}
+
 /** The custom field ids a translated query names, as references. */
 const fieldRefs = (ids: readonly string[]): Ref[] => ids.map((id) => ref('field', id));
 
@@ -304,7 +316,11 @@ export function mapBoard(b: StagedBoard): Mapped {
       ...(shared.size === 0
         ? {}
         : {
-            sharedNames: [...shared].map(([n, ids]) => ({ name: n, fields: fieldRefs(ids) })),
+            sharedNames: [...shared].map(([n, ids]) => ({
+              name: n,
+              fields: fieldRefs(ids),
+              ...(b.fieldTypes === undefined ? {} : { oneShape: oneShape(ids, b.fieldTypes) }),
+            })),
           }),
     },
     warnings,
