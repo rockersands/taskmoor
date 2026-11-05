@@ -444,6 +444,7 @@
 .audit-filter > .form-field {
   flex: 1 1 12rem;
   min-width: 0;
+  max-width: 20rem;
 }
 
 .audit-retention {

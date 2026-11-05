@@ -146,7 +146,7 @@ export function McpPage({
         <fieldset className="form-field">
           <legend className="form-label">{t('mcp.profile')}</legend>
           {PROFILES.map((p) => (
-            <label key={p.id} className="form-field-inline">
+            <label key={p.id} className="form-field form-field-inline">
               <input
                 type="radio"
                 name={`${id}-profile`}

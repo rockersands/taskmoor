@@ -1,8 +1,8 @@
 /*
  * The pieces every page shares (ADR-114, T-144): a page's width and rhythm, the quiet pill, the
  * danger pill, the glass table and the badge. Loaded before the pages' own styles, so a page can
- * still place them, and by the Builder too. Filter chips, the card and the empty state, which the
- * Builder has no use for, are in surfaces.css.
+ * still place them, and by the Builder too. Filter chips, the card and the empty state are in
+ * surfaces.css, which the Builder loads as well.
  */
 
 /* A page's width and its rhythm. A board, a timeline or a diagram that needs it all says so. */

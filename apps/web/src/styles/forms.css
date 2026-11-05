@@ -101,7 +101,7 @@
   box-shadow: var(--glass-highlight-flat);
 }
 
-.form legend:not(.visually-hidden) {
+.form legend:where(:not(.visually-hidden)) {
   float: inline-start;
   width: 100%;
   margin-bottom: var(--space-1);

@@ -75,15 +75,16 @@ export function ImportsPage({
         <p className="page-note">{t('admin.imports.forbidden')}</p>
       ) : (
         <>
-          <div ref={top} />
-          <ImportWizard
-            key={wizard.key}
-            client={client}
-            delta={wizard.delta}
-            {...(pollMs !== undefined ? { pollMs } : {})}
-            onStarted={() => void reload()}
-            onDone={() => void reload()}
-          />
+          <div ref={top}>
+            <ImportWizard
+              key={wizard.key}
+              client={client}
+              delta={wizard.delta}
+              {...(pollMs !== undefined ? { pollMs } : {})}
+              onStarted={() => void reload()}
+              onDone={() => void reload()}
+            />
+          </div>
           <div className="form-actions">
             <button type="button" className="button-secondary" onClick={() => fresh(null)}>
               {t('admin.imports.new')}

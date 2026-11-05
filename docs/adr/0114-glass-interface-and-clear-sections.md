@@ -195,6 +195,12 @@ become **translucent glass**:
     is 600). The gloss and the lens's shadow are tokens too.
   - `--glass-surface-strong` in the light skin went from 66 % to 68 %: `contrast.test.ts` now holds a
     dialog over the page's dim layer, and accent text fell just short at 66 %.
+  - The Builder (ADR-088) and the stand-alone pages open with `PageHeader` and sit on the same
+    cards. The Builder's single file now carries `surfaces.css` as well; its picture and the canvas
+    are inline in that file, so they reach it offline.
+  - `.account-section` and `.facts` beside `.glass-card` are the cards of the administration pages
+    and of Account: they place what is inside, the glass comes from `.glass-card`. A row inside one
+    is a well on `--glass-surface-sunken`. `.token-badge` and `.session-badge` share `.badge`.
   - `styles/design.test.ts` is the guard, and `styles/design-offenders.ts` lists what is still to
     fix; when OFFENDERS is empty the sweep is done. The guard says at its head what it cannot check.
 
