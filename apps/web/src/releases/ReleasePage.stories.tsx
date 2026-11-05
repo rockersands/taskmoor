@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
 
@@ -22,6 +23,7 @@ const meta = {
   args: {
     releaseId: 2,
     client: fakeReleaseClient({ approver: true }),
+    crossTrack: fakeCrossTrackClient(),
     now: () => new Date('2026-10-30T09:00:00Z'),
   },
   decorators: [
@@ -97,5 +99,15 @@ export const OnATouchScreen: Story = {
     await expect(
       tooSmallForAFinger(canvasElement, ['.release-table a', '.release-legend a']),
     ).toEqual([]);
+  },
+};
+
+/** In a release across tracks on another day: said in words, with Align for its administrators. */
+export const OutOfStep: Story = {
+  args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: 'Spring launch' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /Align to/ })).toBeVisible();
   },
 };

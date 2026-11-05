@@ -136,7 +136,7 @@ reported, and the coordinator checked that it was pushed.
 | T-089i | Dependencies: build PLN-013 (other link types, flags within one sprint) in 1.0, and keep outside blockers a count only? | You | The user put all of PLN-001 to PLN-009 in 1.0; T-089 narrowed PLN-006 to blocking links and moved the rest to PLN-013. Recommendation: build PLN-013 with the program board (T-089d); keep outside blockers a count, since naming the visible ones would set the hidden ones apart |
 | T-089b | Multi-track: teams and capacity | Done | On `main` (ADR-122 stage 3, PLN-005, PLN-009, migration 0102): capacity per team and person by period in points or hours, over-capacity flagged with a label; hidden work only counted, never named |
 | T-089j | Multi-track capacity: the parts of PLN-005 and PLN-009 not built (velocity from history, days and percentages, allocations to outcomes, bulk fill and CSV import), and two questions in ADR-122 (hidden work counted in "elsewhere"; notes kept in the event payload after erasure) | You | Need a requirement ID and a stage if wanted in 1.0 |
-| T-089c | Multi-track: releases across tracks | To do | In 1.0 |
+| T-089c | Multi-track: releases across tracks | Built, not merged | On `wave8/multi-track-stages` (ADR-122 stage 4, PLN-007, migration 0106): lines up tracks' own releases on one end, its own pages, a plan's Releases tab, markers, the `crossTrackRelease` query field, a move after a confirmed list. Waits for the coordinator's gate and review; ADR-122 lists eight questions for the user, built with the first answer each |
 | T-089d | Multi-track: program board with live editing | To do | In 1.0 |
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
 | T-089f | Multi-track: auto-scheduler | To do | In 1.0 |

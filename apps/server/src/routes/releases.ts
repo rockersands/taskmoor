@@ -119,50 +119,52 @@ export function releaseQuery(
   workspaceId: number,
   visible: RawBuilder<boolean> = sql`true`,
 ) {
-  return db
-    .selectFrom('release as r')
-    // The release across tracks it is in, at most one (PLN-007).
-    .leftJoin('cross_track_release_member as ctm', 'ctm.release_id', 'r.id')
-    .leftJoin('cross_track_release as ctr', 'ctr.id', 'ctm.cross_track_release_id')
-    .select([
-      'ctr.id as cross_id',
-      'ctr.name as cross_name',
-      'ctr.end_rule as cross_end_rule',
-      'ctr.release_date as cross_date',
-      'r.id',
-      'r.track_id',
-      'r.name',
-      'r.description',
-      'r.start_date',
-      'r.release_date',
-      'r.sort_order',
-      'r.shipped_at',
-      'r.archived_at',
-      'r.require_approvals',
-      // Target tickets outside the trash, and those of them closed.
-      (eb) =>
-        eb
-          .selectFrom('ticket_release as tr')
-          .innerJoin('ticket as k', 'k.id', 'tr.ticket_id')
-          .select(sql<string>`count(*)`.as('n'))
-          .whereRef('tr.release_id', '=', 'r.id')
-          .where('tr.role', '=', 'target')
-          .where('k.deleted_at', 'is', null)
-          .where(visible)
-          .as('ticket_count'),
-      (eb) =>
-        eb
-          .selectFrom('ticket_release as tr')
-          .innerJoin('ticket as k', 'k.id', 'tr.ticket_id')
-          .select(sql<string>`count(*)`.as('n'))
-          .whereRef('tr.release_id', '=', 'r.id')
-          .where('tr.role', '=', 'target')
-          .where('k.deleted_at', 'is', null)
-          .where('k.closed_at', 'is not', null)
-          .where(visible)
-          .as('closed_count'),
-    ])
-    .where('r.workspace_id', '=', workspaceId);
+  return (
+    db
+      .selectFrom('release as r')
+      // The release across tracks it is in, at most one (PLN-007).
+      .leftJoin('cross_track_release_member as ctm', 'ctm.release_id', 'r.id')
+      .leftJoin('cross_track_release as ctr', 'ctr.id', 'ctm.cross_track_release_id')
+      .select([
+        'ctr.id as cross_id',
+        'ctr.name as cross_name',
+        'ctr.end_rule as cross_end_rule',
+        'ctr.release_date as cross_date',
+        'r.id',
+        'r.track_id',
+        'r.name',
+        'r.description',
+        'r.start_date',
+        'r.release_date',
+        'r.sort_order',
+        'r.shipped_at',
+        'r.archived_at',
+        'r.require_approvals',
+        // Target tickets outside the trash, and those of them closed.
+        (eb) =>
+          eb
+            .selectFrom('ticket_release as tr')
+            .innerJoin('ticket as k', 'k.id', 'tr.ticket_id')
+            .select(sql<string>`count(*)`.as('n'))
+            .whereRef('tr.release_id', '=', 'r.id')
+            .where('tr.role', '=', 'target')
+            .where('k.deleted_at', 'is', null)
+            .where(visible)
+            .as('ticket_count'),
+        (eb) =>
+          eb
+            .selectFrom('ticket_release as tr')
+            .innerJoin('ticket as k', 'k.id', 'tr.ticket_id')
+            .select(sql<string>`count(*)`.as('n'))
+            .whereRef('tr.release_id', '=', 'r.id')
+            .where('tr.role', '=', 'target')
+            .where('k.deleted_at', 'is', null)
+            .where('k.closed_at', 'is not', null)
+            .where(visible)
+            .as('closed_count'),
+      ])
+      .where('r.workspace_id', '=', workspaceId)
+  );
 }
 type ReleaseRow = Awaited<ReturnType<ReturnType<typeof releaseQuery>['executeTakeFirstOrThrow']>>;
 

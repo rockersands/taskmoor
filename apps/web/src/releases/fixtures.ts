@@ -39,7 +39,7 @@ const release = (
 const counted = (query: string, count: number) => ({ query, count, exact: true });
 
 export function fakeReleaseClient(
-  options: { mayManage?: boolean; approver?: boolean } = {},
+  options: { mayManage?: boolean; approver?: boolean; linked?: boolean } = {},
 ): ReleaseClient & { releases: () => Release[] } {
   const mayManage = options.mayManage ?? true;
   let next = 10;
@@ -69,6 +69,22 @@ export function fakeReleaseClient(
     ),
     release(4, '1.8', { shipped: true, archived: true, releaseDate: '2026-08-01' }),
   ];
+  // In a release across tracks ending on another day, and so out of step (PLN-007).
+  if (options.linked) {
+    releases = releases.map((r) =>
+      r.id === 3
+        ? {
+            ...r,
+            crossTrack: {
+              id: 5,
+              name: 'Spring launch',
+              endRule: 'fixed_date' as const,
+              date: '2026-12-20',
+            },
+          }
+        : r,
+    );
+  }
   let approvers: Approver[] = [
     { user: { id: 7, name: 'Dave Approver' }, decision: null, comment: '', decidedAt: null },
   ];
@@ -92,6 +108,9 @@ export function fakeReleaseClient(
       },
       open: counted(`${base(id)} AND stage != closed`, open),
       warnings: [
+        ...(r.crossTrack?.date && r.releaseDate !== r.crossTrack.date && !r.shipped
+          ? [{ code: 'cross_track_out_of_step' as const, count: 1 }]
+          : []),
         ...(r.overdue && open > 0
           ? [{ code: 'overdue' as const, count: open, query: `${base(id)} AND stage != closed` }]
           : []),
@@ -252,6 +271,10 @@ export function fakeReleaseClient(
               }
             : x,
       );
+      return { ok: true };
+    },
+    setDate: async (id, releaseDate): Promise<Outcome> => {
+      releases = releases.map((x) => (x.id === id ? { ...x, releaseDate, overdue: false } : x));
       return { ok: true };
     },
     decide: async (_id, decision, comment): Promise<Outcome> => {

@@ -15,7 +15,8 @@ export interface ReleasesPageProps {
  * A track's releases hub (M1-050; CORE-016): the upcoming releases in the track's order, then
  * the shipped ones and, folded away, the archived ones; each with its dates, its state (overdue
  * when its day has passed) and how many of its tickets are closed, linking to its page. The
- * track's administrators add releases here.
+ * track's administrators add releases here. A release in a release across tracks (PLN-007) says so,
+ * and the page links to their list.
  */
 export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageProps) {
   const t = useT();
@@ -101,6 +102,14 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
               {r.name}
             </a>
             <ReleaseState release={r} />
+            {r.crossTrack && (
+              <a
+                className="badge release-cross-track"
+                href={routeHref(`#/cross-track-releases/${r.crossTrack.id}`)}
+              >
+                {t('releases.crossTrackLabel', { name: r.crossTrack.name })}
+              </a>
+            )}
           </div>
           <span className="board-meta">
             {r.shipped && r.shippedAt
@@ -133,9 +142,17 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
         title={t('releases.title', { name: track.name })}
         purpose={t('purpose.releases')}
         actions={
-          <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
-            {t('releases.toSummary')}
-          </a>
+          <>
+            <a className="button-quiet" href={routeHref('#/cross-track-releases')}>
+              {t('crossTrack.title')}
+            </a>
+            <a
+              className="button-quiet"
+              href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}
+            >
+              {t('releases.toSummary')}
+            </a>
+          </>
         }
       />
       {list.mayManage && (

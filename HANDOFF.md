@@ -22,6 +22,12 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 
 ### Where things are
 
+- **T-089c is built, not merged** (2026-11-04, on `wave8/multi-track-stages`, from `3e59102`):
+  releases across tracks (ADR-122 stage 4, PLN-007 moved to M1, migration 0106). Next free
+  migration is 0107. It needs the full gate, an independent review and the 100,000-ticket bar
+  (`TASKMOOR_LARGE_PLANS=1`), none of them run. ADR-122 holds eight questions for the user; the
+  build takes the first answer each. T-089g on the same branch is still only designed.
+
 - **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
   the import results and all the front work so far. Each merge passed a full gate.
 - **Coordinator branch:** `claude/api-key-upload-prevention-9ucz4x`. It is `main` plus documents.

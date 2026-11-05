@@ -277,6 +277,53 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     remove: async (id) => {
       removed.push(id);
     },
+    releases: async (_id, track) => {
+      const shop = { id: 1, key: 'SHOP', name: 'Shop' };
+      const ops = { id: 2, key: 'OPS', name: 'Operations' };
+      const progress = { tickets: 4, closed: 1, open: 3 };
+      const plain = { shipped: false, archived: false, overdue: false, progress };
+      const gathered = track
+        ? []
+        : [
+            {
+              id: 5,
+              name: 'Launch across tracks',
+              endRule: 'fixed_date' as const,
+              date: '2026-12-01',
+              state: 'upcoming' as const,
+              progress: { tickets: 8, closed: 2, open: 6 },
+              hidden: { releases: 1, open: 4 },
+              releases: [
+                {
+                  id: 21,
+                  name: '2.0',
+                  track: shop,
+                  releaseDate: '2026-12-01',
+                  outOfStep: false,
+                  ...plain,
+                },
+                {
+                  id: 22,
+                  name: '1.4',
+                  track: ops,
+                  releaseDate: '2026-12-08',
+                  outOfStep: true,
+                  ...plain,
+                },
+              ],
+            },
+          ];
+      return {
+        crossTrack: gathered,
+        tracks: [
+          {
+            track: ops,
+            releases: [{ id: 23, name: 'Ops 1.5', releaseDate: '2027-01-15', ...plain }],
+          },
+        ],
+        truncated: false,
+      };
+    },
     choices: async () => ({
       tracks: TRACKS.map((x) => ({ ...x, count: items.filter((i) => i.trackId === x.id).length })),
       types: [...new Set(items.map((i) => i.type))].sort().map((type) => ({

@@ -1,5 +1,6 @@
 import { ApiError, api } from '../api/client';
 import { type Refusal, refusalOf } from '../timeline/client';
+import type { ReleaseMarker } from '../timeline/markers';
 
 /** A ticket with a start or due day in the range shown (M1-049; AGL-017). */
 export interface CalendarTicket {
@@ -17,7 +18,7 @@ export interface CalendarData {
   track: { id: number; key: string; name: string };
   tickets: CalendarTicket[];
   sprints: { id: number; name: string; state: string; start: string; end: string }[];
-  releases: { id: number; name: string; date: string; shipped: boolean }[];
+  releases: ReleaseMarker[];
   truncated: boolean;
 }
 

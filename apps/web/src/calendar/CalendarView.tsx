@@ -12,6 +12,7 @@ import { routeHref } from '../routing/router';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { dayNumber, isoDay } from '../timeline/client';
+import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
 import type { CalendarData, CalendarTicket, Moved } from './client';
 
@@ -268,6 +269,7 @@ export function CalendarView({
     intl.formatDate(new Date((first + i) * 86_400_000), { weekday: 'short', timeZone: 'UTC' }),
   );
   const days = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+  const drawn = drawnReleases(data.releases);
   const thisMonth = new Date(month * 86_400_000).getUTCMonth();
 
   return (
@@ -326,7 +328,7 @@ export function CalendarView({
           const sprints = data.sprints.filter(
             (s) => dayNumber(s.start) <= day && day <= dayNumber(s.end),
           );
-          const releases = data.releases.filter((r) => dayNumber(r.date) === day);
+          const releases = drawn.filter((r) => dayNumber(r.date) === day);
           const outside = date.getUTCMonth() !== thisMonth;
           // Monday to Wednesday open a grip's menu towards the later days, the rest towards the
           // earlier ones, so it stays on the page.
@@ -356,8 +358,8 @@ export function CalendarView({
                 ),
               )}
               {releases.map((r) => (
-                <span key={`r${r.id}`} className="calendar-release">
-                  {t('calendar.release', { name: r.name })}
+                <span key={r.key} className="calendar-release">
+                  {t('calendar.release', { name: releaseMarkerText(t, r) })}
                 </span>
               ))}
               {shown.map((entry) => {

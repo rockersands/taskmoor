@@ -25,6 +25,13 @@ export interface Release {
   progress: { tickets: number; closed: number; open: number };
   /** Upcoming, with its release day gone by. */
   overdue: boolean;
+  /** The release across tracks it is in (PLN-007); null for none. */
+  crossTrack?: {
+    id: number;
+    name: string;
+    endRule: 'fixed_date' | 'work_complete';
+    date: string | null;
+  } | null;
   approvers?: Approver[];
 }
 
@@ -47,7 +54,8 @@ export type WarningCode =
   | 'open_found'
   | 'no_approvers'
   | 'approvals_waiting'
-  | 'approval_declined';
+  | 'approval_declined'
+  | 'cross_track_out_of_step';
 
 export interface Warning {
   code: WarningCode;
@@ -115,6 +123,8 @@ export interface ReleaseClient {
     options: { releaseDate: string; moveOpenTo?: number | null },
   ): Promise<Outcome>;
   decide(releaseId: number, decision: 'approved' | 'declined', comment: string): Promise<Outcome>;
+  /** Align: the release's own change, to its release across tracks' day (PLN-007). */
+  setDate(releaseId: number, releaseDate: string): Promise<Outcome>;
 }
 
 /** A change's answer: done, or the server's refusal code (and what it counted). */
@@ -148,6 +158,8 @@ export const releaseClient: ReleaseClient = {
   notes: (releaseId) => api<ReleaseNotes>(`/releases/${releaseId}/notes`),
   ship: (releaseId, options) =>
     outcome(() => api(`/releases/${releaseId}/ship`, { method: 'POST', body: options })),
+  setDate: (releaseId, releaseDate) =>
+    outcome(() => api(`/releases/${releaseId}`, { method: 'PATCH', body: { releaseDate } })),
   decide: (releaseId, decision, comment) =>
     outcome(() =>
       api(`/releases/${releaseId}/approval`, {

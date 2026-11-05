@@ -1,5 +1,11 @@
 import { ApiError, api } from '../api/client';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
+import type {
+  CrossTrackEndRule,
+  CrossTrackStateName,
+  HiddenWork,
+  Progress,
+} from '../releases/crossTrackClient';
 import {
   type Timeline,
   type TimelineClient,
@@ -7,6 +13,7 @@ import {
   timelineClient,
 } from '../timeline/client';
 import type { BlockersElsewhere } from '../timeline/dependencies';
+import type { ReleaseMarker } from '../timeline/markers';
 
 /** A source of a plan as one viewer sees it (ADR-122); those hidden from them are only counted. */
 export type PlanSource =
@@ -199,7 +206,37 @@ export interface PlanCalendar {
   tickets: (CalendarTicket & { trackId: number })[];
   tracks: PlanTrack[];
   sprints: { id: number; name: string; state: string; start: string; end: string }[];
-  releases: { id: number; name: string; date: string; shipped: boolean }[];
+  releases: ReleaseMarker[];
+  truncated: boolean;
+}
+
+/** A row of a plan's Releases tab (PLN-007), a track's release or a linked one. */
+export interface PlanRelease {
+  id: number;
+  name: string;
+  /** A linked release says its track; a track's own are already under its name. */
+  track?: { id: number; key: string; name: string };
+  releaseDate: string | null;
+  shipped: boolean;
+  archived: boolean;
+  overdue: boolean;
+  outOfStep?: boolean;
+  progress: Progress;
+}
+
+/** `GET /api/v1/plans/:id/releases`: those of a release across tracks first, then by track. */
+export interface PlanReleases {
+  crossTrack: {
+    id: number;
+    name: string;
+    endRule: CrossTrackEndRule;
+    date: string | null;
+    state: CrossTrackStateName;
+    progress: Progress;
+    hidden: HiddenWork;
+    releases: PlanRelease[];
+  }[];
+  tracks: { track: { id: number; key: string; name: string }; releases: PlanRelease[] }[];
   truncated: boolean;
 }
 
@@ -238,6 +275,8 @@ export interface PlanClient {
   update(id: number, input: Partial<PlanInput> & { version: number }): Promise<PlanSaved>;
   remove(id: number): Promise<void>;
   choices(id: number): Promise<PlanChoices>;
+  /** The Releases tab; of the filters only the track applies. */
+  releases(id: number, track?: string): Promise<PlanReleases>;
   summary(id: number, filters: PlanFilters): Promise<PlanSummary>;
   timeline(id: number, filters: PlanFilters): Promise<PlanTimeline>;
   calendar(id: number, filters: PlanFilters, from: string, to: string): Promise<PlanCalendar>;
@@ -298,6 +337,8 @@ export const planClient: PlanClient = {
     await api(`/plans/${id}`, { method: 'DELETE' });
   },
   choices: (id) => api<PlanChoices>(`/plans/${id}/choices`),
+  releases: (id, track) =>
+    api<PlanReleases>(`/plans/${id}/releases${track ? `?track=${encodeURIComponent(track)}` : ''}`),
   summary: (id, filters) => api<PlanSummary>(withFilters(`/plans/${id}/summary`, filters)),
   timeline: (id, filters) => api<PlanTimeline>(withFilters(`/plans/${id}/timeline`, filters)),
   calendar: (id, filters, from, to) =>

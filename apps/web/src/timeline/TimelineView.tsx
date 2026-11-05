@@ -17,6 +17,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { dayNumber, isoDay, type Rescheduled, type Timeline, type TimelineItem } from './client';
 import { type Blocked, barOf, blockerCount, dependencyState } from './dependencies';
+import { drawnReleases, releaseMarkerText } from './markers';
 import { scheduleRefusal } from './refusal';
 
 /** What a timeline draws: a track's, or a Multi-track plan's (ADR-064, ADR-122). */
@@ -625,16 +626,19 @@ export function TimelineView({
                   {s.name}
                 </span>
               ))}
-              {data.markers.releases.map((r) => (
-                <span
-                  key={`r${r.id}`}
-                  className="timeline-release-label"
-                  style={{ left: x(dayNumber(r.date)) }}
-                  title={r.name}
-                >
-                  ◆ {r.name}
-                </span>
-              ))}
+              {drawnReleases(data.markers.releases).map((r) => {
+                const text = releaseMarkerText(t, r);
+                return (
+                  <span
+                    key={r.key}
+                    className="timeline-release-label"
+                    style={{ left: x(dayNumber(r.date)) }}
+                    title={text}
+                  >
+                    ◆ {text}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div className="timeline-grid" style={{ height: rows.length * ROW }}>
@@ -660,9 +664,9 @@ export function TimelineView({
                   }}
                 />
               ))}
-              {data.markers.releases.map((r) => (
+              {drawnReleases(data.markers.releases).map((r) => (
                 <span
-                  key={`rl${r.id}`}
+                  key={`l${r.key}`}
                   className="timeline-release-line"
                   style={{ left: x(dayNumber(r.date) + 1) }}
                 />

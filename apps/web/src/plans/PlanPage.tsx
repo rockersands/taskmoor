@@ -21,6 +21,7 @@ import { type Plan, type PlanChoices, type PlanClient, planClient } from './clie
 import { PlanCalendarPage } from './PlanCalendarPage';
 import { PlanCapacityPage } from './PlanCapacityPage';
 import { PlanListPage } from './PlanListPage';
+import { PlanReleasesPage } from './PlanReleasesPage';
 import { PlanSettingsPage } from './PlanSettingsPage';
 import { PlanSummaryPage } from './PlanSummaryPage';
 import { PlanTimelinePage } from './PlanTimelinePage';
@@ -51,7 +52,7 @@ const STAGES = [
 
 /**
  * One Multi-track plan (T-088; PLN-001, PLN-012; ADR-122): its name and owner, a tab bar of its
- * Summary, Timeline, List, Calendar and Capacity (PLN-005, PLN-009), and Settings for those who
+ * Summary, Timeline, List, Calendar, Capacity (PLN-005, PLN-009) and Releases (PLN-007), and Settings for those who
  * may change it, and the
  * filters every view shares, one value each, with the grouping of the Timeline and the List. The
  * filters and the grouping live in the page's address, so a link opens the same view and the
@@ -220,6 +221,7 @@ export function PlanPage({
         )}
         {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
         {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
+        {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
         {problem !== 'failed' && section === 'settings' && plan.editable && (
           <PlanSettingsPage plan={plan} client={client} onSaved={() => setVersion((v) => v + 1)} />
         )}

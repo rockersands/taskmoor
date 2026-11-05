@@ -1779,7 +1779,9 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       await sql`INSERT INTO cross_track_release_member
           (workspace_id, cross_track_release_id, release_id, track_id)
         SELECT 1, c.id, r.id, r.track_id FROM cross_track_release c, release r
-         WHERE c.name = 'Seed release across tracks' AND r.name = 'Seed linked release'`.execute(db);
+         WHERE c.name = 'Seed release across tracks' AND r.name = 'Seed linked release'`.execute(
+        db,
+      );
     },
   },
 };

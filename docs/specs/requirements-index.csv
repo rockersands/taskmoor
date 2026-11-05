@@ -214,7 +214,7 @@ PLN-003,PLN,Scenarios,M2,Must,Jira Premium
 PLN-004,PLN,Auto-scheduler,M2,Must,Jira Premium
 PLN-005,PLN,Teams and capacity,M1,Must,Jira Premium
 PLN-006,PLN,Dependencies,M1,Must,Jira Premium
-PLN-007,PLN,Releases in roadmaps,M2,Must,Jira Premium; exceeds Jira (plan-only)
+PLN-007,PLN,Releases across tracks,M1,Must,Jira Premium; exceeds Jira (plan-only)
 PLN-008,PLN,Program board,M2,Must,"Jira Premium; exceeds Jira (2 boards, not real-time)"
 PLN-009,PLN,Individual capacity,M1,Must,Jira Premium
 PLN-010,PLN,Hierarchy grid,M2,Must,Structure app; JXL app

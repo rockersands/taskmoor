@@ -21,6 +21,15 @@ const names = (name: string) =>
     .map((a) => a.textContent);
 
 describe('the releases hub (M1-050)', () => {
+  it('[PLN-007] labels a release in a release across tracks and links to their list', async () => {
+    renderHub(fakeReleaseClient({ linked: true }));
+    const label = await screen.findByRole('link', { name: 'In Spring launch' });
+    expect(label.getAttribute('href')).toContain('#/cross-track-releases/5');
+    expect(
+      screen.getByRole('link', { name: 'Releases across tracks' }).getAttribute('href'),
+    ).toContain('#/cross-track-releases');
+  });
+
   it('[CORE-016] lists upcoming releases in order, then shipped, with state and progress', async () => {
     renderHub();
     expect(await screen.findByRole('heading', { name: 'Releases of Checkout' })).toBeVisible();

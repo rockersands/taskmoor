@@ -361,9 +361,10 @@ the plan's tickets one by one.
 
 ### Stage 4 (T-089c): releases across tracks
 
-**Designed on 2026-11-04, not built.** Every number and name below is what the build is to use
-unless the user's answers change it; migration and requirement numbers are taken when it starts.
-PLN-007 moves to M1 with this stage, reworded to what is built (the wording is under "Tests").
+**Built on 2026-11-04** to the design below; the questions at the end are still the user's, and the
+design takes the first answer each time. PLN-007 moved to M1 with this stage, reworded to what is
+built (the wording is under "Tests"). "As built" at the end says where the build went further than
+this text, or corrected it.
 
 A **release across tracks** (the spec's cross-track release; `cross_track_release` in code) lines
 up several tracks' own releases on one end. It belongs to the workspace, not to a plan, so it is
@@ -373,7 +374,7 @@ shipping, notes and page (CORE-016, ADR-061), and the track's administrators kee
 they have over it, so nothing changes in how a team works unless someone moves a date they could
 have moved themselves.
 
-#### What is stored (migration 0106 or the next free)
+#### What is stored (migration 0106)
 
 - `cross_track_release`: `workspace_id`, `owner_id`, `name` (1 to 255), `description` (up to
   4,000), `end_rule` (`fixed_date` or `work_complete`), `release_date` (a day, or null),
@@ -527,9 +528,10 @@ All are internal in the API document, as the other plan routes, and scopes follo
   `.deleted` (name, release ids), `.member_added` and `.member_removed` (release, track, and a
   reason: `removed`, `release_merged`, `release_deleted`). A new subject kind in the catalogue.
 - **Each moved release also emits its own `release.updated`** with `changes.releaseDate`, so its
-  track's audit trail and webhooks hear of it whoever moved it. The contract test asks for exactly
-  one event of the route's own type, so this passes it; a merge or delete of a linked release
-  likewise adds one `member_removed` to its usual event, in that transaction.
+  track's audit trail and webhooks hear of it whoever moved it. The contract test asked for exactly
+  one event in all, so a scenario may now name the events it also emits on purpose (`also`), and
+  must emit them. A merge or delete of a linked release likewise adds one `member_removed` to its
+  usual event, in that transaction.
 - Webhooks do not get `cross_track_release.*` at first, as they do not get `plan.*`. It stays out
   of the full export (IMP-014), as plans, dashboards and saved searches do; a backup holds it.
 - A person's data download lists those they own. Erasure keeps them, and the owner's id reads as
@@ -568,7 +570,11 @@ All are internal in the API document, as the other plan routes, and scopes follo
 - The plan's Timeline and Calendar are read again against their budgets with the new join, which
   uses a primary key and runs over at most `MARKERS` rows.
 - Nothing about a release across tracks is cached, and it adds no statement to a view that does not
-  show it. None of this has been measured yet.
+  show it.
+- **Measured at 10,000 tickets**, medians of five reads on Windows, 2026-11-04, with another
+  workflow running on the machine: its page 56 ms, the list 18 ms, a plan's Releases tab 106 ms, the
+  Timeline with its markers 291 ms, the Calendar with its markers 33 ms, a move of 100 linked
+  releases with its 101 events 64 ms. The 100,000 bar (`TASKMOOR_LARGE_PLANS=1`) has not been run.
 
 #### What the manual says
 
@@ -615,6 +621,28 @@ release of a track they may not see; only how many, and its open tickets as one 
 - Shipping all together, combined notes, a combined burndown, approvals gathered in one place, a
   forecast date for `work_complete`, a start date, notifications, a results column, webhooks, the
   full export and importing them (IMP-016).
+
+#### As built
+
+- **Open means the stage, not `closed_at`:** every count reads `stage` from the ticket's status, as a
+  search does, so a number equals its search whatever a status has done since.
+- **An archived track counts as archived:** a release of an archived track stops counting towards
+  the state, or one archived track would keep it from ever being shipped. `hidden.open` still counts
+  every linked release outside the trash, archived ones too, because the search finds their tickets
+  and visible plus hidden must equal all.
+- **Who sees is one piece of code** (`search/cross-track.ts`): the routes and the query field's
+  binding read the same sight, and a query run with no sight of it (an import's check) names none.
+  A board's queries read with no viewer see every one, as they do every track.
+- **A merge or a delete locks the release across tracks first,** before its release, the order a
+  move takes, so they cannot deadlock with one. A purge of a track removes the row by the foreign
+  key and does not move `version`; a move then simply has one release fewer.
+- **The pages also edit and link:** **Edit** (name, description, ending when its work completes) and
+  **Delete** for its owner and administrators, **Link a release** on its page, and **Add to a release
+  across tracks…** and **Remove** on a release's page, since the routes exist and nothing else
+  reaches them.
+- **Dates read through the person's locale** ("Dec 1, 2026" in English), not always "1 Dec 2026".
+- **An upgrade fixture corrected:** 0105's counted every close reason, which only showed once a
+  migration came after it.
 
 #### Questions for the user (the design takes the first answer each time)
 

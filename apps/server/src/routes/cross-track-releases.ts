@@ -751,11 +751,11 @@ export function registerCrossTrackReleaseRoutes(
   }
 
   /** Whether every release that counts towards the state has shipped. */
-  const allShipped = (row: Row, members: readonly MemberRow[]) => {
+  const allShipped = (members: readonly MemberRow[]) => {
     const counting = members.filter(
       (m) => !m.track_deleted && m.archived_at === null && !m.track_archived,
     );
-    return row && counting.length > 0 && counting.every((m) => m.shipped_at !== null);
+    return counting.length > 0 && counting.every((m) => m.shipped_at !== null);
   };
 
   // The change list: changes nothing.
@@ -768,7 +768,7 @@ export function registerCrossTrackReleaseRoutes(
     const opened = await open(request, p.data.id);
     if (!opened) return notFound(reply);
     if (!opened.mayManage) return forbidden(reply, 'edit_cross_track_release');
-    if (allShipped(opened.row, opened.members)) {
+    if (allShipped(opened.members)) {
       return reply.code(409).send({ error: 'already_shipped' });
     }
     const yours = await changeable(request, opened.members);
@@ -826,8 +826,7 @@ export function registerCrossTrackReleaseRoutes(
           .execute();
       }
       const members = await readMembers(trx, [p.data.id]);
-      const row: Row = { ...opened.row, ...locked };
-      if (allShipped(row, members)) return { shipped: true as const };
+      if (allShipped(members)) return { shipped: true as const };
       const { lines, hidden } = changeList(members, date, opened.sees, yours);
       const sameDay = locked.end_rule === 'fixed_date' && locked.release_date === date;
       if (sameDay) return { same: { lines, hidden } };

@@ -264,3 +264,24 @@ export const NotFound: Story = {
     await expect(canvas.getByRole('link', { name: 'All plans' })).toBeVisible();
   },
 };
+
+/** The Releases tab: linked releases gathered under theirs, then the rest by track. */
+export const Releases: Story = {
+  args: { section: 'releases' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Launch across tracks' })).toBeVisible();
+    await expect(canvas.getByText('Out of step')).toBeVisible();
+  },
+};
+
+/** The Releases tab at a phone's width: each group is a card, nothing sticking out. */
+export const ReleasesAtPhoneWidth: Story = {
+  args: { section: 'releases' },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Launch across tracks' });
+    await fitsPhoneWidth(canvas);
+  },
+};

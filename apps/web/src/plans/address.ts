@@ -8,6 +8,7 @@ export const PLAN_SECTIONS = [
   { id: 'list', path: '/list', labelId: 'plans.section.list' },
   { id: 'calendar', path: '/calendar', labelId: 'plans.section.calendar' },
   { id: 'capacity', path: '/capacity', labelId: 'plans.section.capacity' },
+  { id: 'releases', path: '/releases', labelId: 'plans.section.releases' },
   { id: 'settings', path: '/settings', labelId: 'plans.section.settings' },
 ] as const satisfies readonly { id: string; path: string; labelId: MessageId }[];
 
@@ -25,7 +26,7 @@ export interface PlanView {
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|settings))?(?:[/?]|$)/;
 
 const STAGES = ['new', 'active', 'closed'] as const;
 

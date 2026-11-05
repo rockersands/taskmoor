@@ -82,11 +82,16 @@ export function PlansPage({ client = planClient }: PlansPageProps) {
         purpose={t('purpose.plans')}
         about={t('plans.intro')}
         actions={
-          !creating && (
-            <button type="button" className="button-primary" onClick={() => setCreating(true)}>
-              {t('plans.new')}
-            </button>
-          )
+          <>
+            <a className="button-quiet" href={routeHref('#/cross-track-releases')}>
+              {t('crossTrack.title')}
+            </a>
+            {!creating && (
+              <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+                {t('plans.new')}
+              </button>
+            )}
+          </>
         }
       />
       {creating && (

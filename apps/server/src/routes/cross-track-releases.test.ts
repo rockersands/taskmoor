@@ -683,7 +683,7 @@ describe('releases across tracks (PLN-007)', () => {
     it('[PLN-007] follows the rule of PATCH in its outcome for one release', () => {
       const release = {
         releaseDate: '2027-01-01',
-        startDate: null,
+        startDate: null as string | null,
         shipped: false,
         archived: false,
         trackArchived: false,
