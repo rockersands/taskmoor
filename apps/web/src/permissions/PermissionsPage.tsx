@@ -4,6 +4,8 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type Catalogue,
   type Grant,
@@ -126,15 +128,18 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
   const failed = (error: unknown) => setProblem(refusal(error));
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.permissions.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.permissions.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.permissionsHint'), about: t('admin.permissions.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.permissions.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.permissions.intro')}</p>
           <p role="status" className="form-status">
             {message}
           </p>
@@ -195,7 +200,7 @@ function RolesSection({
   const nameId = useId();
   const [name, setName] = useState('');
   return (
-    <section aria-labelledby={headingId} className="people-page">
+    <section aria-labelledby={headingId} className="glass-card people-card">
       <h2 id={headingId} className="facts-title">
         {t('admin.permissions.roles')}
       </h2>
@@ -380,7 +385,7 @@ function PoliciesSection({
   // Only shared policies are managed here; a local-mode track's own goes with the track.
   const shared = policies.filter((p) => p.ownerTrackId === null);
   return (
-    <section aria-labelledby={headingId} className="people-page">
+    <section aria-labelledby={headingId} className="glass-card people-card">
       <h2 id={headingId} className="facts-title">
         {t('admin.permissions.policies')}
       </h2>
@@ -611,7 +616,7 @@ function GlobalSection({
   const t = useT();
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="people-page">
+    <section aria-labelledby={headingId} className="glass-card people-card">
       <h2 id={headingId} className="facts-title">
         {t('admin.permissions.global')}
       </h2>
@@ -666,7 +671,7 @@ function GrantList({
   onRemove: (grant: Grant) => void;
 }) {
   const t = useT();
-  if (grants.length === 0) return <p className="page-note">{t('admin.permissions.noGrants')}</p>;
+  if (grants.length === 0) return <EmptyState compact title={t('admin.permissions.noGrants')} />;
   return (
     <dl className="permission-list">
       {byPermission(grants, order).map(([permission, list]) => (

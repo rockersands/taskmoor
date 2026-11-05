@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -57,37 +57,51 @@ export function ConfigurationSetsPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  /** The purpose shows only to someone who may be here; only the sets themselves can tell. */
+  const header = (allowed: boolean) => (
+    <PageHeader
+      titleId={titleId}
+      title={t('admin.sets.title')}
+      {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+      {...(allowed ? { purpose: t('settings.setsHint') } : {})}
+      {...(allowed && !track ? { about: t('admin.sets.intro') } : {})}
+    />
+  );
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <PageHeader
-        titleId={titleId}
-        title={t('admin.sets.title')}
-        {...(track
-          ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
-          : {})}
-      />
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       {scope.status === 'all' || track ? (
-        <Sets key={track?.id ?? 'all'} client={client} track={track} />
+        <Sets key={track?.id ?? 'all'} client={client} track={track} header={header} />
       ) : (
-        <ScopeNote
-          scope={scope}
-          hrefOf={ownSetsHref}
-          words={{
-            chooseIntro: t('admin.sets.choose.intro'),
-            chooseNone: t('admin.sets.choose.none'),
-            chooseOpen: (run) => t('admin.sets.choose.open', { key: run.key, name: run.name }),
-            shared: (shared) => t('admin.sets.scope.shared', { key: shared.key }),
-            none: t('admin.sets.forbidden'),
-            failed: t('admin.sets.failed'),
-          }}
-        />
+        <>
+          {header(false)}
+          <ScopeNote
+            scope={scope}
+            hrefOf={ownSetsHref}
+            words={{
+              chooseIntro: t('admin.sets.choose.intro'),
+              chooseNone: t('admin.sets.choose.none'),
+              chooseOpen: (run) => t('admin.sets.choose.open', { key: run.key, name: run.name }),
+              shared: (shared) => t('admin.sets.scope.shared', { key: shared.key }),
+              none: t('admin.sets.forbidden'),
+              failed: t('admin.sets.failed'),
+            }}
+          />
+        </>
       )}
     </section>
   );
 }
 
 /** The type sets and rule sets the page shows: every shared one, or one track's own. */
-function Sets({ client, track }: { client: SetsClient; track: ScopeTrack | null }) {
+function Sets({
+  client,
+  track,
+  header,
+}: {
+  client: SetsClient;
+  track: ScopeTrack | null;
+  header: (allowed: boolean) => ReactNode;
+}) {
   const t = useT();
   const expired = useSessionExpiry();
   const [state, setState] = useState<
@@ -159,15 +173,17 @@ function Sets({ client, track }: { client: SetsClient; track: ScopeTrack | null 
   };
 
   if (state.status === 'forbidden') {
-    return <p className="page-note">{t('admin.sets.forbidden')}</p>;
+    return (
+      <>
+        {header(false)}
+        <p className="page-note">{t('admin.sets.forbidden')}</p>
+      </>
+    );
   }
   return (
     <>
-      {track ? (
-        <TrackScopeLine track={track} intro={t('admin.sets.trackIntro')} />
-      ) : (
-        <p className="page-note">{t('admin.sets.intro')}</p>
-      )}
+      {header(true)}
+      {track && <TrackScopeLine track={track} intro={t('admin.sets.trackIntro')} />}
       <p role="status" className="form-status">
         {message}
       </p>
@@ -263,7 +279,7 @@ function TypeSetsSection({
   const [chosen, setChosen] = useState<number[]>([]);
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <section aria-labelledby={headingId} className="people-page">
+    <section aria-labelledby={headingId} className="glass-card people-card">
       <h2 id={headingId} className="facts-title">
         {t('admin.sets.typeSets')}
       </h2>
@@ -485,7 +501,7 @@ function RuleSetsSection({
   const [name, setName] = useState('');
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <section aria-labelledby={headingId} className="people-page">
+    <section aria-labelledby={headingId} className="glass-card people-card">
       <h2 id={headingId} className="facts-title">
         {t('admin.sets.ruleSets')}
       </h2>

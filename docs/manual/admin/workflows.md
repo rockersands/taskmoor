@@ -14,7 +14,8 @@ workflow maps, and how tickets move when their workflow changes.
 Site and configuration administrators manage shared workflows. In the web app they are under
 **Administration**, **Workflows** and **Administration**, **Workflow maps**; everything is also in the
 [REST API](rest-api.md) under `/api/v1/statuses`, `/api/v1/workflows` and
-`/api/v1/workflow-maps`.
+`/api/v1/workflow-maps`. Each page says under its title what it is for, and the **?** button beside
+the title says more.
 
 ## Statuses and stages
 

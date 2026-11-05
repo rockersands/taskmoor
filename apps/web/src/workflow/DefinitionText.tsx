@@ -45,7 +45,7 @@ export function DefinitionText({
           {t('admin.workflow.text.hint')}
         </p>
       </div>
-      <section aria-labelledby={`${id}-legend`} className="workflow-text-legend">
+      <section aria-labelledby={`${id}-legend`} className="glass-card workflow-text-legend">
         <h2 id={`${id}-legend`} className="facts-title">
           {t('admin.workflow.text.legend')}
         </h2>

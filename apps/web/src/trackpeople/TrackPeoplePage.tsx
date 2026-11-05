@@ -5,6 +5,8 @@ import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { ownLayoutsHref, ownSetsHref } from '../sets/trackScope';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import {
@@ -127,15 +129,19 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   };
 
   const titled = (
-    <h1 id={titleId} className="page-title">
-      {state.status === 'loaded'
-        ? t('trackPeople.title', { key: state.track.key, name: state.track.name })
-        : t('trackPeople.titleLoading')}
-    </h1>
+    <PageHeader
+      titleId={titleId}
+      title={
+        state.status === 'loaded'
+          ? t('trackPeople.title', { key: state.track.key, name: state.track.name })
+          : t('trackPeople.titleLoading')
+      }
+      {...(state.status === 'loaded' ? { purpose: t('purpose.trackPeople') } : {})}
+    />
   );
   if (state.status !== 'loaded') {
     return (
-      <section aria-labelledby={titleId} className="admin-page people-page">
+      <section aria-labelledby={titleId} className="page admin-page people-page">
         {titled}
         {state.status === 'loading' && (
           <p role="status" className="page-note">
@@ -180,13 +186,13 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       {titled}
       <p className="page-note">
         <a href={routeHref('#/manage/tracks')}>{t('trackPeople.backToList')}</a>
       </p>
       {track.mode === 'local' && (
-        <section aria-labelledby={`${id}-own`}>
+        <section aria-labelledby={`${id}-own`} className="glass-card people-card">
           <h2 id={`${id}-own`} className="facts-title">
             {t('trackPeople.ownConfig')}
           </h2>
@@ -235,203 +241,216 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
         <p className="page-note">{t('trackPeople.emailOff')}</p>
       )}
 
-      <h2 className="facts-title">{t('trackPeople.holders')}</h2>
-      {!anyHolder && <p className="page-note">{t('trackPeople.noHolders')}</p>}
-      {appointLocked && <p className="page-note">{t('trackPeople.appointLocked')}</p>}
-      {anyHolder && (
-        <ul className="people-sublist">
-          {holders.flatMap((h) => {
-            const may = givable.has(h.roleId);
-            const row = (kind: 'users' | 'groups', actor: Named, label: string) => (
-              <li key={`r${h.roleId}${kind}${actor.id}`}>
-                <span>{label}</span>
-                {may && (
-                  <button
-                    type="button"
-                    className="button-secondary people-action"
-                    aria-label={t('trackPeople.takeRole', {
-                      name: actor.name,
-                      role: h.roleName,
-                    })}
-                    onClick={() =>
-                      void run(
-                        () => client.setRole(track.id, h.roleId, kind, actor.id, false),
-                        t('trackPeople.roleTaken', { name: actor.name, role: h.roleName }),
-                      )
-                    }
-                  >
-                    {t('trackPeople.remove')}
-                  </button>
-                )}
-              </li>
-            );
-            return [
-              ...h.users.map((u) =>
-                row('users', u, t('trackPeople.inRole', { name: u.name, role: h.roleName })),
-              ),
-              ...h.groups.map((g) =>
-                row('groups', g, t('trackPeople.groupInRole', { name: g.name, role: h.roleName })),
-              ),
-            ];
-          })}
-        </ul>
-      )}
-
-      <h2 className="facts-title">{t('trackPeople.giveRole')}</h2>
-      <div className="form-field">
-        <label htmlFor={`${id}-role`} className="form-label">
-          {t('trackPeople.role')}
-        </label>
-        <select id={`${id}-role`} value={role} onChange={(event) => setRole(event.target.value)}>
-          {roles.map((r) => (
-            <option key={r.id} value={r.id} disabled={!r.givable}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      {offerCreateTracks && <CreateTracksBox checked={createTracks} onChange={setCreateTracks} />}
-      <div className="form-field">
-        <label htmlFor={`${id}-person`} className="form-label">
-          {t('trackPeople.findByName')}
-        </label>
-        <input
-          id={`${id}-person`}
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </div>
-      {found.length > 0 && (
-        <ul className="people-sublist">
-          {found.map((person) => (
-            <li key={person.id}>
-              <span>{person.name}</span>
-              <button
-                type="button"
-                className="button-secondary people-action"
-                disabled={!role}
-                aria-label={t('trackPeople.giveTo', { name: person.name, role: roleName })}
-                onClick={() =>
-                  void run(
-                    async () => {
-                      await client.setRole(
-                        track.id,
-                        Number(role),
-                        'users',
-                        person.id,
-                        true,
-                        givingTracks ? { createTracks: true } : undefined,
-                      );
-                      setSearch('');
-                    },
-                    t(givingTracks ? 'trackPeople.roleGivenWithTracks' : 'trackPeople.roleGiven', {
-                      name: person.name,
-                      role: roleName,
-                    }),
-                  )
-                }
-              >
-                {t('trackPeople.add')}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2 className="facts-title">{t('trackPeople.pending')}</h2>
-      {freshLink && (
-        <div className="people-link">
-          <p className="page-note">{t('trackPeople.linkHint')}</p>
-          <input
-            type="text"
-            readOnly
-            value={freshLink.url}
-            aria-label={t('trackPeople.linkFor', { who: freshLink.email })}
-            onFocus={(event) => event.currentTarget.select()}
-          />
-          <button type="button" className="button-secondary" onClick={() => setFreshLink(null)}>
-            {t('trackPeople.done')}
-          </button>
-        </div>
-      )}
-      {view.invitations.length === 0 ? (
-        <p className="page-note">{t('trackPeople.noPending')}</p>
-      ) : (
-        <ul className="people-list">
-          {view.invitations.map((invitation) => (
-            <li key={invitation.id} className="people-item">
-              <div className="people-main">
-                <p className="people-name">
-                  {invitation.email}
-                  {invitation.state === 'lapsed' && (
-                    <span className="people-badge">{t('trackPeople.lapsed')}</span>
-                  )}
-                  {invitation.sendFailed && (
-                    <span className="people-badge">{t('trackPeople.sendFailed')}</span>
-                  )}
-                </p>
-                <p className="people-meta">
-                  {t('trackPeople.pendingMeta', {
-                    role: invitation.role.name,
-                    who: invitation.invitedBy ?? t('trackPeople.someone'),
-                  })}
-                  {invitation.external ? ` ${t('trackPeople.result.external')}` : ''}
-                </p>
-              </div>
-              {view.canInvite && givable.has(invitation.role.id) && (
-                <div className="people-actions">
-                  {view.emailAvailable && (
+      <div className="glass-card people-card">
+        <h2 className="facts-title">{t('trackPeople.holders')}</h2>
+        {!anyHolder && <EmptyState compact title={t('trackPeople.noHolders')} />}
+        {appointLocked && <p className="page-note">{t('trackPeople.appointLocked')}</p>}
+        {anyHolder && (
+          <ul className="people-sublist">
+            {holders.flatMap((h) => {
+              const may = givable.has(h.roleId);
+              const row = (kind: 'users' | 'groups', actor: Named, label: string) => (
+                <li key={`r${h.roleId}${kind}${actor.id}`}>
+                  <span>{label}</span>
+                  {may && (
                     <button
                       type="button"
                       className="button-secondary people-action"
-                      aria-label={t('trackPeople.resendTo', { who: invitation.email })}
-                      onClick={() => void resend(invitation, 'email')}
+                      aria-label={t('trackPeople.takeRole', {
+                        name: actor.name,
+                        role: h.roleName,
+                      })}
+                      onClick={() =>
+                        void run(
+                          () => client.setRole(track.id, h.roleId, kind, actor.id, false),
+                          t('trackPeople.roleTaken', { name: actor.name, role: h.roleName }),
+                        )
+                      }
                     >
-                      {t('trackPeople.resend')}
+                      {t('trackPeople.remove')}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="button-secondary people-action"
-                    aria-label={t('trackPeople.newLinkFor', { who: invitation.email })}
-                    onClick={() => void resend(invitation, 'link')}
-                  >
-                    {t('trackPeople.newLink')}
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary people-action"
-                    aria-label={t('trackPeople.revokeFor', { who: invitation.email })}
-                    onClick={() =>
-                      void run(
-                        () => client.revoke(track.id, invitation.id),
-                        t('trackPeople.revoked', { who: invitation.email }),
-                      )
-                    }
-                  >
-                    {t('trackPeople.revoke')}
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+                </li>
+              );
+              return [
+                ...h.users.map((u) =>
+                  row('users', u, t('trackPeople.inRole', { name: u.name, role: h.roleName })),
+                ),
+                ...h.groups.map((g) =>
+                  row(
+                    'groups',
+                    g,
+                    t('trackPeople.groupInRole', { name: g.name, role: h.roleName }),
+                  ),
+                ),
+              ];
+            })}
+          </ul>
+        )}
 
-      <ChecklistNoticesBox
-        track={track}
-        on={track.checklistNotices === true}
-        client={client}
-        onSaid={(said) => {
-          setProblem(null);
-          setMessage(said);
-        }}
-        onRefused={(error) => {
-          setMessage('');
-          setProblem(refusal(error));
-        }}
-      />
+        <h2 className="facts-title">{t('trackPeople.giveRole')}</h2>
+        <div className="form-field">
+          <label htmlFor={`${id}-role`} className="form-label">
+            {t('trackPeople.role')}
+          </label>
+          <select id={`${id}-role`} value={role} onChange={(event) => setRole(event.target.value)}>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id} disabled={!r.givable}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {offerCreateTracks && <CreateTracksBox checked={createTracks} onChange={setCreateTracks} />}
+        <div className="form-field">
+          <label htmlFor={`${id}-person`} className="form-label">
+            {t('trackPeople.findByName')}
+          </label>
+          <input
+            id={`${id}-person`}
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        {found.length > 0 && (
+          <ul className="people-sublist">
+            {found.map((person) => (
+              <li key={person.id}>
+                <span>{person.name}</span>
+                <button
+                  type="button"
+                  className="button-secondary people-action"
+                  disabled={!role}
+                  aria-label={t('trackPeople.giveTo', { name: person.name, role: roleName })}
+                  onClick={() =>
+                    void run(
+                      async () => {
+                        await client.setRole(
+                          track.id,
+                          Number(role),
+                          'users',
+                          person.id,
+                          true,
+                          givingTracks ? { createTracks: true } : undefined,
+                        );
+                        setSearch('');
+                      },
+                      t(
+                        givingTracks ? 'trackPeople.roleGivenWithTracks' : 'trackPeople.roleGiven',
+                        {
+                          name: person.name,
+                          role: roleName,
+                        },
+                      ),
+                    )
+                  }
+                >
+                  {t('trackPeople.add')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="glass-card people-card">
+        <h2 className="facts-title">{t('trackPeople.pending')}</h2>
+        {freshLink && (
+          <div className="people-link">
+            <p className="page-note">{t('trackPeople.linkHint')}</p>
+            <input
+              type="text"
+              readOnly
+              value={freshLink.url}
+              aria-label={t('trackPeople.linkFor', { who: freshLink.email })}
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <button type="button" className="button-secondary" onClick={() => setFreshLink(null)}>
+              {t('trackPeople.done')}
+            </button>
+          </div>
+        )}
+        {view.invitations.length === 0 ? (
+          <EmptyState compact title={t('trackPeople.noPending')} />
+        ) : (
+          <ul className="people-list">
+            {view.invitations.map((invitation) => (
+              <li key={invitation.id} className="people-item">
+                <div className="people-main">
+                  <p className="people-name">
+                    {invitation.email}
+                    {invitation.state === 'lapsed' && (
+                      <span className="people-badge">{t('trackPeople.lapsed')}</span>
+                    )}
+                    {invitation.sendFailed && (
+                      <span className="people-badge">{t('trackPeople.sendFailed')}</span>
+                    )}
+                  </p>
+                  <p className="people-meta">
+                    {t('trackPeople.pendingMeta', {
+                      role: invitation.role.name,
+                      who: invitation.invitedBy ?? t('trackPeople.someone'),
+                    })}
+                    {invitation.external ? ` ${t('trackPeople.result.external')}` : ''}
+                  </p>
+                </div>
+                {view.canInvite && givable.has(invitation.role.id) && (
+                  <div className="people-actions">
+                    {view.emailAvailable && (
+                      <button
+                        type="button"
+                        className="button-secondary people-action"
+                        aria-label={t('trackPeople.resendTo', { who: invitation.email })}
+                        onClick={() => void resend(invitation, 'email')}
+                      >
+                        {t('trackPeople.resend')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="button-secondary people-action"
+                      aria-label={t('trackPeople.newLinkFor', { who: invitation.email })}
+                      onClick={() => void resend(invitation, 'link')}
+                    >
+                      {t('trackPeople.newLink')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button-secondary people-action"
+                      aria-label={t('trackPeople.revokeFor', { who: invitation.email })}
+                      onClick={() =>
+                        void run(
+                          () => client.revoke(track.id, invitation.id),
+                          t('trackPeople.revoked', { who: invitation.email }),
+                        )
+                      }
+                    >
+                      {t('trackPeople.revoke')}
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="glass-card people-card">
+        <ChecklistNoticesBox
+          track={track}
+          on={track.checklistNotices === true}
+          client={client}
+          onSaid={(said) => {
+            setProblem(null);
+            setMessage(said);
+          }}
+          onRefused={(error) => {
+            setMessage('');
+            setProblem(refusal(error));
+          }}
+        />
+      </div>
 
       {inviting && (
         <InviteDialog

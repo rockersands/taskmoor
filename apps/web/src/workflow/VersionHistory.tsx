@@ -46,7 +46,7 @@ export function VersionHistory({
   }, [confirming]);
 
   return (
-    <section aria-labelledby={`${id}-title`} className="workflow-panel">
+    <section aria-labelledby={`${id}-title`} className="glass-card workflow-panel">
       <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className="facts-title">
         {t('admin.workflow.versions.title')}
       </h2>

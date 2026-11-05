@@ -3,6 +3,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import type { User } from './client';
 import { type TeamDetail, type TeamSummary, type TeamsClient, teamsClient } from './teamsClient';
 
@@ -61,15 +63,18 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.teams.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.teams.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.teamsHint'), about: t('admin.teams.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.teams.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.teams.intro')}</p>
           <AddTeam
             client={client}
             onAdded={(made) => {
@@ -94,7 +99,7 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
           )}
           {state.status === 'loaded' &&
             (state.teams.length === 0 ? (
-              <p className="page-note">{t('admin.teams.none')}</p>
+              <EmptyState title={t('admin.teams.none')}>{t('empty.teams.body')}</EmptyState>
             ) : (
               <ul className="people-list">
                 {state.teams.map((team) => (
@@ -358,7 +363,7 @@ function TeamPanel({
 
       <h2 className="facts-title">{t('admin.teams.membersOf', { name: current })}</h2>
       {detail.members.length === 0 ? (
-        <p className="page-note">{t('admin.teams.noMembers')}</p>
+        <EmptyState compact title={t('admin.teams.noMembers')} />
       ) : (
         <ul className="people-sublist">
           {detail.members.map((m) => (

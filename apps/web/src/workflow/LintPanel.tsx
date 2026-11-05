@@ -40,7 +40,7 @@ export function LintPanel({ issues, errors = [], names, onShow, headingRef }: Li
         : '';
 
   return (
-    <section aria-labelledby={`${id}-title`} className="workflow-checks">
+    <section aria-labelledby={`${id}-title`} className="glass-card workflow-checks">
       <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className="facts-title">
         {t('workflow.lint.title')}
       </h2>

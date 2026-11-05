@@ -42,7 +42,7 @@ export function WorkflowDiagram({
   return (
     <div className="workflow-diagram-frame">
       <section
-        className="workflow-diagram"
+        className="glass-card glass-scroller workflow-diagram"
         aria-label={t('admin.workflow.diagram')}
         aria-describedby={`${id}-hint`}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region takes focus so keyboard users can scroll it (WCAG 2.1.1)

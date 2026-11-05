@@ -1,8 +1,23 @@
 /* People and groups (M1-053): cards, so phones never scroll sideways; 44px on touch. */
-.people-page {
+.people-page:not(.page) {
   display: grid;
   gap: var(--space-3);
   max-width: 60rem;
+}
+
+/* With `glass-card`: a form or a part of the page on one card, its rows wells inside it. */
+.people-card {
+  display: grid;
+  /* One column no wider than the card: a select with a long option cannot stretch it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+}
+
+.people-card > .facts-title {
+  margin: 0;
 }
 
 .people-form,
@@ -10,6 +25,20 @@
   display: grid;
   gap: var(--space-2);
   max-width: 30rem;
+}
+
+/* A field keeps to its column, however long the options in its select. */
+:is(.people-card, .people-panel, .people-form, .people-inline) .form-field:not(.form-field-inline) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A link in a note reads as a link in the design's colour, not the browser's blue. */
+.people-page .page-note a {
+  color: var(--color-accent);
+}
+
+.people-inline > button {
+  justify-self: start;
 }
 
 .people-filters {
@@ -21,6 +50,7 @@
 .people-link {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
   padding: var(--space-3);
   border-radius: var(--radius-2);
   background: var(--color-accent-soft);
@@ -47,9 +77,20 @@
   gap: var(--space-2) var(--space-3);
   min-width: 0;
   padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--glass-contact);
+}
+
+/* On a card or in a dialog a row is a well: glass over glass would see nothing but the card. */
+:is(.glass-card, .ticket-dialog, .create-dialog, .popover, .account-section) .people-item {
+  background: var(--glass-surface-sunken);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .people-main {
@@ -74,14 +115,6 @@
   overflow-wrap: anywhere;
 }
 
-.people-badge {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-  font-size: var(--font-size-100);
-  font-weight: var(--font-weight-medium);
-}
-
 .people-actions {
   display: flex;
   flex-wrap: wrap;
@@ -94,7 +127,7 @@
   gap: var(--space-2);
   min-width: 0;
   padding-top: var(--space-2);
-  border-top: 1px solid var(--color-field-border);
+  border-top: 1px solid var(--glass-edge);
 }
 
 .people-sublist {
@@ -146,9 +179,10 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .permission-row dt {
@@ -172,7 +206,7 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-field-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
 }
 

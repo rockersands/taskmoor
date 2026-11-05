@@ -275,7 +275,7 @@ export function TemplateForm({
 
   return (
     <form
-      className="ticket-template-form"
+      className="glass-card ticket-template-form"
       aria-label={
         template
           ? t('tickets.templates.editOf', { name: template.name })

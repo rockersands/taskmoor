@@ -5,6 +5,11 @@
   overflow-y: auto;
 }
 
+/* It scrolls: the rim stays inside, or it would give the dialog scroll bars of its own. */
+.ticket-dialog.invite-dialog::before {
+  inset: 0;
+}
+
 .invite-dialog textarea,
 .invite-dialog input[type="search"],
 .invite-result input {
@@ -32,6 +37,6 @@
 
 @media (pointer: coarse) {
   .invite-delivery label {
-    min-height: 44px;
+    min-height: var(--hit-target-touch);
   }
 }

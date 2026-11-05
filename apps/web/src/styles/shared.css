@@ -154,7 +154,8 @@
  * A short word about a thing's state: a small pill. Without a variant it is a plain mark on glass;
  * the variants say something good, bad, pending or new, and the word says it too, never colour alone.
  */
-.badge {
+.badge,
+.people-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -208,7 +209,8 @@
   .button-secondary,
   .button-quiet,
   .button-danger,
-  .badge {
+  .badge,
+  .people-badge {
     border: 1px solid CanvasText;
   }
 

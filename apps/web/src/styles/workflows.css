@@ -3,10 +3,6 @@
    beside the diagram and stacks below it on narrow screens; the diagram scrolls inside its own
    frame, never the page. Stages colour statuses: new grey, active blue, closed green. */
 
-.workflows-page {
-  max-width: 60rem;
-}
-
 /* ---- Stages ---- */
 
 .stage-badge {
@@ -19,9 +15,9 @@
 }
 
 .stage-badge.stage-new {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
-  box-shadow: inset 0 0 0 1px var(--color-field-border);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
 
 .stage-badge.stage-active {
@@ -77,7 +73,8 @@
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .workflow-name-link {
@@ -106,14 +103,6 @@
   vertical-align: middle;
 }
 
-/* A link that looks like a secondary button. */
-.button-link {
-  display: inline-flex;
-  box-sizing: border-box;
-  align-items: center;
-  text-decoration: none;
-}
-
 /* ---- The editor ---- */
 
 .workflow-editor {
@@ -130,10 +119,6 @@
   min-height: var(--hit-target);
   color: var(--color-accent);
   font-weight: var(--font-weight-strong);
-}
-
-.workflow-details {
-  margin-top: var(--space-2);
 }
 
 .workflow-details summary {
@@ -159,50 +144,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-4) 0 var(--space-3);
 }
 
-/* Diagram or text: two buttons in a pill, the pressed one raised. */
-.workflow-modes {
-  display: inline-flex;
-  gap: var(--space-half);
-  min-width: 0;
-  margin: 0;
-  padding: 3px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-  box-shadow: var(--shadow-inset);
-}
-
-.workflow-mode {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-4);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.workflow-mode[aria-pressed="true"] {
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-1);
-  font-weight: var(--font-weight-strong);
-}
-
-.workflow-mode:focus-visible,
 .workflow-pick:focus-visible,
 .workflow-diagram:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-}
-
-.workflow-editor > .form-status,
-.workflow-editor > .form-error,
-.workflow-editor > .token-confirm {
-  margin-bottom: var(--space-3);
 }
 
 /* ---- Checks ---- */
@@ -210,11 +157,7 @@
 .workflow-checks {
   display: grid;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .workflow-checks .facts-title {
@@ -305,6 +248,11 @@
   border-radius: var(--radius-3);
 }
 
+/* It scrolls: the rim stays inside, or it would give this column scroll bars of its own. */
+.workflow-workspace-split .workflow-inspector .glass-card::before {
+  inset: 0;
+}
+
 @media (max-width: 72rem) {
   .workflow-workspace-split {
     grid-template-columns: minmax(0, 1fr);
@@ -329,10 +277,6 @@
 
 .workflow-diagram {
   max-height: min(70vh, 640px);
-  overflow: auto;
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .workflow-diagram-canvas {
@@ -382,7 +326,10 @@
   padding: 0 var(--space-3);
   border: 2px solid var(--color-field-border);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  /* Strong glass with a heavy blur: a line that passes behind it must not cross its words. */
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
   box-shadow: var(--shadow-1);
   color: var(--color-text);
   font: inherit;
@@ -433,9 +380,11 @@
   position: absolute;
   overflow: hidden;
   padding: var(--space-half) var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
   color: var(--color-text);
   font: inherit;
   font-size: var(--font-size-100);
@@ -471,9 +420,6 @@
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .workflow-structure-part .facts-title {
@@ -511,9 +457,10 @@
   max-width: 100%;
   min-height: var(--hit-target);
   padding: 0 var(--space-4);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
   color: var(--color-text);
   font: inherit;
   font-weight: var(--font-weight-strong);
@@ -546,11 +493,7 @@
   display: grid;
   gap: var(--space-3);
   min-width: 0;
-  margin-bottom: var(--space-4);
   padding: var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .workflow-panel .facts-title {
@@ -560,10 +503,6 @@
 
 .workflow-panel p {
   margin: 0;
-}
-
-.workflow-inspector .workflow-panel {
-  margin-bottom: 0;
 }
 
 .workflow-form {
@@ -592,7 +531,7 @@
 /* Fieldsets inside the panel's fieldsets drop the card look and take a thin edge. */
 .workflow-form fieldset fieldset {
   padding: var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   background: transparent;
   box-shadow: none;
@@ -669,9 +608,9 @@
 }
 
 .effect-tag {
-  padding: 1px var(--space-2);
+  padding: var(--space-half) var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
 }
@@ -702,7 +641,7 @@
 
 .workflow-danger {
   padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-edge);
 }
 
 .workflow-publish-warnings {
@@ -716,7 +655,8 @@
 }
 
 .workflow-version-earlier {
-  background: var(--color-surface);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
   color: var(--color-text-muted);
 }
 
@@ -743,9 +683,6 @@
 
 .workflow-text-legend {
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .workflow-text-legend ul {
@@ -764,7 +701,6 @@
 }
 
 @media (pointer: coarse) {
-  .workflow-mode,
   .workflow-pick,
   .workflow-back a,
   .workflow-details summary {

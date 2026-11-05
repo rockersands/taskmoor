@@ -18,6 +18,7 @@ import '../src/styles/comments.css';
 import '../src/styles/ticket-view.css';
 import '../src/styles/ticket-tools.css';
 import '../src/styles/people.css';
+import '../src/styles/invitations.css';
 import '../src/styles/inbox.css';
 import '../src/styles/boards.css';
 import '../src/styles/ticket-icons.css';

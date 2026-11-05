@@ -2,7 +2,7 @@
 title: "People, groups and teams"
 audience: admins
 sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md
-accessed: 2026-11-03
+accessed: 2026-11-04
 attestation: own-words
 ---
 # People, groups and teams
@@ -26,6 +26,9 @@ administrators.
 | **Service accounts** | `#/admin/service-accounts` | Accounts for programs: see [API tokens and service accounts](api-tokens.md) |
 | **Single sign-on** | `#/admin/identity-providers` | See [Single sign-on](sso.md) |
 | **LDAP and Active Directory** | `#/admin/directories` | See [LDAP directories](ldap.md) |
+
+Each of these pages says under its title what it is for, and its **?** button says more. A list
+with nothing in it says so, and what would put something there.
 
 The account made during [first-run setup](first-run.md) is a site administrator. People can
 also be [invited into a track](invitations.md), or arrive through [single sign-on](sso.md), a [directory sync](ldap.md) or

@@ -5,6 +5,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { type PeopleClient, peopleClient, type User, type UserStatus } from './client';
 import { EraseUserForm } from './EraseUserForm';
 
@@ -95,15 +97,18 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     iso ? intl.formatDate(new Date(iso), { dateStyle: 'medium' }) : t('admin.users.never');
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.users.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.users.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.usersHint'), about: t('admin.users.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.users.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.users.intro')}</p>
           <AddUser
             client={client}
             onAdded={(user, activation) => {
@@ -137,7 +142,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
               {problem}
             </p>
           )}
-          <div className="people-filters">
+          <div className="glass-card people-card people-filters">
             <div className="form-field">
               <label htmlFor={searchId} className="form-label">
                 {t('admin.users.search')}
@@ -172,7 +177,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
           )}
           {state.status === 'loaded' &&
             (state.users.length === 0 ? (
-              <p className="page-note">{t('admin.users.none')}</p>
+              <EmptyState title={t('admin.users.none')}>{t('empty.users.body')}</EmptyState>
             ) : (
               <>
                 <p className="page-note">{t('admin.users.count', { count: state.total })}</p>
@@ -374,7 +379,7 @@ function AddUser({
   }
   return (
     <form
-      className="people-form"
+      className="glass-card people-card people-form"
       data-tutorial="admin-user-new"
       aria-label={t('admin.users.add')}
       onSubmit={(event) => {

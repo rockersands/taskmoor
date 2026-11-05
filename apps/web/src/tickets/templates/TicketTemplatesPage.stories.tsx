@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import {
   EVERY_TRACK_OPTIONS,
@@ -7,6 +8,17 @@ import {
   RELEASE_TEMPLATE,
 } from './fixtures';
 import { TicketTemplatesPage } from './TicketTemplatesPage';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Tickets/TicketTemplatesPage',
@@ -54,5 +66,31 @@ export const Editing: Story = {
     await expect(
       canvas.getByRole('form', { name: 'Edit template Release checklist' }),
     ).toBeVisible();
+  },
+};
+
+/** A track's templates on a phone: the way back to its summary is at the top. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: 'Back to the summary' })).toBeVisible();
+    await expect(canvas.getByText(/^Templates offered when/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** The form on a phone, with its fieldsets. */
+export const EditingAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Edit template Release checklist' }),
+    );
+    await expect(
+      canvas.getByRole('form', { name: 'Edit template Release checklist' }),
+    ).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

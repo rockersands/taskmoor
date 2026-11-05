@@ -2,6 +2,8 @@ import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { type ManagedTrack, type TrackPeopleClient, trackPeopleClient } from './client';
 
 export interface ManagedTracksPageProps {
@@ -34,11 +36,12 @@ export function ManagedTracksPage({ client = trackPeopleClient }: ManagedTracksP
   }, [client, expired]);
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('trackPeople.listTitle')}
-      </h1>
-      <p className="page-note">{t('trackPeople.listIntro')}</p>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('trackPeople.listTitle')}
+        purpose={t('trackPeople.listIntro')}
+      />
       {state.status === 'loading' && (
         <p role="status" className="page-note">
           {t('trackPeople.loading')}
@@ -50,7 +53,7 @@ export function ManagedTracksPage({ client = trackPeopleClient }: ManagedTracksP
         </p>
       )}
       {state.status === 'loaded' && state.tracks.length === 0 && (
-        <p className="page-note">{t('trackPeople.listEmpty')}</p>
+        <EmptyState title={t('trackPeople.listEmpty')}>{t('empty.trackPeople.body')}</EmptyState>
       )}
       {state.status === 'loaded' && state.tracks.length > 0 && (
         <ul className="people-list">

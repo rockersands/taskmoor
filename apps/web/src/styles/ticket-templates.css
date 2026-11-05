@@ -9,10 +9,7 @@
   display: grid;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  padding: var(--space-4) var(--space-5);
 }
 
 .ticket-template-grid {
@@ -20,6 +17,11 @@
   grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   gap: var(--space-3);
   min-width: 0;
+}
+
+/* A field beside a taller one keeps its own height: the grid's row does not stretch its input. */
+.ticket-template-grid .form-field {
+  align-content: start;
 }
 
 .ticket-template-fields {

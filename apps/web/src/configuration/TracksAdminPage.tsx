@@ -4,6 +4,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { trackHref } from '../tracks/TrackLayout';
 import {
   type ConfigurationClient,
@@ -65,16 +67,20 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.tracks.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.tracks.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.tracksHint'), about: t('admin.tracks.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.tracks.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.tracks.intro')}</p>
           <NewTrackForm
+            card
             client={client}
             tracks={state.status === 'loaded' ? state.tracks : []}
             label={t('admin.tracks.add')}
@@ -110,7 +116,10 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
               {t('admin.tracks.failed')}
             </p>
           )}
-          {state.status === 'loaded' && (
+          {state.status === 'loaded' && state.tracks.length === 0 && (
+            <EmptyState title={t('tracks.emptyTitle')}>{t('tracks.emptyMayCreate')}</EmptyState>
+          )}
+          {state.status === 'loaded' && state.tracks.length > 0 && (
             <ul className="people-list">
               {state.tracks.map((track) => (
                 <li key={track.id} className="people-item people-group">
@@ -446,7 +455,7 @@ function TrackPanel({
         </a>
       </p>
       {actors.length === 0 ? (
-        <p className="page-note">{t('admin.tracks.noMembers')}</p>
+        <EmptyState compact title={t('admin.tracks.noMembers')} />
       ) : (
         <ul className="people-sublist">
           {actors.flatMap((a) => [

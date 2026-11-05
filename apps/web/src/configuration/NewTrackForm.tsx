@@ -62,6 +62,8 @@ export interface NewTrackFormProps {
   onProblem: (error: unknown) => void;
   /** Other buttons beside the one that creates it. */
   actions?: ReactNode;
+  /** On a page of its own it is a glass card; in a dialog it already sits on glass. */
+  card?: boolean;
 }
 
 /**
@@ -76,6 +78,7 @@ export function NewTrackForm({
   onAdded,
   onProblem,
   actions,
+  card = false,
 }: NewTrackFormProps) {
   const t = useT();
   const id = useId();
@@ -92,7 +95,7 @@ export function NewTrackForm({
   };
   return (
     <form
-      className="people-form"
+      className={card ? 'glass-card people-card people-form' : 'people-form'}
       data-tutorial="new-track-form"
       aria-label={label}
       onSubmit={(event) => {

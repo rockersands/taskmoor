@@ -86,7 +86,9 @@
 
 /* ... and a well inside any glass, where a blur of its own would only cut the glass off. */
 .form fieldset fieldset,
-:is(.glass-card, .create-dialog, .ticket-dialog, .popover) .form fieldset {
+:is(.glass-card, .create-dialog, .ticket-dialog, .popover, .people-item, .account-section)
+  .form
+  fieldset {
   background: var(--glass-surface-sunken);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -126,6 +128,11 @@
   padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
   font: inherit;
+}
+
+.form-field select:is([multiple], [size]) {
+  padding: var(--space-2);
+  border-radius: var(--radius-2);
 }
 
 .form-field textarea {
