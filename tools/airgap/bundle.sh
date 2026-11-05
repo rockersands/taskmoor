@@ -3,8 +3,9 @@
 # chart, the frontend build for static hosting, a CycloneDX SBOM, SHA256SUMS and a signature.
 #   SIGNING_KEY=key.pem PUBLIC_KEY=cosign.pub bash tools/airgap/bundle.sh <version> [out-dir]
 # Images come from the local Docker: TASKMOOR_IMAGE (default taskmoor:<version>) and
-# POSTGRES_IMAGE (default postgres:16.10-alpine, pulled if missing). SIGNING_KEY is an ECDSA
-# P-256 private key in PEM; release builds use the project's key from a CI secret.
+# POSTGRES_IMAGE (default the Compose kit's own, pulled if missing). SIGNING_KEY is an ECDSA
+# P-256 private key in PEM; a release is signed with the release key on the maintainer's
+# machine (docs/ops/releases.md).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # Git Bash: docker must see container paths as written, other tools need path conversion.
@@ -14,7 +15,10 @@ host() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo 
 version=${1:?version}
 out=${2:-dist/airgap}
 app=${TASKMOOR_IMAGE:-taskmoor:$version}
-db=${POSTGRES_IMAGE:-postgres:16.10-alpine}
+# The database image the bundled Compose kit names, so the bundle installs what the kit is
+# tested with: its postgres-tls service needs the openssl that Alpine's PostgreSQL image lacks.
+kit_db=$(sed -n 's/^ *image: \${POSTGRES_IMAGE:-\([^}]*\)}.*$/\1/p' deploy/compose/docker-compose.yml | head -1)
+db=${POSTGRES_IMAGE:-${kit_db:?no database image in deploy/compose/docker-compose.yml}}
 key=${SIGNING_KEY:?SIGNING_KEY (PEM private key) is required}
 pub=${PUBLIC_KEY:?PUBLIC_KEY (PEM public key) is required}
 dir="$out/taskmoor-$version"

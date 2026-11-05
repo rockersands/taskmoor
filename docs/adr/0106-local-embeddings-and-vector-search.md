@@ -106,11 +106,20 @@ the official `postgres:16` image with the extension added, on the same Debian re
 today's `postgres:16`, so an existing data volume (and its glibc collations) is taken over as it
 is. The tag is pinned (pgvector 0.8.1, PostgreSQL 16.12 when chosen; a minor release of the same
 major reads the same data directory either way) and moves with releases, as `TASKMOOR_IMAGE`
-does. `POSTGRES_IMAGE=postgres:16` still works, with exact lookups. The all-in-one image, the
-air-gap bundle's database and Helm's demo database stay on Alpine's PostgreSQL 16 with exact
-lookups: no Alpine package exists for PostgreSQL 16, and moving an Alpine data directory to a
-Debian image changes the collation library under its indexes. Operators of those who need
-the index at scale point Taskmoor at a PostgreSQL with pgvector.
+does. `POSTGRES_IMAGE=postgres:16` still works, with exact lookups. The all-in-one image and
+Helm's demo database stay on Alpine's PostgreSQL 16 with exact lookups: no Alpine package
+exists for PostgreSQL 16, and moving an Alpine data directory to a Debian image changes the
+collation library under its indexes. Operators of those who need the index at scale point
+Taskmoor at a PostgreSQL with pgvector.
+
+**Amended 2026-11-05 (T-023): the air-gap bundle ships the Compose kit's database image.** The
+bundle first stayed on Alpine's PostgreSQL 16 too. Since ADR-111 the Compose kit it carries runs
+a `postgres-tls` service with `openssl` in the database image, which Alpine's image does not
+have, so every offline install stopped there (found by the first run of
+`tools/airgap/test-offline.sh` on a Mac). `tools/airgap/bundle.sh` now takes the image the kit's
+`docker-compose.yml` names (`pgvector/pgvector:0.8.1-pg16-trixie`), so an offline install runs
+the kit exactly as the tested online one does, with pgvector. No bundle had been published, so
+no Alpine data directory has to move.
 
 ## Options considered
 

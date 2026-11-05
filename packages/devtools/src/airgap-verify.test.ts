@@ -4,6 +4,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { POSTGRES_IMAGE } from '@taskmoor/builder-core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 /**
@@ -98,6 +99,25 @@ describe('tools/airgap/bundle.sh', () => {
     expect(script).not.toMatch(/base64 -w/);
     expect(readFileSync(join(ROOT, 'tools/airgap/verify.sh'), 'utf8')).toMatch(
       /base64 -d < SHA256SUMS\.sig/,
+    );
+  });
+
+  // The kit's postgres-tls service runs openssl in the database image (ADR-111). The bundle
+  // shipped Alpine's PostgreSQL image, which has none, so every offline install stopped at
+  // "postgres-tls didn't complete successfully: exit 127" (T-023).
+  it.skipIf(!hasTools)('[OPS-005] ships the database image its Compose kit names', () => {
+    const script = readFileSync(join(ROOT, 'tools/airgap/bundle.sh'), 'utf8');
+    const line = script.split('\n').find((l) => l.startsWith('kit_db=$('));
+    expect(line).toBeDefined();
+    const found = execFileSync('bash', ['-c', `${line}\nprintf %s "$kit_db"`], {
+      cwd: ROOT,
+      env,
+      encoding: 'utf8',
+    });
+    expect(found).toBe(POSTGRES_IMAGE);
+    expect(script).toMatch(/^db=\$\{POSTGRES_IMAGE:-\$\{kit_db:\?/m);
+    expect(readFileSync(join(ROOT, 'deploy/compose/docker-compose.yml'), 'utf8')).toContain(
+      `image: \${POSTGRES_IMAGE:-${POSTGRES_IMAGE}}`,
     );
   });
 });

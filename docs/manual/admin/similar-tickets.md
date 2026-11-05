@@ -1,8 +1,8 @@
 ---
 title: "Similar tickets and the local embedding model"
 audience: admins
-sources: packages/ai/src/embed/local.ts, packages/ai/src/embed/wordpiece.ts, packages/ai/src/embed/endpoint.ts, packages/ai/src/embed/ort-worker.mjs, packages/ai/models/all-MiniLM-L6-v2/SOURCE.md, apps/server/src/embeddings/service.ts, apps/server/src/embeddings/indexer.ts, apps/server/src/embeddings/jobs.ts, apps/server/src/embeddings/similar.ts, apps/server/src/embeddings/vector.ts, apps/server/src/embeddings/backfill.ts, apps/server/src/routes/similar.ts, apps/server/src/config.ts, apps/server/src/cli.ts, packages/db/src/migrations/0079_embeddings.ts, deploy/compose/docker-compose.yml, packages/builder-core/src/backend.ts, tools/build/server.mjs, docs/adr/0106-local-embeddings-and-vector-search.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-11-01
+sources: packages/ai/src/embed/local.ts, packages/ai/src/embed/wordpiece.ts, packages/ai/src/embed/endpoint.ts, packages/ai/src/embed/ort-worker.mjs, packages/ai/models/all-MiniLM-L6-v2/SOURCE.md, apps/server/src/embeddings/service.ts, apps/server/src/embeddings/indexer.ts, apps/server/src/embeddings/jobs.ts, apps/server/src/embeddings/similar.ts, apps/server/src/embeddings/vector.ts, apps/server/src/embeddings/backfill.ts, apps/server/src/routes/similar.ts, apps/server/src/config.ts, apps/server/src/cli.ts, packages/db/src/migrations/0079_embeddings.ts, deploy/compose/docker-compose.yml, packages/builder-core/src/backend.ts, tools/build/server.mjs, tools/airgap/bundle.sh, docs/adr/0106-local-embeddings-and-vector-search.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05b-administration-security-and-self-hosting.md
+accessed: 2026-11-05
 attestation: own-words
 ---
 # Similar tickets and the local embedding model
@@ -70,8 +70,9 @@ with the number of tickets, so above roughly 20,000 tickets use a PostgreSQL wit
 |---|---|---|
 | Compose kit, bundled database | `pgvector/pgvector:0.8.1-pg16-trixie` (PostgreSQL 16 with pgvector) | pgvector |
 | Builder backend kit | the same | pgvector |
+| Air-gap bundle | the same, carried in the bundle | pgvector |
 | Compose kit with `POSTGRES_IMAGE=postgres:16` | no pgvector | exact |
-| All-in-one image, air-gap bundle, Helm's demo database | Alpine's PostgreSQL 16, which has no pgvector package | exact |
+| All-in-one image, Helm's demo database | Alpine's PostgreSQL 16, which has no pgvector package | exact |
 | Your own PostgreSQL server | pgvector if it is installed there (many managed services offer it) | either |
 
 The Compose kit's image is the official `postgres:16` image with pgvector added, on the same
