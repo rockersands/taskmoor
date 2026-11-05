@@ -210,7 +210,8 @@ become **translucent glass**:
     (`test/touch.ts`), and every story fails if glass that blurs sits inside a `.glass-card`.
   - A card inside a card is a well: Account's sections stand on the canvas, the workflow import
     report is a well in the list's card, and the first-run offer's tutorial cards are wells
-    (`nested`). A dashboard widget's summary sections were wells already.
+    (`nested`), and so are the track cards in an open group's bubble. A dashboard widget's summary
+    sections were wells already.
   - `EmptyState compact` draws no picture, so a short "none yet" inside a panel uses it too. What
     stays a sentence is in `ALLOWED.bareEmpties`: a hint, a fact, a menu line or a drop zone, none of
     them an empty list.
