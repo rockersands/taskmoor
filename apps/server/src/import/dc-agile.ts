@@ -1,7 +1,10 @@
 import {
   type Clause,
   clauses,
+  type Expr,
   type FieldRef,
+  lookupField,
+  makeCatalogue,
   parseQuery,
   printQuery,
   type Query,
@@ -139,18 +142,65 @@ function clauseValues(c: Clause): readonly Value[] {
   }
 }
 
+const SYSTEM_ONLY = makeCatalogue();
+
+/**
+ * The query with each custom field it names by name named by the backup's id instead (T-195):
+ * the loader maps ids, while a name would be read against the target's fields, where it may
+ * belong to another field (the Points every workspace starts with, when the backup's field
+ * arrived as "Points (imported)"). System fields win over custom fields of the same name, as
+ * in the query language. A name no custom field of the backup has is left as it is, for the
+ * board loader's check; one several have is a problem, as for saved filters (`translate/jql.ts`).
+ */
+function byFieldIds(
+  expr: Expr | null,
+  fieldsNamed: Readonly<Record<string, readonly string[]>>,
+): { expr: Expr | null } | { ambiguous: string } {
+  let ambiguous: string | null = null;
+  const field = (f: FieldRef): FieldRef => {
+    if (f.custom !== undefined || f.property || lookupField(SYSTEM_ONLY, f)) return f;
+    const ids = fieldsNamed[f.name.toLowerCase()] ?? [];
+    if (ids.length > 1) ambiguous ??= f.name;
+    const only = ids.length === 1 ? Number(ids[0]) : Number.NaN;
+    return Number.isSafeInteger(only) ? { name: 'cf', custom: only, span: f.span } : f;
+  };
+  const visit = (e: Expr): Expr => {
+    switch (e.kind) {
+      case 'and':
+      case 'or':
+        return { ...e, items: e.items.map(visit) };
+      case 'not':
+        return { ...e, expr: visit(e.expr) };
+      default:
+        return { ...e, field: field(e.field) };
+    }
+  };
+  const out = expr === null ? null : visit(expr);
+  return ambiguous === null ? { expr: out } : { ambiguous };
+}
+
 /**
  * A board's query in Taskmoor's names (`toNative`), ORDER BY left out (a board shows its cards
- * in rank order). Custom fields keep the backup's ids, listed in `fields` for the loader to map.
- * A saved filter or a sprint named by id cannot be kept: ids of the backup mean nothing here.
+ * in rank order). Custom fields keep the backup's ids, listed in `fields` for the loader to map;
+ * those named by name are named by id first (`fieldsNamed`: the backup's custom field ids by
+ * lower-case name). A saved filter or a sprint named by id cannot be kept: ids of the backup
+ * mean nothing here.
  */
-export function translateQuery(text: string): Translated {
+export function translateQuery(
+  text: string,
+  fieldsNamed: Readonly<Record<string, readonly string[]>> = {},
+): Translated {
   let parsed: Query;
   try {
     parsed = toNative(parseQuery(text));
   } catch {
     return { query: null, problem: 'query_not_parsed' };
   }
+  const named = byFieldIds(parsed.where, fieldsNamed);
+  if ('ambiguous' in named) {
+    return { query: null, problem: 'query_names_ambiguous_field', detail: named.ambiguous };
+  }
+  parsed = { ...parsed, where: named.expr };
   const fields: string[] = [];
   const field = (f: FieldRef) => {
     if (f.custom !== undefined && !fields.includes(String(f.custom))) fields.push(String(f.custom));
@@ -189,8 +239,10 @@ export function mapBoard(b: StagedBoard): Mapped {
   // A query left out names its filter (if any) and why (IMP-006 (2)).
   const keep = (text: string | null, what: string, name?: string): string | null => {
     if (text === null) return null;
-    const t = translateQuery(text);
-    const problem = t.query === null ? t.problem : t.query.length > MAX_QUERY ? 'too_long' : null;
+    const t = translateQuery(text, b.fieldsNamed);
+    const refused = t.query === null && t.detail ? `${t.problem} (${t.detail})` : null;
+    const problem =
+      t.query === null ? (refused ?? t.problem) : t.query.length > MAX_QUERY ? 'too_long' : null;
     if (t.query === null || problem !== null) {
       const detail = name === undefined ? problem : `${name}: ${problem}`;
       warnings.push({ code: `${what}_not_imported`, ...(detail ? { detail } : {}) });

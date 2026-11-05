@@ -19,7 +19,7 @@ import {
   PROJECT_SCHEME,
 } from './format';
 import { parseXml, type XmlHandlers } from './parse';
-import { readLines as readLinesOf } from './spill';
+import { byId as compareIds, readLines as readLinesOf } from './spill';
 import { AGILE_STAGED_KINDS, AgileCollector } from './stage-agile';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
 import { FILTER_ELEMENTS, FilterCollector } from './stage-filters';
@@ -42,7 +42,8 @@ import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 6;
+/** Raised whenever staged records change, so a backup staged before is staged again. */
+export const STAGE_VERSION = 7;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -940,6 +941,11 @@ async function stageWith(
     project: projectLookup(collector.projects),
     projectKey: (id: string) => collector.projects.find((p) => p.id === id)?.key ?? null,
     statuses: new Set(collector.statuses.map((x) => x.id)),
+    fieldsNamed: (name: string) =>
+      [...collector.fieldPart.fields.values()]
+        .filter((f) => f.name.toLowerCase() === name.toLowerCase())
+        .map((f) => f.id)
+        .sort(compareIds),
   };
   const agileRecords = {
     ...collector.agilePart.configuration(agileResolve),

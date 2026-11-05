@@ -1,5 +1,6 @@
 import {
   AGILE_TABLES,
+  fieldNamesIn,
   ISSUE_ASSOCIATIONS,
   projectsNamed,
   RANK_FIELD_TYPE,
@@ -88,6 +89,12 @@ export interface StagedBoard {
   subQuery: string | null;
   columns: StagedColumn[];
   quickFilters: StagedQuickFilter[];
+  /**
+   * The backup's custom fields its queries name by name (filter, sub-query, quick filters):
+   * each name in lower case with the ids of the custom fields that have it (T-195). Absent in
+   * records staged before it was kept.
+   */
+  fieldsNamed?: Record<string, string[]>;
 }
 
 export interface StagedSprint {
@@ -118,6 +125,8 @@ export interface AgileResolve {
   /** A project's key now, by id, for labels. */
   projectKey: (id: string) => string | null;
   statuses: ReadonlySet<string>;
+  /** The ids of the backup's custom fields with a name, any case; empty for none. */
+  fieldsNamed: (name: string) => string[];
 }
 
 const int = (v: string | null | undefined): number | null =>
@@ -435,6 +444,15 @@ export class AgileCollector {
           description: q.DESCRIPTION ?? '',
         })),
       };
+      const fieldsNamed: Record<string, string[]> = {};
+      const queries = [data.filter?.query, data.subQuery, ...data.quickFilters.map((q) => q.query)];
+      for (const text of queries) {
+        for (const name of (text && fieldNamesIn(text)) || []) {
+          const ids = resolve.fieldsNamed(name);
+          if (ids.length > 0) fieldsNamed[name.toLowerCase()] = ids;
+        }
+      }
+      if (Object.keys(fieldsNamed).length > 0) data.fieldsNamed = fieldsNamed;
       out.push({ id, label: data.name, data });
     }
     return out;

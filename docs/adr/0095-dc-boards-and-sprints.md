@@ -55,11 +55,17 @@ releases and areas are M1-014's.
   then `printQuery`); ORDER BY is left out because a board orders by rank. A clause that names a
   saved filter or a sprint by the backup's id is refused in the mapper, since those ids mean
   nothing in the target yet. Custom fields keep the backup's ids, listed on the command, and the
-  board loader writes the target's ids in their place. Then the loader binds every query as a
-  board would read it with no viewer (a viewer id nobody has, so `currentUser()` resolves and
-  finds no one); a query that does not resolve (an app's field or function, a value that did
-  not import) is left out with a warning that names the filter and what it uses, as IMP-006 (2)
-  asks. A dry run only parses, since what queries name may not exist yet. The board's query
+  board loader writes the target's ids in their place. A custom field named by name is named by
+  the backup's id first (2026-11-05, T-195): the stage keeps, per board, the ids of the backup's
+  custom fields with each name its queries use, and the mapper puts `cf[<id>]` in place of a name
+  no system field has. Left as a name, it would be read against the target's fields, where it can
+  be another field: the Points every workspace starts with, when the backup's own Points holds
+  text and arrived as "Points (imported)". A name several of the backup's fields have is refused
+  (`query_names_ambiguous_field`), as saved filters refuse it (ADR-096). Then the loader binds
+  every query as a board would read it with no viewer (a viewer id nobody has, so
+  `currentUser()` resolves and finds no one); a query that does not resolve (an app's field or
+  function, a value that did not import) is left out with a warning that names the filter and
+  what it uses, as IMP-006 (2) asks. A dry run only parses, since what queries name may not exist yet. The board's query
   falls back to its track's tickets, as for Cloud boards.
 - **Board settings the backup does not describe take the defaults** a new board gets
   (swimlanes, card rules, sprint settings); the quick filters replace the default board filters.

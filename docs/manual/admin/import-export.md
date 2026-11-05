@@ -2,7 +2,7 @@
 title: "Importing and exporting"
 audience: admins
 sources: apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/boards/one-per-track.ts, docs/adr/0116-one-place-per-track.md, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
-accessed: 2026-11-03
+accessed: 2026-11-05
 attestation: own-words
 jira-names: import sources and field mapping
 ---
@@ -340,7 +340,7 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `web_link_application_not_kept`, `web_link_text_cut`, `web_link_icon_dropped` | A web link's application name, an over-long text or an icon that is not a web address was left out |
 | `attachment_size_differs`, `attachment_folder_key_differs` | An attachment's file has another size than its row says (the file's is kept), or sits in another issue's folder |
 | `link_type_created` | A link type you did not have was made for the backup's links |
-| `board_filter_not_imported` (kind `board`) | A quick filter whose query does not translate: it names an app's field or function, a saved filter or a sprint by id, or something the import left out. The detail names the filter and what it uses, for example `Commented (app): Unknown field "issueFunction"`. Add it again by hand if you need it |
+| `board_filter_not_imported` (kind `board`) | A quick filter whose query does not translate: it names an app's field or function, a saved filter or a sprint by id, a custom field by a name several of the backup's fields have, or something the import left out. The detail names the filter and what it uses, for example `Commented (app): Unknown field "issueFunction"`. Add it again by hand if you need it |
 | `board_query_not_imported`, `board_sub_query_not_imported` | The board's filter or a Kanban board's sub-filter did not translate: the board shows its whole track instead, or has no sub-filter |
 | `board_query_narrowed_to_track` | A board shows one track, and this board's query could reach others, such as `track IN (PAY, WEB)`. The board arrives on `track = KEY`, its first track, and shows only that. The detail names the board and gives the source's query, so you can save it as a search or a dashboard |
 | `field_name_taken` | A field of the backup has the name of a field here of another type, such as the number field `Points` every site starts with. Its values arrive in a field called `<name> (imported)`; rename either one afterwards. A field of the same type joins the one here. |
@@ -389,6 +389,13 @@ field's `cf[<id>]`, an option's id its value, `filter = 10020` the imported save
 `resolution = Unresolved` `closeReason IS EMPTY`. A saved search that imports clean has been
 prepared as its owner would run it, so it runs. The translation is tested against a corpus of
 about a hundred queries as people and scripts write them; the backup's fixture uses them all.
+
+A board's filter, its sub-filter and its quick filters name custom fields the same way: by the
+imported field's `cf[<id>]`, whether the backup's query used the id or the name. So a query of
+the backup that says `Points` reads the field its own `Points` became, such as "Points
+(imported)" when the backup's field holds text, and never the number field `Points` every site
+starts with. When the backup has several custom fields of that name, the query is not kept and
+the warning says `query_names_ambiguous_field` with the name.
 
 Under "Not imported", the report counts each part of the backup the importer does not handle
 yet: saved filters, other kinds of associations, rows of the agile plugin that name a board,
