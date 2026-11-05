@@ -1,35 +1,138 @@
-# gitleaks configuration (M1-118, ADR-104): the default rules, plus the false positives the
-# history scan of 2026-10-31 found and docs/security/scan-triage.md explains. Each allowlist
-# names the file and the line's shape; a new finding anywhere else still fails.
+# gitleaks configuration (ADR-104; T-032). `pnpm secrets` runs gitleaks over every commit of
+# every local branch with this file; docs/security/secret-scan.md has the triage behind it.
+#
+# The default rules, plus Taskmoor's own token formats and passwords inside URLs, which the
+# defaults do not know. Every allowlist below names one file and the exact value or shape that
+# was read and judged a test value or a false positive. Nothing is allowed by path alone or by
+# rule alone, so the same value anywhere else, or another value in the same file, still fails.
 title = "Taskmoor"
 
 [extend]
 useDefault = true
 
+# --- Rules the defaults lack -------------------------------------------------------------------
+
+[[rules]]
+id = "taskmoor-api-token"
+description = "Taskmoor API token (IAM-007, ADR-035): tmk_, 40 random and 6 checksum characters"
+regex = '''\btmk_[0-9A-Za-z]{46}\b'''
+keywords = ["tmk_"]
+
+[[rules]]
+id = "taskmoor-oauth-token"
+description = "Taskmoor OAuth access (tma_) or refresh (tmr_) token: 32 random bytes in base64url"
+regex = '''\b(tm[ar]_[0-9A-Za-z_-]{43})(?:[^0-9A-Za-z_-]|$)'''
+secretGroup = 1
+keywords = ["tma_", "tmr_"]
+
+[[rules]]
+id = "url-credentials"
+description = "A password inside a URL, such as a database connection string"
+# A shell or Compose reference (`${POSTGRES_PASSWORD}`, `$PW`) or a placeholder in angle
+# brackets is not a value, so `$`, `<`, `>`, `{` and `}` end the match.
+regex = '''\b[a-z][a-z0-9+.-]*://[^\s:@/'"`]+:([^\s@/'"`$<>{}]{3,})@[^\s'"`]+'''
+secretGroup = 1
+keywords = ["://"]
+
+# --- Test values made for the repository --------------------------------------------------------
+# Each is a password typed into a throwaway database, a test or an example that never guarded
+# anything real. Paths match the file's name at every point in the history where it held the value.
+
 [[allowlists]]
-description = "Page cursors of the compatible API, recorded from Taskmoor's own synthetic server"
+description = "Connection strings that loadConfig must accept or reject (config.test.ts)"
+targetRules = ["url-credentials"]
 condition = "AND"
-regexTarget = "line"
+paths = ['''^apps/server/src/config\.test\.ts$''']
+regexes = ['''^(s3cret|hunter2)$''']
+
+[[allowlists]]
+description = "The throwaway Postgres service of the CI workflow"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^\.github/workflows/ci\.yml$''']
+regexes = ['''^postgres$''']
+
+[[allowlists]]
+description = "The placeholder of the Compose kit's external-database examples"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = [
+  '''^deploy/compose/\.env\.example$''',
+  '''^deploy/compose/docker-compose\.external\.yml$''',
+]
+regexes = ['''^pass$''']
+
+[[allowlists]]
+description = "The Postgres password of the kind cluster that tests the Helm chart"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^tools/helm/postgres\.yaml$''']
+regexes = ['''^kind-test-password$''']
+
+[[allowlists]]
+description = "The Postgres password of the image smoke test's throwaway container"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^tools/image/smoke\.sh$''']
+regexes = ['''^smoke$''']
+
+[[allowlists]]
+description = "The example connection string of the installation manual"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^docs/manual/admin/install\.md$''']
+regexes = ['''^secret$''']
+
+[[allowlists]]
+description = "A failed pg_dump line whose password the backup schedule must never record (OPS-008)"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^apps/server/src/backups/schedule\.test\.ts$''']
+regexes = ['''^not-a-real-password$''']
+
+[[allowlists]]
+description = "The placeholder database URL of the mail server tests"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = ['''^apps/server/src/email/smtp\.test\.ts$''']
+regexes = ['''^placeholder$''']
+
+[[allowlists]]
+description = "Addresses with a user and password in the OAuth address and webhook URL checks"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = [
+  '''^apps/server/src/fuzz/targets\.test\.ts$''',
+  '''^apps/server/src/webhooks/webhooks\.test\.ts$''',
+]
+regexes = ['''^pass$''']
+
+# --- False positives of the default generic-api-key rule ---------------------------------------
+
+[[allowlists]]
+description = "Page cursors recorded from Taskmoor's own synthetic server: base64 of {\"s\":..."
+targetRules = ["generic-api-key"]
+condition = "AND"
 paths = ['''^apps/server/src/import/cloud/__fixtures__/compat-source\.json$''']
-regexes = ['''"nextPageToken": "''']
+regexes = ['''^eyJzIjoi[0-9A-Za-z_-]+={0,2}$''']
 
 [[allowlists]]
-description = "Storage keys of the upgrade seed (hex object names, not secrets)"
+description = "A storage key of the upgrade seed: hex digits in order, an object name"
+targetRules = ["generic-api-key"]
 condition = "AND"
-regexTarget = "line"
 paths = ['''^packages/db/src/upgrade-fixtures\.ts$''']
-regexes = ['''storage_key = 'w1/''']
+regexes = ['''^w1/00/11/00112233445566778899aabbccddeeff$''']
 
 [[allowlists]]
-description = "The synthetic authenticator setup of the account stories (ASCII text in base32)"
+description = "The synthetic authenticator setup of the account stories: ASCII text in base32"
+targetRules = ["generic-api-key"]
 condition = "AND"
-regexTarget = "line"
 paths = ['''^apps/web/src/account/fixtures\.ts$''']
-regexes = ['''^\s*(secret|uri): ''']
+regexes = ['''^MZXW6YTBOI4TQNRVGQ3DCMZRGQ2DIMZT$''']
 
 [[allowlists]]
 description = "A common password the password policy must refuse"
+targetRules = ["generic-api-key"]
 condition = "AND"
-regexTarget = "line"
 paths = ['''^apps/server/src/routes/identity\.test\.ts$''']
-regexes = ['''change\(PASSWORD, ''']
+regexes = ['''^qwerty123456$''']

@@ -41,11 +41,11 @@
   },
   {
     "scan": "Secrets, whole git history and working tree",
-    "tool": "gitleaks 8 (default rules plus .gitleaks.toml)",
+    "tool": "gitleaks 8.30.1 (default rules plus .gitleaks.toml; pnpm secrets)",
     "ran": true,
-    "at": "2026-10-31",
+    "at": "2026-11-05",
     "open": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
-    "note": "11 findings in the history, all false positives (page cursors, a synthetic TOTP sample, a hex storage key, a common password the policy refuses)"
+    "note": "T-032: 788 commits of every branch and GitHub's pull request refs; 32 findings, none real: 21 test values (throwaway database passwords, placeholders) and 11 false positives (page cursors, a synthetic TOTP sample, a hex storage key, a common password the policy refuses). docs/security/secret-scan.md"
   },
   {
     "scan": "ASVS level 2 review",

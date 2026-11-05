@@ -24,7 +24,7 @@ semgrep scan --metrics=off --config /tmp/rules/javascript --config /tmp/rules/ty
   --config /tmp/rules/dockerfile --config /tmp/rules/yaml .
 osv-scanner scan source -L pnpm-lock.yaml && corepack pnpm audit
 bash tools/image/smoke.sh && trivy image taskmoor:dev && trivy config .
-gitleaks git --log-opts=--all --config .gitleaks.toml . && gitleaks dir --config .gitleaks.toml .
+corepack pnpm secrets && gitleaks dir --config .gitleaks.toml .
 ```
 
 Then update `scan-results.json` and this file. The CI security job (`.github/workflows/ci.yml`)
@@ -123,8 +123,10 @@ packages inside it; the dependency scan of the lockfile covers them.
 ## Secrets
 
 `gitleaks git --log-opts=--all` found 11 matches in the history, `gitleaks dir` the same 11 in the
-working tree. **No real secret.** All are false positives, now allowlisted by file and line shape
-in `.gitleaks.toml` (a rerun finds nothing):
+working tree. **No real secret.** All are false positives, allowlisted in `.gitleaks.toml` (a rerun
+finds nothing). The scan of the whole history before going public (T-032, 2026-11-05) repeated
+this with gitleaks 8.30.1, GitHub's pull request refs and three Taskmoor rules, and narrowed each
+allowlist to its exact value: `secret-scan.md`.
 
 | Where | What it is |
 |---|---|

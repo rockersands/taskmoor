@@ -79,6 +79,12 @@ configuration, gitleaks over the whole history and the working tree. Results and
 in `scan-triage.md`. The repository keeps `.gitleaks.toml` with the reviewed false positives
 of the history, so a rerun shows only new findings.
 
+*Updated 2026-11-05 (T-032):* `.gitleaks.toml` adds rules for Taskmoor's own tokens (`tmk_`,
+`tma_`, `tmr_`) and for passwords inside URLs, and every allowlist names one file and the exact
+value or shape that was judged, never a path or rule alone. `pnpm secrets` runs gitleaks with it
+over every local branch; gitleaks stays a local tool, not a dependency. The scan of the whole
+history before going public, GitHub's pull request refs included, is in `secret-scan.md`.
+
 ## Consequences
 
 - Fixed in this task (each with a regression test): a stored table span of `1e308` that made
