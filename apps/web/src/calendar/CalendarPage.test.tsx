@@ -74,8 +74,8 @@ describe('a track’s calendar (M1-049)', () => {
     const chip = await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
     const target = day(/^Nov 16, 2026/);
     const letGo = pointerDrag(chip, within(target).getByText('16'), { up: false });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Moving CAL-2: drop it on another day. Escape cancels.',
+    expect(screen.getByText('Moving CAL-2: drop it on another day. Escape cancels.')).toHaveClass(
+      'visually-hidden',
     );
     expect(target).toHaveClass('is-drop-target');
     expect(chip.closest('.calendar-entry')).toHaveClass('is-dragging');

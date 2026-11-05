@@ -224,7 +224,7 @@ test('[AGL-008] [AGL-009] the backlog by drag: into a sprint and ranked, Escape 
   // Under way, the sprint is marked and the page says what is in hand; Escape puts it back.
   const letGo = await hold(page, grip(first), section(sprintName), touch);
   await expect(section(sprintName)).toHaveClass(/is-drop-target/);
-  await expect(status).toHaveText(new RegExp(`^Moving ${first}: drop on a place`));
+  await expect(page.getByText(new RegExp(`^Moving ${first}: drop on a place`))).toBeAttached();
   expect(await seriousAxeViolations(page, ['.is-dragging'])).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(section(sprintName)).not.toHaveClass(/is-drop-target/);

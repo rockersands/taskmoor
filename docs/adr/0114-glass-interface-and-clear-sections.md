@@ -496,6 +496,10 @@ Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b
   a real browser and are checked by axe in both skins, mid-drag and dropped; `e2e/drag-and-drop.spec.ts`
   drags by mouse on a desktop and by touch input through the DevTools protocol on a phone, as
   `e2e/track-groups.spec.ts` does.
+- **Nothing moves when a drag starts (T-143's gate).** Picking something up on the calendar or the
+  backlog shows no new line above the days or rows: what is in hand is said to a screen reader and
+  shown by the label under the finger, as on a board. A line appearing there moved the page, so the
+  day under the finger was another one.
 - **Board cards (T-162b; the user's decision of 2026-11-04 on T-162a).** Cards leave the browser's
   drag of ADR-049 for the same follower, so a finger drags them on a phone. A mouse drags a card
   from anywhere but its pencil (and never while its title is edited); a finger or a mouse drags it

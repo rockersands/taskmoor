@@ -114,6 +114,7 @@ export function CalendarView({
   const [dragging, setDragging] = useState<Entry | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const [notice, setNotice] = useState('');
+  const [inHandNotice, setInHandNotice] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [opened, setOpened] = useState<Set<number>>(() => new Set());
   const { first, last } = monthWeeks(month);
@@ -215,13 +216,13 @@ export function CalendarView({
     const endDrag = () => {
       setDragging(null);
       setOver(null);
+      setInHandNotice('');
     };
     stopDrag.current = followPointerDrag(event, {
       start: (x, y) => {
         pointerAt.current = { x, y };
         setDragging(entry);
-        setProblem(null);
-        setNotice(t('calendar.drag.start', words));
+        setInHandNotice(t('calendar.drag.start', words));
       },
       move: (x, y) => {
         pointerAt.current = { x, y };
@@ -303,6 +304,10 @@ export function CalendarView({
       <p className="board-hint" role="status">
         {notice}
       </p>
+      {/* Said, not shown: a line appearing here would move the page under the finger. */}
+      <div className="visually-hidden" aria-live="polite">
+        {inHandNotice}
+      </div>
       {problem && (
         <p className="board-problem" role="alert">
           {problem}

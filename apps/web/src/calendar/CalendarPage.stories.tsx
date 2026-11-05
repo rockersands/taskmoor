@@ -107,11 +107,17 @@ export const EntryInHand: Story = {
     const canvas = within(canvasElement);
     const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
     const day = canvas.getByRole('listitem', { name: /^Nov 16, 2026/ });
+    // Measured from the month's name above it: near the screen's edge a drag scrolls the page.
+    const month = canvas.getByRole('heading', { level: 2 });
+    const gap = () => day.getBoundingClientRect().top - month.getBoundingClientRect().top;
+    const before = gap();
     dragOver(grip, day);
     await waitFor(() => expect(day).toHaveClass('is-drop-target'));
-    await expect(canvas.getByRole('status')).toHaveTextContent(
-      'Moving CAL-2: drop it on another day. Escape cancels.',
-    );
+    await expect(
+      canvas.getByText('Moving CAL-2: drop it on another day. Escape cancels.'),
+    ).toHaveClass('visually-hidden');
+    // Picking it up moves nothing under the finger.
+    await expect(gap()).toBe(before);
     await expect(document.querySelector('.drag-ghost')).toHaveTextContent('CAL-2 Press kit');
   },
 };

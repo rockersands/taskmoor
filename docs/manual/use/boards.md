@@ -220,8 +220,8 @@ when time tracking is on, the remaining estimate).
 - Drag a ticket to rank it, or drop it in another sprint or the backlog. With a mouse, drag the
   row from anywhere but its check box and buttons; with a finger, drag it by its grip (the six
   dots at its start), since a finger elsewhere on the row scrolls the page. The section and the
-  place it would land are outlined, and the page says what you are moving. Hold it near the top
-  or bottom of the screen to scroll there. **Escape** puts it back where it was.
+  place it would land are outlined, and a label with the ticket follows the pointer. Hold it near
+  the top or bottom of the screen to scroll there. **Escape** puts it back where it was.
 - Each ticket's grip, pressed or tapped, opens **Move PAY-42**: **Move up**, **Move down**, **Move
   to the top**, **Move to the bottom** and **Move to** each other sprint or the backlog. A ticket
   with none of these to offer, such as the only one in the backlog of a board with no sprints yet,

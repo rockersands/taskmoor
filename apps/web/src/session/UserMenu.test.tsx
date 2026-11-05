@@ -159,8 +159,11 @@ describe('user menu', () => {
   it('[IAM-001] offers a sign-in link to visitors who are not signed in', async () => {
     render(<App session={{ status: 'anonymous' }} />);
     // The top bar's link (the start page offers one too, M1-113).
+    // The first banner: the test library counts a page's own header too, where a browser does not.
     expect(
-      within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }),
+      within(screen.getAllByRole('banner')[0] as HTMLElement).getByRole('link', {
+        name: 'Sign in',
+      }),
     ).toHaveAttribute('href', '#/sign-in');
     expect(screen.queryByRole('button', { name: /Kalo/ })).toBeNull();
   });

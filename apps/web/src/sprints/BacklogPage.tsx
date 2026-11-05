@@ -110,6 +110,7 @@ export function BacklogPage({
   const [panelsFailed, setPanelsFailed] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [inHandNotice, setInHandNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [filter, setFilter] = useState<{ target: PanelTarget; name: string } | null>(null);
@@ -359,6 +360,7 @@ export function BacklogPage({
     setDragging(null);
     setOver(null);
     setGhost(null);
+    setInHandNotice('');
   }
 
   /** A drop on a section: the same move as the menus', to the place shown. */
@@ -428,8 +430,7 @@ export function BacklogPage({
       start: (x, y) => {
         setDragging(block);
         setGhost({ x, y });
-        setProblem(null);
-        setNotice(t('sprints.drag.start', words));
+        setInHandNotice(t('sprints.drag.start', words));
       },
       move: (x, y) => {
         setGhost({ x, y });
@@ -658,6 +659,10 @@ export function BacklogPage({
       <p className="board-hint" role="status">
         {notice}
       </p>
+      {/* Said, not shown: a line appearing here would move the page under the finger. */}
+      <div className="visually-hidden" aria-live="polite">
+        {inHandNotice}
+      </div>
       {data && (
         <div className="backlog-layout">
           <div className="backlog-main" data-tutorial="backlog">

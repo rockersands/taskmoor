@@ -142,10 +142,13 @@ export const Dragging: Story = {
     const canvas = within(canvasElement);
     const sprint = await canvas.findByRole('region', { name: 'Checkout Sprint 2' });
     const target = within(sprint).getByRole('link', { name: 'CHK-3' }).closest('li') as Element;
+    const before = target.getBoundingClientRect().top;
     dragOver(canvas.getByRole('button', { name: 'Move CHK-4' }), target);
     await waitFor(() => expect(target).toHaveClass('is-drop-before'));
     await expect(sprint).toHaveClass('is-drop-target');
-    await expect(canvas.getByRole('status')).toHaveTextContent(/^Moving CHK-4: drop on a place/);
+    await expect(canvas.getByText(/^Moving CHK-4: drop on a place/)).toHaveClass('visually-hidden');
+    // Picking it up moves nothing under the finger.
+    await expect(target.getBoundingClientRect().top).toBe(before);
     await expect(document.querySelector('.drag-ghost')).toHaveTextContent('CHK-4');
   },
 };

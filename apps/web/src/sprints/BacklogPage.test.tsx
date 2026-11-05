@@ -250,9 +250,11 @@ describe('planning on the backlog (M1-047)', () => {
     await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
     placed(rowOf('CHK-3'), 290);
     const under = dragTo(screen.getByText('Gift cards'), rowOf('CHK-3'), { y: 300, up: false });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Moving CHK-4: drop on a place in a sprint or the backlog, or on an outcome or a release. Escape cancels.',
-    );
+    expect(
+      screen.getByText(
+        'Moving CHK-4: drop on a place in a sprint or the backlog, or on an outcome or a release. Escape cancels.',
+      ),
+    ).toHaveClass('visually-hidden');
     expect(rowOf('CHK-4')).toHaveClass('is-dragging');
     expect(screen.getByRole('region', { name: 'Checkout Sprint 2' })).toHaveClass('is-drop-target');
     expect(rowOf('CHK-3')).toHaveClass('is-drop-before');
