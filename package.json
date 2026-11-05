@@ -24,6 +24,7 @@
     "i18n:check": "tsx packages/devtools/src/cli/i18n-check.ts",
     "builder": "tsx packages/devtools/src/cli/builder.ts",
     "dco": "tsx packages/devtools/src/cli/dco.ts",
+    "secrets": "gitleaks git --config .gitleaks.toml --log-opts=--all --redact --no-banner .",
     "gen": "tsx packages/testkit/src/cli/gen.ts",
     "gen:dc-backup": "tsx apps/server/src/import/dc-backup/cli.ts",
     "spike": "tsx packages/spikes/src/cli/spike.ts",

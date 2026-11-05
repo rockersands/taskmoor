@@ -62,6 +62,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `bash tools/image/smoke-backend-kit.sh` | Makes a backend kit for https://localhost:18443 and installs it against the local image: health through Caddy, the setup link, the kit's instance at `/api/meta` |
 | `bash tools/image/fresh-vm.sh` | M1-113: both Builder kits on a fresh machine (a Docker-in-Docker container with an empty image store), the frontend on a plain static server at another site, then setup, sign-in, a ticket, a board, a search and live updates in a browser; fails above 15 minutes from start to sign-in. Behind a TLS-re-signing proxy set `BUILD_CA` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
+| `pnpm secrets` | gitleaks over every commit of every local branch with `.gitleaks.toml`; prints only redacted findings (needs gitleaks: `brew install gitleaks`). Triage and the pull request refs in `docs/security/secret-scan.md` |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
 | `pnpm --filter @taskmoor/web storybook` | Storybook; every story also runs as a browser test with axe in `pnpm verify` |
