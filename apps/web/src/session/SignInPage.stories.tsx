@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { fakeSignInSso, PARTNERS, STAFF, UMBRELLA } from '../sso/fixtures';
 import { SessionProvider } from './SessionProvider';
@@ -148,4 +149,26 @@ export const PhoneWithProviders: Story = {
   args: { ssoClient: providers },
   decorators: anonymous,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth, ...(anonymous as [])],
+  args: { ssoClient: providers },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Sign in' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };

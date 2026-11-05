@@ -2101,7 +2101,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.copied': 'URI de redirección copiada.',
   'admin.sso.copyFailed': 'Copiar no funcionó. Selecciona la dirección y cópiala tú.',
   'admin.sso.list': 'Proveedores de identidad',
-  'admin.sso.none': 'Aún no hay proveedores de identidad. Todos inician sesión con una contraseña.',
   'admin.sso.add': 'Añadir un proveedor de identidad',
   'admin.sso.newTitle': 'Proveedor de identidad nuevo',
   'admin.sso.editTitle': 'Editar {name}',
@@ -2270,8 +2269,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.forbidden':
     'Solo los administradores del sitio pueden gestionar los directorios.',
   'admin.directories.list': 'Directorios',
-  'admin.directories.none':
-    'Aún no hay directorios. Las personas y los grupos se gestionan en Taskmoor.',
   'admin.directories.precedence':
     'En este orden: cuando dos directorios tienen la misma dirección de correo, el primero gestiona esa cuenta.',
   'admin.directories.add': 'Añadir un directorio',

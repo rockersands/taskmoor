@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { PageHeader } from '../shell/PageHeader';
 import type { SignInSsoClient } from '../sso/client';
 import { OAuthSignIn } from './OAuthSignIn';
 import { oauthClient } from './oauth';
@@ -35,18 +36,21 @@ export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
   }, []);
 
   return (
-    <section className="sign-in-prompt" aria-labelledby={titleId}>
-      <h1 id={titleId} ref={heading} tabIndex={-1} className="page-title">
-        {t('auth.signIn')}
-      </h1>
+    <section className="page sign-in-prompt" aria-labelledby={titleId}>
+      <PageHeader
+        titleId={titleId}
+        titleRef={heading}
+        title={t('auth.signIn')}
+        purpose={t('purpose.signIn')}
+      />
       {session.status === 'loading' ? (
         <p className="page-note" aria-live="polite">
           {t('auth.checking')}
         </p>
-      ) : oauthClient ? (
-        <OAuthSignIn />
       ) : (
-        <SignInForm {...(ssoClient ? { ssoClient } : {})} />
+        <div className="glass-card account-section sign-in-card">
+          {oauthClient ? <OAuthSignIn /> : <SignInForm {...(ssoClient ? { ssoClient } : {})} />}
+        </div>
       )}
     </section>
   );

@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { PageHeader } from '../shell/PageHeader';
 import { type Guardrail, type GuardrailsClient, guardrailsClient } from './client';
 import { StorageQuotas } from './StorageQuotas';
 import type { StorageClient } from './storage-client';
@@ -65,15 +66,18 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('guardrails.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('guardrails.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.guardrailsHint'), about: t('guardrails.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('guardrails.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('guardrails.intro')}</p>
           <p role="status" className="form-status">
             {message}
           </p>

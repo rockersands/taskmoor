@@ -3,6 +3,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type ApiToken,
   type NewToken,
@@ -73,15 +75,21 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
   }, [notAdmin, load]);
 
   return (
-    <section aria-labelledby={titleId} className="tokens-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.serviceAccounts.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page tokens-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.serviceAccounts.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : {
+              purpose: t('settings.serviceAccountsHint'),
+              about: t('admin.serviceAccounts.intro'),
+            })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.serviceAccounts.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.serviceAccounts.intro')}</p>
           <div className="tokens-page-sections">
             <CreateSection
               client={client}
@@ -91,7 +99,7 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
                 setOpen(account.id);
               }}
             />
-            <section aria-labelledby={`${titleId}-list`} className="account-section">
+            <section aria-labelledby={`${titleId}-list`} className="glass-card account-section">
               <h2 id={`${titleId}-list`} className="facts-title">
                 {t('admin.serviceAccounts.list')}
               </h2>
@@ -105,7 +113,9 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
               )}
               {state.status === 'loaded' &&
                 (state.accounts.length === 0 ? (
-                  <p className="page-note">{t('admin.serviceAccounts.none')}</p>
+                  <EmptyState title={t('admin.serviceAccounts.none')}>
+                    {t('empty.serviceAccounts.body')}
+                  </EmptyState>
                 ) : (
                   <ul className="service-account-list">
                     {state.accounts.map((account) => (
@@ -167,7 +177,7 @@ function CreateSection({
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} className="facts-title">
         {t('admin.serviceAccounts.new')}
       </h2>

@@ -64,8 +64,10 @@
   color: var(--color-text);
 }
 
+/* One column no wider than the form: a select with a long option cannot stretch it sideways. */
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   max-width: 32rem;
 }
@@ -73,7 +75,9 @@
 /* A group of fields: a glass slab on the canvas, ... */
 .form fieldset {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+  min-width: 0;
   margin: 0;
   padding: var(--space-5);
   border: 1px solid var(--glass-edge);
@@ -86,6 +90,8 @@
 
 /* ... and a well inside any glass, where a blur of its own would only cut the glass off. */
 .form fieldset fieldset,
+.form.glass-card fieldset,
+.form .glass-card fieldset,
 :is(.glass-card, .create-dialog, .ticket-dialog, .popover, .people-item, .account-section)
   .form
   fieldset {
@@ -95,7 +101,7 @@
   box-shadow: var(--glass-highlight-flat);
 }
 
-.form legend {
+.form legend:not(.visually-hidden) {
   float: inline-start;
   width: 100%;
   margin-bottom: var(--space-1);
@@ -105,6 +111,7 @@
 
 .form-field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1);
 }
 
@@ -250,6 +257,8 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
+  /* An example address or name is one long word: it wraps rather than push the page sideways. */
+  overflow-wrap: anywhere;
 }
 
 /* An error, whichever words a page gave it. `.page-note` with an alert is a page's failure. */
@@ -272,19 +281,29 @@
   padding-inline-start: var(--space-4);
 }
 
+/* The stand-alone pages: outside the app's shell, the same header and cards in one column. */
 .setup {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
   max-width: 40rem;
   margin: 0 auto;
   padding: var(--space-8) var(--space-4) calc(var(--space-8) * 4);
 }
 
-.setup .page-note + .form {
-  margin-top: var(--space-4);
+.setup > .page-header {
+  margin-bottom: 0;
+}
+
+/* A grid would stretch a lone button or link across the page. */
+.setup > :is(button, a),
+.setup .account-section > :is(button, a) {
+  justify-self: start;
 }
 
 .consent-list {
-  margin: var(--space-4) 0;
+  margin: 0;
   padding-left: var(--space-6);
   line-height: 1.6;
 }
@@ -292,7 +311,6 @@
 .setup-link {
   display: inline-flex;
   align-items: center;
-  margin-top: var(--space-4);
   text-decoration: none;
 }
 

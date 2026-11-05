@@ -1,12 +1,8 @@
 /* The trash (M1-101): lists of cards rather than tables, so phones never scroll sideways. */
-.trash-page {
-  max-width: 60rem;
-}
-
 .trash-sections {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
 .trash-list {
@@ -24,8 +20,10 @@
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .trash-main {
@@ -51,5 +49,4 @@
 
 .trash-retention {
   max-width: 40rem;
-  margin-top: var(--space-4);
 }

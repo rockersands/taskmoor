@@ -258,10 +258,6 @@
 }
 
 /* Storage quotas (M1-118; ASVS 12.1.3) on the guardrails page. */
-.storage-quotas {
-  margin-top: var(--space-5);
-}
-
 .storage-quotas .form-hint {
   flex: 1 1 100%;
 }

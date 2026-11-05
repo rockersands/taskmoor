@@ -4,6 +4,8 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 
 /** A ticket in the trash, as `GET /api/v1/trash` shows it (CORE-025 (3)). */
 export interface TrashedTicket {
@@ -224,10 +226,18 @@ export function TrashPage({ client = trashClient }: TrashPageProps) {
     who ? t('admin.trash.deletedBy', { name: who.name }) : t('admin.trash.deletedBySystem');
 
   return (
-    <section aria-labelledby={titleId} className="trash-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.trash.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page trash-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.trash.title')}
+        purpose={
+          state.status !== 'loaded'
+            ? t('purpose.trash')
+            : state.retention === null
+              ? t('admin.trash.intro')
+              : t('admin.trash.introDays', { days: state.retention })
+        }
+      />
       {state.status === 'loading' && (
         <p role="status" className="page-note">
           {t('admin.trash.loading')}
@@ -240,11 +250,6 @@ export function TrashPage({ client = trashClient }: TrashPageProps) {
       )}
       {state.status === 'loaded' && (
         <>
-          <p className="page-note">
-            {state.retention === null
-              ? t('admin.trash.intro')
-              : t('admin.trash.introDays', { days: state.retention })}
-          </p>
           {error && (
             <p role="alert" className="form-error">
               {error}
@@ -254,12 +259,14 @@ export function TrashPage({ client = trashClient }: TrashPageProps) {
             {message}
           </p>
           <div className="trash-sections">
-            <section aria-labelledby={ticketsId} className="facts">
+            <section aria-labelledby={ticketsId} className="glass-card facts">
               <h2 id={ticketsId} className="facts-title">
                 {t('admin.trash.tickets')}
               </h2>
               {state.tickets.length === 0 ? (
-                <p className="page-note">{t('admin.trash.noTickets')}</p>
+                <EmptyState compact title={t('admin.trash.noTickets')}>
+                  {t('empty.trash.tickets')}
+                </EmptyState>
               ) : (
                 <ul className="trash-list">
                   {state.tickets.map((ticket) => (
@@ -314,12 +321,14 @@ export function TrashPage({ client = trashClient }: TrashPageProps) {
               )}
             </section>
             {state.tracks && (
-              <section aria-labelledby={tracksId} className="facts">
+              <section aria-labelledby={tracksId} className="glass-card facts">
                 <h2 id={tracksId} className="facts-title">
                   {t('admin.trash.tracks')}
                 </h2>
                 {state.tracks.length === 0 ? (
-                  <p className="page-note">{t('admin.trash.noTracks')}</p>
+                  <EmptyState compact title={t('admin.trash.noTracks')}>
+                    {t('empty.trash.tracks')}
+                  </EmptyState>
                 ) : (
                   <ul className="trash-list">
                     {state.tracks.map((track) => (
@@ -418,7 +427,7 @@ function RetentionForm({
 
   return (
     <form
-      className="form trash-retention"
+      className="form glass-card account-section trash-retention"
       onSubmit={submit}
       aria-labelledby={`${id}-title`}
       noValidate

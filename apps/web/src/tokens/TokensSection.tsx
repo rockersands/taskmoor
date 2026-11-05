@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
 import type { ApiToken, NewToken, PersonalTokensClient, TokenPolicy } from './client';
 import { TokenForm } from './TokenForm';
 import { TokenItem } from './TokenItem';
@@ -88,7 +89,7 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
         {t('tokens.title')}
       </h2>
@@ -112,7 +113,9 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
             />
           )}
           {state.tokens.length === 0 ? (
-            <p className="page-note">{t('tokens.none')}</p>
+            <EmptyState compact title={t('tokens.none')}>
+              {t('empty.tokens.body')}
+            </EmptyState>
           ) : (
             <ul className="token-list" aria-label={t('tokens.listLabel')}>
               {state.tokens.map((token) => (

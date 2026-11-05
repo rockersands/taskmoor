@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
 import type { PersonalDataClient, PersonalExport } from './personalData';
 
 export interface PersonalDataSectionProps {
@@ -94,7 +95,7 @@ export function PersonalDataSection({ client, timeZone, pollMs = 3000 }: Persona
         });
 
   return (
-    <section aria-labelledby={titleId} className="account-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <h2 id={titleId} className="facts-title">
         {client.subject
           ? t('personalData.titleOf', { name: client.subject })
@@ -122,7 +123,9 @@ export function PersonalDataSection({ client, timeZone, pollMs = 3000 }: Persona
       )}
       {state.status === 'loaded' &&
         (state.exports.length === 0 ? (
-          <p className="page-note">{t('personalData.none')}</p>
+          <EmptyState compact title={t('personalData.none')}>
+            {t('empty.personalData.body')}
+          </EmptyState>
         ) : (
           <ul className="session-list">
             {state.exports.map((e) => (

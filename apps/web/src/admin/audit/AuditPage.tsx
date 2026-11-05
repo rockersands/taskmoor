@@ -3,6 +3,8 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useSession } from '../../session/SessionProvider';
+import { EmptyState } from '../../shell/EmptyState';
+import { PageHeader } from '../../shell/PageHeader';
 import { AuditSettings } from './AuditSettings';
 import {
   type AuditClient,
@@ -77,42 +79,45 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'medium' });
 
+  const header = (
+    <PageHeader
+      titleId={titleId}
+      title={t('admin.audit.title')}
+      {...(forbidden ? {} : { purpose: t('settings.auditLogHint'), about: t('admin.audit.intro') })}
+    />
+  );
+
   if (forbidden) {
     return (
-      <section aria-labelledby={titleId} className="audit-page">
-        <h1 id={titleId} className="page-title">
-          {t('admin.audit.title')}
-        </h1>
+      <section aria-labelledby={titleId} className="page audit-page">
+        {header}
         <p className="page-note">{t('admin.audit.forbidden')}</p>
       </section>
     );
   }
 
   return (
-    <section aria-labelledby={titleId} className="audit-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.audit.title')}
-      </h1>
-      <p className="page-note">{t('admin.audit.intro')}</p>
-      <form id={formId} className="audit-filter" onSubmit={submit}>
-        <label>
-          {t('admin.audit.from')}
+    <section aria-labelledby={titleId} className="page audit-page">
+      {header}
+      <form id={formId} className="glass-card audit-filter" onSubmit={submit}>
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.from')}</span>
           <input
             type="date"
             value={draft.from ?? ''}
             onChange={(e) => setDraft({ ...draft, from: e.target.value || undefined })}
           />
         </label>
-        <label>
-          {t('admin.audit.to')}
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.to')}</span>
           <input
             type="date"
             value={draft.to ?? ''}
             onChange={(e) => setDraft({ ...draft, to: e.target.value || undefined })}
           />
         </label>
-        <label>
-          {t('admin.audit.action')}
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.action')}</span>
           <input
             type="text"
             value={draft.action ?? ''}
@@ -171,11 +176,11 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
         </p>
       )}
       {log.status === 'loaded' && log.records.length === 0 && (
-        <p className="page-note">{t('admin.audit.none')}</p>
+        <EmptyState title={t('admin.audit.none')}>{t('empty.audit.body')}</EmptyState>
       )}
       {log.status === 'loaded' && log.records.length > 0 && (
-        <div className="audit-table-wrap">
-          <table className="audit-table">
+        <div className="glass-card glass-scroller">
+          <table className="data-table audit-table">
             <caption className="visually-hidden">{t('admin.audit.table')}</caption>
             <thead>
               <tr>

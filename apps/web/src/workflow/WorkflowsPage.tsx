@@ -118,7 +118,7 @@ export function WorkflowsPage({
     <section aria-labelledby={`${id}-title`} className="page workflows-page">
       {header}
       <div className="sso-sections">
-        <section aria-labelledby={`${id}-list`} className="account-section">
+        <section aria-labelledby={`${id}-list`} className="glass-card account-section">
           <div className="sso-list-head">
             <h2 id={`${id}-list`} ref={heading} tabIndex={-1} className="facts-title">
               {t('admin.workflows.list')}

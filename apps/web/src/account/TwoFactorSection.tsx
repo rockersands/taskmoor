@@ -337,7 +337,7 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
   };
 
   return (
-    <section aria-labelledby={titleId} className="account-section two-factor">
+    <section aria-labelledby={titleId} className="glass-card account-section two-factor">
       <h2 id={titleId} ref={heading} tabIndex={-1} className="facts-title">
         {t('account.twoFactor')}
       </h2>

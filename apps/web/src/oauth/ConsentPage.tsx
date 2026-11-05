@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, routeHref } from '../routing/router';
+import { PageHeader } from '../shell/PageHeader';
 import { hashParam } from '../sso/client';
 import {
   type ConsentClient,
@@ -103,7 +104,6 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
     const writes = request.scope === 'read write';
     body = (
       <>
-        <p className="page-note">{t('consent.intro', { name })}</p>
         <ul className="consent-list">
           <li>{t('consent.reads')}</li>
           {writes && changes && <li>{t('consent.writes')}</li>}
@@ -160,8 +160,15 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
       : t('consent.titlePlain');
   return (
     <main className="setup">
-      <h1 className="page-title">{title}</h1>
-      {body}
+      <PageHeader
+        title={title}
+        purpose={
+          'request' in state && state.request
+            ? t('consent.intro', { name: state.request.client.name })
+            : t('purpose.consent')
+        }
+      />
+      <div className="glass-card account-section">{body}</div>
     </main>
   );
 }

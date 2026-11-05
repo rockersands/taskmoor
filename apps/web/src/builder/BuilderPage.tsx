@@ -17,6 +17,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useId, useState } from 're
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { PasswordField } from '../session/PasswordField';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type BuilderForm,
   checkForm,
@@ -267,8 +268,7 @@ export function BuilderPage({ web, version, initialForm = EMPTY_FORM }: BuilderP
 
   return (
     <main className="builder">
-      <h1 className="page-title">{t('builder.title')}</h1>
-      <p className="page-note">{t('builder.intro')}</p>
+      <PageHeader title={t('builder.title')} purpose={t('builder.intro')} />
       <p className="form-hint">{t('builder.version', { version })}</p>
 
       <form className="form builder-form" onSubmit={generate} aria-label={t('builder.formName')}>
@@ -519,7 +519,7 @@ export function BuilderPage({ web, version, initialForm = EMPTY_FORM }: BuilderP
           <p className="form-hint">{t('builder.secretsHint')}</p>
         </fieldset>
 
-        <details className="builder-advanced">
+        <details className="glass-card builder-advanced">
           <summary>{t('builder.advanced')}</summary>
           <div className="form-field">
             <label htmlFor={field('seed')}>{t('builder.seed')}</label>
@@ -573,7 +573,7 @@ export function BuilderPage({ web, version, initialForm = EMPTY_FORM }: BuilderP
       </form>
 
       {downloads.length > 0 && (
-        <section className="builder-results" aria-labelledby={field('results')}>
+        <section className="glass-card builder-results" aria-labelledby={field('results')}>
           <h2 id={field('results')}>{t('builder.results')}</h2>
           <p className="form-hint">{t('builder.resultsHint')}</p>
           <ul>

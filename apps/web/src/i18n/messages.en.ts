@@ -2039,7 +2039,6 @@ export const messagesEn = {
   'admin.sso.copied': 'Redirect URI copied.',
   'admin.sso.copyFailed': 'Copying did not work. Select the address and copy it yourself.',
   'admin.sso.list': 'Identity providers',
-  'admin.sso.none': 'No identity providers yet. Everyone signs in with a password.',
   'admin.sso.add': 'Add an identity provider',
   'admin.sso.newTitle': 'New identity provider',
   'admin.sso.editTitle': 'Edit {name}',
@@ -2201,7 +2200,6 @@ export const messagesEn = {
   'admin.directories.failed': 'The directories could not be read. Try again in a moment.',
   'admin.directories.forbidden': 'Only site administrators can manage directories.',
   'admin.directories.list': 'Directories',
-  'admin.directories.none': 'No directories yet. People and groups are managed in Taskmoor.',
   'admin.directories.precedence':
     'In this order: when two directories hold the same email address, the first one manages that account.',
   'admin.directories.add': 'Add a directory',

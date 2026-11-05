@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useContext, useEffect, useId, useState }
 import { useT } from '../i18n/I18nProvider';
 import { runtimeConfig } from '../runtime/config';
 import { WEB_VERSION } from '../runtime/version';
+import { PageHeader } from '../shell/PageHeader';
 import { httpMetaClient, type MetaClient } from './client';
 
 /**
@@ -110,8 +111,7 @@ function WrongInstance() {
   const t = useT();
   return (
     <main id="main" className="update-required" tabIndex={-1}>
-      <h1>{t('instance.wrongTitle')}</h1>
-      <p>{t('instance.wrong')}</p>
+      <PageHeader title={t('instance.wrongTitle')} purpose={t('instance.wrong')} />
       <p className="page-note">{t('instance.wrongAdmin')}</p>
     </main>
   );
@@ -121,8 +121,10 @@ function UpdateRequired({ version, server }: { version: string; server: string }
   const t = useT();
   return (
     <main id="main" className="update-required" tabIndex={-1}>
-      <h1>{t('update.requiredTitle')}</h1>
-      <p>{t('update.required', { version, server })}</p>
+      <PageHeader
+        title={t('update.requiredTitle')}
+        purpose={t('update.required', { version, server })}
+      />
       <p className="page-note">{t('update.askAdmin')}</p>
       <button type="button" className="button-primary" onClick={reload}>
         {t('update.reload')}

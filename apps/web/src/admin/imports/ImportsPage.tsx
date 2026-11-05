@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../../i18n/I18nProvider';
 import { useSession } from '../../session/SessionProvider';
+import { EmptyState } from '../../shell/EmptyState';
+import { PageHeader } from '../../shell/PageHeader';
 import { type ImportRunView, type ImportsClient, importsClient } from './client';
 import { ImportRunPanel } from './ImportRunPanel';
 import { ImportWizard } from './ImportWizard';
@@ -61,15 +63,18 @@ export function ImportsPage({
   };
 
   return (
-    <section aria-labelledby={titleId} className="imports-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.imports.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page imports-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.imports.title')}
+        {...(notAdmin
+          ? {}
+          : { purpose: t('settings.importsHint'), about: t('admin.imports.intro') })}
+      />
       {notAdmin ? (
         <p className="page-note">{t('admin.imports.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.imports.intro')}</p>
           <div ref={top} />
           <ImportWizard
             key={wizard.key}
@@ -96,13 +101,13 @@ export function ImportsPage({
             ) : runs === null ? (
               <p className="page-note">{t('admin.imports.loading')}</p>
             ) : runs.length === 0 ? (
-              <p className="page-note">{t('admin.imports.none')}</p>
+              <EmptyState title={t('admin.imports.none')}>{t('empty.imports.body')}</EmptyState>
             ) : (
               <ul className="import-run-list">
                 {runs.map((run) => {
                   const label = run.name || t('admin.imports.unnamed', { id: run.id });
                   return (
-                    <li key={run.id} className="import-run-item">
+                    <li key={run.id} className="glass-card import-run-item">
                       <h3 className="import-run-name">
                         {t('admin.imports.runName', { id: run.id, name: label })}
                       </h3>

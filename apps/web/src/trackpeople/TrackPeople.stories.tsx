@@ -289,3 +289,14 @@ export const NoTracksYouRun: StoryObj<typeof ManagedTracksPage> = {
     await expect(canvas.getByText(/^A track shows here once you run it/)).toBeVisible();
   },
 };
+
+export const InvitationAtPhoneWidth: StoryObj<typeof InvitationPage> = {
+  ...invited,
+  decorators: [atPhoneWidth],
+  render: () => anonymous(<InvitationPage client={fakeInvitationClient()} />),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('form')).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};

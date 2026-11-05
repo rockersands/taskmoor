@@ -111,7 +111,11 @@ export function SessionPolicyForm({
     );
   }
   return (
-    <form className="form" onSubmit={submit} aria-labelledby={`${id}-title`}>
+    <form
+      className="form glass-card account-section"
+      onSubmit={submit}
+      aria-labelledby={`${id}-title`}
+    >
       <h2 id={`${id}-title`} className="facts-title">
         {t('admin.sessions.title')}
       </h2>

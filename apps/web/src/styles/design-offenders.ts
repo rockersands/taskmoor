@@ -15,6 +15,7 @@ const SAMPLE_DATA = 'data a person or a test works with, not a style';
 const CARET =
   'a caret colour is sent to the others in the editor, where a variable of this page means nothing';
 const STICKY = 'a sticky cell: rows scroll under it, so glass would show them through its text';
+const SKIN_PREVIEW = 'a miniature of a skin, drawn in the colours it shows, with no text on it';
 const PANEL_LINE =
   'one line in a panel whose heading already says what it holds; a picture is too loud';
 
@@ -42,6 +43,8 @@ export const ALLOWED = {
     '.capacity-table thead th': STICKY,
     '.capacity-table tbody th': STICKY,
     '.capacity-row.is-team th': STICKY,
+    '.skin-preview-bar': SKIN_PREVIEW,
+    '.skin-preview-card': SKIN_PREVIEW,
   },
   /** `<file> <tag>`: a page title that PageHeader cannot draw. */
   titles: {
@@ -49,8 +52,6 @@ export const ALLOWED = {
     'tickets/view/TicketPage.tsx h1':
       'the title is the summary, edited in place, a form of its own',
     'tickets/CreateTicketPage.tsx h2': 'the same form in a dialog, under the page it opened over',
-    'builder/BuilderPage.tsx h1': 'a stand-alone file that does not load surfaces.css',
-    'builder/MissingBuild.tsx h1': 'a stand-alone file that does not load surfaces.css',
   },
   /** Components: a route page that draws its header some other way. */
   pagesWithoutHeader: {
@@ -74,93 +75,19 @@ export const ALLOWED = {
 export const OFFENDERS = {
   /** Panels and wells on an opaque token; `--glass-surface-sunken` is the like-for-like glass. */
   opaqueSurfaces: {
-    'builder/builder.css': 2,
-    'styles/account.css': 5,
-    'styles/admin.css': 3,
-    'styles/api-tokens.css': 3,
-    'styles/shell.css': 4,
-    'styles/sso.css': 4,
-    'styles/trash.css': 1,
-    'styles/twofactor.css': 1,
+    'styles/shell.css': 3,
   } as Ratchet,
   /** `h1` or `.page-title` outside PageHeader. */
-  titles: {
-    'account/AccountPage.tsx': 1,
-    'admin/AiSettingsPage.tsx': 3,
-    'admin/AiUsagePage.tsx': 1,
-    'admin/ApiUsagePage.tsx': 1,
-    'admin/FrontendsPage.tsx': 1,
-    'admin/McpPage.tsx': 2,
-    'admin/NetworkAccessPage.tsx': 1,
-    'admin/SecurityPage.tsx': 1,
-    'admin/SystemPage.tsx': 1,
-    'admin/TrashPage.tsx': 1,
-    'admin/audit/AuditPage.tsx': 2,
-    'admin/imports/ImportsPage.tsx': 1,
-    'directories/DirectoriesPage.tsx': 1,
-    'guardrails/GuardrailsPage.tsx': 1,
-    'meta/VersionGate.tsx': 2,
-    'notifications/UnsubscribePage.tsx': 1,
-    'oauth/ConsentPage.tsx': 1,
-    'session/PasswordLinkPage.tsx': 2,
-    'session/RequireSession.tsx': 1,
-    'session/SignInPage.tsx': 1,
-    'setup/SetupPage.tsx': 2,
-    'sso/IdentityProvidersPage.tsx': 1,
-    'tokens/AdminTokensPage.tsx': 2,
-    'tokens/ServiceAccountsPage.tsx': 1,
-    'trackpeople/InvitationPage.tsx': 2,
-  } as Ratchet,
+  titles: {} as Ratchet,
   /** Route pages with no PageHeader; a purpose is ready in messages.en.ts (`purpose.*`, an intro). */
-  pagesWithoutHeader: [
-    'AccountPage',
-    'AdminTokensPage',
-    'AiSettingsPage',
-    'AiUsagePage',
-    'ApiUsagePage',
-    'AuditPage',
-    'ConsentPage',
-    'DirectoriesPage',
-    'FrontendsPage',
-    'GuardrailsPage',
-    'IdentityProvidersPage',
-    'ImportsPage',
-    'InvitationPage',
-    'McpPage',
-    'NetworkAccessPage',
-    'PasswordLinkPage',
-    'SecurityPage',
-    'ServiceAccountsPage',
-    'SetupPage',
-    'SignInPage',
-    'SystemPage',
-    'TrashPage',
-    'UnsubscribePage',
-  ] as string[],
+  pagesWithoutHeader: [] as string[],
   noPurpose: {} as Ratchet,
   /** `<button>` or `<table>` with no class and no rule through a parent. */
   bareControls: {} as Ratchet,
   /** `<fieldset>` classes that no stylesheet names. */
-  fieldsetsWithoutRule: {
-    'sso/DomainListField.tsx': 1,
-    'sso/GroupMapField.tsx': 1,
-    'sso/ProviderForm.tsx': 1,
-  } as Ratchet,
+  fieldsetsWithoutRule: {} as Ratchet,
   /** "None" sentences in `.page-note` or `.report-empty`; bodies are ready as `empty.*`. */
-  bareEmpties: {
-    'account/PersonalDataSection.tsx': 1,
-    'admin/AiUsagePage.tsx': 2,
-    'admin/ApiUsagePage.tsx': 1,
-    'admin/FrontendsPage.tsx': 1,
-    'admin/SecurityAlertsForm.tsx': 1,
-    'admin/audit/AuditPage.tsx': 1,
-    'admin/imports/ImportsPage.tsx': 1,
-    'directories/DirectoriesPage.tsx': 1,
-    'sso/IdentityProvidersPage.tsx': 1,
-    'tokens/AdminTokensPage.tsx': 1,
-    'tokens/ServiceAccountsPage.tsx': 1,
-    'tokens/TokensSection.tsx': 1,
-  } as Ratchet,
+  bareEmpties: {} as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,
 };

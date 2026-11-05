@@ -93,12 +93,12 @@ export function AuditSettings({ client }: { client: AuditClient }) {
   };
 
   return (
-    <section aria-labelledby={titleId} className="audit-settings">
+    <section aria-labelledby={titleId} className="glass-card account-section audit-settings">
       <h2 id={titleId} className="facts-title">
         {t('admin.audit.settings')}
       </h2>
-      <label className="audit-retention">
-        {t('admin.audit.retention')}
+      <label className="form-field audit-retention">
+        <span className="form-label">{t('admin.audit.retention')}</span>
         <select
           value={months ?? ''}
           disabled={months === null}
@@ -142,8 +142,8 @@ export function AuditSettings({ client }: { client: AuditClient }) {
           />
           <label htmlFor={`${syslogId}-enabled`}>{t('admin.audit.syslog.enabled')}</label>
         </div>
-        <label>
-          {t('admin.audit.syslog.host')}
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.syslog.host')}</span>
           <input
             type="text"
             required
@@ -151,8 +151,8 @@ export function AuditSettings({ client }: { client: AuditClient }) {
             onChange={(e) => setForm({ ...form, host: e.target.value })}
           />
         </label>
-        <label>
-          {t('admin.audit.syslog.port')}
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.syslog.port')}</span>
           <input
             type="number"
             min={1}
@@ -162,8 +162,8 @@ export function AuditSettings({ client }: { client: AuditClient }) {
             onChange={(e) => setForm({ ...form, port: Number(e.target.value) })}
           />
         </label>
-        <label>
-          {t('admin.audit.syslog.transport')}
+        <label className="form-field">
+          <span className="form-label">{t('admin.audit.syslog.transport')}</span>
           <select
             value={form.transport}
             onChange={(e) =>

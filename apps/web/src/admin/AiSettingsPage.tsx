@@ -3,6 +3,8 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 
 export type ProviderId = 'anthropic' | 'bedrock' | 'vertex' | 'foundry' | 'openai-compatible';
 export type CredentialSlot =
@@ -234,25 +236,40 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
     };
   }, [client, notAdmin]);
 
+  const header = (
+    <PageHeader
+      titleId={`${id}-title`}
+      title={t('ai.title')}
+      {...(notAdmin ? {} : { purpose: t('settings.aiHint'), about: t('ai.intro') })}
+    />
+  );
+
   if (notAdmin) {
     return (
-      <section className="admin-page">
-        <h1 className="page-title">{t('ai.title')}</h1>
+      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+        {header}
         <p className="page-note">{t('ai.forbidden')}</p>
       </section>
     );
   }
   if (loadFailed) {
     return (
-      <section className="admin-page">
-        <h1 className="page-title">{t('ai.title')}</h1>
+      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+        {header}
         <p role="alert" className="form-error">
           {t('ai.loadFailed')}
         </p>
       </section>
     );
   }
-  if (!view || !settings) return <p className="page-note">{t('ai.loading')}</p>;
+  if (!view || !settings) {
+    return (
+      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+        {header}
+        <p className="page-note">{t('ai.loading')}</p>
+      </section>
+    );
+  }
 
   const provider = settings.provider;
   const providerInfo = provider
@@ -361,17 +378,18 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
   };
 
   return (
-    <section className="admin-page" aria-labelledby={`${id}-title`}>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('ai.title')}
-      </h1>
-      <p className="page-note">{t('ai.intro')}</p>
+    <section className="page admin-page" aria-labelledby={`${id}-title`}>
+      {header}
       {view.keyStorage === 'none' && (
         <p role="alert" className="form-error">
           {t('ai.keyStorageNone')}
         </p>
       )}
-      <form className="people-form" aria-label={t('ai.formLabel')} onSubmit={submit}>
+      <form
+        className="glass-card people-card people-form"
+        aria-label={t('ai.formLabel')}
+        onSubmit={submit}
+      >
         <div className="form-field form-field-inline">
           <input
             id={`${id}-enabled`}
@@ -523,8 +541,10 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
       </form>
 
       {provider && providerInfo && (
-        <section aria-labelledby={`${id}-keys`}>
-          <h2 id={`${id}-keys`}>{t('ai.keys')}</h2>
+        <section aria-labelledby={`${id}-keys`} className="glass-card account-section">
+          <h2 id={`${id}-keys`} className="facts-title">
+            {t('ai.keys')}
+          </h2>
           <p className="page-note">{t('ai.keysHint')}</p>
           {providerInfo.slots.map((slot) => {
             const found = stored.get(slot);
@@ -601,13 +621,15 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
       )}
 
       {settings.enabled && view.settings.enabled && (
-        <section aria-labelledby={`${id}-tracks`}>
-          <h2 id={`${id}-tracks`}>{t('ai.tracks')}</h2>
+        <section aria-labelledby={`${id}-tracks`} className="glass-card account-section">
+          <h2 id={`${id}-tracks`} className="facts-title">
+            {t('ai.tracks')}
+          </h2>
           <p className="page-note">
             {view.settings.strict ? t('ai.tracksStrictHint') : t('ai.tracksHint')}
           </p>
           {view.tracks.length === 0 ? (
-            <p className="page-note">{t('ai.noTracks')}</p>
+            <EmptyState compact title={t('ai.noTracks')} />
           ) : (
             <ul className="link-list">
               {view.tracks.map((track) => (

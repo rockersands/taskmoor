@@ -13,7 +13,7 @@ export function Facts({
 }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="facts">
+    <section aria-labelledby={id} className="glass-card facts">
       <h2 id={id} className="facts-title">
         {title}
       </h2>

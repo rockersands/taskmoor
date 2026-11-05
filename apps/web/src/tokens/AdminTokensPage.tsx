@@ -3,6 +3,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type AdminTokensClient,
   type ApiToken,
@@ -80,23 +82,28 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
     });
   }, [client, forbidden, refuse]);
 
+  const header = (
+    <PageHeader
+      titleId={titleId}
+      title={t('admin.tokens.title')}
+      {...(forbidden
+        ? {}
+        : { purpose: t('settings.apiTokensHint'), about: t('admin.tokens.intro') })}
+    />
+  );
+
   if (forbidden) {
     return (
-      <section aria-labelledby={titleId} className="tokens-page">
-        <h1 id={titleId} className="page-title">
-          {t('admin.tokens.title')}
-        </h1>
+      <section aria-labelledby={titleId} className="page tokens-page">
+        {header}
         <p className="page-note">{t('admin.tokens.forbidden')}</p>
       </section>
     );
   }
 
   return (
-    <section aria-labelledby={titleId} className="tokens-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.tokens.title')}
-      </h1>
-      <p className="page-note">{t('admin.tokens.intro')}</p>
+    <section aria-labelledby={titleId} className="page tokens-page">
+      {header}
       <div className="tokens-page-sections">
         <InventorySection
           client={client}
@@ -176,7 +183,7 @@ function InventorySection({
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
         {t('admin.tokens.list')}
       </h2>
@@ -204,7 +211,7 @@ function InventorySection({
         <>
           <p className="page-note">{t('admin.tokens.count', { count: inventory.total })}</p>
           {inventory.tokens.length === 0 ? (
-            <p className="page-note">{t('admin.tokens.empty')}</p>
+            <EmptyState title={t('admin.tokens.empty')}>{t('empty.adminTokens.body')}</EmptyState>
           ) : (
             <ul className="token-list" aria-label={t('admin.tokens.list')}>
               {inventory.tokens.map((token) => (
@@ -322,7 +329,7 @@ function BulkSection({
   };
 
   return (
-    <section aria-labelledby={field('title')} className="account-section">
+    <section aria-labelledby={field('title')} className="glass-card account-section">
       <h2 id={field('title')} className="facts-title">
         {t('admin.tokens.bulk')}
       </h2>
@@ -479,7 +486,7 @@ function PolicySection({
   };
 
   return (
-    <section aria-labelledby={field('title')} className="account-section">
+    <section aria-labelledby={field('title')} className="glass-card account-section">
       <h2 id={field('title')} className="facts-title">
         {t('admin.tokens.policy')}
       </h2>

@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
+import { SessionProvider } from '../session/SessionProvider';
 import { AiSettingsPage } from './AiSettingsPage';
 import { aiView, fakeAiClient } from './aiFixtures';
+import { MEMBER } from './fixtures';
 
 const meta = {
   title: 'Admin/AiSettingsPage',
@@ -43,4 +46,51 @@ export const Off: Story = {
 /** Strict mode: one track opted in. */
 export const Strict: Story = {
   args: { client: fakeAiClient(aiView({ strict: true, tracks: { '1': true } })) },
+};
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByLabelText('API key')).toHaveValue('');
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** The settings could not be read: the header stays, with the failure under it. */
+export const LoadFailed: Story = {
+  args: {
+    client: {
+      ...fakeAiClient(),
+      load: async () => {
+        throw new Error('network');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1 })).toBeVisible();
+  },
+};
+
+export const NotAnAdministrator: Story = {
+  decorators: [
+    (Story) => (
+      <SessionProvider session={MEMBER}>
+        <Story />
+      </SessionProvider>
+    ),
+  ],
 };

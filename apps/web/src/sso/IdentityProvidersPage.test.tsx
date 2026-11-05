@@ -344,9 +344,8 @@ describe('identity provider administration (M1-080)', () => {
       'GET /identity-providers': () =>
         jsonResponse(200, { providers: [], redirectUri: REDIRECT_URI }),
     });
-    expect(
-      await screen.findByText('No identity providers yet. Everyone signs in with a password.'),
-    ).toBeVisible();
+    expect(await screen.findByText('No identity providers yet')).toBeVisible();
+    expect(screen.getByText('Everyone signs in with a password until you add one.')).toBeVisible();
   });
 
   it('[IAM-003] still edits providers when the groups cannot be read, leaving the mapping alone', async () => {
@@ -608,7 +607,9 @@ describe('identity provider administration (M1-080)', () => {
     await within(main).findAllByText(/Contractors/);
     const add = within(main)
       .getAllByRole('button')
-      .find((b) => b.getAttribute('aria-expanded') === 'false') as HTMLElement;
+      .find(
+        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+      ) as HTMLElement;
     await user.click(add);
     await user.click(within(main).getAllByRole('radio')[1] as HTMLElement);
     await user.click(
@@ -769,7 +770,13 @@ describe('identity provider administration (M1-080)', () => {
       const errors: Error[] = [];
       render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
       const main = screen.getByRole('main');
-      const add = await within(main).findByRole('button', { expanded: false });
+      const add = await waitFor(() => {
+        const found = within(main)
+          .getAllByRole('button', { expanded: false })
+          .find((button) => !button.closest('.page-header'));
+        expect(found).toBeDefined();
+        return found as HTMLElement;
+      });
       await user.click(add);
       const radios = within(main).getAllByRole('radio');
       await user.click(radios[radios.length - 1] as HTMLElement);
@@ -799,7 +806,9 @@ describe('identity provider administration (M1-080)', () => {
     // Open both the new-provider form and an editor, so every field is on screen.
     const buttons = within(main).getAllByRole('button');
     await user.click(
-      buttons.find((b) => b.getAttribute('aria-expanded') === 'false') as HTMLElement,
+      buttons.find(
+        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+      ) as HTMLElement,
     );
     await user.click(
       within(main)

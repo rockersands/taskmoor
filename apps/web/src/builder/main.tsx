@@ -10,6 +10,7 @@ import '../styles/shell.css';
 import '../styles/forms.css';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import '../styles/surfaces.css';
 import '../styles/motion.css';
 import './builder.css';
 

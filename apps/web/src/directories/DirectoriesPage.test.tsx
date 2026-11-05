@@ -376,7 +376,9 @@ describe('directory administration (M1-082)', () => {
     const buttons = within(main).getAllByRole('button');
     // The new-directory form, an editor and a history, so every string is on screen.
     await user.click(
-      buttons.find((b) => b.getAttribute('aria-expanded') === 'false') as HTMLElement,
+      buttons.find(
+        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+      ) as HTMLElement,
     );
     const editors = within(main)
       .getAllByRole('button')

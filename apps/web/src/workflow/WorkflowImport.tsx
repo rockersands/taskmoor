@@ -59,7 +59,10 @@ export const ImportReport = forwardRef<HTMLHeadingElement, { imported: Imported;
     const name = t('common.value', { value: workflow.name });
     const stage = (s: keyof typeof STAGE_LABELS) => t(STAGE_LABELS[s]);
     return (
-      <section aria-labelledby={`${id}-title`} className="account-section workflow-import-report">
+      <section
+        aria-labelledby={`${id}-title`}
+        className="glass-card account-section workflow-import-report"
+      >
         <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.workflows.report.title', { name })}
         </h2>

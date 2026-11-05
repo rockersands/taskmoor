@@ -29,7 +29,7 @@ export function RedirectUriField({ uri }: RedirectUriFieldProps) {
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} className="facts-title">
         {t('admin.sso.redirectTitle')}
       </h2>

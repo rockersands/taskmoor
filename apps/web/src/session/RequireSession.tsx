@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { PageHeader } from '../shell/PageHeader';
 import { OAuthSignIn } from './OAuthSignIn';
 import { oauthClient } from './oauth';
 import { useSession } from './SessionProvider';
@@ -21,12 +22,15 @@ export function RequireSession({ children }: { children: ReactNode }) {
     );
   }
   return (
-    <section className="sign-in-prompt" aria-labelledby="sign-in-title">
-      <h1 id="sign-in-title" className="page-title">
-        {t('auth.signInRequired')}
-      </h1>
-      <p className="page-note">{t('auth.signInExplanation')}</p>
-      {oauthClient ? <OAuthSignIn auto /> : <SignInForm />}
+    <section className="page sign-in-prompt" aria-labelledby="sign-in-title">
+      <PageHeader
+        titleId="sign-in-title"
+        title={t('auth.signInRequired')}
+        purpose={t('auth.signInExplanation')}
+      />
+      <div className="glass-card account-section sign-in-card">
+        {oauthClient ? <OAuthSignIn auto /> : <SignInForm />}
+      </div>
     </section>
   );
 }

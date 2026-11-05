@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { peopleClient } from '../people/client';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 
 /** The IP allowlist as `GET /api/v1/admin/ip-allowlist` answers (M1-085; IAM-015). */
 export interface AllowlistView {
@@ -138,10 +139,14 @@ export function NetworkAccessPage({
   };
 
   return (
-    <section aria-labelledby={titleId} className="network-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.network.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page network-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.network.title')}
+        {...(notAdmin
+          ? {}
+          : { purpose: t('settings.networkAccessHint'), about: t('admin.network.intro') })}
+      />
       {notAdmin ? (
         <p className="page-note">{t('admin.network.forbidden')}</p>
       ) : loadFailed ? (
@@ -153,8 +158,7 @@ export function NetworkAccessPage({
           {t('admin.network.loading')}
         </p>
       ) : (
-        <form className="network-form" onSubmit={submit}>
-          <p className="page-note">{t('admin.network.intro')}</p>
+        <form className="form glass-card account-section network-form" onSubmit={submit}>
           <p className={view.yourAddressAllowed ? 'page-note' : 'page-note status-warn'}>
             {t(view.yourAddressAllowed ? 'admin.network.youAreIn' : 'admin.network.youAreOut', {
               address: view.yourAddress,

@@ -13,7 +13,7 @@ export function KindTable({ rows, caption }: { rows: KindProgress[]; caption: st
   const n = (value: number) => intl.formatNumber(value);
   return (
     <div className="api-usage-table-wrap">
-      <table className="api-usage-table import-kinds">
+      <table className="data-table api-usage-table import-kinds">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
           <tr>
