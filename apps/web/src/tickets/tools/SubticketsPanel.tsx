@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { navigate, openOverlay, overlayRoute, routeHref } from '../../routing/router';
+import { EmptyState } from '../../shell/EmptyState';
 import { fieldName as seededFieldName } from '../../shell/seededNames';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { customId, fieldErrors, SYSTEM_FIELDS } from '../form';
@@ -352,7 +353,7 @@ export function SubticketsPanel({
         </div>
       )}
       {children && children.length === 0 && (
-        <p className="ticket-tool-empty">{t('ticketTools.subtickets.empty')}</p>
+        <EmptyState compact title={t('ticketTools.subtickets.empty')} />
       )}
       {children && children.length > 0 && (
         <ul ref={list} className="ticket-child-list">

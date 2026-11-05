@@ -16,8 +16,9 @@ const CARET =
   'a caret colour is sent to the others in the editor, where a variable of this page means nothing';
 const STICKY = 'a sticky cell: rows scroll under it, so glass would show them through its text';
 const SKIN_PREVIEW = 'a miniature of a skin, drawn in the colours it shows, with no text on it';
-const PANEL_LINE =
-  'one line in a panel whose heading already says what it holds; a picture is too loud';
+const FACT = 'a fact with no value, beside others that have one';
+const SETTING_HINT = 'a hint on a setting, about sections left empty: no list is empty here';
+const CARET_MENU = 'a line in the small menu at the caret, which closes as the person types on';
 
 export const ALLOWED = {
   /** `<file> <literal>`: colours that are data, not styles. */
@@ -57,26 +58,40 @@ export const ALLOWED = {
   pagesWithoutHeader: {
     TicketPage: 'the title is the summary, edited in place; the user decides on its purpose line',
   },
-  /** `<file> <message ID>`: a short "none yet" that stays a sentence. */
+  /** `<file> <message ID>`: a "none" that is no empty list, or says more than an empty list would. */
   bareEmpties: {
-    'admin/imports/PeopleMapping.tsx admin.imports.people.none': PANEL_LINE,
-    'attachments/AttachmentPanel.tsx attachments.empty': PANEL_LINE,
-    'comments/CommentsPanel.tsx comments.empty': PANEL_LINE,
-    'layouts/LayoutCanvas.tsx layouts.sectionEmpty': PANEL_LINE,
-    'layouts/LayoutEditorPage.tsx layouts.source.none': PANEL_LINE,
-    'releases/ReleasePage.tsx release.notes.empty': PANEL_LINE,
+    'admin/AiSettingsPage.tsx ai.keyStorageNone': 'a failure, in an alert: no key can be kept',
+    'ai/DataStatement.tsx ai.statement.none': 'one word inside a sentence on what is masked',
+    'dashboards/WidgetEditor.tsx dashboards.column.empty':
+      'the drop zone of a column being edited: it says where to drop, and has the shape of one',
+    'layouts/LayoutCanvas.tsx layouts.hideWhenEmptyHint': SETTING_HINT,
+    'layouts/LayoutEditorPage.tsx layouts.source.none':
+      'one of three readings of the line on where a form gets its layout from',
+    'layouts/LayoutEditorPage.tsx layouts.usedByNone': FACT,
+    'layouts/LayoutPreview.tsx layouts.preview.hidesWhenEmpty': SETTING_HINT,
     'richtext/CollaborativeEditor.tsx richtext.collab.empty': 'what a blank document shows to read',
-    'sprints/CompleteSprint.tsx sprints.completeDialog.empty': PANEL_LINE,
-    'tickets/view/ActivityPanel.tsx ticketView.history.empty': PANEL_LINE,
-    'tickets/view/ActivityPanel.tsx ticketView.time.empty': PANEL_LINE,
+    'richtext/RichTextEditor.tsx richtext.mention.none': CARET_MENU,
+    'richtext/RichTextEditor.tsx richtext.slash.none': CARET_MENU,
+    'sprints/CompleteSprint.tsx sprints.completeDialog.empty':
+      'one of four readings of the line that counts a sprint in its dialog',
+    'tickets/view/InfoPanel.tsx ticketView.none': FACT,
+    'tickets/view/TicketPage.tsx ticketView.none': FACT,
+    'workflow/PublishPanel.tsx admin.workflow.publishPanel.empty':
+      'one status of several, among those with a choice to make',
+    'workflow/TransitionInspector.tsx admin.workflow.transition.fromNone':
+      'a problem with a transition, shown with its rule',
+  },
+  /** `<file> <component>`: rendered in a `glass-card`, and draws one only where it is not nested. */
+  glassInGlass: {
+    'admin/AdminOverviewPage.tsx AdminPageLinks':
+      'its file draws a glass card around the same links; the links themselves draw none',
+    'tutorial/FirstRunOffer.tsx TutorialPicker': 'told it is `nested`, it draws wells',
   },
 } satisfies Record<string, Record<string, string>>;
 
 export const OFFENDERS = {
   /** Panels and wells on an opaque token; `--glass-surface-sunken` is the like-for-like glass. */
-  opaqueSurfaces: {
-    'styles/shell.css': 3,
-  } as Ratchet,
+  opaqueSurfaces: {} as Ratchet,
   /** `h1` or `.page-title` outside PageHeader. */
   titles: {} as Ratchet,
   /** Route pages with no PageHeader; a purpose is ready in messages.en.ts (`purpose.*`, an intro). */
@@ -86,7 +101,7 @@ export const OFFENDERS = {
   bareControls: {} as Ratchet,
   /** `<fieldset>` classes that no stylesheet names. */
   fieldsetsWithoutRule: {} as Ratchet,
-  /** "None" sentences in `.page-note` or `.report-empty`; bodies are ready as `empty.*`. */
+  /** "None" sentences outside an EmptyState; bodies are ready as `empty.*`. */
   bareEmpties: {} as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,

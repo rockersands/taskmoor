@@ -76,11 +76,17 @@ export function AdminOverviewPage({ client = overviewClient }: { client?: Overvi
   const titleId = useId();
   const access = useAdminAccess();
   return (
-    <section aria-labelledby={titleId} className="admin-page">
+    <section aria-labelledby={titleId} className="page admin-page">
       <PageHeader
         titleId={titleId}
         title={t('nav.administration')}
-        purpose={t(access === 'setup' ? 'admin.overview.purposeSetup' : 'admin.overview.purpose')}
+        {...(access === 'none'
+          ? {}
+          : {
+              purpose: t(
+                access === 'setup' ? 'admin.overview.purposeSetup' : 'admin.overview.purpose',
+              ),
+            })}
       />
       {access === 'none' && <p className="page-note">{t('admin.forbidden')}</p>}
       {(access === 'setup' || access === 'tracks') &&

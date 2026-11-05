@@ -191,15 +191,17 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
                 <th scope="row">{label}</th>
                 {CHANNELS.map((channel) => (
                   <td key={channel}>
-                    <input
-                      type="checkbox"
-                      aria-label={t('notifications.toggle', {
-                        channel: t(`notifications.channel.${channel}` as MessageId),
-                        event: label,
-                      })}
-                      checked={prefs.events[event]?.[channel] ?? true}
-                      onChange={(e) => choose(event, channel, e.target.checked)}
-                    />
+                    <label className="notification-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={t('notifications.toggle', {
+                          channel: t(`notifications.channel.${channel}` as MessageId),
+                          event: label,
+                        })}
+                        checked={prefs.events[event]?.[channel] ?? true}
+                        onChange={(e) => choose(event, channel, e.target.checked)}
+                      />
+                    </label>
                   </td>
                 ))}
               </tr>

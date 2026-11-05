@@ -79,16 +79,18 @@ export function LayoutEditorPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  const [refused, setRefused] = useState(false);
   return (
-    <section aria-labelledby={titleId} className="admin-page layout-editor-page">
+    <section aria-labelledby={titleId} className="page page-full admin-page layout-editor-page">
       <PageHeader
         titleId={titleId}
         title={t('layouts.title')}
         {...(track
           ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
           : {})}
-        purpose={t('layouts.purpose')}
-        about={t('layouts.about')}
+        {...(refused || scope.status === 'none'
+          ? {}
+          : { purpose: t('layouts.purpose'), about: t('layouts.about') })}
       />
       {scope.status === 'all' || track ? (
         <LayoutSets
@@ -97,6 +99,7 @@ export function LayoutEditorPage({
           track={track}
           initialSetId={initialSetId}
           previewDelay={previewDelay}
+          onRefused={setRefused}
         />
       ) : (
         <ScopeNote
@@ -122,10 +125,12 @@ interface LayoutSetsProps {
   track: ScopeTrack | null;
   initialSetId: number | null;
   previewDelay: number | undefined;
+  /** The server refused the list: the page drops its purpose too, and only says so. */
+  onRefused: (refused: boolean) => void;
 }
 
 /** The sets the page shows, the one open, adding one, and the editor of the open one. */
-function LayoutSets({ client, track, initialSetId, previewDelay }: LayoutSetsProps) {
+function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: LayoutSetsProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const id = useId();
@@ -178,6 +183,9 @@ function LayoutSets({ client, track, initialSetId, previewDelay }: LayoutSetsPro
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    onRefused(state.status === 'forbidden');
+  }, [state.status, onRefused]);
 
   const add = (event: FormEvent) => {
     event.preventDefault();

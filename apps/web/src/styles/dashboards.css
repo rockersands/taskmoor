@@ -345,9 +345,22 @@
 
   .dashboard-widget-tool,
   .dashboard-row .reports-check,
+  .dashboard-row > a,
   .summary-list a,
   .widget-tickets a {
     min-height: var(--hit-target-touch);
+  }
+
+  /* The box to pick a dashboard for the wallboard is a label the size of a finger around it. */
+  .dashboard-row .reports-check {
+    justify-content: center;
+    min-width: var(--hit-target-touch);
+  }
+
+  .dashboard-row > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
   }
 
   .widget-tickets a {

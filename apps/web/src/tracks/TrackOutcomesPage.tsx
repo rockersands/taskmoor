@@ -63,7 +63,7 @@ export function TrackOutcomesPage({ trackKey, client = trackClient }: TrackOutco
   const types = read?.outcomeTypes ?? [];
 
   return (
-    <section aria-labelledby={`${id}-title`} className="track-outcomes">
+    <section aria-labelledby={`${id}-title`} className="page track-outcomes">
       <PageHeader
         titleId={`${id}-title`}
         title={t('track.outcomes.title')}

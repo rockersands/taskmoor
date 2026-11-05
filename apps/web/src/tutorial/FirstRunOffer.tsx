@@ -89,7 +89,13 @@ export function FirstRunOffer({ client = tutorialClient }: FirstRunOfferProps) {
         {t('tutorial.offer.title', { name: user.name })}
       </h2>
       <p className="tutorial-offer-body">{t('tutorial.offer.body')}</p>
-      <TutorialPicker sections={sections} status={{}} selected={chosen} onSelect={setSelected} />
+      <TutorialPicker
+        nested
+        sections={sections}
+        status={{}}
+        selected={chosen}
+        onSelect={setSelected}
+      />
       {failed && (
         <p className="form-error" role="alert">
           {t('tutorial.offer.failed')}

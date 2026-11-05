@@ -56,7 +56,7 @@
 
 @media (pointer: coarse) {
   .create-choice {
-    min-height: var(--hit-target);
+    min-height: var(--hit-target-touch);
   }
 }
 
@@ -156,11 +156,6 @@
 }
 
 /* Home (M1-052): three lists side by side on wide screens, stacked on phones. */
-.home-page {
-  display: grid;
-  gap: var(--space-4);
-}
-
 .home-lists {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));

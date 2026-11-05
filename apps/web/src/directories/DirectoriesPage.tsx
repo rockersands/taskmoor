@@ -595,7 +595,7 @@ function DirectoryItem({
             {t('admin.directories.historyTitle', { name: directory.name })}
           </h3>
           {history.length === 0 ? (
-            <p className="page-note">{t('admin.directories.noRuns')}</p>
+            <EmptyState compact title={t('admin.directories.noRuns')} />
           ) : (
             <ul className="directory-runs">
               {history.map((run) => (

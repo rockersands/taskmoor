@@ -48,6 +48,11 @@ export const InvalidLink: Story = {
       },
     },
   },
+  play: async ({ canvasElement }) => {
+    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign in' });
+    // The same card as Unsubscribe and Consent, not flat text on the canvas.
+    await expect(link.closest('.glass-card')).not.toBeNull();
+  },
 };
 
 export const WithoutToken: Story = {

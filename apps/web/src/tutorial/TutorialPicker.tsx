@@ -11,6 +11,8 @@ interface TutorialPickerProps {
   onSelect: (selected: TutorialSectionId[]) => void;
   /** Starts, resumes or replays one section at once; the first-run offer leaves it out. */
   onStart?: (section: TutorialSectionId) => void;
+  /** Inside other glass, as in the first-run offer: the cards are wells, with no blur of their own. */
+  nested?: boolean;
 }
 
 const STATUS: Record<TutorialStatus, MessageId> = {
@@ -38,6 +40,7 @@ export function TutorialPicker({
   selected,
   onSelect,
   onStart,
+  nested = false,
 }: TutorialPickerProps) {
   const t = useT();
   const baseId = useId();
@@ -50,7 +53,11 @@ export function TutorialPicker({
         const title = t(section.titleId);
         const hintId = `${baseId}-${id}-hint`;
         return (
-          <li key={id} className="tutorial-card glass-card" data-checked={checked}>
+          <li
+            key={id}
+            className={nested ? 'tutorial-card tutorial-card-well' : 'tutorial-card glass-card'}
+            data-checked={checked}
+          >
             <label className="tutorial-card-pick">
               <input
                 type="checkbox"

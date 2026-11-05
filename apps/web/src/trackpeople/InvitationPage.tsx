@@ -257,14 +257,16 @@ export function InvitationPage({
     return (
       <main className="setup">
         <PageHeader title={title} purpose={t('purpose.invitation')} />
-        <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-          {note}
-        </p>
-        {state.status !== 'checking' && (
-          <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
-            {t('invite.goToSignIn')}
-          </a>
-        )}
+        <div className="glass-card account-section">
+          <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
+            {note}
+          </p>
+          {state.status !== 'checking' && (
+            <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
+              {t('invite.goToSignIn')}
+            </a>
+          )}
+        </div>
       </main>
     );
   }
@@ -335,23 +337,25 @@ export function InvitationPage({
       <main className="setup">
         {intro}
         {errorBox}
-        {ownInvitation ? (
-          <button
-            type="button"
-            className="button-primary"
-            disabled={busy}
-            onClick={() => void join()}
-          >
-            {t('invite.join', { key: link.track.key })}
-          </button>
-        ) : (
-          <>
-            <p className="page-note">{t('invite.otherAccount', { email: link.email })}</p>
-            <button type="button" className="button-secondary" onClick={() => void signOut()}>
-              {t('invite.signOut')}
+        <div className="glass-card account-section">
+          {ownInvitation ? (
+            <button
+              type="button"
+              className="button-primary"
+              disabled={busy}
+              onClick={() => void join()}
+            >
+              {t('invite.join', { key: link.track.key })}
             </button>
-          </>
-        )}
+          ) : (
+            <>
+              <p className="page-note">{t('invite.otherAccount', { email: link.email })}</p>
+              <button type="button" className="button-secondary" onClick={() => void signOut()}>
+                {t('invite.signOut')}
+              </button>
+            </>
+          )}
+        </div>
       </main>
     );
   }

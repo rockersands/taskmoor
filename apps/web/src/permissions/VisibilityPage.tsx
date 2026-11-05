@@ -108,12 +108,13 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={t('admin.visibility.title')}
-        purpose={t('admin.visibility.purpose')}
-        about={t('admin.visibility.about')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('admin.visibility.purpose'), about: t('admin.visibility.about') })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.visibility.forbidden')}</p>
@@ -250,7 +251,7 @@ function PolicyPanel({
         </p>
       </div>
       {policy.levels.length === 0 ? (
-        <p className="page-note">{t('admin.visibility.noLevels')}</p>
+        <EmptyState compact title={t('admin.visibility.noLevels')} />
       ) : (
         <ul className="people-list">
           {policy.levels.map((level, index) => (

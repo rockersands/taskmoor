@@ -73,10 +73,25 @@
   font-size: var(--font-size-200);
 }
 
+/*
+ * The head in rows that never cross: months, then ticks, then a row for sprints and a row for
+ * releases where there are any. Each row is one line of text tall.
+ */
 .timeline-scale {
+  --timeline-scale-row: 1.25rem;
+
   position: relative;
   flex: none;
-  height: 3.25rem;
+  height: calc(var(--timeline-scale-row) * 2 + var(--space-half));
+}
+
+.timeline-scale:has(.timeline-sprint-label),
+.timeline-scale:has(.timeline-release-label) {
+  height: calc(var(--timeline-scale-row) * 3 + var(--space-half));
+}
+
+.timeline-scale:has(.timeline-sprint-label):has(.timeline-release-label) {
+  height: calc(var(--timeline-scale-row) * 4 + var(--space-half));
 }
 
 .timeline-month,
@@ -85,18 +100,19 @@
 .timeline-release-label {
   position: absolute;
   overflow: hidden;
+  line-height: var(--timeline-scale-row);
   white-space: nowrap;
   font-size: var(--font-size-200);
 }
 
 .timeline-month {
-  top: var(--space-half);
+  top: 0;
   padding-inline-start: var(--space-1);
   font-weight: var(--font-weight-strong);
 }
 
 .timeline-tick {
-  top: 1.25rem;
+  top: var(--timeline-scale-row);
   padding-inline-start: var(--space-1);
   color: var(--color-text-muted);
 }
@@ -107,7 +123,7 @@
 }
 
 .timeline-sprint-label {
-  bottom: var(--space-half);
+  top: calc(var(--timeline-scale-row) * 2);
   box-sizing: border-box;
   padding: 0 var(--space-1);
   border-radius: var(--radius-mark);
@@ -116,10 +132,14 @@
 }
 
 .timeline-release-label {
-  top: 1.25rem;
+  top: calc(var(--timeline-scale-row) * 2);
   padding-inline-start: var(--space-1);
   color: var(--color-warning);
   font-weight: var(--font-weight-strong);
+}
+
+.timeline-scale:has(.timeline-sprint-label) .timeline-release-label {
+  top: calc(var(--timeline-scale-row) * 3);
 }
 
 .timeline-grid {
@@ -475,6 +495,14 @@ button.timeline-bar:focus-visible {
   .timeline-unscheduled {
     top: 0;
     height: var(--hit-target-touch);
+  }
+
+  /* The row's height, with its key still cut short by an ellipsis in a narrow column. */
+  .timeline-key {
+    align-self: stretch;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+    line-height: var(--hit-target-touch);
   }
 
   .timeline-toggle,

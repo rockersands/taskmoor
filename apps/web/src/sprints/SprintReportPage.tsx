@@ -5,6 +5,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
   estimateText,
@@ -32,7 +33,7 @@ function VelocityChart({ velocity }: { velocity: Velocity }) {
   const s = velocity.statistic.statistic;
   const format = (v: number) => estimateText(t, v, s);
   if (velocity.sprints.length === 0) {
-    return <p className="sprint-empty">{t('sprints.charts.velocityNone')}</p>;
+    return <EmptyState compact title={t('sprints.charts.velocityNone')} />;
   }
   return (
     <div className="chart-group">
@@ -226,7 +227,7 @@ export function SprintReportPage({
     <section className="glass-card sprint-section" aria-labelledby={`${id}-${title}`}>
       <h2 id={`${id}-${title}`}>{t(title)}</h2>
       {list.length === 0 ? (
-        <p className="sprint-empty">{t('sprints.section.empty')}</p>
+        <EmptyState compact title={t('sprints.section.empty')} />
       ) : (
         <ul className="sprint-tickets">
           {list.map((ticket) => (

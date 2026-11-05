@@ -107,12 +107,13 @@ export function TrackSetsPage({
 
   const track = state.status === 'loaded' ? state.tracks.find((x) => x.id === selected) : undefined;
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={t('admin.trackSets.title')}
-        purpose={t('admin.trackSets.purpose')}
-        about={t('admin.trackSets.about')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('admin.trackSets.purpose'), about: t('admin.trackSets.about') })}
       />
       {state.status === 'forbidden' && (
         <p className="page-note">{t('admin.trackSets.forbidden')}</p>

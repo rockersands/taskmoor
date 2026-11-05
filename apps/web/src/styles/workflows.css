@@ -703,12 +703,27 @@
 @media (pointer: coarse) {
   .workflow-pick,
   .workflow-back a,
-  .workflow-details summary {
+  .workflow-details summary,
+  .workflow-name-link {
     min-height: var(--hit-target-touch);
+  }
+
+  .workflow-name-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
   }
 }
 
 /* ---- Workflow files (M1-127) ---- */
+
+/* It lands inside the list's card: a well, with no blur of its own (ADR-114). */
+.workflow-import-report {
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+}
 
 .workflow-import-report h3 {
   margin-block-start: var(--space-3);

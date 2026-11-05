@@ -4,7 +4,6 @@
  * set the preview beside the layout; phones stack everything in one column with no sideways
  * scrolling. Only tokens: where glass cannot blur, tokens.css makes every glass surface opaque.
  */
-.layout-editor-page,
 .layout-set-editor,
 .layout-edit,
 .layout-board {
@@ -290,10 +289,6 @@
 
 .layout-section-settings > .form-hint {
   flex-basis: 100%;
-  margin: 0;
-}
-
-.layout-section-empty {
   margin: 0;
 }
 

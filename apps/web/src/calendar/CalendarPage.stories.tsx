@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { asOnATouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
@@ -114,24 +115,6 @@ export const EntryInHand: Story = {
     await expect(document.querySelector('.drag-ghost')).toHaveTextContent('CAL-2 Press kit');
   },
 };
-
-/**
- * This browser's pointer is a mouse, so the page's touch rules are put in force by hand: the rules
- * inside its `(pointer: coarse)` blocks, as they are written. Returns how to take them away.
- */
-function asOnATouchScreen(): () => void {
-  const style = document.createElement('style');
-  style.textContent = Array.from(document.styleSheets)
-    .flatMap((sheet) => Array.from(sheet.cssRules))
-    .filter(
-      (rule): rule is CSSMediaRule =>
-        rule instanceof CSSMediaRule && rule.media.mediaText.includes('pointer: coarse'),
-    )
-    .flatMap((rule) => Array.from(rule.cssRules, (inner) => inner.cssText))
-    .join('\n');
-  document.head.append(style);
-  return () => style.remove();
-}
 
 /**
  * On a touch screen with seven narrow days (T-162b): 63 px a day, a portrait tablet with the

@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
 import { RecoveryCodes } from '../twofactor/RecoveryCodes';
 import { TotpSetupForm } from '../twofactor/TotpSetupForm';
 import type { TotpSetupStart } from '../twofactor/types';
@@ -228,7 +229,7 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
           <h3 className="two-factor-heading">{t('account.twoFactor.keys')}</h3>
           <p className="page-note">{t('account.twoFactor.keysIntro')}</p>
           {factors.securityKeys.length === 0 ? (
-            <p className="page-note">{t('account.twoFactor.noKeys')}</p>
+            <EmptyState compact title={t('account.twoFactor.noKeys')} />
           ) : (
             <ul className="session-list">
               {factors.securityKeys.map((key) => {

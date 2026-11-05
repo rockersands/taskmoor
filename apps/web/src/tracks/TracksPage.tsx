@@ -110,7 +110,7 @@ export function TracksPage({
   );
 
   return (
-    <section aria-labelledby={`${id}-title`} className="tracks-page">
+    <section aria-labelledby={`${id}-title`} className="page tracks-page">
       <PageHeader
         titleId={`${id}-title`}
         title={t('tracks.title')}

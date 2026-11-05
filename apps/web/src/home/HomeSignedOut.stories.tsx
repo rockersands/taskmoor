@@ -10,6 +10,16 @@ const atPhoneWidth = (Story: () => ReactElement) => (
   </div>
 );
 
+/** The accent of the skin in force, as the browser writes a colour. */
+function accentColour(): string {
+  const probe = document.createElement('span');
+  probe.style.color = 'var(--color-accent)';
+  document.body.append(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return colour;
+}
+
 const meta = {
   title: 'Home/HomeSignedOut',
   component: HomeSignedOut,
@@ -31,7 +41,11 @@ export const SignedOut: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
     await expect(canvas.getByText(/^Your work in one place/)).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Sign in' })).toBeVisible();
+    const link = canvas.getByRole('link', { name: 'Sign in' });
+    await expect(link).toBeVisible();
+    // On glass like the sign-in card it leads to, in the accent of every link (ADR-036).
+    await expect(link.closest('.glass-card')).not.toBeNull();
+    await expect(getComputedStyle(link).color).toBe(accentColour());
   },
 };
 

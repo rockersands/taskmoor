@@ -66,3 +66,20 @@ export const NoWidgets: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
+
+/** A dashboard that cannot be found still has its page: a title and what the section is for. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakeDashboardClient(),
+      get: async () => {
+        throw new Error('not found');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Dashboards' })).toBeVisible();
+  },
+};

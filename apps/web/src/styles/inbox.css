@@ -128,6 +128,13 @@
     min-height: var(--hit-target-touch);
   }
 
+  /* Its key and summary keep running as one text; the padding is the finger's room. */
+  .inbox-ticket {
+    display: block;
+    min-height: var(--hit-target-touch);
+    padding-block: var(--space-3);
+  }
+
   .inbox-action {
     min-width: var(--hit-target-touch);
   }

@@ -20,6 +20,11 @@
   max-width: none;
 }
 
+/* A grid would stretch a lone button or link across the page. */
+.page > :is(button, a) {
+  justify-self: start;
+}
+
 .page > .page-header {
   margin-bottom: 0;
 }
@@ -208,6 +213,14 @@
   .button-secondary,
   .button-quiet,
   .button-danger {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* A row's way in is a finger's target, however short its words. */
+  .data-table :is(th, td) > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
   }
 }

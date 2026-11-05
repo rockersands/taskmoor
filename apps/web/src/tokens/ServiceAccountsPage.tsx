@@ -419,7 +419,7 @@ function AccountTokens({
         </p>
       )}
       {Array.isArray(tokens) && tokens.length === 0 && (
-        <p className="page-note">{t('admin.serviceAccounts.noTokens')}</p>
+        <EmptyState compact title={t('admin.serviceAccounts.noTokens')} />
       )}
       {Array.isArray(tokens) && tokens.length > 0 && (
         <>

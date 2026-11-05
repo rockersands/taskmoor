@@ -121,7 +121,7 @@ export function HomePage({ client = homeClient, tracks = homeTracks, intro }: Ho
   }, [client, tracks, changes]);
 
   return (
-    <section aria-labelledby={titleId} className="home-page">
+    <section aria-labelledby={titleId} className="page home-page">
       <PageHeader
         titleId={titleId}
         title={t('home.title')}

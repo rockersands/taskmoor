@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
@@ -132,5 +133,14 @@ export const ChecklistChanged: Story = {
     await expect(
       canvas.getByText('Mi Rivera and 1 more made 3 changes to checklists'),
     ).toBeVisible();
+  },
+};
+
+/** A finger reaches each ticket, with its key and summary running as one text (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('listitem');
+    await expect(tooSmallForAFinger(canvasElement, ['.inbox-ticket'])).toEqual([]);
   },
 };

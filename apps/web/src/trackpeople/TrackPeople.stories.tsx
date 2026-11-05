@@ -215,6 +215,26 @@ export const InvitationLinkPage: StoryObj<typeof InvitationPage> = {
   render: () => anonymous(<InvitationPage client={fakeInvitationClient()} />),
 };
 
+/** A link that no longer works: said on the same card as Unsubscribe and Consent. */
+export const InvitationLinkGone: StoryObj<typeof InvitationPage> = {
+  ...invited,
+  render: () =>
+    anonymous(
+      <InvitationPage
+        client={{
+          ...fakeInvitationClient(),
+          inspect: async () => {
+            throw new ApiError(404, { error: 'not_found' });
+          },
+        }}
+      />,
+    ),
+  play: async ({ canvasElement }) => {
+    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign-in' });
+    await expect(link.closest('.glass-card')).not.toBeNull();
+  },
+};
+
 /** A provider serves the invited address (IAM-032): signing in comes first, with it on offer. */
 export const InvitationWithGoogle: StoryObj<typeof InvitationPage> = {
   ...invited,

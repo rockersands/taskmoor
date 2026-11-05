@@ -115,20 +115,32 @@ export function PlanPage({
 
   if (problem === 'missing') {
     return (
-      <section className="plan-page">
+      <section className="page plan-page" aria-labelledby={titleId}>
+        <PageHeader
+          titleId={titleId}
+          title={t('nav.plans')}
+          purpose={t('purpose.plans')}
+          actions={
+            <a className="button-quiet" href={routeHref('#/plans')}>
+              {t('plans.backToList')}
+            </a>
+          }
+        />
         <p className="board-problem" role="alert">
           {t('plans.notFound')}
         </p>
-        <a href={routeHref('#/plans')}>{t('plans.backToList')}</a>
       </section>
     );
   }
   if (problem === 'filter') return <FilterProblem id={id} section={section} />;
   if (!plan && problem === 'failed') {
     return (
-      <p className="board-problem" role="alert">
-        {t('plans.failed')}
-      </p>
+      <section className="page plan-page" aria-labelledby={titleId}>
+        <PageHeader titleId={titleId} title={t('nav.plans')} purpose={t('purpose.plans')} />
+        <p className="board-problem" role="alert">
+          {t('plans.failed')}
+        </p>
+      </section>
     );
   }
   if (!plan) return <p className="report-loading">{t('reports.loading')}</p>;
@@ -219,12 +231,22 @@ export function PlanPage({
 /** A filter in the address that does not read: say so, and offer the plan without filters. */
 function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
   const t = useT();
+  const titleId = useId();
   return (
-    <section className="page plan-page">
+    <section className="page plan-page" aria-labelledby={titleId}>
+      <PageHeader
+        titleId={titleId}
+        title={t('nav.plans')}
+        purpose={t('purpose.plan')}
+        actions={
+          <a className="button-quiet" href={routeHref(planHref(id, section))}>
+            {t('plans.filters.clear')}
+          </a>
+        }
+      />
       <p className="board-problem" role="alert">
         {t('plans.filterProblem')}
       </p>
-      <a href={routeHref(planHref(id, section))}>{t('plans.filters.clear')}</a>
     </section>
   );
 }

@@ -3505,6 +3505,7 @@ export const messagesEs: Record<MessageId, string> = {
   'comments.reactWith': 'Reaccionar con {emoji}',
   'bulk.loading': 'Leyendo el cambio en bloque…',
   'bulk.notFound': 'Este cambio en bloque no existe, o no te corresponde verlo.',
+  'bulk.title.missing': 'Cambio en bloque',
   'bulk.title.edit': 'Edición en bloque de {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.move': 'Traslado en bloque de {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.transition':

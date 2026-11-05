@@ -344,6 +344,7 @@
 @media (pointer: coarse) {
   .calendar-chip,
   .calendar-tools button,
+  .list-panel summary,
   .list-tools select,
   .list-filter input,
   .list-filter button,

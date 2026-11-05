@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
 
@@ -85,5 +86,16 @@ export const NotFound: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('alert')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Releases', level: 1 })).toBeVisible();
+  },
+};
+
+/** A finger reaches each ticket of the release (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('table');
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.release-table a', '.release-legend a']),
+    ).toEqual([]);
   },
 };

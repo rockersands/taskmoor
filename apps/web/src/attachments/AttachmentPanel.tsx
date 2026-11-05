@@ -12,6 +12,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
+import { EmptyState } from '../shell/EmptyState';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
 import { useFileDropArea } from './FileDrop';
@@ -346,7 +347,7 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
           )}
 
           {loaded.attachments.length === 0 ? (
-            <p className="page-note">{t('attachments.empty')}</p>
+            <EmptyState compact title={t('attachments.empty')} />
           ) : (
             <ul className="attachment-list">
               {loaded.attachments.map((a) => {

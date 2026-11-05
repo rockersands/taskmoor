@@ -146,14 +146,16 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
     return (
       <main className="setup">
         <PageHeader title={t('passwordLink.title')} purpose={t('purpose.passwordLink')} />
-        <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-          {note}
-        </p>
-        {state.status !== 'checking' && (
-          <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
-            {t('passwordLink.goToSignIn')}
-          </a>
-        )}
+        <div className="glass-card account-section">
+          <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
+            {note}
+          </p>
+          {state.status !== 'checking' && (
+            <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
+              {t('passwordLink.goToSignIn')}
+            </a>
+          )}
+        </div>
       </main>
     );
   }

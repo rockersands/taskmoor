@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakePlanClient } from './fixtures';
 import { PlansPage } from './PlansPage';
 
@@ -70,5 +71,14 @@ export const AtPhoneWidth: Story = {
     await expect(await canvas.findByRole('link', { name: 'Data centre move' })).toBeVisible();
     await expect(canvas.getByText(/^A plan shows the work/)).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A finger reaches each plan's name (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('listitem');
+    await expect(tooSmallForAFinger(canvasElement, ['.dashboard-row > a'])).toEqual([]);
   },
 };

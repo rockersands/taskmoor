@@ -384,6 +384,12 @@
 }
 
 @media (pointer: coarse) {
+  .plan-total a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+
   .capacity-tools button,
   .capacity-set,
   .capacity-count,

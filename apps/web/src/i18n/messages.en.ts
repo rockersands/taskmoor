@@ -3412,6 +3412,7 @@ export const messagesEn = {
   'comments.reactWith': 'React with {emoji}',
   'bulk.loading': 'Reading the bulk change…',
   'bulk.notFound': 'This bulk change does not exist, or it is not yours to see.',
+  'bulk.title.missing': 'Bulk change',
   'bulk.title.edit': 'Bulk edit of {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.move': 'Bulk move of {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.transition': 'Bulk transition of {count, plural, one {# ticket} other {# tickets}}',

@@ -8,9 +8,11 @@ export function HomeSignedOut() {
   return (
     <section className="page">
       <PageHeader title={t('nav.home')} purpose={t('purpose.home')} />
-      <p className="page-note">
-        {t('home.signedOut')} <a href="#/sign-in">{t('auth.signIn')}</a>
-      </p>
+      <div className="glass-card account-section">
+        <p className="page-note">
+          {t('home.signedOut')} <a href="#/sign-in">{t('auth.signIn')}</a>
+        </p>
+      </div>
     </section>
   );
 }
@@ -24,7 +26,9 @@ export function PageNotReady({ title, purpose }: { title: ReactNode; purpose: Re
   return (
     <section className="page">
       <PageHeader title={title} purpose={purpose} />
-      <p className="page-note">{t('page.underConstruction')}</p>
+      <div className="glass-card account-section">
+        <p className="page-note">{t('page.underConstruction')}</p>
+      </div>
     </section>
   );
 }

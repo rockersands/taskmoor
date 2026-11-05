@@ -91,12 +91,13 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
   const failed = () => setProblem(t('webhooks.failedAction'));
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={t('webhooks.title')}
-        purpose={t('webhooks.purpose')}
-        about={t('webhooks.about')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('webhooks.purpose'), about: t('webhooks.about') })}
         {...(state.status === 'loaded'
           ? {
               actions: (
@@ -610,7 +611,7 @@ function Deliveries({ webhook, client }: { webhook: Webhook; client: WebhooksCli
       )}
       {state.status === 'loaded' &&
         (state.deliveries.length === 0 ? (
-          <p className="page-note">{t('webhooks.noDeliveries')}</p>
+          <EmptyState compact title={t('webhooks.noDeliveries')} />
         ) : (
           <>
             {state.deliveries.some((d) => d.state === 'failed') && (

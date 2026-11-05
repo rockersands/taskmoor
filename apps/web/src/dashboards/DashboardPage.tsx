@@ -108,6 +108,7 @@ export function DashboardPage({
   if (failed) {
     return (
       <section className="page dashboard-page">
+        <PageHeader title={t('nav.dashboards')} purpose={t('purpose.dashboards')} />
         <p className="board-problem" role="alert">
           {t('dashboards.notFound')}
         </p>

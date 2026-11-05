@@ -423,6 +423,19 @@
     min-height: var(--hit-target-touch);
   }
 
+  .reports-check input {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* A number is its own link: however few its digits, a finger has to land on it. */
+  .report-stats a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+  }
+
   /* A ticket's link in a table row is a finger's target, as in the releases' tables. */
   .report-table a {
     display: inline-flex;

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
 import { TrackSummaryPage } from './TrackSummaryPage';
 
@@ -72,5 +73,16 @@ export const PhoneCustomizing: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Customize' }));
     await expect(await canvas.findByRole('button', { name: 'Save the summary' })).toBeVisible();
+  },
+};
+
+/** A finger reaches every number, however few its digits (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('listitem');
+    await expect(tooSmallForAFinger(canvasElement, ['.report-stats a', '.summary-list a'])).toEqual(
+      [],
+    );
   },
 };

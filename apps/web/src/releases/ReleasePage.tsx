@@ -515,7 +515,7 @@ function NotesView({
     <section className="glass-card release-section" aria-labelledby={`${id}-notes`}>
       <h2 id={`${id}-notes`}>{t('release.notes.title')}</h2>
       {notes.sections.length === 0 ? (
-        <p className="report-empty">{t('release.notes.empty')}</p>
+        <EmptyState compact title={t('release.notes.empty')} />
       ) : (
         <div className="release-notes">
           {notes.sections.map((s, i) => (

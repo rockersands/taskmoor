@@ -31,6 +31,10 @@ export const WithoutToken: Story = {
   beforeEach: () => {
     window.location.hash = '#/setup';
   },
+  play: async ({ canvasElement }) => {
+    // The same card as Unsubscribe and Consent, not flat text on the canvas.
+    await expect(canvasElement.querySelector('.glass-card .page-note')).not.toBeNull();
+  },
 };
 
 /** The width of a small phone; nothing inside may stick out sideways. */

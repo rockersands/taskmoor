@@ -58,7 +58,6 @@
 }
 
 .settings-section {
-  margin-top: var(--space-4);
   max-width: 40rem;
 }
 
@@ -182,16 +181,11 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   align-items: start;
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
 .admin-panel {
   min-width: 0;
   padding: var(--space-4);
-}
-
-.admin-page > .admin-panel {
-  margin-top: var(--space-4);
 }
 
 .admin-panel > * + * {
@@ -200,7 +194,6 @@
 
 .admin-page > .form-field {
   max-width: 30rem;
-  margin-top: var(--space-3);
 }
 
 .admin-panel-list {

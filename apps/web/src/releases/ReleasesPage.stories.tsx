@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasesPage } from './ReleasesPage';
 
@@ -88,5 +89,16 @@ export const NotFound: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('alert')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Releases', level: 1 })).toBeVisible();
+  },
+};
+
+/** A finger reaches each release and the fold-out of the archived ones (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText(/archived release/);
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.release-name', '.release-group summary']),
+    ).toEqual([]);
   },
 };

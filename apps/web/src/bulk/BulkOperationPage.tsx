@@ -179,9 +179,12 @@ export function BulkOperationPage({
   }
   if (state === 'missing' || !op) {
     return (
-      <p role="alert" className="form-error">
-        {t('bulk.notFound')}
-      </p>
+      <section aria-labelledby={titleId} className="page bulk-page">
+        <PageHeader titleId={titleId} title={t('bulk.title.missing')} purpose={t('purpose.bulk')} />
+        <p role="alert" className="form-error">
+          {t('bulk.notFound')}
+        </p>
+      </section>
     );
   }
   const done = op.total - op.pending;

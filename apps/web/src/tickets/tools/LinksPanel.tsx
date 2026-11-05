@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { routeHref } from '../../routing/router';
+import { EmptyState } from '../../shell/EmptyState';
 import type { TicketLink } from '../view/client';
 import {
   type LinkCategory,
@@ -188,7 +189,7 @@ export function LinksPanel({
           </button>
         )}
       </div>
-      {nothing && !adding && <p className="ticket-tool-empty">{t('ticketTools.links.empty')}</p>}
+      {nothing && !adding && <EmptyState compact title={t('ticketTools.links.empty')} />}
       {grouped(data.links).map((group) => (
         <div key={group.phrase} className="ticket-link-group">
           <h3 className="ticket-link-phrase">{group.phrase}</h3>

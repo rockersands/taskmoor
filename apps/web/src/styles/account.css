@@ -274,9 +274,16 @@
     min-height: var(--hit-target-touch);
   }
 
-  /* The cell is the target: a tap anywhere in it reaches the checkbox. */
+  /* The cell is the target: its label fills it, so a tap anywhere reaches the checkbox. */
   .notification-events td {
     height: var(--hit-target-touch);
     padding: 0;
+  }
+
+  .notification-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--hit-target-touch);
   }
 }

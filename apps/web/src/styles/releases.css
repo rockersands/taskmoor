@@ -256,6 +256,8 @@
   .release-ship input,
   .release-ship button,
   .release-section .form-actions a,
+  .release-group summary,
+  .release-legend a,
   .release-name,
   .release-table a {
     min-height: var(--hit-target-touch);
@@ -265,5 +267,6 @@
   .release-table a {
     display: inline-flex;
     align-items: center;
+    min-width: var(--hit-target-touch);
   }
 }

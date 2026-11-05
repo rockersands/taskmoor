@@ -45,7 +45,7 @@ export function TrackFilesPage({ trackKey, client = trackClient }: TrackFilesPag
   const empty = files && files.attachments.length === 0 && files.links.length === 0;
 
   return (
-    <section aria-labelledby={`${id}-title`} className="track-files">
+    <section aria-labelledby={`${id}-title`} className="page track-files">
       <PageHeader
         titleId={`${id}-title`}
         title={t('track.files.title')}

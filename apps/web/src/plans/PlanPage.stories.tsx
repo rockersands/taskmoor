@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { fakePlanClient, manyPlanItems } from './fixtures';
@@ -243,5 +244,23 @@ export const TenThousandTickets: Story = {
     const took = performance.now() - arrival.at;
     await expect(canvasElement.querySelectorAll('.timeline-row').length).toBeLessThan(200);
     await expectWithinBudget(took, 1500, '10,000 plan timeline rows on screen (ms)');
+  },
+};
+
+/** A plan that cannot be found still has its page: a title, what the section is for, a way back. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakePlanClient(),
+      get: async () => {
+        throw new ApiError(404, { error: 'not_found' });
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Multi-track' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'All plans' })).toBeVisible();
   },
 };

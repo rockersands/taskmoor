@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
@@ -523,7 +524,7 @@ export function BacklogPage({
 
   const ticketList = (section: Shown) => {
     const shown = shownOf(section.tickets);
-    if (shown.length === 0) return <p className="sprint-empty">{t('sprints.section.empty')}</p>;
+    if (shown.length === 0) return <EmptyState compact title={t('sprints.section.empty')} />;
     return (
       <ul className="sprint-tickets">
         {shown.map((ticket) => (

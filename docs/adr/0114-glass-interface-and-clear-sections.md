@@ -203,6 +203,19 @@ become **translucent glass**:
     is a well on `--glass-surface-sunken`. `.token-badge` and `.session-badge` share `.badge`.
   - `styles/design.test.ts` is the guard, and `styles/design-offenders.ts` lists what is still to
     fix; when OFFENDERS is empty the sweep is done. The guard says at its head what it cannot check.
+    OFFENDERS is empty. The guard also holds: links in the accent, the token ADR-036 gave them, from
+    one `a` rule in `shell.css`; every `--hit-target` beside a `--hit-target-touch` under a coarse
+    pointer; a page header inside `.page`, or a stand-alone page's own root; a header on a route
+    page's failures; "none yet" sentences under any class. Stories measure the row links on touch
+    (`test/touch.ts`), and every story fails if glass that blurs sits inside a `.glass-card`.
+  - A card inside a card is a well: Account's sections stand on the canvas, the workflow import
+    report is a well in the list's card, and the first-run offer's tutorial cards are wells
+    (`nested`). A dashboard widget's summary sections were wells already.
+  - `EmptyState compact` draws no picture, so a short "none yet" inside a panel uses it too. What
+    stays a sentence is in `ALLOWED.bareEmpties`: a hint, a fact, a menu line or a drop zone, none of
+    them an empty list.
+  - A timeline's head has rows that never cross: months, ticks, then a row for sprints and a row for
+    releases where there are any.
 
 ### 4. Light and dark
 

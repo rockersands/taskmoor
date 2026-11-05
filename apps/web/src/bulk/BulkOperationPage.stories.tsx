@@ -75,3 +75,20 @@ export const AtPhoneWidth: Story = {
     await fitsPhoneWidth(canvas);
   },
 };
+
+/** A bulk change that cannot be found still has its page: a title and what the page is for. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakeBulkClient(),
+      get: async () => {
+        throw new Error('not found');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Bulk change' })).toBeVisible();
+  },
+};

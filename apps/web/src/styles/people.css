@@ -1,10 +1,4 @@
 /* People and groups (M1-053): cards, so phones never scroll sideways; 44px on touch. */
-.people-page:not(.page) {
-  display: grid;
-  gap: var(--space-3);
-  max-width: 60rem;
-}
-
 /* With `glass-card`: a form or a part of the page on one card, its rows wells inside it. */
 .people-card {
   display: grid;

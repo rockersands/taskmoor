@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { DashboardsPage } from './DashboardsPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
 
@@ -76,5 +77,16 @@ export const AtPhoneWidth: Story = {
     await expect(await canvas.findByRole('region', { name: 'Yours' })).toBeVisible();
     await expect(canvas.getByText(/^Charts and lists that sum up/)).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A finger reaches each dashboard's name and the box that puts it on the wallboard (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('checkbox');
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.dashboard-row > a', '.dashboard-row .reports-check']),
+    ).toEqual([]);
   },
 };

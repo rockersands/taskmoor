@@ -56,7 +56,7 @@ export function AccountPage({
   return (
     <div className="page account-page">
       <PageHeader title={t('account.title')} purpose={t('account.intro')} />
-      <div className="glass-card account-sections">
+      <div className="account-sections">
         <ProfileSection user={user} client={client} />
         <AppearanceSection user={user} client={client} />
         <NotificationsSection client={notifications} />

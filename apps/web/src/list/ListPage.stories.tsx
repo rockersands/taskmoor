@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeListClient, fakeListSearch } from './fixtures';
 import { ListPage } from './ListPage';
 
@@ -97,5 +98,16 @@ export const NotFound: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('alert')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'List', level: 1 })).toBeVisible();
+  },
+};
+
+/** A finger reaches each ticket's key and each fold-out's heading (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: 'SHOP-41' });
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.search-key a', '.list-panel summary']),
+    ).toEqual([]);
   },
 };

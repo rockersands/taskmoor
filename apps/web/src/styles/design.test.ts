@@ -9,10 +9,11 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * tell. Read from disk, as motion.test.ts does: the web project turns CSS imports off.
  *
  * What it holds: no raw colour outside tokens.css; no opaque surface token on anything but a field
- * or a place with a named reason; radii, font sizes and font weights only from the tokens; one
- * level-one heading, from PageHeader; a PageHeader, with a purpose line, on every route page; no
- * unstyled button or table; no fieldset whose class has no rule; no bare "none yet" sentence where
- * an EmptyState goes.
+ * or a place with a named reason; links in the accent; a finger's height wherever a mouse's is set;
+ * radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
+ * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
+ * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
+ * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card.
  *
  * `design-offenders.ts` holds two lists. OFFENDERS is what is still to fix, counted per file; the
  * count must match in both directions, so it only shrinks, and when it is empty the sweep is
@@ -21,11 +22,16 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * What it cannot check, and who does instead:
  * - Whether anything looks like glass, or how a page reads in either skin or at 360 px: the Chrome
  *   pass of UI-T22 on every route.
- * - Nested backdrop-filter that cuts glass off, a rim that adds scroll bars, sticky cells that show
- *   rows through them: the same pass. It reads text, and these are only seen when drawn.
+ * - Backdrop-filter nested by anything but `glass-card`, a rim that adds scroll bars, sticky cells
+ *   that show rows through them: the same pass. It reads text, and these are only seen when drawn.
+ * - A failure a page draws in a component of its own, or by a word other than `role="alert"` or
+ *   `board-problem`: a person. It reads the returns of the page's own function.
+ * - A control that sets its height with no `--hit-target`, a link short only by its words: the
+ *   touch stories, which measure what they cover.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
- * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`; a list that
- *   stays quiet with no message at all; a class whose name merely contains "field": a person.
+ * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
+ *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
+ *   class whose name merely contains "field": a person.
  * - Colours hidden in a custom property from elsewhere or built in JavaScript, class names
  *   assembled at runtime, and CSS from a dependency: nothing. It sees literals in the source.
  * - Contrast: contrast.test.ts for the tokens, axe in the stories for what is drawn.
@@ -49,6 +55,8 @@ interface Declaration {
   selector: string;
   property: string;
   value: string;
+  /** The at-rules it sits in, outermost first. */
+  atRules: string[];
 }
 
 /** Every declaration of a stylesheet with the selector it sits under, through nested at-rules. */
@@ -66,7 +74,8 @@ export function cssDeclarations(source: string): Declaration[] {
     if (colon < 0) return;
     const selector = stack.filter((s) => !s.startsWith('@')).at(-1) ?? '';
     const property = text.slice(0, colon).trim().toLowerCase();
-    found.push({ selector, property, value: text.slice(colon + 1).trim() });
+    const atRules = stack.filter((s) => s.startsWith('@'));
+    found.push({ selector, property, value: text.slice(colon + 1).trim(), atRules });
   };
   for (const c of css) {
     if (quote) {
@@ -159,6 +168,47 @@ export function cssProblems(source: string): Record<Kind, string[]> {
   return problems;
 }
 
+/** A selector list's parts, with a comma inside `:is(a, b)` left where it is. */
+export function selectorsOf(list: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let part = '';
+  for (const c of list) {
+    if (c === '(') depth++;
+    if (c === ')') depth--;
+    if (c === ',' && depth === 0) {
+      parts.push(part);
+      part = '';
+    } else {
+      part += c;
+    }
+  }
+  parts.push(part);
+  return parts.map((p) => p.trim().replace(/\s+/g, ' ')).filter(Boolean);
+}
+
+const isTouchRule = (d: Declaration) => d.atRules.some((at) => at.includes('pointer: coarse'));
+const FINGER = /var\(--hit-target-touch\)|^44px$/;
+
+/**
+ * Selectors with a mouse's height that no `(pointer: coarse)` rule gives a finger's: the height a
+ * touch screen needs is one line away in the same stylesheets (ADR-033). A touch rule that asks for
+ * the mouse's height is the same mistake.
+ */
+export function shortOnTouch(sources: string[]): string[] {
+  const declarations = sources.flatMap(cssDeclarations);
+  const sized = declarations.filter((d) => d.property === 'min-height' || d.property === 'height');
+  const fingers = new Set(
+    sized
+      .filter((d) => isTouchRule(d) && FINGER.test(d.value))
+      .flatMap((d) => selectorsOf(d.selector)),
+  );
+  const short = sized
+    .filter((d) => d.value === 'var(--hit-target)')
+    .flatMap((d) => selectorsOf(d.selector));
+  return [...new Set(short)].filter((selector) => !fingers.has(selector)).sort();
+}
+
 /* ---------------------------------------- TSX ---------------------------------------- */
 
 const parse = (file: string, source: string) =>
@@ -198,8 +248,16 @@ export interface JsxFacts {
   bareTables: number;
   /** The class of each fieldset that has one. */
   fieldsetClasses: string[];
-  /** Message IDs that say "none" or "empty", inside the plain note classes. */
+  /** Message IDs that say "none" or "empty", as the words of a plain element. */
   bareEmpties: string[];
+  /** The classes of the element around each PageHeader; none for one kept in a variable. */
+  headerParents: string[][];
+  /** Every class written in the file. */
+  allClasses: Set<string>;
+  /** A `glass-card` written inside another in the same file, by tag. */
+  nestedGlass: string[];
+  /** Components rendered inside a `glass-card`, by tag. */
+  renderedInGlass: Set<string>;
   rawColours: string[];
   /** The opaque surface tokens written in a script. */
   opaqueSurfaces: string[];
@@ -210,7 +268,8 @@ export interface JsxFacts {
 }
 
 const STRING_COLOUR = /^#[0-9a-fA-F]{3,8}$|^(?:rgba?|hsla?)\(\s*[\d.]/;
-const NOTE_CLASSES = new Set(['report-empty', 'page-note']);
+/** Elements whose words are a sentence of their own: a "none" there is a list's empty state. */
+const SENTENCES = new Set(['p', 'li', 'div', 'td', 'dd']);
 const EMPTY_ID = /none|empty/i;
 
 /** What the stylesheets say: `.parent button` lets a bare button sit under `.parent`. */
@@ -255,22 +314,34 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
     bareTables: 0,
     fieldsetClasses: [],
     bareEmpties: [],
+    headerParents: [],
+    allClasses: new Set(),
+    nestedGlass: [],
+    renderedInGlass: new Set(),
     rawColours: [],
     opaqueSurfaces: [],
     literalSizes: [],
     rendered: new Set(),
   };
-  const visit = (node: ts.Node, ancestors: string[], inNote: boolean) => {
+  const visit = (
+    node: ts.Node,
+    ancestors: string[],
+    inNote: boolean,
+    parent: string[] | null,
+  ): void => {
     let classes = ancestors;
     let note = inNote;
+    let around = parent;
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = tagName(node);
       const own = classesOf(node);
       const unstyled = !attribute(node, 'className') && !hasSpread(node);
+      for (const c of own) facts.allClasses.add(c);
       if (tag === 'h1' || own.includes('page-title')) facts.titles.push(tag);
       if (tag === 'PageHeader') {
         facts.pageHeaders++;
         if (!attribute(node, 'purpose') && !hasSpread(node)) facts.noPurpose++;
+        if (parent) facts.headerParents.push(parent);
       }
       if (tag === 'button' && unstyled) {
         if (!ancestors.some((c) => styled.parentsOf.button.has(c))) facts.bareButtons++;
@@ -299,9 +370,17 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       const opening = ts.isJsxElement(node) ? node.openingElement : node;
       const own = classesOf(opening);
+      const tag = tagName(opening);
+      if (ancestors.includes('glass-card')) {
+        if (own.includes('glass-card')) facts.nestedGlass.push(tag);
+        if (/^[A-Z]/.test(tag)) facts.renderedInGlass.add(tag);
+      }
       classes = [...ancestors, ...own];
-      note = inNote || own.some((c) => NOTE_CLASSES.has(c));
+      note = ts.isJsxElement(node) && SENTENCES.has(tag);
+      around = own;
     }
+    // What an attribute says is no sentence of the element's: a title, a label, a component's prop.
+    if (ts.isJsxAttribute(node)) note = false;
     if (
       note &&
       ts.isCallExpression(node) &&
@@ -316,9 +395,9 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
       if (STRING_COLOUR.test(node.text)) facts.rawColours.push(node.text);
       if (OPAQUE_SURFACE.test(node.text)) facts.opaqueSurfaces.push(node.text);
     }
-    ts.forEachChild(node, (child) => visit(child, classes, note));
+    ts.forEachChild(node, (child) => visit(child, classes, note, around));
   };
-  visit(parse(file, source), [], false);
+  visit(parse(file, source), [], false, null);
   return facts;
 }
 
@@ -371,6 +450,84 @@ function drawsHeader(file: string, seen = new Set<string>()): boolean {
   });
 }
 
+const FUNCTION = (node: ts.Node) => ts.isFunctionLike(node) && !ts.isCallSignatureDeclaration(node);
+
+/** The function a component is declared with, in a file of our source. */
+function componentFunction(sourceFile: ts.SourceFile, component: string): ts.Node | undefined {
+  let found: ts.Node | undefined;
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === component) found = node;
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText() === component &&
+      node.initializer &&
+      FUNCTION(node.initializer)
+    ) {
+      found = node.initializer;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+/**
+ * The failures a route page returns with no header: an alert alone on the page. Reads the returns
+ * of the page's own function; a component it returns instead answers for itself by `drawsHeader`.
+ */
+function failuresWithoutHeader(file: string, component: string): string[] {
+  const source = readFileSync(file, 'utf8');
+  const sourceFile = parse(file, source);
+  const body = componentFunction(sourceFile, component);
+  if (!body) return [];
+  const imports = importsOf(file, source);
+  const problems: string[] = [];
+  // A header kept in a variable and written as `{titled}`.
+  const held = new Set<string>();
+  const hold = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.initializer?.getText().includes('<PageHeader')) {
+      held.add(node.name.getText());
+    }
+    ts.forEachChild(node, hold);
+  };
+  hold(body);
+  const check = (jsx: ts.Node) => {
+    let alert = false;
+    let header = false;
+    const look = (node: ts.Node) => {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const tag = tagName(node);
+        if (tag === 'PageHeader') header = true;
+        const target = imports.get(tag);
+        if (target && drawsHeader(target)) header = true;
+        const role = attribute(node, 'role')?.initializer;
+        if (
+          (role && ts.isStringLiteral(role) && role.text === 'alert') ||
+          classesOf(node).includes('board-problem')
+        ) {
+          alert = true;
+        }
+      }
+      if (ts.isJsxExpression(node) && node.expression && held.has(node.expression.getText())) {
+        header = true;
+      }
+      ts.forEachChild(node, look);
+    };
+    look(jsx);
+    if (alert && !header) {
+      const { line } = sourceFile.getLineAndCharacterOfPosition(jsx.getStart());
+      problems.push(`${name(file)}:${line + 1}`);
+    }
+  };
+  const walk = (node: ts.Node) => {
+    if (node !== body && FUNCTION(node)) return;
+    if (ts.isReturnStatement(node) && node.expression) check(node.expression);
+    ts.forEachChild(node, walk);
+  };
+  walk(body);
+  return problems;
+}
+
 const nonEmpty = (pairs: [string, string[]][]) =>
   new Map(pairs.filter(([, list]) => list.length > 0));
 
@@ -413,6 +570,12 @@ const minus = (found: Map<string, string[]>, named: Record<string, string>) =>
       items.filter((item) => !(`${file} ${item}` in named)),
     ]),
   );
+
+/**
+ * What a page's header sits in: the shared page; or, on a page outside the shell, the stand-alone
+ * page of `forms.css`, the Builder's, or the notice that this frontend cannot work with its server.
+ */
+const PAGE_ROOTS = new Set(['page', 'setup', 'builder', 'update-required']);
 
 const none: StyledBy = { classes: new Set(), parentsOf: { button: new Set(), table: new Set() } };
 
@@ -463,7 +626,7 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(on('a { border-radius: calc(var(--radius-4) * 1.5); }').radii).toEqual([]);
   });
 
-  it('[NFR-005] reads JSX: titles, headers, bare controls and bare empties', () => {
+  it('[NFR-005] reads JSX: titles, headers, glass, bare controls and bare empties', () => {
     const see = (code: string, by = none) => jsxFacts('x.tsx', code, by);
     expect(see('<h1 className="page-title">x</h1>').titles).toEqual(['h1']);
     expect(see('<h2 className="page-title">x</h2>').titles).toEqual(['h2']);
@@ -481,7 +644,48 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(see('<fieldset className="modes" />').fieldsetClasses).toEqual(['modes']);
     expect(see(`<p className="page-note">{t('x.none')}</p>`).bareEmpties).toEqual(['x.none']);
     expect(see(`<p className="page-note">{t('x.title')}</p>`).bareEmpties).toEqual([]);
+    // Under any class, or none, and over several lines.
+    expect(see(`<p className="any">\n{t('x.empty', { a: 1 })}\n</p>`).bareEmpties).toEqual([
+      'x.empty',
+    ]);
+    expect(see(`<li>{t('x.none')}</li>`).bareEmpties).toEqual(['x.none']);
+    // An EmptyState is the fix; a choice in a list and a link are not sentences.
+    expect(see(`<div><EmptyState compact title={t('x.none')} /></div>`).bareEmpties).toEqual([]);
+    expect(see(`<div><select><option>{t('x.none')}</option></select></div>`).bareEmpties).toEqual(
+      [],
+    );
+    expect(see(`<p title={t('x.none')}>y</p>`).bareEmpties).toEqual([]);
+    // The element around a header, through a fragment; one kept in a variable has none.
+    expect(
+      see('<section className="page x"><><PageHeader title="x" /></></section>').headerParents,
+    ).toEqual([['page', 'x']]);
+    expect(see('const h = <PageHeader title="x" />;').headerParents).toEqual([]);
+    expect(
+      see('<div className="glass-card"><p><i className="glass-card" /></p></div>').nestedGlass,
+    ).toEqual(['i']);
+    expect([...see('<div className="glass-card"><Panel /></div>').renderedInGlass]).toEqual([
+      'Panel',
+    ]);
     expect(see('<div style={{ fontSize: 12 }} />').literalSizes).toHaveLength(1);
+  });
+
+  it("[NFR-005] finds a mouse's height with no finger's beside it", () => {
+    expect(selectorsOf('.a :is(b, c), .d  e')).toEqual(['.a :is(b, c)', '.d e']);
+    const short = (css: string) => shortOnTouch([css]);
+    expect(short('.a { min-height: var(--hit-target); }')).toEqual(['.a']);
+    expect(
+      short(`
+        .a, .b { min-height: var(--hit-target); }
+        @media (pointer: coarse) { .a { min-height: var(--hit-target-touch); } .b { height: 44px; } }
+      `),
+    ).toEqual([]);
+    // A touch rule that asks for a mouse's height, and a finger's height that is no touch rule.
+    expect(short('@media (pointer: coarse) { .a { min-height: var(--hit-target); } }')).toEqual([
+      '.a',
+    ]);
+    expect(
+      short('.a { min-height: var(--hit-target); } .a { min-height: var(--hit-target-touch); }'),
+    ).toEqual(['.a']);
   });
 
   it('[NFR-005] holds a list to what is there, in both directions', () => {
@@ -505,6 +709,18 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   it('[NFR-005] keeps opaque surface tokens to fields and named reasons', () => {
     const found = both('opaqueSurfaces', (f) => f.opaqueSurfaces);
     expect(ratchet(found, OFFENDERS.opaqueSurfaces)).toEqual([]);
+  });
+
+  it('[NFR-005] draws links in the accent, in both skins (ADR-036)', () => {
+    const shell = cssSources.find(([file]) => name(file) === 'styles/shell.css')?.[1] ?? '';
+    const links = cssDeclarations(shell).filter(
+      (d) => d.selector === 'a' && d.property === 'color',
+    );
+    expect(links.map((d) => d.value)).toEqual(['var(--color-accent)']);
+  });
+
+  it("[NFR-005] gives every mouse-sized target a finger's height on touch (ADR-033)", () => {
+    expect(shortOnTouch(cssSources.map(([, source]) => source))).toEqual([]);
   });
 
   it('[NFR-005] takes radii from the tokens', () => {
@@ -539,6 +755,55 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
       .filter((component) => !(component in ALLOWED.pagesWithoutHeader))
       .sort();
     expect(missing).toEqual([...OFFENDERS.pagesWithoutHeader].sort());
+  });
+
+  it("[NFR-005] keeps a route page's header when it fails (UI-T22)", () => {
+    const found = [...routePages()].flatMap(([component, file]) =>
+      failuresWithoutHeader(file, component),
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('[NFR-005] puts a page header in the shared page, for its width and rhythm', () => {
+    const found = fromScripts((f) =>
+      f.headerParents
+        .filter((classes) => !classes.some((c) => PAGE_ROOTS.has(c)))
+        .map((classes) => `<PageHeader> in "${classes.join(' ')}"`),
+    );
+    expect(ratchet(found, {})).toEqual([]);
+    // One kept in a variable has no element around it to read: its file still has to have one.
+    const heldApart = scripts.filter((file) => {
+      const f = factsOf(file);
+      return (
+        f.pageHeaders > f.headerParents.length && ![...f.allClasses].some((c) => PAGE_ROOTS.has(c))
+      );
+    });
+    expect(heldApart.map(name)).toEqual([]);
+  });
+
+  it('[NFR-005] keeps a glass card out of a glass card (ADR-114)', () => {
+    const inside = (file: string, seen = new Set<string>()): boolean => {
+      if (seen.has(file) || !facts.has(file)) return false;
+      seen.add(file);
+      if (factsOf(file).allClasses.has('glass-card')) return true;
+      const imports = importsOf(file, readFileSync(file, 'utf8'));
+      return [...factsOf(file).rendered].some((tag) => {
+        const target = imports.get(tag);
+        return target !== undefined && inside(target, seen);
+      });
+    };
+    const found = fromScripts((f) => f.nestedGlass.map((tag) => `<${tag}> in a glass-card`));
+    expect(ratchet(found, {})).toEqual([]);
+    const across = scripts.flatMap((file) => {
+      const imports = importsOf(file, readFileSync(file, 'utf8'));
+      return [...factsOf(file).renderedInGlass]
+        .filter((tag) => {
+          const target = imports.get(tag);
+          return target !== undefined && inside(target);
+        })
+        .map((tag) => `${name(file)} ${tag}`);
+    });
+    expect(across.filter((item) => !(item in ALLOWED.glassInGlass))).toEqual([]);
   });
 
   it('[NFR-005] gives every PageHeader a purpose line', () => {

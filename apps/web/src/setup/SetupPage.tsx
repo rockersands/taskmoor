@@ -98,14 +98,16 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     return (
       <main className="setup">
         <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
-        <p className="page-note">
-          {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
-        </p>
-        {status === 'already-set-up' && (
-          <a className="button-primary setup-link" href={routeHref('#/settings')}>
-            {t('auth.signIn')}
-          </a>
-        )}
+        <div className="glass-card account-section">
+          <p className="page-note">
+            {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
+          </p>
+          {status === 'already-set-up' && (
+            <a className="button-primary setup-link" href={routeHref('#/settings')}>
+              {t('auth.signIn')}
+            </a>
+          )}
+        </div>
       </main>
     );
   }

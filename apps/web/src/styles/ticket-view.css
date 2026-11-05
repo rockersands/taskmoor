@@ -414,6 +414,8 @@
 
 @media (pointer: coarse) {
   .ticket-action,
+  .ticket-facts :is(input, select),
+  .ticket-status,
   .ticket-tab {
     min-height: var(--hit-target-touch);
   }
