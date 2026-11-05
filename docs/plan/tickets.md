@@ -213,7 +213,7 @@ reported, and the coordinator checked that it was pushed.
 | T-140 | Liquid Glass style, in our own design | Done | No Apple or Atlassian assets |
 | T-141 | Deep strength, Soft canvas, the generated illustration | Done | Decided by the user, who says Gemini's terms allow it |
 | T-142 | Controls need not truly bend their colour for now | Done | Decision recorded |
-| T-143 | Glass on every page, starting with the track sections | Done | On `main` (ADR-114): every route; not yet looked at signed in (T-220) |
+| T-143 | Glass on every page, starting with the track sections | Done | On `main` (ADR-114): every route; not yet looked at signed in (T-220). The strength of the light skin stays as built (the user, 2026-11-04) |
 | T-144 | The design is consistent through the whole app | Done | On `main`: shared styles (`shared.css`), and `styles/design.test.ts` holds the rules. The design questions it raised are T-213 to T-219 |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | Done | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | Done | On `main`: every filter checked in Spanish and the pseudo-locale; the list's group headings for type and priority were the one gap. Status names stay untranslated everywhere (NFR-006 (2), a product decision) |
