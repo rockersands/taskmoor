@@ -8,7 +8,9 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * other configuration values: a ticket write holds its track (key share), then its track's
  * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
- * holds the track (update), then both maps and their workflows, then tickets. A ticket's
+ * holds the track (update), then both maps and their workflows, then tickets. A status's change
+ * of stage holds the status (update), then the workflows whose free moves follow it (no key
+ * update, so it never waits for a ticket write, which may wait for the status). A ticket's
  * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;

@@ -89,7 +89,9 @@ them.
       reason is replaced. The status's one event, `status.updated`, names those workflows
       (`workflowIds`). A move with a rule, another effect or a reason someone chose stays as it is,
       and so does a board-managed workflow, whose board says which column closes. With no reason to
-      close with, nothing changes. We considered deciding the effect at move time from the status's
+      close with, nothing changes. The status is held first and a ticket write into it holds its
+      workflow before it waits for the status, so the change holds the workflows without waiting
+      for ticket writes (no key update); it moves no ticket. We considered deciding the effect at move time from the status's
       stage, with nothing rewritten; rejected because the definition, the editor and an exported
       file would then say something other than what happens.
     - *A status added through the draft API gets its free move* (T-210). Saving a draft
