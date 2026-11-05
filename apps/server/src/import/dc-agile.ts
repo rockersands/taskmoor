@@ -1,7 +1,10 @@
 import {
   type Clause,
   clauses,
+  type Expr,
   type FieldRef,
+  lookupField,
+  makeCatalogue,
   parseQuery,
   printQuery,
   type Query,
@@ -24,7 +27,7 @@ import type {
 } from './dc-backup/stage-agile';
 import type { StagedField } from './dc-backup/stage-fields';
 import type { StagedIssue } from './dc-backup/stage-issues';
-import { instantOf } from './dc-fields';
+import { instantOf, targetShape } from './dc-fields';
 import type { BoardCommand, Mapped, Ref, TicketCommand, Warning } from './model';
 
 /**
@@ -115,10 +118,14 @@ export function mapArea(c: StagedComponent): Mapped {
 
 // --- Queries ---------------------------------------------------------------------------------
 
-/** A query read in either dialect and written in Taskmoor's names, or why it cannot be. */
+/**
+ * A query read in either dialect and written in Taskmoor's names, or why it cannot be. `shared`
+ * holds the names it keeps that several custom fields of the backup have, in lower case, with
+ * their ids; absent for none.
+ */
 export type Translated =
-  | { query: string; fields: string[] }
-  | { query: null; problem: string; detail?: string };
+  | { query: string; fields: string[]; shared?: Record<string, string[]> }
+  | { query: null; problem: string };
 
 function walkValues(values: readonly Value[], visit: (v: Value) => void): void {
   for (const v of values) {
@@ -139,18 +146,63 @@ function clauseValues(c: Clause): readonly Value[] {
   }
 }
 
+const SYSTEM_ONLY = makeCatalogue();
+
+/**
+ * The query with each custom field it names by name named by the backup's id instead (T-195):
+ * the loader maps ids, while a name would be read against the target's fields, where it may
+ * belong to another field (the Points every workspace starts with, when the backup's field
+ * arrived as "Points (imported)"). System fields win over custom fields of the same name, as
+ * in the query language. A name no custom field of the backup has is left as it is, for the
+ * board loader's check. A name several have stays a name too, listed in `shared` with their ids:
+ * the import often makes them one field (a field joins one of its name and type), and only the
+ * loader knows whether it did (`load-agile.ts`).
+ */
+function byFieldIds(
+  expr: Expr | null,
+  fieldsNamed: Readonly<Record<string, readonly string[]>>,
+): { expr: Expr | null; shared: Record<string, string[]> } {
+  const shared: Record<string, string[]> = {};
+  const field = (f: FieldRef): FieldRef => {
+    if (f.custom !== undefined || f.property || lookupField(SYSTEM_ONLY, f)) return f;
+    const ids = fieldsNamed[f.name.toLowerCase()] ?? [];
+    if (ids.length > 1) shared[f.name.toLowerCase()] = [...ids];
+    const only = ids.length === 1 ? Number(ids[0]) : Number.NaN;
+    return Number.isSafeInteger(only) ? { name: 'cf', custom: only, span: f.span } : f;
+  };
+  const visit = (e: Expr): Expr => {
+    switch (e.kind) {
+      case 'and':
+      case 'or':
+        return { ...e, items: e.items.map(visit) };
+      case 'not':
+        return { ...e, expr: visit(e.expr) };
+      default:
+        return { ...e, field: field(e.field) };
+    }
+  };
+  return { expr: expr === null ? null : visit(expr), shared };
+}
+
 /**
  * A board's query in Taskmoor's names (`toNative`), ORDER BY left out (a board shows its cards
- * in rank order). Custom fields keep the backup's ids, listed in `fields` for the loader to map.
- * A saved filter or a sprint named by id cannot be kept: ids of the backup mean nothing here.
+ * in rank order). Custom fields keep the backup's ids, listed in `fields` for the loader to map;
+ * those named by name are named by id first (`fieldsNamed`: the backup's custom field ids by
+ * lower-case name), unless several have the name (`shared`). A saved filter or a sprint named by
+ * id cannot be kept: ids of the backup mean nothing here.
  */
-export function translateQuery(text: string): Translated {
+export function translateQuery(
+  text: string,
+  fieldsNamed: Readonly<Record<string, readonly string[]>> = {},
+): Translated {
   let parsed: Query;
   try {
     parsed = toNative(parseQuery(text));
   } catch {
     return { query: null, problem: 'query_not_parsed' };
   }
+  const named = byFieldIds(parsed.where, fieldsNamed);
+  parsed = { ...parsed, where: named.expr };
   const fields: string[] = [];
   const field = (f: FieldRef) => {
     if (f.custom !== undefined && !fields.includes(String(f.custom))) fields.push(String(f.custom));
@@ -167,7 +219,22 @@ export function translateQuery(text: string): Translated {
     if (byId) return { query: null, problem: 'query_names_sprint_by_id' };
   }
   if (parsed.where === null) return { query: null, problem: 'query_empty' };
-  return { query: printQuery({ where: parsed.where, orderBy: [] }), fields };
+  const query = printQuery({ where: parsed.where, orderBy: [] });
+  return Object.keys(named.shared).length === 0
+    ? { query, fields }
+    : { query, fields, shared: named.shared };
+}
+
+/**
+ * Whether the backup's custom fields of one name become one field here: they do when they have
+ * one type and multiplicity, as a field joins one of its name and shape (`load-config.ts`).
+ */
+function oneShape(ids: readonly string[], types: Readonly<Record<string, string>>): boolean {
+  const shapes = ids.map((id) => targetShape(types[id] ?? null));
+  const [first] = shapes;
+  return shapes.every(
+    (s) => s !== null && first != null && s.type === first.type && s.multiple === first.multiple,
+  );
 }
 
 /** The custom field ids a translated query names, as references. */
@@ -186,10 +253,11 @@ export function mapBoard(b: StagedBoard): Mapped {
   for (const name of b.unknownProjects)
     warnings.push({ code: 'board_project_unknown', detail: name });
   const fields = new Set<string>();
+  const shared = new Map<string, string[]>();
   // A query left out names its filter (if any) and why (IMP-006 (2)).
   const keep = (text: string | null, what: string, name?: string): string | null => {
     if (text === null) return null;
-    const t = translateQuery(text);
+    const t = translateQuery(text, b.fieldsNamed);
     const problem = t.query === null ? t.problem : t.query.length > MAX_QUERY ? 'too_long' : null;
     if (t.query === null || problem !== null) {
       const detail = name === undefined ? problem : `${name}: ${problem}`;
@@ -197,6 +265,7 @@ export function mapBoard(b: StagedBoard): Mapped {
       return null;
     }
     for (const f of t.fields) fields.add(f);
+    for (const [n, ids] of Object.entries(t.shared ?? {})) shared.set(n, ids);
     return t.query;
   };
   if (b.filter === null) warnings.push({ code: 'board_filter_missing', detail: b.filterId ?? '' });
@@ -244,6 +313,15 @@ export function mapBoard(b: StagedBoard): Mapped {
       subQuery,
       boardFilters,
       fields: fieldRefs([...fields]),
+      ...(shared.size === 0
+        ? {}
+        : {
+            sharedNames: [...shared].map(([n, ids]) => ({
+              name: n,
+              fields: fieldRefs(ids),
+              ...(b.fieldTypes === undefined ? {} : { oneShape: oneShape(ids, b.fieldTypes) }),
+            })),
+          }),
     },
     warnings,
   };

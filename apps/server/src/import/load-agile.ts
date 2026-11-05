@@ -1,5 +1,5 @@
 import type { JsonValue } from '@taskmoor/db';
-import { parseQuery, printQuery, QueryError } from '@taskmoor/query';
+import { type FieldRef, parseQuery, printQuery, QueryError } from '@taskmoor/query';
 import { sql } from 'kysely';
 import { bindCondition, type Scope } from '../boards/data';
 import {
@@ -168,18 +168,45 @@ async function saveBoardQuery(ctx: LoadContext, cmd: BoardCommand, query: string
   throw new PlanFailure('name_taken');
 }
 
+type Shared = NonNullable<BoardCommand['sharedNames']>;
+
 /**
- * A query with the backup's custom field ids (`cf[<source id>]`) in the target's (M1-093);
- * null when a field it names did not import. A dry run keeps the source ids.
+ * A query with the backup's custom field ids (`cf[<source id>]`) in the target's (M1-093), or
+ * why it cannot have them: `field_not_imported` when a field it names did not import. A name
+ * several of the source's custom fields have (`shared`, T-195) becomes the one field here they
+ * all became, as when a field joined another of its name and type; when they became different
+ * fields, which one the source read cannot be told (`query_names_ambiguous_field`, with the
+ * name). A dry run keeps the source ids, and a shared name whose fields it would make as one.
  */
-function withTargetFields(ctx: LoadContext, text: string, fields: readonly Ref[]): string | null {
-  if (fields.length === 0) return text;
+function withTargetFields(
+  ctx: LoadContext,
+  text: string,
+  fields: readonly Ref[],
+  shared: Shared,
+): { query: string } | { problem: string } {
+  if (fields.length === 0 && shared.length === 0) return { query: text };
   const query = parseQuery(text);
-  let missing = false;
+  let problem: string | null = null;
   const map = (custom: number): number => {
     const target = ctx.refs.get({ kind: 'field', id: String(custom) });
-    if (target === null) missing = true;
+    if (target === null) problem ??= 'field_not_imported';
     return target === null || target === PENDING ? custom : target;
+  };
+  const field = (f: FieldRef): FieldRef => {
+    if (f.custom !== undefined) return { ...f, custom: map(f.custom) };
+    const of = f.property ? undefined : shared.find((s) => s.name === f.name.toLowerCase());
+    if (of === undefined) return f;
+    const targets = of.fields.map((r) => ctx.refs.get(r));
+    if (targets.includes(null)) problem ??= 'field_not_imported';
+    const made = new Set(targets.filter((t): t is number => t !== null && t !== PENDING));
+    // A dry run's PENDING is a field the run would make: beside one that exists, a different
+    // field; with only other PENDING ones, one field when they have one shape.
+    const pending = targets.includes(PENDING);
+    const several =
+      made.size > 1 || (pending && (made.size === 1 || (made.size === 0 && of.oneShape === false)));
+    if (several) problem ??= `query_names_ambiguous_field (${f.name})`;
+    const [one] = made;
+    return one === undefined || several ? f : { name: 'cf', custom: one, span: f.span };
   };
   const visit = (e: NonNullable<typeof query.where>): typeof e => {
     switch (e.kind) {
@@ -189,13 +216,11 @@ function withTargetFields(ctx: LoadContext, text: string, fields: readonly Ref[]
       case 'not':
         return { ...e, expr: visit(e.expr) };
       default:
-        return e.field.custom === undefined
-          ? e
-          : { ...e, field: { ...e.field, custom: map(e.field.custom) } };
+        return { ...e, field: field(e.field) };
     }
   };
   const out = printQuery({ where: query.where && visit(query.where), orderBy: [] });
-  return missing ? null : out;
+  return problem === null ? { query: out } : { problem };
 }
 
 /**
@@ -243,6 +268,7 @@ export const boards: Loader<BoardCommand> = {
   async plan(ctx, cmd, existing, sourceId) {
     const track = required(ctx, cmd.track, 'track');
     const fields = cmd.fields ?? [];
+    const shared = cmd.sharedNames ?? [];
     // Queries a source gives in full (M1-093) are checked against the target.
     const checked = cmd.boardFilters !== undefined;
     let query = cmd.query;
@@ -250,9 +276,12 @@ export const boards: Loader<BoardCommand> = {
       let problem: string | null = null;
       try {
         parseQuery(query);
-        query = withTargetFields(ctx, query, fields);
-        if (query === null) problem = 'field_not_imported';
-        else if (checked) problem = await unresolved(ctx, query);
+        const target = withTargetFields(ctx, query, fields, shared);
+        if ('problem' in target) problem = target.problem;
+        else {
+          query = target.query;
+          if (checked) problem = await unresolved(ctx, query);
+        }
       } catch {
         problem = 'not_parsed';
       }
@@ -284,31 +313,33 @@ export const boards: Loader<BoardCommand> = {
       max: c.max,
     }));
     const data: BoardData = { track, query, columns };
+    // The target's query, or why it cannot be kept.
+    const checkedQuery = async (text: string): Promise<{ query: string } | { problem: string }> => {
+      const target = withTargetFields(ctx, text, fields, shared);
+      if ('problem' in target) return target;
+      const problem = await unresolved(ctx, target.query);
+      return problem === null ? target : { problem };
+    };
     if (cmd.subQuery !== undefined) {
-      const sub = cmd.subQuery === null ? null : withTargetFields(ctx, cmd.subQuery, fields);
-      const problem =
-        cmd.subQuery === null
-          ? null
-          : sub === null
-            ? 'field_not_imported'
-            : await unresolved(ctx, sub);
-      if (problem !== null) ctx.warn({ code: 'board_sub_query_not_imported', detail: problem });
-      data.subQuery = problem === null ? sub : null;
+      const sub = cmd.subQuery === null ? null : await checkedQuery(cmd.subQuery);
+      if (sub !== null && 'problem' in sub) {
+        ctx.warn({ code: 'board_sub_query_not_imported', detail: sub.problem });
+      }
+      data.subQuery = sub === null || 'problem' in sub ? null : sub.query;
     }
     if (cmd.boardFilters !== undefined) {
       data.boardFilters = [];
       for (const f of cmd.boardFilters) {
         // IMP-006 (2): the filter is named with what it uses that does not translate.
-        const text = withTargetFields(ctx, f.query, fields);
-        const problem = text === null ? 'field_not_imported' : await unresolved(ctx, text);
-        if (text === null || problem !== null) {
-          ctx.warn({ code: 'board_filter_not_imported', detail: `${f.name}: ${problem}` });
+        const text = await checkedQuery(f.query);
+        if ('problem' in text) {
+          ctx.warn({ code: 'board_filter_not_imported', detail: `${f.name}: ${text.problem}` });
           continue;
         }
         data.boardFilters.push({
           id: `f${data.boardFilters.length + 1}`,
           name: f.name,
-          query: text,
+          query: text.query,
           description: f.description,
         });
       }
