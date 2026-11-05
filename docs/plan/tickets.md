@@ -64,7 +64,8 @@ reported, and the coordinator checked that it was pushed.
 |---|---|---|---|
 | T-030 | Stay fully open source under AGPL-3.0-only | Done | Decision recorded |
 | T-031 | Make the repository public for 1.0 | You | The user confirms the switch itself |
-| T-032 | Scan the whole git history for secrets first | In progress | On the Mac (wave 9, 2026-11-05). Before T-031 |
+| T-032 | Scan the whole git history for secrets first | Done | On `main` (2026-11-05): no real secret in 816 commits, pull request refs included; `pnpm secrets` (gitleaks, `.gitleaks.toml`) stays clean and fails on anything new; `docs/security/secret-scan.md` |
+| T-032a | 221 commit messages carry a `Claude-Session:` link, public with the history: keep them, or drop them in the T-005 rewrite? | You | Not secrets; the links lead to sessions only you can open. Before T-031 |
 | T-033 | Trademark search for the name | You | No domain needed, but a clash could force a rename |
 | T-034 | Counsel review deferred to the first public release | You | Includes the clean room and AGPL questions |
 | T-035 | Turn on and test private vulnerability reporting | To do | `SECURITY.md` already points to it; no email needed |
@@ -261,7 +262,7 @@ reported, and the coordinator checked that it was pushed.
 | T-192 | Turning a track's sprints off while a sprint runs is not guarded | Done | On `main`: refused while a sprint runs, naming it; a sprint cannot start while sprints are off; the box shows only where the board can have sprints |
 | T-193 | A 5,000-card column is not smooth | Done | On `main` (ADR-049): columns over 100 cards draw only the cards near the screen, with roving focus and every card reachable by keyboard; measured 50 to 55 fps and a drop settled in about 110 ms on the Mac. Browser find sees only drawn cards |
 | T-194 | Home's "Your tracks" should show the tracks a person belongs to | Done | On `main` (ADR-046): a role given directly or through a group, owning the track, or a team on its board or a live area; policy grants and "open to everyone" only let people see. Recently opened tracks come first however many they belong to; "latest opened" stays per browser |
-| T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | In progress | On the Mac (wave 9, 2026-11-05). Known limit, not tested |
+| T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | Done | On `main` (ADR-095): saved filters and a board's filter, sub-filter and quick filters read the field the backup's own Points became; a name several backup fields share reads the one field they became, or the query is left out, in a dry run too |
 | T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | Done | On `main` (ADR-120) except TT-7, which waits on the user; columns now written as their own form in Markdown and wiki markup |
 | T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
 | T-196b | The "Checklist changed" notice | Done | On `main` (NTF-015, ADR-120, migration 0103): a notice track administrators turn on, off by default |
@@ -270,7 +271,7 @@ reported, and the coordinator checked that it was pushed.
 | T-208 | A fresh checkout's first full gate fails in the browser stories (Vite's dependency cache is cold; "optimized dependencies changed") | To do | 48 failures on this PC's first gate; all pass on a rerun. Warm the cache or list the dependencies up front, or every new clone and worktree meets this |
 | T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | In progress | On the Mac (wave 9, 2026-11-05). T-207 review (low): an empty In Review made closed-stage gets no close reason and no Closed time |
 | T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | In progress | On the Mac (wave 9, 2026-11-05). T-207 review (low): only the web editor's Add a status adds the free move; a warning in the draft's answer may be enough |
-| T-211 | `pnpm demo` keeps an older built frontend | In progress | On the Mac (wave 9, 2026-11-05). T-207 review (low): it rebuilds only when `apps/web/dist/index.html` is missing, so a checkout can serve an old editor |
+| T-211 | `pnpm demo` keeps an older built frontend | Done | On `main`: the demo builds the frontend again when the checkout moved on since the last build |
 | T-212 | Sweep for buttons whose spoken name leaves out the words they show (WCAG 2.5.3) | In progress | Found on the inbox; axe only reports it where a test runs it. Part of T-164 |
 | T-213 | Sticky cells of the timeline and the capacity table: stay opaque inside glass, or the whole table on an opaque panel? | You | T-143 survey; built as opaque cells. The backlog's selection bar is sticky too and is floating glass |
 | T-214 | A not-found page, and the words "This area is under construction" on signed-out Search and on Home while the session is checked | You | T-143 survey: an unknown address shows Home. Signed-out `/tracks` says "No tracks yet" |
