@@ -14,7 +14,7 @@ VOL=taskmoor-aio-data-$ID
 PG=taskmoor-ext-pg-$ID
 NET=taskmoor-ext-$ID
 cleanup() {
-  docker rm -f "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
+  docker rm -f -v "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
   docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true

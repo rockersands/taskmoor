@@ -53,7 +53,7 @@ echo "== frontend"
 # The static build that the image serves, also usable on any static host (OPS-013).
 container=$(docker create "$app")
 docker cp "$container:/app/web" "$(host "$dir/web/taskmoor-web")" >/dev/null
-docker rm "$container" >/dev/null
+docker rm -v "$container" >/dev/null
 tar -czf "$dir/web/taskmoor-web-$version.tar.gz" -C "$dir/web" taskmoor-web
 rm -rf "$dir/web/taskmoor-web"
 

@@ -24,7 +24,7 @@ NET=taskmoor-smoke-$$
 PG=taskmoor-smoke-pg-$$
 APP=taskmoor-smoke-app-$$
 cleanup() {
-  docker rm -f "$APP" "$PG" >/dev/null 2>&1 || true
+  docker rm -f -v "$APP" "$PG" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -96,7 +96,7 @@ docker run -d --name "$APP" --network "$NET" -p 18081:8080 \
 wait_for http://127.0.0.1:18081/ready 60
 curl -fsS http://127.0.0.1:18081/ready; echo
 curl -fsS http://127.0.0.1:18081/health; echo
-docker rm -f "$APP" "$PG" >/dev/null
+docker rm -f -v "$APP" "$PG" >/dev/null
 
 if [ "${SKIP_EMULATED:-${SKIP_ARM64:-}}" != "1" ]; then
   echo "== $OTHER image under emulation (this host is $NATIVE)"
