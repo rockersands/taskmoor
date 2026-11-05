@@ -401,6 +401,47 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     });
   }, 900_000);
 
+  it(`[PLN-014] [PLN-012] a file of all ${TICKETS} tickets starts within a second and holds them all`, async () => {
+    const address = await app.listen({ host: '127.0.0.1', port: 0 });
+    const started = performance.now();
+    const res = await fetch(`${address}/api/v1/plans/${plan}/export?columns=summary,status`, {
+      headers: { cookie },
+    });
+    expect(res.status).toBe(200);
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    let firstByte = 0;
+    let lines = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (firstByte === 0) firstByte = performance.now() - started;
+      for (const b of value) if (b === 10) lines += 1;
+    }
+    const total = performance.now() - started;
+    process.stdout.write(
+      `PLN-014 export, ${TICKETS} tickets: first byte ${Math.round(firstByte)} ms, all ${Math.round(total)} ms\n`,
+    );
+    // A header and a line per ticket, past the 10,000 a view lists at this size or at any other.
+    expect(lines).toBe(TRACKS * (PER_TRACK + 1) + 1);
+    expectWithinBudget(firstByte, 1000, `plan export, ${TICKETS} tickets, first byte (ms)`);
+  }, 900_000);
+
+  it(`[PLN-014] copies a plan of ${TRACKS} tracks in under a second`, async () => {
+    const started = performance.now();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/plans/${plan}/duplicate`,
+      payload: { name: 'A copy at size' },
+      remoteAddress: nextAddress(),
+      headers: { cookie },
+    });
+    const ms = performance.now() - started;
+    expect(res.statusCode, res.body).toBe(201);
+    expect(res.json().plan.sources).toHaveLength(TRACKS);
+    process.stdout.write(`PLN-014 duplicate, ${TRACKS} tracks: ${Math.round(ms)} ms\n`);
+    expectWithinBudget(ms, 1000, `plan duplicate, ${TRACKS} tracks (ms)`);
+  }, 60_000);
+
   it(`[PLN-007] [PLN-012] answers a release across ${TRACKS} tracks and ${TICKETS} tickets in under a second`, async () => {
     const page = await timed('release across tracks', {
       method: 'GET',

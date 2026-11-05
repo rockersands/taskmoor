@@ -1,20 +1,21 @@
 import { ApiError } from '../api/client';
 import { dayNumber, isoDay, type Refusal } from '../timeline/client';
 import { fakeCapacity, PLAN_PERIOD, PLAN_TEAMS } from './capacityFixtures';
-import type {
-  CapacityEntry,
-  CapacitySettings,
-  CapacityUnit,
-  Plan,
-  PlanCalendar,
-  PlanClient,
-  PlanFilters,
-  PlanInput,
-  PlanPeriod,
-  PlanRow,
-  PlanSummary,
-  PlanTimeline,
-  PlanTimelineItem,
+import {
+  type CapacityEntry,
+  type CapacitySettings,
+  type CapacityUnit,
+  filterParams,
+  type Plan,
+  type PlanCalendar,
+  type PlanClient,
+  type PlanFilters,
+  type PlanInput,
+  type PlanPeriod,
+  type PlanRow,
+  type PlanSummary,
+  type PlanTimeline,
+  type PlanTimelineItem,
 } from './client';
 
 /**
@@ -178,6 +179,12 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   capacitySaved: CapacityEntry[][];
   /** The unit and periods each change of capacity said it was typed for. */
   capacitySettings: (CapacitySettings | undefined)[];
+  /** The name each copy was asked for (PLN-014). */
+  duplicated: string[];
+  /** How many reads were for a file: the Timeline's and the Calendar's. */
+  exportReads: () => number;
+  /** How many times the plan itself was read. */
+  planReads: () => number;
 } {
   const capacity = fakeCapacity();
   let teams = options.noTeams ? [] : PLAN_TEAMS;
@@ -189,6 +196,9 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   const saved: PlanInput[] = [];
   const removed: number[] = [];
   const capacitySettings: (CapacitySettings | undefined)[] = [];
+  const duplicated: string[] = [];
+  let exportReads = 0;
+  let planReads = 0;
   let version = 1;
   let name = 'Spring launch';
   const plan = (filters: PlanFilters = {}): Plan => ({
@@ -228,6 +238,9 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     saved,
     removed,
     capacitySaved: capacity.saved,
+    duplicated,
+    exportReads: () => exportReads,
+    planReads: () => planReads,
     capacitySettings,
     list: async (): Promise<PlanRow[]> => [
       {
@@ -249,7 +262,23 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         sourceCount: 3,
       },
     ],
+    duplicate: async (_id, copy) => {
+      if (copy === 'Refused') return { ok: false, error: 'not_found', fields: {} };
+      duplicated.push(copy);
+      return {
+        ok: true,
+        plan: { ...plan(), id: 99, name: copy, shares: [], hiddenSources: 0 },
+        left: { hiddenSources: nothing ? 4 : ((options.hidden as number | undefined) ?? 0) },
+      };
+    },
+    exportHref: (id, file) =>
+      `/api/v1/plans/${id}/export?${new URLSearchParams({
+        ...Object.fromEntries(filterParams(file.filters)),
+        columns: ['key', ...file.columns].join(','),
+        sort: file.sort,
+      })}`,
     get: async (id, filters = {}) => {
+      planReads++;
       if (id !== 12) throw new ApiError(404, { error: 'not_found' });
       if (filters.track === 'NOPE') throw new ApiError(400, { error: 'invalid_query' });
       if (options.failOn?.(filters)) throw new ApiError(503, { error: 'query_timeout' });
@@ -382,7 +411,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         ),
       };
     },
-    timeline: async (_id, filters): Promise<PlanTimeline> => {
+    timeline: async (_id, filters, exporting): Promise<PlanTimeline> => {
+      if (exporting) exportReads++;
       const list = shown(filters);
       const listed = list.slice(0, 10_000);
       const ids = new Set(listed.map((i) => i.id));
@@ -419,7 +449,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         truncated: list.length > listed.length,
       });
     },
-    calendar: async (_id, filters, from, to): Promise<PlanCalendar> => {
+    calendar: async (_id, filters, from, to, exporting): Promise<PlanCalendar> => {
+      if (exporting) exportReads++;
       const inRange = (d: string | null) => d !== null && d >= from && d <= to;
       const list = shown(filters).filter((i) => inRange(i.start) || inRange(i.due));
       return structuredClone({

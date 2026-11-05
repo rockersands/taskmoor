@@ -1,7 +1,7 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-04
 attestation: own-words
 ---
@@ -260,10 +260,64 @@ stays, owned by the placeholder account. Its changes are in the audit log; each 
 changed also records its own change, so its track's trail and webhooks hear of it. Webhooks do not
 hear of the release across tracks itself, and a full export leaves it out; a backup holds it.
 
+## Copying a plan
+
+Anyone who sees a plan may copy it, and the copy is theirs alone. Choose **Duplicate plan** at the top
+of any of its tabs and give the copy a name.
+
+- **What comes:** the description, the sources you may see, in their order, the unit, the periods and
+  the teams. Saved searches come by reference, so the copy changes when they do. Sources that are
+  archived or no longer run come too, and say so as usual.
+- **What does not:** sources hidden from you, which are only counted ("2 sources you may not see
+  were left out"), never named; who it is shared with, since a copy should not reach anyone by
+  itself; and capacity, since the amounts and notes are about people.
+- **Afterwards** the two plans have no tie: a change to one does not reach the other.
+
+## Linking to a view
+
+Choose **Copy link** at the top of any tab. The link holds the view as it stands: the tab, the
+filters, the grouping, and where the view is, which means the Timeline's zoom, the Calendar's month,
+the first period of Capacity and the order of the List. Columns stay yours, in this browser.
+
+A link gives no access. It is only an address:
+
+- Someone who may not see the plan gets the page that says it does not exist or they cannot see it.
+- Someone who may sees it as they may see it, so two people can get different rows from one link.
+- Someone signed out signs in first and comes back to it.
+- The assignee **Me** means whoever opens the link, not whoever copied it.
+
+Moving through a view does not fill your browser's history: the back button still undoes a change of
+filters, not every month you stepped through. If your browser refuses the clipboard, as it may on a
+plain `http` address, a field shows the link, selected, to copy by hand.
+
+## Downloading a view
+
+Each view has a **Download** menu. What you get is what you may see: nothing in a file names a ticket
+hidden from you, and a cell that a spreadsheet would run as a formula starts with an apostrophe.
+
+| View | File | What it holds |
+|---|---|---|
+| **Summary** | CSV | Each number, what it counts and the search that finds those tickets |
+| **Timeline** | CSV | The first 10,000 tickets, as the view lists them, with their days, where the days come from, their children's span and their blockers. Blockers the view does not list stay two numbers |
+| **Timeline** | Image (PNG) | The picture of up to 400 rows, group headings among them. It says how many it holds of how many, and late dependencies are dashed and say "late" in words |
+| **List** | CSV | **Every** ticket of the plan you may see, however many, in your columns and order. Grouping does not change it |
+| **Calendar** | CSV | The tickets of the month shown, at most 10,000 |
+| **Capacity** | CSV | One line per team or person and period, and one for open work with no due date. Other work due then stays a count and an amount, counted by whole weeks. Notes stay on the page |
+| **Releases** | CSV | The tab's releases, each release across tracks before those linked to it. What is hidden stays two numbers |
+
+Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
+cannot draw it, the page says that too and no file comes. Headers are in your language, and the image
+is drawn in light colours whatever your skin.
+
+Downloading the Timeline, the Calendar or the List counts as a bulk export for your administrators'
+security alerts. Keep in mind that a saved file leaves Taskmoor's permissions: whoever
+you send it to reads what it holds.
+
 ## Not yet in Multi-track
 
-The program board, draft changes and scenarios, the auto-scheduler, and
-copying or exporting a plan come in later versions. Dependencies are the **Blocks** links only:
+The program board, draft changes and scenarios, and the auto-scheduler come in later versions. A
+link cannot be named and saved as a view, or made public; files come as CSV and PNG only, by hand,
+with no schedule; and a copy cannot follow its original. Dependencies are the **Blocks** links only:
 other link types do not count as dependencies. Capacity counts work by its due date, in points or
 hours: velocity from past sprints, capacity in days or as a percentage of a working week, time set
 aside for leave as its own entry, and copying capacity between periods are not in Multi-track yet.

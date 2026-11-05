@@ -242,6 +242,7 @@ export const AUDITED_EVENTS = [
   // Multi-track plans (ADR-122): configuration others may see, like dashboards.
   'plan.created',
   'plan.updated',
+  'plan.duplicated',
   'plan.deleted',
   'plan.capacity_set',
   // Releases across tracks (PLN-007): configuration others may see, as plans are.

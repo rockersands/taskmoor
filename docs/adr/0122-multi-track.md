@@ -662,9 +662,9 @@ release of a track they may not see; only how many, and its open tickets as one 
 
 ### Stage 8 (T-089g): duplicate a plan, a link to a view, CSV and image
 
-**Designed on 2026-11-04, not built.** The spec has no requirement for this: the ticket and the
-user's scope name it. Proposed **PLN-014**, the next free number when written (the coordinator's to
-give; T-089j may want one too), M1: *Taskmoor shall let anyone who sees a plan copy it, link to a
+**Designed and built on 2026-11-04, not merged.** The spec had no requirement for this: the ticket and
+the user's scope name it. **PLN-014**, M1 (in the spec now; the number is still the coordinator's to
+change, and T-089j may want one too): *Taskmoor shall let anyone who sees a plan copy it, link to a
 view as it stands, and download what a view shows as CSV, and the Timeline as an image; none of them
 gives access, and hidden work stays only counted.* Acceptance: (1) a copy holds only the sources its
 maker may see, says how many it left out, and is private to them. (2) A link opens the same view,
@@ -783,7 +783,7 @@ The stream's cost and memory are the search export's (`search-export.large.test.
 size); `plans.large.test.ts` adds the route's first byte under a second at 100,000 tickets. Budgets
 by `expectWithinBudget`: a duplicate of 500 sources and 50 teams under a second; on the page, a
 10,000-row CSV under one second and a 400-row image under three (e2e, Chromium). Links cost nothing.
-None of this has been measured yet.
+See **As built** for what has been run; the budgets on the page are still only targets.
 
 #### What the manual says
 
@@ -823,6 +823,49 @@ touch drags), and how the image looks, which needs a person to look at it.
 - PDF, Excel, a Timeline image over 400 rows, SVG, an image of other views, scheduled or emailed
   exports (RPT-009, M2). Asynchronous jobs (QRY-015 (1) is about the search export).
 - Copying capacity, shares or hidden sources; a copy that follows its original.
+
+#### As built
+
+- **`routeUrl`, not `appBase()`:** Copy link uses the router's own address for copying, which is
+  right in both routing modes and on any origin; `appBase()` is empty when the backend serves the page.
+- **The position goes through `redirect`, not `replace`:** the router's `replace` sends no change
+  event, so the page would keep an old position in its tabs and links. `redirect` rewrites the same
+  history entry and tells the page, which draws again from the address; the plan is not read again,
+  as `viewKey` leaves the position out. Defaults say nothing in the address, so a plain link stays
+  plain.
+- **The List's file is `format=csv` only:** no JSON, since nothing asks for it and the search export
+  has it. The stream is one function now, `sendTicketExport`, for both routes. A plan with no query
+  still counts as a bulk export, as a search with nothing visible always has.
+- **A copy decides its sources before its transaction:** permissions read on their own connections,
+  so what the person sees is settled first; the transaction then takes the plan under a share lock
+  and reads its sources again. A source added meanwhile stays behind and is counted, since nobody
+  decided on it. Broken and archived sources the maker sees come along, flagged as ever. The answer
+  is `{ plan, left: { hiddenSources } }`.
+- **What was left out is said in the dialog:** the copy is a new page, and a notice carried across
+  pages would need state, so the dialog stays with the number and **Open the copy**. With nothing
+  left out it goes straight there.
+- **Capacity's file has no notes and adds a line per row for what is unscheduled:** the view shows
+  that column, so the file does. Notes stay on the page, as they may say why someone was away and a
+  file travels. Hidden work is the count and amount the design asked for.
+- **Row cap counts group headings:** both are rows in the picture, so "400" is what fits a phone's
+  canvas whatever the grouping. The tree of rows moved to `timeline/rows.ts`, used by the page and
+  the image, so the two cannot disagree on order.
+- **The image draws no sprints:** the design lists release markers only. Summaries are cut to about 44
+  characters beside their key, with an ellipsis; the file's CSV has them whole.
+- **Text XML cannot hold is taken out, not escaped:** control characters and lone surrogates would
+  stop the whole picture from loading, so a ticket's odd title cannot cost someone their image.
+- **The cell guard is tested with one table** (`plans/csvGuardTable.json`) read by the web test and
+  by the server's `audit/query.test.ts`, so the two functions cannot drift apart unseen.
+- **The picture's colours are listed in the design guard's ALLOWED list,** with the reason: a file
+  must not change with the skin.
+- **Tests by name:** the page's flows are in `plans/PlanShare.test.tsx`, and the file functions' in
+  `plans/planExport.test.tsx`. Golden files are read from disk there, since the web project's jsdom
+  setup has no snapshot state.
+- **Measured (one run, on a machine under other work):** the List's file of 10,000 tickets, first byte
+  152 ms and all of it 1.4 s; a copy of 20 track sources 110 ms; a copy of 500 saved searches and 50
+  teams 813 ms, close to its budget of a second, since the check of sources asks about each. Not
+  measured: the 100,000-ticket bar (`TASKMOOR_LARGE_PLANS=1`), a 10,000-row CSV on the page, and a
+  400-row image's time.
 
 #### Questions for the user (the design takes the first answer each time)
 

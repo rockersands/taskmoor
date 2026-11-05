@@ -3,18 +3,21 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { type ListClient, listClient } from '../list/client';
-import { navigate, routeHref, useRoute } from '../routing/router';
+import { navigate, redirectRoute, routeHref, useRoute } from '../routing/router';
 import { type SearchClient, searchClient } from '../search/client';
 import { useMotionOnChange } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import {
+  GROUP_LABELS,
   PLAN_GROUPS,
   PLAN_SECTIONS,
   type PlanGroup,
+  type PlanPosition,
   type PlanSection,
   type PlanView,
   planHref,
+  planViewKey,
   readView,
 } from './address';
 import { type Plan, type PlanChoices, type PlanClient, planClient } from './client';
@@ -23,6 +26,7 @@ import { PlanCapacityPage } from './PlanCapacityPage';
 import { PlanListPage } from './PlanListPage';
 import { PlanReleasesPage } from './PlanReleasesPage';
 import { PlanSettingsPage } from './PlanSettingsPage';
+import { PlanShareActions } from './PlanShareActions';
 import { PlanSummaryPage } from './PlanSummaryPage';
 import { PlanTimelinePage } from './PlanTimelinePage';
 
@@ -36,14 +40,6 @@ export interface PlanPageProps {
   now?: () => Date;
 }
 
-const GROUP_LABELS: Record<PlanGroup | 'none', MessageId> = {
-  none: 'plans.group.none',
-  track: 'plans.group.track',
-  assignee: 'plans.group.assignee',
-  status: 'plans.group.status',
-  type: 'plans.group.type',
-  priority: 'plans.group.priority',
-};
 const STAGES = [
   { id: 'new', label: 'search.stage.new' },
   { id: 'active', label: 'search.stage.active' },
@@ -56,8 +52,11 @@ const STAGES = [
  * may change it, and the
  * filters every view shares, one value each, with the grouping of the Timeline and the List. The
  * filters and the grouping live in the page's address, so a link opens the same view and the
- * browser's back button undoes a change. The plan shows only what the person may see; the page
- * says when some of its sources are hidden from them or no longer run.
+ * browser's back button undoes a change. Where a view stands (zoom, month, first day, order) is in
+ * the address too, replacing its entry, so a link holds it and back still undoes filters, not every
+ * step (PLN-014). The plan shows only what the person may see; the page says when some of its
+ * sources are hidden from them or no longer run. Every tab offers a link to the view and a copy of
+ * the plan, and each view its own file.
  */
 export function PlanPage({
   id,
@@ -71,7 +70,7 @@ export function PlanPage({
   const titleId = useId();
   const route = useRoute();
   const view = readView(route);
-  const viewKey = planHref(id, 'summary', view);
+  const viewKey = planViewKey(id, view);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [problem, setProblem] = useState<'missing' | 'filter' | 'failed' | null>(null);
   const [choices, setChoices] = useState<PlanChoices | null>(null);
@@ -152,7 +151,17 @@ export function PlanPage({
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
   const grouped = section === 'timeline' || section === 'list';
   const wide = section === 'timeline' || section === 'capacity';
-  const viewProps = { id, plan, filters: view.filters, client, now };
+  const onPosition = (change: PlanPosition) =>
+    redirectRoute(planHref(id, section, { ...view, position: { ...view.position, ...change } }));
+  const viewProps = {
+    id,
+    plan,
+    filters: view.filters,
+    client,
+    now,
+    position: view.position ?? {},
+    onPosition,
+  };
 
   return (
     <section
@@ -165,6 +174,7 @@ export function PlanPage({
         title={plan.name}
         eyebrow={t('plans.meta', { owner: plan.owner.name })}
         purpose={t('purpose.plan')}
+        actions={<PlanShareActions plan={plan} client={client} />}
       />
       {plan.description && <p className="plan-description">{plan.description}</p>}
       <nav className="track-tabs" aria-label={t('plans.sections', { name: plan.name })}>

@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
-import type { TimelineItem } from '../timeline/client';
+import { dayNumber, type TimelineItem } from '../timeline/client';
 import { DependencyList } from '../timeline/DependencyList';
 import { dependenciesOf } from '../timeline/dependencies';
 import { type TimelineGroup, TimelineView } from '../timeline/TimelineView';
-import type { PlanGroup } from './address';
+import type { PlanGroup, PlanZoom } from './address';
 import type { PlanTimeline, PlanTimelineItem } from './client';
+import { DownloadMenu } from './DownloadMenu';
+import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
+import { timelineCsv } from './planExport';
+import { IMAGE_ROWS, imageRows, svgToPng, timelineSvg, viewWords } from './planImage';
 
 /**
  * A plan's Timeline (PLN-012): the first 10,000 of its tickets across tracks as bars, drawn by
@@ -22,15 +27,21 @@ import type { PlanSectionProps } from './PlanSummaryPage';
  * counts its blockers and says when one is late, and the same as a list below the timeline
  * (`DependencyList`), which a button beside the zoom reaches at once. Blockers the timeline does
  * not list are only counted, never named.
+ *
+ * Its files (PLN-014) read the Timeline again for the file, as CSV or as an image of up to 400 rows.
  */
 export function PlanTimelinePage({
   id,
+  plan,
   filters,
   client,
   now,
   group,
+  position,
+  onPosition,
 }: PlanSectionProps & { group: PlanGroup | null }) {
   const t = useT();
+  const intl = useIntl();
   const [data, setData] = useState<PlanTimeline | null>(null);
   const [failed, setFailed] = useState(false);
   const filterKey = JSON.stringify(filters);
@@ -55,14 +66,12 @@ export function PlanTimelinePage({
   useEffect(load, [load]);
   useTicketChanges(load);
 
-  // Grouped again when the grouping or the data change; `t` is new on every render.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: t reads the same catalogue each time
-  const groupOf = useMemo(() => {
-    if (!group || !data) return undefined;
-    const tracks = new Map(data.tracks.map((x) => [x.id, x]));
+  /** How a timeline's tickets group, on the page and in a file read for it. */
+  const groupFor = (answer: PlanTimeline) => {
+    const tracks = new Map(answer.tracks.map((x) => [x.id, x]));
     return (raw: TimelineItem): TimelineGroup => {
       const item = raw as PlanTimelineItem;
-      switch (group) {
+      switch (group as PlanGroup) {
         case 'track': {
           const track = tracks.get(item.trackId);
           return {
@@ -88,7 +97,11 @@ export function PlanTimelinePage({
             : { id: 'none', label: t('summary.noPriority') };
       }
     };
-  }, [group, data]);
+  };
+  // Grouped again when the grouping or the data change; `t` is new on every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: t reads the same catalogue each time
+  const groupOf = useMemo(() => (!group || !data ? undefined : groupFor(data)), [group, data]);
+  const imageTotal = useMemo(() => (data ? imageRows(data, groupOf).total : 0), [data, groupOf]);
   const dependencies = useMemo(
     () => (data ? dependenciesOf(data.items, data.links, data.blockersElsewhere) : new Map()),
     [data],
@@ -107,9 +120,69 @@ export function PlanTimelinePage({
     return <EmptyState title={t('plans.empty')}>{t('empty.planTickets.body')}</EmptyState>;
   }
 
+  const today = now().toISOString().slice(0, 10);
+  const dated = (view: string, extension: string) => fileName(plan.name, view, today, extension);
+  const notes = [
+    ...(data.truncated ? [t('plans.download.first', { count: data.items.length })] : []),
+    ...(imageTotal > IMAGE_ROWS
+      ? [t('plans.image.capped', { rows: IMAGE_ROWS, total: imageTotal })]
+      : []),
+  ];
+  const download = (
+    <DownloadMenu
+      notes={notes}
+      items={[
+        {
+          key: 'csv',
+          label: t('plans.download.csv'),
+          make: async () => {
+            const fresh = await client.timeline(id, filters, true);
+            const name = dated('timeline', 'csv');
+            saveBlob(name, new Blob([timelineCsv(t, fresh)], { type: 'text/csv' }));
+            return name;
+          },
+        },
+        {
+          key: 'image',
+          label: t('plans.download.image'),
+          failed: t('plans.download.imageFailed'),
+          make: async () => {
+            const fresh = await client.timeline(id, filters, true);
+            const image = timelineSvg({
+              t,
+              plan: plan.name,
+              view: viewWords(t, filters, group, fresh.items),
+              madeOn: t('plans.image.made', { day: today }),
+              today: dayNumber(today),
+              data: fresh,
+              ...(group ? { groupOf: groupFor(fresh) } : {}),
+              dependencies: dependenciesOf(fresh.items, fresh.links, fresh.blockersElsewhere),
+              hiddenSources: plan.hiddenSources,
+              monthText: (day) =>
+                intl.formatDate(new Date(day * 86_400_000), {
+                  month: 'short',
+                  year: 'numeric',
+                  timeZone: 'UTC',
+                }),
+            });
+            const name = dated('timeline', 'png');
+            saveBlob(name, await svgToPng(image));
+            return name;
+          },
+        },
+      ]}
+    />
+  );
+
   return (
     <div className="timeline-page plan-timeline">
       <TimelineView
+        {...(onPosition
+          ? {
+              zoom: position?.zoom ?? 'weeks',
+              onZoom: (zoom: PlanZoom) => onPosition({ zoom: zoom === 'weeks' ? undefined : zoom }),
+            }
+          : {})}
         data={data}
         reschedule={client.reschedule}
         reload={load}
@@ -118,13 +191,16 @@ export function PlanTimelinePage({
         truncatedText={t('plans.truncated', { count: data.items.length })}
         dependencies={dependencies}
         tools={
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => document.getElementById(listId)?.focus()}
-          >
-            {t('dependencies.goTo')}
-          </button>
+          <>
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => document.getElementById(listId)?.focus()}
+            >
+              {t('dependencies.goTo')}
+            </button>
+            {download}
+          </>
         }
       />
       <DependencyList dependencies={dependencies} headingId={listId} />

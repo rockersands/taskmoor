@@ -1062,6 +1062,17 @@ export const EVENT_TYPES = {
     }),
   },
   'plan.updated': { subject: 'plan', payload: z.object({ changes }) },
+  // A copy of a plan (PLN-014): the sources and teams it took, and how many it left out, a number.
+  'plan.duplicated': {
+    subject: 'plan',
+    payload: z.object({
+      name: z.string(),
+      from: id,
+      sources: z.array(z.string()),
+      teams: z.array(id),
+      hiddenSources: z.number().int().nonnegative(),
+    }),
+  },
   'plan.deleted': { subject: 'plan', payload: z.object({ name: z.string() }) },
   /**
    * Capacity set, changed or removed in a plan (PLN-005, PLN-009; ADR-122 stage 3): for a team

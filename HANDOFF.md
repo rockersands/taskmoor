@@ -26,7 +26,12 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   releases across tracks (ADR-122 stage 4, PLN-007 moved to M1, migration 0106). Next free
   migration is 0107. It needs the full gate, an independent review and the 100,000-ticket bar
   (`TASKMOOR_LARGE_PLANS=1`), none of them run. ADR-122 holds eight questions for the user; the
-  build takes the first answer each. T-089g on the same branch is still only designed.
+  build takes the first answer each.
+- **T-089g is built, not merged** (2026-11-04, on the same branch): copy a plan, a link to a view,
+  each view's CSV and the Timeline as a PNG (ADR-122 stage 8, PLN-014, no migration, one event,
+  `plan.duplicated`, and two routes). Not run: the full gate, an independent review, the stories in a
+  browser, the 100,000-ticket bar, a real phone's canvas, and a person looking at the picture. The
+  ADR holds six questions for the user, built with the first answer each.
 
 - **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
   the import results and all the front work so far. Each merge passed a full gate.

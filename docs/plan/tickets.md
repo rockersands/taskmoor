@@ -140,7 +140,7 @@ reported, and the coordinator checked that it was pushed.
 | T-089d | Multi-track: program board with live editing | To do | In 1.0 |
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
 | T-089f | Multi-track: auto-scheduler | To do | In 1.0 |
-| T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | To do | In 1.0 |
+| T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | Built, not merged | On `wave8/multi-track-stages` (ADR-122 stage 8, PLN-014, no migration): a private copy of what the maker sees, a link holding the view's filters and position, each view's CSV, a Timeline PNG of up to 400 rows; hidden work only counted, formula-safe cells. Waits for the coordinator's gate and review; ADR-122 lists six questions for the user, built with the first answer each |
 | T-089h | A "Your tracks" section at the top of Home | Done | On `main`; shows tracks the person can see, as the track list cannot yet say which they belong to |
 | T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 

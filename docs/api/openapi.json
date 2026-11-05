@@ -16285,6 +16285,92 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/plans/{id}/duplicate": {
+      "post": {
+        "operationId": "internal-post-plans-by-id-duplicate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/plans/{id}/export": {
+      "get": {
+        "operationId": "internal-get-plans-by-id-export",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/plans/{id}/releases": {
       "get": {
         "operationId": "internal-get-plans-by-id-releases",

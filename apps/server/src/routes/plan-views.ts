@@ -11,6 +11,7 @@ import {
   LISTED,
   MAX_CALENDAR_DAYS,
   type PlanFilters,
+  timelineQuery,
 } from '../plans/model';
 import {
   browsedTracks,
@@ -20,6 +21,7 @@ import {
   sourceRows,
 } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
+import { countBulkExport } from '../security/alerts';
 import { planVisible } from './plans';
 import { searchRefusal } from './search';
 
@@ -44,6 +46,9 @@ import { searchRefusal } from './search';
  * - `GET /api/v1/plans/:id/calendar?from=&to=`: the tickets with a start or due day in the
  *   range (at most 100 days, at most 10,000 tickets by due day), with the sprints and releases of
  *   their tracks that overlap it.
+ *
+ * With `export=true` the Timeline and the Calendar answer the same, read fresh for a file on the
+ * page (PLN-014), and the read counts as a bulk export for the alert rule (ADR-109).
  *
  * Rescheduling is the ticket's own change (`PATCH /tickets/:key`), with its permission
  * ("Schedule tickets"), history and events.
@@ -366,14 +371,16 @@ export function registerPlanViewRoutes(
   });
 
   app.get('/api/v1/plans/:id/timeline', async (request, reply) => {
-    const f = filterQuery.safeParse(request.query ?? {});
+    const f = timelineQuery.safeParse(request.query ?? {});
     if (!f.success)
       return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(f.error) });
+    const { export: exporting, ...filters } = f.data;
     try {
-      const opened = await open(request, reply, f.data);
+      const opened = await open(request, reply, filters);
       if (!opened) return reply;
       const { plan, tickets } = opened;
       const ws = request.workspaceId;
+      if (exporting) await countBulkExport(db, ws, request.user?.id as number);
       const none = {
         plan,
         query: tickets.query,
@@ -387,7 +394,7 @@ export function registerPlanViewRoutes(
       const where = tickets.where;
       const unfiltered = tickets.unfiltered;
       if (!where || !unfiltered) return none;
-      const filtered = filterText(f.data) !== null;
+      const filtered = filterText(filters) !== null;
       // The viewer's tickets of any track, for roll-ups beyond the plan.
       const seen = await compileQuery(db, tickets.scope, '', new Date());
       const answer = await readOnly(db, timeoutMs, async (trx) => {
@@ -536,7 +543,7 @@ export function registerPlanViewRoutes(
   app.get('/api/v1/plans/:id/calendar', async (request, reply) => {
     const q = calendarQuery.safeParse(request.query ?? {});
     if (!q.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { from, to, ...filters } = q.data;
+    const { from, to, export: exporting, ...filters } = q.data;
     const span = (Date.parse(to) - Date.parse(from)) / 86_400_000;
     if (span < 0 || span > MAX_CALENDAR_DAYS) {
       return reply.code(400).send({ error: 'invalid_request', detail: 'range' });
@@ -545,6 +552,7 @@ export function registerPlanViewRoutes(
       const opened = await open(request, reply, filters);
       if (!opened) return reply;
       const { plan, tickets } = opened;
+      if (exporting) await countBulkExport(db, request.workspaceId, request.user?.id as number);
       const none = {
         plan,
         query: tickets.query,

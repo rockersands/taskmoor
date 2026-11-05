@@ -8,7 +8,10 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import type { PlanRelease, PlanReleases } from './client';
+import { DownloadMenu } from './DownloadMenu';
+import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
+import { releasesCsv } from './planExport';
 
 /**
  * A plan's Releases tab (T-089c; PLN-007; ADR-122 stage 4): the releases of the plan's tracks the
@@ -17,7 +20,7 @@ import type { PlanSectionProps } from './PlanSummaryPage';
  * and what is hidden from the viewer only as a count. Only the track filter applies, and the page
  * says so; a ticket-level grant adds no row. On a phone each group is a card with a list inside.
  */
-export function PlanReleasesPage({ id, plan, filters, client }: PlanSectionProps) {
+export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSectionProps) {
   const t = useT();
   const domId = useId();
   const endText = useEndText();
@@ -84,6 +87,26 @@ export function PlanReleasesPage({ id, plan, filters, client }: PlanSectionProps
   const nothing = data.crossTrack.length === 0 && data.tracks.length === 0;
   return (
     <div className="plan-releases">
+      <div className="plan-view-tools">
+        <DownloadMenu
+          items={[
+            {
+              key: 'csv',
+              label: t('plans.download.csv'),
+              make: async () => {
+                const name = fileName(
+                  plan.name,
+                  'releases',
+                  now().toISOString().slice(0, 10),
+                  'csv',
+                );
+                saveBlob(name, new Blob([releasesCsv(t, data)], { type: 'text/csv' }));
+                return name;
+              },
+            },
+          ]}
+        />
+      </div>
       {otherFilters && <p className="board-hint">{t('plans.releases.filtersNote')}</p>}
       {nothing && (
         <EmptyState title={t('plans.releases.none')}>

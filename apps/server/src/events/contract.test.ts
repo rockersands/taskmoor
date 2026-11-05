@@ -3583,6 +3583,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/plans/:id/duplicate',
+      expect: 'plan.duplicated',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/duplicate`,
+          payload: { name: 'Contract plan, copied' },
+        }),
+    },
+    {
       route: 'PUT /api/v1/plans/:id/capacity',
       expect: 'plan.capacity_set',
       // The plan plans with a team first (its own events, before the one counted here).

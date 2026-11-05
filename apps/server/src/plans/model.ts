@@ -110,8 +110,35 @@ export const filterShape = {
 export const filterQuery = z.object(filterShape).strict();
 export type PlanFilters = z.infer<typeof filterQuery>;
 
+/** Reading a view for a file (PLN-014): the same answer, and it counts as a bulk export. */
+const exporting = { export: z.literal('true').optional() };
+export const timelineQuery = z.object({ ...filterShape, ...exporting }).strict();
+
+/** A copy of a plan (PLN-014): only its name is asked for. */
+export const duplicateBody = z.object({ name }).strict();
+
+/** The orders the List offers, and so its file (PLN-014), as the query language says them. */
+export const EXPORT_SORTS = {
+  created: 'created DESC',
+  updated: 'updated DESC',
+  due: 'due ASC',
+  priority: 'priority DESC',
+} as const;
+
+/** `GET /plans/:id/export`: the views' filters, the columns and the order of the List's file. */
+export const exportQuery = z
+  .object({
+    ...filterShape,
+    format: z.literal('csv').default('csv'),
+    columns: z.string().max(4000).optional(),
+    sort: z.enum(['created', 'updated', 'due', 'priority']).default('created'),
+  })
+  .strict();
+
 const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
-export const calendarQuery = z.object({ ...filterShape, from: day, to: day }).strict();
+export const calendarQuery = z
+  .object({ ...filterShape, ...exporting, from: day, to: day })
+  .strict();
 /** The longest range a calendar asks for: the six weeks a month shows, and some room. */
 export const MAX_CALENDAR_DAYS = 100;
 

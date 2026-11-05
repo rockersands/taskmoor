@@ -1,0 +1,17 @@
+[
+  ["=1+1", "'=1+1"],
+  ["+1 555 0100", "'+1 555 0100"],
+  ["-3 days", "'-3 days"],
+  ["@team", "'@team"],
+  ["\tx", "'\tx"],
+  ["\rx", "\"'\rx\""],
+  ["=HYPERLINK(\"http://example.test\")", "\"'=HYPERLINK(\"\"http://example.test\"\")\""],
+  ["a,b", "\"a,b\""],
+  ["say \"hi\"", "\"say \"\"hi\"\"\""],
+  ["two\nlines", "\"two\nlines\""],
+  ["plain", "plain"],
+  ["", ""],
+  [null, ""],
+  [-3, "-3"],
+  [0, "0"]
+]

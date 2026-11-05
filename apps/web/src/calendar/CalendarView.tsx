@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
   useId,
@@ -73,6 +74,8 @@ export interface CalendarViewProps {
   /** The month shown, as the day number of its first day. */
   month: number;
   onMonth: (month: number) => void;
+  /** More controls beside the month's. */
+  tools?: ReactNode;
   /** New days for a ticket through the ticket route; only the days given change. */
   move: (
     ticketKey: string,
@@ -103,6 +106,7 @@ export function CalendarView({
   data,
   month,
   onMonth,
+  tools,
   move: moveTicket,
   reload,
   now,
@@ -299,6 +303,7 @@ export function CalendarView({
         <button type="button" className="button-secondary" onClick={() => onMonth(monthOf(today))}>
           {t('calendar.thisMonth')}
         </button>
+        {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
         {t('calendar.hint')}

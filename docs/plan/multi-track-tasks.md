@@ -128,7 +128,7 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | MT-05 | T-089d | Program board, edited in real time with the existing sync and Yjs tools where they fit | PLN-008 | next free | To do |
 | MT-06 | T-089e | Draft changes and scenarios | PLN-002, PLN-003 | next free | To do |
 | MT-07 | T-089f | Auto-scheduler, previewed as draft changes | PLN-004 | none expected | To do |
-| MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | our own wording | none expected | To do |
+| MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | PLN-014 | none | Built on `wave8/multi-track-stages`, waiting for the coordinator's gate and merge |
 
 PLN-010 (hierarchy grid) and PLN-011 (baselines) are not in this scope unless the user says so.
 Migration numbers: take the next free one on `main` when each stage starts (MT-03 took 0102).

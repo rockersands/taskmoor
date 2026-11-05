@@ -1,0 +1,4 @@
+Key,Summary,Type,Track,Stage,Start,Due
+SHOP-2,Build the shop page,Feature,SHOP,Active,2026-11-02,2026-11-10
+SHOP-3,Take payments,Feature,SHOP,New,2026-11-09,2026-11-20
+OPS-4,Scale the servers,Feature,OPS,New,2026-11-12,2026-11-18

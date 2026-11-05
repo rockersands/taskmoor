@@ -221,6 +221,7 @@ PLN-010,PLN,Hierarchy grid,M2,Must,Structure app; JXL app
 PLN-011,PLN,Gantt baselines and resource levelling,M4,Should,OpenProject; BigPicture app
 PLN-012,PLN,"Plan views, grouping, filters and rescheduling",M1,Must,Jira Premium; exceeds Jira (one value per filter at first)
 PLN-013,PLN,Dependency options,M2,Must,Jira Premium
+PLN-014,PLN,"Copying, linking and downloading a plan",M1,Must,Exceeds Jira (own wording)
 TIM-001,TIM,Estimates and time entries,M1,Must,Jira Free (needed by the M1 importer)
 TIM-002,TIM,Timers,M2,Should,YouTrack; Jira Free events
 TIM-003,TIM,Timesheets and approvals,M2,Must,Tempo Timesheets app

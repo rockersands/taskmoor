@@ -184,6 +184,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/plans/:id']).toBe('read');
     expect(classes['PATCH /api/v1/plans/:id']).toBe('write');
     expect(classes['DELETE /api/v1/plans/:id']).toBe('write');
+    // Copying a plan and the List's file (PLN-014).
+    expect(classes['POST /api/v1/plans/:id/duplicate']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/export']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/choices']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/summary']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/timeline']).toBe('read');
