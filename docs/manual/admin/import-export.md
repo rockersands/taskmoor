@@ -340,7 +340,7 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `web_link_application_not_kept`, `web_link_text_cut`, `web_link_icon_dropped` | A web link's application name, an over-long text or an icon that is not a web address was left out |
 | `attachment_size_differs`, `attachment_folder_key_differs` | An attachment's file has another size than its row says (the file's is kept), or sits in another issue's folder |
 | `link_type_created` | A link type you did not have was made for the backup's links |
-| `board_filter_not_imported` (kind `board`) | A quick filter whose query does not translate: it names an app's field or function, a saved filter or a sprint by id, a custom field by a name several of the backup's fields have, or something the import left out. The detail names the filter and what it uses, for example `Commented (app): Unknown field "issueFunction"`. Add it again by hand if you need it |
+| `board_filter_not_imported` (kind `board`) | A quick filter whose query does not translate: it names an app's field or function, a saved filter or a sprint by id, a custom field by a name several of the backup's fields have when they arrived as different fields, or something the import left out. The detail names the filter and what it uses, for example `Commented (app): Unknown field "issueFunction"`. Add it again by hand if you need it |
 | `board_query_not_imported`, `board_sub_query_not_imported` | The board's filter or a Kanban board's sub-filter did not translate: the board shows its whole track instead, or has no sub-filter |
 | `board_query_narrowed_to_track` | A board shows one track, and this board's query could reach others, such as `track IN (PAY, WEB)`. The board arrives on `track = KEY`, its first track, and shows only that. The detail names the board and gives the source's query, so you can save it as a search or a dashboard |
 | `field_name_taken` | A field of the backup has the name of a field here of another type, such as the number field `Points` every site starts with. Its values arrive in a field called `<name> (imported)`; rename either one afterwards. A field of the same type joins the one here. |
@@ -394,8 +394,11 @@ A board's filter, its sub-filter and its quick filters name custom fields the sa
 imported field's `cf[<id>]`, whether the backup's query used the id or the name. So a query of
 the backup that says `Points` reads the field its own `Points` became, such as "Points
 (imported)" when the backup's field holds text, and never the number field `Points` every site
-starts with. When the backup has several custom fields of that name, the query is not kept and
-the warning says `query_names_ambiguous_field` with the name.
+starts with. When the backup has several custom fields of that name, the query reads the field
+they became here, which is one field when they have the same type (each joins the first). When
+they arrived as different fields, such as `Team` and "Team (imported)", the query is not kept, since
+which one the backup read cannot be told, and the warning says `query_names_ambiguous_field` with
+the name. A saved search keeps such a query and says `ambiguous_field` in either case.
 
 Under "Not imported", the report counts each part of the backup the importer does not handle
 yet: saved filters, other kinds of associations, rows of the agile plugin that name a board,

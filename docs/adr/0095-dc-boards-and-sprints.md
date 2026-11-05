@@ -60,8 +60,13 @@ releases and areas are M1-014's.
   custom fields with each name its queries use, and the mapper puts `cf[<id>]` in place of a name
   no system field has. Left as a name, it would be read against the target's fields, where it can
   be another field: the Points every workspace starts with, when the backup's own Points holds
-  text and arrived as "Points (imported)". A name several of the backup's fields have is refused
-  (`query_names_ambiguous_field`), as saved filters refuse it (ADR-096). Then the loader binds
+  text and arrived as "Points (imported)". A name several of the backup's fields have stays a
+  name, and the command lists those fields with it: a field joins one here of its name and type,
+  so two "Team" select fields usually become one, and the loader then names that one field. Only
+  when they became different fields (one of them arrived as "Team (imported)", say) does the
+  loader leave the query out (`query_names_ambiguous_field` with the name), since which one the
+  source read cannot be told. Saved filters refuse such a name in either case (ADR-096): they are
+  kept with the problem, where a board's query is left out. Then the loader binds
   every query as a board would read it with no viewer (a viewer id nobody has, so
   `currentUser()` resolves and finds no one); a query that does not resolve (an app's field or
   function, a value that did not import) is left out with a warning that names the filter and

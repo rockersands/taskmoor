@@ -81,6 +81,34 @@ function activeObjects(rows: Record<string, (string | number | boolean | null)[]
   return `${out.join('\n')}\n`;
 }
 
+/** A hand-written backup's custom fields, its board's queries and its saved filters. */
+interface Backup {
+  /** Id, name and type key. */
+  fields: [string, string, string][];
+  /** The board's filter, for the track with the given key. */
+  filter: (key: string) => string;
+  subQuery: string;
+  /** Name and query. */
+  quickFilters: [string, string][];
+  /** Name and query, besides the board's filter. */
+  savedFilters: [string, string][];
+}
+
+/** A backup whose Points field (10100) has the given type, named by name and by id. */
+const pointsBackup = (type: string): Backup => ({
+  fields: [['10100', 'Points', type]],
+  filter: (key) => `project = ${key} AND Points is not EMPTY ORDER BY Rank ASC`,
+  subQuery: 'Points is not EMPTY OR fixVersion is EMPTY',
+  quickFilters: [
+    ['Pointed', 'points IS NOT EMPTY'],
+    ['Pointed by id', 'cf[10100] IS NOT EMPTY'],
+  ],
+  savedFilters: [
+    ['Pointed by name', '"Points" is not EMPTY ORDER BY Points DESC'],
+    ['Pointed by id', 'cf[10100] is not EMPTY'],
+  ],
+});
+
 /**
  * A backup's custom field whose name the target already gives a field of another kind: the
  * Points every workspace starts with (migration 0095). It arrives as "Points (imported)"
@@ -102,18 +130,24 @@ describe('Data Center backup import: queries naming a field that arrived under a
       headers: { ...(options.headers ?? {}), cookie },
     });
 
-  /** Imports a hand-written backup whose Points field has the given type. */
-  async function importBackup(file: string, key: string, pointsType: string) {
-    const filter = `project = ${key} AND Points is not EMPTY ORDER BY Rank ASC`;
+  /** Imports a hand-written backup with the given custom fields, board queries and filters. */
+  async function importBackup(file: string, key: string, backup: Backup) {
+    const customFields = backup.fields.map(
+      ([id, name, type]) =>
+        `<CustomField id="${id}" cfname="${xmlText(name)}" customfieldtypekey="${type}"/>`,
+    );
+    const filters = backup.savedFilters.map(
+      ([name, query], i) =>
+        `<SearchRequest id="${i + 2}" name="${xmlText(name)}" author="ana" request="${xmlText(query)}"/>`,
+    );
     const entities = `<?xml version="1.0" encoding="UTF-8"?>
 <entity-engine-xml>
   <ApplicationUser id="1" userKey="ana" lowerUserName="ana"/>
-  <CustomField id="10100" cfname="Points" customfieldtypekey="${pointsType}"/>
+  ${customFields.join('\n  ')}
   <Directory id="1" directoryName="Local" active="1" directoryPosition="0"/>
   <Project id="10" name="Points ${key}" key="${key}" lead="ana" counter="0" projecttype="software"/>
-  <SearchRequest id="1" name="Board filter" author="ana" request="${xmlText(filter)}"/>
-  <SearchRequest id="2" name="Pointed by name" author="ana" request="${xmlText('"Points" is not EMPTY ORDER BY Points DESC')}"/>
-  <SearchRequest id="3" name="Pointed by id" author="ana" request="cf[10100] is not EMPTY"/>
+  <SearchRequest id="1" name="Board filter" author="ana" request="${xmlText(backup.filter(key))}"/>
+  ${filters.join('\n  ')}
   <Status id="1" sequence="1" name="To do" statuscategory="2"/>
   <User id="1" directoryId="1" userName="ana" lowerUserName="ana" active="1" displayName="Ana" emailAddress="ana@${key.toLowerCase()}.test"/>
 </entity-engine-xml>
@@ -122,11 +156,15 @@ describe('Data Center backup import: queries naming a field that arrived under a
       AO_60DB71_RAPIDVIEW: [[1, `Board ${key}`, 'ana', 1, false]],
       AO_60DB71_COLUMN: [[1, 'To do', 0, 1, null, null]],
       AO_60DB71_COLUMNSTATUS: [[1, 1, 0, '1']],
-      AO_60DB71_QUICKFILTER: [
-        [1, 'Pointed', 'points IS NOT EMPTY', '', 0, 1],
-        [2, 'Pointed by id', 'cf[10100] IS NOT EMPTY', '', 1, 1],
-      ],
-      AO_60DB71_SUBQUERY: [[1, 'Points is not EMPTY OR fixVersion is EMPTY', 1]],
+      AO_60DB71_QUICKFILTER: backup.quickFilters.map(([name, query], i) => [
+        i + 1,
+        name,
+        query,
+        '',
+        i,
+        1,
+      ]),
+      AO_60DB71_SUBQUERY: [[1, backup.subQuery, 1]],
     });
     await zipOf({ [ENTITIES_FILE]: entities, [ACTIVE_OBJECTS_FILE]: ao }, join(importDir, file));
     const started = await as({
@@ -149,13 +187,14 @@ describe('Data Center backup import: queries naming a field that arrived under a
     const report = fidelityReport.parse(
       (await as({ method: 'GET', url: `/api/v1/admin/imports/${run.id}/report` })).json().report,
     );
-    const field = await database.db
+    // The target field each of the backup's custom fields became, by the backup's id.
+    const imported = await database.db
       .selectFrom('import_external_id')
-      .select('target_id')
+      .select(['source_id', 'target_id'])
       .where('source_system', '=', key.toLowerCase())
       .where('entity_kind', '=', 'field')
-      .where('source_id', '=', '10100')
-      .executeTakeFirstOrThrow();
+      .execute();
+    const fields = Object.fromEntries(imported.map((f) => [f.source_id, Number(f.target_id)]));
     const board = await database.db
       .selectFrom('board')
       .innerJoin('track', 'track.id', 'board.location_track_id')
@@ -169,14 +208,14 @@ describe('Data Center backup import: queries naming a field that arrived under a
       .where('app_user.email', '=', `ana@${key.toLowerCase()}.test`)
       .orderBy('saved_search.name')
       .execute();
-    return { report, field: Number(field.target_id), board, saved };
+    return { report, fields, field: fields['10100'] ?? 0, board, saved };
   }
 
+  /** The board queries the run left out, mapper's and loader's (the mapping lists no boards). */
   const boardWarnings = (report: FidelityReport) =>
-    report.mapping
-      .filter((m) => m.kind === 'board')
-      .flatMap((m) => m.warnings)
-      .filter((w) => w.includes('not_imported'));
+    report.warnings
+      .filter((w) => w.kind === 'board' && w.code.endsWith('_not_imported'))
+      .map((w) => `${w.code}: ${w.detail}`);
 
   beforeAll(async () => {
     importDir = await mkdtemp(join(tmpdir(), 'taskmoor-dc-points-'));
@@ -217,7 +256,11 @@ describe('Data Center backup import: queries naming a field that arrived under a
       .where('name', '=', 'Points')
       .where('track_id', 'is', null)
       .executeTakeFirstOrThrow();
-    const { report, field, board, saved } = await importBackup('text.zip', 'TXT', TEXT_FIELD);
+    const { report, field, board, saved } = await importBackup(
+      'text.zip',
+      'TXT',
+      pointsBackup(TEXT_FIELD),
+    );
     const imported = await database.db
       .selectFrom('field')
       .select(['name', 'type'])
@@ -254,13 +297,13 @@ describe('Data Center backup import: queries naming a field that arrived under a
     });
     // A name no custom field of the backup has is left for the board loader to check.
     expect(translateQuery('Mood ~ calm', named)).toEqual({ query: 'Mood ~ calm', fields: [] });
-    // Several custom fields of one name: which one the source read cannot be told.
-    expect(translateQuery('Twice IS EMPTY', named)).toEqual({
-      query: null,
-      problem: 'query_names_ambiguous_field',
-      detail: 'Twice',
+    // Several custom fields of one name: the name stays, with their ids, for the loader, which
+    // knows whether the import made them one field.
+    expect(translateQuery('Twice IS EMPTY AND Points = 1', named)).toEqual({
+      query: 'Twice IS EMPTY AND cf[10100] = 1',
+      fields: ['10100'],
+      shared: { twice: ['10300', '10301'] },
     });
-    // The board keeps the rest and says which quick filter it left out, and why (IMP-006 (2)).
     const mapped = mapBoard({
       id: '1',
       name: 'Board',
@@ -275,16 +318,108 @@ describe('Data Center backup import: queries naming a field that arrived under a
       fieldsNamed: named,
     });
     expect(mapped).toMatchObject({
-      command: { query: 'track = PTS AND cf[10100] > 3', boardFilters: [] },
-      warnings: [
-        { code: 'board_filter_not_imported', detail: 'Both: query_names_ambiguous_field (Twice)' },
-        { code: 'board_without_columns' },
-      ],
+      command: {
+        query: 'track = PTS AND cf[10100] > 3',
+        boardFilters: [{ name: 'Both', query: 'Twice IS EMPTY' }],
+        fields: [{ kind: 'field', id: '10100' }],
+        sharedNames: [
+          {
+            name: 'twice',
+            fields: [
+              { kind: 'field', id: '10300' },
+              { kind: 'field', id: '10301' },
+            ],
+          },
+        ],
+      },
+      warnings: [{ code: 'board_without_columns' }],
     });
+    // A board whose queries name no shared name says nothing of it.
+    expect(
+      mapBoard({
+        id: '2',
+        name: 'Board',
+        scrum: false,
+        filter: { id: '9', name: 'f', query: 'project = PTS AND Points > 3' },
+        filterId: '9',
+        projects: ['10'],
+        unknownProjects: [],
+        subQuery: null,
+        columns: [],
+        quickFilters: [],
+        fieldsNamed: named,
+      }),
+    ).not.toHaveProperty('command.sharedNames');
+  });
+
+  /**
+   * Two custom fields of the backup called "Squad": a board's queries that name it by name read
+   * the one field the import made of them both, as they read it in the source; when the import
+   * made two fields of them, which one a query read cannot be told, and the query is left out.
+   */
+  const squadBackup = (first: string, second: string): Backup => ({
+    fields: [
+      ['10200', 'Squad', first],
+      ['10201', 'Squad', second],
+    ],
+    filter: (key) => `project = ${key} AND Squad is not EMPTY`,
+    subQuery: 'squad IS EMPTY OR fixVersion is EMPTY',
+    quickFilters: [
+      ['Squadded', 'Squad IS NOT EMPTY'],
+      ['Second by id', 'cf[10201] IS EMPTY'],
+    ],
+    savedFilters: [],
+  });
+
+  it('[IMP-006] [IMP-005] keeps board queries naming a name two fields shared when they became one field', async () => {
+    const { report, fields, board } = await importBackup(
+      'squad-one.zip',
+      'SQO',
+      squadBackup(TEXT_FIELD, TEXT_FIELD),
+    );
+    const squad = fields['10200'];
+    expect(squad).toBeDefined();
+    expect(fields['10201']).toBe(squad);
+    expect(boardWarnings(report)).toEqual([]);
+    expect(board.filter_query).toBe(`track = SQO AND cf[${squad}] IS NOT EMPTY`);
+    expect(board.sub_filter_query).toBe(`cf[${squad}] IS EMPTY OR targetRelease IS EMPTY`);
+    const filters = board.board_filters as unknown as BoardFilter[];
+    expect(filters.map((f) => [f.name, f.query])).toEqual([
+      ['Squadded', `cf[${squad}] IS NOT EMPTY`],
+      ['Second by id', `cf[${squad}] IS EMPTY`],
+    ]);
+  });
+
+  it('[IMP-006] leaves out board queries naming a name two fields shared when they became two', async () => {
+    const { report, fields, board } = await importBackup(
+      'squad-two.zip',
+      'SQT',
+      squadBackup(TEXT_FIELD, NUMBER_FIELD),
+    );
+    const [text, number] = [fields['10200'], fields['10201']];
+    expect(text).toBeDefined();
+    expect(number).toBeDefined();
+    expect(number).not.toBe(text);
+    expect(boardWarnings(report).sort()).toEqual([
+      'board_filter_not_imported: Squadded: query_names_ambiguous_field (Squad)',
+      'board_query_not_imported: query_names_ambiguous_field (Squad)',
+      'board_sub_query_not_imported: query_names_ambiguous_field (squad)',
+    ]);
+    // The board shows its track; what names the field by id is kept.
+    expect(board.filter_query).toBe('track = SQT');
+    expect(board.sub_filter_query).toBeNull();
+    const filters = board.board_filters as unknown as BoardFilter[];
+    expect(filters.map((f) => [f.name, f.query])).toEqual([
+      ['Second by id', `cf[${number}] IS EMPTY`],
+    ]);
   });
 
   it("[IMP-006] [IMP-005] reads the seeded Points when the backup's field joined it", async () => {
-    const { field, board, saved } = await importBackup('number.zip', 'NUM', NUMBER_FIELD);
+    const { field, board, saved } = await importBackup(
+      'number.zip',
+      'NUM',
+      pointsBackup(NUMBER_FIELD),
+    );
     const linked = await database.db
       .selectFrom('field')
       .select(['name', 'type'])

@@ -509,6 +509,12 @@ export interface BoardCommand {
    * ids in their place (M1-093).
    */
   fields?: Ref[];
+  /**
+   * Names the queries use that several custom fields of the source have (in lower case), with
+   * those fields (T-195): the loader names a name by the one field here they all became, and
+   * leaves out a query that names it when they became different fields.
+   */
+  sharedNames?: { name: string; fields: Ref[] }[];
 }
 
 /**
