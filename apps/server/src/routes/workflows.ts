@@ -347,10 +347,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const completedId = await closingReasonId(trx, actor.workspaceId);
     if (completedId === null) return [];
     const changed: number[] = [];
-    for (const w of await holdCurrentVersions(
+    // The status is held, and a ticket write into it waits for it while holding its workflow
+    // (key share): a lock that waited for ticket writes here could deadlock with one.
+    const held = await holdCurrentVersions(
       trx,
       rows.map((r) => r.id),
-    )) {
+      'no key update',
+    );
+    for (const w of held) {
       const published = followingStage(w.published, statusId, closes, completedId);
       const draft = w.draft && followingStage(w.draft, statusId, closes, completedId);
       if (!published && !draft) continue;

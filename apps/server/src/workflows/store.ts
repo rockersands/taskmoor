@@ -173,10 +173,15 @@ export interface CurrentVersions {
   draft: WorkflowDefinition | null;
 }
 
-/** These workflows, by id, each row held until the transaction ends, with their current versions. */
+/**
+ * These workflows, by id, each row held until the transaction ends, with their current versions.
+ * `update` also waits for ticket writes on them, as a publish does; `no key update` lets them go
+ * on, for a rewrite that moves no ticket and holds a row a ticket write may wait for (a status).
+ */
 export async function holdCurrentVersions(
   trx: Transaction<Database>,
   ids: readonly number[],
+  lock: 'update' | 'no key update' = 'update',
 ): Promise<CurrentVersions[]> {
   if (ids.length === 0) return [];
   const held = await sql<{
@@ -186,7 +191,8 @@ export async function holdCurrentVersions(
     draft_version: number | null;
   }>`
     SELECT id, name, published_version, draft_version FROM workflow
-     WHERE id = ANY(${[...new Set(ids)]}::int[]) ORDER BY id FOR UPDATE`.execute(trx);
+     WHERE id = ANY(${[...new Set(ids)]}::int[]) ORDER BY id
+       FOR ${sql.raw(lock === 'update' ? 'UPDATE' : 'NO KEY UPDATE')}`.execute(trx);
   const out: CurrentVersions[] = [];
   for (const row of held.rows) {
     out.push({

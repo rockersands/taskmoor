@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -276,6 +277,37 @@ describe('free moving at its edges (WF-008)', () => {
       const unused = await newStatus('Parked', 'active');
       const alone = await patch(`/api/v1/statuses/${unused}`, { stage: 'closed' });
       expect(alone.statusCode, alone.body).toBe(200);
+    });
+
+    it('[WF-008] a stage change does not wait for a ticket write that holds the workflow', async () => {
+      const waiting = await newStatus('Waiting', 'active');
+      const id = await freeWorkflow('Held by a write', [status.New as number, waiting]);
+      // A ticket write holds its workflow (key share) and then waits for the status it moves
+      // into; the stage change holds that status, so it must not wait for the workflow in turn.
+      let release = () => {};
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let holding = () => {};
+      const held = new Promise<void>((resolve) => {
+        holding = resolve;
+      });
+      const writer = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM workflow WHERE id = ${id} FOR KEY SHARE`.execute(trx);
+        holding();
+        await released;
+      });
+      await held;
+      const changed = await Promise.race([
+        patch(`/api/v1/statuses/${waiting}`, { stage: 'closed' }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ]);
+      release();
+      await writer;
+      expect(changed?.statusCode, changed?.body).toBe(200);
+      expect(into((await view(id)).published.definition, waiting)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
     });
   });
 
