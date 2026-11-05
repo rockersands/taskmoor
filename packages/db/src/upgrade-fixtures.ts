@@ -1755,9 +1755,32 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   },
   '0105_close_reason_left_dangling': {
     tables: {
-      close_reason: 'workspace_id = 1',
+      close_reason: "workspace_id = 1 AND name = 'Completed'",
     },
     seed: async () => {},
+  },
+  '0106_cross_track_releases': {
+    tables: {
+      cross_track_release: `name = 'Seed release across tracks' AND end_rule = 'fixed_date'
+        AND release_date = DATE '2026-12-01'`,
+      cross_track_release_member: `cross_track_release_id =
+        (SELECT id FROM cross_track_release WHERE name = 'Seed release across tracks')`,
+    },
+    seed: async (db) => {
+      // One release across tracks, with a track's own release linked (ADR-122 stage 4).
+      await sql`INSERT INTO cross_track_release (workspace_id, owner_id, name, end_rule, release_date)
+        SELECT 1, id, 'Seed release across tracks', 'fixed_date', DATE '2026-12-01'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id)
+        SELECT 1, 'SEEDCTR', 'Seed release across tracks', id FROM access_policy
+         WHERE name = 'Seed policy'`.execute(db);
+      await sql`INSERT INTO release (workspace_id, track_id, name, sort_order)
+        SELECT 1, id, 'Seed linked release', 1 FROM track WHERE key = 'SEEDCTR'`.execute(db);
+      await sql`INSERT INTO cross_track_release_member
+          (workspace_id, cross_track_release_id, release_id, track_id)
+        SELECT 1, c.id, r.id, r.track_id FROM cross_track_release c, release r
+         WHERE c.name = 'Seed release across tracks' AND r.name = 'Seed linked release'`.execute(db);
+    },
   },
 };
 

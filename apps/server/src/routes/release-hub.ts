@@ -1,6 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { type Kysely, sql } from 'kysely';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
@@ -49,13 +49,65 @@ export type WarningCode =
   | 'open_found'
   | 'no_approvers'
   | 'approvals_waiting'
-  | 'approval_declined';
+  | 'approval_declined'
+  /** Its day differs from its release across tracks' (PLN-007): said in words, with Align. */
+  | 'cross_track_out_of_step';
 
 interface Warning {
   code: WarningCode;
   count: number;
   /** The search that finds the tickets concerned; absent for approvals. */
   query?: string;
+}
+
+type Db = Kysely<Database> | Transaction<Database>;
+
+/** A query's count as the search page would say it, read as the viewer. */
+export async function countQuery(
+  db: Kysely<Database>,
+  timeoutMs: number,
+  request: FastifyRequest,
+  scope: Scope,
+  q: string,
+): Promise<Counted> {
+  const { compiled } = await prepareSearch({
+    db,
+    workspaceId: scope.ws,
+    catalog: scope.catalog,
+    catalogue: scope.catalogue,
+    filter: scope.filter,
+    q,
+    ...searchPerson(request),
+  });
+  const n = await readOnly(db, timeoutMs, async (trx) => {
+    const { rows } = await compiled.count(COUNT_CAP + 1).execute(trx);
+    return rows[0]?.n ?? 0;
+  });
+  return { query: q, count: Math.min(n, COUNT_CAP), exact: n <= COUNT_CAP };
+}
+
+/** The first tickets of a condition in rank order, and whether there are more. */
+export async function listTicketsWhere(trx: Db, where: RawBuilder<boolean>) {
+  const { rows } = await sql<{
+    id: number;
+    key: string;
+    summary: string;
+    type: string;
+    status: string;
+    stage: 'new' | 'active' | 'closed';
+    assignee: string | null;
+  }>`
+    SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
+           s.name AS status, s.stage, u.name AS assignee
+      FROM ticket k
+      JOIN track t ON t.id = k.track_id
+      JOIN status s ON s.id = k.status_id
+      JOIN ticket_type y ON y.id = k.ticket_type_id
+      LEFT JOIN app_user u ON u.id = k.assignee_id
+     WHERE ${where}
+     ORDER BY k.rank
+     LIMIT ${LISTED + 1}`.execute(trx);
+  return { rows: rows.slice(0, LISTED), truncated: rows.length > LISTED };
 }
 
 /** Markdown's own characters in text taken from tickets, escaped so they read as written. */
@@ -115,22 +167,8 @@ export function registerReleaseHubRoutes(
   }
 
   /** A query's count as the search page would say it. */
-  async function count(request: FastifyRequest, scope: Scope, q: string): Promise<Counted> {
-    const { compiled } = await prepareSearch({
-      db,
-      workspaceId: scope.ws,
-      catalog: scope.catalog,
-      catalogue: scope.catalogue,
-      filter: scope.filter,
-      q,
-      ...searchPerson(request),
-    });
-    const n = await readOnly(db, timeoutMs, async (trx) => {
-      const { rows } = await compiled.count(COUNT_CAP + 1).execute(trx);
-      return rows[0]?.n ?? 0;
-    });
-    return { query: q, count: Math.min(n, COUNT_CAP), exact: n <= COUNT_CAP };
-  }
+  const count = (request: FastifyRequest, scope: Scope, q: string) =>
+    countQuery(db, timeoutMs, request, scope, q);
 
   app.get('/api/v1/releases/:id/overview', async (request, reply) => {
     const release = await visibleRelease(request, reply);
@@ -177,32 +215,23 @@ export function registerReleaseHubRoutes(
         else if (waiting > 0) warnings.push({ code: 'approvals_waiting', count: waiting });
       }
       const where = await compileQuery(db, scope, base, new Date());
-      const tickets = await readOnly(
-        db,
-        timeoutMs,
-        async (trx) =>
-          (
-            await sql<{
-              id: number;
-              key: string;
-              summary: string;
-              type: string;
-              status: string;
-              stage: 'new' | 'active' | 'closed';
-              assignee: string | null;
-            }>`
-            SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
-                   s.name AS status, s.stage, u.name AS assignee
-              FROM ticket k
-              JOIN track t ON t.id = k.track_id
-              JOIN status s ON s.id = k.status_id
-              JOIN ticket_type y ON y.id = k.ticket_type_id
-              LEFT JOIN app_user u ON u.id = k.assignee_id
-             WHERE ${where}
-             ORDER BY k.rank
-             LIMIT ${LISTED + 1}`.execute(trx)
-          ).rows,
-      );
+      const tickets = await readOnly(db, timeoutMs, (trx) => listTicketsWhere(trx, where));
+      // Upcoming with a day other than its release across tracks' fixed day (PLN-007). The track's
+      // administrators get Align, which is the release's own change.
+      const linked = await db
+        .selectFrom('cross_track_release_member as m')
+        .innerJoin('cross_track_release as c', 'c.id', 'm.cross_track_release_id')
+        .select(sql<string | null>`c.release_date::text`.as('date'))
+        .where('m.release_id', '=', release.id)
+        .executeTakeFirst();
+      if (
+        linked?.date &&
+        !shipped &&
+        release.archived_at === null &&
+        release.release_date !== linked.date
+      ) {
+        warnings.push({ code: 'cross_track_out_of_step', count: 1 });
+      }
       const self = request.user?.id;
       const mine = approvers.find((a) => a.user_id === self);
       const mayManage =
@@ -219,8 +248,8 @@ export function registerReleaseHubRoutes(
           comment: a.comment,
           decidedAt: a.decided_at?.toISOString() ?? null,
         })),
-        tickets: tickets.slice(0, LISTED),
-        truncated: tickets.length > LISTED,
+        tickets: tickets.rows,
+        truncated: tickets.truncated,
         viewer: {
           mayManage,
           // Whether the viewer is one of the approvers, and what they decided.

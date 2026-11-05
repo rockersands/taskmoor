@@ -327,7 +327,15 @@ export async function writePersonalData(
     .where('user_id', '=', userId)
     .orderBy('section')
     .execute();
-  const [preference, notificationSettings, properties, savedSearches, plans, capacity] =
+  const [
+    preference,
+    notificationSettings,
+    properties,
+    savedSearches,
+    plans,
+    capacity,
+    crossTrackReleases,
+  ] =
     await Promise.all([
       db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
       db
@@ -367,6 +375,14 @@ export async function writePersonalData(
         .orderBy('plan_id')
         .orderBy('period_start')
         .execute(),
+      // Releases across tracks they own (PLN-007): what they named them, not the work they hold.
+      db
+        .selectFrom('cross_track_release')
+        .select(['name', 'description', 'end_rule', 'release_date', 'created_at'])
+        .where('workspace_id', '=', ws)
+        .where('owner_id', '=', userId)
+        .orderBy('id')
+        .execute(),
     ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
@@ -405,6 +421,13 @@ export async function writePersonalData(
         period: c.period_start,
         amount: Number(c.amount),
         note: c.note,
+      })),
+      crossTrackReleases: crossTrackReleases.map((c) => ({
+        name: c.name,
+        description: c.description,
+        endRule: c.end_rule,
+        date: c.release_date,
+        createdAt: iso(c.created_at),
       })),
     }),
   );

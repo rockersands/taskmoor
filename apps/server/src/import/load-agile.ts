@@ -12,6 +12,7 @@ import {
 import { confinedTrackKey, trackBoardQuery } from '../boards/one-per-track';
 import { SearchError } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
+import { SEES_EVERY } from '../search/cross-track';
 import { DEFAULT_SPRINT_SETTINGS } from '../sprints/model';
 import {
   existingTarget,
@@ -223,6 +224,7 @@ async function unresolved(ctx: LoadContext, text: string): Promise<string | null
           timeZone: null,
           sessionId: null,
           allowedTracks: async () => 'all' as const,
+          crossTrackSight: SEES_EVERY,
         },
       };
       scopes.set(ctx, scope);

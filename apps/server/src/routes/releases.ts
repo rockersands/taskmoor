@@ -114,10 +114,21 @@ const today = () => new Date().toISOString().slice(0, 10);
  * Releases with their target tickets counted; `visible` limits the counts to the tickets a
  * viewer may see (QRY-008 (1), M1-020), as the ticket filter's predicate on `k`.
  */
-function releaseQuery(db: Db, workspaceId: number, visible: RawBuilder<boolean> = sql`true`) {
+export function releaseQuery(
+  db: Db,
+  workspaceId: number,
+  visible: RawBuilder<boolean> = sql`true`,
+) {
   return db
     .selectFrom('release as r')
+    // The release across tracks it is in, at most one (PLN-007).
+    .leftJoin('cross_track_release_member as ctm', 'ctm.release_id', 'r.id')
+    .leftJoin('cross_track_release as ctr', 'ctr.id', 'ctm.cross_track_release_id')
     .select([
+      'ctr.id as cross_id',
+      'ctr.name as cross_name',
+      'ctr.end_rule as cross_end_rule',
+      'ctr.release_date as cross_date',
       'r.id',
       'r.track_id',
       'r.name',
@@ -155,7 +166,7 @@ function releaseQuery(db: Db, workspaceId: number, visible: RawBuilder<boolean> 
 }
 type ReleaseRow = Awaited<ReturnType<ReturnType<typeof releaseQuery>['executeTakeFirstOrThrow']>>;
 
-function releaseView(r: ReleaseRow) {
+export function releaseView(r: ReleaseRow) {
   const tickets = Number(r.ticket_count ?? 0);
   const closed = Number(r.closed_count ?? 0);
   return {
@@ -174,6 +185,16 @@ function releaseView(r: ReleaseRow) {
     progress: { tickets, closed, open: tickets - closed },
     // Upcoming, with its release day gone by.
     overdue: r.shipped_at === null && r.release_date !== null && r.release_date < today(),
+    // Anyone who sees the release sees this: they see one of its linked tracks.
+    crossTrack:
+      r.cross_id === null
+        ? null
+        : {
+            id: r.cross_id,
+            name: r.cross_name,
+            endRule: r.cross_end_rule,
+            date: r.cross_date,
+          },
   };
 }
 
@@ -210,6 +231,25 @@ const areaView = (a: AreaRow) => ({
   archived: a.archived_at !== null,
   archivedAt: a.archived_at?.toISOString() ?? null,
 });
+
+/**
+ * Locks the release across tracks a release is in, before the release itself is locked: the order a
+ * move takes, so a merge or a delete cannot deadlock with one (PLN-007).
+ */
+async function lockCrossTrackOf(trx: Transaction<Database>, releaseId: number) {
+  const member = await trx
+    .selectFrom('cross_track_release_member')
+    .select('cross_track_release_id')
+    .where('release_id', '=', releaseId)
+    .executeTakeFirst();
+  if (!member) return;
+  await trx
+    .selectFrom('cross_track_release')
+    .select('id')
+    .where('id', '=', member.cross_track_release_id)
+    .forUpdate()
+    .execute();
+}
 
 /** Tickets that point at a release (in either role), trash included. */
 async function releaseTickets(db: Db, releaseId: number, role?: 'target' | 'found') {
@@ -737,6 +777,7 @@ export function registerReleaseRoutes(
     const ws = request.workspaceId;
     const actorId = request.user?.id ?? null;
     const result = await db.transaction().execute(async (trx) => {
+      await lockCrossTrackOf(trx, target.releaseId);
       // Both releases, in id order, so two opposite merges cannot deadlock.
       const held = await trx
         .selectFrom('release')
@@ -763,6 +804,7 @@ export function registerReleaseRoutes(
           .where('ticket_id', 'in', ids)
           .execute();
       });
+      await leaveCrossTrack(request, trx, target.releaseId, release.track_id, 'release_merged');
       await removeRelease(trx, target.releaseId, release.track_id);
       await emit(trx, by(request), {
         type: 'release.merged',
@@ -775,6 +817,36 @@ export function registerReleaseRoutes(
     if ('badTarget' in result) return invalid(reply, 'into');
     return { release: await fullRelease(request, into) };
   });
+
+  /**
+   * A linked release that goes takes its row with it: the release across tracks says so in one
+   * event of its own, in this transaction, and its version moves, so a confirmed list still matches
+   * what a move does (PLN-007).
+   */
+  async function leaveCrossTrack(
+    request: FastifyRequest,
+    trx: Transaction<Database>,
+    releaseId: number,
+    trackId: number,
+    reason: 'release_merged' | 'release_deleted',
+  ) {
+    const member = await trx
+      .selectFrom('cross_track_release_member')
+      .select('cross_track_release_id')
+      .where('release_id', '=', releaseId)
+      .executeTakeFirst();
+    if (!member) return;
+    await trx
+      .updateTable('cross_track_release')
+      .set((eb) => ({ version: eb('version', '+', 1), updated_at: new Date() }))
+      .where('id', '=', member.cross_track_release_id)
+      .execute();
+    await emit(trx, by(request), {
+      type: 'cross_track_release.member_removed',
+      subjectId: member.cross_track_release_id,
+      payload: { releaseId, trackId, reason },
+    });
+  }
 
   /** Deletes a release and closes the gap it leaves in the track's order. */
   async function removeRelease(trx: Transaction<Database>, releaseId: number, trackId: number) {
@@ -801,6 +873,7 @@ export function registerReleaseRoutes(
     const ws = request.workspaceId;
     const actorId = request.user?.id ?? null;
     const result = await db.transaction().execute(async (trx) => {
+      await lockCrossTrackOf(trx, target.releaseId);
       const release = await lockRelease(trx, target.releaseId);
       if (!release) return { missing: true as const };
       const tickets = await releaseTickets(trx, target.releaseId);
@@ -812,6 +885,7 @@ export function registerReleaseRoutes(
           .where('ticket_id', 'in', ids)
           .execute();
       });
+      await leaveCrossTrack(request, trx, target.releaseId, release.track_id, 'release_deleted');
       await removeRelease(trx, target.releaseId, release.track_id);
       await emit(trx, by(request), {
         type: 'release.deleted',

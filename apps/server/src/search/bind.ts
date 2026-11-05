@@ -20,6 +20,7 @@ import type { Catalog } from '../fields/catalog';
 import { findTeam, teamMemberIds } from '../teams';
 import { masterTextSet, RANKED_CAP, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
+import { type CrossTrackSight, seenCrossTrackReleases } from './cross-track';
 import type {
   Bound,
   Cond,
@@ -80,6 +81,11 @@ export interface BindContext {
   filter: RawBuilder<boolean>;
   /** The tracks where the viewer holds a permission (`tracksWhereUserHasPermission()`). */
   allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
+  /**
+   * Which releases across tracks the person sees (PLN-007). Without it none is named, so
+   * `crossTrackRelease` answers `unknown_value`.
+   */
+  crossTrackSight?: CrossTrackSight;
   /**
    * The board whose query this is: `@current`, `@next` and `@previous` are its sprints. Without
    * a board (a search) every board counts on its own (QRY-013).
@@ -1417,6 +1423,11 @@ class Binder {
           ids: await this.named('release', this.typed(p), label(field)),
         });
       }
+      case 'crossTrackRelease':
+        return this.related(p, {
+          relation: 'targetRelease',
+          ids: await this.crossTrackMembers(this.typed(p), label(field)),
+        });
       case 'attachments':
         if (p.kind !== 'empty') throw new Error('unreachable');
         return { kind: 'relatedEmpty', relation: 'attachment', negated: p.negated };
@@ -1898,6 +1909,37 @@ class Binder {
             .execute()) as Named[];
       }
     });
+  }
+
+  /**
+   * The releases linked to the releases across tracks named, by name (any case) or id, reading only
+   * those the person sees: another's answers `unknown_value`, word for word as one that does not
+   * exist. A name shared by several means all of them the person sees (PLN-007).
+   */
+  private async crossTrackMembers(values: Typed[], field: string): Promise<number[]> {
+    const seen = await this.once('crossTrackReleases', () =>
+      seenCrossTrackReleases(this.db, this.ws, this.ctx.currentUserId, this.ctx.crossTrackSight),
+    );
+    const found: number[] = [];
+    for (const value of values) {
+      const given = String(content(value).value);
+      const wanted = lower(given);
+      let named = seen.filter((r) => lower(r.name) === wanted);
+      if (named.length === 0 && /^\d+$/.test(wanted)) {
+        named = seen.filter((r) => String(r.id) === wanted);
+      }
+      if (named.length === 0) {
+        throw new SearchError(`${field} has no value "${given}"`, 'unknown_value');
+      }
+      found.push(...named.map((r) => r.id));
+    }
+    const members = await this.db
+      .selectFrom('cross_track_release_member')
+      .select('release_id')
+      .where('workspace_id', '=', this.ws)
+      .where('cross_track_release_id', 'in', idList(found))
+      .execute();
+    return idList(members.map((m) => m.release_id));
   }
 
   /** Ids by name (any case) or by id; a name nobody uses is refused. */

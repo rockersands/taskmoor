@@ -1084,6 +1084,47 @@ export const EVENT_TYPES = {
     }),
   },
   /**
+   * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
+   * its old day, each it left with the reason, and how many were hidden from the mover; each
+   * release moved also emits its own `release.updated`.
+   */
+  'cross_track_release.created': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      name: z.string(),
+      endRule: z.enum(['fixed_date', 'work_complete']),
+      date: z.string().nullable(),
+      releaseIds: z.array(id),
+    }),
+  },
+  'cross_track_release.updated': { subject: 'cross_track_release', payload: z.object({ changes }) },
+  'cross_track_release.moved': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      from: z.string().nullable(),
+      to: z.string(),
+      moved: z.array(z.object({ releaseId: id, from: z.string().nullable() })),
+      refused: z.array(z.object({ releaseId: id, reason: z.string() })),
+      hidden: z.number().int().min(0),
+    }),
+  },
+  'cross_track_release.deleted': {
+    subject: 'cross_track_release',
+    payload: z.object({ name: z.string(), releaseIds: z.array(id) }),
+  },
+  'cross_track_release.member_added': {
+    subject: 'cross_track_release',
+    payload: z.object({ releaseId: id, trackId: id }),
+  },
+  'cross_track_release.member_removed': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      releaseId: id,
+      trackId: id,
+      reason: z.enum(['removed', 'release_merged', 'release_deleted']),
+    }),
+  },
+  /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay
    * in the workflow, as they can carry tokens.

@@ -10,6 +10,7 @@ import { customFieldViews } from '../fields/values';
 import { SearchError } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
 import type { Total } from '../search/count';
+import { requestSight } from '../search/cross-track';
 import {
   CursorError,
   DEFAULT_QUERY_TIMEOUT_MS,
@@ -252,6 +253,7 @@ export function searchPerson(request: FastifyRequest) {
     timeZone: request.user?.timeZone ?? null,
     sessionId: request.authSession?.id ?? null,
     allowedTracks: (permission: TrackPermission) => request.authz.allowedTracks(permission),
+    crossTrackSight: requestSight(request),
   };
 }
 

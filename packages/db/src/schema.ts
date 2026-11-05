@@ -1128,6 +1128,35 @@ export interface PlanTable {
 export type PlanCapacityUnit = 'points' | 'hours';
 export type PlanPeriodKind = 'weeks' | 'month';
 
+/**
+ * A release across tracks (PLN-007; ADR-122 stage 4): lines up several tracks' own releases on one
+ * end. It belongs to the workspace, not to a plan, and holds no tickets.
+ */
+export interface CrossTrackReleaseTable {
+  id: Generated<number>;
+  workspace_id: number;
+  owner_id: number;
+  name: string;
+  description: Generated<string>;
+  end_rule: CrossTrackEndRule;
+  /** Set exactly when the rule is `fixed_date` (YYYY-MM-DD). */
+  release_date: ColumnType<string | null, string | null | undefined, string | null>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export type CrossTrackEndRule = 'fixed_date' | 'work_complete';
+
+/** A release linked to a release across tracks: at most one each, and one per track. */
+export interface CrossTrackReleaseMemberTable {
+  workspace_id: number;
+  cross_track_release_id: number;
+  release_id: number;
+  track_id: number;
+  created_at: DefaultTimestamp;
+}
+
 /** A site team a plan plans with (PLN-005), in the order chosen; it gives no access. */
 export interface PlanTeamTable {
   workspace_id: number;
@@ -2883,6 +2912,8 @@ export interface Database {
   plan_share: PlanShareTable;
   plan_team: PlanTeamTable;
   plan_capacity: PlanCapacityTable;
+  cross_track_release: CrossTrackReleaseTable;
+  cross_track_release_member: CrossTrackReleaseMemberTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

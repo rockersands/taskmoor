@@ -191,10 +191,21 @@ export function registerPlanViewRoutes(
          LIMIT ${MARKERS}`.execute(trx)
     ).rows;
     const releases = (
-      await sql<{ id: number; name: string; date: string; shipped: boolean; trackId: number }>`
+      await sql<{
+        id: number;
+        name: string;
+        date: string;
+        shipped: boolean;
+        trackId: number;
+        crossTrack: { id: number; name: string; date: string | null } | null;
+      }>`
         SELECT r.id, r.name, r.release_date::text AS date, r.shipped_at IS NOT NULL AS shipped,
-               r.track_id AS "trackId"
+               r.track_id AS "trackId",
+               CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+                 'id', c.id, 'name', c.name, 'date', c.release_date::text) END AS "crossTrack"
           FROM release r
+          LEFT JOIN cross_track_release_member m ON m.release_id = r.id
+          LEFT JOIN cross_track_release c ON c.id = m.cross_track_release_id
          WHERE r.track_id = ANY(${ids}::int[]) AND r.archived_at IS NULL
            AND r.release_date IS NOT NULL ${releaseRange}
          ORDER BY r.release_date, r.sort_order, r.id
