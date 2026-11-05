@@ -13,7 +13,8 @@ for f in SHA256SUMS SHA256SUMS.sig; do [ -f "$f" ] || { echo "verify: $f is miss
 
 sig=$(mktemp)
 trap 'rm -f "$sig"' EXIT
-base64 -d SHA256SUMS.sig > "$sig" 2>/dev/null || { echo "verify: SHA256SUMS.sig is not base64"; exit 1; }
+# From standard input: a Mac's base64 takes no file argument (base64 -d <file> is refused).
+base64 -d < SHA256SUMS.sig > "$sig" 2>/dev/null || { echo "verify: SHA256SUMS.sig is not base64"; exit 1; }
 if ! openssl dgst -sha256 -verify "$key" -signature "$sig" SHA256SUMS >/dev/null 2>&1; then
   echo "verify: the signature over SHA256SUMS does not match $key; do not use this bundle"
   exit 1
@@ -23,4 +24,5 @@ if ! sha256sum --quiet -c SHA256SUMS; then
   echo "verify: a file does not match SHA256SUMS; do not use this bundle"
   exit 1
 fi
-echo "verify: $(wc -l < SHA256SUMS) files match SHA256SUMS"
+# tr: a Mac's wc pads the count with spaces.
+echo "verify: $(wc -l < SHA256SUMS | tr -d ' ') files match SHA256SUMS"

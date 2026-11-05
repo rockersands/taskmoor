@@ -61,6 +61,11 @@ echo "== checksums and signature"
 cp "$pub" "$dir/cosign.pub"
 (cd "$dir" && find . -type f ! -name SHA256SUMS ! -name SHA256SUMS.sig ! -name cosign.pub \
   | sed 's#^\./##' | sort | xargs sha256sum > SHA256SUMS)
-openssl dgst -sha256 -sign "$key" "$dir/SHA256SUMS" | base64 -w0 > "$dir/SHA256SUMS.sig"
-bash "$dir/verify.sh" "$dir/cosign.pub" >/dev/null
+# One line of base64 with no line break, on GNU, BSD (a Mac) and BusyBox alike (-w0 is GNU's).
+openssl dgst -sha256 -sign "$key" "$dir/SHA256SUMS" | base64 | tr -d '\n' > "$dir/SHA256SUMS.sig"
+# The bundle checks itself as a recipient would; its reason is shown when it does not pass.
+if ! checked=$(bash "$dir/verify.sh" "$dir/cosign.pub" 2>&1); then
+  echo "$checked"
+  exit 1
+fi
 echo "bundle: $dir ($(du -sh "$dir" | cut -f1))"
