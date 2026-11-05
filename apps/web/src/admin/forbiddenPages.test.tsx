@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
@@ -77,7 +77,9 @@ describe('a page someone may not use says only so (T-144)', () => {
     };
     const container = open(<LayoutEditorPage client={client} previewDelay={0} />, CONFIG_ADMIN);
     await screen.findByText(/^Only/);
-    expect(container.querySelector('.page-purpose')).toBeNull();
+    // The refusal reaches the page's header one render after the words, so a loaded machine can
+    // catch the moment between them.
+    await waitFor(() => expect(container.querySelector('.page-purpose')).toBeNull());
   });
 
   it('[NFR-005] an administrator still sees what each is for', async () => {
