@@ -123,7 +123,7 @@ describe('ticket links and tables in the reports (ADR-033)', () => {
       </I18nProvider>,
     );
     await screen.findByRole('heading', { level: 1, name: 'Checkout team' });
-    await waitFor(() => expect(container.querySelector('.report-empty')).toBeNull());
+    await waitFor(() => expect(container.querySelector('.report-loading')).toBeNull());
     const found = check(container, rules);
     // Search results, assigned, followed, grouped and time tracking list tickets; four tables.
     expect(found.links).toBeGreaterThanOrEqual(8);

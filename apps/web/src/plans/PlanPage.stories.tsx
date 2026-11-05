@@ -1,11 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage } from './PlanPage';
 
 const search = fakeListSearch();
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Plans/PlanPage',
@@ -38,6 +51,17 @@ export const Summary: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('link', { name: '5 tickets in this plan' })).toBeVisible();
+  },
+};
+
+/** The Summary at a phone's width: the header, tabs, numbers and sections stay inside. */
+export const SummaryAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: '5 tickets in this plan' })).toBeVisible();
+    await expect(canvas.getByText(/^The work of this plan/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };
 
@@ -220,5 +244,23 @@ export const TenThousandTickets: Story = {
     const took = performance.now() - arrival.at;
     await expect(canvasElement.querySelectorAll('.timeline-row').length).toBeLessThan(200);
     await expectWithinBudget(took, 1500, '10,000 plan timeline rows on screen (ms)');
+  },
+};
+
+/** A plan that cannot be found still has its page: a title, what the section is for, a way back. */
+export const NotFound: Story = {
+  args: {
+    client: {
+      ...fakePlanClient(),
+      get: async () => {
+        throw new ApiError(404, { error: 'not_found' });
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Multi-track' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'All plans' })).toBeVisible();
   },
 };

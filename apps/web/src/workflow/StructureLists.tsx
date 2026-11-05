@@ -1,6 +1,7 @@
 import { type Ref, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import type { GuardNode, Stage, Status, WorkflowDefinition } from './definition';
 import { type Names, STAGE_LABELS } from './describe';
 import type { LintIssue } from './lint';
@@ -70,7 +71,7 @@ export function StructureLists({
 
   return (
     <div className="workflow-structure" data-tutorial="workflow-structure">
-      <section aria-labelledby={`${id}-statuses`} className="workflow-structure-part">
+      <section aria-labelledby={`${id}-statuses`} className="glass-card workflow-structure-part">
         <h2 id={`${id}-statuses`} ref={statusesHeadingRef} tabIndex={-1} className="facts-title">
           {t('admin.workflow.statuses')}
         </h2>
@@ -140,7 +141,7 @@ export function StructureLists({
         )}
       </section>
 
-      <section aria-labelledby={`${id}-transitions`} className="workflow-structure-part">
+      <section aria-labelledby={`${id}-transitions`} className="glass-card workflow-structure-part">
         <h2
           id={`${id}-transitions`}
           ref={transitionsHeadingRef}
@@ -150,7 +151,7 @@ export function StructureLists({
           {t('admin.workflow.transitions')}
         </h2>
         {definition.transitions.length === 0 ? (
-          <p className="form-hint">{t('admin.workflow.noTransitions')}</p>
+          <EmptyState compact title={t('admin.workflow.noTransitions')} />
         ) : (
           <ol className="workflow-entries" aria-labelledby={`${id}-transitions`}>
             {definition.transitions.map((x, index) => {

@@ -59,7 +59,7 @@ export function AppearanceSection({ user, client }: AppearanceSectionProps) {
   ];
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} className="facts-title">
         {t('account.appearance')}
       </h2>

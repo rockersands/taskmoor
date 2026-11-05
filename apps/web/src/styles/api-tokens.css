@@ -1,13 +1,9 @@
 /* API tokens and service accounts: the Account section and the admin pages. Desktop first;
    lists of cards rather than tables, so phones never scroll sideways. */
-.tokens-page {
-  max-width: 60rem;
-}
-
 .tokens-page-sections {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
 .token-list,
@@ -30,14 +26,17 @@
 
 .token-item {
   padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
+/* What no longer works: the edge alone. */
 .token-item[data-status="expired"],
 .token-item[data-status="revoked"] {
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-border);
+  box-shadow: none;
 }
 
 .service-account-item {
@@ -45,8 +44,10 @@
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .token-main {
@@ -60,7 +61,7 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -79,26 +80,6 @@
 .token-owner {
   gap: var(--space-1) var(--space-2);
   color: var(--color-text);
-}
-
-.token-badge {
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: var(--font-size-100);
-  font-weight: 600;
-}
-
-.token-badge-expired,
-.token-badge-revoked {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-}
-
-.token-badge-replaced {
-  background: var(--color-bg);
-  color: var(--color-warning);
 }
 
 .token-actions {
@@ -157,7 +138,7 @@
 .form-field .token-secret-value {
   flex: 1 1 16rem;
   min-width: 0;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .tokens-filter {
@@ -183,24 +164,6 @@
   gap: var(--space-2);
 }
 
-.button-danger {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-5);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--color-danger);
-  box-shadow: var(--shadow-1);
-  color: var(--color-surface);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.button-danger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .form-field-inline input[type="radio"] {
   width: 20px;
   height: 20px;
@@ -212,14 +175,10 @@
   gap: var(--space-3);
   min-width: 0;
   padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-edge);
 }
 
 @media (pointer: coarse) {
-  .button-danger {
-    min-height: var(--hit-target-touch);
-  }
-
   .form-field-inline input[type="radio"] {
     width: 28px;
     height: 28px;
@@ -232,7 +191,8 @@
   padding: var(--space-2) var(--space-3);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  border-radius: var(--radius-1);
-  background: var(--color-surface-sunken);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
   font-size: var(--font-size-200);
 }

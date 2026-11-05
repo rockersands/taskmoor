@@ -1,5 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { type GripItem, GripMenu } from './GripMenu';
 import {
   addSection,
@@ -481,7 +482,7 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
             </p>
           </div>
           {section.fields.length === 0 ? (
-            <p className="page-note layout-section-empty">{t('layouts.sectionEmpty')}</p>
+            <EmptyState compact title={t('layouts.sectionEmpty')} />
           ) : (
             <ol className="layout-fields" aria-label={t('layouts.fieldsIn', { section: title })}>
               {section.fields.map((key, i) => fieldChip(key, section, i))}

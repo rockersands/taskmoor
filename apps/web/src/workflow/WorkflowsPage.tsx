@@ -4,6 +4,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type Imported,
   type WorkflowSummary,
@@ -93,25 +95,30 @@ export function WorkflowsPage({
       });
   }, [client, load, refuse]);
 
+  const header = (
+    <PageHeader
+      titleId={`${id}-title`}
+      title={t('admin.workflows.title')}
+      {...(state.status === 'forbidden'
+        ? {}
+        : { purpose: t('settings.workflowsHint'), about: t('admin.workflows.intro') })}
+    />
+  );
+
   if (state.status === 'forbidden') {
     return (
-      <section aria-labelledby={`${id}-title`} className="workflows-page">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('admin.workflows.title')}
-        </h1>
+      <section aria-labelledby={`${id}-title`} className="page workflows-page">
+        {header}
         <p className="page-note">{t('admin.workflows.forbidden')}</p>
       </section>
     );
   }
 
   return (
-    <section aria-labelledby={`${id}-title`} className="workflows-page">
-      <h1 id={`${id}-title`} className="page-title">
-        {t('admin.workflows.title')}
-      </h1>
-      <p className="page-note">{t('admin.workflows.intro')}</p>
+    <section aria-labelledby={`${id}-title`} className="page workflows-page">
+      {header}
       <div className="sso-sections">
-        <section aria-labelledby={`${id}-list`} className="account-section">
+        <section aria-labelledby={`${id}-list`} className="glass-card account-section">
           <div className="sso-list-head">
             <h2 id={`${id}-list`} ref={heading} tabIndex={-1} className="facts-title">
               {t('admin.workflows.list')}
@@ -202,7 +209,7 @@ export function WorkflowsPage({
           )}
           {state.status === 'loaded' &&
             (state.workflows.length === 0 ? (
-              <p className="page-note">{t('admin.workflows.none')}</p>
+              <EmptyState title={t('admin.workflows.none')}>{t('empty.workflows.body')}</EmptyState>
             ) : (
               <ul className="workflow-list" aria-labelledby={`${id}-list`}>
                 {state.workflows.map((workflow) => (
@@ -337,14 +344,14 @@ function WorkflowItem({
       ) : (
         <div className="token-actions">
           <a
-            className="button-secondary button-link"
+            className="button-secondary"
             href={routeHref(workflowHref(workflow.id))}
             aria-label={t('admin.workflows.editNamed', { name })}
           >
             {t('admin.workflows.edit')}
           </a>
           <a
-            className="button-secondary button-link"
+            className="button-secondary"
             href={client.exportHref(workflow.id)}
             download
             aria-label={t('admin.workflows.exportNamed', { name })}

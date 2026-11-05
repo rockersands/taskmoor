@@ -594,7 +594,7 @@ export function TimelineView({
         </p>
       )}
       <div className="timeline-body">
-        <div className="timeline-scroll" ref={scroller}>
+        <div className="glass-card glass-scroller timeline-scroll" ref={scroller}>
           <div className="timeline-head" aria-hidden="true" ref={head}>
             <div className="timeline-corner">{t('timeline.ticket')}</div>
             <div className="timeline-scale" style={{ width }}>
@@ -765,7 +765,7 @@ function SchedulePanel({
   const [due, setDue] = useState(item.due ?? '');
   const bad = start !== '' && due !== '' && start > due;
   return (
-    <aside className="timeline-panel" aria-labelledby={`${id}-title`}>
+    <aside className="glass-card timeline-panel" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`}>{t('timeline.panel.title', { key: item.key })}</h2>
       <p className="timeline-panel-summary">{item.summary}</p>
       {item.dated === 'sprint' && <p className="board-hint">{t('timeline.panel.sprint')}</p>}

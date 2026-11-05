@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../../i18n/I18nProvider';
+import { EmptyState } from '../../shell/EmptyState';
 import type { FidelityReport, KindProgress, RecordOutcome } from './client';
 import { kindLabel, outcomeLabel, warningExplanation } from './labels';
 
@@ -13,7 +14,7 @@ export function KindTable({ rows, caption }: { rows: KindProgress[]; caption: st
   const n = (value: number) => intl.formatNumber(value);
   return (
     <div className="api-usage-table-wrap">
-      <table className="api-usage-table import-kinds">
+      <table className="data-table api-usage-table import-kinds">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
           <tr>
@@ -112,7 +113,7 @@ export function ImportReport({
         })}
       </h4>
       {report.warnings.length === 0 ? (
-        <p className="page-note">{t('admin.imports.report.noWarnings')}</p>
+        <EmptyState compact title={t('admin.imports.report.noWarnings')} />
       ) : (
         <ul className="import-warnings">
           {report.warnings.map((w) => (

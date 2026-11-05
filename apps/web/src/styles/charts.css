@@ -8,7 +8,7 @@
 }
 
 .chart-title {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .chart-legend {
@@ -39,13 +39,13 @@
 .chart-key {
   width: 16px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
 }
 
 .chart-swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
 }
 
 .chart-key-one {
@@ -79,13 +79,13 @@
 
 .chart-tick {
   fill: var(--color-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-100);
 }
 
 .chart-value {
   fill: var(--color-text);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-strong);
 }
 
 .chart-line {
@@ -135,7 +135,7 @@
 }
 
 .chart-band {
-  fill: var(--color-surface-sunken);
+  fill: var(--glass-surface-sunken);
 }
 
 .chart-hit {
@@ -147,9 +147,12 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-2);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight-flat), var(--shadow-2);
   color: var(--color-text);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -170,16 +173,8 @@
   cursor: pointer;
 }
 
-.chart-table table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-200);
-}
-
-.chart-table th,
-.chart-table td {
+.chart-table :is(th, td) {
   padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
   text-align: end;
 }
 
@@ -200,12 +195,10 @@
   margin: var(--space-4) 0;
 }
 
-.sprint-charts > .chart,
-.sprint-charts > .chart-group {
+/* A chart on its own `glass-card`. */
+.sprint-chart {
+  min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 @media (pointer: coarse) {
@@ -252,33 +245,32 @@
   white-space: normal;
 }
 
-.reports-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
 .reports-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+/* The same idea as a track's tabs right above them, in the same look (surfaces.css). */
 .reports-tabs a {
   display: inline-flex;
   align-items: center;
   min-height: var(--hit-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
   color: var(--color-text);
+  font-size: var(--font-size-200);
   text-decoration: none;
 }
 
+.reports-tabs a:hover {
+  background: var(--glass-surface-sunken);
+}
+
 .reports-tabs a[aria-current="page"] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-weight: 600;
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  font-weight: var(--font-weight-strong);
 }
 
 /* A track's reports, in groups (ADR-116); the pills wrap, so a phone never scrolls sideways. */
@@ -304,7 +296,7 @@
   padding: 0;
   color: var(--color-text);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: var(--hit-target);
 }
 
@@ -321,14 +313,17 @@
   gap: var(--space-1) var(--space-4);
   min-width: 0;
   margin: 0;
-  padding: var(--space-2) var(--space-4) var(--space-3);
-  border: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
+  background: var(--glass-surface-sunken);
 }
 
 .reports-choices legend {
-  padding: 0 var(--space-1);
-  font-weight: 600;
+  float: inline-start;
+  width: 100%;
+  padding: 0;
+  font-weight: var(--font-weight-strong);
 }
 
 .reports-choices .report-note {
@@ -346,18 +341,18 @@
   accent-color: var(--color-accent);
 }
 
+/* A `glass-card`. */
 .reports-body {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
+/* `.report-loading`: the words while a page or a report is on its way, not an empty state. */
 .report-note,
-.report-empty {
+.report-empty,
+.report-loading {
   margin: 0;
   color: var(--color-text-muted);
 }
@@ -373,10 +368,12 @@
   margin: 0;
 }
 
+/* A well, on a card or straight on the canvas, with no blur of its own. */
 .report-stats div {
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .report-stats dt {
@@ -387,7 +384,7 @@
 .report-stats dd {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 /* Wide tables scroll inside their own box, never the page (ADR-033). */
@@ -411,7 +408,7 @@
 .report-table th,
 .report-table td {
   padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--glass-edge);
   text-align: end;
 }
 
@@ -423,6 +420,19 @@
   .reports-tabs a,
   .reports-check,
   .report-table a {
+    min-height: var(--hit-target-touch);
+  }
+
+  .reports-check input {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* A number is its own link: however few its digits, a finger has to land on it. */
+  .report-stats a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
   }
 
@@ -448,7 +458,7 @@
 
 .chart-donut-track {
   fill: none;
-  stroke: var(--color-surface-sunken);
+  stroke: var(--glass-surface-sunken);
   stroke-width: 28;
 }
 

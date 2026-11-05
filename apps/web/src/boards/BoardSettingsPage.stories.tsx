@@ -1,7 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { BoardSettingsPage } from './BoardSettingsPage';
 import { BOARD, fakeBoardClient, SCRUM_BOARD } from './fixtures';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Boards/BoardSettingsPage',
@@ -79,4 +91,33 @@ export const SprintRunning: Story = {
 /** Someone who may only look. */
 export const ReadOnly: Story = {
   args: { client: fakeBoardClient({ board: { ...BOARD, mayConfigure: false } }) },
+};
+
+/** At a phone's width: the groups of settings and their rows stay inside the screen. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('combobox', { name: 'Column for In Review' }),
+    ).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A board that could not be read: the page still says what it is. */
+export const Failed: Story = {
+  args: {
+    client: {
+      ...fakeBoardClient(),
+      settings: async () => {
+        throw new Error('down');
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Board settings', level: 1 })).toBeVisible();
+  },
 };

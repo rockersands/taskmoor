@@ -252,7 +252,7 @@ export function ImportWizard({
   const maxUpload = files?.maxUpload ?? 0;
 
   return (
-    <div className="import-wizard">
+    <div className="glass-card account-section import-wizard">
       <form className="import-form" onSubmit={submit} aria-labelledby={`${id}-title`}>
         <h2 id={`${id}-title`} className="facts-title">
           {delta

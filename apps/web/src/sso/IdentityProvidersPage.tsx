@@ -5,6 +5,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type IdentityProvider,
   type IdentityProvidersClient,
@@ -123,18 +125,21 @@ export function IdentityProvidersPage({
   };
 
   return (
-    <section aria-labelledby={titleId} className="sso-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.sso.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page sso-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.sso.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.singleSignOnHint'), about: t('admin.sso.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.sso.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.sso.intro')}</p>
           <div className="sso-sections">
             {state.status === 'loaded' && <RedirectUriField uri={state.redirectUri} />}
-            <section aria-labelledby={listId} className="account-section">
+            <section aria-labelledby={listId} className="glass-card account-section">
               <div className="sso-list-head">
                 <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
                   {t('admin.sso.list')}
@@ -179,7 +184,9 @@ export function IdentityProvidersPage({
               )}
               {state.status === 'loaded' &&
                 (state.providers.length === 0 ? (
-                  <p className="page-note">{t('admin.sso.none')}</p>
+                  <EmptyState title={t('empty.identityProviders.title')}>
+                    {t('empty.identityProviders.body')}
+                  </EmptyState>
                 ) : (
                   <ul className="sso-provider-list" aria-labelledby={listId}>
                     {state.providers.map((provider) => (

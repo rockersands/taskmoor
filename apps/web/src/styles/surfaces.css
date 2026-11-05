@@ -32,7 +32,7 @@
   margin: 0 0 var(--space-1);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .page-header-title {
@@ -62,7 +62,7 @@
 .section-title {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   letter-spacing: -0.01em;
 }
 
@@ -77,7 +77,7 @@
 .panel-title {
   margin: 0;
   font-size: var(--font-size-300);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .panel-count {
@@ -88,7 +88,7 @@
   background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: 1.6;
   text-align: center;
 }
@@ -137,7 +137,7 @@
   box-shadow: var(--glass-highlight), var(--shadow-3);
   color: var(--color-text);
   font-size: var(--font-size-200);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   line-height: 1.5;
   letter-spacing: normal;
   text-transform: none;
@@ -154,7 +154,7 @@
   box-shadow: var(--glass-highlight-flat);
   color: var(--color-text);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .help-shortcuts-group {
@@ -201,12 +201,17 @@
 .track-tabs a[aria-current="page"] {
   background: var(--glass-fill-strong);
   box-shadow: var(--glass-highlight-flat);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 @media (pointer: coarse) {
-  .track-tabs a {
+  .track-tabs a,
+  .tracks-item a {
     min-height: var(--hit-target-touch);
+  }
+
+  .tracks-item a {
+    align-content: center;
   }
 }
 
@@ -214,7 +219,6 @@
 .track-files-group {
   display: grid;
   gap: var(--space-2);
-  margin-top: var(--space-4);
   padding: var(--space-4);
 }
 
@@ -243,7 +247,7 @@
    under it on a phone. */
 .track-outcomes-list {
   display: grid;
-  margin: var(--space-4) 0 0;
+  margin: 0;
   padding: var(--space-1) var(--space-4);
   list-style: none;
 }
@@ -274,7 +278,7 @@
   margin-inline-end: var(--space-1);
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .track-outcome-progress {
@@ -294,7 +298,7 @@
 }
 
 .track-outcomes-more {
-  margin-top: var(--space-3);
+  justify-self: start;
 }
 
 @media (max-width: 40rem) {
@@ -314,7 +318,6 @@
 /* The directory of tracks. */
 .tracks-find {
   max-width: 24rem;
-  margin-block: var(--space-3);
 }
 
 .tracks-list {
@@ -334,7 +337,7 @@
 
 .tracks-item a {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   color: var(--color-text);
   text-decoration: none;
 }
@@ -342,11 +345,11 @@
 .tracks-item-key {
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .tracks-item-name {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .tracks-item-owner {
@@ -362,7 +365,7 @@
   padding: var(--space-3) 0 var(--space-1);
 }
 
-/* The illustration (the user's choice, ADR-114) stands in for each caller's small icon. */
+/* The illustration (the user's choice, ADR-114): one picture for every empty page or card. */
 .empty-state-icon {
   display: block;
   width: 88px;
@@ -371,13 +374,9 @@
   background: url("../assets/glass/empty-cards.webp") center / contain no-repeat;
 }
 
-.empty-state-icon svg {
-  display: none;
-}
-
 .empty-state-title {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .empty-state-body {
@@ -390,6 +389,15 @@
 
 .empty-state-action {
   margin-top: var(--space-2);
+}
+
+/* A short list inside a card: the words alone, as a picture there would be louder than the card. */
+.empty-state-compact {
+  padding: var(--space-1) 0;
+}
+
+.empty-state-compact .empty-state-title {
+  font-size: var(--font-size-200);
 }
 
 /*
@@ -434,7 +442,7 @@
   color: var(--color-text);
   font: inherit;
   font-size: var(--font-size-200);
-  font-weight: 550;
+  font-weight: var(--font-weight-medium);
   text-align: start;
   cursor: pointer;
   /* A control, not text: a double click does not select its label. */
@@ -457,7 +465,7 @@
 .filter-chip[data-on="true"] {
   border-color: var(--color-accent);
   background: var(--glass-tint-accent);
-  font-weight: 700;
+  font-weight: var(--font-weight-title);
 }
 
 .filter-chip[aria-pressed="true"]::before,
@@ -523,7 +531,7 @@
 
 .popover-title {
   margin: 0;
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .popover-scrim {
@@ -574,7 +582,7 @@
   height: 20px;
   margin: 0;
   border: 1.5px solid var(--color-field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-mark);
   background: var(--glass-surface-sunken);
   box-shadow: var(--shadow-inset);
   cursor: pointer;
@@ -692,37 +700,7 @@
   }
 }
 
-/* A quiet secondary action: a glass pill. */
-.button-quiet {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: var(--hit-target);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-pill);
-  background: var(--glass-surface-sunken);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-200);
-  font-weight: 550;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-soft),
-    transform var(--motion-fast) var(--ease-settle);
-}
-
-.button-quiet:hover {
-  background: var(--glass-tint-accent);
-}
-
 /* Home (ADR-114): ways to start, then the lists, then the tracks. */
-.home-page {
-  gap: var(--space-6);
-}
-
 .home-start {
   display: grid;
   gap: var(--space-3);
@@ -768,7 +746,7 @@
 
 .start-tile-title,
 .track-tile-name {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .start-tile-hint,
@@ -794,7 +772,7 @@
   background: var(--color-blue-soft);
   color: var(--color-blue);
   font-size: var(--font-size-100);
-  font-weight: 700;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.02em;
 }
 
@@ -820,6 +798,8 @@
 }
 
 .home-list {
+  display: grid;
+  min-width: 0;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-3);
@@ -839,7 +819,7 @@
 
 .home-ticket-link {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   color: var(--color-text);
   text-decoration: none;
 }
@@ -868,7 +848,7 @@
   border-radius: var(--radius-pill);
   background: var(--glass-surface-sunken);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: 1.7;
 }
 
@@ -888,10 +868,6 @@
     height: var(--hit-target-touch);
   }
 
-  .button-quiet {
-    min-height: var(--hit-target-touch);
-  }
-
   .home-tracks-all {
     display: inline-flex;
     align-items: center;
@@ -902,7 +878,8 @@
 @media (forced-colors: active) {
   .glass-card,
   .help-tip-body,
-  .button-quiet {
+  .create-dialog,
+  .ticket-dialog {
     border-color: CanvasText;
   }
 }
@@ -928,11 +905,6 @@
 }
 
 /* The tutorial's sections (ADR-115): one card per section, ticked to start several in a row. */
-.tutorials-page {
-  display: grid;
-  gap: var(--space-5);
-}
-
 .tutorial-picker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
@@ -951,6 +923,14 @@
   gap: var(--space-2) var(--space-4);
   padding: var(--space-4) var(--space-5);
   transition: background-color var(--motion-base) var(--ease-soft);
+}
+
+/* The picker inside other glass, as in the first-run offer: a well with no blur of its own. */
+.tutorial-card-well {
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .tutorial-card[data-checked="true"] {
@@ -994,7 +974,7 @@
 
 .tutorial-card-title {
   margin: 0;
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .tutorial-card-hint {
@@ -1019,7 +999,7 @@
   border-radius: var(--radius-pill);
   background: var(--glass-surface-sunken);
   color: var(--color-text);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: 1.7;
 }
 
@@ -1055,7 +1035,7 @@
 .tutorial-offer-title {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .tutorial-offer-body {
@@ -1112,13 +1092,13 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .coach-title {
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .coach-body {
@@ -1180,7 +1160,7 @@
 .coach-paused-text {
   margin: 0;
   font-size: var(--font-size-200);
-  font-weight: 550;
+  font-weight: var(--font-weight-medium);
 }
 
 .coach-paused-actions {
@@ -1290,7 +1270,9 @@
 .help-tip-body::before,
 .user-menu-popup::before,
 .popover::before,
-.palette::before {
+.palette::before,
+.create-dialog::before,
+.ticket-dialog::before {
   content: "";
   position: absolute;
   inset: -1px;
@@ -1332,9 +1314,18 @@
   background: var(--glass-fill-chrome);
 }
 
-/* The rim stays inside a surface that scrolls, or it would give it scroll bars of its own. */
-.shell-sidebar::before {
+/*
+ * The rim stays inside a surface that scrolls, or it would give it scroll bars of its own. For a
+ * glass card that scrolls: add `glass-scroller` beside `glass-card` (a table, a timeline, a diagram).
+ */
+.shell-sidebar::before,
+.create-dialog::before,
+.glass-scroller::before {
   inset: 0;
+}
+
+.glass-scroller {
+  overflow: auto;
 }
 
 .shell-sidebar {
@@ -1352,6 +1343,7 @@
 .user-menu-popup,
 .popover,
 .palette,
+.create-dialog,
 .ticket-dialog {
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur-strong)) var(--glass-lens,) saturate(var(--glass-saturate));
@@ -1362,17 +1354,8 @@
   box-shadow: var(--glass-highlight-flat), var(--shadow-1);
 }
 
-.button-quiet,
 .theme-toggle {
   box-shadow: var(--glass-highlight-flat);
-}
-
-/* The search field in the top bar is clear glass. */
-.palette-trigger {
-  border-color: var(--glass-edge);
-  background: var(--glass-surface-sunken);
-  box-shadow: var(--glass-highlight-flat);
-  color: var(--color-text);
 }
 
 /*
@@ -1449,9 +1432,7 @@
   background: var(--glass-lens-fill);
   -webkit-backdrop-filter: blur(0.5px);
   backdrop-filter: blur(0.5px);
-  box-shadow:
-    var(--glass-highlight-flat),
-    0 2px 6px rgb(40 30 60 / 14%);
+  box-shadow: var(--glass-highlight-flat), var(--glass-lens-shadow);
   pointer-events: none;
 }
 
@@ -1462,25 +1443,8 @@
  */
 .button-primary,
 .create-open {
-  background-image:
-    radial-gradient(90% 70% at 50% 118%, rgb(255 255 255 / 42%), rgb(255 255 255 / 0%) 70%),
-    linear-gradient(180deg, rgb(255 255 255 / 34%), rgb(255 255 255 / 4%) 50%, rgb(0 0 0 / 5%));
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 255 255 / 85%),
-    inset 0 0 0 1px rgb(255 255 255 / 18%),
-    inset 0 -1.5px 0 rgb(120 50 20 / 28%),
-    0 1px 2px rgb(120 60 30 / 24%),
-    0 6px 14px -4px rgb(220 120 80 / 45%);
-}
-
-[data-skin="dark"] .button-primary,
-[data-skin="dark"] .create-open {
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 255 255 / 75%),
-    inset 0 0 0 1px rgb(255 255 255 / 14%),
-    inset 0 -1.5px 0 rgb(120 50 20 / 40%),
-    0 1px 2px rgb(0 0 0 / 50%),
-    0 8px 16px -6px rgb(0 0 0 / 60%);
+  background-image: var(--pill-gloss);
+  box-shadow: var(--pill-dome);
 }
 
 @media (forced-colors: active) {
@@ -1513,7 +1477,9 @@
   .help-tip-body::before,
   .user-menu-popup::before,
   .popover::before,
-  .palette::before {
+  .palette::before,
+  .create-dialog::before,
+  .ticket-dialog::before {
     display: none;
   }
 }

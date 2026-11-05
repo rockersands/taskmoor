@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
+import { EmptyState } from '../../shell/EmptyState';
 import type { ImportRecord } from './client';
 
 /** What a dry run says will happen to a person of the source. */
@@ -41,7 +42,7 @@ export function PeopleMapping({
       <legend>{t('admin.imports.people.title')}</legend>
       <p className="page-note">{t('admin.imports.people.intro')}</p>
       {people.length === 0 ? (
-        <p className="page-note">{t('admin.imports.people.none')}</p>
+        <EmptyState compact title={t('admin.imports.people.none')} />
       ) : (
         <ul className="import-people-list">
           {people.map((person, i) => {

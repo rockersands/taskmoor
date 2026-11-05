@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, routeHref } from '../routing/router';
+import { PageHeader } from '../shell/PageHeader';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages, tooManyAttemptsMessage } from './errors';
 import { PasswordField } from './PasswordField';
 import { type SessionUser, useSession } from './SessionProvider';
@@ -144,15 +145,17 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
             : (tooManyAttemptsMessage(t, state.error) ?? t('passwordLink.failed'));
     return (
       <main className="setup">
-        <h1 className="page-title">{t('passwordLink.title')}</h1>
-        <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-          {note}
-        </p>
-        {state.status !== 'checking' && (
-          <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
-            {t('passwordLink.goToSignIn')}
-          </a>
-        )}
+        <PageHeader title={t('passwordLink.title')} purpose={t('purpose.passwordLink')} />
+        <div className="glass-card account-section">
+          <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
+            {note}
+          </p>
+          {state.status !== 'checking' && (
+            <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
+              {t('passwordLink.goToSignIn')}
+            </a>
+          )}
+        </div>
       </main>
     );
   }
@@ -166,13 +169,13 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
 
   return (
     <main className="setup">
-      <h1 className="page-title">{title}</h1>
-      <p className="page-note">
-        {t(activate ? 'passwordLink.activateIntro' : 'passwordLink.resetIntro', {
+      <PageHeader
+        title={title}
+        purpose={t(activate ? 'passwordLink.activateIntro' : 'passwordLink.resetIntro', {
           email: link.email,
         })}
-      </p>
-      <form className="form" onSubmit={submit} aria-label={title}>
+      />
+      <form className="form glass-card account-section" onSubmit={submit} aria-label={title}>
         {/* Lets password managers file the new password under the right account. */}
         <input type="email" autoComplete="username" value={link.email} readOnly hidden />
         <PasswordField

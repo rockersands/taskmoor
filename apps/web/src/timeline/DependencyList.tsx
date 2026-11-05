@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import type { TimelineItem } from './client';
 import { type Blocked, barOf, type DependencyState } from './dependencies';
 
@@ -73,12 +74,12 @@ export function DependencyList({ dependencies, headingId }: DependencyListProps)
   };
 
   return (
-    <section className="dependency-list" aria-labelledby={headingId}>
+    <section className="glass-card dependency-list" aria-labelledby={headingId}>
       <h2 id={headingId} tabIndex={-1}>
         {t('dependencies.title')}
       </h2>
       {all.length === 0 ? (
-        <p className="board-hint">{t('dependencies.none')}</p>
+        <EmptyState compact title={t('dependencies.none')} />
       ) : (
         <>
           <div className="dependency-tools">

@@ -27,7 +27,7 @@ export function AdminGroupPage({ group }: { group: AdminGroup }) {
   const access = useAdminAccess();
   const allowed = groupsFor(access ?? 'none').some((g) => g.id === group.id);
   return (
-    <section aria-labelledby={titleId} className="admin-page">
+    <section aria-labelledby={titleId} className="page admin-page">
       <PageHeader
         titleId={titleId}
         title={t(group.labelId)}

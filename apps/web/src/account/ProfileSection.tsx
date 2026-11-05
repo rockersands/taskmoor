@@ -85,7 +85,7 @@ export function ProfileSection({ user, client }: ProfileSectionProps) {
     failure?.field === key ? `${hintId} ${field('error')}` : hintId;
 
   return (
-    <section aria-labelledby={field('title')} className="account-section">
+    <section aria-labelledby={field('title')} className="glass-card account-section">
       <h2 id={field('title')} className="facts-title">
         {t('account.profile')}
       </h2>

@@ -4,6 +4,7 @@ import { type NotificationsClient, notificationsClient } from '../notifications/
 import { NotificationsSection } from '../notifications/NotificationsSection';
 import { currentRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
 import { TokensSection } from '../tokens/TokensSection';
 import { AppearanceSection } from './AppearanceSection';
@@ -53,9 +54,8 @@ export function AccountPage({
   const { user } = session;
 
   return (
-    <div className="account-page">
-      <h1 className="page-title">{t('account.title')}</h1>
-      <p className="page-note">{t('account.intro')}</p>
+    <div className="page account-page">
+      <PageHeader title={t('account.title')} purpose={t('account.intro')} />
       <div className="account-sections">
         <ProfileSection user={user} client={client} />
         <AppearanceSection user={user} client={client} />

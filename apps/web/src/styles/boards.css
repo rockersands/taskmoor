@@ -27,22 +27,34 @@
   margin: var(--space-2) 0;
 }
 
+/* A page's own grid spaces its parts. */
+:is(.page, .list-page, .calendar-page, .timeline-page) > :is(.board-hint, .board-problem) {
+  margin: 0;
+}
+
+/* A status line with nothing to say takes up no room, and stays where it is read out from. */
+.board-hint[role="status"]:empty {
+  position: absolute;
+  margin: 0;
+}
+
 .board-people-clear {
   min-height: var(--hit-target);
 }
 
-.board-unmapped,
-.board-problem {
-  margin: var(--space-2) 0;
+.board-unmapped {
+  margin: 0;
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-sunken);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
   overflow-wrap: anywhere;
 }
 
+/* It looks like every other error (forms.css); only its place on the page is its own. */
 .board-problem {
-  background: var(--color-danger-soft);
-  color: var(--color-text);
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
 }
 
 .board-scroll {
@@ -117,12 +129,12 @@
 .board-column-hidden {
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-column-hidden {
   color: var(--color-text-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .board-lane-title {
@@ -138,7 +150,7 @@
 .board-lane-title span {
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .board-cell {
@@ -165,7 +177,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-3) var(--space-2) calc(var(--space-3) + 4px);
+  padding: var(--space-3) var(--space-3) var(--space-2) calc(var(--space-3) + var(--space-1));
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   background: var(--glass-fill-strong);
@@ -250,16 +262,16 @@
   min-width: 1.25rem;
   padding: 0 var(--space-1);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-align: center;
 }
 
 .board-card-age {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 /* The assignee sits at the card's far corner, the same place on every card. */
@@ -273,8 +285,8 @@
   border-radius: 50%;
   background: var(--color-blush-soft);
   color: var(--color-blush);
-  font-size: 0.6875rem;
-  font-weight: 650;
+  font-size: 0.85em;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-card-person.is-nobody {
@@ -289,15 +301,18 @@
   top: var(--space-1);
   inset-inline-end: var(--space-1);
   display: inline-flex;
-  gap: 2px;
+  gap: var(--space-half);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-strong);
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-soft);
 }
 
+/* Over the end of the title, so blurred where it shows, and only there: board cards stay cheap. */
 .board-card:hover .board-card-actions,
 .board-card:focus-within .board-card-actions {
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
   opacity: 1;
 }
 
@@ -371,9 +386,20 @@
   max-width: 28rem;
   margin: 0 auto;
   padding: var(--space-4);
-  border-radius: var(--radius-2);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-1);
+}
+
+/* Floating glass: a `glass-card` in everything but where it sits and how far it floats. */
+.board-choice.glass-card {
+  position: fixed;
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+}
+
+.board-choice h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-400);
 }
 
 .board-choice ul {
@@ -449,17 +475,21 @@
   min-width: 0;
 }
 
+/* A group of settings on a `glass-card`, its name inside it. */
 .board-settings-section {
+  display: grid;
+  gap: var(--space-3);
   min-width: 0;
-  margin: var(--space-4) 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4) var(--space-5);
 }
 
 .board-settings-section > legend {
-  padding: 0 var(--space-2);
-  font-weight: 600;
+  float: inline-start;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-weight: var(--font-weight-strong);
 }
 
 .board-settings-list {
@@ -472,8 +502,11 @@
 }
 
 .board-settings-item {
+  display: grid;
+  gap: var(--space-3);
   padding: var(--space-3);
-  border-radius: var(--radius-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
   background: var(--glass-surface-sunken);
 }
 
@@ -489,32 +522,16 @@
   gap: var(--space-2);
 }
 
-.board-settings-row-actions button,
 .board-settings-section > button {
-  min-height: var(--hit-target);
+  justify-self: start;
 }
 
-.board-settings-statuses {
-  width: 100%;
-  margin-top: var(--space-4);
-  border-collapse: collapse;
-}
-
-.board-settings-statuses caption {
-  text-align: start;
-  font-weight: 600;
-}
-
-.board-settings-statuses th,
-.board-settings-statuses td {
-  padding: var(--space-1) var(--space-2);
-  text-align: start;
+.board-settings-statuses :is(th, td) {
   overflow-wrap: anywhere;
 }
 
-.board-settings-statuses select {
-  max-width: 100%;
-  min-height: var(--hit-target);
+.board-settings-statuses caption {
+  padding-inline: 0;
 }
 
 .board-settings-fields {
@@ -569,8 +586,6 @@
   .boards-item,
   .board-settings-link,
   .board-settings-check,
-  .board-settings-row-actions button,
-  .board-settings-section > button,
   .board-settings-statuses select {
     min-height: var(--hit-target-touch);
   }
@@ -580,18 +595,23 @@
  * Sprints (M1-044): the backlog's sprint sections and the sprint report. Rows wrap on narrow
  * screens; the grips and lifecycle buttons keep 44px targets on touch.
  */
-.backlog-page {
-  min-width: 0;
-  max-width: 100%;
-}
-
+/* A `glass-card`, each its own stacking context: an open menu rises above the ones after it. */
 .sprint-section {
   margin: var(--space-4) 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  padding: var(--space-4);
   min-width: 0;
+}
+
+.sprint-section:has(.move-grip-popup) {
+  z-index: 2;
+}
+
+.sprint-report {
+  min-width: 0;
+}
+
+.page > .sprint-section {
+  margin: 0;
 }
 
 .sprint-section h2 {
@@ -607,13 +627,6 @@
   gap: var(--space-2) var(--space-4);
 }
 
-.sprint-state {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent-soft);
-  font-size: var(--font-size-200);
-}
-
 .sprint-tickets {
   list-style: none;
   margin: var(--space-2) 0 0;
@@ -626,7 +639,7 @@
   align-items: center;
   gap: var(--space-1) var(--space-3);
   padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-edge);
   min-width: 0;
 }
 
@@ -635,7 +648,7 @@
 }
 
 .sprint-ticket-key {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .sprint-ticket-summary {
@@ -795,8 +808,11 @@ body.is-pointer-dragging .board-scroll {
   margin: var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-accent);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  border-radius: var(--radius-3);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight-flat), var(--shadow-2);
 }
 
 .backlog-selection select {
@@ -815,12 +831,10 @@ body.is-pointer-dragging .board-scroll {
   min-width: 0;
 }
 
+/* A `glass-card`. */
 .backlog-panel {
-  margin: var(--space-4) 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
 }
 
 .backlog-panel h2 {
@@ -838,16 +852,20 @@ body.is-pointer-dragging .board-scroll {
 
 .backlog-panel-item button {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
   color: inherit;
   font: inherit;
   text-align: start;
   cursor: pointer;
+}
+
+.backlog-panel-item button:hover {
+  background: var(--glass-tint-accent);
 }
 
 .backlog-panel-item button[aria-pressed="true"] {
@@ -862,7 +880,7 @@ body.is-pointer-dragging .board-scroll {
 }
 
 .backlog-panel-key {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .backlog-panel-name {
@@ -960,10 +978,19 @@ body.is-pointer-dragging .board-scroll {
   display: grid;
   gap: var(--space-2);
   grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
   padding: var(--space-3);
-  border-radius: var(--radius-1);
+  border: 0;
+  border-radius: var(--radius-2);
   background: var(--color-warning-soft);
   color: var(--color-text);
+}
+
+.board-settings-remove legend {
+  float: inline-start;
+  width: 100%;
+  padding: 0;
 }
 
 .board-settings-remove p,

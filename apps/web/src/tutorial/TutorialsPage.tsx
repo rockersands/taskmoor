@@ -72,7 +72,7 @@ export function TutorialsPage({ client = tutorialClient }: TutorialsPageProps) {
   };
 
   return (
-    <section aria-labelledby={titleId} className="tutorials-page">
+    <section aria-labelledby={titleId} className="page tutorials-page">
       <PageHeader
         titleId={titleId}
         title={t('tutorial.title')}

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { useT } from '../i18n/I18nProvider';
 import { updateTransition, type WorkflowDefinition, withRules } from './definition';
@@ -34,6 +34,17 @@ function Holder({
     />
   );
 }
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Workflows/TransitionInspector',
@@ -88,5 +99,15 @@ export const ConfirmingDelete: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Delete transition' }));
     await expect(canvas.getByRole('button', { name: 'Delete transition' })).toHaveFocus();
+  },
+};
+
+/** The stacked panel on a phone: its fieldsets keep to the width. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: /^Transition:/ })).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

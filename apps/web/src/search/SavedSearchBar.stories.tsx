@@ -28,6 +28,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** No saved search yet: what one is and how to make the first. */
+export const NoneYet: Story = {
+  args: { client: fakeSavedSearchClient([]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No saved searches yet')).toBeVisible();
+  },
+};
+
 /** Nothing open yet: the saved searches the person sees, and saving the query as new. */
 export const NothingOpen: Story = {
   play: async ({ canvasElement, args }) => {

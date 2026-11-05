@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import type { Board } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { estimateText } from '../sprints/client';
 import { ColumnChart } from './ColumnChart';
 import type { OutcomeReport, ReleaseReport, ReportClient, ScopeBurndown } from './client';
@@ -110,7 +111,7 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
 
   const picker = forRelease ? (
     releases && releases.length === 0 ? (
-      <p className="report-empty">{t('reports.scope.noReleases')}</p>
+      <EmptyState title={t('reports.scope.noReleases')}>{t('empty.reports.noReleases')}</EmptyState>
     ) : (
       <div className="reports-controls">
         <div className="form-field">
@@ -155,7 +156,9 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
 
   const burndownView = (b: ScopeBurndown) => {
     if (b.sprints.length === 0) {
-      return <p className="report-empty">{t('reports.scope.noSprints')}</p>;
+      return (
+        <EmptyState title={t('reports.scope.noSprints')}>{t('empty.reports.noSprints')}</EmptyState>
+      );
     }
     const first = b.sprints[0];
     const points = [...b.sprints.map((s) => s.start), b.now.remaining];
@@ -226,7 +229,7 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
         />
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard */}
         <section className="report-table" aria-label={t('reports.scope.table')} tabIndex={0}>
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th scope="col">{t('reports.scope.sprint')}</th>
@@ -314,11 +317,13 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
       </p>
       {byDay(r.days)}
       {r.tickets.length === 0 ? (
-        <p className="report-empty">{t('reports.outcome.empty')}</p>
+        <EmptyState compact title={t('reports.outcome.empty')}>
+          {t('empty.reports.outcome')}
+        </EmptyState>
       ) : (
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
         <section className="report-table" aria-label={t('reports.outcome.tickets')} tabIndex={0}>
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th scope="col">{t('reports.outcome.ticket')}</th>
@@ -369,21 +374,22 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
     );
   } else if (!forRelease && outcome === null) {
     body = (
-      <p className="report-empty">
-        {t(kind === 'outcome-report' ? 'reports.outcome.pick' : 'reports.scope.pick')}
-      </p>
+      <EmptyState
+        compact
+        title={t(kind === 'outcome-report' ? 'reports.outcome.pick' : 'reports.scope.pick')}
+      />
     );
   } else if (burndown) body = burndownView(burndown);
   else if (report) body = releaseView(report);
   else if (outcomeReport) body = outcomeView(outcomeReport);
   else if (!(forRelease && releases?.length === 0)) {
-    body = <p className="report-empty">{t('reports.loading')}</p>;
+    body = <p className="report-loading">{t('reports.loading')}</p>;
   }
 
   return (
     <>
       {picker}
-      {body && <div className="reports-body">{body}</div>}
+      {body && <div className="glass-card reports-body">{body}</div>}
     </>
   );
 }

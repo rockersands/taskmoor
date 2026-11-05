@@ -2,6 +2,8 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type PlanClient,
   type PlanRow,
@@ -73,18 +75,23 @@ export function PlansPage({ client = planClient }: PlansPageProps) {
   );
 
   return (
-    <section className="plans-page" aria-labelledby={`${id}-title`}>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('nav.plans')}
-      </h1>
-      <p className="plan-description">{t('plans.intro')}</p>
-      {!creating ? (
-        <button type="button" className="button-primary" onClick={() => setCreating(true)}>
-          {t('plans.new')}
-        </button>
-      ) : (
+    <section className="page plans-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('nav.plans')}
+        purpose={t('purpose.plans')}
+        about={t('plans.intro')}
+        actions={
+          !creating && (
+            <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+              {t('plans.new')}
+            </button>
+          )
+        }
+      />
+      {creating && (
         <form
-          className="plan-create"
+          className="glass-card plan-create"
           aria-label={t('plans.new')}
           onSubmit={(event) => void create(event)}
         >
@@ -132,15 +139,17 @@ export function PlansPage({ client = planClient }: PlansPageProps) {
           {t('plans.listFailed')}
         </p>
       )}
-      {list && list.length === 0 && <p className="report-empty">{t('plans.none')}</p>}
+      {list && list.length === 0 && (
+        <EmptyState title={t('plans.none')}>{t('empty.plans.body')}</EmptyState>
+      )}
       {mine.length > 0 && (
-        <section aria-labelledby={`${id}-mine`}>
+        <section className="glass-card" aria-labelledby={`${id}-mine`}>
           <h2 id={`${id}-mine`}>{t('plans.mine')}</h2>
           <ul className="dashboard-list">{mine.map(row)}</ul>
         </section>
       )}
       {others.length > 0 && (
-        <section aria-labelledby={`${id}-others`}>
+        <section className="glass-card" aria-labelledby={`${id}-others`}>
           <h2 id={`${id}-others`}>{t('plans.others')}</h2>
           <ul className="dashboard-list">{others.map(row)}</ul>
         </section>

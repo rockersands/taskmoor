@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { EmptyState } from './EmptyState';
@@ -8,6 +9,18 @@ import { PageHeader } from './PageHeader';
 
 const inEnglish = (node: React.ReactNode) =>
   render(<I18nProvider locale="en">{node}</I18nProvider>);
+
+describe('the page header (ADR-114)', () => {
+  it('[NFR-005] can take focus when the page asks, and not otherwise', () => {
+    const heading = createRef<HTMLHeadingElement>();
+    const { unmount } = inEnglish(<PageHeader title="Sign in" titleRef={heading} />);
+    heading.current?.focus();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toHaveFocus();
+    unmount();
+    inEnglish(<PageHeader title="Home" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Home' })).not.toHaveAttribute('tabindex');
+  });
+});
 
 describe('"What is this for?" (ADR-114)', () => {
   it('[NFR-005] opens and closes its explanation by click, keyboard and Escape', async () => {
@@ -77,5 +90,14 @@ describe('empty states (ADR-114)', () => {
     expect(screen.getByText('No boards yet')).toBeVisible();
     expect(screen.getByText('A board shows tickets as cards.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Create a board' })).toBeVisible();
+  });
+
+  it('[NFR-005] always draws the one picture, unless it is a short list inside a card', () => {
+    const { container, unmount } = inEnglish(<EmptyState title="No boards yet" />);
+    expect(container.querySelector('.empty-state-icon')).not.toBeNull();
+    unmount();
+    const compact = inEnglish(<EmptyState compact title="No alerts" />);
+    expect(compact.container.querySelector('.empty-state-icon')).toBeNull();
+    expect(screen.getByText('No alerts')).toBeVisible();
   });
 });

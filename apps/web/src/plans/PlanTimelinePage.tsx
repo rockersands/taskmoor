@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
@@ -100,9 +101,11 @@ export function PlanTimelinePage({
       </p>
     );
   }
-  if (!data) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
   if (data.query === null) return null;
-  if (data.items.length === 0) return <p className="report-empty">{t('plans.empty')}</p>;
+  if (data.items.length === 0) {
+    return <EmptyState title={t('plans.empty')}>{t('empty.planTickets.body')}</EmptyState>;
+  }
 
   return (
     <div className="timeline-page plan-timeline">

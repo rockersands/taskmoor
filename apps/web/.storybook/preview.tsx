@@ -3,6 +3,7 @@ import { I18nProvider } from '../src/i18n/I18nProvider';
 import '../src/styles/tokens.css';
 import '../src/styles/shell.css';
 import '../src/styles/forms.css';
+import '../src/styles/shared.css';
 import '../src/styles/admin.css';
 import '../src/styles/account.css';
 import '../src/styles/api-tokens.css';
@@ -17,6 +18,7 @@ import '../src/styles/comments.css';
 import '../src/styles/ticket-view.css';
 import '../src/styles/ticket-tools.css';
 import '../src/styles/people.css';
+import '../src/styles/invitations.css';
 import '../src/styles/inbox.css';
 import '../src/styles/boards.css';
 import '../src/styles/ticket-icons.css';
@@ -52,6 +54,15 @@ const preview: Preview = {
     },
   },
   initialGlobals: { skin: 'light' },
+  // Glass that blurs inside glass cuts the blur off and doubles the fill (ADR-114): a card inside a
+  // card is a well, with no blur of its own. The design guard reads this in the source; here it is
+  // read as drawn.
+  afterEach: ({ canvasElement }) => {
+    const nested = Array.from(canvasElement.querySelectorAll('.glass-card .glass-card')).find(
+      (card) => getComputedStyle(card).backdropFilter !== 'none',
+    );
+    if (nested) throw new Error(`Glass that blurs inside glass: ${nested.className}`);
+  },
   decorators: [
     (Story, context) => {
       // Story tests set the skin per run (vitest.setup.ts); the toolbar decides otherwise.

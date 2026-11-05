@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { EmptyState } from '../shell/EmptyState';
 
 /** The alert rules the server knows (ADR-109), in the order the form shows them. */
 export const ALERT_RULES = [
@@ -172,7 +173,12 @@ export function SecurityAlertsForm({
     );
   return (
     // Checked here, so the message is the page's own, in the reader's language.
-    <form className="form" onSubmit={submit} aria-labelledby={`${id}-title`} noValidate>
+    <form
+      className="form glass-card account-section"
+      onSubmit={submit}
+      aria-labelledby={`${id}-title`}
+      noValidate
+    >
       <h2 id={`${id}-title`} className="facts-title">
         {t('admin.alerts.title')}
       </h2>
@@ -241,7 +247,7 @@ export function SecurityAlertsForm({
         {t('admin.alerts.recent')}
       </h3>
       {state.recent.length === 0 ? (
-        <p className="page-note">{t('admin.alerts.none')}</p>
+        <EmptyState compact title={t('admin.alerts.none')} />
       ) : (
         <ul aria-labelledby={`${id}-recent`} className="security-alerts-list">
           {state.recent.map((alert) => (

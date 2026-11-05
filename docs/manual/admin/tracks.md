@@ -16,7 +16,8 @@ tracks, see [concepts and terms](../concepts.md).
 
 Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, turns their sprints on or off, gives roles to
-people and groups, and archives and restores them.
+people and groups, and archives and restores them. With no track yet, it says so and what a track
+is.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the

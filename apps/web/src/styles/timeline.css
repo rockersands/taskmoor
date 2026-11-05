@@ -11,7 +11,7 @@
   --timeline-indent: 16px;
 
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -41,13 +41,12 @@
   min-width: 0;
 }
 
+/*
+ * A `glass-card glass-scroller`. Its sticky head and column stay opaque (design-offenders.ts): rows
+ * scroll under them, and glass would show those rows through their words.
+ */
 .timeline-scroll {
-  position: relative;
   max-height: 70vh;
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
 }
 
 .timeline-head {
@@ -74,10 +73,25 @@
   font-size: var(--font-size-200);
 }
 
+/*
+ * The head in rows that never cross: months, then ticks, then a row for sprints and a row for
+ * releases where there are any. Each row is one line of text tall.
+ */
 .timeline-scale {
+  --timeline-scale-row: 1.25rem;
+
   position: relative;
   flex: none;
-  height: 3.25rem;
+  height: calc(var(--timeline-scale-row) * 2 + var(--space-half));
+}
+
+.timeline-scale:has(.timeline-sprint-label),
+.timeline-scale:has(.timeline-release-label) {
+  height: calc(var(--timeline-scale-row) * 3 + var(--space-half));
+}
+
+.timeline-scale:has(.timeline-sprint-label):has(.timeline-release-label) {
+  height: calc(var(--timeline-scale-row) * 4 + var(--space-half));
 }
 
 .timeline-month,
@@ -86,41 +100,46 @@
 .timeline-release-label {
   position: absolute;
   overflow: hidden;
+  line-height: var(--timeline-scale-row);
   white-space: nowrap;
   font-size: var(--font-size-200);
 }
 
 .timeline-month {
-  top: 2px;
-  padding-inline-start: 4px;
-  font-weight: 600;
+  top: 0;
+  padding-inline-start: var(--space-1);
+  font-weight: var(--font-weight-strong);
 }
 
 .timeline-tick {
-  top: 1.25rem;
-  padding-inline-start: 4px;
+  top: var(--timeline-scale-row);
+  padding-inline-start: var(--space-1);
   color: var(--color-text-muted);
 }
 
 .timeline-tick.is-major {
   color: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .timeline-sprint-label {
-  bottom: 2px;
+  top: calc(var(--timeline-scale-row) * 2);
   box-sizing: border-box;
-  padding: 0 4px;
-  border-radius: 4px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-mark);
   background: var(--color-accent-soft);
   text-overflow: ellipsis;
 }
 
 .timeline-release-label {
-  top: 1.25rem;
-  padding-inline-start: 4px;
+  top: calc(var(--timeline-scale-row) * 2);
+  padding-inline-start: var(--space-1);
   color: var(--color-warning);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
+}
+
+.timeline-scale:has(.timeline-sprint-label) .timeline-release-label {
+  top: calc(var(--timeline-scale-row) * 3);
 }
 
 .timeline-grid {
@@ -194,13 +213,13 @@
   box-sizing: border-box;
   min-width: 20px;
   height: 20px;
-  padding: 0 6px;
+  padding: 0 var(--space-1);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-strong);
   color: var(--color-text);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   line-height: 18px;
   text-align: center;
   white-space: nowrap;
@@ -230,7 +249,7 @@
 .timeline-row {
   display: flex;
   height: var(--timeline-row);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--glass-edge);
   box-sizing: border-box;
 }
 
@@ -274,7 +293,7 @@
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-overflow: ellipsis;
 }
 
@@ -310,7 +329,7 @@
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
   background: var(--color-flow-first);
   cursor: grab;
   touch-action: none;
@@ -325,7 +344,7 @@ button.timeline-bar:focus-visible {
   background: repeating-linear-gradient(
     45deg,
     var(--color-flow-first) 0 6px,
-    color-mix(in oklab, var(--color-flow-first) 55%, var(--color-surface-raised)) 6px 10px
+    color-mix(in oklab, var(--color-flow-first) 55%, transparent) 6px 10px
   );
 }
 
@@ -351,9 +370,9 @@ button.timeline-bar:focus-visible {
   top: 10px;
   height: 24px;
   padding: 0 var(--space-2);
-  border: 1px dashed var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -363,10 +382,7 @@ button.timeline-bar:focus-visible {
   display: grid;
   gap: var(--space-2);
   width: 18rem;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  padding: var(--space-4);
 }
 
 .timeline-panel h2 {
@@ -390,6 +406,7 @@ button.timeline-bar:focus-visible {
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+  padding: var(--space-4);
 }
 
 .dependency-list h2 {
@@ -416,11 +433,12 @@ button.timeline-bar:focus-visible {
   list-style: none;
 }
 
+/* A well in the list's card, with no blur of its own. */
 .dependency-entry {
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
   overflow-wrap: anywhere;
 }
 
@@ -440,7 +458,7 @@ button.timeline-bar:focus-visible {
 
 .dependency-key,
 .dependency-state {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .dependency-blockers {
@@ -477,6 +495,14 @@ button.timeline-bar:focus-visible {
   .timeline-unscheduled {
     top: 0;
     height: var(--hit-target-touch);
+  }
+
+  /* The row's height, with its key still cut short by an ellipsis in a narrow column. */
+  .timeline-key {
+    align-self: stretch;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+    line-height: var(--hit-target-touch);
   }
 
   .timeline-toggle,

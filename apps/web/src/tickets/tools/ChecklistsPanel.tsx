@@ -10,6 +10,7 @@ import {
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useLockText } from '../../locks/useLockText';
+import { EmptyState } from '../../shell/EmptyState';
 import { ITEM_STATE_LABELS, ITEM_STATES, type ItemState } from './checklistStates';
 import type {
   Checklist,
@@ -222,7 +223,7 @@ export function ChecklistsPanel({
         </div>
       )}
       {checklists.length === 0 && !adding && (
-        <p className="ticket-tool-empty">{t('ticketTools.checklists.empty')}</p>
+        <EmptyState compact title={t('ticketTools.checklists.empty')} />
       )}
       {checklists.map((list) => (
         <ChecklistBlock

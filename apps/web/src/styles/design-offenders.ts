@@ -1,0 +1,108 @@
+/**
+ * The design guard's two lists (design.test.ts, ADR-114, T-144).
+ *
+ * OFFENDERS is the work left: how many times each file breaks each rule today, or which route pages
+ * have no PageHeader. Each pass over a page lowers its entries, and the guard fails until an entry
+ * says exactly what is there, so the list can only shrink. An empty OFFENDERS is the finish line.
+ * Never raise a number to get past the guard: fix what it names.
+ *
+ * ALLOWED is what stays for good, each with its reason. An entry is one file and the one thing in
+ * it, or for opaque surfaces one selector, so nothing new gets through under it.
+ */
+export type Ratchet = Record<string, number>;
+
+const SAMPLE_DATA = 'data a person or a test works with, not a style';
+const CARET =
+  'a caret colour is sent to the others in the editor, where a variable of this page means nothing';
+const STICKY = 'a sticky cell: rows scroll under it, so glass would show them through its text';
+const SKIN_PREVIEW = 'a miniature of a skin, drawn in the colours it shows, with no text on it';
+const FACT = 'a fact with no value, beside others that have one';
+const SETTING_HINT = 'a hint on a setting, about sections left empty: no list is empty here';
+const CARET_MENU = 'a line in the small menu at the caret, which closes as the person types on';
+
+export const ALLOWED = {
+  /** `<file> <literal>`: colours that are data, not styles. */
+  rawColours: {
+    'boards/BoardSettingsPage.tsx #2f6fdb': SAMPLE_DATA,
+    'boards/fixtures.ts #2f6fdb': SAMPLE_DATA,
+    'boards/fixtures.ts #c4314b': SAMPLE_DATA,
+    'builder/form.ts #6d5bd0': 'the accent a kit starts with, written into what the Builder makes',
+    'richtext/CollaborativeEditor.tsx #a1452a': CARET,
+    'richtext/CollaborativeEditor.tsx #2f5f8f': CARET,
+    'richtext/CollaborativeEditor.tsx #9b3550': CARET,
+    'richtext/CollaborativeEditor.tsx #2c6a44': CARET,
+    'richtext/CollaborativeEditor.tsx #6a55d4': CARET,
+    'richtext/CollaborativeEditor.tsx #7a5a00': CARET,
+  },
+  /** Selectors: fields need no entry. The user is still to decide on sticky cells (T-143). */
+  opaqueSurfaces: {
+    '.skip-link': 'it appears over anything at all, and must stay readable there',
+    '.timeline-head': STICKY,
+    '.timeline-corner': STICKY,
+    '.timeline-label': STICKY,
+    '.timeline-group .timeline-label': STICKY,
+    '.capacity-table thead th': STICKY,
+    '.capacity-table tbody th': STICKY,
+    '.capacity-row.is-team th': STICKY,
+    '.skin-preview-bar': SKIN_PREVIEW,
+    '.skin-preview-card': SKIN_PREVIEW,
+  },
+  /** `<file> <tag>`: a page title that PageHeader cannot draw. */
+  titles: {
+    'shell/PageHeader.tsx h1': 'the one place',
+    'tickets/view/TicketPage.tsx h1':
+      'the title is the summary, edited in place, a form of its own',
+    'tickets/CreateTicketPage.tsx h2': 'the same form in a dialog, under the page it opened over',
+  },
+  /** Components: a route page that draws its header some other way. */
+  pagesWithoutHeader: {
+    TicketPage: 'the title is the summary, edited in place; the user decides on its purpose line',
+  },
+  /** `<file> <message ID>`: a "none" that is no empty list, or says more than an empty list would. */
+  bareEmpties: {
+    'admin/AiSettingsPage.tsx ai.keyStorageNone': 'a failure, in an alert: no key can be kept',
+    'ai/DataStatement.tsx ai.statement.none': 'one word inside a sentence on what is masked',
+    'dashboards/WidgetEditor.tsx dashboards.column.empty':
+      'the drop zone of a column being edited: it says where to drop, and has the shape of one',
+    'layouts/LayoutCanvas.tsx layouts.hideWhenEmptyHint': SETTING_HINT,
+    'layouts/LayoutEditorPage.tsx layouts.source.none':
+      'one of three readings of the line on where a form gets its layout from',
+    'layouts/LayoutEditorPage.tsx layouts.usedByNone': FACT,
+    'layouts/LayoutPreview.tsx layouts.preview.hidesWhenEmpty': SETTING_HINT,
+    'richtext/CollaborativeEditor.tsx richtext.collab.empty': 'what a blank document shows to read',
+    'richtext/RichTextEditor.tsx richtext.mention.none': CARET_MENU,
+    'richtext/RichTextEditor.tsx richtext.slash.none': CARET_MENU,
+    'sprints/CompleteSprint.tsx sprints.completeDialog.empty':
+      'one of four readings of the line that counts a sprint in its dialog',
+    'tickets/view/InfoPanel.tsx ticketView.none': FACT,
+    'tickets/view/TicketPage.tsx ticketView.none': FACT,
+    'workflow/PublishPanel.tsx admin.workflow.publishPanel.empty':
+      'one status of several, among those with a choice to make',
+    'workflow/TransitionInspector.tsx admin.workflow.transition.fromNone':
+      'a problem with a transition, shown with its rule',
+  },
+  /** `<file> <component>`: rendered in a `glass-card`, and draws one only where it is not nested. */
+  glassInGlass: {
+    'admin/AdminOverviewPage.tsx AdminPageLinks':
+      'its file draws a glass card around the same links; the links themselves draw none',
+    'tutorial/FirstRunOffer.tsx TutorialPicker': 'told it is `nested`, it draws wells',
+  },
+} satisfies Record<string, Record<string, string>>;
+
+export const OFFENDERS = {
+  /** Panels and wells on an opaque token; `--glass-surface-sunken` is the like-for-like glass. */
+  opaqueSurfaces: {} as Ratchet,
+  /** `h1` or `.page-title` outside PageHeader. */
+  titles: {} as Ratchet,
+  /** Route pages with no PageHeader; a purpose is ready in messages.en.ts (`purpose.*`, an intro). */
+  pagesWithoutHeader: [] as string[],
+  noPurpose: {} as Ratchet,
+  /** `<button>` or `<table>` with no class and no rule through a parent. */
+  bareControls: {} as Ratchet,
+  /** `<fieldset>` classes that no stylesheet names. */
+  fieldsetsWithoutRule: {} as Ratchet,
+  /** "None" sentences outside an EmptyState; bodies are ready as `empty.*`. */
+  bareEmpties: {} as Ratchet,
+  /** Raw colours; there are none left to fix. */
+  rawColours: {} as Ratchet,
+};

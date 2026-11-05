@@ -85,7 +85,11 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
   );
   if (prefs === 'loading' || prefs === 'failed') {
     return (
-      <section aria-labelledby={`${id}-title`} className="account-section" id="notifications">
+      <section
+        aria-labelledby={`${id}-title`}
+        className="glass-card account-section"
+        id="notifications"
+      >
         {title}
         <p className="page-note" role={prefs === 'failed' ? 'alert' : 'status'}>
           {t(prefs === 'failed' ? 'notifications.failed' : 'notifications.loading')}
@@ -98,7 +102,11 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
     save({ events: { [event]: { [channel]: on } } });
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section" id="notifications">
+    <section
+      aria-labelledby={`${id}-title`}
+      className="glass-card account-section"
+      id="notifications"
+    >
       {title}
       <p className="page-note">{t('notifications.intro')}</p>
       <fieldset className="notification-delivery">
@@ -135,7 +143,9 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
           <div className="notification-hours">
             {(['start', 'end'] as const).map((edge) => (
               <label key={edge}>
-                {t(edge === 'start' ? 'notifications.quietFrom' : 'notifications.quietUntil')}
+                <span className="form-label">
+                  {t(edge === 'start' ? 'notifications.quietFrom' : 'notifications.quietUntil')}
+                </span>
                 <select
                   value={quiet[edge]}
                   onChange={(e) =>
@@ -161,7 +171,7 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
         />
         <span>{t('notifications.ownChanges')}</span>
       </label>
-      <table className="notification-events">
+      <table className="data-table notification-events">
         <caption>{t('notifications.events')}</caption>
         <thead>
           <tr>
@@ -181,15 +191,17 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
                 <th scope="row">{label}</th>
                 {CHANNELS.map((channel) => (
                   <td key={channel}>
-                    <input
-                      type="checkbox"
-                      aria-label={t('notifications.toggle', {
-                        channel: t(`notifications.channel.${channel}` as MessageId),
-                        event: label,
-                      })}
-                      checked={prefs.events[event]?.[channel] ?? true}
-                      onChange={(e) => choose(event, channel, e.target.checked)}
-                    />
+                    <label className="notification-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={t('notifications.toggle', {
+                          channel: t(`notifications.channel.${channel}` as MessageId),
+                          event: label,
+                        })}
+                        checked={prefs.events[event]?.[channel] ?? true}
+                        onChange={(e) => choose(event, channel, e.target.checked)}
+                      />
+                    </label>
                   </td>
                 ))}
               </tr>

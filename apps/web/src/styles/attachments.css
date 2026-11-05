@@ -58,7 +58,9 @@
   padding: var(--space-5);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  background: var(--color-surface-raised);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-highlight), var(--shadow-3);
   color: var(--color-text);
   text-align: center;
@@ -67,7 +69,7 @@
 .file-drop-title {
   margin: 0;
   font-size: var(--font-size-400);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -103,7 +105,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px dashed var(--color-field-border);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .attachment-drop:focus-visible {
@@ -143,7 +145,7 @@
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .attachment-thumb {
@@ -152,7 +154,7 @@
   height: 56px;
   border-radius: var(--radius-1);
   object-fit: cover;
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-sunken);
 }
 
 .attachment-glyph {
@@ -169,7 +171,7 @@
 .attachment-name {
   display: inline-block;
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -188,7 +190,7 @@ span.attachment-name {
   margin: var(--space-1) 0 0;
   color: var(--color-warning);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .attachment-actions {
@@ -228,17 +230,13 @@ a.attachment-action {
   background: var(--color-backdrop);
 }
 
-.attachment-preview {
-  display: grid;
+/* A dialog like the ticket's others, floating glass, only wider, and its body scrolls inside. */
+.ticket-dialog.attachment-preview {
   grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--space-3);
   width: min(64rem, 100%);
   max-height: calc(100dvh - 2 * var(--space-4));
   box-sizing: border-box;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-3);
 }
 
 .attachment-preview-header {
@@ -273,14 +271,14 @@ a.attachment-action {
   height: 70dvh;
   border: 0;
   border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-sunken);
 }
 
 .attachment-preview-text {
   margin: 0;
   padding: var(--space-3);
   border-radius: var(--radius-1);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   font-family: var(--font-mono);
   font-size: var(--font-size-200);
   white-space: pre-wrap;

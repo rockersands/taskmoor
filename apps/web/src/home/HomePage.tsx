@@ -12,15 +12,7 @@ import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
 import { HelpTip } from '../shell/HelpTip';
-import {
-  BoardsIcon,
-  InboxIcon,
-  PlusIcon,
-  SearchIcon,
-  TicketIcon,
-  TourIcon,
-  TracksIcon,
-} from '../shell/icons';
+import { BoardsIcon, PlusIcon, SearchIcon, TourIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChangeCount } from '../tickets/view/ticketChanges';
@@ -45,7 +37,6 @@ const SECTIONS: {
   help: MessageId;
   empty: MessageId;
   emptyHint: MessageId;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
 }[] = [
   {
     id: 'assigned',
@@ -53,7 +44,6 @@ const SECTIONS: {
     help: 'home.assignedHelp',
     empty: 'home.assignedEmpty',
     emptyHint: 'home.assignedEmptyHint',
-    icon: TicketIcon,
   },
   {
     id: 'recent',
@@ -61,7 +51,6 @@ const SECTIONS: {
     help: 'home.recentHelp',
     empty: 'home.recentEmpty',
     emptyHint: 'home.recentEmptyHint',
-    icon: SearchIcon,
   },
   {
     id: 'followed',
@@ -69,7 +58,6 @@ const SECTIONS: {
     help: 'home.followedHelp',
     empty: 'home.followedEmpty',
     emptyHint: 'home.followedEmptyHint',
-    icon: InboxIcon,
   },
 ];
 
@@ -133,7 +121,7 @@ export function HomePage({ client = homeClient, tracks = homeTracks, intro }: Ho
   }, [client, tracks, changes]);
 
   return (
-    <section aria-labelledby={titleId} className="home-page">
+    <section aria-labelledby={titleId} className="page home-page">
       <PageHeader
         titleId={titleId}
         title={t('home.title')}
@@ -173,7 +161,6 @@ export function HomePage({ client = homeClient, tracks = homeTracks, intro }: Ho
             help={t(section.help)}
             empty={t(section.empty)}
             emptyHint={t(section.emptyHint)}
-            icon={section.icon}
             list={lists[section.id]}
           />
         ))}
@@ -195,14 +182,12 @@ function HomeList({
   help,
   empty,
   emptyHint,
-  icon,
   list,
 }: {
   title: string;
   help: string;
   empty: string;
   emptyHint: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
   list: Loaded<HomeTicket>;
 }) {
   const t = useT();
@@ -221,7 +206,6 @@ function HomeList({
       <ListStatus list={list} />
       {list.status === 'loaded' && list.items.length === 0 && (
         <EmptyState
-          icon={icon}
           title={empty}
           action={
             <a className="button-quiet" href={routeHref('#/search')}>
@@ -299,7 +283,6 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
       <ListStatus list={list} />
       {list.status === 'loaded' && list.items.length === 0 && (
         <EmptyState
-          icon={TracksIcon}
           title={t('home.tracksEmpty')}
           action={
             <>

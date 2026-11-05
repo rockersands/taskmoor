@@ -45,7 +45,7 @@ export function PlanCalendarPage({ id, filters, client, now }: PlanSectionProps)
       </p>
     );
   }
-  if (!data) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
   if (data.query === null) return null;
 
   return (

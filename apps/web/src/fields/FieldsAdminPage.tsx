@@ -4,6 +4,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   FIELD_TYPES,
   type Field,
@@ -92,17 +94,20 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   const typeName = (of: FieldType) => t(`admin.fields.type.${of}` as MessageId);
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.fields.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.fields.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.fieldsHint'), about: t('admin.fields.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.fields.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.fields.intro')}</p>
           <form
-            className="people-form"
+            className="glass-card people-card people-form"
             aria-label={t('admin.fields.add')}
             onSubmit={(event) => {
               event.preventDefault();
@@ -185,7 +190,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
             </p>
           )}
           {state.status === 'loaded' && state.fields.length === 0 && (
-            <p className="page-note">{t('admin.fields.none')}</p>
+            <EmptyState title={t('admin.fields.none')}>{t('empty.fields.body')}</EmptyState>
           )}
           {state.status === 'loaded' && state.fields.length > 0 && (
             <ul className="people-list">
@@ -373,7 +378,7 @@ function ContextOptions({
         {t('admin.fields.optionsOf', { context: context.name })}
       </h2>
       {options.length === 0 ? (
-        <p className="page-note">{t('admin.fields.noOptions')}</p>
+        <EmptyState compact title={t('admin.fields.noOptions')} />
       ) : (
         <ul className="people-sublist">
           {options.map((option) => (

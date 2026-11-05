@@ -9,8 +9,10 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { playMotion } from '../shell/motion';
+import { PageHeader } from '../shell/PageHeader';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
@@ -522,7 +524,7 @@ export function BacklogPage({
 
   const ticketList = (section: Shown) => {
     const shown = shownOf(section.tickets);
-    if (shown.length === 0) return <p className="sprint-empty">{t('sprints.section.empty')}</p>;
+    if (shown.length === 0) return <EmptyState compact title={t('sprints.section.empty')} />;
     return (
       <ul className="sprint-tickets">
         {shown.map((ticket) => (
@@ -601,7 +603,7 @@ export function BacklogPage({
           </label>
         ) : null,
       drop: {
-        className: `sprint-section${
+        className: `glass-card sprint-section${
           over?.kind === 'section' && over.section === section.key ? ' is-drop-target' : ''
         }`,
         'data-drop-section': section.key === null ? 'backlog' : String(section.key),
@@ -629,13 +631,17 @@ export function BacklogPage({
   const first = dragging?.[0] !== undefined ? ticketOf.get(dragging[0]) : undefined;
 
   return (
-    <section ref={page} className="backlog-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('sprints.backlog.pageTitle')}
-        </h1>
-        <a href={routeHref(`#/boards/${boardId}`)}>{t('sprints.backlog.toBoard')}</a>
-      </div>
+    <section ref={page} className="page backlog-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('sprints.backlog.pageTitle')}
+        purpose={t('purpose.backlog')}
+        actions={
+          <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
+            {t('sprints.backlog.toBoard')}
+          </a>
+        }
+      />
       {failed && (
         <p className="board-problem" role="alert">
           {t('sprints.backlog.failed')}
@@ -936,7 +942,7 @@ function SprintPanel({
       <div className="sprint-section-header">
         {selectAll}
         <h2 id={`${id}-name`}>{section.name}</h2>
-        <span className="sprint-state">
+        <span className="badge badge-accent sprint-state">
           {t(section.state === 'active' ? 'sprints.state.active' : 'sprints.state.future')}
         </span>
         <span className="board-meta">{totals}</span>

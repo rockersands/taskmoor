@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 import { type SecurityAlertsClient, SecurityAlertsForm } from './SecurityAlertsForm';
 import { type SessionPolicyClient, SessionPolicyForm } from './SessionPolicyForm';
 
@@ -146,10 +147,12 @@ export function SecurityPage({ client = securityClient, sessions, alerts }: Secu
   };
 
   return (
-    <section aria-labelledby={titleId} className="security-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.security.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page security-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.security.title')}
+        {...(state.status === 'forbidden' ? {} : { purpose: t('purpose.security') })}
+      />
       {state.status === 'loading' && (
         <p role="status" className="page-note">
           {t('admin.security.loading')}
@@ -162,7 +165,11 @@ export function SecurityPage({ client = securityClient, sessions, alerts }: Secu
         </p>
       )}
       {state.status === 'loaded' && (
-        <form className="form" onSubmit={submit} aria-labelledby={`${id}-title`}>
+        <form
+          className="form glass-card account-section"
+          onSubmit={submit}
+          aria-labelledby={`${id}-title`}
+        >
           <h2 id={`${id}-title`} className="facts-title">
             {t('admin.security.twoFactor')}
           </h2>

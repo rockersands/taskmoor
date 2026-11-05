@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { SIGNED_IN } from '../account/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { defaultPreferences, fakeNotificationsClient } from './fixtures';
 import { NotificationsSection } from './NotificationsSection';
 
@@ -58,5 +59,14 @@ export const TurnsAnEmailOff: Story = {
     await userEvent.click(await canvas.findByRole('checkbox', { name: 'Email: Ticket updated' }));
     await expect(await canvas.findByText('Notification settings saved.')).toBeVisible();
     await expect(canvas.getByRole('checkbox', { name: 'Email: Ticket updated' })).not.toBeChecked();
+  },
+};
+
+/** A tap anywhere in a cell of the matrix reaches its check box (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('checkbox');
+    await expect(tooSmallForAFinger(canvasElement, ['.notification-cell'])).toEqual([]);
   },
 };

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import { ApiError } from '../api/client';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -11,11 +10,12 @@ import {
   searchClient,
 } from '../search/client';
 import { DEFAULT_COLUMNS } from '../search/columns';
-import { ResultTable, type RowFormat, type Tone } from '../search/ResultTable';
+import type { RowFormat, Tone } from '../search/ResultTable';
 import { useColumnName } from '../search/useColumnName';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
-import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type FormatRule,
   GROUP_FIELDS,
@@ -30,6 +30,7 @@ import {
   saveListColumns,
   saveRules,
 } from './client';
+import { GroupSection } from './GroupSection';
 
 export interface ListPageProps {
   trackKey: string;
@@ -193,14 +194,19 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
 
   if (failed) {
     return (
-      <section className="list-page">
+      <section className="page list-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('track.section.list')}
+          purpose={t('purpose.list')}
+        />
         <p className="board-problem" role="alert">
           {t('list.notFound')}
         </p>
       </section>
     );
   }
-  if (!track || !base) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!track || !base) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const query = (clause: string | null) =>
     `${base}${clause ? ` AND ${clause}` : ''} ORDER BY ${SORTS[sort].order}`;
@@ -227,15 +233,17 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   );
 
   return (
-    <section className="list-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {t('list.title', { name: track.name })}
-        </h1>
-        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
-          {t('releases.toSummary')}
-        </a>
-      </div>
+    <section className="page list-page" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('list.title', { name: track.name })}
+        purpose={t('purpose.list')}
+        actions={
+          <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
+            {t('releases.toSummary')}
+          </a>
+        }
+      />
       <div className="list-tools">
         <label className="form-field">
           <span className="form-label">{t('list.groupBy')}</span>
@@ -285,11 +293,11 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
           </button>
         </form>
       </div>
-      <details className="list-panel">
+      <details className="glass-card list-panel">
         <summary>{t('list.columns')}</summary>
         <ColumnPicker columns={columns} fields={fields} onChange={changeColumns} />
       </details>
-      <details className="list-panel" open={rules.length > 0 || undefined}>
+      <details className="glass-card list-panel" open={rules.length > 0 || undefined}>
         <summary>{t('list.rules', { count: rules.length })}</summary>
         <RulesPanel
           rules={rules}
@@ -306,9 +314,9 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
           {t('list.groupsFailed')}
         </p>
       ) : groups === null ? (
-        <p className="report-empty">{t('reports.loading')}</p>
+        <p className="report-loading">{t('reports.loading')}</p>
       ) : groups.length === 0 ? (
-        <p className="report-empty">{t('list.empty')}</p>
+        <EmptyState title={t('list.empty')}>{t('empty.list.body')}</EmptyState>
       ) : (
         groups.map((g) =>
           section(
@@ -332,125 +340,6 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
           setVersion((v) => v + 1);
         }}
       />
-    </section>
-  );
-}
-
-/**
- * A group's tickets (or all of them): fifty at a time, in the list's order; a track's list and a
- * Multi-track plan's (ADR-122), which stops at `cap` rows and says so.
- */
-export function GroupSection({
-  sectionKey,
-  title,
-  count,
-  other,
-  query,
-  search,
-  columns,
-  fields,
-  format,
-  onTickets,
-  cap,
-}: {
-  sectionKey: string;
-  title: string | null;
-  count: number | null;
-  /** The rest gathered as other: counted, not listed. */
-  other: boolean;
-  query: string;
-  search: SearchClient;
-  columns: string[];
-  fields: SearchField[];
-  format: ((ticket: SearchTicket) => RowFormat | null) | undefined;
-  onTickets: (key: string, tickets: SearchTicket[]) => void;
-  /** At most this many rows, and the words that say so when there are more. */
-  cap?: { rows: number; text: string };
-}) {
-  const t = useT();
-  const id = useId();
-  const [tickets, setTickets] = useState<SearchTicket[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'invalid' | 'failed'>('loading');
-
-  const load = useCallback(
-    (after?: string) => {
-      search.search(query, after).then(
-        (page) => {
-          setTickets((current) => {
-            const next = after ? [...current, ...page.tickets] : page.tickets;
-            onTickets(sectionKey, next);
-            return next;
-          });
-          setCursor(page.next);
-          setState('ready');
-        },
-        (error) =>
-          setState(error instanceof ApiError && error.status === 400 ? 'invalid' : 'failed'),
-      );
-    },
-    [search, query, sectionKey, onTickets],
-  );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once per query (the key remounts it)
-  useEffect(() => {
-    if (!other) load();
-  }, []);
-  // An edit in the ticket pop-up over this list: the rows shown, read again where they stand.
-  useTicketChanges(() => {
-    if (other) return;
-    readShownPages((after) => search.search(query, after), tickets.length).then(
-      (page) => {
-        setTickets(page.tickets);
-        onTickets(sectionKey, page.tickets);
-        setCursor(page.next);
-      },
-      () => {},
-    );
-  });
-
-  const body =
-    state === 'invalid' ? (
-      <p className="board-problem" role="alert">
-        {t('list.invalidFilter')}
-      </p>
-    ) : state === 'failed' ? (
-      <p className="board-problem" role="alert">
-        {t('list.failed')}
-      </p>
-    ) : state === 'loading' ? (
-      <p className="report-empty">{t('reports.loading')}</p>
-    ) : tickets.length === 0 ? (
-      <p className="report-empty">{t('list.empty')}</p>
-    ) : (
-      <>
-        <ResultTable
-          tickets={tickets}
-          columns={columns}
-          fields={fields}
-          client={search}
-          {...(format ? { format } : {})}
-          onSaved={(saved) =>
-            setTickets((current) => current.map((x) => (x.id === saved.id ? saved : x)))
-          }
-        />
-        {cursor && (!cap || tickets.length < cap.rows) && (
-          <button type="button" className="button-secondary" onClick={() => load(cursor)}>
-            {t('list.more')}
-          </button>
-        )}
-        {cursor && cap && tickets.length >= cap.rows && <p className="board-hint">{cap.text}</p>}
-      </>
-    );
-  if (title === null)
-    return (
-      <section className="list-group" aria-label={t('list.tickets')}>
-        {body}
-      </section>
-    );
-  return (
-    <section className="list-group" aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>{t('list.groupTitle', { name: title, count: count ?? 0 })}</h2>
-      {other ? <p className="board-hint">{t('list.otherHint')}</p> : body}
     </section>
   );
 }

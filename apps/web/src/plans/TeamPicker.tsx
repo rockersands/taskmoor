@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 
 /** A site team a plan may plan with; `memberCount` null when the list did not give it. */
 export interface TeamOption {
@@ -24,7 +25,7 @@ export function TeamPicker({ options, value, onChange }: TeamPickerProps) {
   const t = useT();
   const id = useId();
   const [filter, setFilter] = useState('');
-  if (!options) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!options) return <p className="report-loading">{t('reports.loading')}</p>;
   const chosen = new Set(value);
   const needle = filter.trim().toLowerCase();
   const shown = options.filter((x) => !needle || x.name.toLowerCase().includes(needle));
@@ -35,7 +36,7 @@ export function TeamPicker({ options, value, onChange }: TeamPickerProps) {
       <legend>{t('plans.settings.teams')}</legend>
       <p className="board-hint">{t('plans.settings.teamsHint')}</p>
       {options.length === 0 ? (
-        <p className="report-empty">{t('plans.settings.noTeams')}</p>
+        <EmptyState compact title={t('plans.settings.noTeams')} />
       ) : (
         <>
           {options.length > 8 && (

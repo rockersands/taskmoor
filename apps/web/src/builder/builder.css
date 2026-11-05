@@ -7,10 +7,6 @@
   box-sizing: border-box;
 }
 
-.builder > .page-note {
-  margin-bottom: var(--space-2);
-}
-
 .builder-form {
   max-width: none;
   margin-top: var(--space-5);
@@ -63,19 +59,17 @@
   cursor: not-allowed;
 }
 
+/* With `glass-card`. */
 .builder-advanced {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .builder-advanced summary {
   min-height: var(--hit-target);
   line-height: var(--hit-target);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
@@ -88,9 +82,6 @@
   gap: var(--space-3);
   margin-top: var(--space-6);
   padding: var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .builder-results h2 {

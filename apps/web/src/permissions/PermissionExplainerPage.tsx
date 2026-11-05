@@ -127,11 +127,11 @@ export function PermissionExplainerPage({ client = explainClient }: { client?: E
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={t('admin.explain.title')}
-        purpose={t('admin.explain.purpose')}
+        {...(lists.status === 'forbidden' ? {} : { purpose: t('admin.explain.purpose') })}
       />
       {lists.status === 'forbidden' && <p className="page-note">{t('admin.explain.forbidden')}</p>}
       {lists.status === 'loading' && <p className="page-note">{t('admin.explain.loading')}</p>}

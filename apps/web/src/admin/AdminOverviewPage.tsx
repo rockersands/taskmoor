@@ -76,11 +76,17 @@ export function AdminOverviewPage({ client = overviewClient }: { client?: Overvi
   const titleId = useId();
   const access = useAdminAccess();
   return (
-    <section aria-labelledby={titleId} className="admin-page">
+    <section aria-labelledby={titleId} className="page admin-page">
       <PageHeader
         titleId={titleId}
         title={t('nav.administration')}
-        purpose={t(access === 'setup' ? 'admin.overview.purposeSetup' : 'admin.overview.purpose')}
+        {...(access === 'none'
+          ? {}
+          : {
+              purpose: t(
+                access === 'setup' ? 'admin.overview.purposeSetup' : 'admin.overview.purpose',
+              ),
+            })}
       />
       {access === 'none' && <p className="page-note">{t('admin.forbidden')}</p>}
       {(access === 'setup' || access === 'tracks') &&
@@ -186,7 +192,7 @@ function NotSignedInPanel({ read }: { read: OverviewClient['people'] }) {
       )}
       {state.status === 'loaded' &&
         (waiting.length === 0 ? (
-          <EmptyState title={t('admin.overview.waiting.noneTitle')}>
+          <EmptyState compact title={t('admin.overview.waiting.noneTitle')}>
             {t('admin.overview.waiting.none')}
           </EmptyState>
         ) : (
@@ -233,7 +239,9 @@ function AlertsPanel({ read }: { read: OverviewClient['alerts'] }) {
       )}
       {state.status === 'loaded' &&
         (state.value.length === 0 ? (
-          <EmptyState title={t('admin.alerts.none')}>{t('admin.overview.alerts.none')}</EmptyState>
+          <EmptyState compact title={t('admin.alerts.none')}>
+            {t('admin.overview.alerts.none')}
+          </EmptyState>
         ) : (
           <ul className="admin-panel-list">
             {state.value.slice(0, SHOWN).map((alert) => (

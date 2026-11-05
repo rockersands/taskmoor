@@ -63,7 +63,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   font-size: var(--font-size-300);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .track-group-count,
@@ -110,10 +110,22 @@
   box-shadow: var(--glass-highlight-flat);
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 /* A track card with its grip at the top corner. */
+/* A card in a bubble is a well, with no blur of its own: glass inside glass cuts the blur off. */
+.track-group-bubble .track-card {
+  background: var(--glass-surface-sunken);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--glass-highlight-flat);
+}
+
+.track-group-bubble .track-card::before {
+  content: none;
+}
+
 .track-card {
   position: relative;
   padding-inline-end: calc(var(--hit-target) + var(--space-2));

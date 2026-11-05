@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
@@ -11,6 +12,17 @@ import { InvitationPage } from './InvitationPage';
 import { InviteDialog } from './InviteDialog';
 import { ManagedTracksPage } from './ManagedTracksPage';
 import { TrackPeoplePage } from './TrackPeoplePage';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 /** The pages of a track manager and of an invited person (IAM-027, IAM-030). */
 const meta = {
@@ -203,6 +215,26 @@ export const InvitationLinkPage: StoryObj<typeof InvitationPage> = {
   render: () => anonymous(<InvitationPage client={fakeInvitationClient()} />),
 };
 
+/** A link that no longer works: said on the same card as Unsubscribe and Consent. */
+export const InvitationLinkGone: StoryObj<typeof InvitationPage> = {
+  ...invited,
+  render: () =>
+    anonymous(
+      <InvitationPage
+        client={{
+          ...fakeInvitationClient(),
+          inspect: async () => {
+            throw new ApiError(404, { error: 'not_found' });
+          },
+        }}
+      />,
+    ),
+  play: async ({ canvasElement }) => {
+    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign-in' });
+    await expect(link.closest('.glass-card')).not.toBeNull();
+  },
+};
+
 /** A provider serves the invited address (IAM-032): signing in comes first, with it on offer. */
 export const InvitationWithGoogle: StoryObj<typeof InvitationPage> = {
   ...invited,
@@ -236,4 +268,55 @@ export const InvitationUsedUp: StoryObj<typeof InvitationPage> = {
         }}
       />,
     ),
+};
+
+/** A track's people on a phone, each part on its card. */
+export const ManagerAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { name: 'Who holds which role' }),
+    ).toBeVisible();
+    await expect(canvas.getByText(/^Who has which role in this track/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** Nobody invited yet: a short line inside its card, with no picture. */
+export const NoInvitationsWaiting: Story = {
+  args: { client: fakeTrackPeopleClient({ invitations: [] }) },
+};
+
+export const TracksYouRunAtPhoneWidth: StoryObj<typeof ManagedTracksPage> = {
+  decorators: [atPhoneWidth],
+  render: () => <ManagedTracksPage client={fakeTrackPeopleClient()} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: 'Manage track SHOP' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** Someone who runs no track: what would put one here. */
+export const NoTracksYouRun: StoryObj<typeof ManagedTracksPage> = {
+  render: () => (
+    <ManagedTracksPage client={{ ...fakeTrackPeopleClient(), managedTracks: async () => [] }} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('You do not run any track.')).toBeVisible();
+    await expect(canvas.getByText(/^A track shows here once you run it/)).toBeVisible();
+  },
+};
+
+export const InvitationAtPhoneWidth: StoryObj<typeof InvitationPage> = {
+  ...invited,
+  decorators: [atPhoneWidth],
+  render: () => anonymous(<InvitationPage client={fakeInvitationClient()} />),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('form')).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };

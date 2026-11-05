@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 import type { NumberField } from '../sprints/client';
 import {
   type SprintDraft,
@@ -198,10 +199,15 @@ function RemoveColumn({
         ))}
       </select>
       <div className="form-actions">
-        <button type="button" disabled={target === ''} onClick={() => onDone(Number(target))}>
+        <button
+          type="button"
+          className="button-primary"
+          disabled={target === ''}
+          onClick={() => onDone(Number(target))}
+        >
           {t('boards.settings.remove.confirm')}
         </button>
-        <button type="button" onClick={onCancel}>
+        <button type="button" className="button-secondary" onClick={onCancel}>
           {t('boards.choose.cancel')}
         </button>
       </div>
@@ -247,7 +253,7 @@ function ColumnReachNote({
               })}
             </p>
           )}
-          <button type="button" disabled={fixing} onClick={onFix}>
+          <button type="button" className="button-secondary" disabled={fixing} onClick={onFix}>
             {t('boards.settings.reach.fix', { column: name })}
           </button>
         </>
@@ -351,18 +357,29 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     if (notice) noticeRef.current?.focus();
   }, [notice]);
 
-  if (state === 'loading') return <p className="page-note">{t('boards.loading')}</p>;
+  if (state === 'loading') return <p className="report-loading">{t('boards.loading')}</p>;
   if (state === 'failed' || !board || !draft) {
     return (
-      <p className="page-note" role="alert">
-        {t('boards.failed')}
-      </p>
+      <section className="page board-settings" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('boards.settings.link')}
+          purpose={t('purpose.boardSettings')}
+        />
+        <p className="page-note" role="alert">
+          {t('boards.failed')}
+        </p>
+      </section>
     );
   }
   if (!board.mayConfigure) {
     return (
-      <section className="board-settings">
-        <h1 className="page-title">{t('boards.settings.title', { name: board.name })}</h1>
+      <section className="page board-settings" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('boards.settings.title', { name: board.name })}
+          purpose={t('purpose.boardSettings')}
+        />
         <p className="page-note">{t('boards.settings.readOnly')}</p>
       </section>
     );
@@ -501,14 +518,24 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     onRemove: (() => void) | null,
   ) => (
     <div className="board-settings-row-actions">
-      <button type="button" disabled={at === 0} onClick={() => onMove(-1)}>
+      <button
+        type="button"
+        className="button-secondary"
+        disabled={at === 0}
+        onClick={() => onMove(-1)}
+      >
         {t('boards.settings.up', { item: label })}
       </button>
-      <button type="button" disabled={at === length - 1} onClick={() => onMove(1)}>
+      <button
+        type="button"
+        className="button-secondary"
+        disabled={at === length - 1}
+        onClick={() => onMove(1)}
+      >
         {t('boards.settings.down', { item: label })}
       </button>
       {onRemove && (
-        <button type="button" onClick={onRemove}>
+        <button type="button" className="button-secondary" onClick={onRemove}>
           {t('boards.settings.remove', { item: label })}
         </button>
       )}
@@ -516,13 +543,17 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   );
 
   return (
-    <section className="board-settings" aria-labelledby={`${id}-title`}>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('boards.settings.title', { name: board.name })}
-      </h1>
-      <p>
-        <a href={routeHref(`#/boards/${boardId}`)}>{t('boards.settings.back')}</a>
-      </p>
+    <section className="page board-settings" aria-labelledby={`${id}-title`}>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('boards.settings.title', { name: board.name })}
+        purpose={t('purpose.boardSettings')}
+        actions={
+          <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
+            {t('boards.settings.back')}
+          </a>
+        }
+      />
       {notice && (
         <p
           ref={noticeRef}
@@ -545,7 +576,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           void save();
         }}
       >
-        <fieldset className="board-settings-section">
+        <fieldset className="glass-card board-settings-section">
           <legend>{t('boards.settings.general')}</legend>
           <div className="form-field">
             <label htmlFor={`${id}-name`} className="form-label">
@@ -633,7 +664,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           </div>
         </fieldset>
 
-        <fieldset className="board-settings-section">
+        <fieldset className="glass-card board-settings-section">
           <legend>{t('boards.settings.columns')}</legend>
           {board.location.type === 'track' && client.manageWorkflow && (
             <div className="board-settings-workflow">
@@ -759,6 +790,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           </ol>
           <button
             type="button"
+            className="button-secondary"
             onClick={() =>
               set({
                 columns: [
@@ -808,7 +840,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
             problemText('columns', `${id}-columns`)
           )}
           {!board.managesWorkflow && (
-            <table className="board-settings-statuses">
+            <table className="data-table board-settings-statuses">
               <caption>{t('boards.settings.statuses')}</caption>
               <thead>
                 <tr>
@@ -841,7 +873,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           )}
         </fieldset>
 
-        <fieldset className="board-settings-section">
+        <fieldset className="glass-card board-settings-section">
           <legend>{t('boards.settings.swimlanes')}</legend>
           <div className="form-field">
             <label htmlFor={`${id}-mode`} className="form-label">
@@ -924,6 +956,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               </ol>
               <button
                 type="button"
+                className="button-secondary"
                 onClick={() =>
                   set({ lanes: [...draft.lanes, { key: newKey(), name: '', query: '' }] })
                 }
@@ -946,7 +979,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           )}
         </fieldset>
 
-        <fieldset className="board-settings-section">
+        <fieldset className="glass-card board-settings-section">
           <legend>{t('boards.filters')}</legend>
           <ol className="board-settings-list">
             {draft.filters.map((filter, at) => {
@@ -1010,6 +1043,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           </ol>
           <button
             type="button"
+            className="button-secondary"
             onClick={() =>
               set({
                 filters: [
@@ -1038,7 +1072,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           </div>
         </fieldset>
 
-        <fieldset className="board-settings-section">
+        <fieldset className="glass-card board-settings-section">
           <legend>{t('boards.settings.cards')}</legend>
           <div className="form-field">
             <label htmlFor={`${id}-colour`} className="form-label">
@@ -1108,6 +1142,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               </ol>
               <button
                 type="button"
+                className="button-secondary"
                 onClick={() =>
                   set({
                     colours: [...draft.colours, { key: newKey(), query: '', colour: '#2f6fdb' }],

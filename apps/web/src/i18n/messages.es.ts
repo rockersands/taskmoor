@@ -222,6 +222,130 @@ export const messagesEs: Record<MessageId, string> = {
     'Las tarjetas avanzan de izquierda a derecha a medida que avanza el trabajo: arrastra una a otra columna para mover su ticket.',
   'purpose.ticket':
     'Una unidad de trabajo: qué es, en qué punto está, quién la tiene y todo lo que le ha pasado.',
+  'purpose.inbox': 'Menciones a ti y cambios en los tickets que sigues, los más recientes primero.',
+  'purpose.search':
+    'Encuentra tickets con filtros o con el lenguaje de consulta, y guarda las búsquedas que repites.',
+  'purpose.dashboards':
+    'Gráficos y listas que resumen el trabajo de un vistazo, para ti o para un equipo.',
+  'purpose.dashboard': 'Los gráficos y las listas reunidos aquí resumen el trabajo de un vistazo.',
+  'purpose.list':
+    'Los tickets de este track en filas: fíltralos, agrúpalos y elige las columnas que necesitas.',
+  'purpose.calendar':
+    'Los tickets de este track en sus fechas, mes a mes. Arrastra uno a otro día para cambiar su fecha.',
+  'purpose.timeline':
+    'Los tickets de este track a lo largo del tiempo, como barras desde el inicio hasta la fecha límite. Arrastra una barra para cambiar sus fechas.',
+  'purpose.backlog':
+    'El trabajo que aún no está en un sprint, por orden de prioridad: ordénalo aquí y planifica los próximos sprints.',
+  'purpose.releases':
+    'Lo que este track ha publicado y lo que publicará después, con el avance de cada versión.',
+  'purpose.release':
+    'Una versión: sus tickets, cuánto han avanzado y las notas que resultan de ellos.',
+  'purpose.boardSettings':
+    'Cómo funciona este tablero: sus columnas, lo que muestra en una tarjeta y quién puede cambiarlo.',
+  'purpose.boardReports': 'Cómo fluye el trabajo por este tablero: dónde espera y cuánto tarda.',
+  'purpose.sprintReport':
+    'Cómo fue este sprint: lo planificado, lo terminado y lo que cambió por el camino.',
+  'purpose.plans':
+    'Un plan muestra juntos el trabajo de varios tracks y búsquedas guardadas, en un mismo cronograma, calendario y lista.',
+  'purpose.plan':
+    'El trabajo de los tracks y las búsquedas guardadas de este plan, junto en un solo sitio.',
+  'purpose.bulk': 'Cómo va un cambio en muchos tickets y cuáles no pudo cambiar.',
+  'purpose.createTicket':
+    'Añade una nueva unidad de trabajo a un track: su tipo, un resumen y lo que pide el track.',
+  'purpose.trackPeople': 'Quién tiene cada rol en este track y a quién se ha invitado a unirse.',
+  'purpose.workflowEditor':
+    'Los estados de este flujo de trabajo y los movimientos entre ellos. Cambia un borrador, compruébalo y publícalo.',
+  'purpose.aiUsage':
+    'Para qué se han usado las funciones de IA, quién las ha usado y a qué coste, y lo cerca que están de sus límites.',
+  'purpose.apiUsage':
+    'Cuánto se usa la API, qué clientes la usan y lo cerca que están de sus límites.',
+  'purpose.security':
+    'Las reglas que protegen las cuentas: segundos factores y las alertas que recibes.',
+  'purpose.system':
+    'Cómo está esta instancia ahora mismo: su base de datos, sus tareas y su versión.',
+  'purpose.trash':
+    'Los tickets y tracks eliminados esperan aquí hasta que se restauran o se acaba su plazo.',
+  'purpose.importedLink':
+    'A dónde lleva ahora un enlace de un gestor anterior cuyo trabajo se importó aquí.',
+  'purpose.signIn': 'Inicia sesión para ver tu trabajo.',
+  'purpose.invitation': 'Te han invitado a un track: acepta para empezar a trabajar en él.',
+  'purpose.passwordLink': 'Elige una contraseña para tu cuenta. Este enlace funciona una sola vez.',
+  'purpose.consent': 'Un programa pide actuar en tu nombre. Lee lo que quiere y responde.',
+  'purpose.unsubscribe':
+    'Deja de recibir los correos de este enlace. Puedes cambiarlo más tarde en tus ajustes.',
+  'empty.search.title': 'Ningún ticket coincide con esta búsqueda',
+  'empty.search.body':
+    'Prueba con menos filtros, una fecha más amplia u otra consulta. Solo coinciden los tickets que puedes ver.',
+  'empty.saved.title': 'Aún no hay búsquedas guardadas',
+  'empty.saved.body':
+    'Haz una búsqueda y elige Guardar como nueva: quedará aquí para reutilizarla, compartirla o seguirla por correo.',
+  'empty.dashboards.title': 'Aún no hay paneles',
+  'empty.dashboards.body':
+    'Un panel reúne gráficos y listas que resumen el trabajo. Crea el primero arriba.',
+  'empty.dashboard.title': 'Aún no hay widgets',
+  'empty.dashboard.body':
+    'Los widgets son los gráficos y las listas de un panel. Los añade quien puede editarlo.',
+  'empty.dashboard.bodyEditable':
+    'Los widgets son los gráficos y las listas de un panel. Edítalo para añadir el primero.',
+  'empty.plans.body':
+    'Un plan muestra juntos el trabajo de varios tracks y búsquedas guardadas. Crea el primero arriba.',
+  'empty.planTickets.body':
+    'El plan muestra los tickets de sus tracks y búsquedas guardadas. Añádele uno o cambia el filtro.',
+  'empty.list.body':
+    'Aquí se muestran los tickets de este track. Cambia el filtro o crea el primero.',
+  'empty.releases.upcoming':
+    'Una versión reúne los tickets que se publican juntos. Planifica la próxima aquí.',
+  'empty.releases.upcomingRead':
+    'Una versión reúne los tickets que se publican juntos. Los administradores del track las planifican.',
+  'empty.releases.shipped': 'Una versión aparece aquí cuando se ha publicado.',
+  'empty.groups.body': 'Un grupo reúne a personas para que puedas darles permisos a la vez.',
+  'empty.teams.body':
+    'Un equipo dice quién trabaja junto. Los tableros, las áreas y los campos de equipo pueden nombrarlo.',
+  'empty.serviceAccounts.body':
+    'Una cuenta de servicio permite que un programa actúe con sus propios tokens, sin ser una persona.',
+  'empty.fields.body':
+    'Un campo personalizado añade lo que tus tickets necesitan guardar además de los campos incorporados.',
+  'empty.workflows.body':
+    'Un flujo de trabajo mueve los tickets entre estados. Crea uno para cambiar cómo avanza el trabajo.',
+  'empty.directories.title': 'Aún no hay directorios',
+  'empty.directories.body':
+    'Las personas y los grupos se gestionan en Taskmoor hasta que conectes un directorio.',
+  'empty.identityProviders.title': 'Aún no hay proveedores de identidad',
+  'empty.identityProviders.body':
+    'Todo el mundo inicia sesión con contraseña hasta que añadas uno.',
+  'empty.templates.body':
+    'Una plantilla inicia un ticket nuevo con un resumen, un esquema y valores predeterminados.',
+  'empty.imports.body':
+    'Una importación trae el trabajo de un gestor anterior. Empieza con una prueba: no escribe nada.',
+  'empty.frontends.body':
+    'Un frontend en otra dirección debe registrarse aquí antes de poder usar este servidor.',
+  'empty.aiUsage.body':
+    'Las llamadas aparecen aquí cuando se usa una función de IA. Elige un periodo más largo para ver más atrás.',
+  'empty.apiUsage.body':
+    'Las solicitudes aparecen aquí cuando un programa usa la API. Elige un periodo más largo para ver más atrás.',
+  'empty.audit.body':
+    'Prueba con un filtro más amplio: los registros siguen aquí hasta que termina su retención.',
+  'empty.users.body':
+    'Prueba con otro nombre u otra dirección de correo, o con un filtro más amplio.',
+  'empty.adminTokens.body':
+    'Prueba con un filtro más amplio. Los tokens aparecen aquí cuando una persona o una cuenta de servicio crea uno.',
+  'empty.tokens.body':
+    'Un token permite que un programa o script llame a la API en tu nombre. Crea uno cuando lo necesites.',
+  'empty.personalData.body':
+    'Prepara una descarga para obtener todo lo que Taskmoor guarda sobre esta persona.',
+  'empty.trackPeople.body':
+    'Un track aparece aquí cuando lo diriges: cuando alguien te da el rol o cuando creas el track.',
+  'empty.trash.tickets':
+    'Un ticket eliminado espera aquí hasta que se restaura o se acaba su plazo.',
+  'empty.trash.tracks': 'Un track eliminado espera aquí hasta que se restaura o se acaba su plazo.',
+  'empty.reports.period':
+    'Elige un periodo más largo o vuelve cuando el tablero haya tenido más trabajo.',
+  'empty.reports.noReleases':
+    'Este informe sigue los tickets de una versión. Añade una en la sección Versiones del track.',
+  'empty.reports.noSprints':
+    'Este informe sigue los sprints: se llena cuando el tablero inicia uno.',
+  'empty.reports.outcome': 'Un ticket aparece aquí cuando se coloca bajo este resultado.',
+  'empty.release.tickets': 'Un ticket entra en una versión por su campo Versiones objetivo.',
   'about.home':
     'Asignado a ti muestra los tickets abiertos de los que eres responsable, primero los que cambiaron más recientemente. Abiertos recientemente muestra los tickets que viste. Sigues muestra los tickets cuyos cambios llegan a tu bandeja de entrada.',
   'about.board':
@@ -1977,7 +2101,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.copied': 'URI de redirección copiada.',
   'admin.sso.copyFailed': 'Copiar no funcionó. Selecciona la dirección y cópiala tú.',
   'admin.sso.list': 'Proveedores de identidad',
-  'admin.sso.none': 'Aún no hay proveedores de identidad. Todos inician sesión con una contraseña.',
   'admin.sso.add': 'Añadir un proveedor de identidad',
   'admin.sso.newTitle': 'Proveedor de identidad nuevo',
   'admin.sso.editTitle': 'Editar {name}',
@@ -2146,8 +2269,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.forbidden':
     'Solo los administradores del sitio pueden gestionar los directorios.',
   'admin.directories.list': 'Directorios',
-  'admin.directories.none':
-    'Aún no hay directorios. Las personas y los grupos se gestionan en Taskmoor.',
   'admin.directories.precedence':
     'En este orden: cuando dos directorios tienen la misma dirección de correo, el primero gestiona esa cuenta.',
   'admin.directories.add': 'Añadir un directorio',
@@ -3384,6 +3505,7 @@ export const messagesEs: Record<MessageId, string> = {
   'comments.reactWith': 'Reaccionar con {emoji}',
   'bulk.loading': 'Leyendo el cambio en bloque…',
   'bulk.notFound': 'Este cambio en bloque no existe, o no te corresponde verlo.',
+  'bulk.title.missing': 'Cambio en bloque',
   'bulk.title.edit': 'Edición en bloque de {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.move': 'Traslado en bloque de {count, plural, one {# ticket} other {# tickets}}',
   'bulk.title.transition':
@@ -4744,8 +4866,6 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien cambió este panel mientras tanto. Recárgalo e inténtalo de nuevo.',
   'dashboards.invalid':
     'No se puede guardar la configuración de un widget. Revísala e inténtalo de nuevo.',
-  'dashboards.empty': 'Este panel no tiene widgets.',
-  'dashboards.emptyEditable': 'Este panel aún no tiene widgets. Edítalo para añadir algunos.',
   'dashboards.unsaved': 'Guarda el panel para ver este widget.',
   'dashboards.tool.settings': 'Configuración de {name}',
   'dashboards.tool.up': 'Subir {name}',
@@ -4771,7 +4891,6 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.newName': 'Panel nuevo',
   'dashboards.create': 'Crear el panel',
   'dashboards.listFailed': 'No se pudieron cargar los paneles.',
-  'dashboards.none': 'Aún no hay paneles. Crea uno arriba.',
   // Multi-track plans (T-088; ADR-122).
   'plans.intro':
     'Un plan reúne los tickets de varios tracks y búsquedas guardadas en un solo Resumen, Cronograma, Lista y Calendario. Cada persona ve en él solo los tickets que ya puede ver.',

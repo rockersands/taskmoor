@@ -1,22 +1,21 @@
 /* The Account page: profile, password and sessions. Desktop first; one column on phones. */
-.account-page {
-  max-width: 48rem;
-}
-
 .account-sections {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
+/*
+ * With `glass-card`: one part of a page on its own card, here and on the administration pages that
+ * share it. Rows inside it are wells.
+ */
 .account-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+  box-sizing: border-box;
   min-width: 0;
   padding: var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .account-section .facts-title {
@@ -47,8 +46,10 @@
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .session-main {
@@ -62,16 +63,7 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  font-weight: 600;
-}
-
-.session-badge {
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .session-meta {
@@ -100,9 +92,9 @@
   display: grid;
   gap: var(--space-2);
   padding: var(--space-3);
-  border: 2px solid transparent;
+  border: 2px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   cursor: pointer;
   transition: border-color var(--motion-fast) var(--ease-soft);
 }
@@ -129,11 +121,11 @@
 
 .appearance-text {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 .appearance-name {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .appearance-hint {
@@ -164,7 +156,7 @@
   flex-direction: column;
   gap: 6px;
   height: 100%;
-  padding: 8px;
+  padding: var(--space-2);
   background-color: var(--color-canvas);
   background-image: var(--canvas-image);
   background-position: center;
@@ -183,14 +175,14 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-1);
   background: var(--color-surface);
 }
 
 .skin-preview-line {
   width: 60%;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
   background: var(--color-text-muted);
 }
 
@@ -219,7 +211,7 @@
 
 .notification-delivery legend {
   margin-bottom: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .notification-choice {
@@ -247,22 +239,8 @@
   gap: var(--space-2);
 }
 
-.notification-events {
-  width: 100%;
-  border-collapse: collapse;
-}
-
 .notification-events caption {
-  margin-bottom: var(--space-2);
-  font-weight: 600;
-  text-align: start;
-}
-
-.notification-events th,
-.notification-events td {
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  text-align: start;
+  padding: 0 0 var(--space-2);
 }
 
 .notification-events td {
@@ -296,9 +274,16 @@
     min-height: var(--hit-target-touch);
   }
 
-  /* The cell is the target: a tap anywhere in it reaches the checkbox. */
+  /* The cell is the target: its label fills it, so a tap anywhere reaches the checkbox. */
   .notification-events td {
     height: var(--hit-target-touch);
     padding: 0;
+  }
+
+  .notification-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--hit-target-touch);
   }
 }

@@ -5,6 +5,8 @@ import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   estimateText,
   type ReportTicket,
@@ -31,7 +33,7 @@ function VelocityChart({ velocity }: { velocity: Velocity }) {
   const s = velocity.statistic.statistic;
   const format = (v: number) => estimateText(t, v, s);
   if (velocity.sprints.length === 0) {
-    return <p className="sprint-empty">{t('sprints.charts.velocityNone')}</p>;
+    return <EmptyState compact title={t('sprints.charts.velocityNone')} />;
   }
   return (
     <div className="chart-group">
@@ -96,9 +98,9 @@ export function VelocityReport({
       </p>
     );
   }
-  if (!velocity) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!velocity) return <p className="report-loading">{t('reports.loading')}</p>;
   return (
-    <div className="reports-body">
+    <div className="glass-card reports-body">
       <VelocityChart velocity={velocity} />
     </div>
   );
@@ -210,14 +212,22 @@ export function SprintReportPage({
       );
     }
     if (velocity) out.push(<VelocityChart key="velocity" velocity={velocity} />);
-    return <div className="sprint-charts">{out}</div>;
+    return (
+      <div className="sprint-charts">
+        {out.map((chart) => (
+          <div key={chart.key} className="glass-card sprint-chart">
+            {chart}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const group = (title: MessageId, list: ReportTicket[]) => (
-    <section className="sprint-section" aria-labelledby={`${id}-${title}`}>
+    <section className="glass-card sprint-section" aria-labelledby={`${id}-${title}`}>
       <h2 id={`${id}-${title}`}>{t(title)}</h2>
       {list.length === 0 ? (
-        <p className="sprint-empty">{t('sprints.section.empty')}</p>
+        <EmptyState compact title={t('sprints.section.empty')} />
       ) : (
         <ul className="sprint-tickets">
           {list.map((ticket) => (
@@ -253,20 +263,31 @@ export function SprintReportPage({
   const title = report
     ? t('sprints.report.title', { name: report.sprint.name })
     : t('sprints.report.link');
+  const toBacklog = (
+    <a className="button-quiet" href={backlogHref ?? routeHref(`#/boards/${boardId}/backlog`)}>
+      {t('sprints.report.toBacklog')}
+    </a>
+  );
   return (
-    <section className="backlog-page" aria-labelledby={`${id}-title`}>
-      <div className="board-header">
-        {embedded ? (
-          <h2 id={`${id}-title`}>{title}</h2>
-        ) : (
-          <h1 id={`${id}-title`} className="page-title">
+    <section
+      className={embedded ? 'sprint-report' : 'page sprint-report'}
+      aria-labelledby={`${id}-title`}
+    >
+      {embedded ? (
+        <div className="board-header">
+          <h2 id={`${id}-title`} className="section-title">
             {title}
-          </h1>
-        )}
-        <a href={backlogHref ?? routeHref(`#/boards/${boardId}/backlog`)}>
-          {t('sprints.report.toBacklog')}
-        </a>
-      </div>
+          </h2>
+          {toBacklog}
+        </div>
+      ) : (
+        <PageHeader
+          titleId={`${id}-title`}
+          title={title}
+          purpose={t('purpose.sprintReport')}
+          actions={toBacklog}
+        />
+      )}
       {failed && (
         <p className="board-problem" role="alert">
           {t('sprints.report.failed')}

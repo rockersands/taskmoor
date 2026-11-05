@@ -4,6 +4,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 import { Fact, Facts } from './Facts';
 import { httpUpdateCheckClient, type UpdateCheckClient, UpdateCheckSection } from './UpdateNotice';
 
@@ -98,22 +99,26 @@ export function SystemPage({
   }, [notAdmin, refresh]);
 
   return (
-    <section aria-labelledby={titleId} className="system-page">
-      <div className="system-header">
-        <h1 id={titleId} className="page-title">
-          {t('admin.system.title')}
-        </h1>
-        {state.status !== 'forbidden' && (
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => void refresh()}
-            disabled={state.status === 'loading'}
-          >
-            {t('admin.system.refresh')}
-          </button>
-        )}
-      </div>
+    <section aria-labelledby={titleId} className="page system-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.system.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : {
+              purpose: t('purpose.system'),
+              actions: (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => void refresh()}
+                  disabled={state.status === 'loading'}
+                >
+                  {t('admin.system.refresh')}
+                </button>
+              ),
+            })}
+      />
       {state.status === 'loading' && (
         <p role="status" className="page-note">
           {t('admin.system.loading')}

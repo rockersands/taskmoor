@@ -5,6 +5,7 @@ import { currentRoute, routeHref } from '../routing/router';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages } from '../session/errors';
 import { PasswordField } from '../session/PasswordField';
 import { useSession } from '../session/SessionProvider';
+import { PageHeader } from '../shell/PageHeader';
 
 type Status = 'checking' | 'ready' | 'done' | 'submitting' | 'already-set-up' | 'no-token';
 
@@ -96,15 +97,17 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
   if (status === 'no-token' || status === 'already-set-up') {
     return (
       <main className="setup">
-        <h1 className="page-title">{t('setup.title')}</h1>
-        <p className="page-note">
-          {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
-        </p>
-        {status === 'already-set-up' && (
-          <a className="button-primary setup-link" href={routeHref('#/settings')}>
-            {t('auth.signIn')}
-          </a>
-        )}
+        <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
+        <div className="glass-card account-section">
+          <p className="page-note">
+            {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
+          </p>
+          {status === 'already-set-up' && (
+            <a className="button-primary setup-link" href={routeHref('#/settings')}>
+              {t('auth.signIn')}
+            </a>
+          )}
+        </div>
       </main>
     );
   }
@@ -112,8 +115,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
   const field = (key: string) => `${id}-${key}`;
   return (
     <main className="setup">
-      <h1 className="page-title">{t('setup.title')}</h1>
-      <p className="page-note">{t('setup.intro')}</p>
+      <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
       <form className="form" onSubmit={submit} aria-label={t('setup.title')}>
         <fieldset>
           <legend>{t('setup.instance')}</legend>

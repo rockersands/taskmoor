@@ -3,22 +3,12 @@
  * release's state is a word with a tone, never colour alone; its tickets by stage are one bar of
  * the flow reports' ordinal blue, with a legend that carries the numbers.
  */
-.releases-page,
-.release-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
 .release-create {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   gap: var(--space-2) var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
 }
 
 .release-create .form-field {
@@ -37,9 +27,6 @@
   gap: var(--space-2);
   min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .release-group h2,
@@ -66,7 +53,7 @@
   align-items: center;
   gap: var(--space-1) var(--space-4);
   padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-edge);
 }
 
 .release-row-head {
@@ -78,30 +65,8 @@
 }
 
 .release-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
-}
-
-.release-state {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent-soft);
-  font-size: var(--font-size-200);
-}
-
-.release-state[data-state="overdue"] {
-  background: var(--color-warning-soft);
-  color: var(--color-warning);
-  font-weight: 600;
-}
-
-.release-state[data-state="shipped"] {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.release-state[data-state="archived"] {
-  background: var(--color-surface-sunken);
 }
 
 .release-progress {
@@ -112,14 +77,15 @@
 .release-meter {
   display: block;
   height: 6px;
-  border-radius: 3px;
-  background: var(--color-surface-sunken);
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
 
 .release-meter > span {
   display: block;
   height: 100%;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
   background: var(--color-flow-last);
 }
 
@@ -149,18 +115,19 @@
 /* Stages as one bar: a 2px surface gap between segments, rounded ends. */
 .release-bar {
   display: flex;
-  gap: 2px;
+  gap: var(--space-half);
   height: 12px;
 }
 
 .release-bar > span {
   min-width: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-mark);
 }
 
 .release-bar-empty {
   flex-grow: 1;
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
 
 .release-legend {
@@ -189,7 +156,7 @@
 .release-swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
 }
 
 .release-warnings,
@@ -216,7 +183,7 @@
   border-radius: 50%;
   background: var(--color-warning-soft);
   color: var(--color-warning);
-  font-weight: 700;
+  font-weight: var(--font-weight-title);
 }
 
 .release-approvers li {
@@ -227,24 +194,7 @@
 }
 
 .release-approver {
-  font-weight: 600;
-}
-
-.release-decision {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-  font-size: var(--font-size-200);
-}
-
-.release-decision[data-decision="approved"] {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.release-decision[data-decision="declined"] {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+  font-weight: var(--font-weight-strong);
 }
 
 .release-decide,
@@ -264,8 +214,9 @@
   min-inline-size: 0;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
 }
 
 .release-table-wrap {
@@ -273,17 +224,7 @@
   overflow-x: auto;
 }
 
-.release-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.release-table th,
-.release-table td {
-  padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  text-align: start;
-  vertical-align: top;
+.release-table :is(th, td) {
   overflow-wrap: anywhere;
 }
 
@@ -315,6 +256,8 @@
   .release-ship input,
   .release-ship button,
   .release-section .form-actions a,
+  .release-group summary,
+  .release-legend a,
   .release-name,
   .release-table a {
     min-height: var(--hit-target-touch);
@@ -324,5 +267,6 @@
   .release-table a {
     display: inline-flex;
     align-items: center;
+    min-width: var(--hit-target-touch);
   }
 }

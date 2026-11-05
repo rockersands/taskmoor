@@ -65,7 +65,7 @@ export function PublishPanel({
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="workflow-panel workflow-publish">
+    <section aria-labelledby={`${id}-title`} className="glass-card workflow-panel workflow-publish">
       <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className="facts-title">
         {t('admin.workflow.publishPanel.title', { version })}
       </h2>

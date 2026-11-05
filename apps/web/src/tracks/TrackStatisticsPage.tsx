@@ -375,9 +375,9 @@ function TicketReport({
       {report === 'user-workload' || report === 'release-workload' ? (
         <p className="report-note">{t('statistics.workloadNote')}</p>
       ) : null}
-      <div className="reports-body">
+      <div className="glass-card reports-body">
         {waiting ? (
-          <p className="report-empty">{t('reports.loading')}</p>
+          <p className="report-loading">{t('reports.loading')}</p>
         ) : (
           <WidgetView
             // Another report or other settings read the data again.
@@ -437,7 +437,7 @@ function SprintReports({
       </p>
     );
   }
-  if (!sprints) return <p className="report-empty">{t('reports.loading')}</p>;
+  if (!sprints) return <p className="report-loading">{t('reports.loading')}</p>;
   const backlog = routeHref(`#/tracks/${encodeURIComponent(trackKey)}/backlog`);
   if (sprints.length === 0) {
     return (
@@ -529,7 +529,7 @@ export function TrackStatisticsPage({
   const groups = GROUPS.filter((g) => hasSprints || (g.id !== 'sprints' && g.id !== 'releases'));
 
   return (
-    <section className="reports-page" aria-labelledby={titleId}>
+    <section className="page reports-page" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
         title={t('statistics.title', { name })}

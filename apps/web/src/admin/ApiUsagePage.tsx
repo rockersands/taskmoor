@@ -4,6 +4,8 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 
 /** One client's requests over the window, as `GET /api/v1/admin/api-usage` answers (M1-066). */
 export interface UsageRow {
@@ -94,10 +96,12 @@ export function ApiUsagePage({ client = apiUsageClient }: { client?: ApiUsageCli
   }, [notAdmin, refresh]);
 
   return (
-    <section aria-labelledby={titleId} className="api-usage-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.apiUsage.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page api-usage-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.apiUsage.title')}
+        {...(forbidden ? {} : { purpose: t('purpose.apiUsage') })}
+      />
       {forbidden ? (
         <p className="page-note">{t('admin.apiUsage.forbidden')}</p>
       ) : (
@@ -143,7 +147,7 @@ function Usage({
     return t('admin.apiUsage.client.address', { address: row.client.name });
   };
   return (
-    <section aria-labelledby={titleId} className="api-usage-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <div className="api-usage-header">
         <h2 id={titleId} className="facts-title">
           {t('admin.apiUsage.busiest')}
@@ -154,7 +158,7 @@ function Usage({
             <button
               key={w}
               type="button"
-              className="button-secondary"
+              className="filter-chip"
               aria-pressed={window === w}
               onClick={() => onWindow(w)}
             >
@@ -177,11 +181,11 @@ function Usage({
         </p>
       )}
       {usage.status === 'loaded' && usage.value.length === 0 && (
-        <p className="page-note">{t('admin.apiUsage.none')}</p>
+        <EmptyState title={t('admin.apiUsage.none')}>{t('empty.apiUsage.body')}</EmptyState>
       )}
       {usage.status === 'loaded' && usage.value.length > 0 && (
         <div className="api-usage-table-wrap">
-          <table className="api-usage-table">
+          <table className="data-table api-usage-table">
             <caption className="visually-hidden">
               {t(window === 'hour' ? 'admin.apiUsage.tableHour' : 'admin.apiUsage.tableDay')}
             </caption>
@@ -254,7 +258,7 @@ function LimitsForm({ client }: { client: ApiUsageClient }) {
   };
 
   return (
-    <section aria-labelledby={titleId} className="api-usage-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <h2 id={titleId} className="facts-title">
         {t('admin.apiUsage.limits')}
       </h2>
@@ -264,8 +268,8 @@ function LimitsForm({ client }: { client: ApiUsageClient }) {
           <fieldset key={scope.key} className="api-limits-scope">
             <legend>{t(scope.label)}</legend>
             <p className="form-hint">{t(scope.hint)}</p>
-            <label>
-              {t('admin.apiUsage.rate')}
+            <label className="form-field">
+              <span className="form-label">{t('admin.apiUsage.rate')}</span>
               <input
                 type="number"
                 min={1}
@@ -275,8 +279,8 @@ function LimitsForm({ client }: { client: ApiUsageClient }) {
                 onChange={(e) => change(scope.key, 'rate', e.target.value)}
               />
             </label>
-            <label>
-              {t('admin.apiUsage.burst')}
+            <label className="form-field">
+              <span className="form-label">{t('admin.apiUsage.burst')}</span>
               <input
                 type="number"
                 min={1}

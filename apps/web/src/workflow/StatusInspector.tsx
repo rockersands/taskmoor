@@ -67,7 +67,7 @@ export function StatusInspector({
   }, [confirming]);
 
   return (
-    <section className="workflow-panel" aria-labelledby={`${id}-title`}>
+    <section className="glass-card workflow-panel" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className="facts-title">
         {t('admin.workflow.status.heading', { name })}
       </h2>

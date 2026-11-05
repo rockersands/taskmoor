@@ -23,6 +23,11 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Links read in the accent (ADR-036), in both skins; a class that wants otherwise says so. */
+a {
+  color: var(--color-accent);
+}
+
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
@@ -88,7 +93,7 @@ body {
 }
 
 .shell-brand {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   letter-spacing: -0.01em;
 }
 
@@ -106,7 +111,7 @@ body {
 }
 
 .icon-button:hover {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .shell-sidebar {
@@ -136,7 +141,7 @@ body {
   padding: 0 var(--space-4);
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -152,7 +157,7 @@ body {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 .nav-link {
@@ -179,7 +184,7 @@ body {
 .nav-link[aria-current="page"] {
   background: var(--color-accent-soft);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .shell[data-collapsed="true"] .nav-link {
@@ -200,7 +205,7 @@ body {
 .page-title {
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-600);
-  font-weight: 700;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.02em;
 }
 
@@ -228,7 +233,7 @@ body {
   border-radius: var(--radius-pill);
   color: var(--color-accent);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -262,7 +267,7 @@ body {
 
 .user-menu-button:hover,
 .user-menu-button[aria-expanded="true"] {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .user-avatar {
@@ -275,7 +280,7 @@ body {
   background: var(--color-blush-soft);
   color: var(--color-blush);
   font-size: var(--font-size-100);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .user-menu-name {
@@ -317,7 +322,7 @@ body {
 
 .user-menu-list {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
 }
 
 .user-menu-item {
@@ -355,11 +360,12 @@ body {
   gap: var(--space-3);
   min-height: var(--hit-target);
   padding: 0 var(--space-4);
-  border: 1px solid var(--color-border);
+  /* Clear glass, with the full text colour: what scrolls under the top bar shows through it. */
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
-  box-shadow: var(--shadow-inset);
-  color: var(--color-text-muted);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
   font: inherit;
   font-size: var(--font-size-200);
   cursor: pointer;
@@ -393,6 +399,8 @@ body {
   padding: var(--space-4) var(--space-5);
   border: 0;
   border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: none;
   background: transparent;
   color: var(--color-text);
   font: inherit;
@@ -437,7 +445,7 @@ body {
   box-shadow: var(--shadow-1);
   color: var(--color-on-primary);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-soft);
 }
@@ -450,10 +458,6 @@ body {
 .button-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.sign-in-prompt .button-primary {
-  margin-top: var(--space-4);
 }
 
 /* The sign-in page focuses its heading after signing out; no ring for that. */
@@ -559,6 +563,7 @@ body {
   .nav-link,
   .palette-trigger,
   .palette-item,
+  .palette-empty,
   .topbar-link,
   .user-menu-button,
   .user-menu-item {
@@ -586,7 +591,7 @@ body {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-warning);
-  border-radius: var(--radius-1);
+  border-radius: var(--radius-2);
   background: var(--color-warning-soft);
 }
 
@@ -630,7 +635,7 @@ body {
   min-width: 0;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-1);
-  background: var(--color-surface);
+  background: var(--glass-surface-sunken);
   font-family: var(--font-mono);
   font-size: var(--font-size-200);
   overflow-wrap: anywhere;
@@ -654,6 +659,9 @@ body {
 
 /* The frontend is older than the backend serves: this page instead of the app. */
 .update-required {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
   max-width: 36rem;
   margin: 15vh auto 0;
   padding: 0 var(--space-4);

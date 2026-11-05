@@ -8,10 +8,11 @@ import {
   loadListColumns,
   saveListColumns,
 } from '../list/client';
-import { GroupSection } from '../list/ListPage';
+import { GroupSection } from '../list/GroupSection';
 import { ColumnPicker } from '../search/ColumnPicker';
 import type { SearchClient, SearchField, SearchTicket } from '../search/client';
 import { DEFAULT_COLUMNS } from '../search/columns';
+import { EmptyState } from '../shell/EmptyState';
 import type { PlanGroup } from './address';
 import type { PlanSectionProps } from './PlanSummaryPage';
 
@@ -105,6 +106,7 @@ export function PlanListPage({
       format={undefined}
       onTickets={onTickets}
       cap={cap}
+      emptyBody={t('empty.planTickets.body')}
     />
   );
 
@@ -122,7 +124,7 @@ export function PlanListPage({
           </select>
         </label>
       </div>
-      <details className="list-panel">
+      <details className="glass-card list-panel">
         <summary>{t('list.columns')}</summary>
         <ColumnPicker
           columns={columns}
@@ -140,9 +142,9 @@ export function PlanListPage({
           {t('list.groupsFailed')}
         </p>
       ) : groups === null ? (
-        <p className="report-empty">{t('reports.loading')}</p>
+        <p className="report-loading">{t('reports.loading')}</p>
       ) : groups.length === 0 ? (
-        <p className="report-empty">{t('list.empty')}</p>
+        <EmptyState title={t('list.empty')}>{t('empty.planTickets.body')}</EmptyState>
       ) : (
         groups.map((g) =>
           section(

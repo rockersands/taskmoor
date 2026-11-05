@@ -3,6 +3,8 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type GroupDetail,
   type GroupSummary,
@@ -70,15 +72,18 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.groups.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.groups.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.groupsHint'), about: t('admin.groups.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.groups.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.groups.intro')}</p>
           <AddGroup
             client={client}
             onAdded={(name, id) => {
@@ -103,7 +108,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
           )}
           {state.status === 'loaded' &&
             (state.groups.length === 0 ? (
-              <p className="page-note">{t('admin.groups.none')}</p>
+              <EmptyState title={t('admin.groups.none')}>{t('empty.groups.body')}</EmptyState>
             ) : (
               <ul className="people-list">
                 {state.groups.map((g) => (
@@ -164,7 +169,7 @@ function AddGroup({
   const [description, setDescription] = useState('');
   return (
     <form
-      className="people-form"
+      className="glass-card people-card people-form"
       data-tutorial="admin-group-new"
       aria-label={t('admin.groups.add')}
       onSubmit={(event) => {
@@ -284,7 +289,7 @@ function GroupPanel({
     <div className="people-panel">
       <h2 className="facts-title">{t('admin.groups.membersOf', { name })}</h2>
       {detail.members.length === 0 ? (
-        <p className="page-note">{t('admin.groups.noMembers')}</p>
+        <EmptyState compact title={t('admin.groups.noMembers')} />
       ) : (
         <ul className="people-sublist">
           {detail.members.map((m) => (
@@ -356,7 +361,7 @@ function GroupPanel({
 
       <h2 className="facts-title">{t('admin.groups.childrenOf', { name })}</h2>
       {detail.children.length === 0 ? (
-        <p className="page-note">{t('admin.groups.noChildren')}</p>
+        <EmptyState compact title={t('admin.groups.noChildren')} />
       ) : (
         <ul className="people-sublist">
           {detail.children.map((c) => (

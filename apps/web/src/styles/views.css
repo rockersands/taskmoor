@@ -7,7 +7,7 @@
 .list-page,
 .calendar-page {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -23,17 +23,20 @@
   min-width: min(100%, 18rem);
 }
 
+/* A `glass-card` that folds. */
 .list-panel {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface-raised);
+  padding: var(--space-2) var(--space-4);
 }
 
 .list-panel summary {
+  align-content: center;
   min-height: var(--hit-target);
   cursor: pointer;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
+}
+
+.list-panel[open] {
+  padding-block-end: var(--space-4);
 }
 
 .list-group {
@@ -76,8 +79,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-3);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
 }
 
 .list-rule-items code {
@@ -87,33 +90,38 @@
 .format-marks {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: var(--space-half);
   margin-inline-start: var(--space-1);
 }
 
 .format-mark {
   padding: 0 var(--space-1);
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--glass-surface-strong);
+  border: 1px solid var(--glass-edge);
   font-size: var(--font-size-200);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   white-space: nowrap;
 }
 
-[data-tone="red"] {
+/* The soft tones are opaque, so a tinted row reads the same over any glass (contrast.test.ts). */
+[data-tone="red"],
+.data-table tbody tr[data-tone="red"]:hover {
   background: var(--color-danger-soft);
 }
 
-[data-tone="amber"] {
+[data-tone="amber"],
+.data-table tbody tr[data-tone="amber"]:hover {
   background: var(--color-warning-soft);
 }
 
-[data-tone="green"] {
+[data-tone="green"],
+.data-table tbody tr[data-tone="green"]:hover {
   background: var(--color-success-soft);
 }
 
-[data-tone="blue"] {
+[data-tone="blue"],
+.data-table tbody tr[data-tone="blue"]:hover {
   background: var(--color-accent-soft);
 }
 
@@ -131,20 +139,39 @@
   font-size: var(--font-size-400);
 }
 
+/*
+ * The month is one `glass-card`, and a day is only a part of it: 42 blurred cells would cost what
+ * a board's cards are spared (ADR-114, section 3). Nothing clips it, as a grip's menu reaches past
+ * its edge, so the corners of an outside day round off with the card.
+ */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-top: 1px solid var(--color-border);
-  border-inline-start: 1px solid var(--color-border);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.calendar-grid > :nth-child(7n) {
+  border-inline-end: 0;
+}
+
+.calendar-grid > :nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.calendar-grid > :last-child {
+  border-end-end-radius: inherit;
+}
+
+.calendar-grid > :nth-last-child(7) {
+  border-end-start-radius: inherit;
+}
+
 .calendar-weekday {
   padding: var(--space-1);
-  border-inline-end: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  border-inline-end: 1px solid var(--glass-edge);
+  border-bottom: 1px solid var(--glass-edge);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   text-align: center;
@@ -153,17 +180,16 @@
 .calendar-day {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-half);
   min-width: 0;
   min-height: 7rem;
   padding: var(--space-1);
-  border-inline-end: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
+  border-inline-end: 1px solid var(--glass-edge);
+  border-bottom: 1px solid var(--glass-edge);
 }
 
 .calendar-day.is-outside {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
 }
 
 .calendar-day.is-today .calendar-date {
@@ -179,7 +205,7 @@
 .calendar-date {
   align-self: flex-start;
   min-width: 1.5rem;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-200);
   font-variant-numeric: tabular-nums;
@@ -188,8 +214,8 @@
 
 .calendar-sprint {
   overflow: hidden;
-  padding: 0 4px;
-  border-radius: 4px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-mark);
   background: var(--color-accent-soft);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -197,21 +223,21 @@
 }
 
 .calendar-release {
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   color: var(--color-warning);
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .calendar-chip {
   display: block;
   width: 100%;
   overflow: hidden;
-  padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  padding: var(--space-half) var(--space-1);
+  border: 1px solid var(--glass-edge);
   border-inline-start: 3px solid var(--color-flow-first);
-  border-radius: 4px;
-  background: var(--color-surface);
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-strong);
   color: inherit;
   font: inherit;
   font-size: var(--font-size-200);
@@ -272,8 +298,8 @@
   width: 24px;
   height: auto;
   min-height: 24px;
-  border-radius: 4px;
-  background: var(--color-surface);
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-strong);
   opacity: 0;
   transition:
     opacity var(--motion-fast) var(--ease-soft),
@@ -282,12 +308,15 @@
 
 .calendar-grip .move-grip-handle:hover,
 .calendar-grip .move-grip-handle[aria-expanded="true"] {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-strong);
 }
 
+/* It sits over the end of the ticket's name: blurred where it shows, and only there. */
 .calendar-entry:hover .move-grip-handle,
 .calendar-entry:focus-within .move-grip-handle,
 .calendar-entry.is-dragging .move-grip-handle {
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
   opacity: 1;
 }
 
@@ -308,12 +337,14 @@
 
   .calendar-day {
     min-height: 0;
+    border-inline-end: 0;
   }
 }
 
 @media (pointer: coarse) {
   .calendar-chip,
   .calendar-tools button,
+  .list-panel summary,
   .list-tools select,
   .list-filter input,
   .list-filter button,
@@ -328,7 +359,7 @@
   .calendar-entry {
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 2px;
+    gap: var(--space-half);
   }
 
   /* The least a name needs beside the grip; a day with less sends the grip under it. */
@@ -340,11 +371,14 @@
     position: static;
     width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
+    background: var(--glass-surface-sunken);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     opacity: 1;
   }
 }
 
 .calendar-sprint.is-continued {
-  height: 4px;
+  height: var(--space-1);
   padding: 0;
 }

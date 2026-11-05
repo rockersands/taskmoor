@@ -102,7 +102,7 @@ export function StatusesSection({
     });
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <div className="sso-list-head">
         <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.statuses.title')}

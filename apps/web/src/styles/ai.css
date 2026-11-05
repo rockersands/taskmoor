@@ -15,7 +15,7 @@
   margin: 0;
   padding: var(--space-3) 0;
   border: 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--glass-edge);
   min-width: 0;
 }
 
@@ -118,7 +118,7 @@
 
 .ai-proposal-summary {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: anywhere;
 }
 

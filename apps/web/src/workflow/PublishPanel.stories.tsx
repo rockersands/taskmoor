@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
+import { expect, within } from 'storybook/test';
 import { useT } from '../i18n/I18nProvider';
 import type { Impact } from './client';
 import { namesFor } from './describe';
@@ -39,6 +41,17 @@ function Holder({
 
 const stages = new Map(STATUSES.map((s) => [s.id, s.stage]));
 
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
 const meta = {
   title: 'Workflows/PublishPanel',
   component: Holder,
@@ -78,3 +91,13 @@ export const Checking: Story = { args: { impact: null, loading: true } };
 export const CheckFailed: Story = { args: { impact: null, failed: true } };
 
 export const Refused: Story = { args: { error: 'bad' } };
+
+/** The step on a phone, with the statuses it would drop. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole('combobox').length).toBeGreaterThan(0);
+    await fitsPhoneWidth(canvas);
+  },
+};

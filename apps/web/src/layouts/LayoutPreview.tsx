@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
 import type { LayoutsClient, Named, Preview } from './client';
 import { type DraftSet, entriesOf, type FormChoice } from './model';
 import { layoutRefusal } from './refusal';
@@ -233,7 +234,7 @@ export function LayoutPreview({
                             <p className="form-hint">{t('layouts.preview.hidesWhenEmpty')}</p>
                           )}
                           {section.fields.length === 0 ? (
-                            <p className="form-hint">{t('layouts.preview.emptySection')}</p>
+                            <EmptyState compact title={t('layouts.preview.emptySection')} />
                           ) : (
                             <ul className="layout-preview-fields">
                               {section.fields.map((field) => (

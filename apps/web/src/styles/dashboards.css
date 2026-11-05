@@ -1,17 +1,24 @@
 /* Dashboards (M1-064; ADR-060): widgets as cards in the layout's columns, one column on
    phones; a wallboard shows them without the shell and a little larger. */
-.dashboards-page,
-.dashboard-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
+.dashboards-page > .glass-card,
+.dashboard-editor {
+  padding: var(--space-4);
 }
 
-.dashboard-actions {
-  display: flex;
-  flex-wrap: wrap;
+/* A long option in a list keeps to the width there is, on a phone too. */
+.dashboard-editor > .form-field {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboards-page > .glass-card > h2 {
+  margin-block: 0 var(--space-3);
+}
+
+/* The page's actions end level with its visibility choice, a label over a field. */
+.dashboard-page .page-header-actions {
   align-items: end;
-  gap: var(--space-2) var(--space-3);
 }
 
 .dashboard-grid {
@@ -36,14 +43,12 @@
   min-width: 0;
 }
 
+/* A `glass-card`. */
 .dashboard-widget {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .dashboard-widget-head {
@@ -97,7 +102,7 @@
   padding: var(--space-3);
   border: 1px dashed var(--color-field-border);
   border-radius: var(--radius-3);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   text-align: center;
@@ -115,6 +120,7 @@
 .dashboard-widget.is-drop-before {
   box-shadow:
     0 -4px 0 -1px var(--color-accent),
+    var(--glass-highlight),
     var(--shadow-1);
 }
 
@@ -134,15 +140,20 @@
   gap: var(--space-1);
 }
 
-.dashboard-widget-tools button {
+.dashboard-widget-tool {
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
   font: inherit;
   font-size: var(--font-size-200);
+  cursor: pointer;
+}
+
+.dashboard-widget-tool:hover:not(:disabled) {
+  background: var(--glass-tint-accent);
 }
 
 .widget-text p {
@@ -217,7 +228,7 @@
   max-width: 4rem;
   min-width: 2px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-mark);
   background: var(--color-chart-1);
 }
 
@@ -252,26 +263,29 @@
 }
 
 /* A track's summary (M1-064): numbers that open their search, with a bar for their share. */
-.track-summary {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
 .summary-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--space-4);
 }
 
+/* A `glass-card`, and in a widget, which is glass already, a well with no blur of its own. */
 .summary-section {
   display: grid;
   align-content: start;
   gap: var(--space-2);
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+}
+
+.dashboard-widget .summary-section {
+  background: var(--glass-surface-sunken);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--glass-highlight-flat);
+}
+
+.dashboard-widget .summary-section::before {
+  content: none;
 }
 
 .summary-section h2 {
@@ -297,20 +311,21 @@
 
 .summary-count {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .summary-bar {
   display: block;
   height: 4px;
-  border-radius: 2px;
-  background: var(--color-surface-sunken);
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
 
 .summary-bar > span {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-mark);
   background: var(--color-chart-1);
 }
 
@@ -328,11 +343,24 @@
     height: var(--hit-target-touch);
   }
 
-  .dashboard-widget-tools button,
+  .dashboard-widget-tool,
   .dashboard-row .reports-check,
+  .dashboard-row > a,
   .summary-list a,
   .widget-tickets a {
     min-height: var(--hit-target-touch);
+  }
+
+  /* The box to pick a dashboard for the wallboard is a label the size of a finger around it. */
+  .dashboard-row .reports-check {
+    justify-content: center;
+    min-width: var(--hit-target-touch);
+  }
+
+  .dashboard-row > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
   }
 
   .widget-tickets a {

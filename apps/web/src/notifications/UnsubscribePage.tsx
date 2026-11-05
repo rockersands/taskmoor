@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { currentRoute, routeHref } from '../routing/router';
 import { passwordTokenFromHash } from '../session/PasswordLinkPage';
+import { PageHeader } from '../shell/PageHeader';
 import { type UnsubscribeClient, type UnsubscribeLink, unsubscribeClient } from './client';
 
 export interface UnsubscribePageProps {
@@ -112,8 +113,8 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
   }
   return (
     <main className="setup">
-      <h1 className="page-title">{t('unsubscribe.title')}</h1>
-      {body}
+      <PageHeader title={t('unsubscribe.title')} purpose={t('purpose.unsubscribe')} />
+      <div className="glass-card account-section">{body}</div>
     </main>
   );
 }

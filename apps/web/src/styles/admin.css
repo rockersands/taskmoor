@@ -1,29 +1,14 @@
 /* Administration pages: settings links and the system status page. Desktop first. */
-.system-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.system-header .page-title {
-  margin: 0;
-}
-
 .system-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: var(--space-4);
 }
 
+/* With `glass-card`: a titled card of label and value lines. */
 .facts {
   min-width: 0;
   padding: var(--space-5);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
 }
 
 .facts-title {
@@ -60,42 +45,19 @@
 
 .status-ok {
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .status-bad {
   color: var(--color-danger);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .status-warn {
   color: var(--color-warning);
 }
 
-.button-secondary {
-  min-height: var(--hit-target);
-  padding: 0 var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-1);
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-soft);
-}
-
-.button-secondary:hover:not(:disabled) {
-  background: var(--color-surface-sunken);
-}
-
-.button-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .settings-section {
-  margin-top: var(--space-4);
   max-width: 40rem;
 }
 
@@ -112,7 +74,7 @@
   align-items: center;
   min-height: var(--hit-target);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 /* Administration (ADR-114): its own navigation beside the page, folded above it when narrow. */
@@ -140,7 +102,7 @@
   display: flex;
   align-items: center;
   min-height: var(--hit-target);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
@@ -151,7 +113,7 @@
 
 .admin-nav-list {
   display: grid;
-  gap: 2px;
+  gap: var(--space-half);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -179,7 +141,7 @@
 
 .admin-nav-link[aria-current="page"] {
   background: var(--glass-tint-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .admin-breadcrumb {
@@ -219,16 +181,11 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   align-items: start;
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
 .admin-panel {
   min-width: 0;
   padding: var(--space-4);
-}
-
-.admin-page > .admin-panel {
-  margin-top: var(--space-4);
 }
 
 .admin-panel > * + * {
@@ -237,7 +194,6 @@
 
 .admin-page > .form-field {
   max-width: 30rem;
-  margin-top: var(--space-3);
 }
 
 .admin-panel-list {
@@ -252,12 +208,26 @@
   margin: var(--space-3) 0 0;
 }
 
+/*
+ * A form that is not `.form` (M1-072, M1-076): its group of choices is a well, not the browser's
+ * groove.
+ */
+.admin-page .people-form > fieldset.form-field {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+}
+
 .admin-panel-more a {
   display: inline-flex;
   align-items: center;
   min-height: var(--hit-target);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .visibility-members {
@@ -327,7 +297,6 @@
 
 @media (pointer: coarse) {
   .button-primary,
-  .button-secondary,
   .link-list a {
     min-height: var(--hit-target-touch);
   }
@@ -384,24 +353,12 @@
 }
 
 .ai-usage-caption {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-align: start;
   padding-block-end: var(--space-2);
 }
 
 /* API usage and limits (M1-066). */
-.api-usage-page {
-  display: grid;
-  gap: var(--space-5);
-  min-width: 0;
-}
-
-.api-usage-section {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
 .api-usage-header {
   display: flex;
   flex-wrap: wrap;
@@ -419,31 +376,13 @@
   border: 0;
 }
 
-.api-usage-window [aria-pressed="true"] {
-  background: var(--color-accent-soft);
-}
-
 .api-usage-table-wrap {
   overflow-x: auto;
 }
 
-.api-usage-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
+/* On `data-table`: figures that line up, the first column as plain as the rest. */
 .api-usage-table :is(th, td) {
-  padding-block: var(--space-2);
-  padding-inline: 0 var(--space-4);
-  border-block-end: 1px solid var(--color-border);
-  text-align: start;
   overflow-wrap: anywhere;
-}
-
-.api-usage-table thead th {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-200);
-  font-weight: 600;
 }
 
 .api-usage-table tbody th {
@@ -455,7 +394,7 @@
 }
 
 .api-usage-table td[data-throttled] {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .api-limits-form {
@@ -467,14 +406,17 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--space-3);
+  min-width: 0;
   margin: 0;
   padding: var(--space-4);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .api-limits-scope legend {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .api-limits-scope .form-hint {
@@ -482,31 +424,24 @@
   margin: 0;
 }
 
-.api-limits-scope label {
-  display: grid;
-  gap: var(--space-1);
-}
-
 /* Audit log and network access (M1-085). */
-.audit-page,
-.network-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
 .audit-filter {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: end;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
 }
 
-.audit-filter label,
-.audit-syslog label,
+.audit-filter > .form-field {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 20rem;
+}
+
 .audit-retention {
-  display: grid;
-  gap: var(--space-1);
+  max-width: 20rem;
 }
 
 .audit-actions {
@@ -515,50 +450,26 @@
   gap: var(--space-2);
 }
 
-.audit-table-wrap {
-  overflow-x: auto;
-}
-
-.audit-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-200);
-}
-
 .audit-table :is(th, td) {
-  padding-block: var(--space-2);
-  padding-inline: 0 var(--space-3);
-  border-block-end: 1px solid var(--color-border);
-  text-align: start;
-  vertical-align: top;
   overflow-wrap: anywhere;
 }
 
-.audit-table thead th {
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-.audit-settings,
-.audit-syslog,
-.network-form {
+.audit-syslog {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   max-width: 40rem;
 }
 
+.network-form {
+  max-width: 40rem;
+}
+
 .network-form textarea {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
 }
 
 /* Registered frontends (M1-108). */
-.frontends-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-  max-width: 48rem;
-}
-
 .frontend-list {
   display: grid;
   gap: var(--space-3);
@@ -567,12 +478,10 @@
   list-style: none;
 }
 
+/* With `glass-card`. */
 .frontend-item {
   min-width: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  padding: var(--space-4) var(--space-5);
 }
 
 .frontend-item p {
@@ -581,29 +490,30 @@
 
 .frontend-origin {
   margin: 0;
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: var(--font-size-300);
   overflow-wrap: anywhere;
 }
 
 .frontend-form {
-  display: grid;
-  gap: var(--space-3);
   max-width: 40rem;
 }
 
 .frontend-form textarea {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
 }
 
 .frontend-confirm {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  min-width: 0;
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .frontend-confirm legend {
@@ -611,14 +521,6 @@
 }
 
 /* Imports: the wizard, runs and reports (M1-097). */
-.imports-page {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-  max-width: 60rem;
-}
-
-.import-wizard,
 .import-form,
 .import-run,
 .import-report {
@@ -634,14 +536,16 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-3);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .import-form legend,
 .import-people legend {
   padding: 0 var(--space-1);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .import-choices {
@@ -652,11 +556,11 @@
 .import-choices-title,
 .import-subtitle {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .import-form textarea {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
 }
 
 .import-form select,
@@ -665,13 +569,22 @@
   max-width: 100%;
 }
 
-.import-run,
+/* A run in the list is a card of its own; what it shows when opened, or a run under way, a well. */
 .import-run-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+}
+
+.import-run {
   min-width: 0;
   padding: var(--space-4);
-  border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
 }
 
 .import-run-list,
@@ -708,7 +621,7 @@
 }
 
 .import-code {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
 }
 
 .import-kinds td,

@@ -140,12 +140,13 @@ export function AiLimitsPage({ client = aiLimitsClient }: { client?: AiLimitsCli
   const failed = () => setProblem(t('admin.aiLimits.failedAction'));
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
+    <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={t('admin.aiLimits.title')}
-        purpose={t('admin.aiLimits.purpose')}
-        about={t('admin.aiLimits.about')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('admin.aiLimits.purpose'), about: t('admin.aiLimits.about') })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.aiLimits.forbidden')}</p>
@@ -194,7 +195,9 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
       </h2>
       <p className="page-note">{t('admin.aiLimits.limitsHint')}</p>
       {limits.length === 0 ? (
-        <EmptyState title={t('admin.aiUsage.noLimits')}>{t('admin.aiLimits.noLimits')}</EmptyState>
+        <EmptyState compact title={t('admin.aiUsage.noLimits')}>
+          {t('admin.aiLimits.noLimits')}
+        </EmptyState>
       ) : (
         <ul className="people-list">
           {limits.map((limit) => (

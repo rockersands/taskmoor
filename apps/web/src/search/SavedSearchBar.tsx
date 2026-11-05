@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import type { SavedSearch, SavedSearchClient, SavedSearchShare } from './savedClient';
 
 export interface SavedSearchBarProps {
@@ -48,6 +49,7 @@ export function SavedSearchBar({
   const t = useT();
   const id = useId();
   const [list, setList] = useState<SavedSearch[]>([]);
+  const [listRead, setListRead] = useState(false);
   const [chosen, setChosen] = useState('');
   const [panel, setPanel] = useState<Panel>('none');
   const [name, setName] = useState('');
@@ -62,7 +64,10 @@ export function SavedSearchBar({
 
   const reload = () =>
     client.list().then(
-      (found) => setList(found),
+      (found) => {
+        setList(found);
+        setListRead(true);
+      },
       () => setList([]),
     );
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per client
@@ -165,10 +170,15 @@ export function SavedSearchBar({
 
   const titleId = `${id}-title`;
   return (
-    <section className="saved-searches" aria-labelledby={titleId}>
+    <section className="glass-card saved-searches" aria-labelledby={titleId}>
       <h2 id={titleId} className="saved-title">
         {opened ? t('saved.opened', { name: opened.name }) : t('saved.title')}
       </h2>
+      {listRead && list.length === 0 && (
+        <EmptyState compact title={t('empty.saved.title')}>
+          {t('empty.saved.body')}
+        </EmptyState>
+      )}
       <div className="saved-open">
         <label htmlFor={`${id}-list`} className="form-label">
           {t('saved.list')}

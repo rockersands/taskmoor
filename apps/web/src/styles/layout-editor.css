@@ -4,7 +4,6 @@
  * set the preview beside the layout; phones stack everything in one column with no sideways
  * scrolling. Only tokens: where glass cannot blur, tokens.css makes every glass surface opaque.
  */
-.layout-editor-page,
 .layout-set-editor,
 .layout-edit,
 .layout-board {
@@ -90,7 +89,7 @@
 .layout-form-choice > legend {
   margin-bottom: var(--space-2);
   padding: 0;
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 /* The operations as one row of pills: a radio each, the whole pill its target. */
@@ -118,7 +117,7 @@
 .layout-operation:has(input:checked) {
   background: var(--glass-fill-strong);
   box-shadow: var(--glass-highlight-flat);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .layout-operation:has(input:focus-visible) {
@@ -254,12 +253,12 @@
 
 .layout-tab-title {
   font-size: var(--font-size-300);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .layout-section-title {
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .layout-tab-name {
@@ -290,10 +289,6 @@
 
 .layout-section-settings > .form-hint {
   flex-basis: 100%;
-  margin: 0;
-}
-
-.layout-section-empty {
   margin: 0;
 }
 
@@ -398,7 +393,7 @@
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-highlight), var(--shadow-1);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
@@ -482,14 +477,14 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   overflow-wrap: break-word;
 }
 
 .layout-preview-required {
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .layout-preview-input {

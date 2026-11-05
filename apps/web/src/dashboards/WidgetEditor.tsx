@@ -331,6 +331,7 @@ export function WidgetGrid({
 
   const toolButton = (w: Widget, tool: Tool) => (
     <button
+      className="dashboard-widget-tool"
       aria-label={t(`dashboards.tool.${tool}`, { name: widgetTitle(t, w) })}
       type="button"
       data-tool={tool}
@@ -370,7 +371,7 @@ export function WidgetGrid({
               {held.map((w) => (
                 <article
                   key={w.id}
-                  className={`dashboard-widget${dragging === w.id ? ' is-dragging' : ''}${
+                  className={`glass-card dashboard-widget${dragging === w.id ? ' is-dragging' : ''}${
                     over?.column === column && over.before === w.id ? ' is-drop-before' : ''
                   }`}
                   aria-label={widgetTitle(t, w)}
@@ -400,6 +401,7 @@ export function WidgetGrid({
                     <div className="dashboard-widget-tools">
                       {SETTINGS[w.kind].length > 0 ? (
                         <button
+                          className="dashboard-widget-tool"
                           aria-label={t('dashboards.tool.settings', { name: widgetTitle(t, w) })}
                           type="button"
                           onClick={() => onSettingsOf(w.id)}
@@ -417,6 +419,7 @@ export function WidgetGrid({
                         </>
                       )}
                       <button
+                        className="dashboard-widget-tool"
                         aria-label={t('dashboards.tool.remove', { name: widgetTitle(t, w) })}
                         type="button"
                         onClick={() => onChange((list) => list.filter((x) => x.id !== w.id))}

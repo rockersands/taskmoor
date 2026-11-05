@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
@@ -33,6 +34,17 @@ const withDraft = () =>
     ],
     ticketsIn: { [S.Draft as number]: 2 },
   });
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Admin/WorkflowEditorPage',
@@ -104,5 +116,30 @@ export const History: Story = {
     await expect(
       await canvas.findByRole('button', { name: 'Restore version 1 as the draft' }),
     ).toBeVisible();
+  },
+};
+
+/** The diagram scrolls inside its own card; the page does not scroll sideways. */
+export const DiagramAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Diagram' })).toBeVisible();
+    await expect(canvas.getByText(/^The statuses of this workflow/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Diagram' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+export const TextModeAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Text' }));
+    await expect(canvas.getByLabelText('Definition (JSON)')).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { routeHref } from '../../routing/router';
 import { useSessionExpiry } from '../../session/useSessionExpiry';
+import { EmptyState } from '../../shell/EmptyState';
+import { PageHeader } from '../../shell/PageHeader';
 import {
   type SavedTemplate,
   type TemplateClient,
@@ -77,18 +79,20 @@ export function TicketTemplatesPage({
       : t('tickets.templates.adminTitle');
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page ticket-templates-page">
-      <div className="board-header">
-        <h1 id={titleId} className="page-title">
-          {title}
-        </h1>
-        {track && (
-          <a href={routeHref(`#/tracks/${encodeURIComponent(track)}`)}>
-            {t('tickets.templates.toSummary')}
-          </a>
-        )}
-      </div>
-      <p className="page-note">{t('tickets.templates.intro')}</p>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={title}
+        purpose={t('settings.ticketTemplatesHint')}
+        about={t('tickets.templates.intro')}
+        actions={
+          track && (
+            <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track)}`)}>
+              {t('tickets.templates.toSummary')}
+            </a>
+          )
+        }
+      />
       <p role="status" className="form-status">
         {message}
       </p>
@@ -143,7 +147,7 @@ export function TicketTemplatesPage({
             />
           )}
           {state.list.templates.length === 0 ? (
-            <p className="page-note">{t('tickets.templates.none')}</p>
+            <EmptyState title={t('tickets.templates.none')}>{t('empty.templates.body')}</EmptyState>
           ) : (
             <ul className="people-list">
               {state.list.templates.map((template) => {

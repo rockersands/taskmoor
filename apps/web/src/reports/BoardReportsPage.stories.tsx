@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { BoardReportsPage } from './BoardReportsPage';
-import { fakeReportClient, SCRUM_REPORT_BOARD } from './fixtures';
+import { fakeReportClient, flowFixture, SCRUM_REPORT_BOARD } from './fixtures';
 
 const meta = {
   title: 'Reports/BoardReportsPage',
@@ -99,4 +99,21 @@ export const ReleaseReport: Story = {
 export const ReleaseBurndownPhone: Story = {
   args: { report: 'release-burndown', client: fakeReportClient(SCRUM_REPORT_BOARD) },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** A period with nothing to chart: what would be here and what to try. */
+export const EmptyPeriod: Story = {
+  args: {
+    client: {
+      ...fakeReportClient(),
+      cumulativeFlow: async () => ({ ...flowFixture(), dates: [], columns: [], unmapped: [] }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('No ticket of this board existed in this period.'),
+    ).toBeVisible();
+    await expect(canvas.getByText(/^Choose a longer period/)).toBeVisible();
+  },
 };

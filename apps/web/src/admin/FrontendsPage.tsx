@@ -5,6 +5,8 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 
 /** A registered frontend as `GET /api/v1/admin/frontends` lists it (M1-108). */
 export interface RegisteredFrontend {
@@ -191,10 +193,14 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
   };
 
   return (
-    <section aria-labelledby={titleId} className="frontends-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.frontends.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page frontends-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.frontends.title')}
+        {...(notAdmin
+          ? {}
+          : { purpose: t('settings.frontendsHint'), about: t('admin.frontends.intro') })}
+      />
       {notAdmin ? (
         <p className="page-note">{t('admin.frontends.forbidden')}</p>
       ) : loadFailed ? (
@@ -207,8 +213,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
         </p>
       ) : (
         <>
-          <p className="page-note">{t('admin.frontends.intro')}</p>
-          <section aria-labelledby={`${id}-self`} className="facts">
+          <section aria-labelledby={`${id}-self`} className="glass-card facts">
             <h2 id={`${id}-self`} className="facts-title">
               {t('admin.frontends.self')}
             </h2>
@@ -230,11 +235,11 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
               {t('admin.frontends.registered')}
             </h2>
             {view.frontends.length === 0 ? (
-              <p className="page-note">{t('admin.frontends.none')}</p>
+              <EmptyState title={t('admin.frontends.none')}>{t('empty.frontends.body')}</EmptyState>
             ) : (
               <ul className="frontend-list">
                 {view.frontends.map((frontend) => (
-                  <li key={frontend.id} className="frontend-item">
+                  <li key={frontend.id} className="glass-card frontend-item">
                     <h3 className="frontend-origin">
                       {t('common.value', { value: frontend.origin })}
                     </h3>
@@ -310,7 +315,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
               <p className="page-note">{t('admin.frontends.environmentHint')}</p>
               <ul className="frontend-list">
                 {view.environment.map((entry) => (
-                  <li key={entry.origin} className="frontend-item">
+                  <li key={entry.origin} className="glass-card frontend-item">
                     <h3 className="frontend-origin">
                       {t('common.value', { value: entry.origin })}
                     </h3>
@@ -326,7 +331,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
           )}
 
           <form
-            className="frontend-form"
+            className="form glass-card account-section frontend-form"
             aria-labelledby={`${id}-add`}
             onSubmit={(event) => void submit(event)}
           >

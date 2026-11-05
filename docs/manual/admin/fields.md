@@ -16,7 +16,8 @@ In the web app, site and configuration administrators use **Administration**, **
 who run a track with its own configuration (local mode) change that track's own sets on its own
 pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
 [REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
-([API tokens](api-tokens.md)). Everyone signed in may read these lists.
+([API tokens](api-tokens.md)). Everyone signed in may read these lists. With no custom field yet,
+the **Fields** page says so and what one is for.
 
 ## Built-in fields
 

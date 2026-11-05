@@ -17,6 +17,7 @@ const LENS_SURFACES = [
   '.user-menu-popup',
   '.popover',
   '.palette',
+  '.create-dialog',
   '.ticket-dialog',
 ].join(',');
 

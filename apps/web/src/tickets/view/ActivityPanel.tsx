@@ -14,6 +14,7 @@ import { type CommentClient, commentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { MentionSource } from '../../richtext/mentions';
+import { EmptyState } from '../../shell/EmptyState';
 import { useMotionOnChange } from '../../shell/motion';
 import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
 import type { HistoryEntry, TicketClient, TimeEntry } from './client';
@@ -246,7 +247,7 @@ function HistoryList({
 
   if (failed) return <p className="page-note">{t('ticketView.history.failed')}</p>;
   if (rows === null) return <p className="page-note">{t('ticketView.loading')}</p>;
-  if (rows.length === 0) return <p className="page-note">{t('ticketView.history.empty')}</p>;
+  if (rows.length === 0) return <EmptyState compact title={t('ticketView.history.empty')} />;
   return (
     <>
       <ol className="ticket-feed">
@@ -334,7 +335,7 @@ function TimeEntries({ ticket, client }: { ticket: { id: number }; client: Ticke
       ) : entries === null ? (
         <p className="page-note">{t('ticketView.loading')}</p>
       ) : entries.length === 0 ? (
-        <p className="page-note">{t('ticketView.time.empty')}</p>
+        <EmptyState compact title={t('ticketView.time.empty')} />
       ) : (
         <ol className="ticket-feed">
           {entries.map((e) => (
@@ -477,7 +478,7 @@ function AllActivity({
   }, [client, said, ticket.id]);
 
   if (items === null) return <p className="page-note">{t('ticketView.loading')}</p>;
-  if (items.length === 0) return <p className="page-note">{t('ticketView.history.empty')}</p>;
+  if (items.length === 0) return <EmptyState compact title={t('ticketView.history.empty')} />;
   return (
     <ol className="ticket-feed">
       {items.map((item) => (

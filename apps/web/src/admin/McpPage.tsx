@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { PageHeader } from '../shell/PageHeader';
 
 export type McpProfile = 'read-only' | 'planner' | 'full';
 
@@ -63,17 +64,33 @@ export function McpPage({
     );
   }, [client]);
 
+  const header = (
+    <PageHeader
+      titleId={`${id}-title`}
+      title={t('mcp.title')}
+      purpose={t('settings.mcpHint')}
+      about={t('mcp.intro')}
+    />
+  );
+
   if (failed) {
     return (
-      <section className="admin-page">
-        <h1 className="page-title">{t('mcp.title')}</h1>
+      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+        {header}
         <p role="alert" className="form-error">
           {t('mcp.failed')}
         </p>
       </section>
     );
   }
-  if (!settings) return <p className="page-note">{t('reports.loading')}</p>;
+  if (!settings) {
+    return (
+      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+        {header}
+        <p className="page-note">{t('reports.loading')}</p>
+      </section>
+    );
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -95,12 +112,13 @@ export function McpPage({
   };
 
   return (
-    <section className="admin-page" aria-labelledby={`${id}-title`}>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('mcp.title')}
-      </h1>
-      <p className="page-note">{t('mcp.intro')}</p>
-      <form className="people-form" aria-label={t('mcp.formLabel')} onSubmit={submit}>
+    <section className="page admin-page" aria-labelledby={`${id}-title`}>
+      {header}
+      <form
+        className="glass-card people-card people-form"
+        aria-label={t('mcp.formLabel')}
+        onSubmit={submit}
+      >
         <div className="form-field form-field-inline">
           <input
             id={`${id}-enabled`}
@@ -128,7 +146,7 @@ export function McpPage({
         <fieldset className="form-field">
           <legend className="form-label">{t('mcp.profile')}</legend>
           {PROFILES.map((p) => (
-            <label key={p.id} className="form-field-inline">
+            <label key={p.id} className="form-field form-field-inline">
               <input
                 type="radio"
                 name={`${id}-profile`}
@@ -171,8 +189,10 @@ export function McpPage({
           </p>
         )}
       </form>
-      <section aria-labelledby={`${id}-connect`}>
-        <h2 id={`${id}-connect`}>{t('mcp.connect')}</h2>
+      <section aria-labelledby={`${id}-connect`} className="glass-card account-section">
+        <h2 id={`${id}-connect`} className="facts-title">
+          {t('mcp.connect')}
+        </h2>
         <p className="page-note">{t('mcp.connectHttp')}</p>
         <pre className="mcp-snippet">
           <code>{`${origin}/api/v1/mcp\nAuthorization: Bearer <token>`}</code>

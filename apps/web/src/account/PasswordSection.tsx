@@ -77,7 +77,7 @@ export function PasswordSection({ email, client, onChanged }: PasswordSectionPro
   const flagged = (field: Failure['field']) => failure !== null && failure.field === field;
 
   return (
-    <section aria-labelledby={`${id}-title`} className="account-section">
+    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} className="facts-title">
         {t('account.password')}
       </h2>

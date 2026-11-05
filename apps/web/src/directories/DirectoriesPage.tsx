@@ -5,6 +5,8 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 import {
   busy,
   type DirectoriesClient,
@@ -211,17 +213,20 @@ export function DirectoriesPage({
   };
 
   return (
-    <section aria-labelledby={titleId} className="sso-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.directories.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page sso-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.directories.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.directoriesHint'), about: t('admin.directories.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.directories.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.directories.intro')}</p>
           <div className="sso-sections">
-            <section aria-labelledby={listId} className="account-section">
+            <section aria-labelledby={listId} className="glass-card account-section">
               <div className="sso-list-head">
                 <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
                   {t('admin.directories.list')}
@@ -266,7 +271,9 @@ export function DirectoriesPage({
               )}
               {state.status === 'loaded' &&
                 (state.directories.length === 0 ? (
-                  <p className="page-note">{t('admin.directories.none')}</p>
+                  <EmptyState title={t('empty.directories.title')}>
+                    {t('empty.directories.body')}
+                  </EmptyState>
                 ) : (
                   <>
                     {state.directories.length > 1 && (
@@ -588,7 +595,7 @@ function DirectoryItem({
             {t('admin.directories.historyTitle', { name: directory.name })}
           </h3>
           {history.length === 0 ? (
-            <p className="page-note">{t('admin.directories.noRuns')}</p>
+            <EmptyState compact title={t('admin.directories.noRuns')} />
           ) : (
             <ul className="directory-runs">
               {history.map((run) => (

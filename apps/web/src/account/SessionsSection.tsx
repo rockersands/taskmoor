@@ -104,7 +104,7 @@ export function SessionsSection({ client, timeZone }: SessionsSectionProps) {
   const others = state.status === 'loaded' ? state.sessions.filter((s) => !s.current) : [];
 
   return (
-    <section aria-labelledby={titleId} className="account-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <h2 id={titleId} ref={heading} tabIndex={-1} className="facts-title">
         {t('account.sessions')}
       </h2>

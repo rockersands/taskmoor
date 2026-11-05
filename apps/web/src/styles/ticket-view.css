@@ -14,7 +14,7 @@
   justify-self: start;
   color: var(--color-accent);
   font-size: var(--font-size-200);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .ticket-back::before {
@@ -89,7 +89,7 @@
   padding: 0 var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--glass-surface-sunken);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .ticket-status[data-stage="active"] {
@@ -113,7 +113,7 @@
   box-shadow: var(--glass-highlight-flat);
   color: var(--color-text);
   font: inherit;
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
@@ -282,7 +282,7 @@
 
 .ticket-tab[aria-selected="true"] {
   border-bottom-color: var(--color-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .ticket-tab:focus-visible {
@@ -298,7 +298,15 @@
 .ticket-tabpanel .comment-panel {
   margin-top: 0;
   padding: 0;
+  border: 0;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: none;
+}
+
+.ticket-tabpanel .comment-panel::before {
+  content: none;
 }
 
 .ticket-feed {
@@ -312,7 +320,7 @@
 .ticket-feed-item {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-2);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   overflow-wrap: anywhere;
 }
 
@@ -325,7 +333,7 @@
 }
 
 .ticket-feed-actor {
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .ticket-feed-date {
@@ -362,17 +370,20 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: rgb(0 0 0 / 35%);
+  background: var(--color-backdrop);
 }
 
 .ticket-dialog {
   display: grid;
   gap: var(--space-3);
+  position: relative;
+  isolation: isolate;
   width: min(28rem, 100%);
   padding: var(--space-5);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
 }
 
 .ticket-shortcuts {
@@ -396,13 +407,15 @@
   min-width: 2em;
   padding: 0 var(--space-1);
   border: 1px solid var(--color-field-border);
-  border-radius: 6px;
+  border-radius: var(--radius-mark);
   font-family: var(--font-mono);
   text-align: center;
 }
 
 @media (pointer: coarse) {
   .ticket-action,
+  .ticket-facts :is(input, select),
+  .ticket-status,
   .ticket-tab {
     min-height: var(--hit-target-touch);
   }
@@ -457,7 +470,7 @@
   margin-bottom: var(--space-1);
   padding: 0;
   font-size: var(--font-size-200);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
 }
 
 .clone-status {

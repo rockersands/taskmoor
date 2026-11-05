@@ -9,6 +9,13 @@ const STATES = {
   archived: 'releases.state.archived',
 } as const satisfies Record<string, MessageId>;
 
+const BADGES = {
+  upcoming: 'badge badge-accent',
+  overdue: 'badge badge-warning',
+  shipped: 'badge badge-success',
+  archived: 'badge',
+} as const satisfies Record<keyof typeof STATES, string>;
+
 /** A release's state as a word (never colour alone): archived, shipped, overdue or upcoming. */
 export function ReleaseState({
   release,
@@ -24,7 +31,7 @@ export function ReleaseState({
         ? 'overdue'
         : 'upcoming';
   return (
-    <span className="release-state" data-state={state}>
+    <span className={`${BADGES[state]} release-state`} data-state={state}>
       {t(STATES[state])}
     </span>
   );

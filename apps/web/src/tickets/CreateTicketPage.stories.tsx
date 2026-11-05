@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { type CreateClient, CreateTicketPage } from './CreateTicketPage';
@@ -28,6 +29,17 @@ function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
   };
 }
 
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
 const meta = {
   title: 'Tickets/CreateTicketPage',
   component: CreateTicketPage,
@@ -44,7 +56,23 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const BugForm: Story = {};
+/** The form on its page: a title, what it is for, and the fields on a slab of glass. */
+export const BugForm: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { level: 1 })).toBeVisible();
+    await expect(canvasElement.querySelector('.page-purpose')).not.toBeNull();
+  },
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('heading', { level: 1 });
+    await fitsPhoneWidth(canvas);
+  },
+};
 
 /** Submitting without the required fields puts the refusals at each of them. */
 export const WithRefusals: Story = {

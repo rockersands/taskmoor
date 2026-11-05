@@ -106,7 +106,7 @@ export function DonutChart({
       </div>
       <details className="chart-table">
         <summary>{tableLabel}</summary>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               {headers.map((h) => (

@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import type { BacklogPanels } from './client';
 
 /** What a panel item stands for: an outcome (by ticket id) or a release. */
@@ -61,11 +62,11 @@ export function PlanningPanels({ panels, failed, filter, onFilter, over }: Plann
           {t('sprints.panels.failed')}
         </p>
       )}
-      <section className="backlog-panel" aria-labelledby={`${id}-outcomes`}>
+      <section className="glass-card backlog-panel" aria-labelledby={`${id}-outcomes`}>
         <h2 id={`${id}-outcomes`}>{t('sprints.panels.outcomes')}</h2>
         {panels &&
           (panels.outcomes.length === 0 ? (
-            <p className="sprint-empty">{t('sprints.panels.noOutcomes')}</p>
+            <EmptyState compact title={t('sprints.panels.noOutcomes')} />
           ) : (
             <ul className="backlog-panel-list">
               {panels.outcomes.map((o) =>
@@ -84,11 +85,11 @@ export function PlanningPanels({ panels, failed, filter, onFilter, over }: Plann
             </ul>
           ))}
       </section>
-      <section className="backlog-panel" aria-labelledby={`${id}-releases`}>
+      <section className="glass-card backlog-panel" aria-labelledby={`${id}-releases`}>
         <h2 id={`${id}-releases`}>{t('sprints.panels.releases')}</h2>
         {panels &&
           (panels.releases.length === 0 ? (
-            <p className="sprint-empty">{t('sprints.panels.noReleases')}</p>
+            <EmptyState compact title={t('sprints.panels.noReleases')} />
           ) : (
             <ul className="backlog-panel-list">
               {panels.releases.map((r) =>

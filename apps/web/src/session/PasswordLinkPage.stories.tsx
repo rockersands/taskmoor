@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { KALO } from '../account/fixtures';
 import { ApiError } from '../api/client';
@@ -47,6 +48,11 @@ export const InvalidLink: Story = {
       },
     },
   },
+  play: async ({ canvasElement }) => {
+    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign in' });
+    // The same card as Unsubscribe and Consent, not flat text on the canvas.
+    await expect(link.closest('.glass-card')).not.toBeNull();
+  },
 };
 
 export const WithoutToken: Story = {
@@ -81,4 +87,24 @@ export const WeakPassword: Story = {
 
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('form')).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };

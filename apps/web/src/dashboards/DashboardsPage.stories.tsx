@@ -1,9 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { DashboardsPage } from './DashboardsPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Dashboards/DashboardsPage',
@@ -43,8 +56,37 @@ export const List: Story = {
   },
 };
 
-export const Empty: Story = { args: { client: fakeDashboardClient([]) } };
+/** None yet: what a dashboard is, and the form above makes the first. */
+export const Empty: Story = {
+  args: { client: fakeDashboardClient([]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No dashboards yet')).toBeVisible();
+    await expect(canvas.getByText(/^A dashboard gathers charts/)).toBeVisible();
+  },
+};
 
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Yours' })).toBeVisible();
+    await expect(canvas.getByText(/^Charts and lists that sum up/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A finger reaches each dashboard's name and the box that puts it on the wallboard (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('checkbox');
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.dashboard-row > a', '.dashboard-row .reports-check']),
+    ).toEqual([]);
+  },
 };

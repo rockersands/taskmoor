@@ -8,6 +8,7 @@ import type { MentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { RichTextView } from '../richtext/RichTextView';
 import { addressRoute, onRouteChange, routeUrl } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import {
   type Audiences,
   type Comment,
@@ -150,7 +151,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
 
   const count = loaded?.comments.length ?? 0;
   return (
-    <section aria-labelledby={titleId} className="comment-panel">
+    <section aria-labelledby={titleId} className="glass-card comment-panel">
       <div className="comment-header">
         <h2 id={titleId} className="comment-title">
           {t('comments.title')}
@@ -173,7 +174,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
       {loaded && (
         <>
           {loaded.comments.length === 0 ? (
-            <p className="page-note">{t('comments.empty')}</p>
+            <EmptyState compact title={t('comments.empty')} />
           ) : (
             <ol className="comment-list">
               {loaded.comments.map((comment) => (

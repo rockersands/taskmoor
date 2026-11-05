@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { FieldsAdminPage } from './FieldsAdminPage';
 import { fakeFieldsClient } from './fixtures';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Admin/Fields',
@@ -39,5 +51,25 @@ export const OptionInUse: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Medium' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
+  },
+};
+
+export const NoFieldsYet: Story = {
+  args: { client: { ...fakeFieldsClient(), fields: async () => [] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('There are no custom fields yet.')).toBeVisible();
+    await expect(canvas.getByText(/^A custom field adds/)).toBeVisible();
+  },
+};
+
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
+    await expect(await canvas.findByRole('button', { name: 'Rename Medium' })).toBeVisible();
+    await expect(canvas.getByText(/^Add custom fields and keep/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

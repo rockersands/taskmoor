@@ -12,6 +12,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { PageHeader } from '../shell/PageHeader';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
   type Impact,
@@ -233,13 +234,17 @@ export function WorkflowEditorPage({
       loaded: null,
     };
     return (
-      <section className="workflow-editor" aria-labelledby={`${id}-title`}>
+      <section className="page page-full workflow-editor" aria-labelledby={`${id}-title`}>
         <p className="workflow-back">
           <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
         </p>
-        <h1 id={`${id}-title`} className="page-title">
-          {t('admin.workflows.title')}
-        </h1>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={t('admin.workflows.title')}
+          {...(load.status === 'forbidden' || load.status === 'missing'
+            ? {}
+            : { purpose: t('purpose.workflowEditor') })}
+        />
         {notes[load.status]}
       </section>
     );
@@ -515,13 +520,15 @@ export function WorkflowEditorPage({
   }
 
   return (
-    <section className="workflow-editor" aria-labelledby={`${id}-title`}>
+    <section className="page page-full workflow-editor" aria-labelledby={`${id}-title`}>
       <p className="workflow-back">
         <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
       </p>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('common.value', { value: workflow.name })}
-      </h1>
+      <PageHeader
+        titleId={`${id}-title`}
+        title={t('common.value', { value: workflow.name })}
+        purpose={t('purpose.workflowEditor')}
+      />
       <p className="token-meta">
         <span>{t('admin.workflow.published', { version: workflow.published.version })}</span>
         <span>
@@ -553,11 +560,11 @@ export function WorkflowEditorPage({
       />
 
       <div className="workflow-toolbar">
-        <fieldset className="workflow-modes">
+        <fieldset className="filter-chips">
           <legend className="visually-hidden">{t('admin.workflow.mode')}</legend>
           <button
             type="button"
-            className="workflow-mode"
+            className="filter-chip"
             aria-pressed={mode === 'diagram'}
             onClick={() => switchMode('diagram')}
           >
@@ -565,7 +572,7 @@ export function WorkflowEditorPage({
           </button>
           <button
             type="button"
-            className="workflow-mode"
+            className="filter-chip"
             aria-pressed={mode === 'text'}
             onClick={() => switchMode('text')}
           >

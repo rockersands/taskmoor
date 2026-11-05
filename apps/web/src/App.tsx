@@ -32,6 +32,7 @@ import { DirectoriesPage } from './directories/DirectoriesPage';
 import { FieldsAdminPage } from './fields/FieldsAdminPage';
 import { GuardrailsPage } from './guardrails/GuardrailsPage';
 import { HomePage } from './home/HomePage';
+import { HomeSignedOut, PageNotReady } from './home/HomeSignedOut';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import {
   catalogueFor,
@@ -959,12 +960,7 @@ function Pages() {
       ) : active === 'home' && session.status === 'anonymous' ? (
         // Signed out, as on a fresh install's first visit: say where to start (M1-113). Not
         // while the session is still being checked, or a signed-in person would see it flash.
-        <>
-          <h1 className="page-title">{t('nav.home')}</h1>
-          <p className="page-note">
-            {t('home.signedOut')} <a href="#/sign-in">{t('auth.signIn')}</a>
-          </p>
-        </>
+        <HomeSignedOut />
       ) : active === 'search' && signedIn ? (
         <SearchPage
           key={queryFromHash(hash) || String(savedSearchFromHash(hash) ?? '')}
@@ -972,10 +968,10 @@ function Pages() {
           initialSavedSearch={savedSearchFromHash(hash)}
         />
       ) : (
-        <>
-          <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>
-          <p className="page-note">{t('page.underConstruction')}</p>
-        </>
+        <PageNotReady
+          title={page ? t(page.labelId) : ''}
+          purpose={t(active === 'search' ? 'purpose.search' : 'purpose.home')}
+        />
       );
   }
 

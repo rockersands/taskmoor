@@ -72,7 +72,7 @@ export function TransitionInspector({
   const triggers = transition.triggers ?? [];
 
   return (
-    <section className="workflow-panel" aria-labelledby={`${id}-title`}>
+    <section className="glass-card workflow-panel" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className="facts-title">
         {t('admin.workflow.transition.heading', { name: names.transition(transition.id) })}
       </h2>

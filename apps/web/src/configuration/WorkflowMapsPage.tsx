@@ -3,6 +3,7 @@ import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { PageHeader } from '../shell/PageHeader';
 import {
   type ConfigurationClient,
   configurationClient,
@@ -87,17 +88,20 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
   };
 
   return (
-    <section aria-labelledby={titleId} className="admin-page people-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.maps.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.maps.title')}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('settings.workflowMapsHint'), about: t('admin.maps.intro') })}
+      />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.maps.forbidden')}</p>
       ) : (
         <>
-          <p className="page-note">{t('admin.maps.intro')}</p>
           <form
-            className="people-form"
+            className="glass-card people-card people-form"
             data-tutorial="workflow-map-new"
             aria-label={t('admin.maps.add')}
             onSubmit={(event) => {

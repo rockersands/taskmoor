@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { writeDocToYDoc } from '@taskmoor/richtext';
+import type { ReactElement } from 'react';
 import { type ReactNode, useEffect } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import * as Y from 'yjs';
@@ -34,6 +35,17 @@ function InTheApp({ children }: { children: ReactNode }) {
     </>
   );
 }
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Tickets/TicketPage',
@@ -223,5 +235,15 @@ export const FilesOverRefused: Story = {
         selector: '.file-drop-title',
       }),
     ).toBeVisible();
+  },
+};
+
+/** A ticket at a phone's width: the title, the panels and the fields stay inside. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('heading', { level: 1 });
+    await fitsPhoneWidth(canvas);
   },
 };

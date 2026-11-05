@@ -139,7 +139,7 @@ export function WidgetSettings({
         );
       case 'links':
         return (
-          <fieldset className="reports-choices widget-links-editor" key={key}>
+          <fieldset className="reports-choices" key={key}>
             <legend>{t('dashboards.setting.links')}</legend>
             {links.map((l, i) => (
               // Links have no ids of their own; their place is who they are while editing.

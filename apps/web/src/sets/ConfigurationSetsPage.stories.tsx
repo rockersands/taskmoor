@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, TRACK_ADMIN } from '../admin/fixtures';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { ConfigurationSetsPage } from './ConfigurationSetsPage';
 import { fakeSetsClient } from './fixtures';
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 const meta = {
   title: 'Admin/Configuration sets',
@@ -67,5 +79,16 @@ export const TracksToChoose: Story = {
     await expect(
       await canvas.findByRole('link', { name: 'Configuration sets of OPS · Operations' }),
     ).toBeVisible();
+  },
+};
+
+/** The shared sets on a phone, each kind on its card, with what the page is for at the top. */
+export const AtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Type sets' })).toBeVisible();
+    await expect(canvas.getByText(/^Type sets and field rule sets/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

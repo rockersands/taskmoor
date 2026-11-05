@@ -5,6 +5,8 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
+import { PageHeader } from '../shell/PageHeader';
 
 /** Sums over a set of AI calls, as `GET /api/v1/admin/ai/usage` answers (M1-077). */
 export interface UsageTotals {
@@ -186,21 +188,27 @@ export function AiUsagePage({
   }, [client, notAdmin]);
 
   return (
-    <section aria-labelledby={titleId} className="api-usage-page">
-      <h1 id={titleId} className="page-title">
-        {t('admin.aiUsage.title')}
-      </h1>
+    <section aria-labelledby={titleId} className="page api-usage-page">
+      <PageHeader
+        titleId={titleId}
+        title={t('admin.aiUsage.title')}
+        {...(forbidden ? {} : { purpose: t('purpose.aiUsage') })}
+      />
       {forbidden ? (
         <p className="page-note">{t('admin.aiUsage.forbidden')}</p>
       ) : (
         <>
-          {statement.status === 'loaded' && <DataStatementView statement={statement.value} />}
+          {statement.status === 'loaded' && (
+            <div className="glass-card account-section">
+              <DataStatementView statement={statement.value} />
+            </div>
+          )}
           {statement.status === 'failed' && (
             <p role="alert" className="form-error">
               {t('admin.aiUsage.statementFailed')}
             </p>
           )}
-          <section aria-label={t('admin.aiUsage.usage')} className="api-usage-section">
+          <section aria-label={t('admin.aiUsage.usage')} className="glass-card account-section">
             <div className="api-usage-header">
               <h2 className="facts-title">{t('admin.aiUsage.usage')}</h2>
               <fieldset className="api-usage-window">
@@ -209,7 +217,7 @@ export function AiUsagePage({
                   <button
                     key={p.key}
                     type="button"
-                    className="button-secondary"
+                    className="filter-chip"
                     aria-pressed={period === p.key}
                     onClick={() => setPeriod(p.key)}
                   >
@@ -283,7 +291,7 @@ function Breakdown({
   const money = useMoney();
   return (
     <div className="api-usage-table-wrap">
-      <table className="api-usage-table">
+      <table className="data-table api-usage-table">
         <caption className="ai-usage-caption">{caption}</caption>
         <thead>
           <tr>
@@ -312,7 +320,9 @@ function Usage({ usage }: { usage: AiUsage }) {
   const t = useT();
   const intl = useIntl();
   const featureName = useFeatureName();
-  if (usage.totals.calls === 0) return <p className="page-note">{t('admin.aiUsage.none')}</p>;
+  if (usage.totals.calls === 0) {
+    return <EmptyState title={t('admin.aiUsage.none')}>{t('empty.aiUsage.body')}</EmptyState>;
+  }
   const dayName = (d: string) =>
     intl.formatDate(`${d}T00:00:00Z`, { dateStyle: 'medium', timeZone: 'UTC' });
   return (
@@ -370,7 +380,7 @@ function Limits({ limits }: { limits: Load<AiLimit[]> }) {
   const amount = (limit: AiLimit, value: number) =>
     limit.metric === 'cost' ? money(value) : t('admin.aiUsage.tokens', { count: value });
   return (
-    <section aria-labelledby={titleId} className="api-usage-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <h2 id={titleId} className="facts-title">
         {t('admin.aiUsage.limits')}
       </h2>
@@ -381,11 +391,11 @@ function Limits({ limits }: { limits: Load<AiLimit[]> }) {
         </p>
       )}
       {limits.status === 'loaded' && limits.value.length === 0 && (
-        <p className="page-note">{t('admin.aiUsage.noLimits')}</p>
+        <EmptyState compact title={t('admin.aiUsage.noLimits')} />
       )}
       {limits.status === 'loaded' && limits.value.length > 0 && (
         <div className="api-usage-table-wrap">
-          <table className="api-usage-table">
+          <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.limits')}</caption>
             <thead>
               <tr>
@@ -432,16 +442,16 @@ function Calls({ calls }: { calls: AiCall[] }) {
   const featureName = useFeatureName();
   const titleId = useId();
   return (
-    <section aria-labelledby={titleId} className="api-usage-section">
+    <section aria-labelledby={titleId} className="glass-card account-section">
       <h2 id={titleId} className="facts-title">
         {t('admin.aiUsage.calls')}
       </h2>
       <p className="page-note">{t('admin.aiUsage.callsHint')}</p>
       {calls.length === 0 ? (
-        <p className="page-note">{t('admin.aiUsage.none')}</p>
+        <EmptyState compact title={t('admin.aiUsage.none')} />
       ) : (
         <div className="api-usage-table-wrap">
-          <table className="api-usage-table">
+          <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.calls')}</caption>
             <thead>
               <tr>

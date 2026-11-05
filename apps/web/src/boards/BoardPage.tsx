@@ -15,7 +15,6 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
@@ -443,15 +442,15 @@ export function BoardPage({
 
   if (state === 'loading' && !data) {
     return (
-      <section className="board-page" aria-busy="true">
+      <section className="page page-full board-page" aria-busy="true">
         <p className="page-note">{t('boards.loading')}</p>
       </section>
     );
   }
   if (state === 'failed' || !board || !data) {
     return (
-      <section className="board-page">
-        <h1 className="page-title">{t('boards.title')}</h1>
+      <section className="page page-full board-page" aria-labelledby={titleId}>
+        <PageHeader titleId={titleId} title={t('boards.title')} purpose={t('purpose.board')} />
         <p className="page-note" role="alert">
           {t('boards.failed')}
         </p>
@@ -902,7 +901,7 @@ export function BoardPage({
 
   const grid = { '--board-columns': columns.length } as CSSProperties;
   return (
-    <section className="board-page" aria-labelledby={titleId}>
+    <section className="page page-full board-page" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
         title={board.name}
@@ -999,7 +998,6 @@ export function BoardPage({
       {data.cards.length === 0 &&
         (people.length > 0 ? (
           <EmptyState
-            icon={BoardsIcon}
             title={t('boards.people.emptyTitle')}
             action={
               <button type="button" className="button-quiet" onClick={() => choosePeople([])}>
@@ -1011,7 +1009,6 @@ export function BoardPage({
           </EmptyState>
         ) : hasBacklog && filters.length === 0 ? (
           <EmptyState
-            icon={BoardsIcon}
             title={t('boards.emptyScrumTitle')}
             action={
               <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
@@ -1022,9 +1019,7 @@ export function BoardPage({
             {t('boards.emptyScrumBody')}
           </EmptyState>
         ) : (
-          <EmptyState icon={BoardsIcon} title={t('boards.empty')}>
-            {t('boards.emptyBody')}
-          </EmptyState>
+          <EmptyState title={t('boards.empty')}>{t('boards.emptyBody')}</EmptyState>
         ))}
       <section
         ref={scrollRegion}
@@ -1136,7 +1131,7 @@ export function BoardPage({
       )}
       {asking && (
         <div
-          className="board-choice"
+          className="glass-card board-choice"
           role="dialog"
           aria-modal="true"
           aria-labelledby={askingTitleId}
@@ -1175,7 +1170,7 @@ export function BoardPage({
       )}
       {choice && (
         <div
-          className="board-choice"
+          className="glass-card board-choice"
           role="dialog"
           aria-modal="true"
           aria-labelledby={choiceTitleId}
@@ -1212,6 +1207,7 @@ export function BoardPage({
           </ul>
           <button
             type="button"
+            className="button-secondary"
             onClick={() => {
               setChoice(null);
               links.current.get(choice.card.id)?.focus();

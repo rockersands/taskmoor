@@ -97,6 +97,16 @@ const workflowItem = async (name: string) => {
   return item;
 };
 
+/** The list's buttons that open a form, once it has loaded; the header's help button is not one. */
+const formButtons = (main: HTMLElement) =>
+  waitFor(() => {
+    const found = within(main)
+      .getAllByRole('button', { expanded: false })
+      .filter((button) => !button.closest('.page-header'));
+    expect(found.length).toBeGreaterThan(0);
+    return found;
+  });
+
 describe('workflows administration (M1-030)', () => {
   it('[WF-001] [WF-002] Administration leads to the workflows, with their versions, drafts and tracks', async () => {
     const user = userEvent.setup();
@@ -372,7 +382,7 @@ describe('workflows administration (M1-030)', () => {
     window.location.hash = '#/admin/workflows';
     render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
     const main = screen.getByRole('main');
-    const buttons = await within(main).findAllByRole('button', { expanded: false });
+    const buttons = await formButtons(main);
     await user.click(buttons[0] as HTMLElement);
     const form = within(main).getByRole('form');
     const [input] = within(form).getAllByLabelText(/.+/);
@@ -395,7 +405,7 @@ describe('workflows administration (M1-030)', () => {
     window.location.hash = '#/admin/workflows';
     render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
     const main = screen.getByRole('main');
-    const buttons = await within(main).findAllByRole('button', { expanded: false });
+    const buttons = await formButtons(main);
     for (const button of buttons) await user.click(button);
     await waitFor(() => expect(within(main).getAllByRole('form')).toHaveLength(2));
     const texts = visibleTexts(main);

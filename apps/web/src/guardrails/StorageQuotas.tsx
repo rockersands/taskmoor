@@ -80,7 +80,7 @@ export function StorageQuotas({ client = storageClient }: StorageQuotasProps) {
     );
 
   return (
-    <section aria-labelledby={titleId} className="api-usage-section storage-quotas">
+    <section aria-labelledby={titleId} className="glass-card account-section storage-quotas">
       <h2 id={titleId} className="facts-title">
         {t('storage.title')}
       </h2>
