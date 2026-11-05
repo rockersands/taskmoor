@@ -37,6 +37,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm verify --update` | Rewrite golden files after an intended change; review the diff |
 | `pnpm test:watch` | Vitest watch mode |
 | `pnpm demo [--fresh] [--port N]` | Taskmoor on this machine in Spanish with sample data (embedded PostgreSQL, the real server); prints one-time password links. For reviewing the translation (`docs/review-spanish.md`) |
+| `pnpm sweep --demo --out <dir> [--only=<route>]` | Every route of the real app signed in, on a private demo (port 8090, `--url`): screenshots at 1280 and 375 px in both skins, and `measurements.json` with sideways scroll, targets under 44 px, axe, console errors, failed requests and names that leave out visible words; for the page sweep (UI-T22) |
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
