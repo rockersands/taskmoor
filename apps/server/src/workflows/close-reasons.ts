@@ -2,7 +2,12 @@ import type { Database } from '@taskmoor/db';
 import type { EffectDef } from '@taskmoor/workflow';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { type DefinitionProblem, definitionSchema, type WorkflowDefinition } from './model';
-import { statusInfo, writeVersion } from './store';
+import {
+  type CurrentVersions,
+  holdCurrentVersions,
+  rewriteCurrentVersions,
+  statusInfo,
+} from './store';
 
 /**
  * Workflows that name a close reason (WF-008). A transition that sets a reason holds its id, so a
@@ -68,29 +73,29 @@ export async function closeReasonProblem(
 }
 
 /**
- * The reason the default workflow sets on entering a closed-stage status, or null. It follows the
- * reason Completed through a rename and a replacement, which a lookup by name cannot.
+ * The reasons the default workflow sets on entering a closed-stage status, in the order of its
+ * transitions; empty when it sets none. They follow the reason Completed through a rename and a
+ * replacement, which a lookup by name cannot.
  */
-export async function defaultClosingReason(
+export async function defaultClosingReasons(
   db: Kysely<Database>,
   workspaceId: number,
-): Promise<number | null> {
+): Promise<number[]> {
   const { rows } = await sql<{ definition: unknown }>`
     SELECT v.definition
       FROM workflow w
       JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
      WHERE w.workspace_id = ${workspaceId} AND w.is_default`.execute(db);
-  if (!rows[0]) return null;
+  if (!rows[0]) return [];
   const definition = definitionSchema.parse(rows[0].definition);
-  if (await closeReasonProblem(db, workspaceId, definition)) return null;
+  if (await closeReasonProblem(db, workspaceId, definition)) return [];
   const stages = await statusInfo(
     db,
     workspaceId,
     definition.transitions.map((t) => t.to),
   );
   const closing = definition.transitions.filter((t) => stages.get(t.to)?.stage === 'closed');
-  const set = reasonsSet({ transitions: closing });
-  return set[0] ? Number(set[0].value) : null;
+  return [...new Set(reasonsSet({ transitions: closing }).map((s) => Number(s.value)))];
 }
 
 /** Whether a definition sets this close reason. */
@@ -133,14 +138,7 @@ export function withCloseReason(
   };
 }
 
-export interface WorkflowWithReason {
-  id: number;
-  name: string;
-  publishedVersion: number;
-  draftVersion: number | null;
-  published: WorkflowDefinition;
-  draft: WorkflowDefinition | null;
-}
+export type WorkflowWithReason = CurrentVersions;
 
 /**
  * The workflows of a workspace whose published version or draft sets this close reason, by id,
@@ -172,33 +170,7 @@ export async function workflowsSettingCloseReason(
       holding.add(row.id);
     }
   }
-  if (holding.size === 0) return [];
-  const held = await sql<{
-    id: number;
-    name: string;
-    published_version: number;
-    draft_version: number | null;
-  }>`
-    SELECT id, name, published_version, draft_version FROM workflow
-     WHERE id = ANY(${[...holding]}::int[]) ORDER BY id FOR UPDATE`.execute(trx);
-  const out: WorkflowWithReason[] = [];
-  for (const row of held.rows) {
-    const read = async (version: number) => {
-      const found = await sql<{ definition: unknown }>`
-        SELECT definition FROM workflow_version
-         WHERE workflow_id = ${row.id} AND version = ${version}`.execute(trx);
-      return definitionSchema.parse(found.rows[0]?.definition);
-    };
-    out.push({
-      id: row.id,
-      name: row.name,
-      publishedVersion: row.published_version,
-      draftVersion: row.draft_version,
-      published: await read(row.published_version),
-      draft: row.draft_version === null ? null : await read(row.draft_version),
-    });
-  }
-  return out;
+  return holdCurrentVersions(trx, [...holding]);
 }
 
 /**
@@ -216,31 +188,9 @@ export async function replaceCloseReason(
 ): Promise<void> {
   for (const w of workflows) {
     const draft = w.draft && withCloseReason(w.draft, from, to);
-    if (!definitionSetsCloseReason(w.published, from)) {
-      if (draft)
-        await writeVersion(trx, workspaceId, w.id, w.draftVersion as number, draft, actorId, false);
-      continue;
-    }
-    const latest = await sql<{ v: number }>`
-      SELECT max(version)::int AS v FROM workflow_version WHERE workflow_id = ${w.id}`.execute(trx);
-    const published = Number(latest.rows[0]?.v) + 1;
-    const definition = withCloseReason(w.published, from, to);
-    await writeVersion(trx, workspaceId, w.id, published, definition, actorId, true);
-    const draftVersion = draft ? published + 1 : null;
-    if (draft) {
-      await writeVersion(trx, workspaceId, w.id, draftVersion as number, draft, actorId, false);
-    }
-    await trx
-      .updateTable('workflow')
-      .set({ published_version: published, draft_version: draftVersion, updated_at: new Date() })
-      .where('id', '=', w.id)
-      .execute();
-    if (draft) {
-      await trx
-        .deleteFrom('workflow_version')
-        .where('workflow_id', '=', w.id)
-        .where('version', '=', w.draftVersion as number)
-        .execute();
-    }
+    const published = definitionSetsCloseReason(w.published, from)
+      ? withCloseReason(w.published, from, to)
+      : null;
+    await rewriteCurrentVersions(trx, workspaceId, actorId, w, published, draft);
   }
 }

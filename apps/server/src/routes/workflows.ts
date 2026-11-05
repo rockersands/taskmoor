@@ -9,7 +9,12 @@ import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
 import { closingReasonId, completedReasonId } from '../workflows/board-managed';
 import { closeReasonProblem } from '../workflows/close-reasons';
-import { freeTransitions } from '../workflows/free-moving';
+import {
+  followingStage,
+  freeTransition,
+  freeTransitions,
+  statusesWantingFreeMove,
+} from '../workflows/free-moving';
 import {
   defaultMapId,
   loadMap,
@@ -27,9 +32,11 @@ import {
   type WorkflowDefinition,
 } from '../workflows/model';
 import {
+  holdCurrentVersions,
   holdWorkflow,
   loadDefinition,
   remapStatuses,
+  rewriteCurrentVersions,
   statusInfo,
   ticketsInStatuses,
   writeVersion,
@@ -49,7 +56,8 @@ import { exportDocument, type ImportResult, importDocument } from '../workflows/
  * - Statuses are the workspace's ordered list, each in a stage (new, active, closed).
  *   Everyone signed in reads them; site and configuration administrators change them. A
  *   status keeps its stage while tickets are in it (their Closed time stamps depend on it),
- *   and is deleted only when no ticket and no current workflow version uses it.
+ *   and is deleted only when no ticket and no current workflow version uses it. When its
+ *   stage changes, the free moves into it follow (T-209): see `followStage`.
  * - A workflow is versioned data. Administrators save a draft (`PUT .../draft`), see what
  *   publishing it would do (`GET .../impact`), and publish it: statuses the draft drops take
  *   their tickets to the statuses `statusMapping` names, with history, and the next
@@ -127,6 +135,10 @@ const reportOf = (result: ImportResult) => ({
 });
 
 type Db = Kysely<Database> | Transaction<Database>;
+/** A draft's definition, or how to make it from the workflow's current one. */
+type DraftSource =
+  | WorkflowDefinition
+  | ((trx: Transaction<Database>, current: WorkflowDefinition) => Promise<WorkflowDefinition>);
 
 function uniqueViolation(error: unknown): string | null {
   const e = error as { code?: string; constraint?: string };
@@ -309,6 +321,44 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     };
   }
 
+  /**
+   * The free moves into a status that changed stage follow it (T-209; WF-008): on every workflow
+   * whose published version or draft has one, entering a status made closed-stage sets the reason
+   * free moves close with, and so stamps the Closed time, as a new closing column does; entering
+   * one that left the closed stage clears the reason. A changed published version becomes a new
+   * one and the draft is rewritten, as when a close reason is replaced; no ticket is in the status
+   * (the stage cannot change while one is), so none moves. With no reason to close with, nothing
+   * changes. The ids of the workflows changed, for the status's one event.
+   */
+  async function followStage(
+    trx: Transaction<Database>,
+    actor: { workspaceId: number; actorId: number | null },
+    statusId: number,
+    closes: boolean,
+  ): Promise<number[]> {
+    const { rows } = await sql<{ id: number }>`
+      SELECT DISTINCT w.id
+        FROM workflow w
+        JOIN workflow_version_status s
+          ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
+       WHERE w.workspace_id = ${actor.workspaceId} AND s.status_id = ${statusId}`.execute(trx);
+    if (rows.length === 0) return [];
+    const completedId = closes ? await closingReasonId(trx, actor.workspaceId) : null;
+    if (closes && completedId === null) return [];
+    const changed: number[] = [];
+    for (const w of await holdCurrentVersions(
+      trx,
+      rows.map((r) => r.id),
+    )) {
+      const published = followingStage(w.published, statusId, closes, completedId);
+      const draft = w.draft && followingStage(w.draft, statusId, closes, completedId);
+      if (!published && !draft) continue;
+      await rewriteCurrentVersions(trx, actor.workspaceId, actor.actorId, w, published, draft);
+      changed.push(w.id);
+    }
+    return changed;
+  }
+
   // Statuses (CORE-014)
 
   app.get('/api/v1/statuses', async (request, reply) => {
@@ -419,10 +469,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           .where('id', '=', current.id)
           .returning(['id', 'name', 'description', 'stage', 'sort_order'])
           .executeTakeFirstOrThrow();
+        const workflowIds = changes.stage
+          ? await followStage(trx, by(request), current.id, updated.stage === 'closed')
+          : [];
         await emit(trx, by(request), {
           type: 'status.updated',
           subjectId: current.id,
-          payload: { changes },
+          payload: { changes, ...(workflowIds.length > 0 ? { workflowIds } : {}) },
         });
         return { status: updated };
       });
@@ -730,12 +783,16 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     return { ...definition, transitions: freeTransitions(statuses, completedId) };
   }
 
-  /** Writes a definition as the draft, after the published version; its version, or null. */
+  /**
+   * Writes a definition as the draft, after the published version; its version, or null. A
+   * function gives the definition from the current one (the draft, else the published version),
+   * read once the workflow is held.
+   */
   async function writeDraft(
     trx: Transaction<Database>,
     request: FastifyRequest,
     workflowId: number,
-    definition: WorkflowDefinition,
+    given: DraftSource,
   ): Promise<{ version: number; name: string } | null> {
     const ws = request.workspaceId;
     const row = await trx
@@ -747,6 +804,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       .executeTakeFirst();
     if (!row) return null;
     const version = row.draft_version ?? row.published_version + 1;
+    const definition =
+      typeof given === 'function'
+        ? await given(
+            trx,
+            await loadDefinition(trx, row.id, row.draft_version ?? row.published_version),
+          )
+        : given;
     // A draft number may have been used by a discarded draft: it is replaced.
     await writeVersion(trx, ws, row.id, version, definition, request.user?.id ?? null, false);
     await trx
@@ -761,7 +825,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   async function saveDraft(
     request: FastifyRequest,
     workflowId: number,
-    definition: WorkflowDefinition,
+    definition: DraftSource,
     restoredFrom: number | null,
   ) {
     return db.transaction().execute(async (trx) => {
@@ -787,10 +851,51 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       (await closeReasonProblem(db, ws, parsed.data.definition));
     if (problem) return invalid(reply, problem);
     await enforceLimit(db, ws, 'statuses_per_workflow', parsed.data.definition.statuses.length);
-    const version = await saveDraft(request, params.data.id, parsed.data.definition, null);
+    const version = await saveDraft(
+      request,
+      params.data.id,
+      (trx, current) => withFreeMoves(trx, ws, params.data.id, current, parsed.data.definition),
+      null,
+    );
     if (version === null) return notFound(reply);
     return { workflow: await workflowView(ws, params.data.id) };
   });
+
+  /**
+   * A draft with the free moves its new statuses get (T-210; WF-008 (4)), as the editor's Add a
+   * status gives them: see `statusesWantingFreeMove`. A closing status takes the reason free moves
+   * close with, and none when the workspace has no reason to name. New transitions number above
+   * every id any version of the workflow used, since history names transitions by id. A draft the
+   * additions would push past a limit is saved as sent.
+   */
+  async function withFreeMoves(
+    trx: Transaction<Database>,
+    workspaceId: number,
+    workflowId: number,
+    current: WorkflowDefinition,
+    draft: WorkflowDefinition,
+  ): Promise<WorkflowDefinition> {
+    const wanting = statusesWantingFreeMove(current, draft);
+    if (wanting.length === 0) return draft;
+    const info = await statusInfo(trx, workspaceId, wanting);
+    const closing = wanting.some((id) => info.get(id)?.stage === 'closed')
+      ? await closingReasonId(trx, workspaceId)
+      : null;
+    const used = await sql<{ n: number | null }>`
+      SELECT max((t ->> 'id')::int) AS n
+        FROM workflow_version v, jsonb_array_elements(v.definition -> 'transitions') t
+       WHERE v.workflow_id = ${workflowId}`.execute(trx);
+    let next = Math.max(Number(used.rows[0]?.n ?? 0), ...draft.transitions.map((t) => t.id)) + 1;
+    const added = wanting.flatMap((statusId) => {
+      const status = info.get(statusId);
+      const closes = status?.stage === 'closed';
+      if (!status || (closes && closing === null)) return [];
+      return [freeTransition(statusId, status.name, closes, closing, next++)];
+    });
+    if (added.length === 0) return draft;
+    const shaped = { ...draft, transitions: [...draft.transitions, ...added] };
+    return definitionSchema.safeParse(shaped).success ? shaped : draft;
+  }
 
   // What a closing status sets when the editor adds it to a workflow that moves freely (WF-008):
   // the same answer the server's own paths use, made here if the workspace has no reason to name.

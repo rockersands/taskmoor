@@ -48,3 +48,69 @@ export const movesFreely = (t: Transition, definition: WorkflowDefinition): bool
   (t.checks?.length ?? 0) === 0 &&
   (t.layout?.length ?? 0) === 0 &&
   (definition.rules?.[String(t.id)]?.length ?? 0) === 0;
+
+/** Whether a whole definition moves freely: every transition does, and no rule is set anywhere. */
+export const workflowMovesFreely = (definition: WorkflowDefinition): boolean =>
+  Object.keys(definition.rules ?? {}).length === 0 &&
+  definition.transitions.every((t) => movesFreely(t, definition));
+
+const CLOSE_REASON = 'close-reason';
+
+/**
+ * Whether these effects are exactly what a free move into a status of that kind does: setting
+ * one close reason, or clearing it. Anything else someone put there on purpose.
+ */
+function freeMoveShaped(effects: readonly EffectDef[] | undefined, closes: boolean): boolean {
+  if (effects?.length !== 1) return false;
+  const [effect] = effects;
+  if (!effect || !('field' in effect) || effect.field !== CLOSE_REASON) return false;
+  return closes
+    ? effect.type === 'update-system-field' && typeof effect.value === 'string'
+    : effect.type === 'clear-field';
+}
+
+/**
+ * The definition with its free moves into a status following the status's new stage (T-209;
+ * WF-008): one that cleared the close reason now sets `completedId` when the status became
+ * closed-stage, and one that set a reason clears it when the status left the closed stage. A move
+ * with a rule, a different effect or a different reason someone chose stays as it is, and so does
+ * a board-managed workflow, whose board says which column closes. Null when nothing changes.
+ */
+export function followingStage(
+  definition: WorkflowDefinition,
+  statusId: number,
+  closes: boolean,
+  completedId: number | null,
+): WorkflowDefinition | null {
+  if (definition.board || (closes && completedId === null)) return null;
+  let changed = false;
+  const transitions = definition.transitions.map((t) => {
+    if (t.to !== statusId || !movesFreely(t, definition) || !freeMoveShaped(t.effects, !closes)) {
+      return t;
+    }
+    changed = true;
+    return { ...t, effects: freeMoveEffects(closes, completedId) };
+  });
+  return changed ? { ...definition, transitions } : null;
+}
+
+/**
+ * The statuses of a draft that get a free move when it is saved (T-210; WF-008 (4)), as the
+ * editor's Add a status gives one: on a workflow that moves freely, kept free by the draft, each
+ * status the draft adds that no transition reaches. A workflow with no transitions, before or in
+ * the draft, gets one into every status no transition reaches, as a new workflow does. Anything
+ * else is the administrator's to draw.
+ */
+export function statusesWantingFreeMove(
+  base: WorkflowDefinition,
+  draft: WorkflowDefinition,
+): number[] {
+  const reached = new Set(draft.transitions.map((t) => t.to));
+  const unreached = draft.statuses.map((s) => s.statusId).filter((id) => !reached.has(id));
+  if (draft.transitions.length === 0 || base.transitions.length === 0) {
+    return workflowMovesFreely(draft) ? unreached : [];
+  }
+  if (!workflowMovesFreely(base) || !workflowMovesFreely(draft)) return [];
+  const had = new Set(base.statuses.map((s) => s.statusId));
+  return unreached.filter((id) => !had.has(id));
+}

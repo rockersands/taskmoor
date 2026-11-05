@@ -162,3 +162,83 @@ export async function writeVersion(
     )
     .execute();
 }
+
+/** A workflow with its published version and its draft, as a rewrite of both reads them. */
+export interface CurrentVersions {
+  id: number;
+  name: string;
+  publishedVersion: number;
+  draftVersion: number | null;
+  published: WorkflowDefinition;
+  draft: WorkflowDefinition | null;
+}
+
+/** These workflows, by id, each row held until the transaction ends, with their current versions. */
+export async function holdCurrentVersions(
+  trx: Transaction<Database>,
+  ids: readonly number[],
+): Promise<CurrentVersions[]> {
+  if (ids.length === 0) return [];
+  const held = await sql<{
+    id: number;
+    name: string;
+    published_version: number;
+    draft_version: number | null;
+  }>`
+    SELECT id, name, published_version, draft_version FROM workflow
+     WHERE id = ANY(${[...new Set(ids)]}::int[]) ORDER BY id FOR UPDATE`.execute(trx);
+  const out: CurrentVersions[] = [];
+  for (const row of held.rows) {
+    out.push({
+      id: row.id,
+      name: row.name,
+      publishedVersion: row.published_version,
+      draftVersion: row.draft_version,
+      published: await loadDefinition(trx, row.id, row.published_version),
+      draft:
+        row.draft_version === null ? null : await loadDefinition(trx, row.id, row.draft_version),
+    });
+  }
+  return out;
+}
+
+/**
+ * Writes a held workflow's rewritten versions; statuses do not change, so no ticket moves. A new
+ * `published` definition becomes a new published version, and the draft (rewritten, or as it was)
+ * moves above it, since a draft always numbers above the published version. With only a `draft`,
+ * the draft is rewritten in place. Null for either leaves it as it is.
+ */
+export async function rewriteCurrentVersions(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  actorId: number | null,
+  w: CurrentVersions,
+  published: WorkflowDefinition | null,
+  draft: WorkflowDefinition | null,
+): Promise<void> {
+  if (published === null) {
+    if (draft && w.draftVersion !== null) {
+      await writeVersion(trx, workspaceId, w.id, w.draftVersion, draft, actorId, false);
+    }
+    return;
+  }
+  const latest = await sql<{ v: number }>`
+    SELECT max(version)::int AS v FROM workflow_version WHERE workflow_id = ${w.id}`.execute(trx);
+  const version = Number(latest.rows[0]?.v) + 1;
+  await writeVersion(trx, workspaceId, w.id, version, published, actorId, true);
+  const kept = draft ?? w.draft;
+  const draftVersion = kept ? version + 1 : null;
+  if (kept) await writeVersion(trx, workspaceId, w.id, version + 1, kept, actorId, false);
+  await trx
+    .updateTable('workflow')
+    .set({ published_version: version, draft_version: draftVersion, updated_at: new Date() })
+    .where('id', '=', w.id)
+    .execute();
+  if (kept && w.draftVersion !== null) {
+    await trx
+      .deleteFrom('workflow_version')
+      .where('workflow_id', '=', w.id)
+      .where('version', '=', w.draftVersion)
+      .execute();
+  }
+}
