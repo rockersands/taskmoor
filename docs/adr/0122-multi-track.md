@@ -359,11 +359,457 @@ machine being busier than for stage 2's 136 ms). Both statements answer counts g
 assignee and due day, so what reaches the server follows the people and days in view, never
 the plan's tickets one by one.
 
+### Stage 4 (T-089c): releases across tracks
+
+**Designed on 2026-11-04, not built.** Every number and name below is what the build is to use
+unless the user's answers change it; migration and requirement numbers are taken when it starts.
+PLN-007 moves to M1 with this stage, reworded to what is built (the wording is under "Tests").
+
+A **release across tracks** (the spec's cross-track release; `cross_track_release` in code) lines
+up several tracks' own releases on one end. It belongs to the workspace, not to a plan, so it is
+there with no plan at all, and a plan only shows it. It holds no tickets: its work is the target
+tickets of its linked releases. Each linked release stays the track's own, with its approvals,
+shipping, notes and page (CORE-016, ADR-061), and the track's administrators keep every right
+they have over it, so nothing changes in how a team works unless someone moves a date they could
+have moved themselves.
+
+#### What is stored (migration 0106 or the next free)
+
+- `cross_track_release`: `workspace_id`, `owner_id`, `name` (1 to 255), `description` (up to
+  4,000), `end_rule` (`fixed_date` or `work_complete`), `release_date` (a day, or null),
+  `version`, `created_at`, `updated_at`, with a check that the day is set exactly when the rule is
+  `fixed_date`. Names are not unique: a unique name would answer `name_taken` for a release the
+  person may not see, and so tell them it exists.
+- `cross_track_release_member`: `workspace_id`, `cross_track_release_id`, `release_id`,
+  `track_id`, `created_at`. `release_id` is the primary key, so **a release is in at most one**
+  (two would pull it towards two dates); `(cross_track_release_id, track_id)` is unique, so **at
+  most one release per track**; both can be dropped later without moving data. A foreign key on
+  `(release_id, track_id)` (a new unique index on `release`) keeps the track right, and deleting a
+  release or purging a track removes its row. At most 100 members.
+- No change to `release` columns, `ticket_release` or tickets. The schema golden file, the type in
+  `schema.ts` and an `upgrade-fixtures.ts` entry come with the migration.
+
+#### Who sees what
+
+- **Who sees one:** its owner, site and configuration administrators, and anyone who may see one of
+  its linked tracks, by the same rule as a release's own page (`canSeeTrack`: browse or administer
+  the track), not the plans' stricter `browsedTracks`, or a release page could name something the
+  next page refuses. A track in the trash shows nobody anything. A ticket-level grant (requester,
+  assignee) shows single tickets, never the track, so it shows no release across tracks. Everyone
+  else gets the same 404 as for an id that does not exist, on every route.
+- **What they are told:** its name, description, end, state and owner, and of each linked release
+  whose track they may see: its track, name, dates, state and own counts.
+- **What is only counted:** `hidden: { releases, open }`. How many linked releases they may not
+  see, and how many open target tickets the viewer may not see across all linked releases (hidden
+  tracks, and hidden tickets of visible tracks), as one number. Never a key, summary, track,
+  release name, date or status, and never split per release. This is the rule of stages 1 to 3.
+- **No setting narrows the count.** The route takes no filter and no period, and nobody can link a
+  release of a track they do not administer, so nobody can build a release across tracks to
+  isolate someone else's numbers. That is the attack stage 3 had to close with whole weeks; it has
+  no way in here. With one hidden release the count is that release's, which tells only that much.
+- **Why count at all:** "work complete" must be true for everyone or it says something false to
+  those who see less, so the state is judged on all the work, and a viewer who sees none open while
+  the state says otherwise needs the number to understand it. If the user answers T-089j by leaving
+  hidden work out of the count, `hidden.open` goes (one field) and the state stays judged on all.
+- **Numbers equal searches:** the stage counts, warnings and first 200 tickets read through the
+  search runner as the viewer (`crossTrackRelease = 5 AND stage = new`), as the release hub does,
+  so the viewer's ticket filter applies (QRY-008) and each number links to its search. One statement
+  counts all open target tickets and those matching the viewer's filter, for `hidden.open`, under
+  the same conditions as a search: outside the trash and archived tracks.
+
+#### The end: a fixed date, or when its work completes
+
+- **`fixed_date`:** it has a date, and the linked releases are meant to end that day.
+- **`work_complete`:** it has no date, no release's date is judged, and it ends when its work does.
+- **State**, computed on each read by one pure function, never stored, over the linked releases
+  neither archived nor in the trash, hidden ones too: `empty` (none), `shipped` (all shipped),
+  `overdue` (fixed date passed, not all shipped), `ready` (at least one ticket, none open, not all
+  shipped), else `upcoming`. Always a word with its tone, as `ReleaseState` does.
+- **Nothing ships by itself.** Shipping stays per release, by its track's administrators, with its
+  approvals and open-ticket prompt (CORE-016 (1), (2)). `ready` is an announcement.
+
+#### Moving the date
+
+- Only the owner and site and configuration administrators, as anything else about it. Having
+  the right over one linked release gives no say over the others.
+- **PLN-007 (2) says "after commit".** Draft changes do not exist until T-089e, so for now commit
+  means a change list the person confirms: `GET .../move?date=` changes nothing and lists each
+  visible linked release with its old and new day and its outcome; `POST .../move` with
+  `{ date, version }` does it. Both call one function, which T-089e can hold as a draft change.
+- **A release moves only if the mover could move it through `PATCH /releases/:id`:** upcoming, not
+  archived, its track not archived, the mover administers that track, and its start date not after
+  the new day. Otherwise it stays, with a reason per release (`no_permission`, `shipped`,
+  `archived`, `track_archived`, `start_after_date`), and the rest go on, as PLN-002 (3) asks of a
+  commit. Hidden releases never move and are counted ("2 more releases you may not see stay as
+  they are").
+- A date that nothing could follow still moves the release across tracks: the list says so first.
+- **Out of step:** an upcoming linked release whose day differs. It says so in words on both
+  pages, and its track's administrators get **Align to 12 Nov** on the release page, which is the
+  existing `PATCH`. Nobody loses the right to move their own release away: `PATCH /releases/:id`
+  is unchanged and it just reads as out of step. Out-of-step hidden releases are not even counted.
+- In one transaction: lock the row, compare `version` (stale answers 409, the page lists again),
+  lock the releases by id, change them, then the day. `PATCH /releases/:id` locks only its release,
+  so the two cannot deadlock. Any change of members bumps `version`, so a confirmed list always
+  matches what happens. All shipped answers 409 `already_shipped`. The same day changes nothing and
+  records nothing. A move also makes the rule `fixed_date`; `PATCH` with `endRule: work_complete`
+  clears the day and moves nothing.
+
+#### Linking and unlinking
+
+- **Creating** takes at least one release, so only someone who administers a track can make one.
+  Any signed-in person who does may. **Linking** needs administering the release's track and seeing
+  the release across tracks: an unseen release answers `not_found`, as a plan's unseen source does;
+  one seen but not administered answers `forbidden`. Shipped or archived releases are refused
+  (`release_shipped`, `release_archived`), as are `release_taken` and `track_taken`.
+- **Linking never moves a date.** A release that differs reads as out of step until someone moves
+  it.
+- **Unlinking:** the track's administrators, or the owner and administrators for a release they
+  can see. Nobody removes what they cannot see (stage 1). The release stays as it is.
+- **The limit this sets:** two tracks with different administrators and no shared person cannot
+  be joined except by a site administrator (question 2 below).
+- **A release that goes:** merged or deleted, its row goes with it and a
+  `cross_track_release.member_removed` event says why. Archived, it stays linked, reads as archived
+  and stops counting towards the state. A track in the trash drops out for everyone until restored.
+  Deleting the release across tracks frees its releases and changes none of them.
+
+#### Where it shows
+
+- **Release pages (CORE-016, ADR-061):** `GET /releases/:id` and `GET /tracks/:id/releases` gain
+  `crossTrack: { id, name, endRule, date } | null` from a join on the unique `release_id`. By the
+  rule above, anyone who sees the release sees this. The release page shows a fact row with a link,
+  a new warning `cross_track_out_of_step` with **Align**, and for the track's administrators
+  **Add to a release across tracks** and **Remove**. The hub's rows carry a small label, and the
+  hub links to the list. The overview's own numbers do not change.
+- **Queries:** a new field `crossTrackRelease`, type `crossTrackRelease`, with `=`, `!=`, `IN` and
+  `NOT IN`, by id or name. It binds to its linked releases' ids and compiles as `targetRelease`
+  does (the `ticket_release` relation, target role), so the compiler gains no path and the viewer's
+  filter applies as ever. **Binding reads only the ones the person sees:** another's id or name
+  answers `unknown_value`, word for word as one that does not exist. A name shared by several means
+  all of them the person sees. No `IS EMPTY` (it would mark a ticket seen through a grant as linked
+  to something hidden), no ordering, no history, no column in results. The field goes in section
+  1.5 of file 01b; it has no compatibility name.
+- **A plan:** a **Releases** tab (`GET /plans/:id/releases?track=`), after Capacity: the releases
+  of the plan's tracks the viewer browses, those of a release across tracks gathered under it
+  first, then the rest by track, upcoming first; at most 200 rows, and it says so. A release across
+  tracks is shown when one of its linked tracks is listed, with its own whole numbers, not the
+  plan's share, and its hidden count. The plan's tracks are those `choices` reads. A ticket-level
+  grant adds no row (stage 1). The other filters do not apply and the page says so.
+- **Timeline and Calendar:** `markers` joins the same way; linked releases with the same day
+  become one marker named for the release across tracks with "3 releases", and those out of step
+  keep their own, marked in words. They are not dragged there (spec 03 section 1).
+- **Its own pages** are reached from the release hub, a release's page, the Multi-track page and a
+  plan's Releases tab. The sidebar does not change (question 8).
+
+#### Routes and token scopes
+
+All are internal in the API document, as the other plan routes, and scopes follow the method.
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/cross-track-releases?state=&cursor=` | read | Those the person sees, `upcoming` or `shipped`, 100 a page |
+| `GET /api/v1/cross-track-releases/candidates` | read | Upcoming unlinked releases of tracks the person administers, up to 500 |
+| `POST /api/v1/cross-track-releases` | write | `{ name, description?, endRule, date?, releaseIds }` |
+| `GET /api/v1/cross-track-releases/:id` | read | `{ id, name, description, endRule, date, state, owner, version, stages, open, warnings, members, hidden, tickets, truncated, viewer }` |
+| `PATCH /api/v1/cross-track-releases/:id` | write | `{ name?, description?, endRule?: 'work_complete', version }` |
+| `DELETE /api/v1/cross-track-releases/:id` | write | Frees its releases |
+| `GET /api/v1/cross-track-releases/:id/move?date=` | read | The change list; changes nothing |
+| `POST /api/v1/cross-track-releases/:id/move` | write | `{ date, version }`; the list as it happened |
+| `POST /api/v1/cross-track-releases/:id/members` | write | `{ releaseId }` |
+| `DELETE /api/v1/cross-track-releases/:id/members/:releaseId` | write | |
+| `GET /api/v1/plans/:id/releases?track=` | read | The plan's Releases tab |
+
+#### Events, audit and records
+
+- One event per change, in its transaction, all audited, as `plan.*` are:
+  `cross_track_release.created` (name, rule, day, release ids), `.updated` (changes), `.moved`
+  (from, to, `moved` with each release's old day, `refused` with reasons, `hidden` as a number),
+  `.deleted` (name, release ids), `.member_added` and `.member_removed` (release, track, and a
+  reason: `removed`, `release_merged`, `release_deleted`). A new subject kind in the catalogue.
+- **Each moved release also emits its own `release.updated`** with `changes.releaseDate`, so its
+  track's audit trail and webhooks hear of it whoever moved it. The contract test asks for exactly
+  one event of the route's own type, so this passes it; a merge or delete of a linked release
+  likewise adds one `member_removed` to its usual event, in that transaction.
+- Webhooks do not get `cross_track_release.*` at first, as they do not get `plan.*`. It stays out
+  of the full export (IMP-014), as plans, dashboards and saved searches do; a backup holds it.
+- A person's data download lists those they own. Erasure keeps them, and the owner's id reads as
+  the placeholder, as for plans; nothing else in them is personal.
+
+#### The pages, on a desktop and on a phone
+
+- **`#/cross-track-releases`** lists **Upcoming** and **Shipped**: name, end ("12 Nov 2026" or "When
+  its work completes"), state, closed share, linked tracks and hidden releases. On a phone each row
+  is a card, its link 44px high. **New release across tracks** opens a dialog (a full-height sheet
+  on a phone) with name, description, end and a filtered, ticked list from `candidates`.
+- **`#/cross-track-releases/:id`** follows the release page: state in the header, facts, the one
+  stage bar with numbers linking to searches, warnings, **Linked releases**, then the first 200
+  tickets. The linked releases are a table on a desktop and cards on a phone, each with its track,
+  a link to its release page, day, "Out of step" in words, state and closed share. Below, in words:
+  "2 more releases are hidden from you, with 7 open tickets".
+- **Move date** opens a dialog with the change list, one line per release, old and new day and
+  outcome in words, then **Move 3 releases**. On a phone the lines stack and the button stays in
+  view. The result stays open, focus on its heading, and it announces itself.
+- **A plan's Releases tab** is the same rows, with a release across tracks as a group header. On a
+  phone a group is a card with its releases as a list. The tab bar scrolls as now.
+- Glass per ADR-114: each group is a card and tables and rows inside are wells, as the guard in
+  `design.test.ts` checks. Strings in both catalogues; a story for each component and dialog, in
+  both skins, with axe, including phone widths.
+
+#### Performance
+
+- PLN-012's bar: one second, median of five, by `expectWithinBudget` in `plans.large.test.ts`, at
+  10,000 tickets in every gate and 100,000 with `TASKMOOR_LARGE_PLANS=1`, with a release in each of
+  the 20 tracks, half the tickets as targets, all linked as one:
+  - **its page:** one read of members, one of the hidden count, up to six through the search runner
+    and one of tickets, as the hub's six or seven. `ticket_release_release_idx` serves it;
+  - **the list:** one page of 100, with its counts in one grouped statement, not one each;
+  - **a plan's Releases tab:** at most 200 rows through `releaseQuery` and a join;
+  - **a move of 100 linked releases**, with its 101 events.
+- The plan's Timeline and Calendar are read again against their budgets with the new join, which
+  uses a primary key and runs over at most `MARKERS` rows.
+- Nothing about a release across tracks is cached, and it adds no statement to a view that does not
+  show it. None of this has been measured yet.
+
+#### What the manual says
+
+`docs/manual/use/multi-track.md` gains **Releases across tracks**: what one is, who sees it, what
+is only counted, the two ends, moving the date and who it leaves out of step, and that nothing
+ships by itself. `boards.md` (Releases) gains the fact row, the warning and Align. `search.md`
+gains the field. "Not yet in Multi-track" loses the line. `sources` stay current.
+
+#### Tests
+
+PLN-007 as it should read when built: *Taskmoor shall show the releases of a plan's tracks and keep
+releases across tracks as objects of their own, that line up the releases of several tracks on one
+date or end when their work completes; a viewer sees only what they may see of the tracks linked,
+and the rest only as a count.* Acceptance: (1) one is seen outside any plan, in queries and on
+release pages. (2) Moving its date, after confirming the list of changes, moves each linked release
+the mover may change, and says why of each it does not. (3) Its state is judged on all its work and
+nothing ships by itself. (4) A viewer never sees or is told the name, date or status of a linked
+release of a track they may not see; only how many, and its open tickets as one number.
+
+- `routes/cross-track-releases.test.ts`, `[PLN-007]`: making one, and each refusal in linking;
+  three viewers (administrator, browses one of three tracks, ticket-level grant only) over every
+  route, with sentinel names of the hidden track, release and day that must appear nowhere in any
+  answer; 404 bodies equal to a missing id's; (1) a release page and the hub name it; (2) the
+  list changes nothing, then each outcome and reason, a stale `version`, `release.updated` per
+  move; (3) the state table, with a hidden open ticket keeping `ready` off; a merge, a delete, the
+  trash and back. `[PLN-007] [CORE-016]`: **Align**, and a move leaves shipping's rules alone.
+- `[PLN-007] [QRY-008]`: every number equals its search for each viewer, and visible plus hidden
+  equals all. `[PLN-007] [QRY-002]`: the field's operators, a hidden id and an absent one refused
+  alike, a found-in release left out; conformance and compile golden cases.
+- `routes/plans.test.ts`, `[PLN-007] [PLN-001]`: the Releases tab and markers, grant-only tracks
+  adding no row. `plans.large.test.ts`: the budgets above. `scopes.test.ts`, `[IAM-007]`: every
+  route's class. `contract.test.ts`, `[AUT-010]`: a scenario per mutating route. `privacy.test.ts`,
+  `[PLN-007]`: download and erasure. An upgrade fixture for the migration.
+- Web: `CrossTrackRelease.test.tsx`, `PlanReleases.test.tsx`, additions to `ReleasePage.test.tsx`
+  and `setViewportWidth()` for cards; stories with axe. e2e `cross-track-releases.spec.ts`, desktop
+  and phone: two tracks' administrators, make, link, move, one refused and out of step, Align.
+
+#### Asked by the spec or the first plan, not built here
+
+- Draft changes around a move (PLN-002, T-089e): the confirmed list stands in until then.
+- Release dates as a scheduling input (PLN-004, T-089f), which reads `release_date` as it stands.
+- Section 1's warning "ticket outside its release dates", and its exclusion rule that hides chosen
+  releases. PLN-001 (3) still asks for each warning, and no stage has them yet.
+- Shipping all together, combined notes, a combined burndown, approvals gathered in one place, a
+  forecast date for `work_complete`, a start date, notifications, a results column, webhooks, the
+  full export and importing them (IMP-016).
+
+#### Questions for the user (the design takes the first answer each time)
+
+1. **A move and releases the mover may not change:** they stay and read as out of step; or nothing
+   moves unless all can; or the owner's move overrides the tracks' administrators.
+2. **Who joins tracks with different administrators:** only someone who administers both, or a site
+   administrator; or the owner may invite another track's administrators, which needs sharing.
+3. **Who sees one:** those who see a linked track; or everyone signed in, who would all read its
+   name.
+4. **Hidden work:** counted as one number (`hidden.open`); or left out. This is T-089j's question
+   about "elsewhere" again, and the answer should be the same for both.
+5. **"When its work completes":** says `ready` and ships nothing; or ships once approvals allow.
+6. **Limits:** one release per track and one release across tracks per release; or looser.
+7. **"After commit":** a confirmed list now, held as a draft once T-089e exists; or wait for T-089e.
+8. **Its word and place:** "release across tracks", no sidebar entry; or another word, or an entry
+   under "Plan and track".
+
+### Stage 8 (T-089g): duplicate a plan, a link to a view, CSV and image
+
+**Designed on 2026-11-04, not built.** The spec has no requirement for this: the ticket and the
+user's scope name it. Proposed **PLN-014**, the next free number when written (the coordinator's to
+give; T-089j may want one too), M1: *Taskmoor shall let anyone who sees a plan copy it, link to a
+view as it stands, and download what a view shows as CSV, and the Timeline as an image; none of them
+gives access, and hidden work stays only counted.* Acceptance: (1) a copy holds only the sources its
+maker may see, says how many it left out, and is private to them. (2) A link opens the same view,
+filters, grouping and position, for anyone who may see the plan, and for nobody else. (3) A view's
+CSV equals what it shows; the List's holds every ticket of the plan the person may see. (4) No file
+holds a ticket the person may not see, or names hidden work. (5) The image says how many rows it
+holds of how many.
+
+**No migration, no new permission.** One new event and two new routes; the rest is on the page.
+
+#### Duplicating a plan
+
+- `POST /api/v1/plans/:id/duplicate` with `{ name }`, scope write, internal:
+  `201 { plan, left: { hiddenSources } }`. **Anyone who sees the plan may,** since anyone signed in
+  may make one; a plan they do not see answers 404. The page offers "Copy of Spring" in the person's
+  language, which they can change.
+- **Copied:** name as given, description, the sources they may see, in order (saved searches by
+  reference, so the copy changes with them; broken and archived ones too, flagged as ever), the
+  capacity unit, the periods and the teams. The new plan is theirs, at version 1, with no tie to the
+  original.
+- **Not copied:**
+  - **Sources hidden from them:** only counted, in the answer and on the page ("2 sources you may
+    not see were left out"), never which. An owner who could not see them could neither use nor
+    remove them.
+  - **Shares:** private to its new owner, since a copy should not reach an audience by itself;
+    sharing still needs its permission.
+  - **Capacity:** `plan_capacity` holds people's amounts and notes that may say why someone was
+    away, so a copy would spread them to a second plan under a new owner, and a new audit trail. It
+    can come as `include: ['capacity']` if the user wants.
+  - **Later stages' contents** (program boards, drafts and scenarios) unless their stages say so.
+- One transaction, reading the original's rows under a share lock, writing through the routes'
+  own `writeSources` and team writer, checking sources with `sourceErrors`, so a plan copied never
+  holds what its maker could not add by hand. Up to 500 sources, 50 teams.
+- **Event:** one `plan.duplicated` (name, `from`, sources, teams, `hiddenSources` as a number),
+  audited, in the data download by ownership as any plan is. A new type rather than a changed
+  `plan.created`, since a changed payload is a new version (ADR-015).
+
+#### A link to a view
+
+- **No server and no token.** The address already holds the filters and grouping (stage 1). This
+  adds what is still kept in the page: `zoom` (Timeline), `month` (Calendar), `from` (Capacity) and
+  `sort` (List); values that could not be meant are left out, as now. They stay out of `viewKey` so
+  moving a month does not read the plan again, and they replace the address entry rather than add
+  one, so the back button still undoes filters, not every step. Columns stay per person, in this
+  browser, since they are a person's choice.
+- **Copy link** in the plan's header, on every tab, copies the address from `appBase()`, with a
+  status that says so; where the browser refuses the clipboard (plain http, say), a read-only field
+  holds it, selected.
+- **It gives no access.** It is only an address: a person who may not see the plan gets the plan's
+  not-found page, and one who may sees it as they may see it, so two people can get different
+  rows from one link. Signed out, sign-in returns to it (`continuation`). `assignee=me` means
+  whoever opens it, and the manual says so. Nothing is stored or logged, so no audit.
+- Not a public link: plans are never public (stage 1).
+
+#### CSV
+
+- **The List:** `GET /api/v1/plans/:id/export?format=csv&columns=&sort=` with the views' filters,
+  scope read, internal. It composes the plan's query on the server (a plan's text can pass what an
+  address holds, so the page cannot use `/search/export?q=`) and hands it to the same stream as the
+  search export, moved into one function: same statement, keyset pages, viewer's filter on each
+  page, custom columns only as the person may name them, formula guard, RFC 4180, no event, and
+  `countBulkExport` (ADR-109). **Every ticket of the plan the person sees**, not the first 10,000:
+  QRY-015 asks for no cap on exports, and a cap would guard nothing, as the same query can be
+  exported from search. A plan with nothing visible gives the header row alone. Headers are column
+  ids, as the search export's.
+- **The other views:** built on the page by one pure function per view from the view's own answer,
+  so the file is what the view shows (RPT-009 (1) is the same idea), including what only the view
+  knows: sprint-derived days, roll-ups and blocker counts on the Timeline. Headers are in the
+  person's language, each cell through a `csvField` kept the same as the server's and tested with
+  the same table. RFC 4180; no byte-order mark, like the existing exports.
+  - **Timeline:** key, summary, type, track, status, start, due, where the days come from, roll-up,
+    late, and `blockersElsewhere` as its two numbers. First 10,000, with a line beneath the button
+    saying so when `truncated`.
+  - **Calendar:** the month's entries. **Summary:** each measure, its number and its search.
+    **Capacity:** one row per team or person and period, with work, capacity, over or not, and
+    elsewhere as its count and amount, never named, headed as counted by whole weeks.
+    **Releases:** the tab's rows, with `hidden` as its numbers.
+  - **Timeline and Calendar read again with `export=true`:** it counts the export for the alert and
+    gives a fresh file; the answer is otherwise the same, so the filter and hiding are the same
+    code. Summary, Capacity and Releases hold counts, not tickets, and are not bulk exports.
+- A file's name comes from the plan's name, reduced to safe characters, as release notes do, with
+  the view and day; only the person's own download carries it.
+
+#### The image
+
+- **The Timeline only, as PNG.** Other views are tables or numbers, and CSV serves them.
+- **Drawn, not captured:** past 200 rows the page holds only those in view, so a capture would miss
+  rows and bring in glass and backgrounds. One pure function makes an SVG text from the same rows,
+  `dependencyState` and markers as the page, then an `Image` from a blob URL and a canvas make the
+  PNG. The content security policy already allows `blob:` images. No `foreignObject`, external font
+  or link, so the canvas is never tainted and no new dependency comes in. Every text is escaped, so
+  a summary of `</text><script>` reads as written, and `<img>` runs no script anyway.
+- **What it holds:** the plan's name, the filters and grouping in words, the day it was made, month
+  headers, today's line, group names, bars, lines (dashed and with "late" in words, never colour
+  alone), badges, release markers, hidden sources and outside blockers as the page words them. Fixed
+  light colours, chosen for print; the skin does not change the picture.
+- **Its size:** at most **400 rows** (a constant), 1,600px wide, the whole span fitted to it, 2x
+  when the area stays under 16 million pixels, which phones' canvases can draw. More rows and the
+  image and the button's line both say "First 400 of 1,240 rows: filter the plan for the rest". If the
+  browser still cannot draw it, a status says so in words and no file comes.
+- **It holds nothing the Timeline does not:** the rows come from
+  `GET /plans/:id/timeline?export=true`, as the CSV's do, so it counts for the alert. Nothing leaves the browser.
+
+#### On a phone
+
+- **Copy link** and **Duplicate plan** are in the header's actions, which wrap, 44px under a coarse
+  pointer. **Duplicate plan** opens the same dialog, as a sheet.
+- **Download** in each view's tools opens a short menu with **CSV** and, on the Timeline, **Image**,
+  each 44px. Files arrive by the browser's download. No share sheet at first.
+- Status messages are announced, and a slow image shows its progress in words.
+- Glass per ADR-114 for the dialog and menu; strings in both catalogues.
+
+#### Performance
+
+The stream's cost and memory are the search export's (`search-export.large.test.ts` covers it at
+size); `plans.large.test.ts` adds the route's first byte under a second at 100,000 tickets. Budgets
+by `expectWithinBudget`: a duplicate of 500 sources and 50 teams under a second; on the page, a
+10,000-row CSV under one second and a 400-row image under three (e2e, Chromium). Links cost nothing.
+None of this has been measured yet.
+
+#### What the manual says
+
+`docs/manual/use/multi-track.md` gains **Copying a plan** (what comes and what does not), **Linking
+to a view** (what it holds, that it gives no access, that `me` means whoever opens it) and
+**Downloading a view** (what each file holds, the List's being every ticket, the 10,000 and 400
+limits, and that files leave the system's permissions once saved). "Not yet in Multi-track" loses
+the line.
+
+#### Tests
+
+- `routes/plans.test.ts`, `[PLN-014]`: (1) a copy's sources, settings and teams; hidden ones counted
+  and named nowhere; shares and capacity not copied; a hidden plan 404; a viewer's copy is theirs
+  and changes nothing in the original; `plan.duplicated`. `[PLN-014] [PLN-012]`: (3) the export over
+  more than 10,000 tickets with the filters, for three viewers, each row a ticket that viewer's
+  search finds; hidden custom columns refused; the formula guard; nothing visible. `[QRY-015]`: the
+  alert counts it. `export=true` answers equal the plain ones and count once. `scopes.test.ts`,
+  `[IAM-007]`, and `contract.test.ts`, `[AUT-010]`: both routes.
+- Web, `planExport.test.ts`, `[PLN-014]`: each view's CSV against its fixture and a golden file, the
+  guard's table, hidden work as numbers only; (5) the SVG's rows, cap and words, "late" in text, an
+  escaping table. `address.test.ts`, `[PLN-014]`: (2) each new key read, written and refused, and no
+  second read of the plan when only they change. `[PLN-005] [PLN-006]`: the Capacity and Timeline
+  files say what the view does of hidden work. Stories, with axe, for the dialog and menu, in both
+  skins and on a phone.
+- e2e `plan-share-and-export.spec.ts`, desktop and phone: duplicate; copy a link, open it in a
+  second signed-in person's context and signed out through sign-in; a person without access gets not-found;
+  download each file, reading the CSV and checking the PNG's signature and decoded size.
+
+**What these will not show:** a real phone's canvas limit (Chromium's simulated phone only, as for
+touch drags), and how the image looks, which needs a person to look at it.
+
+#### Asked in the first plan or nearby, not built here
+
+- Saved views (spec 03 section 1, AGL-020, M2 in the spec): a link is an address, not a named view.
+- A public or signed-out link: plans are never public; published views (DSC-006) are another
+  feature.
+- PDF, Excel, a Timeline image over 400 rows, SVG, an image of other views, scheduled or emailed
+  exports (RPT-009, M2). Asynchronous jobs (QRY-015 (1) is about the search export).
+- Copying capacity, shares or hidden sources; a copy that follows its original.
+
+#### Questions for the user (the design takes the first answer each time)
+
+1. **A copy's capacity:** left out; or amounts without notes; or with notes.
+2. **A copy's shares:** left out; or kept when the maker may share.
+3. **The List's file:** every ticket; or the first 10,000, as the view lists.
+4. **The image:** the Timeline as PNG, 400 rows; or more views, more rows, or SVG too.
+5. **A link's `assignee=me`:** whoever opens it; or the person who copied it.
+6. **The requirement number:** PLN-014, or the coordinator's choice.
+
 ### Later stages
 
-Each adds its section here when it starts: cross-track releases (T-089c; PLN-007), the program board (T-089d; PLN-008), draft changes and
-scenarios (T-089e; PLN-002, PLN-003), the auto-scheduler (T-089f; PLN-004), duplicating a plan, a
-link to a view and exports (T-089g). PLN-002 to PLN-009 move to M1 in the spec with their stage,
+Each adds its section here when it starts: the program board (T-089d; PLN-008), draft changes and
+scenarios (T-089e; PLN-002, PLN-003) and the auto-scheduler (T-089f; PLN-004). Releases across
+tracks (T-089c; stage 4) and duplicating, linking and exporting (T-089g; stage 8) are designed
+above and not built. PLN-002 to PLN-009 move to M1 in the spec with their stage,
 so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009
 with stage 3. PLN-013 (other link
 types as dependencies, dependencies within one sprint) has no stage yet: the user's answer in
@@ -386,6 +832,18 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
 | Capacity: work elsewhere by whole weeks, Monday to Sunday (chosen) | No setting of the periods narrows hidden work below a week; periods may still start on any day | Up to three days off in periods that do not start on a Monday, and in months |
 | Capacity: work elsewhere by due day | Exact in every period | Moving the anchor a day at a time gives away each hidden ticket's due day |
 | Capacity: periods only from Mondays | Weeks exact | Sprints that start mid-week cannot be matched; months against weeks still single out days at a month's edge |
+| Releases across tracks: an object of the workspace (chosen, stage 4) | Seen with no plan, in queries and on release pages, as PLN-007 (1) asks | One more kind of object, and a rule for who sees it |
+| Releases across tracks: owned by a plan | No new visibility rule | Gone with the plan; not visible outside it, which PLN-007 rules out |
+| A move: each linked release by the mover's own right (chosen, stage 4) | Nobody gains a right over another team's release; the rest still move, as a commit does | Some releases stay behind and read as out of step |
+| A move: all or nothing | Never out of step | One release a person may not change, or one shipped, stops everyone |
+| A move: the owner overrides the tracks' administrators | Always lined up | Someone outside a team changes its release without its administrators, against "without changing how those teams work" |
+| A work-complete release ships by itself | No extra step | Passes over approvals and the open-ticket prompt (CORE-016), which stay a person's act |
+| A hidden count over all linked releases as one number (chosen, stage 4) | The state stays true for everyone, and nothing can narrow it | A viewer learns how much hidden open work there is, not what |
+| A plan's copy: only what its maker sees, private, no capacity (chosen, stage 8) | Spreads nothing, and every field is one they could have set by hand | Sources, shares and capacity to set again |
+| The Timeline image drawn from its rows as SVG, then PNG in the browser (chosen, stage 8) | Every row, no dependency, no server, and hidden work as the page words it | A second drawing of the Timeline to keep in step |
+| The Timeline image captured from the page | One drawing | Past 200 only the rows in view are in the document, and a capture library is a new dependency |
+| The Timeline image on the server, in a headless browser | The same picture everywhere | A browser in every install, for one button |
+| View CSVs on the page from the view's own answer (chosen, stage 8) | The file equals the view, derived days and hidden counts included | No CSV route of their own for API tokens; the answer's JSON already serves them |
 
 ## Consequences
 
@@ -413,3 +871,9 @@ types as dependencies, dependencies within one sprint) has no stage yet: the use
   over-capacity would then differ between viewers.
 - Capacity follows the plan's teams as they are now: someone who leaves a team drops out of the
   view at once, and their capacity rows stay until the team leaves the plan or they come back.
+- When stage 4 is built, a viewer of a release across tracks learns how many linked releases and
+  how many open tickets are hidden from them, though not which, nor where. Someone who moves its
+  date can leave releases out of step, and they stay so until their tracks' administrators act.
+- When stage 8 is built, a downloaded file or image leaves the system's permissions with whoever
+  saved it, as search exports do. The Timeline has two drawings to keep in step, on the page and in
+  the image, sharing their rows and the late rule.
