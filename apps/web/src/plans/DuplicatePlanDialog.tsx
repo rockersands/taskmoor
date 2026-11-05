@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { ModalDialog } from '../shell/ModalDialog';
@@ -20,7 +20,9 @@ export interface DuplicatePlanDialogProps {
 /**
  * Copying a plan (T-089g; PLN-014), for anyone who sees it: it asks only for a name, and says what
  * comes and what does not. When sources were left out it says how many, never which, and offers the
- * copy; otherwise it goes straight there. On a phone it is a sheet, as every dialog is.
+ * copy; otherwise it goes straight there. Once copied, focus waits on the heading of what it says, in
+ * a status line that was already in the page, so it is read out. On a phone it is a sheet, as every
+ * dialog is.
  */
 export function DuplicatePlanDialog({
   name,
@@ -40,6 +42,11 @@ export function DuplicatePlanDialog({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [left, setLeft] = useState<{ id: number; count: number } | null>(null);
+  const copied = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (left) copied.current?.focus();
+  }, [left]);
 
   const save = async () => {
     if (value.trim() === '') {
@@ -67,19 +74,23 @@ export function DuplicatePlanDialog({
       focusFirstField
       className="plan-duplicate-dialog"
     >
+      {left && (
+        <h2 id={`${id}-title`} ref={copied} tabIndex={-1}>
+          {t('plans.duplicate.done')}
+        </h2>
+      )}
+      <p className="board-hint" role="status">
+        {left ? t('plans.duplicate.left', { count: left.count }) : ''}
+      </p>
       {left ? (
-        <>
-          <h2 id={`${id}-title`}>{t('plans.duplicate.done')}</h2>
-          <p role="status">{t('plans.duplicate.left', { count: left.count })}</p>
-          <div className="form-actions">
-            <a className="button-primary" href={routeHref(planHref(left.id))}>
-              {t('plans.duplicate.open')}
-            </a>
-            <button type="button" className="button-secondary" onClick={onClose}>
-              {t('plans.duplicate.stay')}
-            </button>
-          </div>
-        </>
+        <div className="form-actions">
+          <a className="button-primary" href={routeHref(planHref(left.id))}>
+            {t('plans.duplicate.open')}
+          </a>
+          <button type="button" className="button-secondary" onClick={onClose}>
+            {t('plans.duplicate.stay')}
+          </button>
+        </div>
       ) : (
         <form
           onSubmit={(event) => {

@@ -8,6 +8,7 @@ import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import {
   type CrossTrackState,
+  candidatesQuery,
   createBody,
   crossTrackState,
   idParam,
@@ -196,8 +197,10 @@ function summarize(
   const of = (m: MemberRow) => work.get(m.release_id) ?? NO_WORK;
   const seen = live.filter((m) => sees(m.track_id));
   const allOpen = live.reduce((n, m) => n + of(m).open, 0);
-  const seenTickets = live.reduce((n, m) => n + of(m).seen, 0);
-  const seenOpen = live.reduce((n, m) => n + of(m).seenOpen, 0);
+  // A hidden release's tickets never count as seen, even one seen through a ticket-level grant, or
+  // the count would say that ticket is linked here. It equals the search, which binds the same way.
+  const seenTickets = seen.reduce((n, m) => n + of(m).seen, 0);
+  const seenOpen = seen.reduce((n, m) => n + of(m).seenOpen, 0);
   return {
     state: crossTrackState({
       endRule: row.end_rule,
@@ -226,6 +229,8 @@ const trackOf = (m: MemberRow) => ({ id: m.track_id, key: m.track_key, name: m.t
 
 function memberView(row: Pick<Row, 'end_rule' | 'release_date'>, m: MemberRow, work?: Work) {
   const counts = work ?? NO_WORK;
+  // A release of an archived track counts as archived, as it does for the state.
+  const archived = m.archived_at !== null || m.track_archived;
   return {
     id: m.release_id,
     name: m.name,
@@ -233,9 +238,10 @@ function memberView(row: Pick<Row, 'end_rule' | 'release_date'>, m: MemberRow, w
     startDate: m.start_date,
     releaseDate: m.release_date,
     shipped: m.shipped_at !== null,
-    archived: m.archived_at !== null,
+    archived,
     trackArchived: m.track_archived,
-    overdue: m.shipped_at === null && m.release_date !== null && m.release_date < today(),
+    overdue:
+      !archived && m.shipped_at === null && m.release_date !== null && m.release_date < today(),
     outOfStep: outOfStep(row, m),
     // Only what this viewer may see counts here: the rest is the one hidden number.
     progress: {
@@ -386,6 +392,8 @@ export function registerCrossTrackReleaseRoutes(
         ...(steps > 0 ? [{ code: 'out_of_step' as const, count: steps }] : []),
       ];
       const yours = await changeable(request, summary.seen);
+      const sight = requestSight(request);
+      const administered = (await sight.admin()) ? 'all' : await sight.allowed('administer_track');
       return {
         id: row.id,
         name: row.name,
@@ -406,7 +414,11 @@ export function registerCrossTrackReleaseRoutes(
         hidden: summary.hidden,
         tickets: tickets.rows,
         truncated: tickets.truncated,
-        viewer: { mayManage },
+        viewer: {
+          mayManage,
+          // Linking asks for a track of their own: someone with none is not offered it.
+          mayLink: administered === 'all' || administered.length > 0,
+        },
       };
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
@@ -487,6 +499,8 @@ export function registerCrossTrackReleaseRoutes(
   // Upcoming unlinked releases of tracks the person administers: what they may link.
   app.get('/api/v1/cross-track-releases/candidates', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
+    const parsed = candidatesQuery.safeParse(request.query ?? {});
+    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
     const sight = requestSight(request);
     const admin = await sight.admin();
     const tracks = admin ? 'all' : await sight.allowed('administer_track');
@@ -511,6 +525,11 @@ export function registerCrossTrackReleaseRoutes(
       .where('t.archived_at', 'is', null)
       .where('t.deleted_at', 'is', null);
     if (tracks !== 'all') query = query.where('r.track_id', 'in', [...tracks]);
+    // The list stops at a limit, so a word has to narrow it here for the rest to be found at all.
+    if (parsed.data.q) {
+      const like = `%${parsed.data.q.replace(/[\\%_]/g, '\\$&')}%`;
+      query = query.where(sql<boolean>`(t.key || ' ' || t.name || ' ' || r.name) ILIKE ${like}`);
+    }
     const rows = await query
       .orderBy('t.key')
       .orderBy('r.sort_order')
@@ -828,8 +847,9 @@ export function registerCrossTrackReleaseRoutes(
       const members = await readMembers(trx, [p.data.id]);
       if (allShipped(members)) return { shipped: true as const };
       const { lines, hidden } = changeList(members, date, opened.sees, yours);
+      // The same day still brings back what is out of step; with nothing to bring it changes nothing.
       const sameDay = locked.end_rule === 'fixed_date' && locked.release_date === date;
-      if (sameDay) return { same: { lines, hidden } };
+      if (sameDay && !lines.some((l) => l.outcome === 'moves')) return { same: { lines, hidden } };
       const now = new Date();
       const moved: { releaseId: number; from: string | null }[] = [];
       for (const line of lines) {

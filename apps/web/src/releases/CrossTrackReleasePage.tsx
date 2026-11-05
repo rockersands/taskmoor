@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
@@ -10,17 +10,18 @@ import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { CrossTrackState } from './CrossTrackState';
 import { searchHref } from './client';
 import {
-  type Candidate,
   type CrossTrackClient,
   type CrossTrackRelease,
   type CrossTrackWarning,
   crossTrackClient,
   type LinkedRelease,
+  UNREACHABLE,
 } from './crossTrackClient';
 import { dayText } from './crossTrackText';
 import { MoveDateDialog } from './MoveDateDialog';
 import { ReleaseState } from './ReleaseState';
 import { StageProgress } from './StageProgress';
+import { candidateMatches, useCandidates } from './useCandidates';
 
 export interface CrossTrackReleasePageProps {
   id: number;
@@ -33,6 +34,8 @@ export interface CrossTrackReleasePageProps {
  * linked releases (a table on a desktop, cards on a phone) and its first tickets. What the viewer
  * may not see is only counted, in words under the linked releases. Its owner and administrators
  * move the date, edit and delete it; a track's administrators link and unlink their own releases.
+ * Each control shows only to someone it would work for, and a date that can no longer move offers
+ * no move.
  */
 export function CrossTrackReleasePage({
   id,
@@ -49,6 +52,7 @@ export function CrossTrackReleasePage({
   const [linking, setLinking] = useState(false);
   const [notice, setNotice] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const linkedHeading = useRef<HTMLHeadingElement>(null);
 
   const load = useCallback(() => {
     client.get(id).then(setData, (error) => {
@@ -85,17 +89,27 @@ export function CrossTrackReleasePage({
     setProblem(null);
     const answer = await client.unlink(id, release.id);
     if (!answer.ok) {
-      setProblem(t('crossTrack.linked.removeFailed'));
+      setProblem(
+        answer.code === UNREACHABLE
+          ? t('crossTrack.unreachable')
+          : t('crossTrack.linked.removeFailed'),
+      );
       return;
     }
     setNotice(t('crossTrack.linked.removed', { name: release.name }));
+    // Its button is going away: focus waits at the heading of what is left, not on the page's body.
+    linkedHeading.current?.focus();
     load();
   };
   const remove = async () => {
     if (!window.confirm(t('crossTrack.delete.confirm', { name: data.name }))) return;
     const answer = await client.remove(id);
     if (answer.ok) navigate('#/cross-track-releases');
-    else setProblem(t('crossTrack.delete.failed'));
+    else {
+      setProblem(
+        answer.code === UNREACHABLE ? t('crossTrack.unreachable') : t('crossTrack.delete.failed'),
+      );
+    }
   };
 
   return (
@@ -108,7 +122,7 @@ export function CrossTrackReleasePage({
         actions={
           <>
             {back}
-            {mayManage && (
+            {mayManage && data.state !== 'shipped' && (
               <button type="button" className="button-primary" onClick={() => setMoving(true)}>
                 {t('crossTrack.move.open')}
               </button>
@@ -160,7 +174,9 @@ export function CrossTrackReleasePage({
       )}
 
       <section className="glass-card release-section" aria-labelledby={`${domId}-linked`}>
-        <h2 id={`${domId}-linked`}>{t('crossTrack.linked.title')}</h2>
+        <h2 id={`${domId}-linked`} ref={linkedHeading} tabIndex={-1}>
+          {t('crossTrack.linked.title')}
+        </h2>
         {data.members.length === 0 ? (
           <EmptyState compact title={t('crossTrack.linked.none')}>
             {t('empty.crossTrack.linked')}
@@ -183,21 +199,25 @@ export function CrossTrackReleasePage({
             {t('crossTrack.hiddenOpen', { open: data.hidden.open })}
           </p>
         )}
-        <div className="form-actions">
-          <button type="button" className="button-secondary" onClick={() => setLinking(true)}>
-            {t('crossTrack.linked.add')}
-          </button>
-          {mayManage && (
-            <>
-              <button type="button" className="button-secondary" onClick={() => setEditing(true)}>
-                {t('crossTrack.edit.open')}
+        {(data.viewer.mayLink || mayManage) && (
+          <div className="form-actions">
+            {data.viewer.mayLink && (
+              <button type="button" className="button-secondary" onClick={() => setLinking(true)}>
+                {t('crossTrack.linked.add')}
               </button>
-              <button type="button" className="button-secondary" onClick={() => void remove()}>
-                {t('crossTrack.delete')}
-              </button>
-            </>
-          )}
-        </div>
+            )}
+            {mayManage && (
+              <>
+                <button type="button" className="button-secondary" onClick={() => setEditing(true)}>
+                  {t('crossTrack.edit.open')}
+                </button>
+                <button type="button" className="button-secondary" onClick={() => void remove()}>
+                  {t('crossTrack.delete')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="glass-card release-section" aria-labelledby={`${domId}-tickets`}>
@@ -257,6 +277,7 @@ export function CrossTrackReleasePage({
             setEditing(false);
             load();
           }}
+          onStale={load}
           onClose={() => setEditing(false)}
         />
       )}
@@ -395,16 +416,22 @@ function LinkedCards({
   );
 }
 
-/** Its name, its description, and ending when its work completes, which moves nothing. */
+/**
+ * Its name, its description, and ending when its work completes, which moves nothing. When someone
+ * changed it first the page reads itself again, so saving again sends the version it now holds; what
+ * the person typed stays in the fields.
+ */
 function EditDialog({
   data,
   client,
   onSaved,
+  onStale,
   onClose,
 }: {
   data: CrossTrackRelease;
   client: CrossTrackClient;
   onSaved: () => void;
+  onStale: () => void;
   onClose: () => void;
 }) {
   const t = useT();
@@ -424,12 +451,16 @@ function EditDialog({
       version: data.version,
     });
     setBusy(false);
-    if (answer.ok) onSaved();
-    else {
+    if (answer.ok) {
+      onSaved();
+      return;
+    }
+    if (answer.code === 'version_conflict') {
+      setProblem(t('crossTrack.edit.stale'));
+      onStale();
+    } else {
       setProblem(
-        answer.code === 'version_conflict'
-          ? t('crossTrack.move.stale')
-          : t('crossTrack.edit.failed'),
+        answer.code === UNREACHABLE ? t('crossTrack.unreachable') : t('crossTrack.edit.failed'),
       );
     }
   };
@@ -513,19 +544,15 @@ function LinkDialog({
 }) {
   const t = useT();
   const domId = useId();
-  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const known = useCandidates(client);
   const [chosen, setChosen] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    client.candidates().then(
-      (c) => {
-        const taken = new Set(linked.map((m) => m.track.id));
-        setCandidates(c.releases.filter((r) => !taken.has(r.track.id)));
-      },
-      () => setCandidates([]),
-    );
-  }, [client, linked]);
+  const taken = new Set(linked.map((m) => m.track.id));
+  const candidates = known.candidates?.filter((r) => !taken.has(r.track.id)) ?? null;
+  const shown = candidates?.filter(
+    (c) => candidateMatches(c, known.filter) || String(c.id) === chosen,
+  );
   const link = async () => {
     setBusy(true);
     setProblem(null);
@@ -538,7 +565,9 @@ function LinkDialog({
           ? t('crossTrack.new.taken')
           : answer.code === 'too_many_members'
             ? t('crossTrack.linked.tooMany')
-            : t('crossTrack.linked.addFailed'),
+            : answer.code === UNREACHABLE
+              ? t('crossTrack.unreachable')
+              : t('crossTrack.linked.addFailed'),
       );
     }
   };
@@ -557,11 +586,33 @@ function LinkDialog({
         }}
       >
         <h2 id={`${domId}-title`}>{t('crossTrack.linked.add')}</h2>
-        {candidates === null && <p className="report-loading">{t('reports.loading')}</p>}
-        {candidates?.length === 0 && (
+        {known.failed && (
+          <p className="board-problem" role="alert">
+            {t('crossTrack.new.candidatesFailed')}
+          </p>
+        )}
+        {candidates === null && !known.failed && (
+          <p className="report-loading">{t('reports.loading')}</p>
+        )}
+        {candidates?.length === 0 && !known.failed && !known.stopsShort && (
           <EmptyState compact title={t('crossTrack.new.noneToLink')}>
             {t('empty.crossTrack.candidates')}
           </EmptyState>
+        )}
+        {known.stopsShort && (
+          <>
+            <label className="form-field" htmlFor={`${domId}-filter`}>
+              <span className="form-label">{t('crossTrack.new.filter')}</span>
+              <input
+                id={`${domId}-filter`}
+                type="search"
+                value={known.filter}
+                onChange={(event) => known.setFilter(event.target.value)}
+              />
+            </label>
+            {known.truncated && <p className="board-hint">{t('crossTrack.new.truncated')}</p>}
+            {shown?.length === 0 && <p className="board-hint">{t('crossTrack.new.noMatch')}</p>}
+          </>
         )}
         {candidates !== null && candidates.length > 0 && (
           <label className="form-field" htmlFor={`${domId}-release`}>
@@ -573,7 +624,7 @@ function LinkDialog({
               onChange={(event) => setChosen(event.target.value)}
             >
               <option value="">{t('crossTrack.linked.choose')}</option>
-              {candidates.map((c) => (
+              {(shown ?? candidates).map((c) => (
                 <option key={c.id} value={String(c.id)}>
                   {t('crossTrack.linked.name', { track: c.track.name, name: c.name })}
                 </option>

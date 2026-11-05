@@ -12,10 +12,13 @@ export function saveBlob(name: string, blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-/** A plan's file: its name reduced to safe characters, the view and the day. */
+/**
+ * A plan's file: its name reduced to letters, digits and safe marks, the view and the day. Letters
+ * of any language stay, since a browser names the download itself and no header carries it.
+ */
 export function fileName(plan: string, view: string, day: string, extension: string): string {
   const safe = plan
-    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
     .replace(/^[-.]+|[-.]+$/g, '')
     .slice(0, 80);
   return `${safe || 'plan'}-${view}-${day}.${extension}`;

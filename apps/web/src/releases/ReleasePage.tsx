@@ -15,7 +15,12 @@ import {
   searchHref,
   type Warning,
 } from './client';
-import { type CrossTrackClient, type CrossTrackRow, crossTrackClient } from './crossTrackClient';
+import {
+  type CrossTrackClient,
+  type CrossTrackRow,
+  crossTrackClient,
+  UNREACHABLE,
+} from './crossTrackClient';
 import { dayText } from './crossTrackText';
 import { ReleaseState } from './ReleaseState';
 import { StageProgress } from './StageProgress';
@@ -103,13 +108,13 @@ export function ReleasePage({
   const mayDecide = overview.viewer.approver !== null && !release.shipped;
   const linked = release.crossTrack ?? null;
   const align = async (date: string) => {
-    const done = await client.setDate(releaseId, date);
+    const done = await client.setDate(releaseId, date).catch(() => null);
     setNotice(
-      done.ok
+      done?.ok
         ? t('release.crossTrack.aligned', { date: dayText(intl, date) })
         : t('release.crossTrack.alignFailed'),
     );
-    if (done.ok) load();
+    if (done?.ok) load();
   };
 
   return (
@@ -325,17 +330,25 @@ function CrossTrackLink({
   const id = useId();
   const [opened, setOpened] = useState(false);
   const [rows, setRows] = useState<CrossTrackRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [chosen, setChosen] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const linked = release.crossTrack ?? null;
 
   useEffect(() => {
     if (!opened || rows !== null) return;
-    client.list('upcoming').then(
-      (page) =>
-        setRows(page.releases.filter((r) => !r.tracks.some((x) => x.id === release.trackId))),
-      () => setRows([]),
+    let live = true;
+    allUpcoming(client).then(
+      (all) => {
+        if (live) setRows(all.filter((r) => !r.tracks.some((x) => x.id === release.trackId)));
+      },
+      () => {
+        if (live) setFailed(true);
+      },
     );
+    return () => {
+      live = false;
+    };
   }, [opened, rows, client, release.trackId]);
 
   const link = async () => {
@@ -350,7 +363,9 @@ function CrossTrackLink({
       setProblem(
         done.code === 'release_taken' || done.code === 'track_taken'
           ? t('crossTrack.new.taken')
-          : t('crossTrack.linked.addFailed'),
+          : done.code === UNREACHABLE
+            ? t('crossTrack.unreachable')
+            : t('crossTrack.linked.addFailed'),
       );
     }
   };
@@ -359,7 +374,13 @@ function CrossTrackLink({
     setProblem(null);
     const done = await client.unlink(linked.id, release.id);
     if (done.ok) onChanged(t('release.crossTrack.unlinked', { name: linked.name }));
-    else setProblem(t('crossTrack.linked.removeFailed'));
+    else {
+      setProblem(
+        done.code === UNREACHABLE
+          ? t('crossTrack.unreachable')
+          : t('crossTrack.linked.removeFailed'),
+      );
+    }
   };
 
   if (!linked && (release.shipped || release.archived)) return null;
@@ -371,9 +392,16 @@ function CrossTrackLink({
           {t('release.crossTrack.remove', { name: linked.name })}
         </button>
       ) : !opened ? (
-        <button type="button" className="button-secondary" onClick={() => setOpened(true)}>
-          {t('release.crossTrack.add')}
-        </button>
+        <>
+          <button type="button" className="button-secondary" onClick={() => setOpened(true)}>
+            {t('release.crossTrack.add')}
+          </button>
+          <p className="board-hint">
+            <a className="release-cross-track-all" href={routeHref('#/cross-track-releases')}>
+              {t('crossTrack.title')}
+            </a>
+          </p>
+        </>
       ) : (
         <form
           className="release-ship"
@@ -382,11 +410,18 @@ function CrossTrackLink({
             void link();
           }}
         >
-          {rows === null && <p className="report-loading">{t('reports.loading')}</p>}
+          {failed && (
+            <p className="board-problem" role="alert">
+              {t('release.crossTrack.listFailed')}
+            </p>
+          )}
+          {rows === null && !failed && <p className="report-loading">{t('reports.loading')}</p>}
           {rows?.length === 0 && (
             <EmptyState compact title={t('release.crossTrack.noneToJoin')}>
               {t('empty.release.crossTrack')}{' '}
-              <a href={routeHref('#/cross-track-releases')}>{t('crossTrack.title')}</a>
+              <a className="release-cross-track-all" href={routeHref('#/cross-track-releases')}>
+                {t('crossTrack.title')}
+              </a>
             </EmptyState>
           )}
           {rows !== null && rows.length > 0 && (
@@ -425,6 +460,18 @@ function CrossTrackLink({
       )}
     </section>
   );
+}
+
+/** Every upcoming release across tracks the person sees, whatever number of pages that takes. */
+async function allUpcoming(client: CrossTrackClient): Promise<CrossTrackRow[]> {
+  const rows: CrossTrackRow[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await client.list('upcoming', cursor);
+    rows.push(...page.releases);
+    cursor = page.next ?? undefined;
+  } while (cursor);
+  return rows;
 }
 
 /** An approver's decision, with an optional comment (CORE-016 (2)). */

@@ -10,7 +10,9 @@ const MAX_INT = 2_147_483_647;
 const idNum = z.number().int().positive().max(MAX_INT);
 const name = z.string().trim().min(1).max(255);
 const description = z.string().max(4000);
-const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
+/** The year 0000 is a calendar day to the parser and none to the database. */
+const isStorableDay = (value: string) => isCalendarDay(value) && value >= '0001-01-01';
+const day = z.string().refine(isStorableDay, 'a calendar day as YYYY-MM-DD');
 
 /** How many releases one holds. */
 export const MAX_MEMBERS = 100;
@@ -52,12 +54,20 @@ export const updateBody = z
 export const listQuery = z
   .object({
     state: z.enum(['upcoming', 'shipped']).default('upcoming'),
+    // Read as a date and an int by the database, which must never be what refuses it.
     cursor: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}_[1-9]\d{0,9}$/)
+      .refine((cursor) => {
+        const [at = '', id = ''] = cursor.split('_');
+        return isStorableDay(at) && Number(id) <= MAX_INT;
+      }, 'a cursor from the list')
       .optional(),
   })
   .strict();
+
+/** What may be linked, narrowed by a word of its track or name, as a list that stops at a limit. */
+export const candidatesQuery = z.object({ q: z.string().trim().max(255).optional() }).strict();
 
 export const moveQuery = z.object({ date: day }).strict();
 export const moveBody = z.object({ date: day, version: z.number().int().positive() }).strict();

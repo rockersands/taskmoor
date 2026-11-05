@@ -1915,6 +1915,12 @@ class Binder {
    * The releases linked to the releases across tracks named, by name (any case) or id, reading only
    * those the person sees: another's answers `unknown_value`, word for word as one that does not
    * exist. A name shared by several means all of them the person sees (PLN-007).
+   *
+   * Two rules keep what this says true. A bare number is an id before it is a name, and a quoted
+   * one a name before an id, so naming a release across tracks "5" cannot take over the page of
+   * number 5, which reads `crossTrackRelease = 5`. And it binds only to linked releases of tracks
+   * the person sees: a ticket seen through a grant, in a track they do not see, never shows that
+   * its release is linked to this one.
    */
   private async crossTrackMembers(values: Typed[], field: string): Promise<number[]> {
     const seen = await this.once('crossTrackReleases', () =>
@@ -1922,24 +1928,19 @@ class Binder {
     );
     const found: number[] = [];
     for (const value of values) {
-      const given = String(content(value).value);
+      const typed = content(value);
+      const given = String(typed.value);
       const wanted = lower(given);
-      let named = seen.filter((r) => lower(r.name) === wanted);
-      if (named.length === 0 && /^\d+$/.test(wanted)) {
-        named = seen.filter((r) => String(r.id) === wanted);
-      }
+      const byName = seen.filter((r) => lower(r.name) === wanted);
+      const byId = seen.filter((r) => String(r.id) === wanted);
+      const [first, second] = typed.type === 'number' ? [byId, byName] : [byName, byId];
+      const named = first.length > 0 ? first : second;
       if (named.length === 0) {
         throw new SearchError(`${field} has no value "${given}"`, 'unknown_value');
       }
-      found.push(...named.map((r) => r.id));
+      for (const r of named) found.push(...r.releaseIds);
     }
-    const members = await this.db
-      .selectFrom('cross_track_release_member')
-      .select('release_id')
-      .where('workspace_id', '=', this.ws)
-      .where('cross_track_release_id', 'in', idList(found))
-      .execute();
-    return idList(members.map((m) => m.release_id));
+    return idList(found);
   }
 
   /** Ids by name (any case) or by id; a name nobody uses is refused. */

@@ -46,6 +46,14 @@ const linked = (
 export interface FakeCrossTrackOptions {
   /** The viewer is its owner or an administrator. */
   mayManage?: boolean;
+  /** The viewer has a track of their own to link from. */
+  mayLink?: boolean;
+  /** The viewer also administers Operations, so a move takes its release too. */
+  administersAll?: boolean;
+  /** The list of what may be linked stops short of what there is, until a word narrows it. */
+  stopsShort?: boolean;
+  /** An edit finds someone else changed it first, once. */
+  staleEditOnce?: boolean;
   /** Nothing to list. */
   empty?: boolean;
   /** Everything has shipped. */
@@ -62,6 +70,7 @@ export function fakeCrossTrackClient(
   const mayManage = options.mayManage ?? true;
   const hiddenReleases = options.hiddenReleases ?? 1;
   let stale = options.staleOnce ?? false;
+  let staleEdit = options.staleEditOnce ?? false;
   let version = 3;
   let name = 'Spring launch';
   let description = 'Shop and Operations go out together.';
@@ -125,7 +134,7 @@ export function fakeCrossTrackClient(
         },
       ],
       truncated: false,
-      viewer: { mayManage },
+      viewer: { mayManage, mayLink: options.mayLink ?? true },
     };
   };
   const row = (): CrossTrackRow => ({
@@ -144,7 +153,9 @@ export function fakeCrossTrackClient(
     members.map((m) => {
       const base = { id: m.id, name: m.name, track: m.track, from: m.releaseDate, to };
       if (m.shipped) return { ...base, outcome: 'stays', reason: 'shipped' };
-      if (m.track.id !== SHOP.id) return { ...base, outcome: 'stays', reason: 'no_permission' };
+      if (m.track.id !== SHOP.id && !options.administersAll) {
+        return { ...base, outcome: 'stays', reason: 'no_permission' };
+      }
       if (m.releaseDate === to) return { ...base, outcome: 'same' };
       return { ...base, outcome: 'moves' };
     });
@@ -179,7 +190,17 @@ export function fakeCrossTrackClient(
       releases: !exists || (wanted === 'shipped') !== (options.shipped ?? false) ? [] : [row()],
       next: null,
     }),
-    candidates: async () => ({ releases: candidates, truncated: false }),
+    candidates: async (q) => {
+      if (!options.stopsShort) return { releases: candidates, truncated: false };
+      if (!q) return { releases: candidates.slice(0, 1), truncated: true };
+      const word = q.toLowerCase();
+      return {
+        releases: candidates.filter((c) =>
+          `${c.track.key} ${c.track.name} ${c.name}`.toLowerCase().includes(word),
+        ),
+        truncated: false,
+      };
+    },
     get: async (id) => {
       if (id !== 5 || !exists) throw new Error('not_found');
       return answer();
@@ -197,6 +218,11 @@ export function fakeCrossTrackClient(
       return { ok: true, value: answer() };
     },
     update: async (_id, input) => {
+      if (staleEdit) {
+        staleEdit = false;
+        version++;
+        description = 'Someone else wrote this.';
+      }
       if (input.version !== version) return { ok: false, code: 'version_conflict', version };
       name = input.name ?? name;
       description = input.description ?? description;
@@ -225,6 +251,10 @@ export function fakeCrossTrackClient(
       if (given !== version) return { ok: false, code: 'version_conflict', version };
       const from = date;
       const happened = list(to, true, from);
+      // The day it already has, with nothing out of step to bring back: nothing changes.
+      if (from === to && !happened.lines.some((l) => l.outcome === 'moves')) {
+        return { ok: true, value: { ...happened, changed: false } };
+      }
       members = members.map((m) =>
         happened.lines.find((l) => l.id === m.id)?.outcome === 'moves'
           ? { ...m, releaseDate: to }

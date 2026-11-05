@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -102,6 +102,74 @@ describe('a release in a release across tracks (PLN-007)', () => {
     await user.click(screen.getByRole('button', { name: 'Link it' }));
     await waitFor(() => expect(link).toHaveBeenCalledWith(8, 3));
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be linked');
+  });
+
+  it('[PLN-007] offers every one the person sees, however many pages, and the way to the list', async () => {
+    const user = userEvent.setup();
+    const base = fakeCrossTrackClient();
+    const [row] = (await base.list('upcoming')).releases;
+    const rowNamed = (id: number, name: string) => ({
+      ...(row as NonNullable<typeof row>),
+      id,
+      name,
+      tracks: [],
+    });
+    const crossTrack = {
+      ...base,
+      list: vi.fn(async (_state: 'upcoming' | 'shipped', cursor?: string) =>
+        cursor
+          ? { releases: [rowNamed(9, 'On the second page')], next: null }
+          : { releases: [rowNamed(8, 'On the first page')], next: 'next-page' },
+      ),
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={fakeReleaseClient()} crossTrack={crossTrack} />
+      </I18nProvider>,
+    );
+    const add = await screen.findByRole('button', { name: 'Add to a release across tracks…' });
+    expect(screen.getByRole('link', { name: 'Releases across tracks' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('#/cross-track-releases'),
+    );
+    await user.click(add);
+    const select = await screen.findByLabelText('Which one to join');
+    expect(within(select).getByRole('option', { name: 'On the first page' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'On the second page' })).toBeInTheDocument();
+  });
+
+  it('[PLN-007] tells an outage from none to join, and says when Align got no answer', async () => {
+    const user = userEvent.setup();
+    const crossTrack = {
+      ...fakeCrossTrackClient(),
+      list: async () => {
+        throw new Error('down');
+      },
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={fakeReleaseClient()} crossTrack={crossTrack} />
+      </I18nProvider>,
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Add to a release across tracks…' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The releases across tracks could not be read.',
+    );
+    expect(screen.queryByText('None to join')).toBeNull();
+    cleanup();
+    const client = fakeReleaseClient({ linked: true });
+    client.setDate = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={client} crossTrack={fakeCrossTrackClient()} />
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: /Align to/ }));
+    expect(await screen.findByText('The date could not be changed.')).toBeVisible();
   });
 });
 

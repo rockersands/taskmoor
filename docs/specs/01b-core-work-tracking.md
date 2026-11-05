@@ -67,7 +67,7 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 | `parent` | `"Epic link"` (retired; rewritten to `parent`) | |
 | `savedSearch` | `filter`; `request`, `savedFilter`, `searchRequest` (given) | Saved search by id or name; cycles rejected |
 | `targetRelease` | `fixVersion` | |
-| `crossTrackRelease` | | Release across tracks by id or name (PLN-007): `=`, `!=`, `IN`, `NOT IN`; the target tickets of its linked releases; one the person may not see reads as one that does not exist. No `IS EMPTY`, history or order |
+| `crossTrackRelease` | | Release across tracks by id or name (PLN-007): `=`, `!=`, `IN`, `NOT IN`; the target tickets of its linked releases; one the person may not see reads as one that does not exist. A bare number is an id before a name, a quoted one a name before an id. Binds only to linked releases of tracks the person sees. No `IS EMPTY`, history or order |
 | `hierarchyLevel` | | All levels including custom ones |
 | `journey`, `journeyParent`, `journeyType`, `journeyTypeVersion`, `journeyTicket` | `journeyWorkItem` | Parsed and stored; semantics not in research (verify) |
 | `labels` | | |

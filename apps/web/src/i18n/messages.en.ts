@@ -6499,6 +6499,7 @@ export const messagesEn = {
   'crossTrack.new.noneToLink': 'No release to link',
   'crossTrack.new.pickOne': 'Choose at least one release.',
   'crossTrack.new.truncated': 'The list stops at 500. Filter it to find the rest.',
+  'crossTrack.new.noMatch': 'No release matches this filter.',
   'crossTrack.new.noMove':
     'Linking moves no date: a release on another day reads as out of step until someone moves it.',
   'crossTrack.new.submit': 'Make it',
@@ -6519,6 +6520,9 @@ export const messagesEn = {
   'crossTrack.noneUpcoming': 'No upcoming release across tracks.',
   'crossTrack.noneShipped': 'None has shipped yet.',
   'crossTrack.more': 'Show more',
+  'crossTrack.moreFailed': 'The next ones could not be read. Try again.',
+  'crossTrack.unreachable':
+    'The server could not be reached, so this may not have happened. Check your connection and this page, then try again.',
   'crossTrack.toList': 'All releases across tracks',
   'crossTrack.hiddenReleases':
     '{count, plural, one {# release hidden from you} other {# releases hidden from you}}',
@@ -6581,6 +6585,10 @@ export const messagesEn = {
   'crossTrack.move.nothingFollows':
     'No release can follow this date. The release across tracks still moves, and they read as out of step.',
   'crossTrack.move.sameDay': 'It already ends on this date, so nothing changes.',
+  'crossTrack.move.sameDayMoves':
+    '{count, plural, one {It already ends on this date: # release out of step comes back to it.} other {It already ends on this date: # releases out of step come back to it.}}',
+  'crossTrack.move.listed':
+    '{count, plural, one {# release would move.} other {# releases would move.}}',
   'crossTrack.move.submit':
     '{count, plural, =0 {Move only the release across tracks} one {Move # release} other {Move # releases}}',
   'crossTrack.move.doneTitle': '{name} now ends on {date}',
@@ -6591,12 +6599,15 @@ export const messagesEn = {
   'crossTrack.move.stale': 'Someone changed it meanwhile. Here is what would change now.',
   'crossTrack.move.alreadyShipped': 'All its releases have shipped, so its date no longer moves.',
   'crossTrack.move.failed': 'The date could not be moved.',
+  'crossTrack.edit.stale':
+    'Someone changed it meanwhile. What you typed is still here: check it and save again.',
   'release.warning.outOfStep': 'Out of step with {name}, which ends on {date}.',
   'release.crossTrack.fact': 'Release across tracks',
   'release.crossTrack.align': 'Align to {date}',
   'release.crossTrack.aligned': 'This release now ends on {date}.',
   'release.crossTrack.alignFailed': 'The date could not be changed.',
   'release.crossTrack.add': 'Add to a release across tracks…',
+  'release.crossTrack.listFailed': 'The releases across tracks could not be read.',
   'release.crossTrack.remove': 'Remove from {name}',
   'release.crossTrack.linked': 'This release is now linked to {name}.',
   'release.crossTrack.unlinked':

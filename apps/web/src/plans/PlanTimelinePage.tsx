@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
+import { dayText } from '../releases/crossTrackText';
 import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
@@ -152,7 +153,7 @@ export function PlanTimelinePage({
               t,
               plan: plan.name,
               view: viewWords(t, filters, group, fresh.items),
-              madeOn: t('plans.image.made', { day: today }),
+              madeOn: t('plans.image.made', { day: dayText(intl, today) }),
               today: dayNumber(today),
               data: fresh,
               ...(group ? { groupOf: groupFor(fresh) } : {}),

@@ -34,6 +34,9 @@ interface Member {
   name: string;
   track: { id: number; key: string; name: string };
   releaseDate: string | null;
+  archived: boolean;
+  trackArchived: boolean;
+  overdue: boolean;
   outOfStep: boolean;
   progress: { tickets: number; closed: number; open: number };
   mayRemove: boolean;
@@ -57,7 +60,7 @@ interface Answer {
   hidden: { releases: number; open: number };
   tickets: { key: string; summary: string }[];
   truncated: boolean;
-  viewer: { mayManage: boolean };
+  viewer: { mayManage: boolean; mayLink: boolean };
 }
 interface Line {
   id: number;
@@ -111,16 +114,26 @@ describe('releases across tracks (PLN-007)', () => {
         .where('name', '=', name)
         .executeTakeFirstOrThrow()
     ).id;
+  /** Gives someone a role on a track; what it answers takes it away again. */
   const join = async (who: string, track: string, roleName: string) => {
+    const roleId = await role(roleName);
     await database.db
       .insertInto('track_role_actor')
       .values({
         workspace_id: 1,
         track_id: tracks[track] as number,
-        role_id: await role(roleName),
+        role_id: roleId,
         user_id: users[who]?.id as number,
       })
       .execute();
+    return async () => {
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', tracks[track] as number)
+        .where('role_id', '=', roleId)
+        .where('user_id', '=', users[who]?.id as number)
+        .execute();
+    };
   };
   const ticket = async (track: string, summary: string, release: string, data = {}) =>
     (
@@ -528,6 +541,132 @@ describe('releases across tracks (PLN-007)', () => {
       await get('cy', `/api/v1/releases/${releases[HIDDEN_RELEASE]}`, 404);
     });
 
+    it('[PLN-007] never ties a ticket seen through a grant to it, for a viewer who also sees another linked track', async () => {
+      // Cy browses XTA, and sees one ticket of the hidden XTC by being its requester.
+      const leave = await join('cy', 'XTA', 'Members');
+      try {
+        const q = `crossTrackRelease = ${crossId}`;
+        const answer = await read('cy');
+        expect(answer.members.map((m) => m.track.key)).toEqual(['XTA']);
+        expect(answer.tickets.map((t) => t.summary).sort()).toEqual(['Cart', 'Shop page']);
+        // The count is what Bo, who holds no grant, is told: the grant changes no number.
+        expect(answer.hidden).toEqual((await read('bo')).hidden);
+        expect(answer.open.count).toBe(2);
+        expect(await searchCount('cy', q)).toBe(2);
+        // The ticket answers as any ticket that is not linked would, under every operator.
+        expect(await searchCount('cy', `key = ${granted}`)).toBe(1);
+        expect(await searchCount('cy', `key = ${granted} AND ${q}`)).toBe(0);
+        expect(
+          await searchCount('cy', `key = ${granted} AND crossTrackRelease != ${crossId}`),
+        ).toBe(await searchCount('cy', `key = ${granted}`));
+        expect(
+          await searchCount('cy', `key = ${granted} AND crossTrackRelease IN (${crossId})`),
+        ).toBe(0);
+        const row = (await get('cy', '/api/v1/cross-track-releases')).releases.find(
+          (r: { id: number }) => r.id === crossId,
+        );
+        expect(row.progress).toEqual({ tickets: 2, closed: 0, open: 2 });
+        expect(row.hidden).toEqual(answer.hidden);
+        const body = JSON.stringify(answer);
+        for (const sentinel of [HIDDEN_RELEASE, HIDDEN_TRACK, 'Printer jam', granted]) {
+          expect(body, sentinel).not.toContain(sentinel);
+        }
+      } finally {
+        await leave();
+      }
+    });
+
+    it('[PLN-007] [QRY-002] finds nothing for one whose linked releases are all hidden, or that has none', async () => {
+      const a = await addRelease('XTA', 'A 12.0', { releaseDate: '2027-07-01' });
+      const made = (await post(
+        'ana',
+        '/api/v1/cross-track-releases',
+        { name: 'Left empty', endRule: 'work_complete', releaseIds: [a] },
+        201,
+      )) as Answer;
+      await ticket('XTA', 'Left behind', 'A 12.0');
+      await call('ana', { method: 'DELETE', url: `${base(made.id)}/members/${a}` }, 204);
+      expect(await searchCount('ana', `crossTrackRelease = ${made.id}`)).toBe(0);
+      await call('ana', { method: 'DELETE', url: base(made.id) }, 204);
+    });
+
+    it('[PLN-007] [QRY-002] keeps a page to its own id, whatever another is named, and a quoted name still finds that one', async () => {
+      const before = await read('ana');
+      const a = await addRelease('XTA', 'A 13.0', { releaseDate: '2027-07-01' });
+      await ticket('XTA', 'Shadow ticket', 'A 13.0');
+      const shadow = (await post(
+        'ana',
+        '/api/v1/cross-track-releases',
+        { name: String(crossId), endRule: 'work_complete', releaseIds: [a] },
+        201,
+      )) as Answer;
+      const after = await read('ana');
+      expect(after.tickets).toEqual(before.tickets);
+      expect(after.stages.new.count).toBe(before.stages.new.count);
+      expect(after.open.count).toBe(before.open.count);
+      expect(after.warnings).toEqual(before.warnings);
+      expect(await searchCount('ana', `crossTrackRelease = ${crossId}`)).toBe(before.open.count);
+      const quoted = await post('ana', '/api/v1/search', {
+        q: `crossTrackRelease = "${crossId}"`,
+        limit: 10,
+      });
+      expect((quoted.tickets as { summary: string }[]).map((t) => t.summary)).toEqual([
+        'Shadow ticket',
+      ]);
+      // A bare number nobody has as an id is still read as a name, as before.
+      const sevens = '900000007';
+      await call(
+        'ana',
+        {
+          method: 'PATCH',
+          url: base(shadow.id),
+          payload: { name: sevens, version: shadow.version },
+        },
+        200,
+      );
+      expect(await searchCount('ana', `crossTrackRelease = ${sevens}`)).toBe(1);
+      await call('ana', { method: 'DELETE', url: base(shadow.id) }, 204);
+    });
+
+    it('[PLN-007] answers a cursor that is not one with a refusal, never the database’s', async () => {
+      for (const cursor of [
+        '2026-13-45_1',
+        '2026-02-30_1',
+        '0000-01-01_1',
+        '2026-01-01_9999999999',
+      ]) {
+        const res = await as('bo', {
+          method: 'GET',
+          url: `/api/v1/cross-track-releases?cursor=${cursor}`,
+        });
+        expect(res.statusCode, `${cursor}: ${res.body}`).toBe(400);
+        expect(res.json().error).toBe('invalid_fields');
+      }
+      // The end of a list with no date is a real cursor, and the largest id too.
+      await get('bo', '/api/v1/cross-track-releases?cursor=9999-12-31_2147483647');
+    });
+
+    it('[PLN-007] finds any release that may be linked by a word, past where the list stops', async () => {
+      const q = (word: string) =>
+        get('ana', `/api/v1/cross-track-releases/candidates?q=${encodeURIComponent(word)}`);
+      const a = await addRelease('XTB', 'Far along 100%');
+      expect((await q('billing')).releases.map((r: { id: number }) => r.id)).toContain(a);
+      expect((await q('FAR ALONG')).releases.map((r: { id: number }) => r.id)).toEqual([a]);
+      expect((await q('100%')).releases.map((r: { id: number }) => r.id)).toEqual([a]);
+      // Its wildcards are plain text, and a word finds only what the person may link.
+      expect((await q('%')).releases.map((r: { id: number }) => r.id)).toEqual([a]);
+      expect((await q('D 1.0')).releases).toEqual([]);
+      expect((await q('no such thing')).releases).toEqual([]);
+      const all = await get('ana', '/api/v1/cross-track-releases/candidates');
+      expect(all.releases.map((r: { id: number }) => r.id)).toContain(a);
+    });
+
+    it('[PLN-007] offers linking only to someone with a track to link from', async () => {
+      expect((await read('bo')).viewer).toEqual({ mayManage: false, mayLink: false });
+      expect((await read('ana')).viewer.mayLink).toBe(true);
+      expect((await read('admin')).viewer).toEqual({ mayManage: true, mayLink: true });
+    });
+
     it('[PLN-007] lists what the person sees, upcoming or shipped, with counts on all its work', async () => {
       const list = async (who: string, state = 'upcoming') =>
         (await get(who, `/api/v1/cross-track-releases?state=${state}`)).releases as {
@@ -644,6 +783,42 @@ describe('releases across tracks (PLN-007)', () => {
       expect(ready.state).toBe('ready');
       expect((await get('admin', `/api/v1/releases/${a}`)).release.shipped).toBe(false);
       expect((await get('admin', `/api/v1/releases/${c}`)).release.shipped).toBe(false);
+    });
+
+    it('[PLN-007] reads a release of an archived track as archived, on its row as in the state', async () => {
+      await database.db
+        .updateTable('release')
+        .set({ release_date: '2020-01-01' })
+        .where('id', '=', releases['B 1.0'] as number)
+        .execute();
+      const overdue = (await read('admin')).members.find((m) => m.track.key === 'XTB');
+      expect(overdue).toMatchObject({ archived: false, overdue: true, trackArchived: false });
+      await database.db
+        .updateTable('track')
+        .set({ archived_at: new Date() })
+        .where('id', '=', tracks.XTB as number)
+        .execute();
+      const answer = await read('admin');
+      expect(answer.members.find((m) => m.track.key === 'XTB')).toMatchObject({
+        archived: true,
+        overdue: false,
+        trackArchived: true,
+        outOfStep: false,
+      });
+      // A plan's Releases tab, and so its file, reads the same row.
+      const plan = (
+        await post(
+          'admin',
+          '/api/v1/plans',
+          { name: 'Over XTA', sources: [{ kind: 'track', trackId: tracks.XTA }] },
+          201,
+        )
+      ).plan.id as number;
+      const tab = await get('admin', `/api/v1/plans/${plan}/releases`);
+      const group = tab.crossTrack.find((c: { id: number }) => c.id === crossId);
+      expect(
+        group.releases.find((r: { track: { key: string } }) => r.track.key === 'XTB'),
+      ).toMatchObject({ archived: true, overdue: false });
     });
 
     it('[PLN-007] drops an archived release from the state, and a track in the trash for everyone until restored', async () => {
@@ -859,6 +1034,39 @@ describe('releases across tracks (PLN-007)', () => {
         'already_shipped',
       );
       expect((await moveList('ana', '2027-08-01', 409, made.id)).error).toBe('already_shipped');
+    });
+
+    it('[PLN-007] brings back what is out of step on a move to the day it already has', async () => {
+      const a = await addRelease('XTA', 'A 14.0', { releaseDate: '2027-02-02' });
+      const b = await addRelease('XTB', 'B 14.0', { releaseDate: '2027-03-03' });
+      const made = (await post(
+        'ana',
+        '/api/v1/cross-track-releases',
+        { name: 'Straggler', endRule: 'fixed_date', date: '2027-03-03', releaseIds: [a, b] },
+        201,
+      )) as Answer;
+      expect(made.members.find((m) => m.id === a)?.outOfStep).toBe(true);
+      const listed = await moveList('ana', '2027-03-03', 200, made.id);
+      expect(listed.from).toBe('2027-03-03');
+      expect(listed.lines.map((l: Line) => [l.id, l.outcome])).toEqual([
+        [a, 'moves'],
+        [b, 'same'],
+      ]);
+      const moved = await move('ana', '2027-03-03', made.version, 200, made.id);
+      expect(moved.changed).toBe(true);
+      expect(moved.version).toBe(made.version + 1);
+      const after = await read('ana', made.id);
+      expect(after.date).toBe('2027-03-03');
+      expect(after.members.map((m) => [m.releaseDate, m.outOfStep])).toEqual([
+        ['2027-03-03', false],
+        ['2027-03-03', false],
+      ]);
+      expect((await get('ana', `/api/v1/releases/${a}`)).release.releaseDate).toBe('2027-03-03');
+      // With nothing left to bring back, the same day changes nothing and records nothing.
+      const events = await eventCount('cross_track_release.moved');
+      const again = await move('ana', '2027-03-03', after.version, 200, made.id);
+      expect(again.changed).toBe(false);
+      expect(await eventCount('cross_track_release.moved')).toBe(events);
     });
 
     it('[PLN-007] makes the end a fixed date when moved, and clears it for work_complete without moving anything', async () => {

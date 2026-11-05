@@ -371,9 +371,15 @@
 @media (pointer: coarse) {
   .cross-track-row .release-name,
   .cross-track-card a,
-  .cross-track-candidates label {
+  .cross-track-candidates label,
+  .cross-track-dialog label.form-field-inline,
+  .cross-track-group-head h2 a,
+  .release-cross-track,
+  .release-cross-track-all,
+  .release-facts a {
     display: inline-flex;
     align-items: center;
     min-height: var(--hit-target-touch);
+    min-width: var(--hit-target-touch);
   }
 }

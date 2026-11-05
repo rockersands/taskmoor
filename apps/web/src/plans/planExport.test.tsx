@@ -244,7 +244,10 @@ describe('the files of a plan', () => {
     expect(fileName('../../etc/passwd "x"\r\n', 'list', '2026-11-04', 'csv')).toBe(
       'etc-passwd-x-list-2026-11-04.csv',
     );
-    expect(fileName('¿Qué?', 'summary', '2026-11-04', 'csv')).toBe('Qu-summary-2026-11-04.csv');
+    expect(fileName('¿Qué?', 'summary', '2026-11-04', 'csv')).toBe('Qué-summary-2026-11-04.csv');
+    expect(fileName('Planificación', 'summary', '2026-11-04', 'csv')).toBe(
+      'Planificación-summary-2026-11-04.csv',
+    );
     expect(fileName('···', 'summary', '2026-11-04', 'png')).toBe('plan-summary-2026-11-04.png');
   });
 });

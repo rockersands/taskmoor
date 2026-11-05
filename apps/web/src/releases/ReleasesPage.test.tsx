@@ -37,11 +37,11 @@ describe('the releases hub (M1-050)', () => {
     expect(names('Shipped')).toEqual(['1.9']);
     const first = screen.getByRole('link', { name: '2.0' }).closest('li') as HTMLElement;
     expect(within(first).getByText('Overdue')).toBeVisible();
-    expect(within(first).getByText('Due on 2026-10-15')).toBeVisible();
+    expect(within(first).getByText('Due on Oct 15, 2026')).toBeVisible();
     expect(within(first).getByText('1 of 4 tickets closed')).toBeVisible();
     expect(screen.getByRole('link', { name: '2.0' })).toHaveAttribute('href', '#/releases/2');
     expect(screen.getByText('1 archived release')).toBeInTheDocument();
-    expect(screen.getByText('Shipped on 2026-10-01')).toBeVisible();
+    expect(screen.getByText('Shipped on Oct 1, 2026')).toBeVisible();
   });
 
   it('[CORE-016] adds a release, and says when the name is taken', async () => {

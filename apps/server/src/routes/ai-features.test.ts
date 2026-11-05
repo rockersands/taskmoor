@@ -418,6 +418,31 @@ describe('AI features (M1-079)', () => {
     expect(prompt).toContain('<question>\\nmy open bugs updated this week\\n</question>');
   });
 
+  it('[AI-014] [PLN-007] checks a drafted query as the person, whose releases across tracks it may name', async () => {
+    await database.db
+      .insertInto('cross_track_release')
+      .values({
+        workspace_id: 1,
+        owner_id: users.alice?.id as number,
+        name: 'Spring drive',
+        end_rule: 'work_complete',
+      })
+      .execute();
+    const adapter = new FakeAdapter([
+      json({ query: 'crossTrackRelease = "Spring drive"', explanation: 'Its work.' }),
+      json({ query: 'crossTrackRelease = "Spring drive"', explanation: 'Its work.' }),
+      json({ query: 'crossTrackRelease = "Spring drive"', explanation: 'Its work.' }),
+    ]);
+    configured = { adapter, features: {} };
+    const mine = await post('alice', '/api/v1/ai/query', { text: 'the spring drive' });
+    expect(mine.statusCode, mine.body).toBe(200);
+    expect(mine.json()).toMatchObject({ valid: true, repaired: false });
+    // Bob neither owns it nor sees a linked track: for him it does not exist.
+    const his = await post('bob', '/api/v1/ai/query', { text: 'the spring drive' });
+    configured = null;
+    expect(his.json()).toMatchObject({ valid: false, problem: { stage: 'resolve' } });
+  });
+
   it('[AI-014] a query that does not parse gets one repair; one that still fails is returned with the problem, never run', async () => {
     const broken = new FakeAdapter([
       json({ query: 'assignee = = me', explanation: 'x' }),

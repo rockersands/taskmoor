@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type Release, type ReleaseClient, type ReleaseList, releaseClient } from './client';
+import { dayText } from './crossTrackText';
 import { ReleaseState } from './ReleaseState';
 
 export interface ReleasesPageProps {
@@ -20,6 +22,7 @@ export interface ReleasesPageProps {
  */
 export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageProps) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
   const [track, setTrack] = useState<{ id: number; key: string; name: string } | null>(null);
   const [list, setList] = useState<ReleaseList | null>(null);
@@ -113,9 +116,11 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
           </div>
           <span className="board-meta">
             {r.shipped && r.shippedAt
-              ? t('releases.shippedOn', { date: r.releaseDate ?? r.shippedAt.slice(0, 10) })
+              ? t('releases.shippedOn', {
+                  date: dayText(intl, r.releaseDate ?? r.shippedAt.slice(0, 10)),
+                })
               : r.releaseDate
-                ? t('releases.dueOn', { date: r.releaseDate })
+                ? t('releases.dueOn', { date: dayText(intl, r.releaseDate) })
                 : t('releases.noDate')}
           </span>
           <span className="release-progress">

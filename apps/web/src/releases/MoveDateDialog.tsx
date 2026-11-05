@@ -2,7 +2,12 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { ModalDialog } from '../shell/ModalDialog';
-import type { CrossTrackClient, MoveAnswer, MoveLine } from './crossTrackClient';
+import {
+  type CrossTrackClient,
+  type MoveAnswer,
+  type MoveLine,
+  UNREACHABLE,
+} from './crossTrackClient';
 import { dayText, MOVE_REASONS } from './crossTrackText';
 
 export interface MoveDateDialogProps {
@@ -20,7 +25,9 @@ export interface MoveDateDialogProps {
  * Moving a release across tracks' date (PLN-007 (2)): the new day, then the list of what it would
  * do, which changes nothing, one line per release with its old and new day and its outcome in words,
  * then the move. Each release moves only if the person could change it, and the rest stay and read
- * out of step. The result stays open, with focus on its heading.
+ * out of step. The result stays open, with focus on its heading. A move to the day it already has
+ * brings back the releases out of step; with none to bring, it changes nothing and offers no move.
+ * One line, always in the page, says what the list adds up to, so it is read out when it changes.
  */
 export function MoveDateDialog({ id, name, date, client, onMoved, onClose }: MoveDateDialogProps) {
   const t = useT();
@@ -42,7 +49,9 @@ export function MoveDateDialog({ id, name, date, client, onMoved, onClose }: Mov
       ? t('crossTrack.move.alreadyShipped')
       : code === 'version_conflict'
         ? t('crossTrack.move.stale')
-        : t('crossTrack.move.failed');
+        : code === UNREACHABLE
+          ? t('crossTrack.unreachable')
+          : t('crossTrack.move.failed');
 
   const listChanges = async () => {
     if (!day) return;
@@ -78,7 +87,19 @@ export function MoveDateDialog({ id, name, date, client, onMoved, onClose }: Mov
 
   const shown = done ?? list;
   const moves = shown?.lines.filter((l) => l.outcome === 'moves').length ?? 0;
-  const unchanged = list !== null && list.from === list.to;
+  const sameDay = list !== null && list.from === list.to;
+  const unchanged = sameDay && moves === 0;
+  const summary = done
+    ? t('crossTrack.move.done', { count: moves })
+    : !list
+      ? ''
+      : unchanged
+        ? t('crossTrack.move.sameDay')
+        : moves === 0
+          ? t('crossTrack.move.nothingFollows')
+          : sameDay
+            ? t('crossTrack.move.sameDayMoves', { count: moves })
+            : t('crossTrack.move.listed', { count: moves });
 
   const lineText = (line: MoveLine, happened: boolean) => {
     const from = line.from ? dayText(intl, line.from) : t('crossTrack.move.noDay');
@@ -137,11 +158,11 @@ export function MoveDateDialog({ id, name, date, client, onMoved, onClose }: Mov
           </button>
         </form>
       )}
+      <p className="board-hint" role="status">
+        {summary}
+      </p>
       {shown && (
-        <div role="status">
-          {done && <p>{t('crossTrack.move.done', { count: moves })}</p>}
-          {unchanged && !done && <p>{t('crossTrack.move.sameDay')}</p>}
-          {!unchanged && !done && moves === 0 && <p>{t('crossTrack.move.nothingFollows')}</p>}
+        <>
           <ul className="cross-track-lines">
             {shown.lines.map((line) => (
               <li key={line.id} data-outcome={line.outcome}>
@@ -157,7 +178,7 @@ export function MoveDateDialog({ id, name, date, client, onMoved, onClose }: Mov
               {t('crossTrack.move.hidden', { count: shown.hidden.releases })}
             </p>
           )}
-        </div>
+        </>
       )}
       {problem && (
         <p className="board-problem" role="alert">

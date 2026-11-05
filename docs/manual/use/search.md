@@ -178,7 +178,7 @@ to **Automatic**.
 | `assignee`, `requester`, `creator`, `follower`, `voter` | People |
 | `followers`, `votes` | How many follow or voted |
 | `labels`, `area`, `targetRelease`, `foundInRelease` | Labels, areas and releases |
-| `crossTrackRelease` | A release across tracks, by id or name: the target tickets of its linked releases. Only `=`, `!=`, `IN` and `NOT IN`, with no history and no ordering. One you may not see reads exactly as one that does not exist, and a name shared by several means all of those you see |
+| `crossTrackRelease` | A release across tracks, by id or name: the target tickets of its linked releases. Only `=`, `!=`, `IN` and `NOT IN`, with no history and no ordering. One you may not see reads exactly as one that does not exist, and a name shared by several means all of those you see. A bare number is read as an id first, a quoted one as a name first. Only linked releases of tracks you see count, so a ticket you see through a grant in another track is not found |
 | `created`, `updated`, `closed` | Date and time |
 | `due`, `start` | Due and start day |
 | `sprint` | Every sprint the ticket is or was in, by name |

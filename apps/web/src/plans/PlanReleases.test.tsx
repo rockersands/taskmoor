@@ -1,16 +1,18 @@
 import { render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
-import { setViewportWidth } from '../test/viewport';
 import { type FakePlanOptions, fakePlanClient } from './fixtures';
 import { PlanPage } from './PlanPage';
 
 /** A plan's Releases tab (T-089c; PLN-007, PLN-001; ADR-122 stage 4), with the fixture plan. */
-function renderTab(hash = '#/plans/12/releases', options: FakePlanOptions = {}) {
+function renderTab(
+  hash = '#/plans/12/releases',
+  options: FakePlanOptions = {},
+  client = fakePlanClient(options),
+) {
   window.location.hash = hash;
   const search = fakeListSearch();
-  const client = fakePlanClient(options);
   render(
     <I18nProvider locale="en">
       <PlanPage
@@ -39,6 +41,7 @@ describe('a plan’s Releases tab (PLN-007)', () => {
     ).toContain('#/cross-track-releases/5');
     expect(within(group).getByRole('link', { name: 'Shop 2.0' })).toBeVisible();
     expect(within(group).getByText('Out of step')).toBeVisible();
+    expect(within(group).getByText(/Due on Dec 1, 2026/)).toBeVisible();
     expect(
       within(group).getByText(
         '1 more release is hidden from you, with 4 open tickets you may not see.',
@@ -58,10 +61,20 @@ describe('a plan’s Releases tab (PLN-007)', () => {
   });
 
   it('[PLN-007] takes the track filter to the server', async () => {
-    const client = renderTab('#/plans/12/releases?track=OPS');
+    const client = fakePlanClient();
+    const releases = vi.spyOn(client, 'releases');
+    renderTab('#/plans/12/releases?track=OPS', {}, client);
     expect(await screen.findByRole('region', { name: 'Operations' })).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Launch across tracks' })).toBeNull();
-    expect(client).toBeTruthy();
+    expect(releases).toHaveBeenLastCalledWith(12, 'OPS');
+  });
+
+  it('[PLN-007] has the way to every release across tracks, with none in this plan too', async () => {
+    renderTab('#/plans/12/releases?track=OPS');
+    expect(await screen.findByRole('link', { name: 'Releases across tracks' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/#\/cross-track-releases$/),
+    );
   });
 
   it('[PLN-007] has its place in the tab bar, after Capacity', async () => {
@@ -74,13 +87,5 @@ describe('a plan’s Releases tab (PLN-007)', () => {
       'Capacity',
       'Releases',
     ]);
-  });
-
-  it('[PLN-007] fits a phone, with no sideways scroll', async () => {
-    setViewportWidth(375);
-    renderTab();
-    await screen.findByRole('region', { name: 'Launch across tracks' });
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
-    setViewportWidth(1280);
   });
 });

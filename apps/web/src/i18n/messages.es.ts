@@ -6626,11 +6626,11 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.preview.reason.computed':
     '{field}: su valor se calcula, así que el formulario de crear lo omite.',
   'purpose.crossTracks':
-    'Las versiones de varias tracks alineadas en un mismo final, y cuánto ha avanzado su trabajo.',
+    'Las versiones de varios tracks alineadas en un mismo final, y cuánto ha avanzado su trabajo.',
   'purpose.crossTrack':
     'Una versión entre tracks: su final, sus versiones enlazadas y cuánto ha avanzado su trabajo.',
   'empty.crossTrack.upcoming':
-    'Una alinea las versiones de varias tracks en un mismo final. Crea una para empezar.',
+    'Una alinea las versiones de varios tracks en un mismo final. Crea una para empezar.',
   'empty.crossTrack.shipped': 'Una aparece aquí cuando todas sus versiones se han publicado.',
   'empty.crossTrack.candidates':
     'Puedes enlazar versiones próximas de tracks que administras y que no estén en otra versión entre tracks.',
@@ -6638,11 +6638,11 @@ export const messagesEs: Record<MessageId, string> = {
   'empty.crossTrack.tickets': 'Su trabajo son los tickets objetivo de sus versiones enlazadas.',
   'empty.release.crossTrack': 'Ninguna que puedas ver admite este track.',
   'empty.plans.releases':
-    'Aquí aparecen las versiones de las tracks del plan. Las planifican los administradores de cada track.',
-  'empty.plans.releases.nothing': 'No puedes ver ningun track de este plan.',
+    'Aquí aparecen las versiones de los tracks del plan. Las planifican los administradores de cada track.',
+  'empty.plans.releases.nothing': 'No puedes ver ningún track de este plan.',
   'crossTrack.title': 'Versiones entre tracks',
   'crossTrack.about':
-    'Cada versión sigue siendo de su track, con sus aprobaciones, publicación y notas. Nada se publica solo, y solo ves lo que puedes ver de las tracks enlazadas; lo demás solo se cuenta.',
+    'Cada versión sigue siendo de su track, con sus aprobaciones, publicación y notas. Nada se publica solo, y solo ves lo que puedes ver de los tracks enlazados; lo demás solo se cuenta.',
   'crossTrack.new': 'Nueva versión entre tracks',
   'crossTrack.new.close': 'Cerrar',
   'crossTrack.new.name': 'Nombre',
@@ -6654,6 +6654,7 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.new.noneToLink': 'No hay versiones que enlazar',
   'crossTrack.new.pickOne': 'Elige al menos una versión.',
   'crossTrack.new.truncated': 'La lista llega hasta 500. Fíltrala para encontrar el resto.',
+  'crossTrack.new.noMatch': 'Ninguna versión coincide con este filtro.',
   'crossTrack.new.noMove':
     'Enlazar no mueve ninguna fecha: una versión en otro día aparece desalineada hasta que alguien la mueva.',
   'crossTrack.new.submit': 'Crearla',
@@ -6674,6 +6675,9 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.noneUpcoming': 'No hay ninguna versión entre tracks próxima.',
   'crossTrack.noneShipped': 'Aún no se ha publicado ninguna.',
   'crossTrack.more': 'Mostrar más',
+  'crossTrack.moreFailed': 'No se pudieron leer las siguientes. Inténtalo de nuevo.',
+  'crossTrack.unreachable':
+    'No se pudo contactar con el servidor, así que puede que esto no se haya hecho. Revisa tu conexión y esta página, y vuelve a intentarlo.',
   'crossTrack.toList': 'Todas las versiones entre tracks',
   'crossTrack.hiddenReleases':
     '{count, plural, one {# versión oculta para ti} other {# versiones ocultas para ti}}',
@@ -6735,6 +6739,10 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.move.nothingFollows':
     'Ninguna versión puede seguir esta fecha. La versión entre tracks se mueve igualmente, y ellas aparecen desalineadas.',
   'crossTrack.move.sameDay': 'Ya termina en esta fecha, así que nada cambia.',
+  'crossTrack.move.sameDayMoves':
+    '{count, plural, one {Ya termina en esta fecha: # versión desalineada vuelve a ella.} other {Ya termina en esta fecha: # versiones desalineadas vuelven a ella.}}',
+  'crossTrack.move.listed':
+    '{count, plural, one {# versión se movería.} other {# versiones se moverían.}}',
   'crossTrack.move.submit':
     '{count, plural, =0 {Mover solo la versión entre tracks} one {Mover # versión} other {Mover # versiones}}',
   'crossTrack.move.doneTitle': '{name} ahora termina el {date}',
@@ -6746,12 +6754,15 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.move.alreadyShipped':
     'Todas sus versiones se han publicado, así que su fecha ya no se mueve.',
   'crossTrack.move.failed': 'No se pudo mover la fecha.',
+  'crossTrack.edit.stale':
+    'Alguien la cambió mientras tanto. Lo que escribiste sigue aquí: revísalo y guarda de nuevo.',
   'release.warning.outOfStep': 'Desalineada con {name}, que termina el {date}.',
   'release.crossTrack.fact': 'Versión entre tracks',
   'release.crossTrack.align': 'Alinear al {date}',
   'release.crossTrack.aligned': 'Esta versión ahora termina el {date}.',
   'release.crossTrack.alignFailed': 'No se pudo cambiar la fecha.',
   'release.crossTrack.add': 'Añadir a una versión entre tracks…',
+  'release.crossTrack.listFailed': 'No se pudieron leer las versiones entre tracks.',
   'release.crossTrack.remove': 'Quitar de {name}',
   'release.crossTrack.linked': 'Esta versión ahora está enlazada a {name}.',
   'release.crossTrack.unlinked': 'Esta versión ya no está enlazada a {name}. Su fecha no cambió.',

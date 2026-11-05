@@ -1,8 +1,16 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { EmptyState } from '../shell/EmptyState';
 import { ModalDialog } from '../shell/ModalDialog';
-import type { Candidate, CrossTrackClient, CrossTrackEndRule } from './crossTrackClient';
+import {
+  type Candidate,
+  type CrossTrackClient,
+  type CrossTrackEndRule,
+  UNREACHABLE,
+} from './crossTrackClient';
+import { dayText } from './crossTrackText';
+import { candidateMatches, useCandidates } from './useCandidates';
 
 export interface NewCrossTrackDialogProps {
   client: CrossTrackClient;
@@ -18,38 +26,21 @@ export interface NewCrossTrackDialogProps {
  */
 export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDialogProps) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
-  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
-  const [truncated, setTruncated] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const { candidates, truncated, failed, filter, setFilter } = useCandidates(client);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [endRule, setEndRule] = useState<CrossTrackEndRule>('fixed_date');
   const [date, setDate] = useState('');
-  const [filter, setFilter] = useState('');
   const [picked, setPicked] = useState<ReadonlySet<number>>(new Set());
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    client.candidates().then(
-      (c) => {
-        setCandidates(c.releases);
-        setTruncated(c.truncated);
-      },
-      () => setFailed(true),
-    );
-  }, [client]);
-
-  const shown = useMemo(() => {
-    const wanted = filter.trim().toLowerCase();
-    return (candidates ?? []).filter(
-      (c) =>
-        wanted === '' ||
-        `${c.track.key} ${c.track.name} ${c.name}`.toLowerCase().includes(wanted) ||
-        picked.has(c.id),
-    );
-  }, [candidates, filter, picked]);
+  const shown = useMemo(
+    () => (candidates ?? []).filter((c) => candidateMatches(c, filter) || picked.has(c.id)),
+    [candidates, filter, picked],
+  );
 
   /** One release per track: ticking another of the same track replaces it. */
   const toggle = (candidate: Candidate) => {
@@ -86,7 +77,9 @@ export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDi
     setProblem(
       answer.code === 'release_taken' || answer.code === 'track_taken'
         ? t('crossTrack.new.taken')
-        : t('crossTrack.new.failed'),
+        : answer.code === UNREACHABLE
+          ? t('crossTrack.unreachable')
+          : t('crossTrack.new.failed'),
     );
   };
 
@@ -169,7 +162,7 @@ export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDi
           {candidates === null && !failed && (
             <p className="report-loading">{t('reports.loading')}</p>
           )}
-          {candidates?.length === 0 && (
+          {candidates?.length === 0 && !failed && (
             <EmptyState compact title={t('crossTrack.new.noneToLink')}>
               {t('empty.crossTrack.candidates')}
             </EmptyState>
@@ -185,6 +178,7 @@ export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDi
                   onChange={(event) => setFilter(event.target.value)}
                 />
               </label>
+              {shown.length === 0 && <p className="board-hint">{t('crossTrack.new.noMatch')}</p>}
               <ul className="cross-track-candidates">
                 {shown.map((c) => (
                   <li key={c.id}>
@@ -199,7 +193,7 @@ export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDi
                         <span className="board-meta">
                           {' '}
                           {c.releaseDate
-                            ? t('releases.dueOn', { date: c.releaseDate })
+                            ? t('releases.dueOn', { date: dayText(intl, c.releaseDate) })
                             : t('releases.noDate')}
                         </span>
                       </span>

@@ -426,10 +426,6 @@
   margin: 0;
 }
 
-.plan-download-note:empty {
-  display: none;
-}
-
 .plan-duplicate-dialog h2 {
   margin-block-start: 0;
 }

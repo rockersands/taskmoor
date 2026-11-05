@@ -451,7 +451,8 @@ have moved themselves.
 - In one transaction: lock the row, compare `version` (stale answers 409, the page lists again),
   lock the releases by id, change them, then the day. `PATCH /releases/:id` locks only its release,
   so the two cannot deadlock. Any change of members bumps `version`, so a confirmed list always
-  matches what happens. All shipped answers 409 `already_shipped`. The same day changes nothing and
+  matches what happens. All shipped answers 409 `already_shipped`. The same day brings back the
+  releases out of step the mover may change (see As built); with none, it changes nothing and
   records nothing. A move also makes the rule `fixed_date`; `PATCH` with `endRule: work_complete`
   clears the day and moves nothing.
 
@@ -487,7 +488,8 @@ have moved themselves.
   does (the `ticket_release` relation, target role), so the compiler gains no path and the viewer's
   filter applies as ever. **Binding reads only the ones the person sees:** another's id or name
   answers `unknown_value`, word for word as one that does not exist. A name shared by several means
-  all of them the person sees. No `IS EMPTY` (it would mark a ticket seen through a grant as linked
+  all of them the person sees. A bare number is an id before a name, and a quoted one a name before
+  an id, and it binds only to linked releases of tracks the person sees (see As built). No `IS EMPTY` (it would mark a ticket seen through a grant as linked
   to something hidden), no ordering, no history, no column in results. The field goes in section
   1.5 of file 01b; it has no compatibility name.
 - **A plan:** a **Releases** tab (`GET /plans/:id/releases?track=`), after Capacity: the releases
@@ -643,6 +645,38 @@ release of a track they may not see; only how many, and its open tickets as one 
 - **Dates read through the person's locale** ("Dec 1, 2026" in English), not always "1 Dec 2026".
 - **An upgrade fixture corrected:** 0105's counted every close reason, which only showed once a
   migration came after it.
+
+The first independent review (2026-11-05) changed these:
+
+- **A ticket seen through a grant is never tied to it.** The field binds only to linked releases of
+  tracks the person sees, and the page's seen counts add up only those releases. Otherwise someone
+  who sees one linked track and holds a grant on a ticket of a hidden one finds that ticket under
+  `=`, `!=`, `IN` and `NOT IN`, on the page's list and in its counts, which ties a hidden release to
+  this one: the reason there is no `IS EMPTY`. Everyone who sees it is told the same numbers.
+- **An id cannot be taken over by a name.** The page reads `crossTrackRelease = <id>`, and names are
+  neither unique nor kept from being numbers, so a name read first let any track's administrator
+  replace the stage bar, the warnings and the tickets on another's page. A bare number is now an id
+  before a name, and a quoted one a name before an id. A saved query with a bare number that is both
+  now means the id.
+- **The same day brings back what is out of step.** The design said the same day changes nothing, but
+  linking moves no date, so one made on a fixed day could start out of step with no way to bring its
+  releases to that day from the dialog except by moving away and back. Now only a move with nothing
+  to bring back changes nothing. **The list and the move agree:** the list said "moves" for a line the
+  move would not touch.
+- **A release of an archived track reads as archived on its own row**, not only in the state, and
+  never overdue, so a row and the header cannot disagree.
+- **What may be linked can be narrowed by a word on the server** (`candidates?q=`, track key, track
+  name or release name, with `%` and `_` as plain text). The list stops at 500 ordered by track key,
+  so a filter of what was loaded could never reach the rest. The dialogs ask the server only when the
+  list said it stopped short, and keep what was already ticked.
+- **Controls follow what they would do:** `viewer.mayLink` says whether someone has a track to link
+  from, and **Move date** goes once all have shipped.
+- **No answer is said in words.** The client's changes never reject: a dropped connection answers
+  `unreachable`, and the page says the change may not have happened.
+- **The formula guard also covers full-width marks and quotes a semicolon**, where a semicolon is the
+  list separator, as in Spanish settings. Both exports and the importer's reading use the shared rule.
+  Neither was tried in a spreadsheet.
+- **File names keep letters of any language.**
 
 #### Questions for the user (the design takes the first answer each time)
 
@@ -875,6 +909,10 @@ touch drags), and how the image looks, which needs a person to look at it.
 4. **The image:** the Timeline as PNG, 400 rows; or more views, more rows, or SVG too.
 5. **A link's `assignee=me`:** whoever opens it; or the person who copied it.
 6. **The requirement number:** PLN-014, or the coordinator's choice.
+7. **A byte-order mark on the CSV files:** none, like the existing exports; or one, so that Excel on
+   Windows reads accented headers such as "Versión" when the file is opened by a double-click. A
+   Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
+   Excel.
 
 ### Later stages
 

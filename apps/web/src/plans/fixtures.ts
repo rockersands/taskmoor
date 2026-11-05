@@ -311,7 +311,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       const ops = { id: 2, key: 'OPS', name: 'Operations' };
       const progress = { tickets: 4, closed: 1, open: 3 };
       const plain = { shipped: false, archived: false, overdue: false, progress };
-      const gathered = track
+      const wanted = (key: string) => !track || track.toUpperCase() === key;
+      const gathered = !wanted('SHOP')
         ? []
         : [
             {
@@ -344,12 +345,14 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
           ];
       return {
         crossTrack: gathered,
-        tracks: [
-          {
-            track: ops,
-            releases: [{ id: 23, name: 'Ops 1.5', releaseDate: '2027-01-15', ...plain }],
-          },
-        ],
+        tracks: wanted('OPS')
+          ? [
+              {
+                track: ops,
+                releases: [{ id: 23, name: 'Ops 1.5', releaseDate: '2027-01-15', ...plain }],
+              },
+            ]
+          : [],
         truncated: false,
       };
     },

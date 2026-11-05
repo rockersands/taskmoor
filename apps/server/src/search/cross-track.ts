@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import type { Kysely, Transaction } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 
@@ -102,13 +102,16 @@ export async function seenLinkedTracks(
   return seen;
 }
 
-/** The releases across tracks the person sees, by id and name. Without a sight, none. */
+/**
+ * The releases across tracks the person sees, by id and name, each with its linked releases of
+ * tracks they see: the hidden ones are only ever counted. Without a sight, none.
+ */
 export async function seenCrossTrackReleases(
   db: Db,
   workspaceId: number,
   userId: number | null,
   sight: CrossTrackSight | undefined,
-): Promise<{ id: number; name: string }[]> {
+): Promise<{ id: number; name: string; releaseIds: number[] }[]> {
   if (!sight) return [];
   const rows = await db
     .selectFrom('cross_track_release')
@@ -117,19 +120,22 @@ export async function seenCrossTrackReleases(
     .execute();
   if (rows.length === 0) return [];
   const tracks = await seenLinkedTracks(db, workspaceId, sight);
-  if (tracks === 'all') return rows.map((r) => ({ id: r.id, name: r.name }));
-  const members =
-    tracks.size === 0
-      ? []
-      : await db
-          .selectFrom('cross_track_release_member')
-          .select('cross_track_release_id')
-          .distinct()
-          .where('workspace_id', '=', workspaceId)
-          .where('track_id', 'in', [...tracks])
-          .execute();
-  const seen = new Set(members.map((m) => m.cross_track_release_id));
+  let members = db
+    .selectFrom('cross_track_release_member')
+    .select(['cross_track_release_id', 'release_id'])
+    .where('workspace_id', '=', workspaceId);
+  if (tracks !== 'all') {
+    if (tracks.size === 0) members = members.where(sql<boolean>`false`);
+    else members = members.where('track_id', 'in', [...tracks]);
+  }
+  const linked = new Map<number, number[]>();
+  for (const m of await members.execute()) {
+    linked.set(m.cross_track_release_id, [
+      ...(linked.get(m.cross_track_release_id) ?? []),
+      m.release_id,
+    ]);
+  }
   return rows
-    .filter((r) => r.owner_id === userId || seen.has(r.id))
-    .map((r) => ({ id: r.id, name: r.name }));
+    .filter((r) => tracks === 'all' || r.owner_id === userId || linked.has(r.id))
+    .map((r) => ({ id: r.id, name: r.name, releaseIds: linked.get(r.id) ?? [] }));
 }

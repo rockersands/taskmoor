@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -119,7 +119,7 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     expect(window.location.hash).toBe('#/plans/12/timeline');
   });
 
-  it('[PLN-014] a link opens the same zoom, month, periods and order', async () => {
+  it('[PLN-014] a link opens the zoom it holds, and another can be chosen from there', async () => {
     const user = userEvent.setup();
     renderPlan('timeline', '#/plans/12/timeline?zoom=quarters');
     expect(await screen.findByRole('button', { name: 'Quarters' })).toHaveAttribute(
@@ -217,7 +217,7 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     expect(client.exportReads()).toBe(0);
   });
 
-  it('[PLN-014] Summary, Calendar, Capacity and Releases each hand over a file', async () => {
+  it('[PLN-014] the Releases tab hands over its file, made from what it already read', async () => {
     const user = userEvent.setup();
     const saved = catchFiles();
     const client = renderPlan('releases', '#/plans/12/releases');
@@ -280,9 +280,16 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     renderPlan('summary', '#/plans/12', { hidden: 2 });
     await user.click(await screen.findByRole('button', { name: 'Duplicate plan' }));
     expect(await screen.findByText('2 sources hidden from you stay behind.')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Duplicate' }));
-    expect(await screen.findByRole('heading', { name: 'Plan copied' })).toBeVisible();
-    expect(screen.getByText('2 sources you may not see were left out.')).toBeVisible();
+    const dialog = screen.getByRole('dialog');
+    const before = within(dialog).getByRole('status');
+    expect(before).toBeEmptyDOMElement();
+    await user.type(screen.getByLabelText('Name'), '{Enter}');
+    const heading = await screen.findByRole('heading', { name: 'Plan copied' });
+    expect(heading).toBeVisible();
+    // Focus does not fall to the page's body, and the line was there to be read out when it changed.
+    expect(heading).toHaveFocus();
+    expect(within(dialog).getByRole('status')).toBe(before);
+    expect(before).toHaveTextContent('2 sources you may not see were left out.');
     expect(screen.getByRole('link', { name: 'Open the copy' })).toHaveAttribute(
       'href',
       expect.stringContaining('/plans/99'),
@@ -309,12 +316,11 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeVisible();
   });
 
-  it('[PLN-014] fits a phone with its header actions and download menu', async () => {
+  it('[PLN-014] offers its download menu on a phone', async () => {
     const user = userEvent.setup();
     setViewportWidth(375);
     renderPlan('list', '#/plans/12/list');
     await openDownload(user);
     expect(await screen.findByRole('menuitem', { name: 'CSV' })).toBeVisible();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

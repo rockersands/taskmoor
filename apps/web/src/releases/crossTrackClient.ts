@@ -77,7 +77,8 @@ export interface CrossTrackRelease {
   hidden: HiddenWork;
   tickets: ReleaseTicket[];
   truncated: boolean;
-  viewer: { mayManage: boolean };
+  /** Who moves, edits and deletes; and whether they have a track of their own to link from. */
+  viewer: { mayManage: boolean; mayLink: boolean };
 }
 
 /** An upcoming unlinked release of a track the person administers: what they may link. */
@@ -132,15 +133,22 @@ export interface CrossTrackEdit {
   version: number;
 }
 
-/** A change's answer: done with what it says, or the server's refusal. */
+/**
+ * A change's answer: done with what it says, or the server's refusal, or `unreachable` when no
+ * answer came, so the change may or may not have happened. It never rejects.
+ */
 export type Saved<T> = { ok: true; value: T } | { ok: false; code: string; version?: number };
+
+/** No answer came: the connection dropped, or the server is down. */
+export const UNREACHABLE = 'unreachable';
 
 export interface CrossTrackClient {
   list(
     state: 'upcoming' | 'shipped',
     cursor?: string,
   ): Promise<{ releases: CrossTrackRow[]; next: string | null }>;
-  candidates(): Promise<{ releases: Candidate[]; truncated: boolean }>;
+  /** What the person may link; a word narrows it on the server, past where the list stops. */
+  candidates(q?: string): Promise<{ releases: Candidate[]; truncated: boolean }>;
   get(id: number): Promise<CrossTrackRelease>;
   create(input: NewCrossTrack): Promise<Saved<CrossTrackRelease>>;
   update(id: number, input: CrossTrackEdit): Promise<Saved<CrossTrackRelease>>;
@@ -156,7 +164,7 @@ async function saved<T>(work: () => Promise<T>): Promise<Saved<T>> {
   try {
     return { ok: true, value: await work() };
   } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
+    if (!(error instanceof ApiError)) return { ok: false, code: UNREACHABLE };
     const body = error.body as { version?: number } | null;
     return {
       ok: false,
@@ -171,7 +179,8 @@ const BASE = '/cross-track-releases';
 export const crossTrackClient: CrossTrackClient = {
   list: (state, cursor) =>
     api(`${BASE}?${new URLSearchParams({ state, ...(cursor ? { cursor } : {}) }).toString()}`),
-  candidates: () => api(`${BASE}/candidates`),
+  candidates: (q) =>
+    api(`${BASE}/candidates${q ? `?${new URLSearchParams({ q }).toString()}` : ''}`),
   get: (id) => api(`${BASE}/${id}`),
   create: (input) => saved(() => api(BASE, { method: 'POST', body: input })),
   update: (id, input) => saved(() => api(`${BASE}/${id}`, { method: 'PATCH', body: input })),

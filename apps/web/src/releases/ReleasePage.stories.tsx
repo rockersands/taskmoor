@@ -102,6 +102,16 @@ export const OnATouchScreen: Story = {
   },
 };
 
+/** A finger reaches the release across tracks in its facts (ADR-033). */
+export const LinkedOnATouchScreen: Story = {
+  args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: 'Spring launch' });
+    await expect(tooSmallForAFinger(canvasElement, ['.release-facts a'])).toEqual([]);
+  },
+};
+
 /** In a release across tracks on another day: said in words, with Align for its administrators. */
 export const OutOfStep: Story = {
   args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },

@@ -56,6 +56,14 @@ describe('reading CSV (M1-098)', () => {
     );
   });
 
+  it('[IMP-012] takes back the guard an export put on a full-width formula mark', () => {
+    for (const text of ['＝1+1', '＋1', '－1', '＠team', '=1+1']) {
+      expect(cellText(csvField(text))).toBe(text);
+    }
+    // An apostrophe someone typed before anything else is theirs.
+    expect(cellText("'＿x")).toBe("'＿x");
+  });
+
   it('[IMP-012] reads dates, instants and durations', () => {
     expect(dayOf('2026-02-28')).toBe('2026-02-28');
     expect(dayOf('2026-02-30')).toBeNull();

@@ -4,6 +4,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage } from './PlanPage';
 
@@ -272,6 +273,21 @@ export const Releases: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('region', { name: 'Launch across tracks' })).toBeVisible();
     await expect(canvas.getByText('Out of step')).toBeVisible();
+  },
+};
+
+/** A finger reaches a group's heading and each release on the Releases tab (ADR-033). */
+export const ReleasesOnATouchScreen: Story = {
+  args: { section: 'releases' },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('region', { name: 'Launch across tracks' });
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.cross-track-group-head h2 a',
+        '.plan-releases .release-name',
+      ]),
+    ).toEqual([]);
   },
 };
 

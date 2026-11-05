@@ -396,6 +396,10 @@ class Resolver {
         if (id === undefined) throw fail(`Unknown track "${key}"`, v.span);
         return { type: 'number', value: id };
       }
+      case 'crossTrackRelease':
+        // A bare number is an id; quoted, it is a name, so the two can be told apart (PLN-007).
+        if (v.kind === 'number') return { type: 'number', value: v.value };
+        return { type: 'text', value: this.text(v) };
       default:
         return { type: 'text', value: this.text(v) };
     }

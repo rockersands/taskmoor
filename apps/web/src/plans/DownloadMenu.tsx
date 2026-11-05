@@ -38,14 +38,19 @@ export function DownloadMenu({ items, notes = [] }: DownloadMenuProps) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  /**
+   * A status line is read out when it changes, so the same words twice would say nothing the second
+   * time: a space no one sees makes them new.
+   */
+  const say = (words: string) => setStatus((now) => (now === words ? `${words}\u00a0` : words));
 
   const run = async (item: DownloadItem & { make: () => Promise<string> }) => {
     close(true);
     setBusy(true);
     setProblem(null);
-    setStatus(t('plans.download.working', { label: item.label }));
+    say(t('plans.download.working', { label: item.label }));
     try {
-      setStatus(t('plans.download.done', { name: await item.make() }));
+      say(t('plans.download.done', { name: await item.make() }));
     } catch {
       setStatus('');
       setProblem(item.failed ?? t('plans.download.failed'));
@@ -100,7 +105,7 @@ export function DownloadMenu({ items, notes = [] }: DownloadMenuProps) {
                     onClick={() => {
                       close(true);
                       setProblem(null);
-                      setStatus(t('plans.download.started', { label: item.label }));
+                      say(t('plans.download.started', { label: item.label }));
                     }}
                   >
                     {item.label}

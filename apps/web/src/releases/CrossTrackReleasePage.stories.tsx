@@ -93,6 +93,17 @@ export const AtPhoneWidth: Story = {
   },
 };
 
+/** A finger reaches the choice to end when its work completes (ADR-033). */
+export const EditOnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await expect(tooSmallForAFinger(dialog, ['label.form-field-inline'])).toEqual([]);
+  },
+};
+
 /** A finger reaches each linked release and each ticket (ADR-033). */
 export const OnATouchScreen: Story = {
   beforeEach: asOnATouchScreen,

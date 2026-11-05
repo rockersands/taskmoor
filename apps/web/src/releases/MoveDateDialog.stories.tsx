@@ -50,6 +50,29 @@ export const Moved: Story = {
   },
 };
 
+/** The day it already has, with a release out of step: it comes back, and the list says so. */
+export const BackOnItsDay: Story = {
+  args: { client: fakeCrossTrackClient({ administersAll: true }) },
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Show what changes' }));
+    await expect(
+      await within(dialog).findByRole('button', { name: 'Move 1 release' }),
+    ).toBeVisible();
+    await expect(within(dialog).getByRole('status')).toHaveTextContent(/comes back to it/);
+  },
+};
+
+/** The day it already has, with nothing to bring back: nothing changes, and no move is offered. */
+export const SameDay: Story = {
+  args: { client: fakeCrossTrackClient() },
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Show what changes' }));
+    await expect(await within(dialog).findByText(/so nothing changes/)).toBeVisible();
+  },
+};
+
 /** All shipped: its date no longer moves. */
 export const AlreadyShipped: Story = {
   args: { client: fakeCrossTrackClient({ shipped: true }) },

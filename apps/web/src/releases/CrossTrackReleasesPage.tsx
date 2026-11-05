@@ -28,6 +28,7 @@ export function CrossTrackReleasesPage({ client = crossTrackClient }: CrossTrack
     shipped: null,
   });
   const [failed, setFailed] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
@@ -45,10 +46,16 @@ export function CrossTrackReleasesPage({ client = crossTrackClient }: CrossTrack
   const more = async (state: 'upcoming' | 'shipped') => {
     const cursor = next[state];
     if (!cursor) return;
-    const page = await client.list(state, cursor);
-    const add = state === 'upcoming' ? setUpcoming : setShipped;
-    add((rows) => [...(rows ?? []), ...page.releases]);
-    setNext((n) => ({ ...n, [state]: page.next }));
+    setMoreFailed(false);
+    try {
+      const page = await client.list(state, cursor);
+      const add = state === 'upcoming' ? setUpcoming : setShipped;
+      add((rows) => [...(rows ?? []), ...page.releases]);
+      setNext((n) => ({ ...n, [state]: page.next }));
+    } catch {
+      // The button stays, so the person can try again.
+      setMoreFailed(true);
+    }
   };
 
   const header = (
@@ -85,6 +92,11 @@ export function CrossTrackReleasesPage({ client = crossTrackClient }: CrossTrack
   return (
     <section className="page cross-track-page" aria-labelledby={`${id}-title`}>
       {header}
+      {moreFailed && (
+        <p className="board-problem" role="alert">
+          {t('crossTrack.moreFailed')}
+        </p>
+      )}
       <section className="glass-card release-group" aria-labelledby={`${id}-upcoming`}>
         <h2 id={`${id}-upcoming`}>{t('releases.upcoming')}</h2>
         {upcoming.length === 0 ? (

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { NewCrossTrackDialog } from './NewCrossTrackDialog';
 
@@ -17,6 +18,27 @@ export const WithCandidates: Story = {
   play: async () => {
     const dialog = await within(document.body).findByRole('dialog');
     await expect(await within(dialog).findByRole('checkbox', { name: /Shop 2\.1/ })).toBeVisible();
+  },
+};
+
+/** A list that stops at its limit: a word goes to the server for the rest. */
+export const StopsShort: Story = {
+  args: { client: fakeCrossTrackClient({ stopsShort: true }) },
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog');
+    await expect(await within(dialog).findByText(/The list stops at 500/)).toBeVisible();
+  },
+};
+
+/** A finger reaches each way to end it and each release to tick (ADR-033). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog');
+    await within(dialog).findByRole('checkbox', { name: /Shop 2\.1/ });
+    await expect(
+      tooSmallForAFinger(dialog, ['label.form-field-inline', '.cross-track-candidates label']),
+    ).toEqual([]);
   },
 };
 

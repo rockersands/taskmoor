@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { CrossTrackState } from '../releases/CrossTrackState';
 import type { Progress } from '../releases/crossTrackClient';
-import { useEndText } from '../releases/crossTrackText';
+import { dayText, useEndText } from '../releases/crossTrackText';
 import { ReleaseState } from '../releases/ReleaseState';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
@@ -22,6 +23,7 @@ import { releasesCsv } from './planExport';
  */
 export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSectionProps) {
   const t = useT();
+  const intl = useIntl();
   const domId = useId();
   const endText = useEndText();
   const [data, setData] = useState<PlanReleases | null>(null);
@@ -70,7 +72,9 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
             <ReleaseState release={r} />
           </div>
           <span className="board-meta">
-            {r.releaseDate ? t('releases.dueOn', { date: r.releaseDate }) : t('releases.noDate')}
+            {r.releaseDate
+              ? t('releases.dueOn', { date: dayText(intl, r.releaseDate) })
+              : t('releases.noDate')}
             {r.outOfStep && (
               <>
                 {' '}
@@ -88,6 +92,9 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
   return (
     <div className="plan-releases">
       <div className="plan-view-tools">
+        <a className="button-quiet" href={routeHref('#/cross-track-releases')}>
+          {t('crossTrack.title')}
+        </a>
         <DownloadMenu
           items={[
             {
