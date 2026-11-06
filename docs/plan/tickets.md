@@ -298,6 +298,7 @@ reported, and the coordinator checked that it was pushed.
 | T-235 | The Windows Compose install (`install.ps1`) still prints a setup link on port 8080 | To do | Found by T-023 on the Mac (2026-11-06): `install.sh` now names the host port; the PowerShell script needs the same change and a run on Windows |
 | T-236 | The image build has no retry for corepack's pnpm download | To do | Found by T-023 (2026-11-06): on a slow link the build stalled at that step and had to be restarted by hand |
 | T-237 | An old workflow left with no moves gets its free moves only at its next saved draft | To do | T-210 follow-up (low): nothing rewrites it before then; a draft save and a stage change on the same status at once can race on which stage the new free move sees |
+| T-238 | A board's workflow takeover checks the workflow before locking it | To do | T-209 follow-up (low): `mayManageWorkflow` refuses a workflow with guards, checks or rules, and `addColumnPath` reads its published steps, both before the sync locks it, so a publish in that gap can be overwritten. Read them under the lock |
 | T-198 | Load these tickets into the demo again | Done | All tickets loaded on the demo on 2026-11-04, in the Backend, Front and Flutter tracks |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 | T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |
