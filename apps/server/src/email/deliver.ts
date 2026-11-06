@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Database, EmailDelivery } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
-import { CHECKLIST_EVENT, noticeCounts } from '../notifications/checklists';
+import { CHECKLIST_EVENT, MAX_NOTICE_CHANGES, noticeCounts } from '../notifications/checklists';
 import { noticeGroupId, TRACK_GROUP_EVENT } from '../notifications/track-groups';
 import { commentText, readsComment } from '../tickets/comments';
 import {
@@ -33,7 +33,9 @@ import type { MailTransport } from './transport';
  *   while the group is still theirs, under its name at send time, and is dropped otherwise.
  *   Instant ones within the window go together in one email.
  * - A checklist notice (NTF-015) already gathers a run of changes to one ticket; it is one line
- *   of its ticket's email, saying how many changes and by whom, never what an item says.
+ *   of its ticket's email, saying how many changes and by whom, never what an item says. An
+ *   instant one goes once its own window has passed, whatever else about the ticket is due
+ *   before, so a run is not cut short by an older, unrelated notification.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -299,10 +301,22 @@ export async function deliverEmail(
         return;
       }
       const windowMs = (setting?.batch_window_seconds ?? 120) * 1000;
+      // A checklist notice still gathering its run (NTF-015 (2)): unread, inside the window from its
+      // first change, with room for more. It waits for its own window, so the run goes as one line;
+      // an older notification of the same ticket that falls due meanwhile goes without it.
+      const gathering = (n: (typeof ready)[number]) =>
+        n.event === CHECKLIST_EVENT &&
+        n.read_at === null &&
+        now.getTime() - n.created_at.getTime() < windowMs &&
+        noticeCounts(n.payload).changes < MAX_NOTICE_CHANGES;
       let batches: (typeof ready)[] = [];
       if (delivery === 'instant') {
         const byTicket = new Map<number | null, typeof ready>();
         for (const n of ready) {
+          if (gathering(n)) {
+            run.held += 1;
+            continue;
+          }
           const list = byTicket.get(n.ticket_id) ?? [];
           list.push(n);
           byTicket.set(n.ticket_id, list);
