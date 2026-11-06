@@ -33,9 +33,10 @@ import type { MailTransport } from './transport';
  *   while the group is still theirs, under its name at send time, and is dropped otherwise.
  *   Instant ones within the window go together in one email.
  * - A checklist notice (NTF-015) already gathers a run of changes to one ticket; it is one line
- *   of its ticket's email, saying how many changes and by whom, never what an item says. An
- *   instant one goes once its own window has passed, whatever else about the ticket is due
- *   before, so a run is not cut short by an older, unrelated notification.
+ *   of its ticket's email, saying how many changes and by whom, never what an item says. A run
+ *   that began inside an instant email's window holds that email until the run's own window has
+ *   passed (at most one window more), so the run goes whole in the same email as the changes
+ *   made just before it; one that began after the window waits for its own and goes on its own.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -302,8 +303,7 @@ export async function deliverEmail(
       }
       const windowMs = (setting?.batch_window_seconds ?? 120) * 1000;
       // A checklist notice still gathering its run (NTF-015 (2)): unread, inside the window from its
-      // first change, with room for more. It waits for its own window, so the run goes as one line;
-      // an older notification of the same ticket that falls due meanwhile goes without it.
+      // first change, with room for more.
       const gathering = (n: (typeof ready)[number]) =>
         n.event === CHECKLIST_EVENT &&
         n.read_at === null &&
@@ -313,18 +313,23 @@ export async function deliverEmail(
       if (delivery === 'instant') {
         const byTicket = new Map<number | null, typeof ready>();
         for (const n of ready) {
-          if (gathering(n)) {
-            run.held += 1;
-            continue;
-          }
           const list = byTicket.get(n.ticket_id) ?? [];
           list.push(n);
           byTicket.set(n.ticket_id, list);
         }
         for (const list of byTicket.values()) {
-          const oldest = list[0]?.created_at.getTime() ?? now.getTime();
-          if (now.getTime() - oldest >= windowMs) batches.push(list);
-          else run.held += list.length;
+          const closes = (list[0]?.created_at.getTime() ?? now.getTime()) + windowMs;
+          const runs = list.filter(gathering);
+          // A run that began inside the batch's window belongs to its email (NTF-002 (1)): the
+          // batch waits for the run's own window, at most one window more, so the run goes whole
+          // as one line of it (NTF-015 (2)).
+          if (now.getTime() < closes || runs.some((n) => n.created_at.getTime() < closes)) {
+            run.held += list.length;
+            continue;
+          }
+          // One that began after it is a batch of its own and waits for its own window.
+          batches.push(list.filter((n) => !runs.includes(n)));
+          run.held += runs.length;
         }
       } else {
         const hour = setting?.digest_hour ?? 8;

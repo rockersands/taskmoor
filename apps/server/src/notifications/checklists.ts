@@ -24,9 +24,9 @@ import { CHANNELS } from './model';
  *   up to `MAX_NOTICE_CHANGES` changes; after that the next change starts a new one. The notice
  *   counts its changes and keeps who made them.
  * - **An email stays within one inbox notice**, so that reading the notice settles every email it
- *   covers (NTF-003 (2)). An instant email waits for its own window (`email/deliver.ts`), but a
- *   digest at its hour, or a mailer that runs while a change made inside the window is still on
- *   its way to the worker, sends one in mid-run: the inbox notice goes on and the next change
+ *   covers (NTF-003 (2)). An instant email holds a run that is still gathering (`email/deliver.ts`),
+ *   but a digest at its hour, or a mailer that runs while a change made inside the window is still
+ *   on its way to the worker, sends one in mid-run: the inbox notice goes on and the next change
  *   starts another email, so one notice can cover several emails. The reverse never happens: when
  *   the inbox notice closes, by a snooze or its window, the email closes with it, even with room
  *   left, and the next change starts both afresh.

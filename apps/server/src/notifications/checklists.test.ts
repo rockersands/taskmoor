@@ -394,14 +394,25 @@ describe('checklist notices (NTF-015)', () => {
    * made inside that window is still on its way to the worker: the email goes in mid-run.
    */
   const pastTheWindow = () => new Date(Date.now() + 150 * 1000);
-  /** Ticket notifications from before the run, nearly due, so they fall due in mid-run. */
-  const nearlyDue = (ticketId: number) =>
-    database.db
+  /**
+   * Ana renames the ticket, written `seconds` before the run that follows: under the two-minute
+   * window it falls due in mid-run (110) or was due before the run began (130).
+   */
+  const renamedBefore = async (ticket: { id: number; key: string }, seconds: number) => {
+    const renamed = await as('ana', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${ticket.id}`,
+      payload: { summary: `${ticket.key}, renamed` },
+    });
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    await deliver();
+    await database.db
       .updateTable('notification')
-      .set({ created_at: new Date(Date.now() - 110 * 1000) })
-      .where('ticket_id', '=', ticketId)
+      .set({ created_at: new Date(Date.now() - seconds * 1000) })
+      .where('ticket_id', '=', ticket.id)
       .where('event', '!=', CHECKLIST_EVENT)
       .execute();
+  };
   const setInbox = async (who: Person, inbox: boolean) => {
     const res = await as(who, {
       method: 'PATCH',
@@ -431,21 +442,39 @@ describe('checklist notices (NTF-015)', () => {
   const inboxRow = (rows: Awaited<ReturnType<typeof noticesOf>>, at = 0) =>
     rows.filter((r) => r.channel === 'inbox')[at]?.id as string;
 
-  it('[NTF-015] (2) a run waits for its own window, not for an older notification of the ticket', async () => {
+  it("[NTF-002] (1) [NTF-015] (2) a run begun inside an email's window goes whole in that email", async () => {
     const ticket = await followedTicket('Older notice first');
-    // Something else about the ticket reached Finn just before the run began.
-    const renamed = await as('ana', {
-      method: 'PATCH',
-      url: `/api/v1/tickets/${ticket.id}`,
-      payload: { summary: 'Older notice first, renamed' },
-    });
-    expect(renamed.statusCode, renamed.body).toBe(200);
-    await deliver();
-    await nearlyDue(ticket.id);
+    // Ana renames the ticket, then starts a run of checklist changes within the window.
+    await renamedBefore(ticket, 110);
     const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two', 'Three']);
     await deliver();
 
-    // The older notification falls due: it goes on its own, and the run carries on.
+    // The rename falls due while the run is still gathering: the email waits for the run, so it
+    // does not go without it, nor cut it short.
+    expect((await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key)).toEqual([]);
+    for (const item of list.items) await tick('ana', ticket.id, list.id, item.id);
+    await deliver();
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 4],
+      ['inbox', 4],
+    ]);
+
+    // Once the run's own window has passed, one email holds both, the run as one line.
+    const email = (await mailAt(later()))('finn', ticket.key);
+    expect(email).toHaveLength(1);
+    expect(email[0]?.text).toContain('- ana updated the ticket');
+    expect(email[0]?.text).toContain('- ana made 4 changes to checklists');
+  });
+
+  it("[NTF-015] (2) a run begun after an email's window waits for its own, and the email does not wait for it", async () => {
+    const ticket = await followedTicket('Older notice due');
+    // The rename was due before the run began, and the mailer had not run since.
+    await renamedBefore(ticket, 130);
+    const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two', 'Three']);
+    await deliver();
+
+    // The rename goes without the run, which carries on.
     const first = (await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key);
     expect(first).toHaveLength(1);
     expect(first[0]?.text).toContain('- ana updated the ticket');
