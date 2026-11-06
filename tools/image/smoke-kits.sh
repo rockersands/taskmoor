@@ -52,8 +52,11 @@ secret=()
 [ -n "${HTTPS_PROXY:-}" ] && secret+=(--build-arg "HTTPS_PROXY=$HTTPS_PROXY" --build-arg "https_proxy=$HTTPS_PROXY")
 # ${a[@]+"${a[@]}"}: an empty array is "unbound" under set -u in bash 3.2, a Mac's own bash.
 docker build ${secret[@]+"${secret[@]}"} -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
-size=$(docker image inspect "$AIO" --format '{{.Size}}')
-echo "all-in-one size: $((size / 1000000)) MB"
+# Unpacked (tools/image/unpacked-size.mjs): `docker image inspect`'s Size is the compressed
+# download with the containerd image store.
+size=$(docker run --rm -i --user 0 --entrypoint node "$AIO" --input-type=module - \
+  <tools/image/unpacked-size.mjs)
+echo "all-in-one size: $((size / 1000000)) MB unpacked"
 docker volume create "$VOL" >/dev/null
 docker run -d --name "$AIO_NAME" -v "$VOL:/data" -p 18090:8080 "$AIO" >/dev/null
 wait_for http://127.0.0.1:18090/ready 90 "$AIO_NAME"

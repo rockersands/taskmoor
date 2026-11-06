@@ -1,11 +1,26 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { importedLinkRoute } from '@taskmoor/webconfig';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SMOKE = readFileSync(join(ROOT, 'tools/image/smoke.sh'), 'utf8');
+const dirs: string[] = [];
+afterAll(() => {
+  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+});
 
 /** The bash scripts of the repository's tools and install kits. */
 function shellScripts(dir: string): string[] {
@@ -53,6 +68,67 @@ describe('tools/image/smoke.sh against the server it probes', () => {
   it('[IMP-011] checks an imported link in both routing modes', () => {
     const browse = probes().filter((p) => p.path === '/browse/ABC-1');
     expect(browse.map((p) => p.location).sort()).toEqual(['/#/tickets/ABC-1', '/tickets/ABC-1']);
+  });
+});
+
+// smoke.sh held `docker image inspect`'s Size to the 400 MB limit of ADR-021. With the
+// containerd image store (Docker 29) that is the compressed download: 96 MB on the T-023 Mac for
+// an image of about 365 MB, so the limit was never checked there (T-023 review). The scripts
+// measure the image's files inside it instead, the same on every image store.
+describe('the image size the smoke scripts report', () => {
+  it('[OPS-013] is the unpacked size, measured inside the image', () => {
+    for (const script of ['tools/image/smoke.sh', 'tools/image/smoke-kits.sh']) {
+      const text = readFileSync(join(ROOT, script), 'utf8');
+      expect({ script, dockerSize: text.includes('{{.Size}}') }).toEqual({
+        script,
+        dockerSize: false,
+      });
+      expect({
+        script,
+        measured:
+          /--entrypoint node "\$\w+" --input-type=module - \\\n\s*<tools\/image\/unpacked-size\.mjs\)/.test(
+            text,
+          ),
+      }).toEqual({ script, measured: true });
+    }
+    expect(SMOKE).toMatch(/^if \[ "\$size" -gt 400000000 \]; then echo "image over 400 MB"/m);
+  });
+
+  it('[OPS-013] counts each file and link once, without the mounts a container adds', () => {
+    const root = mkdtempSync(join(tmpdir(), 'taskmoor-image-'));
+    dirs.push(root);
+    mkdirSync(join(root, 'app/lib'), { recursive: true });
+    writeFileSync(join(root, 'app/lib/a.js'), 'a'.repeat(1000));
+    writeFileSync(join(root, 'app/b.json'), 'b'.repeat(234));
+    // A hard link is the same bytes once; a symbolic link holds its target's path.
+    linkSync(join(root, 'app/b.json'), join(root, 'app/b-again.json'));
+    const symlinks = process.platform !== 'win32';
+    if (symlinks) symlinkSync('lib/a.js', join(root, 'app/c.js'));
+    // What Docker mounts into a container: /proc, a volume (here with a space), /etc/hosts.
+    mkdirSync(join(root, 'proc'));
+    writeFileSync(join(root, 'proc/kcore'), 'k'.repeat(5000));
+    mkdirSync(join(root, 'data dir'));
+    writeFileSync(join(root, 'data dir/x'), 'x'.repeat(700));
+    writeFileSync(join(root, 'hosts'), 'h'.repeat(50));
+    const mount = (path: string) => join(root, path).replaceAll(' ', '\\040');
+    const table = join(root, '..', `${root.split(/[\\/]/).pop()}.mounts`);
+    dirs.push(table);
+    writeFileSync(
+      table,
+      [
+        'overlay / overlay rw 0 0',
+        `proc ${mount('proc')} proc rw 0 0`,
+        `/dev/vda1 ${mount('data dir')} ext4 rw 0 0`,
+        `/dev/vda1 ${mount('hosts')} ext4 rw 0 0`,
+        '',
+      ].join('\n'),
+    );
+    const out = execFileSync(
+      process.execPath,
+      [join(ROOT, 'tools/image/unpacked-size.mjs'), root, table],
+      { encoding: 'utf8' },
+    );
+    expect(Number(out.trim())).toBe(1000 + 234 + (symlinks ? 'lib/a.js'.length : 0));
   });
 });
 
