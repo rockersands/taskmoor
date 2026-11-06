@@ -321,11 +321,35 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
       'The track is archived, so its settings cannot change.',
     );
     expect(box).not.toBeChecked();
+    expect(box).toHaveFocus();
     expect(noticeCalls(client)).toEqual([[3, true]]);
   });
 
-  it('[NTF-015] fits a phone, in Spanish too', async () => {
-    setViewportWidth(360);
+  it('[NTF-015] says what happened under the box, where the person is, not at the top of the page (T-232)', async () => {
+    const user = userEvent.setup();
+    renderPeople({ refuseNotices: true });
+    const box = await screen.findByRole('checkbox', { name: NAME });
+    await user.click(box);
+    const card = screen.getByRole('region', { name: 'Notices to followers' });
+    const alert = await within(card).findByRole('alert');
+    expect(alert).toHaveTextContent('The track is archived, so its settings cannot change.');
+    // Right after the box and its hint, and the only alert on the page.
+    expect(box.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole('alert')).toEqual([alert]);
+    cleanup();
+
+    // What went through is said there too, in a status line a screen reader follows.
+    renderPeople();
+    await user.click(await screen.findByRole('checkbox', { name: NAME }));
+    const saved = screen.getByRole('region', { name: 'Notices to followers' });
+    await waitFor(() =>
+      expect(within(saved).getByRole('status')).toHaveTextContent(
+        'Followers of tickets in SHOP now hear when a checklist changes.',
+      ),
+    );
+  });
+
+  it('[NTF-015] speaks Spanish', async () => {
     const user = userEvent.setup();
     renderPeople({}, MEMBER, 'es');
     const box = await screen.findByRole('checkbox', {
@@ -337,7 +361,44 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
         'Quienes siguen tickets de SHOP ahora se enteran cuando cambia una lista de comprobación.',
       ),
     ).toBeInTheDocument();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360);
+    // How it looks at a phone's width is a browser's to say: the story
+    // `ChecklistNoticesAtPhoneWidth` measures it in a browser, as on a touch screen.
+  });
+});
+
+describe('each card says what its actions did, on the card (T-232)', () => {
+  it('[IAM-028] a role that cannot be taken is refused on the card that lists the roles', async () => {
+    const user = userEvent.setup();
+    renderPeople();
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove Kalo Reyes from Administrators' }),
+    );
+    const roles = screen.getByRole('region', { name: 'Who holds which role' });
+    expect(await within(roles).findByRole('alert')).toHaveTextContent(
+      'This is the last person who runs the track',
+    );
+    expect(
+      within(screen.getByRole('region', { name: 'Notices to followers' })).queryByRole('alert'),
+    ).toBeNull();
+  });
+
+  it('[IAM-027] an invitation sent again is said on the card of invitations waiting', async () => {
+    const user = userEvent.setup();
+    renderPeople();
+    await user.click(
+      await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
+    );
+    const waiting = screen.getByRole('region', { name: 'Invitations waiting' });
+    await waitFor(() =>
+      expect(within(waiting).getByRole('status')).toHaveTextContent(
+        'The invitation to nia@example.com went out again.',
+      ),
+    );
+    for (const other of ['Who holds which role', 'Notices to followers']) {
+      expect(
+        within(screen.getByRole('region', { name: other })).getByRole('status'),
+      ).toBeEmptyDOMElement();
+    }
   });
 });
 

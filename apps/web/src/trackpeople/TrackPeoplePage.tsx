@@ -28,6 +28,10 @@ export interface TrackPeoplePageProps {
   client?: TrackPeopleClient;
 }
 
+/** The card an action is on: its answer shows there, under the card's controls (T-232). */
+type Place = 'roles' | 'invitations' | 'notices';
+type Answer = { at: Place; text: string };
+
 type State =
   | { status: 'loading' }
   | { status: 'forbidden' }
@@ -53,8 +57,8 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   const titleId = useId();
   const id = useId();
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [message, setMessage] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
+  const [said, setSaid] = useState<Answer | null>(null);
+  const [problem, setProblem] = useState<Answer | null>(null);
   const [inviting, setInviting] = useState(false);
   const [freshLink, setFreshLink] = useState<{ email: string; url: string } | null>(null);
   const [role, setRole] = useState('');
@@ -116,17 +120,33 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
     if (error.status === 403) return t('trackPeople.problem.forbidden');
     return t('trackPeople.problem.other');
   };
-  const run = async (work: () => Promise<unknown>, said: string) => {
+  const run = async (at: Place, work: () => Promise<unknown>, text: string) => {
     setProblem(null);
     try {
       await work();
-      setMessage(said);
+      setSaid({ at, text });
       await load();
     } catch (error) {
-      setMessage('');
-      setProblem(refusal(error));
+      setSaid(null);
+      setProblem({ at, text: refusal(error) });
     }
   };
+  /**
+   * What the last action on a card did, said on that card where the person is looking, and to a
+   * screen reader: a status line kept in place for what went through, an alert for a refusal.
+   */
+  const answerOn = (at: Place) => (
+    <>
+      <p role="status" className="form-status">
+        {said?.at === at ? said.text : ''}
+      </p>
+      {problem?.at === at && (
+        <p role="alert" className="form-error">
+          {problem.text}
+        </p>
+      )}
+    </>
+  );
 
   const titled = (
     <PageHeader
@@ -175,6 +195,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   const resend = (invitation: Invitation, delivery: Delivery) => {
     setFreshLink(null);
     return run(
+      'invitations',
       async () => {
         const answer = await client.resend(track.id, invitation.id, delivery);
         if (answer.link) setFreshLink({ email: invitation.email, url: answer.link });
@@ -207,15 +228,6 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           </ul>
         </section>
       )}
-      <p role="status" className="form-status">
-        {message}
-      </p>
-      {problem && (
-        <p role="alert" className="form-error">
-          {problem}
-        </p>
-      )}
-
       <div className="form-actions">
         {view.canInvite ? (
           <button
@@ -241,8 +253,10 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
         <p className="page-note">{t('trackPeople.emailOff')}</p>
       )}
 
-      <div className="glass-card people-card">
-        <h2 className="facts-title">{t('trackPeople.holders')}</h2>
+      <section aria-labelledby={`${id}-holders`} className="glass-card people-card">
+        <h2 id={`${id}-holders`} className="facts-title">
+          {t('trackPeople.holders')}
+        </h2>
         {!anyHolder && <EmptyState compact title={t('trackPeople.noHolders')} />}
         {appointLocked && <p className="page-note">{t('trackPeople.appointLocked')}</p>}
         {anyHolder && (
@@ -262,6 +276,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                       })}
                       onClick={() =>
                         void run(
+                          'roles',
                           () => client.setRole(track.id, h.roleId, kind, actor.id, false),
                           t('trackPeople.roleTaken', { name: actor.name, role: h.roleName }),
                         )
@@ -325,6 +340,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                   aria-label={t('trackPeople.giveTo', { name: person.name, role: roleName })}
                   onClick={() =>
                     void run(
+                      'roles',
                       async () => {
                         await client.setRole(
                           track.id,
@@ -352,10 +368,13 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
             ))}
           </ul>
         )}
-      </div>
+        {answerOn('roles')}
+      </section>
 
-      <div className="glass-card people-card">
-        <h2 className="facts-title">{t('trackPeople.pending')}</h2>
+      <section aria-labelledby={`${id}-pending`} className="glass-card people-card">
+        <h2 id={`${id}-pending`} className="facts-title">
+          {t('trackPeople.pending')}
+        </h2>
         {freshLink && (
           <div className="people-link">
             <p className="page-note">{t('trackPeople.linkHint')}</p>
@@ -421,6 +440,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                       aria-label={t('trackPeople.revokeFor', { who: invitation.email })}
                       onClick={() =>
                         void run(
+                          'invitations',
                           () => client.revoke(track.id, invitation.id),
                           t('trackPeople.revoked', { who: invitation.email }),
                         )
@@ -434,23 +454,26 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
             ))}
           </ul>
         )}
-      </div>
+        {answerOn('invitations')}
+      </section>
 
-      <div className="glass-card people-card">
+      <section aria-labelledby={`${id}-notices`} className="glass-card people-card">
         <ChecklistNoticesBox
+          titleId={`${id}-notices`}
           track={track}
           on={track.checklistNotices === true}
           client={client}
-          onSaid={(said) => {
+          onSaid={(text) => {
             setProblem(null);
-            setMessage(said);
+            setSaid({ at: 'notices', text });
           }}
           onRefused={(error) => {
-            setMessage('');
-            setProblem(refusal(error));
+            setSaid(null);
+            setProblem({ at: 'notices', text: refusal(error) });
           }}
         />
-      </div>
+        {answerOn('notices')}
+      </section>
 
       {inviting && (
         <InviteDialog
