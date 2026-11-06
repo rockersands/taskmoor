@@ -38,8 +38,15 @@ Every release, on every channel but preview:
 
 - the image `ghcr.io/rockersands/taskmoor:<version>` (public; amd64 and arm64), and the
   all-in-one image;
-- the air-gap bundle (`tools/airgap/bundle.sh`): images, the Compose kit, the Helm chart, the
-  frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by the release key;
+- the air-gap bundle (`tools/airgap/bundle.sh`), one for each platform (`PLATFORM=linux/amd64`
+  and `PLATFORM=linux/arm64`, each from the image pulled with `--platform`): images, the Compose
+  kit, the Helm chart, the frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by
+  the release key. An image archive holds one platform, and `bundle.sh` refuses an image the
+  local Docker does not hold for `PLATFORM`; a Mac pulls and builds arm64 unless told. With
+  Docker 28.1 or later both pulls can share one tag (the containerd image store keeps both):
+  `bundle.sh` saves `PLATFORM`'s image by name and makes the SBOM from that saved archive, not
+  from the tag. An older Docker cannot pick one, so remove the tag (`docker image rm`) before
+  pulling it for the other platform;
 - the Builder page (`apps/web/dist-builder/index.html`), the frontend artefact and the server
   bundle, all stamped with the version (ADR-066);
 - `taskmoor-release.txt` and `taskmoor-release.txt.sig`, the signed statement of which image is
@@ -48,6 +55,10 @@ Every release, on every channel but preview:
   must decide, and the security fixes with their advisories. Say so when a release changes
   `update.sh`, `upgrade.sh` or a Compose file: an installed kit keeps its own until it is
   replaced.
+
+Before a release, the image and kit scripts in `tools/image` and the air-gap test
+(`tools/airgap/test-offline.sh`) check what it ships; `image-and-kits-mac.md` records their
+last run, on a Mac, and how to run them again.
 
 ## Signing
 
