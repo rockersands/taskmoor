@@ -125,6 +125,28 @@ describe('image and air-gap scripts', () => {
     expect(keeping).toEqual([]);
   });
 
+  // smoke-kits.sh removed its network before the external kit's container that was still on it;
+  // Docker refuses that, so every run left a network behind (T-023 found six).
+  it('[OPS-001] remove their containers before the networks they were on', () => {
+    const checked: string[] = [];
+    const early: string[] = [];
+    for (const script of [...shellScripts('tools/image'), ...shellScripts('tools/airgap')]) {
+      const body = /^cleanup\(\) \{\n([\s\S]*?)^\}/m.exec(
+        readFileSync(join(ROOT, script), 'utf8'),
+      )?.[1];
+      if (!body) continue;
+      checked.push(script);
+      const lines = body.split('\n');
+      const lastRm = lines.reduce((last, line, i) => (/\bdocker rm\b/.test(line) ? i : last), -1);
+      lines.forEach((line, i) => {
+        if (/\bdocker network rm\b/.test(line) && i < lastRm)
+          early.push(`${script}: ${line.trim()}`);
+      });
+    }
+    expect(checked).toEqual(expect.arrayContaining(['tools/image/smoke-kits.sh']));
+    expect(early).toEqual([]);
+  });
+
   // fresh-vm.sh tagged the image as the version its kit pins and left the tag, so every run
   // kept the build before it alive once smoke.sh replaced taskmoor:dev (T-023).
   it('[OPS-001] remove the tags they add', () => {

@@ -14,12 +14,13 @@ VOL=taskmoor-aio-data-$ID
 PG=taskmoor-ext-pg-$ID
 NET=taskmoor-ext-$ID
 cleanup() {
+  # Every container first: the external kit's Taskmoor is on $NET too, and Docker refuses to
+  # remove a network that still has a container on it.
   docker rm -f -v "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
-  docker volume rm "$VOL" >/dev/null 2>&1 || true
-  docker network rm "$NET" >/dev/null 2>&1 || true
   docker rm -f -v "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
+  docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_postgres-ca" "ts-smoke-${ID}_postgres-tls" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
-  docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
+  docker network rm "$NET" "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
