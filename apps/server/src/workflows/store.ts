@@ -12,7 +12,8 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * holds the workflow (no key update), then the statuses it names (key share). A status's change
  * of stage holds the workflows whose free moves follow it (no key update, so it never waits for
  * a ticket write), then the status (update), as a ticket write and a draft save take a workflow
- * before a status. A ticket's
+ * before a status; it holds no board-managed workflow (a board's sync renames a column's status,
+ * then publishes the workflow) and no workflow after the status (it starts again). A ticket's
  * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;

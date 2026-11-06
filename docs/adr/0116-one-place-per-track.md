@@ -92,7 +92,12 @@ them.
       close with, nothing changes. A ticket write holds its workflow before the status it enters,
       and a draft save holds its workflow before the statuses it names, so the change holds the
       workflows first (no key update, so it never waits for a ticket write; it moves no ticket),
-      then the status; holding the status first deadlocked with a draft save. We considered
+      then the status; holding the status first deadlocked with a draft save. It holds no
+      board-managed workflow, which it never rewrites: a board's sync renames a column's status
+      before it publishes the workflow, so holding that workflow first deadlocked with the sync.
+      Nor does it hold a workflow after the status: when a draft saved while the change waited for
+      the status gave it another workflow to rewrite, the change starts again (up to five times)
+      and holds that workflow first. We considered
       deciding the effect at move time from the status's stage, with nothing rewritten; rejected
       because the definition, the editor and an exported file would then say something other
       than what happens.

@@ -136,6 +136,14 @@ const reportOf = (result: ImportResult) => ({
 });
 
 type Db = Kysely<Database> | Transaction<Database>;
+/**
+ * A status's change of stage found a workflow to rewrite that it had not held before the status:
+ * a draft that took the status was saved meanwhile. The change starts again and holds it first.
+ */
+class FollowersChanged extends Error {}
+/** How many times a change of stage starts again before it gives up. */
+const STAGE_ATTEMPTS = 5;
+
 /** A draft's definition, or how to make it from the workflow's current one. */
 type DraftSource =
   | WorkflowDefinition
@@ -330,7 +338,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
    * one and the draft is rewritten, as when a close reason is replaced; no ticket is in the status
    * (the stage cannot change while one is), so none moves. With no reason to close with, nothing
    * changes. `held` are the workflows the change held before the status (`holdFollowing`); the
-   * ids of the workflows changed, for the status's one event.
+   * ids of the workflows changed, for the status's one event. A workflow that took the status
+   * after that first look (a draft saved meanwhile) is not held here, after the status, against the
+   * order a draft save takes them in: the change starts again (`FollowersChanged`).
    */
   async function followStage(
     trx: Transaction<Database>,
@@ -339,20 +349,15 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     closes: boolean,
     held: readonly CurrentVersions[],
   ): Promise<number[]> {
-    const ids = await workflowsWithStatus(trx, actor.workspaceId, statusId);
+    const ids = await workflowsFollowing(trx, actor.workspaceId, statusId);
     if (ids.length === 0) return [];
     // Both ways the reason matters: a move out of the closed stage clears only this one.
     const completedId = await closingReasonId(trx, actor.workspaceId);
     if (completedId === null) return [];
-    const changed: number[] = [];
-    // A draft saved between the first look and the status's lock: its workflow is held now.
     const known = new Set(held.map((w) => w.id));
-    const late = await holdCurrentVersions(
-      trx,
-      ids.filter((id) => !known.has(id)),
-      'no key update',
-    );
-    for (const w of [...held, ...late]) {
+    if (ids.some((id) => !known.has(id))) throw new FollowersChanged();
+    const changed: number[] = [];
+    for (const w of held) {
       const published = followingStage(w.published, statusId, closes, completedId);
       const draft = w.draft && followingStage(w.draft, statusId, closes, completedId);
       if (!published && !draft) continue;
@@ -362,8 +367,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     return changed.sort((a, b) => a - b);
   }
 
-  /** The workflows whose published version or draft has this status, by id. */
-  async function workflowsWithStatus(
+  /**
+   * The workflows whose free moves may follow this status's stage, by id: those whose published
+   * version or draft has it, leaving out a board-managed workflow. `followingStage` never rewrites
+   * one (its board says which column closes), and a board's sync holds a column's status (renaming
+   * it) before the workflow, so holding that workflow first could deadlock with it.
+   */
+  async function workflowsFollowing(
     trx: Transaction<Database>,
     workspaceId: number,
     statusId: number,
@@ -373,7 +383,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         FROM workflow w
         JOIN workflow_version_status s
           ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
+        JOIN workflow_version p ON p.workflow_id = w.id AND p.version = w.published_version
        WHERE w.workspace_id = ${workspaceId} AND s.status_id = ${statusId}
+         AND p.definition -> 'board' IS NULL
        ORDER BY w.id`.execute(trx);
     return rows.map((r) => r.id);
   }
@@ -390,7 +402,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   ): Promise<CurrentVersions[]> {
     return holdCurrentVersions(
       trx,
-      await workflowsWithStatus(trx, workspaceId, statusId),
+      await workflowsFollowing(trx, workspaceId, statusId),
       'no key update',
     );
   }
@@ -475,59 +487,63 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if (!params.success || !parsed.success) return invalid(reply);
     const body = parsed.data;
     const ws = request.workspaceId;
-    try {
-      const result = await db.transaction().execute(async (trx) => {
-        // A stage change may rewrite workflows: they are held before the status (T-209).
-        const following =
-          body.stage === undefined ? [] : await holdFollowing(trx, ws, params.data.id);
-        const current = await trx
-          .selectFrom('status')
-          .select(['id', 'name', 'description', 'stage', 'sort_order'])
-          .where('id', '=', params.data.id)
-          .where('workspace_id', '=', ws)
-          .forUpdate()
-          .executeTakeFirst();
-        if (!current) return { missing: true as const };
-        const changes = diff<Record<string, unknown>>(
-          { name: current.name, description: current.description, stage: current.stage },
-          body,
-        );
-        if (Object.keys(changes).length === 0) return { status: current };
-        if (changes.stage) {
-          // Tickets in it would cross into or out of the closed stage without closing.
-          const used = await trx
-            .selectFrom('ticket')
-            .select(sql<string>`count(*)`.as('n'))
-            .where('status_id', '=', current.id)
+    // A draft saved meanwhile may give the status another workflow to rewrite: start again.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const result = await db.transaction().execute(async (trx) => {
+          // A stage change may rewrite workflows: they are held before the status (T-209).
+          const following =
+            body.stage === undefined ? [] : await holdFollowing(trx, ws, params.data.id);
+          const current = await trx
+            .selectFrom('status')
+            .select(['id', 'name', 'description', 'stage', 'sort_order'])
+            .where('id', '=', params.data.id)
+            .where('workspace_id', '=', ws)
+            .forUpdate()
+            .executeTakeFirst();
+          if (!current) return { missing: true as const };
+          const changes = diff<Record<string, unknown>>(
+            { name: current.name, description: current.description, stage: current.stage },
+            body,
+          );
+          if (Object.keys(changes).length === 0) return { status: current };
+          if (changes.stage) {
+            // Tickets in it would cross into or out of the closed stage without closing.
+            const used = await trx
+              .selectFrom('ticket')
+              .select(sql<string>`count(*)`.as('n'))
+              .where('status_id', '=', current.id)
+              .executeTakeFirstOrThrow();
+            if (Number(used.n) > 0) return { inUse: Number(used.n) };
+          }
+          const updated = await trx
+            .updateTable('status')
+            .set({ ...body, updated_at: new Date() })
+            .where('id', '=', current.id)
+            .returning(['id', 'name', 'description', 'stage', 'sort_order'])
             .executeTakeFirstOrThrow();
-          if (Number(used.n) > 0) return { inUse: Number(used.n) };
-        }
-        const updated = await trx
-          .updateTable('status')
-          .set({ ...body, updated_at: new Date() })
-          .where('id', '=', current.id)
-          .returning(['id', 'name', 'description', 'stage', 'sort_order'])
-          .executeTakeFirstOrThrow();
-        const workflowIds = changes.stage
-          ? await followStage(trx, by(request), current.id, updated.stage === 'closed', following)
-          : [];
-        await emit(trx, by(request), {
-          type: 'status.updated',
-          subjectId: current.id,
-          payload: { changes, ...(workflowIds.length > 0 ? { workflowIds } : {}) },
+          const workflowIds = changes.stage
+            ? await followStage(trx, by(request), current.id, updated.stage === 'closed', following)
+            : [];
+          await emit(trx, by(request), {
+            type: 'status.updated',
+            subjectId: current.id,
+            payload: { changes, ...(workflowIds.length > 0 ? { workflowIds } : {}) },
+          });
+          return { status: updated };
         });
-        return { status: updated };
-      });
-      if ('missing' in result) return notFound(reply);
-      if ('inUse' in result) {
-        return reply.code(409).send({ error: 'status_in_use', ticketCount: result.inUse });
+        if ('missing' in result) return notFound(reply);
+        if ('inUse' in result) {
+          return reply.code(409).send({ error: 'status_in_use', ticketCount: result.inUse });
+        }
+        return { status: statusView(result.status) };
+      } catch (error) {
+        if (error instanceof FollowersChanged && attempt < STAGE_ATTEMPTS) continue;
+        if (uniqueViolation(error) === 'status_name_idx') {
+          return reply.code(409).send({ error: 'name_taken' });
+        }
+        throw error;
       }
-      return { status: statusView(result.status) };
-    } catch (error) {
-      if (uniqueViolation(error) === 'status_name_idx') {
-        return reply.code(409).send({ error: 'name_taken' });
-      }
-      throw error;
     }
   });
 
