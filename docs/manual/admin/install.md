@@ -2,7 +2,7 @@
 title: "Installing Taskmoor"
 audience: admins
 sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv, packages/builder-core/src/postgres-tls.ts, deploy/compose/upgrade.sh, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-05
+accessed: 2026-11-06
 attestation: own-words
 ---
 # Installing Taskmoor
@@ -47,6 +47,11 @@ docker build --network host --secret id=build_ca,src=/path/to/proxy-ca.pem \
   --build-arg HTTPS_PROXY=http://proxy.example.com:3128 \
   --build-arg TASKMOOR_VERSION=1.0.0 -t taskmoor:dev .
 ```
+
+The build fetches pnpm, the exact version the source names, in a step of its own. A download
+that drops or stalls is tried again, up to four times, and each attempt is stopped after five
+minutes. On a very slow connection, give each attempt longer, in seconds:
+`--build-arg PNPM_FETCH_TIMEOUT=900`.
 
 The first command builds the main image (`taskmoor:dev` is the name the Compose files use when
 `TASKMOOR_IMAGE` is not set); the second builds the all-in-one image on top of it. The build

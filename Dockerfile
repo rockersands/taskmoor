@@ -12,8 +12,25 @@ ARG NODE_VERSION=22
 FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /src
 RUN corepack enable
+# pnpm itself, the version package.json pins (packageManager), fetched in a step of its own so a
+# dropped or stalled download is tried again instead of failing or hanging the build (T-236):
+# four attempts, each stopped after PNPM_FETCH_TIMEOUT seconds (raise it on a very slow link).
+# Corepack checks the download against the npm registry's signing keys as before, and keeps it;
+# with its network then switched off, no later step can fetch pnpm outside this retry.
+ARG PNPM_FETCH_TIMEOUT=300
+COPY package.json ./
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    attempt=1; \
+    until timeout "$PNPM_FETCH_TIMEOUT" corepack install; do \
+      if [ "$attempt" -ge 4 ]; then echo "pnpm: no download after $attempt attempts" >&2; exit 1; fi; \
+      echo "pnpm: download attempt $attempt failed or stalled, trying again" >&2; \
+      sleep $((attempt * 15)); \
+      attempt=$((attempt + 1)); \
+    done
+ENV COREPACK_ENABLE_NETWORK=0
 # Manifests first so dependency installs are cached across source changes.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY packages/ai/package.json packages/ai/
