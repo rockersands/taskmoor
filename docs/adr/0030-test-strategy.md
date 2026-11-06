@@ -70,6 +70,23 @@ input handling, focus or clipboard code.
   dialog now listens on the document), and the workflow map's Add button could be pressed
   before the default workflow loaded (now disabled until it has).
 
+### Story tests: one dependency cache per skin (T-208, 2026-11-06)
+
+The stories run as browser tests once per skin (`stories` and `stories-dark`, ADR-036), both made
+by `storiesProject()` in `apps/web/vitest.stories.config.ts` so they cannot drift apart. Each
+skin's browser server keeps its optimized dependencies in its own folder
+(`apps/web/node_modules/.vite/stories-<skin>`). The Storybook plugin points every project made
+from one `.storybook` folder at a single folder instead, overriding the one Vitest gives each
+project; on a cold cache (a fresh clone or worktree, a new lockfile) the two skins, which start
+together, optimized into it at once and the later one moved the earlier one's folder aside while
+its browser was loading from it. That is the likely cause of the 48 story tests a fresh
+checkout's first gate lost on the Windows PC on 2026-11-04 ("optimized dependencies changed"),
+which passed on a rerun once the folder existed: Windows renames a folder slowly, with retries,
+and refuses while a file in it is open. On the Mac, cold runs passed before the change too, as
+its renames are near-instant, but the optimizer's debug log showed the second server moving the
+first's finished folder aside all the same. `vitest.stories.config.test.ts` resolves both
+configs and holds the folders apart.
+
 ## Consequences
 
 Running every suite on each change stays fast while the suite is small; `--changed` limits the

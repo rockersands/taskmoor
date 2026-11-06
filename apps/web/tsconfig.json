@@ -15,6 +15,7 @@
     ".storybook",
     "vitest.stories.config.ts",
     "vitest.stories-dark.config.ts",
+    "vitest.stories.config.test.ts",
     "vitest.build.config.ts"
   ],
   "references": [
