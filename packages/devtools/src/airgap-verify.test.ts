@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -13,7 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { POSTGRES_IMAGE } from '@taskmoor/builder-core';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -146,8 +147,10 @@ function temp(prefix: string): string {
  * host's), and an inspect for a platform the tag lacks answers "/" and succeeds, as Docker 29
  * does for a platform its image index lists but that was never pulled. $FAKE_OLD_DOCKER is a
  * Docker without --platform on `image inspect` and `save` (before 28.1, or a daemon older than
- * API 1.49, whose help hides the flag). The server's own platform is $FAKE_SERVER. A stand-in
- * for Helm keeps the real one out.
+ * API 1.49, whose help hides the flag). The server's own platform is $FAKE_SERVER. syft's
+ * container writes what it read: the archive copied into it, or a tag as a plain inspect shows
+ * it (seen on a Mac: given a tag holding both, syft read arm64); $FAKE_SYFT_FAIL makes it fail.
+ * A stand-in for Helm keeps the real one out.
  */
 function fakeBin(): string {
   const bin = temp('taskmoor-bin-');
@@ -200,9 +203,21 @@ function fakeBin(): string {
     '    else',
     '      echo "archive of $1, every platform its tag holds"',
     '    fi ;;',
-    '  create) echo 0123456789ab ;;',
-    `  cp) mkdir -p "$3" && echo '{"version":"1.0.0"}' > "$3/version.json" ;;`,
-    `  run) echo '{"bomFormat": "CycloneDX"}' ;;`,
+    '  create) case "$*" in *anchore/syft*) echo syft0123 ;; *) echo 0123456789ab ;; esac ;;',
+    '  cp)',
+    '    case "$3" in',
+    '      *:/*) cp "$2" "$FAKE_STATE/copied" ;;',
+    `      *) mkdir -p "$3" && echo '{"version":"1.0.0"}' > "$3/version.json" ;;`,
+    '    esac ;;',
+    // syft reads what it is given: the archive copied into its container, or a tag it asks
+    // Docker for, which answers with the host's platform where the tag holds several.
+    '  start)',
+    '    [ -z "$FAKE_SYFT_FAIL" ] || { echo "syft: unable to read the archive" >&2; exit 1; }',
+    `    printf '{"bomFormat": "CycloneDX", "read": "%s"}\\n' "$(cat "$FAKE_STATE/copied")" ;;`,
+    '  run)',
+    '    while [ $# -gt 0 ]; do case "$1" in anchore/syft:*) break ;; esac; shift; done',
+    `    printf '{"bomFormat": "CycloneDX", "read": "%s as Docker shows it: %s"}\\n' "$2" \\`,
+    '      "$(head -1 "$FAKE_STATE/$(key "$2")")" ;;',
     '  version) echo "$FAKE_SERVER" ;;',
     '  load) cat > /dev/null ;;',
     'esac',
@@ -333,6 +348,51 @@ describe.skipIf(!hasTools)('tools/airgap/bundle.sh and the servers’ platform',
     expect(arm.imagesTxt).toContain('platform linux/arm64\n');
   });
 
+  // syft was given the tag and asked Docker for it without a platform, and Docker answers with
+  // the host's where the tag holds several: an amd64 bundle made on an Apple silicon Mac from a
+  // tag that holds both would have carried the arm64 image's SBOM (T-023 second re-check).
+  it('[OPS-005] makes the SBOM from the Taskmoor archive the bundle carries', () => {
+    const both = ['linux/arm64', 'linux/amd64'];
+    const made = makeBundle({ 'taskmoor:1.0.0': both, [POSTGRES_IMAGE]: both });
+    expect({ status: made.status, out: made.out }).toMatchObject({ status: 0 });
+    const archive = 'archive of taskmoor:1.0.0 for linux/amd64';
+    expect(JSON.parse(readFileSync(join(made.dir, 'sbom.cdx.json'), 'utf8'))).toEqual({
+      bomFormat: 'CycloneDX',
+      read: archive,
+    });
+    // Named as syft names an image given by tag, as the SBOM was before.
+    expect(made.calls).toMatch(
+      /^create anchore\/syft:v1\.33\.0 docker-archive:\/tmp\/taskmoor\.tar --source-name taskmoor --source-version 1\.0\.0 -o cyclonedx-json -q$/m,
+    );
+    const registry = makeBundle(
+      { 'localhost:5000/team/taskmoor': 'linux/amd64', [POSTGRES_IMAGE]: 'linux/amd64' },
+      { TASKMOOR_IMAGE: 'localhost:5000/team/taskmoor' },
+    );
+    expect({ status: registry.status, out: registry.out }).toMatchObject({ status: 0 });
+    expect(registry.calls).toMatch(/ --source-name localhost:5000\/team\/taskmoor -o /);
+    expect(made.calls).toMatch(/^rm -v syft0123$/m);
+    // The archive is packed once read; the bundle carries it alone, and its checksum.
+    expect(readdirSync(join(made.dir, 'images')).sort()).toEqual([
+      'postgres.tar.gz',
+      'taskmoor.tar.gz',
+    ]);
+    expect(gunzipSync(readFileSync(join(made.dir, 'images/taskmoor.tar.gz'))).toString()).toBe(
+      `${archive}\n`,
+    );
+    expect(readFileSync(join(made.dir, 'SHA256SUMS'), 'utf8')).toMatch(
+      / images\/taskmoor\.tar\.gz$/m,
+    );
+
+    const failed = makeBundle(
+      { 'taskmoor:1.0.0': 'linux/amd64', [POSTGRES_IMAGE]: 'linux/amd64' },
+      { FAKE_SYFT_FAIL: '1' },
+    );
+    expect(failed.status).toBe(1);
+    expect(failed.out).toContain('syft could not make the SBOM');
+    expect(failed.calls).toMatch(/^rm -v syft0123$/m);
+    expect(existsSync(join(failed.dir, 'SHA256SUMS.sig'))).toBe(false);
+  });
+
   it('[OPS-005] names the pull that gives a tag the servers’ platform, and that pull works', () => {
     const state = dockerState({ 'taskmoor:1.0.0': 'linux/amd64', [POSTGRES_IMAGE]: 'linux/arm64' });
     const refused = makeBundle(state);
@@ -370,6 +430,9 @@ describe.skipIf(!hasTools)('tools/airgap/bundle.sh and the servers’ platform',
     expect(made.calls).toContain(`save ${POSTGRES_IMAGE}\n`);
     expect(made.calls).toMatch(/^save taskmoor:1\.0\.0$/m);
     expect(made.imagesTxt).toContain('platform linux/amd64\n');
+    expect(readFileSync(join(made.dir, 'sbom.cdx.json'), 'utf8')).toContain(
+      'archive of taskmoor:1.0.0, every platform its tag holds',
+    );
   });
 
   it('[OPS-005] makes an arm64 bundle when PLATFORM names it, and takes no other', () => {

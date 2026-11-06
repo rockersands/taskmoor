@@ -5,7 +5,8 @@ they had not run since the merges of late October. This page records their first
 on 2026-11-05, what failed and what was fixed, a second run that evening after the fixes
 for what the runs left behind, and a third on 2026-11-06 after a review of that work, in which
 all five passed. A fourth that day, after a re-check, made an air-gap bundle for amd64 servers
-on this arm64 Mac for the first time and ran the image and fresh-machine scripts again. The
+on this arm64 Mac for the first time and ran the image and fresh-machine scripts again; after a
+second re-check, the bundle's SBOM was checked against a tag that holds both platforms. The
 scripts are the ones in `CLAUDE.md`'s command table; none of them reaches a registry other than
 Docker Hub for base images.
 
@@ -107,6 +108,24 @@ under emulation) and the database image the Compose kit names,
    this tag did). The machine was left with no container, volume or network from the runs, and
    no air-gap or `ghcr.io` tag.
 
+### The SBOM from a tag that holds both
+
+On 2026-11-06, after the second re-check, while holding the machine's test lock (Docker Engine
+29.5.2 with the containerd image store, CLI 29.9.2). The test image was `node:22-alpine` with a
+page at `/app/web`, built for both platforms under one tag with `docker buildx build --platform
+linux/arm64,linux/amd64 --load`; a plain `docker image inspect` reported `linux/arm64`.
+
+| What made the SBOM | Bundle | Architectures in the SBOM's package URLs | Name and version |
+|---|---|---|---|
+| syft given the tag (`bundle.sh` before the fix) | | 81 `aarch64` | the repository, the tag |
+| `bundle.sh` with the fix, `PLATFORM=linux/amd64` | Passed in 8 s | 81 `x86_64` | the same |
+| `bundle.sh` with the fix, `PLATFORM=linux/arm64` | Passed in 8 s | 81 `aarch64` | the same |
+
+`bash tools/airgap/test-offline.sh` then passed in 32 s with the fix: syft read the archive of
+`taskmoor:dev` saved for `linux/arm64`, and the bundle installed offline as in the fourth run.
+The test image was removed afterwards, which left the same images as before, no container and
+no volume, and Colima was stopped.
+
 ## Runs and fixes
 
 Each failure was fixed in the script or in what it exercises, with a test where one can show it,
@@ -130,6 +149,7 @@ and the script was run again.
 | `smoke.sh` (the review) | Checked "96 MB" against the 400 MB limit | With the containerd image store `docker image inspect`'s Size is the compressed download (see [The image size](#the-image-size)) | `smoke.sh` adds up the layers' sizes from `docker history` and checks that; `smoke-kits.sh` reports the all-in-one image's the same way | `image-scripts.test.ts` runs the scripts' own lines with a stand-in for Docker: an image of 450 MB with a 120 MB download is over the limit |
 | `bundle.sh` (the review) | A bundle made on this Mac would carry arm64 images | `docker save` writes the images as the local Docker holds them, and a Mac builds and pulls arm64; an amd64 air-gapped server could not start them and has no registry to fetch others from | `bundle.sh` takes `PLATFORM` (`linux/amd64` unless set), pulls a missing database image for it, refuses an image of another platform before writing anything, and names the platform in `images.txt`; `install-offline.sh` refuses a bundle for another platform before loading anything; `test-offline.sh` makes its bundle for the machine it installs on | `airgap-verify.test.ts` runs the real `bundle.sh` and `install-offline.sh` with a stand-in for Docker; the third run's bundle was for `linux/arm64` |
 | `bundle.sh` (the re-check) | With `PLATFORM=linux/amd64` it refused the database image after `docker pull --platform linux/amd64`, and its message asked for that same pull | With the containerd image store a tag holds every platform pulled for it: the pull added amd64 beside the arm64 the tag held, a plain `docker image inspect` still reported arm64, and a plain `docker save` would have written both | Where `docker image inspect` and `docker save` take `--platform` (Docker 28.1, API 1.49; the help hides the flag when the daemon is older, checked here with `DOCKER_API_VERSION=1.48`), `bundle.sh` checks and saves `PLATFORM`'s image by name, and copies the frontend from it. An older Docker keeps the check on the whole tag, and the refusal there says to remove the tag (`docker image rm`) before pulling for the platform. `tools/airgap/README.md` and `releases.md` say the same | `airgap-verify.test.ts`: the stand-in for Docker keeps several platforms per tag, as the containerd store does, and can be an older Docker; a tag holding arm64 and amd64 makes an amd64 bundle (refused before the fix), the pull the refusal names makes the next run pass, and the older Docker's advice works too. The fourth run made an amd64 bundle here |
+| `bundle.sh` (the second re-check) | Found by reading the script after the fourth run: the SBOM came from the tag, not from the archive saved | syft was given `TASKMOOR_IMAGE` and asked Docker for it without a platform, and where a tag holds both Docker answers with the host's. Tried here (see [The SBOM from a tag that holds both](#the-sbom-from-a-tag-that-holds-both)): syft read the arm64 image, so an amd64 bundle made from such a tag would have carried the arm64 image's SBOM, signed, with nothing to flag it | `bundle.sh` saves the Taskmoor archive unpacked, copies it into syft's container with `docker cp` (no folder has to be shared with Docker's machine), makes the SBOM from it with syft's `docker-archive:` source, then packs it. The SBOM names the image as before: the repository, with the tag as its version. `tools/airgap/README.md` and `releases.md` say so | `airgap-verify.test.ts`: the stand-in for syft reads what it is given, and an amd64 bundle from a tag holding both carried the arm64 image's SBOM before the fix; a failing syft stops the bundle before it is signed and removes its container. The run above |
 | `install.sh` (seen while fixing the link) | A busy port never stopped an install | The check read `ss` or `netstat -ltn` in Linux's format, which a Mac has neither of; and where it saw a taken port it asked `docker compose ps -q taskmoor`, which succeeds with no output when nothing runs | `ss` where there is one, otherwise a connection to the port (as the Builder's kit does); it stops unless Compose names a running Taskmoor container | `compose-install.test.ts` |
 
 ## Found, not fixed, and not done
@@ -146,11 +166,6 @@ and the script was run again.
   back. If "Add a track" is ever again found but never stable, look at what moves the
   create-track form while it opens; the load that run had (an average up to 120) was not made
   again on purpose.
-- **The SBOM is made from the tag, not from the saved archive.** syft asks Docker for
-  `TASKMOOR_IMAGE` without naming a platform. In the fourth run the tag held amd64 alone and
-  every architecture in the SBOM was amd64's; what syft reads from a Taskmoor tag that holds
-  both platforms was not tried. Until it is, make a bundle from a Taskmoor tag that holds the
-  bundle's platform alone, such as `smoke.sh`'s emulated build for amd64.
 
 ## The image size
 
@@ -203,9 +218,10 @@ run over a slow link. Colima was stopped afterwards.
   bundle on one, for one platform at a time: `PLATFORM` names the servers' (`linux/amd64`
   unless set), and the images must be pulled for it (`docker pull --platform linux/amd64`),
   since what a Mac pulls or builds is arm64. With this Docker the pull goes beside the arm64
-  image under the same tag, and `bundle.sh` saves amd64's alone (the fourth run). It refuses an
-  image the tag does not hold for `PLATFORM`, and `install-offline.sh` a server of another
-  platform (the review's and the re-check's rows under "Runs and fixes").
+  image under the same tag, and `bundle.sh` saves amd64's alone (the fourth run) and makes the
+  SBOM from that archive. It refuses an image the tag does not hold for `PLATFORM`, and
+  `install-offline.sh` a server of another platform (the review's and the re-checks' rows under
+  "Runs and fixes").
 - **Publishing images to ghcr.io** (T-036): the user runs the `gh` and `docker login` commands.
   The kits here ran against the locally built `taskmoor:dev`.
 - **What waits for the M1 gate** (`CLAUDE.md`): the GitHub Actions jobs, PostgreSQL 18, Windows

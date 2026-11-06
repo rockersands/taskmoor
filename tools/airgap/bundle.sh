@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds the air-gap bundle (OPS-005, ADR-021): image archives, the Compose kit and the Helm
-# chart, the frontend build for static hosting, a CycloneDX SBOM, SHA256SUMS and a signature.
+# chart, the frontend build for static hosting, a CycloneDX SBOM of the Taskmoor archive,
+# SHA256SUMS and a signature.
 #   SIGNING_KEY=key.pem PUBLIC_KEY=cosign.pub bash tools/airgap/bundle.sh <version> [out-dir]
 # Images come from the local Docker: TASKMOOR_IMAGE (default taskmoor:<version>) and
 # POSTGRES_IMAGE (default the Compose kit's own, pulled if missing). SIGNING_KEY is an ECDSA
@@ -14,8 +15,9 @@
 # `docker buildx build --platform linux/amd64 --load`. A missing database image is pulled for
 # PLATFORM. With Docker 29's containerd image store a tag holds every platform pulled for it,
 # so a Docker whose `docker image inspect` and `docker save` take --platform (28.1 and later)
-# has the bundle check and save PLATFORM's image by name. An older one cannot pick a platform:
-# there the tag must hold only PLATFORM's image (`docker image rm` it before the pull).
+# has the bundle check and save PLATFORM's image by name, and the SBOM is made from that saved
+# archive. An older one cannot pick a platform: there the tag must hold only PLATFORM's image
+# (`docker image rm` it before the pull).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # Git Bash: docker must see container paths as written, other tools need path conversion.
@@ -82,7 +84,8 @@ done
 
 rm -rf "$dir"
 mkdir -p "$dir/images" "$dir/compose" "$dir/web" "$dir/helm"
-docker save ${pick[@]+"${pick[@]}"} "$app" | gzip -6 > "$dir/images/taskmoor.tar.gz"
+# The Taskmoor archive stays unpacked until the SBOM is made from it (below).
+docker save ${pick[@]+"${pick[@]}"} "$app" > "$dir/images/taskmoor.tar"
 docker save ${pick[@]+"${pick[@]}"} "$db" | gzip -6 > "$dir/images/postgres.tar.gz"
 # install-offline.sh reads the platform line and refuses a server of another one.
 {
@@ -114,8 +117,27 @@ tar -czf "$dir/web/taskmoor-web-$version.tar.gz" -C "$dir/web" taskmoor-web
 rm -rf "$dir/web/taskmoor-web"
 
 echo "== SBOM"
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/syft:v1.33.0 \
-  "$app" -o cyclonedx-json -q > "$dir/sbom.cdx.json"
+# From the Taskmoor archive saved above, so the SBOM describes the image the bundle carries.
+# Given the tag, syft asks Docker for it without a platform, and where the tag holds several
+# Docker answers with the host's: an amd64 bundle made on an Apple silicon Mac would carry the
+# arm64 image's SBOM. The archive goes in with docker cp, so no folder has to be shared with
+# Docker's machine (Colima shares only the home folder).
+# Named as syft names an image given by tag: the repository, with the tag as its version.
+named=(--source-name "$app")
+case "$app" in
+  *@*) ;;
+  *) case "${app##*/}" in *:*) named=(--source-name "${app%:*}" --source-version "${app##*:}") ;; esac ;;
+esac
+sbom=$(docker create anchore/syft:v1.33.0 docker-archive:/tmp/taskmoor.tar "${named[@]}" \
+  -o cyclonedx-json -q)
+if ! { docker cp "$(host "$dir/images/taskmoor.tar")" "$sbom:/tmp/taskmoor.tar" >/dev/null &&
+  docker start -a "$sbom" > "$dir/sbom.cdx.json"; }; then
+  docker rm -v "$sbom" >/dev/null
+  echo "syft could not make the SBOM from $dir/images/taskmoor.tar"
+  exit 1
+fi
+docker rm -v "$sbom" >/dev/null
+gzip -6 "$dir/images/taskmoor.tar"
 
 echo "== checksums and signature"
 cp "$pub" "$dir/cosign.pub"

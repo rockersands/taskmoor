@@ -8,7 +8,7 @@ Everything needed to install Taskmoor on a host with no internet access (OPS-005
 | `compose/` | The Compose kit and its installer |
 | `helm/` | The Helm chart, for Kubernetes clusters with a private registry |
 | `web/` | The frontend build, for serving from any static host |
-| `sbom.cdx.json` | Software bill of materials of the Taskmoor image (CycloneDX) |
+| `sbom.cdx.json` | Software bill of materials of the Taskmoor image in `images/`, made from that archive (CycloneDX) |
 | `SHA256SUMS`, `SHA256SUMS.sig` | Checksums of every file, and their signature |
 | `cosign.pub` | The public key the signature verifies against |
 
@@ -32,9 +32,10 @@ linux/amd64 --load` for an image built there. A missing database image is pulled
 A tag can hold more than one platform: with the containerd image store, Docker 29's default,
 pulling for another platform adds it beside the one the tag held. Docker 28.1 and later
 (`docker image inspect` and `docker save` take `--platform`) let the bundle check and save
-`PLATFORM`'s image by name, so nothing else is needed. An older Docker cannot pick one, so there
-the tag must hold that platform's image alone: remove it first (`docker image rm <image>`), then
-pull it for the platform.
+`PLATFORM`'s image by name, and the SBOM is made from that saved archive rather than from the
+tag, so nothing else is needed. An older Docker cannot pick one, so there the tag must hold that
+platform's image alone: remove it first (`docker image rm <image>`), then pull it for the
+platform.
 
 ## Install with Docker Compose
 
