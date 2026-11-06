@@ -97,7 +97,14 @@ them.
     - *Lock order: the status list, then workflows, then statuses* (T-209). Every path that holds
       a workflow row and a status row in one transaction takes the workflow first:
       - a ticket write holds its workflow (key share) before the status it enters, and a draft
-        save holds its workflow (no key update) before the statuses it names;
+        save holds its workflow (no key update) before the statuses it names. *2026-11-06
+        (T-237):* the draft save reads the stage of a status it gives a free move only with that
+        status held too (key share, which it took anyway to write the version's statuses, now
+        before the read). A stage change holds its status (update) while it rewrites the
+        workflows that have it; a draft adding the status is not among them, and read without
+        the lock it saw the stage from before the change and gave a move into a status made
+        closed-stage no close reason. Held, it waits for the change and sees the new stage.
+        Creating a workflow with no transitions reads its statuses the same way;
       - a stage change holds every workflow whose published version or draft has the status, in
         id order (no key update, so it never waits for a ticket write; it moves no ticket), then
         the status. Holding the status first deadlocked with a draft save. It holds no workflow
@@ -111,7 +118,14 @@ them.
         workflow and waiting for the status then deadlocked with it (`40P01`, a 500), so the stage
         change left board-managed workflows out, which missed a board taking over a workflow that
         had no board yet. With the sync holding the workflow first, the stage change holds
-        board-managed workflows too and leaves them as they are on the row it holds;
+        board-managed workflows too and leaves them as they are on the row it holds. *2026-11-06
+        (T-238):* whether a board may take its track's workflow over (no other track uses it, no
+        guard, check or rule on it) is read after those two locks, not before: a check published
+        between a read without them and the sync's new version was replaced by the board's
+        columns. When the answer is no, the locks stay to the end of the board's change, as they
+        would after a takeover. A column's path on a workflow the board does not manage holds the
+        list (when the column needs a status made), then the workflow, and builds the new version
+        on the published one read after that, so a version published meanwhile is kept;
       - the status list (`lockList`) comes before both: a workflow import holds it before the
         workflow, and deleting or reordering statuses before the statuses, so a sync that renamed
         a status and then waited for the list (to make a column's status) deadlocked with those.
@@ -125,13 +139,39 @@ them.
       chose this over a warning in the draft's answer because WF-008 (4) names any status added to a
       workflow that moves freely, not only the editor's. The server only adds: a status that was
       already in the workflow, a step someone drew, any draft with a rule and a board-managed
-      workflow's draft (its board says which columns there are) stay as sent. An old
-      workflow with no transitions gets its moves when its next draft is saved; nothing rewrites it
-      before that. The web editor saves with `transitionsAsSent`: its Add a status already gives a
-      new status its free move, so a move missing from a draft that has transitions was deleted on
-      purpose, and the server adds none (a draft with no transitions at all still gets them, as a
-      new workflow does). Without it, a free move deleted from a status just added came back on
+      workflow's draft (its board says which columns there are) stay as sent. An old workflow
+      with no transitions gets its moves when its next draft is saved, or from the operator's
+      repair below. The web editor saves with `transitionsAsSent`: its Add a status already gives
+      a new status its free move, so a move missing from a draft that has transitions was deleted
+      on purpose, and the server adds none (a draft with no transitions at all still gets them, as
+      a new workflow does). Without it, a free move deleted from a status just added came back on
       the first save, and Publish, which saves first, could publish it.
+    - *An old workflow left with no moves* (T-237, 2026-11-06). A workflow made empty before free
+      moving was the rule (or imported from a file with no transitions, or published from an
+      empty version restored as its draft: imports and restores keep what they hold) has a
+      published version with no transitions, so no ticket in it can move, until someone saves its
+      next draft. The operator's command `cli.mjs workflow-moves` lists them, one JSON line per
+      workspace, and with `--repair` gives each a global transition into every status, as a new
+      workflow gets, as a new published version: one transaction and one `workflow.published` by
+      the system (no person) per workflow, holding it as a publish does, then its statuses, and
+      checking it again under the lock, so one given transitions meanwhile stays as it is. A
+      closing status takes the reason free moves close with; with none to name it gets no move,
+      and no reason is made. Its draft stays as its author saved it, above the new version, as
+      migration 0104 left drafts; saving it gives it its free moves. A workflow with a rule, or
+      one a board manages, gets nothing and stays listed, and the command then exits with 1. We
+      considered:
+      - *a migration*, which would do the same at the next upgrade with nobody running anything.
+        Not now: this wave may take no migration number, every site holding one from before the
+        rule is a pre-release one, and an import or a restore can still make one after any
+        migration, which the command, run when needed, covers too. A migration before 1.0 can
+        reuse `repairWorkflowMoves` if wanted;
+      - *the moves at read time*, when a ticket asks for its transitions: built in memory, the
+        definition, the editor and an exported file would say something other than what happens
+        (rejected for the same reason in T-209); written then, a read would publish a version,
+        and a ticket write holds its workflow with key share, so two writes raising it to update
+        at once would deadlock;
+      - *the moves at the next publish*: only a draft is published, so a workflow with no draft
+        stays as it is, and the editor's Publish saves first, which gives them already.
     - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
       The reason free moves close with (`closingReasonId`) stays as it was: the reason named
       Completed, else what the default workflow's published version sets on entering a

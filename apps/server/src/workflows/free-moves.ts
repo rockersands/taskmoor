@@ -54,8 +54,9 @@ export async function withFreeMoves(
 /**
  * The workflows of a workspace whose published version has no transitions, by id: no ticket in
  * them can move. A new workflow and a saved draft with none get their free moves, but a workflow
- * made empty before that rule (or published from an empty version restored or imported as the
- * draft, which keep what they hold) stays so until its next draft is saved.
+ * made empty before that rule (or imported from a file with none, or published from an empty
+ * version restored as its draft: imports and restores keep what they hold) stays so until its
+ * next draft is saved.
  */
 export async function workflowsWithoutMoves(
   db: Kysely<Database>,
