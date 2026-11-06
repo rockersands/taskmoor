@@ -4,8 +4,10 @@ The bash scripts that build the image and install the kits cannot run on the Win
 they had not run since the merges of late October. This page records their first run on a Mac,
 on 2026-11-05, what failed and what was fixed, a second run that evening after the fixes
 for what the runs left behind, and a third on 2026-11-06 after a review of that work, in which
-all five passed. The scripts are the ones in `CLAUDE.md`'s command table; none of them reaches a
-registry other than Docker Hub for base images.
+all five passed. A fourth that day, after a re-check, made an air-gap bundle for amd64 servers
+on this arm64 Mac for the first time and ran the image and fresh-machine scripts again. The
+scripts are the ones in `CLAUDE.md`'s command table; none of them reaches a registry other than
+Docker Hub for base images.
 
 ## The machine
 
@@ -65,6 +67,46 @@ the scripts, and no `ghcr.io/rockersands/taskmoor` tag.
 | `bash tools/airgap/test-offline.sh` | Passed | 33 s | As in the first pass, with a bundle for `linux/arm64`, this machine's platform, which `install-offline.sh` checked before loading the images |
 | `bash tools/image/fresh-vm.sh` | Passed | 31 s | Installed in 18 s; fresh machine to first sign-in 22 s; the whole journey, "Add a track" included; the open board updated 205 ms after a change elsewhere |
 
+### Fourth run, after the re-check
+
+On 2026-11-06 at `4006d1ee`, which has the re-check's fix for the bundle's platform (its row
+under "Runs and fixes"), one after the other while holding the machine's test lock, on a quiet
+machine: the load average stayed between 5 and 8 (one-minute figure, sampled every 20 s), well
+below the 15 to 120 of the second run. Docker Engine 29.5.2 (API 1.54) with the containerd image
+store, CLI 29.9.2. `smoke-kits.sh` and `smoke-backend-kit.sh` did not run again: nothing they
+exercise changed since the third run.
+
+| Script | Result | Time | What it showed |
+|---|---|---|---|
+| `bash tools/image/smoke.sh` | Passed | 35 s | Built `taskmoor:dev` at `4006d1ee` with the dependency install cached; 269 MB unpacked; the version in the server and the frontend artefact; both routing modes; all roles next to PostgreSQL 16; `taskmoor:dev-amd64` under emulation |
+| `bash tools/image/fresh-vm.sh` | Passed | 30 s | Installed in 19 s; fresh machine to first sign-in 23 s; the whole journey, "Add a track" included, with nothing changed in the spec or the page; the open board updated 311 ms after a change elsewhere. With the third run's two, that is three passes on a quiet machine and the one failure at a load near 120 |
+| `bundle.sh`, `PLATFORM=linux/amd64` | Passed | 13 s | See below: a 258 MB bundle for amd64 servers, signed with a throwaway key made for the run and removed after it (no release key here) |
+| `bash tools/airgap/test-offline.sh` | Passed | 34 s | The arm64 bundle, now saved with `--platform linux/arm64` from a database tag that held amd64 too: loaded and installed offline, the similar tickets found with pgvector's HNSW index |
+
+The amd64 bundle took `TASKMOOR_IMAGE=taskmoor:dev-amd64` (the image `smoke.sh` had just built
+under emulation) and the database image the Compose kit names,
+`pgvector/pgvector:0.8.1-pg16-trixie`, which this Mac held for arm64 only:
+
+1. Before the pull, `bundle.sh` refused in 1 s: the tag "has no linux/amd64 image here", with
+   `docker pull --platform linux/amd64 pgvector/pgvector:0.8.1-pg16-trixie` as the remedy (and
+   `PLATFORM=linux/arm64` as the other choice).
+2. That pull took 114 s (about 160 MB at 1.5 to 2 MB/s; no stall). Afterwards the tag held both
+   platforms, and a plain `docker image inspect` still reported `linux/arm64`: the check before
+   the fix would have refused again, as the re-check said. `docker image inspect --platform
+   linux/amd64` reported `linux/amd64`; before the pull it had answered `/` and succeeded,
+   since the image index lists amd64 even when none of it was pulled.
+3. `bundle.sh` then passed in 13 s. `images.txt` names the amd64 manifests and `platform
+   linux/amd64`. Unpacked, each archive holds one image, `linux/amd64` in its config: the
+   Taskmoor archive 97 MB (11 layers), the database archive 160 MB (16 layers, and a second
+   manifest that names no platform); nothing of arm64. All 144 package URLs in the SBOM that
+   name an architecture say `x86_64`, so syft read the amd64 image. The bundle checked itself
+   with `verify.sh`.
+4. Afterwards the amd64 variant was taken out of the tag again with
+   `docker image rm --force --platform linux/amd64 pgvector/pgvector:0.8.1-pg16-trixie` (without
+   `--force` Docker refuses, since the content goes from every image that refers to it; only
+   this tag did). The machine was left with no container, volume or network from the runs, and
+   no air-gap or `ghcr.io` tag.
+
 ## Runs and fixes
 
 Each failure was fixed in the script or in what it exercises, with a test where one can show it,
@@ -87,6 +129,7 @@ and the script was run again.
 | `test-offline.sh` | The install printed "running on port 18120" and a link to `http://localhost:8080/#/setup?...` | Without `PUBLIC_URL` the server builds the link from its own port inside the container | `deploy/compose/install.sh` names the host port in the link when `PUBLIC_URL` is not set | `packages/devtools/src/compose-install.test.ts`; the second run's link named 18120 |
 | `smoke.sh` (the review) | Checked "96 MB" against the 400 MB limit | With the containerd image store `docker image inspect`'s Size is the compressed download (see [The image size](#the-image-size)) | `smoke.sh` adds up the layers' sizes from `docker history` and checks that; `smoke-kits.sh` reports the all-in-one image's the same way | `image-scripts.test.ts` runs the scripts' own lines with a stand-in for Docker: an image of 450 MB with a 120 MB download is over the limit |
 | `bundle.sh` (the review) | A bundle made on this Mac would carry arm64 images | `docker save` writes the images as the local Docker holds them, and a Mac builds and pulls arm64; an amd64 air-gapped server could not start them and has no registry to fetch others from | `bundle.sh` takes `PLATFORM` (`linux/amd64` unless set), pulls a missing database image for it, refuses an image of another platform before writing anything, and names the platform in `images.txt`; `install-offline.sh` refuses a bundle for another platform before loading anything; `test-offline.sh` makes its bundle for the machine it installs on | `airgap-verify.test.ts` runs the real `bundle.sh` and `install-offline.sh` with a stand-in for Docker; the third run's bundle was for `linux/arm64` |
+| `bundle.sh` (the re-check) | With `PLATFORM=linux/amd64` it refused the database image after `docker pull --platform linux/amd64`, and its message asked for that same pull | With the containerd image store a tag holds every platform pulled for it: the pull added amd64 beside the arm64 the tag held, a plain `docker image inspect` still reported arm64, and a plain `docker save` would have written both | Where `docker image inspect` and `docker save` take `--platform` (Docker 28.1, API 1.49; the help hides the flag when the daemon is older, checked here with `DOCKER_API_VERSION=1.48`), `bundle.sh` checks and saves `PLATFORM`'s image by name, and copies the frontend from it. An older Docker keeps the check on the whole tag, and the refusal there says to remove the tag (`docker image rm`) before pulling for the platform. `tools/airgap/README.md` and `releases.md` say the same | `airgap-verify.test.ts`: the stand-in for Docker keeps several platforms per tag, as the containerd store does, and can be an older Docker; a tag holding arm64 and amd64 makes an amd64 bundle (refused before the fix), the pull the refusal names makes the next run pass, and the older Docker's advice works too. The fourth run made an amd64 bundle here |
 | `install.sh` (seen while fixing the link) | A busy port never stopped an install | The check read `ss` or `netstat -ltn` in Linux's format, which a Mac has neither of; and where it saw a taken port it asked `docker compose ps -q taskmoor`, which succeeds with no output when nothing runs | `ss` where there is one, otherwise a connection to the port (as the Builder's kit does); it stops unless Compose names a running Taskmoor container | `compose-install.test.ts` |
 
 ## Found, not fixed, and not done
@@ -99,9 +142,15 @@ and the script was run again.
   install can also stall without failing, as in the second run.
 - `fresh-vm.sh` prints a harmless "Terminated" line when it stops its static server.
 - **`fresh-vm.sh`'s journey under heavy load** (second run, above): on a quiet machine it passed
-  twice in the third run, so the second run's failure did not come back. If "Add a track" is
-  ever again found but never stable, look at what moves the create-track form while it opens;
-  the load that run had (an average up to 120) was not made again on purpose.
+  twice in the third run and again in the fourth, so the second run's failure did not come
+  back. If "Add a track" is ever again found but never stable, look at what moves the
+  create-track form while it opens; the load that run had (an average up to 120) was not made
+  again on purpose.
+- **The SBOM is made from the tag, not from the saved archive.** syft asks Docker for
+  `TASKMOOR_IMAGE` without naming a platform. In the fourth run the tag held amd64 alone and
+  every architecture in the SBOM was amd64's; what syft reads from a Taskmoor tag that holds
+  both platforms was not tried. Until it is, make a bundle from a Taskmoor tag that holds the
+  bundle's platform alone, such as `smoke.sh`'s emulated build for amd64.
 
 ## The image size
 
@@ -153,8 +202,10 @@ run over a slow link. Colima was stopped afterwards.
   removed after it. `bundle.sh` now runs on a Mac, so the maintainer can build and sign a real
   bundle on one, for one platform at a time: `PLATFORM` names the servers' (`linux/amd64`
   unless set), and the images must be pulled for it (`docker pull --platform linux/amd64`),
-  since what a Mac pulls or builds is arm64. `bundle.sh` refuses an image of another platform,
-  and `install-offline.sh` a server of another one (the review's rows under "Runs and fixes").
+  since what a Mac pulls or builds is arm64. With this Docker the pull goes beside the arm64
+  image under the same tag, and `bundle.sh` saves amd64's alone (the fourth run). It refuses an
+  image the tag does not hold for `PLATFORM`, and `install-offline.sh` a server of another
+  platform (the review's and the re-check's rows under "Runs and fixes").
 - **Publishing images to ghcr.io** (T-036): the user runs the `gh` and `docker login` commands.
   The kits here ran against the locally built `taskmoor:dev`.
 - **What waits for the M1 gate** (`CLAUDE.md`): the GitHub Actions jobs, PostgreSQL 18, Windows
@@ -170,6 +221,15 @@ bash tools/image/smoke-backend-kit.sh
 bash tools/airgap/test-offline.sh
 bash tools/image/fresh-vm.sh         # needs Playwright's Chromium (pnpm install)
 colima stop
+```
+
+An air-gap bundle for amd64 servers, as in the fourth run; a release is signed with the release
+key, a trial with a throwaway one:
+
+```
+docker pull --platform linux/amd64 pgvector/pgvector:0.8.1-pg16-trixie
+TASKMOOR_IMAGE=taskmoor:dev-amd64 PLATFORM=linux/amd64 SIGNING_KEY=<key.pem> \
+  PUBLIC_KEY=<public key> bash tools/airgap/bundle.sh <version> <out-dir>
 ```
 
 Colima shares only the home folder with its VM, so run the scripts from a checkout under it.
