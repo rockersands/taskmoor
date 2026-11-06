@@ -137,6 +137,15 @@ const reportOf = (result: ImportResult) => ({
 
 type Db = Kysely<Database> | Transaction<Database>;
 /**
+ * A draft to save. `transitionsAsSent` keeps the transitions of a draft that has any exactly as
+ * sent: the web editor sends it, since its Add a status gives a new status its free move and a move
+ * missing afterwards was deleted on purpose (T-210; WF-008 (4)).
+ */
+const draftBody = z
+  .object({ definition: definitionSchema, transitionsAsSent: z.boolean().optional() })
+  .strict();
+
+/**
  * A status's change of stage found a workflow to rewrite that it had not held before the status:
  * a draft that took the status was saved meanwhile. The change starts again and holds it first.
  */
@@ -898,18 +907,20 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   app.put('/api/v1/workflows/:id/draft', async (request, reply) => {
     if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id }).safeParse(request.params);
-    const parsed = z.object({ definition: definitionSchema }).strict().safeParse(request.body);
+    const parsed = draftBody.safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
     const ws = request.workspaceId;
+    const { definition, transitionsAsSent = false } = parsed.data;
     const problem =
-      definitionProblem(parsed.data.definition, await knownStatuses(db, ws)) ??
-      (await closeReasonProblem(db, ws, parsed.data.definition));
+      definitionProblem(definition, await knownStatuses(db, ws)) ??
+      (await closeReasonProblem(db, ws, definition));
     if (problem) return invalid(reply, problem);
-    await enforceLimit(db, ws, 'statuses_per_workflow', parsed.data.definition.statuses.length);
+    await enforceLimit(db, ws, 'statuses_per_workflow', definition.statuses.length);
     const version = await saveDraft(
       request,
       params.data.id,
-      (trx, current) => withFreeMoves(trx, ws, params.data.id, current, parsed.data.definition),
+      (trx, current) =>
+        withFreeMoves(trx, ws, params.data.id, current, definition, transitionsAsSent),
       null,
     );
     if (version === null) return notFound(reply);
@@ -921,7 +932,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
    * status gives them: see `statusesWantingFreeMove`. A closing status takes the reason free moves
    * close with, and none when the workspace has no reason to name. New transitions number above
    * every id any version of the workflow used, since history names transitions by id. A draft the
-   * additions would push past a limit is saved as sent.
+   * additions would push past a limit is saved as sent, and so is one sent with
+   * `transitionsAsSent` that has any transition.
    */
   async function withFreeMoves(
     trx: Transaction<Database>,
@@ -929,8 +941,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     workflowId: number,
     current: WorkflowDefinition,
     draft: WorkflowDefinition,
+    transitionsAsSent: boolean,
   ): Promise<WorkflowDefinition> {
-    const wanting = statusesWantingFreeMove(current, draft);
+    const wanting = statusesWantingFreeMove(current, draft, transitionsAsSent);
     if (wanting.length === 0) return draft;
     const info = await statusInfo(trx, workspaceId, wanting);
     const closing = wanting.some((id) => info.get(id)?.stage === 'closed')

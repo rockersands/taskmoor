@@ -561,6 +561,45 @@ describe('free moving at its edges (WF-008)', () => {
       expect(into(draftOf(ruled), status['In Review'] as number)).toBeUndefined();
     });
 
+    it('[WF-008] a draft the editor sends keeps a free move deleted from a status it had just added deleted', async () => {
+      const id = await freeWorkflow('Edited by hand', [
+        status.New as number,
+        status.Active as number,
+      ]);
+      const published = (await view(id)).published.definition;
+      // Add a status gave In Review its free move; the administrator deleted it, then saved.
+      const sent = {
+        ...published,
+        statuses: [...published.statuses, { statusId: status['In Review'] as number }],
+      };
+      const saved = await put(`/api/v1/workflows/${id}/draft`, {
+        definition: sent,
+        transitionsAsSent: true,
+      });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(draftOf(saved.json().workflow).transitions).toEqual(sent.transitions);
+      // Publish saves first: what goes live is what was sent.
+      const done = await post(`/api/v1/workflows/${id}/publish`, {});
+      expect(done.statusCode, done.body).toBe(200);
+      expect(into((await view(id)).published.definition, status['In Review'] as number)).toBe(
+        undefined,
+      );
+
+      // A draft with no transitions at all still moves freely, as a new workflow does.
+      const emptied = await put(`/api/v1/workflows/${id}/draft`, {
+        definition: { ...sent, transitions: [] },
+        transitionsAsSent: true,
+      });
+      expect(emptied.statusCode, emptied.body).toBe(200);
+      expect(draftOf(emptied.json().workflow).transitions.map((t) => [t.from, t.to])).toEqual([
+        ['any', status.New],
+        ['any', status.Active],
+        ['any', status['In Review']],
+      ]);
+      const discarded = await as({ method: 'DELETE', url: `/api/v1/workflows/${id}/draft` });
+      expect(discarded.statusCode, discarded.body).toBe(204);
+    });
+
     it('[WF-008] a draft with no transitions moves freely, as a new workflow does, and so does an old empty one', async () => {
       const id = await freeWorkflow('Made empty', [
         status.New as number,

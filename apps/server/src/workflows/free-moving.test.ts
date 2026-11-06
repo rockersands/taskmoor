@@ -110,4 +110,15 @@ describe('free moves a saved draft gets (WF-008)', () => {
     expect(statusesWantingFreeMove({ ...free, board }, { ...added, board })).toEqual([]);
     expect(statusesWantingFreeMove({ ...free, board }, { ...added, transitions: [] })).toEqual([]);
   });
+
+  it('[WF-008] a draft the editor sends keeps its transitions: a move deleted from a status just added stays deleted', () => {
+    // The editor's Add a status gave status 4 its move; the administrator deleted it.
+    expect(statusesWantingFreeMove(free, added, true)).toEqual([]);
+    const reachedOnlyOne = { ...added, transitions: [free.transitions[0] as never] };
+    expect(statusesWantingFreeMove({ ...free, transitions: [] }, reachedOnlyOne, true)).toEqual([]);
+    // A draft with no transitions at all still moves freely, as a new workflow does.
+    expect(statusesWantingFreeMove(free, { ...added, transitions: [] }, true)).toEqual([
+      1, 2, 3, 4,
+    ]);
+  });
 });

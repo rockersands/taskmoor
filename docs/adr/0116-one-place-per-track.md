@@ -113,7 +113,11 @@ them.
       already in the workflow, a step someone drew, any draft with a rule and a board-managed
       workflow's draft (its board says which columns there are) stay as sent. An old
       workflow with no transitions gets its moves when its next draft is saved; nothing rewrites it
-      before that.
+      before that. The web editor saves with `transitionsAsSent`: its Add a status already gives a
+      new status its free move, so a move missing from a draft that has transitions was deleted on
+      purpose, and the server adds none (a draft with no transitions at all still gets them, as a
+      new workflow does). Without it, a free move deleted from a status just added came back on
+      the first save, and Publish, which saves first, could publish it.
     - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
       The reason free moves close with (`closingReasonId`) stays as it was: the reason named
       Completed, else what the default workflow's published version sets on entering a

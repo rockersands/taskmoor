@@ -153,11 +153,13 @@ export const workflowsClient: WorkflowsClient = {
   remove: async (id) => {
     await api<null>(`/workflows/${id}`, { method: 'DELETE' });
   },
+  // Saved as the editor shows it: its Add a status gives a status its free move, so a move missing
+  // now was deleted on purpose and the server must not put it back (WF-008 (4)).
   saveDraft: async (id, definition) =>
     (
       await api<{ workflow: WorkflowView }>(`/workflows/${id}/draft`, {
         method: 'PUT',
-        body: { definition },
+        body: { definition, transitionsAsSent: true },
       })
     ).workflow,
   discardDraft: async (id) => {

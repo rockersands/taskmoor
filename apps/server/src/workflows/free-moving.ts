@@ -109,19 +109,22 @@ export function followingStage(
  * editor's Add a status gives one: on a workflow that moves freely, kept free by the draft, each
  * status the draft adds that no transition reaches. A workflow with no transitions, before or in
  * the draft, gets one into every status no transition reaches, as a new workflow does. Anything
- * else is the administrator's to draw.
+ * else is the administrator's to draw. With `transitionsAsSent` (the web editor, whose Add a status
+ * gives the status its free move, so a move missing now was deleted on purpose) only a draft with
+ * no transitions at all gets them.
  */
 export function statusesWantingFreeMove(
   base: WorkflowDefinition,
   draft: WorkflowDefinition,
+  transitionsAsSent = false,
 ): number[] {
   // A board-managed workflow's board says which columns there are and which one closes.
   if (base.board || draft.board) return [];
   const reached = new Set(draft.transitions.map((t) => t.to));
   const unreached = draft.statuses.map((s) => s.statusId).filter((id) => !reached.has(id));
-  if (draft.transitions.length === 0 || base.transitions.length === 0) {
-    return workflowMovesFreely(draft) ? unreached : [];
-  }
+  if (draft.transitions.length === 0) return workflowMovesFreely(draft) ? unreached : [];
+  if (transitionsAsSent) return [];
+  if (base.transitions.length === 0) return workflowMovesFreely(draft) ? unreached : [];
   if (!workflowMovesFreely(base) || !workflowMovesFreely(draft)) return [];
   const had = new Set(base.statuses.map((s) => s.statusId));
   return unreached.filter((id) => !had.has(id));
