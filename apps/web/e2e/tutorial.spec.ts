@@ -190,8 +190,17 @@ test('[AGL-025] the Dashboards section, walked in the coach card from the offer 
   );
   expect(await seriousAxeViolations(page)).toEqual([]);
   await noSidewaysScroll(page);
+  // The end is saved in the background, as each step is. The page is left only once the server
+  // has it: leaving sooner cancelled the request, and the section was not done (T-013a).
+  const done = page.waitForResponse(
+    (r) =>
+      r.request().method() === 'PUT' &&
+      r.url().endsWith('/api/v1/account/tutorial/dashboards') &&
+      r.request().postDataJSON()?.state === 'done',
+  );
   await finish.getByRole('button', { name: 'Finish' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect((await done).status()).toBe(200);
 
   // Saved with the account: Settings, Tutorials shows it done, to do again.
   await page.goto('about:blank');
