@@ -73,29 +73,29 @@ export async function closeReasonProblem(
 }
 
 /**
- * The reasons the default workflow sets on entering a closed-stage status, in the order of its
- * transitions; empty when it sets none. They follow the reason Completed through a rename and a
- * replacement, which a lookup by name cannot.
+ * The reason the default workflow sets on entering a closed-stage status, or null. It follows the
+ * reason Completed through a rename and a replacement, which a lookup by name cannot.
  */
-export async function defaultClosingReasons(
+export async function defaultClosingReason(
   db: Kysely<Database>,
   workspaceId: number,
-): Promise<number[]> {
+): Promise<number | null> {
   const { rows } = await sql<{ definition: unknown }>`
     SELECT v.definition
       FROM workflow w
       JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
      WHERE w.workspace_id = ${workspaceId} AND w.is_default`.execute(db);
-  if (!rows[0]) return [];
+  if (!rows[0]) return null;
   const definition = definitionSchema.parse(rows[0].definition);
-  if (await closeReasonProblem(db, workspaceId, definition)) return [];
+  if (await closeReasonProblem(db, workspaceId, definition)) return null;
   const stages = await statusInfo(
     db,
     workspaceId,
     definition.transitions.map((t) => t.to),
   );
   const closing = definition.transitions.filter((t) => stages.get(t.to)?.stage === 'closed');
-  return [...new Set(reasonsSet({ transitions: closing }).map((s) => Number(s.value)))];
+  const set = reasonsSet({ transitions: closing });
+  return set[0] ? Number(set[0].value) : null;
 }
 
 /** Whether a definition sets this close reason. */

@@ -2,7 +2,7 @@ import type { Database, StatusStage } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Column } from '../boards/model';
 import { lockList } from '../tickets/fields';
-import { defaultClosingReasons } from './close-reasons';
+import { defaultClosingReason } from './close-reasons';
 import { freeTransition } from './free-moving';
 import { loadMap, trackMapId } from './maps';
 import { runningMigration } from './migration';
@@ -305,17 +305,18 @@ const reasonNamedCompleted = async (trx: Trx, workspaceId: number) =>
   )?.id ?? null;
 
 /**
- * The reason a closing status that moves freely sets, or null when the workspace has none to name.
- * What the default workflow closes with comes first (Completed by name when it sets several), so a
- * renamed or replaced Completed stays the one reason, and a reason named Completed made after a
- * replacement does not split free moves between two reasons (T-234). Only a default workflow that
- * closes with no reason leaves the name to decide.
+ * The reason a closing status that moves freely sets, or null when the workspace has none to name:
+ * Completed by name, or what the default workflow closes with, so a renamed or replaced Completed
+ * stays the one reason and no second Completed appears beside it. The name comes first: a default
+ * workflow that closes some steps with another reason, such as Not planned, never decides it while
+ * Completed exists. A reason named Completed made after Completed was replaced takes the free moves
+ * made from then on while the old ones keep the replacement; which one should win is open for the
+ * user (T-234), so this stays as it was.
  */
 export async function closingReasonId(trx: Trx, workspaceId: number): Promise<number | null> {
-  const named = await reasonNamedCompleted(trx, workspaceId);
-  const closing = await defaultClosingReasons(trx, workspaceId);
-  if (closing.length === 0) return named;
-  return named !== null && closing.includes(named) ? named : (closing[0] as number);
+  return (
+    (await reasonNamedCompleted(trx, workspaceId)) ?? (await defaultClosingReason(trx, workspaceId))
+  );
 }
 
 /** The reason a closing status that moves freely sets, with Completed made when there is none. */

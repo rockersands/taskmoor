@@ -109,16 +109,20 @@ them.
       workflow's draft (its board says which columns there are) stay as sent. An old
       workflow with no transitions gets its moves when its next draft is saved; nothing rewrites it
       before that.
-    - *One closing reason after a replacement* (T-234). The reason free moves close with
-      (`closingReasonId`) is now what the default workflow's published version sets on entering a
-      closed-stage status (Completed by name when it sets several), and the reason named Completed
-      only when it sets none. Before, the name came first: a reason named Completed made after
-      Completed was replaced took every new free move while every existing one kept the
-      replacement, two reasons for one rule. Now the replacement an administrator chose stays the
-      closing reason everywhere. To close with the new Completed, set it on the default workflow's
-      closing step and publish: new free moves follow. We considered rewriting the workflows when a
-      reason named Completed appears; rejected, because creating a reason should not publish
-      workflows, and the replacement was a choice.
+    - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
+      The reason free moves close with (`closingReasonId`) stays as it was: the reason named
+      Completed, else what the default workflow's published version sets on entering a
+      closed-stage status. Replacing Completed rewrites every move that set it, so the free moves
+      already there close with the replacement; a reason named Completed made afterwards takes the
+      free moves made from then on, two reasons for one rule until the default workflow is
+      published with one of them. Putting the default workflow's reason first was tried and
+      dropped in review: a site whose default workflow closes some step with Not planned or
+      Duplicate while Completed exists (its Close step asking for the reason and setting none)
+      then had every new free move, closing column and status made closed-stage record done work
+      as not planned. The ways out change what a site's tickets are closed with, so they wait on
+      the user: the replacement stays the reason for good, chosen by the replacement itself rather
+      than by the default workflow; or the new Completed takes the old free moves too, which
+      means rewriting workflows when a reason is made or renamed.
     - *A default workflow's draft from the strict seed* (T-234). Migration 0104 left an open draft as
       its author saved it, so the editor showed the first, strict steps, and publishing them brought
       the old rules back. When the default workflow's draft still has the five seeded steps exactly

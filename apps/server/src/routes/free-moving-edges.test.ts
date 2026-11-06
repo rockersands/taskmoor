@@ -10,7 +10,7 @@ import { EVENT_TYPES } from '../events/catalogue';
 /**
  * The edges of free moving the T-207 review found (WF-008 (1), (4); ADR-116): a status whose stage
  * changes (T-209), a status added through the draft API and a workflow left with no transitions
- * (T-210), and a reason named Completed made after Completed was replaced (T-234).
+ * (T-210), and the reason free moves close with, before and after Completed is replaced (T-234).
  */
 const PASSWORD = 'harbour ladder violet';
 let address = 0;
@@ -26,6 +26,7 @@ interface Transition {
   name: string;
   from: 'any' | number[];
   to: number;
+  layout?: string[];
   checks?: unknown[];
   effects?: Effect[];
 }
@@ -485,9 +486,58 @@ describe('free moving at its edges (WF-008)', () => {
     });
   });
 
-  // From here on Completed is replaced: nothing after this may count on it.
-  describe('after Completed was replaced (T-234)', () => {
-    it('[WF-008] a reason named Completed made afterwards does not split free moves between two reasons', async () => {
+  describe('the reason free moves close with (T-234)', () => {
+    it('[WF-008] while Completed exists, a default workflow that closes some steps with another reason does not decide it', async () => {
+      // A site's own default workflow: its Close step asks for the reason and sets none, and a
+      // "Won't do" step into a closing status sets Not planned.
+      const workflowId = await defaultId();
+      const before = (await view(workflowId)).published.definition;
+      const calledOff = await newStatus('Called off', 'closed');
+      const notPlanned = reason['Not planned'] as number;
+      const next = Math.max(...before.transitions.map((t) => t.id)) + 1;
+      await saveDraft(workflowId, {
+        ...before,
+        statuses: [...before.statuses, { statusId: calledOff }],
+        transitions: [
+          ...before.transitions.map(
+            (t): Transition =>
+              t.to === status.Closed
+                ? { id: t.id, name: t.name, from: t.from, to: t.to, layout: ['close-reason'] }
+                : t,
+          ),
+          { id: next, name: "Won't do", from: 'any', to: calledOff, effects: setting(notPlanned) },
+        ],
+      });
+      const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(published.statusCode, published.body).toBe(200);
+
+      // Done work is still recorded as Completed, on every path that makes a free move.
+      const asked = await post(`/api/v1/workflows/${workflowId}/completed-reason`);
+      expect(asked.json()).toEqual({ closeReasonId: reason.Completed });
+      const created = await freeWorkflow('Closes as Completed', [
+        status.New as number,
+        status.Closed as number,
+      ]);
+      expect(
+        into((await view(created)).published.definition, status.Closed as number)?.effects,
+      ).toEqual(setting(reason.Completed as number));
+      const someday = await newStatus('Someday', 'active');
+      const later = await freeWorkflow('Made closing later', [status.New as number, someday]);
+      const closing = await patch(`/api/v1/statuses/${someday}`, { stage: 'closed' });
+      expect(closing.statusCode, closing.body).toBe(200);
+      expect(into((await view(later)).published.definition, someday)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
+
+      // The default workflow as it was, for what follows.
+      await saveDraft(workflowId, before);
+      const restored = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(restored.statusCode, restored.body).toBe(200);
+      expect((await view(workflowId)).published.definition.transitions).toEqual(before.transitions);
+    });
+
+    // From here on Completed is replaced: nothing after this may count on it.
+    it('[WF-008] after Completed was replaced, a reason named Completed made afterwards takes the free moves made from then on', async () => {
       const done = await post('/api/v1/close-reasons', { name: 'Done' });
       expect(done.statusCode, done.body).toBe(201);
       const doneId = done.json().closeReason.id as number;
@@ -498,22 +548,26 @@ describe('free moving at its edges (WF-008)', () => {
       expect(replaced.statusCode, replaced.body).toBe(204);
       const again = await post('/api/v1/close-reasons', { name: 'Completed' });
       expect(again.statusCode, again.body).toBe(201);
-      expect(await reasonOf('Completed')).toBe(again.json().closeReason.id);
+      const completed = again.json().closeReason.id as number;
+      expect(await reasonOf('Completed')).toBe(completed);
 
-      // The default workflow closes as Done, so every free move made from now on does too.
+      // The replacement took the moves that were there: the default workflow closes as Done.
       const workflowId = await defaultId();
       expect(
         into((await view(workflowId)).published.definition, status.Closed as number)?.effects,
       ).toEqual(setting(doneId));
+      // The name decides what free moves made from now on close with. Whether the replacement
+      // should win instead, or the new Completed take the old moves too, is the user's to decide
+      // (T-234); until then this is the rule as it was.
       const asked = await post(`/api/v1/workflows/${workflowId}/completed-reason`);
-      expect(asked.json()).toEqual({ closeReasonId: doneId });
+      expect(asked.json()).toEqual({ closeReasonId: completed });
       const created = await freeWorkflow('Closes after the new Completed', [
         status.New as number,
         status.Closed as number,
       ]);
       expect(
         into((await view(created)).published.definition, status.Closed as number)?.effects,
-      ).toEqual(setting(doneId));
+      ).toEqual(setting(completed));
       const shipped = await newStatus('Shipped', 'active');
       const draft = await saveDraft(created, {
         ...(await view(created)).published.definition,
@@ -522,7 +576,7 @@ describe('free moving at its edges (WF-008)', () => {
       expect(draft.draft).not.toBeNull();
       const closing = await patch(`/api/v1/statuses/${shipped}`, { stage: 'closed' });
       expect(closing.statusCode, closing.body).toBe(200);
-      expect(into(draftOf(await view(created)), shipped)?.effects).toEqual(setting(doneId));
+      expect(into(draftOf(await view(created)), shipped)?.effects).toEqual(setting(completed));
     });
 
     it('[WF-008] once the default workflow closes with the new Completed, free moves follow it', async () => {
