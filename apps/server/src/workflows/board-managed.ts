@@ -97,14 +97,40 @@ async function usedOnlyBy(
 }
 
 /**
+ * The track's workflow (`trackWorkflow`), held as a board's change of it holds it, in the order
+ * every path takes them (ADR-116, `workflows/store.ts`): the status list, then the track's own
+ * workflow (update). A column may need a status made, which takes the list; a workflow import and
+ * a status's deletion take the list before the workflow or the status; a stage change holds the
+ * workflow before the status, so it is held before any column's status is renamed. Whatever
+ * decides the change is read after this, so no publish slips between that read and the board's
+ * new version (T-238).
+ */
+async function holdTrackWorkflow(trx: Trx, ws: number, trackId: number | null) {
+  const track = await trackWorkflow(trx, ws, trackId);
+  await lockList(trx, ws, 'status');
+  if (track.workflowId !== null) {
+    await trx
+      .selectFrom('workflow')
+      .select('id')
+      .where('id', '=', track.workflowId)
+      .forUpdate()
+      .execute();
+  }
+  return track;
+}
+
+/**
  * Whether a new board of this track can take over its workflow. Never one other tracks use, and
  * never one where someone configured guards, checks or rules: those stay in force (ADR-116).
  * A local-mode track still on the shared default gets a workflow of its own, leaving that as it is.
+ * The workflow is held before it is read, as the sync that follows holds it (T-238): a check
+ * published after a read made without the lock would be replaced by the board's columns. When the
+ * answer is no, the locks stay until the transaction ends, as they would after a takeover.
  */
 export async function mayManageWorkflow(trx: Trx, ws: number, trackId: number): Promise<boolean> {
   let track: Awaited<ReturnType<typeof trackWorkflow>>;
   try {
-    track = await trackWorkflow(trx, ws, trackId);
+    track = await holdTrackWorkflow(trx, ws, trackId);
   } catch (error) {
     if (error instanceof BoardWorkflowError) return false;
     throw error;
@@ -640,6 +666,9 @@ export async function columnReach(
  * Lets cards reach a column on a workflow that stays an ordinary one: a status for the column if it
  * has none, a transition from any status to it, and steps out of it to the other columns. A new
  * version of the workflow; other tracks using it see the new status too, which the page says first.
+ * The new version is built on the published one as it stands once the workflow is held (T-238), in
+ * the lock order of ADR-116: the status list when the column needs a status made, then the
+ * workflow. Read before the lock, a version published meanwhile would be overwritten.
  */
 export async function addColumnPath(
   trx: Trx,
@@ -650,10 +679,12 @@ export async function addColumnPath(
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
   const column = columns.find((c) => c.id === columnId);
   if (!column) throw new BoardWorkflowError('not_a_track_board');
+  if (column.statusIds.length === 0) await lockList(trx, by.workspaceId, 'status');
   const row = await trx
     .selectFrom('workflow')
     .select('published_version')
     .where('id', '=', workflowId)
+    .forUpdate()
     .executeTakeFirstOrThrow();
   const current = await loadDefinition(trx, workflowId, row.published_version);
   // A status made here takes the stage its column's place says. A workflow that closes tickets
@@ -723,20 +754,8 @@ export async function syncBoardWorkflow(
     closing?: string | null;
   } = {},
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
-  const track = await trackWorkflow(trx, by.workspaceId, board.trackId);
-  // Lock order (ADR-116, `workflows/store.ts`): the status list, then the workflow, then statuses.
-  // A column may need a status made, which takes the list; a workflow import and a status's
-  // deletion take the list before the workflow or the status. A stage change holds the workflow
-  // before the status, so the track's own workflow is held before any column's status is renamed.
-  await lockList(trx, by.workspaceId, 'status');
-  if (track.workflowId !== null) {
-    await trx
-      .selectFrom('workflow')
-      .select('id')
-      .where('id', '=', track.workflowId)
-      .forUpdate()
-      .execute();
-  }
+  // Lock order (ADR-116): the status list, then the workflow, then statuses.
+  const track = await holdTrackWorkflow(trx, by.workspaceId, board.trackId);
   const closing = options.closing ?? null;
   // A column's name is its status's name (the user's decision, ADR-116).
   const renamed = await renamedStatuses(trx, by, track.workflowId, columns);

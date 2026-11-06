@@ -1,0 +1,129 @@
+import type { Database } from '@taskmoor/db';
+import { type Kysely, sql, type Transaction } from 'kysely';
+import { emit } from '../events/bus';
+import { closingReasonId } from './board-managed';
+import { freeTransition, statusesWantingFreeMove } from './free-moving';
+import { definitionSchema, type WorkflowDefinition } from './model';
+import { heldStatusInfo, holdCurrentVersions, rewriteCurrentVersions } from './store';
+
+/**
+ * The free moves the server gives a workflow beyond the editor's (WF-008 (4); ADR-116): a draft's
+ * new statuses (T-210), and an old workflow left with no transitions at all (T-237).
+ */
+
+/**
+ * A draft with the free moves its new statuses get (T-210; WF-008 (4)), as the editor's Add a
+ * status gives them: see `statusesWantingFreeMove`. A closing status takes the reason free moves
+ * close with, and none when the workspace has no reason to name. New transitions number above
+ * every id any version of the workflow used, since history names transitions by id. A draft the
+ * additions would push past a limit is saved as sent, and so is one sent with
+ * `transitionsAsSent` that has any transition. The caller holds the workflow; the stages are read
+ * once the statuses are held too (`heldStatusInfo`), so a stage change that holds one of them is
+ * waited for and its new stage decides the effect (T-237).
+ */
+export async function withFreeMoves(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  workflowId: number,
+  current: WorkflowDefinition,
+  draft: WorkflowDefinition,
+  transitionsAsSent: boolean,
+): Promise<WorkflowDefinition> {
+  const wanting = statusesWantingFreeMove(current, draft, transitionsAsSent);
+  if (wanting.length === 0) return draft;
+  const info = await heldStatusInfo(trx, workspaceId, wanting);
+  const closing = wanting.some((id) => info.get(id)?.stage === 'closed')
+    ? await closingReasonId(trx, workspaceId)
+    : null;
+  const used = await sql<{ n: number | null }>`
+    SELECT max((t ->> 'id')::int) AS n
+      FROM workflow_version v, jsonb_array_elements(v.definition -> 'transitions') t
+     WHERE v.workflow_id = ${workflowId}`.execute(trx);
+  let next = Math.max(Number(used.rows[0]?.n ?? 0), ...draft.transitions.map((t) => t.id)) + 1;
+  const added = wanting.flatMap((statusId) => {
+    const status = info.get(statusId);
+    const closes = status?.stage === 'closed';
+    if (!status || (closes && closing === null)) return [];
+    return [freeTransition(statusId, status.name, closes, closing, next++)];
+  });
+  if (added.length === 0) return draft;
+  const shaped = { ...draft, transitions: [...draft.transitions, ...added] };
+  return definitionSchema.safeParse(shaped).success ? shaped : draft;
+}
+
+/**
+ * The workflows of a workspace whose published version has no transitions, by id: no ticket in
+ * them can move. A new workflow and a saved draft with none get their free moves, but a workflow
+ * made empty before that rule (or published from an empty version restored or imported as the
+ * draft, which keep what they hold) stays so until its next draft is saved.
+ */
+export async function workflowsWithoutMoves(
+  db: Kysely<Database>,
+  workspaceId: number,
+): Promise<number[]> {
+  const { rows } = await sql<{ id: number }>`
+    SELECT w.id
+      FROM workflow w
+      JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
+     WHERE w.workspace_id = ${workspaceId}
+       AND jsonb_array_length(coalesce(v.definition -> 'transitions', '[]'::jsonb)) = 0
+     ORDER BY w.id`.execute(db);
+  return rows.map((r) => r.id);
+}
+
+export interface WorkflowMovesRun {
+  /** Workflows whose published version had no transitions. */
+  found: number[];
+  /** Those given their free moves as a new published version. */
+  repaired: number[];
+}
+
+/**
+ * The operator's repair for old workflows left with no moves (T-237; `cli.mjs workflow-moves`):
+ * lists them, and with `repair` gives each one a global transition into every status, as a new
+ * workflow gets (WF-008 (4)), as a new published version. A closing status takes the reason free
+ * moves close with; with none to name it gets no move and nothing is made. One transaction and one
+ * event (`workflow.published`, by the system) per workflow. Each is held as a publish holds it
+ * (update, so ticket writes on it wait), then its statuses, and checked again under the lock: one
+ * given transitions meanwhile is left as it is. Its draft, if it has one, stays as its author saved
+ * it, above the new version, as migration 0104 left drafts; saving it gives it its free moves too.
+ * A workflow with a rule, or one a board manages, gets nothing and stays listed.
+ */
+export async function repairWorkflowMoves(
+  db: Kysely<Database>,
+  workspaceId: number,
+  options: { repair: boolean },
+): Promise<WorkflowMovesRun> {
+  const found = await workflowsWithoutMoves(db, workspaceId);
+  if (!options.repair) return { found, repaired: [] };
+  const repaired: number[] = [];
+  for (const id of found) {
+    const done = await db.transaction().execute(async (trx) => {
+      const [w] = await holdCurrentVersions(trx, [id]);
+      if (!w || w.published.transitions.length > 0) return false;
+      const published = await withFreeMoves(
+        trx,
+        workspaceId,
+        w.id,
+        w.published,
+        w.published,
+        false,
+      );
+      if (published.transitions.length === 0) return false;
+      const version = await rewriteCurrentVersions(trx, workspaceId, null, w, published, null);
+      if (version === null) return false;
+      await emit(
+        trx,
+        { workspaceId, actorId: null },
+        {
+          type: 'workflow.published',
+          subjectId: w.id,
+          payload: { version, removedStatuses: [], statusMapping: {}, ticketCount: 0 },
+        },
+      );
+      return true;
+    });
+    if (done) repaired.push(id);
+  }
+  return { found, repaired };
+}

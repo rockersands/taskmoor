@@ -20,6 +20,10 @@
 //   node cli.mjs field-values [--repair] checks the custom field side tables against the
 //                                       tickets' values (M1-011); --repair rewrites the ones
 //                                       that differ; exit 1 when some differ and are not repaired
+//   node cli.mjs workflow-moves         lists the workflows whose published version has no
+//        [--repair]                     transitions, from before free moving (T-237); --repair
+//                                       gives each its free moves as a new published version;
+//                                       exit 1 when some are left without
 //   node cli.mjs export <dir>           the workspace in Taskmoor's export format (M1-098,
 //        [--tracks KEY,KEY]             docs/export-format.md) into a new folder <dir>; the
 //                                       last line is the manifest's summary as JSON
@@ -76,6 +80,7 @@ import { purgeExpired } from './trash/purge';
 import { otherFrontends } from './updates/check';
 import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
 import { checkUpgrade, formatChecks } from './upgrade-check';
+import { repairWorkflowMoves } from './workflows/free-moves';
 import { defaultWorkspaceId } from './workspace';
 
 // Imports go through a running server's API (M1-097), with options of their own.
@@ -116,7 +121,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | frontends | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | embeddings [--rebuild] | mcp | import <start|follow|report|status|list|cancel>>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | frontends | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | workflow-moves [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | embeddings [--rebuild] | mcp | import <start|follow|report|status|list|cancel>>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -311,6 +316,26 @@ try {
           }),
         );
         if (run.mismatched.length > 0 && !values.repair) process.exitCode = 1;
+      }
+      break;
+    }
+    case 'workflow-moves': {
+      const workspaces = await db
+        .selectFrom('workspace')
+        .select(['id', 'key'])
+        .orderBy('id')
+        .execute();
+      for (const workspace of workspaces) {
+        const run = await repairWorkflowMoves(db, workspace.id, { repair: values.repair });
+        say(
+          JSON.stringify({
+            workspace: workspace.key,
+            withoutMoves: run.found.length,
+            repaired: run.repaired.length,
+            ...(run.found.length > 0 ? { workflowIds: run.found } : {}),
+          }),
+        );
+        if (run.repaired.length < run.found.length) process.exitCode = 1;
       }
       break;
     }
