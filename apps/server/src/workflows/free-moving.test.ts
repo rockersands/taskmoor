@@ -105,5 +105,9 @@ describe('free moves a saved draft gets (WF-008)', () => {
       transitions: [{ id: 1, name: 'New', from: 'any', to: 1, guards: { type: 'only-assignee' } }],
     };
     expect(statusesWantingFreeMove(ruledBase, added)).toEqual([]);
+    // A board-managed workflow: its board says which columns there are.
+    const board = { boardId: 1, columns: [1, 2, 3] };
+    expect(statusesWantingFreeMove({ ...free, board }, { ...added, board })).toEqual([]);
+    expect(statusesWantingFreeMove({ ...free, board }, { ...added, transitions: [] })).toEqual([]);
   });
 });

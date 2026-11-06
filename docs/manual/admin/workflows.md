@@ -261,8 +261,8 @@ freely, each status the draft adds and no transition reaches gets its global tra
 above every transition id the workflow has used. A draft with no transitions, or the next draft of
 a workflow left with none, gets one into every status no transition reaches, as a new workflow
 does. A closed-stage status gets one only when there is a close reason to set. The answer shows the
-draft as saved. Statuses that were already in the workflow, steps you drew and any draft with a
-rule are saved as sent.
+draft as saved. Statuses that were already in the workflow, steps you drew, any draft with a
+rule and the draft of a workflow a board manages are saved as sent.
 
 ## Workflow files
 

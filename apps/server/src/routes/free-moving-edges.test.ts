@@ -309,6 +309,49 @@ describe('free moving at its edges (WF-008)', () => {
         setting(reason.Completed as number),
       );
     });
+
+    it('[WF-008] a stage change takes the workflow before the status, as a draft save does', async () => {
+      const pending = await newStatus('Pending', 'active');
+      const id = await freeWorkflow('Saved meanwhile', [status.New as number, pending]);
+      // A draft save holds its workflow (no key update), then the statuses it names (key share,
+      // as writing a version's statuses does). A stage change that held the status first and then
+      // waited for the workflow would deadlock with it.
+      let holding = () => {};
+      const held = new Promise<void>((resolve) => {
+        holding = resolve;
+      });
+      let reach = () => {};
+      const reaching = new Promise<void>((resolve) => {
+        reach = resolve;
+      });
+      const saver = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM workflow WHERE id = ${id} FOR NO KEY UPDATE`.execute(trx);
+        holding();
+        await reaching;
+        await sql`SELECT id FROM status WHERE id = ${pending} FOR KEY SHARE`.execute(trx);
+      });
+      await held;
+      const changing = patch(`/api/v1/statuses/${pending}`, { stage: 'closed' });
+      // Once the stage change waits on a lock, the save reaches for the status.
+      const waitingOnLock = async () =>
+        Number(
+          (
+            await sql<{ n: number }>`
+              SELECT count(*)::int AS n FROM pg_stat_activity
+               WHERE datname = current_database() AND wait_event_type = 'Lock'`.execute(database.db)
+          ).rows[0]?.n,
+        );
+      for (let tries = 0; tries < 300 && (await waitingOnLock()) === 0; tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      reach();
+      await expect(saver).resolves.toBeUndefined();
+      const changed = await changing;
+      expect(changed.statusCode, changed.body).toBe(200);
+      expect(into((await view(id)).published.definition, pending)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
+    });
   });
 
   describe('a status added through the draft API (T-210)', () => {

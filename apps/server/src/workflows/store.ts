@@ -8,9 +8,11 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * other configuration values: a ticket write holds its track (key share), then its track's
  * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
- * holds the track (update), then both maps and their workflows, then tickets. A status's change
- * of stage holds the status (update), then the workflows whose free moves follow it (no key
- * update, so it never waits for a ticket write, which may wait for the status). A ticket's
+ * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
+ * holds the workflow (no key update), then the statuses it names (key share). A status's change
+ * of stage holds the workflows whose free moves follow it (no key update, so it never waits for
+ * a ticket write), then the status (update), as a ticket write and a draft save take a workflow
+ * before a status. A ticket's
  * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;
@@ -178,7 +180,8 @@ export interface CurrentVersions {
 /**
  * These workflows, by id, each row held until the transaction ends, with their current versions.
  * `update` also waits for ticket writes on them, as a publish does; `no key update` lets them go
- * on, for a rewrite that moves no ticket and holds a row a ticket write may wait for (a status).
+ * on, for a rewrite that moves no ticket (a status's change of stage, which holds the status
+ * next, and a ticket write may be waiting for that).
  */
 export async function holdCurrentVersions(
   trx: Transaction<Database>,

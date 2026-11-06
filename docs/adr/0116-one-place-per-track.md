@@ -89,11 +89,13 @@ them.
       reason is replaced. The status's one event, `status.updated`, names those workflows
       (`workflowIds`). A move with a rule, another effect or a reason someone chose stays as it is,
       and so does a board-managed workflow, whose board says which column closes. With no reason to
-      close with, nothing changes. The status is held first and a ticket write into it holds its
-      workflow before it waits for the status, so the change holds the workflows without waiting
-      for ticket writes (no key update); it moves no ticket. We considered deciding the effect at move time from the status's
-      stage, with nothing rewritten; rejected because the definition, the editor and an exported
-      file would then say something other than what happens.
+      close with, nothing changes. A ticket write holds its workflow before the status it enters,
+      and a draft save holds its workflow before the statuses it names, so the change holds the
+      workflows first (no key update, so it never waits for a ticket write; it moves no ticket),
+      then the status; holding the status first deadlocked with a draft save. We considered
+      deciding the effect at move time from the status's stage, with nothing rewritten; rejected
+      because the definition, the editor and an exported file would then say something other
+      than what happens.
     - *A status added through the draft API gets its free move* (T-210). Saving a draft
       (`PUT /api/v1/workflows/:id/draft`) on a workflow that moves freely, with a draft that still
       does, gives each status the draft adds and no transition reaches its global transition, as the
@@ -103,7 +105,8 @@ them.
       only when there is a reason to set; no reason is made here, so the save stays one event. We
       chose this over a warning in the draft's answer because WF-008 (4) names any status added to a
       workflow that moves freely, not only the editor's. The server only adds: a status that was
-      already in the workflow, a step someone drew and any draft with a rule stay as sent. An old
+      already in the workflow, a step someone drew, any draft with a rule and a board-managed
+      workflow's draft (its board says which columns there are) stay as sent. An old
       workflow with no transitions gets its moves when its next draft is saved; nothing rewrites it
       before that.
     - *One closing reason after a replacement* (T-234). The reason free moves close with

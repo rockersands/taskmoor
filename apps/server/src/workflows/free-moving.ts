@@ -115,6 +115,8 @@ export function statusesWantingFreeMove(
   base: WorkflowDefinition,
   draft: WorkflowDefinition,
 ): number[] {
+  // A board-managed workflow's board says which columns there are and which one closes.
+  if (base.board || draft.board) return [];
   const reached = new Set(draft.transitions.map((t) => t.to));
   const unreached = draft.statuses.map((s) => s.statusId).filter((id) => !reached.has(id));
   if (draft.transitions.length === 0 || base.transitions.length === 0) {

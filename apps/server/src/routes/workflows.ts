@@ -32,6 +32,7 @@ import {
   type WorkflowDefinition,
 } from '../workflows/model';
 import {
+  type CurrentVersions,
   holdCurrentVersions,
   holdWorkflow,
   loadDefinition,
@@ -328,40 +329,70 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
    * one that left the closed stage clears that reason. A changed published version becomes a new
    * one and the draft is rewritten, as when a close reason is replaced; no ticket is in the status
    * (the stage cannot change while one is), so none moves. With no reason to close with, nothing
-   * changes. The ids of the workflows changed, for the status's one event.
+   * changes. `held` are the workflows the change held before the status (`holdFollowing`); the
+   * ids of the workflows changed, for the status's one event.
    */
   async function followStage(
     trx: Transaction<Database>,
     actor: { workspaceId: number; actorId: number | null },
     statusId: number,
     closes: boolean,
+    held: readonly CurrentVersions[],
   ): Promise<number[]> {
-    const { rows } = await sql<{ id: number }>`
-      SELECT DISTINCT w.id
-        FROM workflow w
-        JOIN workflow_version_status s
-          ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
-       WHERE w.workspace_id = ${actor.workspaceId} AND s.status_id = ${statusId}`.execute(trx);
-    if (rows.length === 0) return [];
+    const ids = await workflowsWithStatus(trx, actor.workspaceId, statusId);
+    if (ids.length === 0) return [];
     // Both ways the reason matters: a move out of the closed stage clears only this one.
     const completedId = await closingReasonId(trx, actor.workspaceId);
     if (completedId === null) return [];
     const changed: number[] = [];
-    // The status is held, and a ticket write into it waits for it while holding its workflow
-    // (key share): a lock that waited for ticket writes here could deadlock with one.
-    const held = await holdCurrentVersions(
+    // A draft saved between the first look and the status's lock: its workflow is held now.
+    const known = new Set(held.map((w) => w.id));
+    const late = await holdCurrentVersions(
       trx,
-      rows.map((r) => r.id),
+      ids.filter((id) => !known.has(id)),
       'no key update',
     );
-    for (const w of held) {
+    for (const w of [...held, ...late]) {
       const published = followingStage(w.published, statusId, closes, completedId);
       const draft = w.draft && followingStage(w.draft, statusId, closes, completedId);
       if (!published && !draft) continue;
       await rewriteCurrentVersions(trx, actor.workspaceId, actor.actorId, w, published, draft);
       changed.push(w.id);
     }
-    return changed;
+    return changed.sort((a, b) => a - b);
+  }
+
+  /** The workflows whose published version or draft has this status, by id. */
+  async function workflowsWithStatus(
+    trx: Transaction<Database>,
+    workspaceId: number,
+    statusId: number,
+  ): Promise<number[]> {
+    const { rows } = await sql<{ id: number }>`
+      SELECT DISTINCT w.id
+        FROM workflow w
+        JOIN workflow_version_status s
+          ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
+       WHERE w.workspace_id = ${workspaceId} AND s.status_id = ${statusId}
+       ORDER BY w.id`.execute(trx);
+    return rows.map((r) => r.id);
+  }
+
+  /**
+   * The workflows a change of this status's stage may rewrite, held before the status, as a
+   * ticket write and a draft save take a workflow before the statuses it names (see
+   * `workflows/store.ts`). No key update, so it never waits for a ticket write.
+   */
+  async function holdFollowing(
+    trx: Transaction<Database>,
+    workspaceId: number,
+    statusId: number,
+  ): Promise<CurrentVersions[]> {
+    return holdCurrentVersions(
+      trx,
+      await workflowsWithStatus(trx, workspaceId, statusId),
+      'no key update',
+    );
   }
 
   // Statuses (CORE-014)
@@ -446,6 +477,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const ws = request.workspaceId;
     try {
       const result = await db.transaction().execute(async (trx) => {
+        // A stage change may rewrite workflows: they are held before the status (T-209).
+        const following =
+          body.stage === undefined ? [] : await holdFollowing(trx, ws, params.data.id);
         const current = await trx
           .selectFrom('status')
           .select(['id', 'name', 'description', 'stage', 'sort_order'])
@@ -475,7 +509,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           .returning(['id', 'name', 'description', 'stage', 'sort_order'])
           .executeTakeFirstOrThrow();
         const workflowIds = changes.stage
-          ? await followStage(trx, by(request), current.id, updated.stage === 'closed')
+          ? await followStage(trx, by(request), current.id, updated.stage === 'closed', following)
           : [];
         await emit(trx, by(request), {
           type: 'status.updated',
