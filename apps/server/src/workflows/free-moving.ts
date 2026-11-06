@@ -30,13 +30,20 @@ export const freeTransition = (
 
 /**
  * The transitions that let any ticket go to any of these statuses at once: one global transition
- * each, named after its status. A status in the closed stage closes tickets.
+ * each, named after its status. A status in the closed stage closes tickets with `completedId`;
+ * with no reason to close with it gets no free move, never one that closes with none, as a saved
+ * draft and the editor do.
  */
 export const freeTransitions = (
   statuses: readonly { id: number; name: string; stage: StatusStage }[],
   completedId: number | null,
 ): Transition[] =>
-  statuses.map((s) => freeTransition(s.id, s.name, s.stage === 'closed', completedId));
+  statuses.flatMap((s) => {
+    const closes = s.stage === 'closed';
+    return closes && completedId === null
+      ? []
+      : [freeTransition(s.id, s.name, closes, completedId)];
+  });
 
 /**
  * Whether a transition moves freely: global, and with nothing someone put on it as a rule. Effects

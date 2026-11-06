@@ -132,9 +132,14 @@ describe('free moving as the default (WF-008)', () => {
       },
     });
     expect(empty.statusCode, empty.body).toBe(201);
+    // Nothing in it closes, so no reason is looked for and the one move clears the reason.
     expect(
-      (await publishedOf(empty.json().workflow.id)).transitions.map((t) => [t.from, t.to]),
-    ).toEqual([['any', status.New]]);
+      (await publishedOf(empty.json().workflow.id)).transitions.map((t) => [
+        t.from,
+        t.to,
+        t.effects,
+      ]),
+    ).toEqual([['any', status.New, [{ type: 'clear-field', field: 'close-reason' }]]]);
 
     // Moving: every status reaches every other, with nothing asked.
     await trackOn('FREE', id);

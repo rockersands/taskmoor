@@ -7,12 +7,13 @@ import { releaseSampleWorkflow } from './sample-workflow';
 describe('a demo seeded with the strict sample workflow', () => {
   const database = useMigratedDatabase();
 
-  async function strictMap(name: string, workflowName: string) {
+  /** A map whose workflow holds the seeded statuses and any `more`, with one strict step. */
+  async function strictMap(name: string, workflowName: string, more: number[] = []) {
     const db = database.db;
     const { rows } = await sql<{ id: number }>`
       SELECT id FROM status WHERE workspace_id = 1 AND name IN ('New', 'Active', 'In Review', 'Closed')
        ORDER BY sort_order`.execute(db);
-    const ids = rows.map((r) => r.id);
+    const ids = [...rows.map((r) => r.id), ...more];
     const workflow = await sql<{ id: number }>`
       INSERT INTO workflow (workspace_id, name) VALUES (1, ${workflowName}) RETURNING id`.execute(
       db,
@@ -75,5 +76,33 @@ describe('a demo seeded with the strict sample workflow', () => {
     );
     expect(await releaseSampleWorkflow(database.db)).toBe(0);
     expect(await mapOf(sampleTrack)).toBe(sample.mapId);
+  });
+
+  it('[WF-008] keeps a sample workflow holding a status the default workflow lacks', async () => {
+    // Someone added a status of their own to the sample workflow: its tickets may be in it, and
+    // the default workflow has no place for them.
+    const own = await sql<{ id: number }>`
+      INSERT INTO status (workspace_id, name, stage, sort_order)
+      VALUES (1, 'Waiting on legal', 'active', 90) RETURNING id`.execute(database.db);
+    const extra = own.rows[0]?.id as number;
+    // The first test's sample is still here under the same names: set it aside.
+    await sql`UPDATE workflow_map SET name = 'Eval map (earlier)' WHERE name = 'Eval map'`.execute(
+      database.db,
+    );
+    await sql`UPDATE workflow SET name = 'Eval workflow (earlier)' WHERE name = 'Eval workflow'`.execute(
+      database.db,
+    );
+    const sample = await strictMap('Eval map', 'Eval workflow', [extra]);
+    const track = await trackOn('SMPX', sample.mapId);
+    expect(await releaseSampleWorkflow(database.db)).toBe(0);
+    expect(await mapOf(track)).toBe(sample.mapId);
+
+    // The same sample with only the default's statuses goes back to the default map.
+    await sql`DELETE FROM workflow_version_status
+               WHERE workflow_id = ${sample.workflowId} AND status_id = ${extra}`.execute(
+      database.db,
+    );
+    expect(await releaseSampleWorkflow(database.db)).toBe(1);
+    expect(await mapOf(track)).toBeNull();
   });
 });
