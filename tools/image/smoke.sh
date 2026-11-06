@@ -39,11 +39,12 @@ wait_for() { # url, seconds
 
 echo "== build $TAG ($VERSION, $NATIVE)"
 docker build --build-arg "TASKMOOR_VERSION=$VERSION" -t "$TAG" .
-# Unpacked, as the limit means it: `docker image inspect`'s Size is the compressed download with
-# the containerd image store (Docker 29), about a quarter of that (tools/image/unpacked-size.mjs).
-size=$(docker run --rm -i --user 0 --entrypoint node "$TAG" --input-type=module - \
-  <tools/image/unpacked-size.mjs)
+# Unpacked, as the limit means it: the sum of the layers' sizes, which is what `docker image
+# inspect` gives with the classic image store. With the containerd image store (Docker 29) it
+# gives the compressed download instead, about a third of that, so it cannot stand in.
+size=$(docker history --human=false --format '{{.Size}}' "$TAG" | awk '{ s += $1 } END { printf "%.0f", s }')
 echo "image size: $((size / 1000000)) MB unpacked"
+if [ "$size" -le 0 ]; then echo "no size for $TAG"; exit 1; fi
 if [ "$size" -gt 400000000 ]; then echo "image over 400 MB"; exit 1; fi
 
 version_of() { # url: the "version" of a JSON answer
