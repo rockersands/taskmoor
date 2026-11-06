@@ -53,6 +53,14 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   every route, with shared styles (`shared.css`) and a guard (`styles/design.test.ts`). Its gate found
   that a drag start moved the calendar and backlog under the finger (fixed). Gate: 7,714 tests, 244
   e2e. It has only been seen as stories and signed-out pages; T-220 sees it signed in.
+- **Wave 9 is on `main` (`82311c66`, 2026-11-06, on the Mac, each reviewed, fixed and re-checked,
+  then gated):** T-032 (no real secret in 816 commits; `pnpm secrets` with `.gitleaks.toml`;
+  `docs/security/secret-scan.md`), T-195 (a backup's queries read the field its own Points became,
+  in a dry run too), T-211 (`pnpm demo` rebuilds an old frontend), T-209, T-210 and T-234 (free-moving
+  edge cases; one lock order everywhere: the status list, then workflows, then statuses, in ADR-116)
+  and T-023 (every image and kit script passes on the Mac with Colima, both architectures, the offline
+  bundle for either, the fresh machine to sign-in in 23 s; `docs/ops/image-and-kits-mac.md`). New
+  follow-ups: T-032a (yours), T-235 to T-238. Last gate: 7,778 tests and 243 e2e. No migrations.
 - **In progress, a merge wave (both from `3e59102`, merged together when both are done):** the route
   sweep and phone pass (T-220, T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) in
   `G:/tm-t164` on `wave8/t164-phone-accessibility`; Multi-track's T-089c and T-089g in `G:/tm-plans`
@@ -89,10 +97,10 @@ corepack pnpm install
 
 ### Next, in order
 
-1. Nothing waits to merge.
-2. Each reviewed first: the wave above, then Multi-track's T-089d, T-089e, T-089f (and T-089j once
-   the user answers), T-013a, T-195, T-203, T-208 to T-211, T-223 to T-225, T-227, T-230, T-232 to
-   T-234. Questions for the user are the rows marked You in `tickets.md`; T-089j was
+1. Nothing waits to merge on the Mac. Wave 8 (above) is on the Windows PC, not pushed.
+2. Each reviewed first: wave 8, then Multi-track's T-089d, T-089e, T-089f (and T-089j once
+   the user answers), T-013a, T-203 (needs a migration number agreed with wave 8), T-208, T-223 to
+   T-225, T-227, T-230, T-232, T-233, T-235 (Windows) to T-238. Questions for the user are the rows marked You in `tickets.md`; T-089j was
    explained to them on 2026-11-04 (unbuilt capacity parts; whether hidden work counts toward
    "elsewhere"; notes in the history after erasure; whole-week counting), awaiting their answer.
 3. The fuzz stages, on the final code (T-019; the user's decision).
@@ -113,9 +121,18 @@ corepack pnpm install
   `@embedded-postgres` native bin) and `git worktree remove` it; the branch stays. The e2e servers now
   drop their clusters' leftover databases at start (they had grown to 9 GB), and the docs check skips
   `.claude`.
-- **A gate can hang:** on 2026-11-03 the tests stage sat idle for hours. If `.verify/budgets.jsonl`
-  stops growing for 15 minutes, stop the `pnpm verify` process tree, `rmdir /tmp/taskmoor-gate.lock`
+- **A gate can hang:** on 2026-11-03 the tests stage sat idle for hours. A hang shows as the
+  `pnpm verify` process group using no CPU; a slow run keeps using it. Files under `.verify` are a
+  poor sign: the tests write their log only at the end. Stop the whole process group (start the gate
+  under `set -m` so one kill reaches tsc, vitest and Playwright), `rmdir /tmp/taskmoor-gate.lock`
   and run it again.
+- **On the Mac, run the gate with `VITEST_MAX_WORKERS=5`** (2026-11-06). With the user's own apps open
+  (Unity, Steam, VS Code, Chrome, Slack), the default worker count pushed the 36 GB machine into swap:
+  one database checkpoint took 17 minutes, gates ran for hours and failed on hook timeouts. With five
+  workers the gate takes about 9 minutes. Builders use 4. The variable keeps the gate a full run.
+- **Docker work and a gate never overlap.** The lock covers every Docker or Colima build, pull and
+  run as well as every test run. On 2026-11-05 a builder ran the image scripts while the gate held
+  the lock, and the gate ran overnight with load near 130.
 - **Builders by workflow** run in worktrees under `.claude/worktrees/wf_*`; a usage limit can stop
   them mid-task, leaving uncommitted work there: resume in the same worktree rather than restart.
 - **Agents' tests at size** go behind an env var like `TASKMOOR_LARGE_SPRINTS`; the outcomes test reads
