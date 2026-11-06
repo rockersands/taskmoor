@@ -11,7 +11,7 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
  * holds the workflow (no key update), then the statuses it names (key share), and reads the stage
  * of a status it gives a free move only once it holds it (`heldStatusInfo`, T-237); creating a
- * workflow with no transitions does the same. A status's change
+ * workflow with no transitions and a column's path do the same. A status's change
  * of stage holds every workflow whose published version or draft has the status (no key update,
  * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
  * save take a workflow before a status; it holds no workflow after the status (it starts again).

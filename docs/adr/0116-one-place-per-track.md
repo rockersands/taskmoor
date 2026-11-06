@@ -104,7 +104,8 @@ them.
         workflows that have it; a draft adding the status is not among them, and read without
         the lock it saw the stage from before the change and gave a move into a status made
         closed-stage no close reason. Held, it waits for the change and sees the new stage.
-        Creating a workflow with no transitions reads its statuses the same way;
+        Creating a workflow with no transitions, and a column's path into a status, read the
+        stage the same way;
       - a stage change holds every workflow whose published version or draft has the status, in
         id order (no key update, so it never waits for a ticket write; it moves no ticket), then
         the status. Holding the status first deadlocked with a draft save. It holds no workflow

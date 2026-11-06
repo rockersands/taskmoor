@@ -8,6 +8,7 @@ import { loadMap, trackMapId } from './maps';
 import { runningMigration } from './migration';
 import { statusIdsOf, type Transition, type WorkflowDefinition } from './model';
 import {
+  heldStatusInfo,
   loadDefinition,
   remapStatuses,
   statusInfo,
@@ -701,8 +702,10 @@ export async function addColumnPath(
   const transitions: Transition[] = [...current.transitions];
   let id = next;
   if (!transitions.some((t) => t.to === statusId && t.from === 'any')) {
-    // Entering a closing status sets Completed, as on any workflow that moves freely (WF-008).
-    const info = await statusInfo(trx, by.workspaceId, [statusId]);
+    // Entering a closing status sets Completed, as on any workflow that moves freely (WF-008). Its
+    // stage is read with the status held, after the workflow, so a stage change under way decides
+    // it (T-237).
+    const info = await heldStatusInfo(trx, by.workspaceId, [statusId]);
     const closes = info.get(statusId)?.stage === 'closed';
     const completedId = closes ? await completedReasonId(trx, by) : null;
     transitions.push(freeTransition(statusId, column.name, closes, completedId, id++));

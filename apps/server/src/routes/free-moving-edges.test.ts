@@ -596,32 +596,47 @@ describe('free moving at its edges (WF-008)', () => {
       });
     });
 
-    it('[WF-008] a draft saved or a workflow made while a stage change holds the status gives its new free move the stage the change leaves (T-237)', async () => {
-      const gatekeeper = await newStatus('Gatekeeper', 'active');
-      const landing = await newStatus('Landing', 'active');
-      // The stage change rewrites this workflow's free move into Landing; writing that version
-      // waits for Gatekeeper, which something else holds. So the change has set the new stage and
-      // holds Landing, and has not finished.
-      const rewritten = await freeWorkflow('Rewritten on the way', [
+    /**
+     * A change of `statusId` to the closed stage that has set the new stage and holds the status,
+     * and has not finished (T-237): it rewrites a workflow's free move into the status, and writing
+     * that version waits for another status of that workflow, which something else holds.
+     * `finish()` lets it end. Two connections of the test's five while it waits.
+     */
+    const stageChangeUnderWay = async (statusId: number, name: string) => {
+      const held = await newStatus(`${name}, held`, 'active');
+      const rewritten = await freeWorkflow(`Rewritten for ${name}`, [
         status.New as number,
-        gatekeeper,
-        landing,
+        held,
+        statusId,
       ]);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${held} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const changing = patch(`/api/v1/statuses/${statusId}`, { stage: 'closed' });
+      await lockWaits(1);
+      return async () => {
+        finished.open();
+        await holder;
+        const changed = await changing;
+        expect(changed.statusCode, changed.body).toBe(200);
+        expect(into((await view(rewritten)).published.definition, statusId)?.effects).toEqual(
+          setting(reason.Completed as number),
+        );
+      };
+    };
+
+    it('[WF-008] a draft saved or a workflow made while a stage change holds the status gives its new free move the stage the change leaves (T-237)', async () => {
+      const landing = await newStatus('Landing', 'active');
       const taking = await freeWorkflow('Takes the landing', [
         status.New as number,
         status.Active as number,
       ]);
-      const holding = gate();
-      const finish = gate();
-      const holder = database.db.transaction().execute(async (trx) => {
-        await sql`SELECT id FROM status WHERE id = ${gatekeeper} FOR UPDATE`.execute(trx);
-        holding.open();
-        await finish.opened;
-      });
-      await holding.opened;
-      const changing = patch(`/api/v1/statuses/${landing}`, { stage: 'closed' });
-      await lockWaits(1);
-
+      const finish = await stageChangeUnderWay(landing, 'Landing');
       // A draft that adds Landing, and a new workflow with it: neither may decide its free move
       // from the stage Landing had before the change.
       const published = (await view(taking)).published.definition;
@@ -636,17 +651,43 @@ describe('free moving at its edges (WF-008)', () => {
         },
       });
       await lockWaits(3);
-      finish.open();
-      await holder;
-      const [changed, saved, created] = await Promise.all([changing, saving, creating]);
-      expect(changed.statusCode, changed.body).toBe(200);
+      await finish();
+      const [saved, created] = await Promise.all([saving, creating]);
       expect(saved.statusCode, saved.body).toBe(200);
       expect(created.statusCode, created.body).toBe(201);
-
       const closing = setting(reason.Completed as number);
-      expect(into((await view(rewritten)).published.definition, landing)?.effects).toEqual(closing);
-      expect(into(draftOf(saved.json().workflow), landing)?.effects).toEqual(closing);
-      expect(into(created.json().workflow.published.definition, landing)?.effects).toEqual(closing);
+      expect.soft(into(draftOf(saved.json().workflow), landing)?.effects).toEqual(closing);
+      expect
+        .soft(into(created.json().workflow.published.definition, landing)?.effects)
+        .toEqual(closing);
+    });
+
+    it("[WF-010] a column's path added while a stage change holds the column's status gives its free move the stage the change leaves (T-237)", async () => {
+      const arrival = await newStatus('Arrival', 'active');
+      // A track's board with a column holding Arrival, which no transition of its workflow
+      // reaches: a check keeps the board from managing that workflow.
+      const { workflowId, board } = await ordinaryTrackWorkflow('BLAND', []);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const withArrival = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Arrival', statusIds: [arrival] }],
+      });
+      expect(withArrival.statusCode, withArrival.body).toBe(200);
+      const column = (withArrival.json().board.columns as Column[]).at(-1) as Column;
+      const finish = await stageChangeUnderWay(arrival, 'Arrival');
+      const adding = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      await lockWaits(2);
+      await finish();
+      const added = await adding;
+      expect(added.statusCode, added.body).toBe(200);
+      expect(into((await view(workflowId)).published.definition, arrival)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
     });
   });
 
