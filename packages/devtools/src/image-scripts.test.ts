@@ -148,14 +148,19 @@ describe('image and air-gap scripts', () => {
   });
 
   // fresh-vm.sh tagged the image as the version its kit pins and left the tag, so every run
-  // kept the build before it alive once smoke.sh replaced taskmoor:dev (T-023).
+  // kept the build before it alive once smoke.sh replaced taskmoor:dev (T-023). A tag made on
+  // fresh-vm.sh's own machine (`docker exec "$VM" docker tag`) goes with that machine.
   it('[OPS-001] remove the tags they add', () => {
     const scripts = [...shellScripts('tools/image'), ...shellScripts('tools/airgap')];
     const tagging: string[] = [];
     const left: string[] = [];
     for (const script of scripts) {
       const text = readFileSync(join(ROOT, script), 'utf8');
-      for (const [, name = ''] of text.matchAll(/\bdocker tag \S+ "\$(\w+)"/g)) {
+      const here = text
+        .split('\n')
+        .filter((line) => !/\bdocker exec\b.*\bdocker tag\b/.test(line))
+        .join('\n');
+      for (const [, name = ''] of here.matchAll(/\bdocker tag \S+ "\$(\w+)"/g)) {
         tagging.push(script);
         // The tag's own variable, or one the script copies it into for its clean-up.
         const names = [
@@ -172,9 +177,41 @@ describe('image and air-gap scripts', () => {
         if (!removed) left.push(`${script}: ${name}`);
       }
     }
-    expect(tagging).toEqual(
-      expect.arrayContaining(['tools/image/fresh-vm.sh', 'tools/airgap/test-offline.sh']),
-    );
+    expect(tagging).toEqual(expect.arrayContaining(['tools/airgap/test-offline.sh']));
     expect(left).toEqual([]);
+  });
+
+  // The clean-up of fresh-vm.sh removed the name its kit pins, which can be the image under
+  // test itself (TAG=ghcr.io/rockersands/taskmoor:1.0.0) or one pulled before the run: Docker
+  // then deleted that image (T-023 review). A script removes only names it made up for its own
+  // run from its process id, which nothing else can have held before.
+  it('[OPS-001] remove only names made up for the run', () => {
+    const scripts = [...shellScripts('tools/image'), ...shellScripts('tools/airgap')];
+    const removing: string[] = [];
+    const shared: string[] = [];
+    for (const script of scripts) {
+      const text = readFileSync(join(ROOT, script), 'utf8');
+      // The run's id: $$, or a variable that holds it.
+      const ids = ['$$', ...[...text.matchAll(/^\s*(\w+)=\$\$\s*$/gm)].map((m) => `$${m[1]}`)];
+      for (const line of text.split('\n').filter((l) => /\bdocker rmi\b/.test(l))) {
+        removing.push(script);
+        for (const [, name = ''] of line.matchAll(/"\$\{?(\w+)\}?"/g)) {
+          const values = [...text.matchAll(new RegExp(`^\\s*${name}=(\\S+)`, 'gm'))].map(
+            (m) => m[1] ?? '',
+          );
+          const own = values.length > 0 && values.every((v) => ids.some((id) => v.includes(id)));
+          if (!own) shared.push(`${script}: ${name}`);
+        }
+      }
+    }
+    expect(removing).toEqual(expect.arrayContaining(['tools/airgap/test-offline.sh']));
+    expect(shared).toEqual([]);
+  });
+
+  it('[OPS-015] fresh-vm.sh tags the stand-in for the pinned image on the fresh machine only', () => {
+    const lines = readFileSync(join(ROOT, 'tools/image/fresh-vm.sh'), 'utf8').split('\n');
+    const tags = lines.filter((line) => /\bdocker tag\b/.test(line)).map((line) => line.trim());
+    expect(tags).toEqual(['docker exec "$VM" docker tag "$TAG" "$pinned"']);
+    expect(lines.filter((line) => /\bdocker rmi\b/.test(line))).toEqual([]);
   });
 });
