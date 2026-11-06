@@ -6,6 +6,13 @@
 # POSTGRES_IMAGE (default the Compose kit's own, pulled if missing). SIGNING_KEY is an ECDSA
 # P-256 private key in PEM; a release is signed with the release key on the maintainer's
 # machine (docs/ops/releases.md).
+#
+# A bundle is for servers of one platform, PLATFORM (default linux/amd64; or linux/arm64): an
+# image archive holds one, and an air-gapped server has no registry to fetch the other from.
+# Both images must be of it. An Apple silicon Mac builds and pulls arm64 ones, so an amd64
+# bundle made there takes images pulled with `docker pull --platform linux/amd64` or built with
+# `docker buildx build --platform linux/amd64 --load`; a missing database image is pulled for
+# PLATFORM.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # Git Bash: docker must see container paths as written, other tools need path conversion.
@@ -21,18 +28,34 @@ kit_db=$(sed -n 's/^ *image: \${POSTGRES_IMAGE:-\([^}]*\)}.*$/\1/p' deploy/compo
 db=${POSTGRES_IMAGE:-${kit_db:?no database image in deploy/compose/docker-compose.yml}}
 key=${SIGNING_KEY:?SIGNING_KEY (PEM private key) is required}
 pub=${PUBLIC_KEY:?PUBLIC_KEY (PEM public key) is required}
+platform=${PLATFORM:-linux/amd64}
+case "$platform" in
+  linux/amd64 | linux/arm64) ;;
+  *) echo "PLATFORM is linux/amd64 or linux/arm64, not $platform"; exit 1 ;;
+esac
 dir="$out/taskmoor-$version"
+
+echo "== images for $platform"
+docker image inspect "$db" >/dev/null 2>&1 || docker pull -q --platform "$platform" "$db" >/dev/null
+for image in "$app" "$db"; do
+  found=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")
+  if [ "$found" != "$platform" ]; then
+    echo "$image is $found here, and this bundle is for $platform servers (PLATFORM)."
+    echo "Pull or build it for $platform (docker pull --platform $platform, or"
+    echo "docker buildx build --platform $platform --load), or set PLATFORM=$found."
+    exit 1
+  fi
+done
 
 rm -rf "$dir"
 mkdir -p "$dir/images" "$dir/compose" "$dir/web" "$dir/helm"
-
-echo "== images"
-docker image inspect "$db" >/dev/null 2>&1 || docker pull -q "$db" >/dev/null
 docker save "$app" | gzip -6 > "$dir/images/taskmoor.tar.gz"
 docker save "$db" | gzip -6 > "$dir/images/postgres.tar.gz"
+# install-offline.sh reads the platform line and refuses a server of another one.
 {
   echo "taskmoor $app $(docker image inspect --format '{{.Id}}' "$app")"
   echo "postgres $db $(docker image inspect --format '{{.Id}}' "$db")"
+  echo "platform $platform"
 } > "$dir/images.txt"
 
 echo "== kits"
@@ -72,4 +95,4 @@ if ! checked=$(bash "$dir/verify.sh" "$dir/cosign.pub" 2>&1); then
   echo "$checked"
   exit 1
 fi
-echo "bundle: $dir ($(du -sh "$dir" | cut -f1))"
+echo "bundle: $dir for $platform servers ($(du -sh "$dir" | cut -f1))"

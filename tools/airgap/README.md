@@ -4,7 +4,7 @@ Everything needed to install Taskmoor on a host with no internet access (OPS-005
 
 | Path | Contents |
 |---|---|
-| `images/` | Image archives: Taskmoor and PostgreSQL (`images.txt` lists the references and image ids) |
+| `images/` | Image archives: Taskmoor and PostgreSQL (`images.txt` lists the references, the image ids and the platform) |
 | `compose/` | The Compose kit and its installer |
 | `helm/` | The Helm chart, for Kubernetes clusters with a private registry |
 | `web/` | The frontend build, for serving from any static host |
@@ -14,6 +14,19 @@ Everything needed to install Taskmoor on a host with no internet access (OPS-005
 
 Compare `cosign.pub` with the key published on the project's release page before trusting it:
 a bundle can carry any key, so the check only means something against the published one.
+
+## One platform per bundle
+
+A bundle's images are for one kind of server: `linux/amd64` (most servers) or `linux/arm64`.
+The last line of `images.txt` names it, and `install-offline.sh` stops before changing anything
+when this server is the other kind, since there is no registry here to fetch the right images
+from. To see which one a server is: `docker version --format '{{.Server.Os}}/{{.Server.Arch}}'`.
+
+Making a bundle (`tools/airgap/bundle.sh` in the repository) takes the platform as `PLATFORM`,
+`linux/amd64` unless set, and refuses an image of another one. A machine of the other kind,
+such as an Apple silicon Mac for an amd64 bundle, needs the images for that platform:
+`docker pull --platform linux/amd64 <image>`, or `docker buildx build --platform linux/amd64
+--load` for an image built there. A missing database image is pulled for `PLATFORM`.
 
 ## Install with Docker Compose
 
@@ -28,9 +41,10 @@ default: no telemetry, no update check (the installer writes `TASKMOOR_UPDATE_CH
 
 ## Upgrade with Docker Compose
 
-Verify the new bundle and load its images, then run its `upgrade.sh` from the kit directory you
-installed from (where `.env` is): it backs up, migrates and rolls back on failure (OPS-006,
-`INSTALL.md`, Upgrades), without contacting a registry.
+Verify the new bundle, check that `images.txt` names this server's platform (above), and load
+its images, then run its `upgrade.sh` from the kit directory you installed from (where `.env`
+is): it backs up, migrates and rolls back on failure (OPS-006, `INSTALL.md`, Upgrades), without
+contacting a registry.
 
 ```
 bash verify.sh

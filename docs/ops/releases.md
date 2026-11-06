@@ -38,8 +38,11 @@ Every release, on every channel but preview:
 
 - the image `ghcr.io/rockersands/taskmoor:<version>` (public; amd64 and arm64), and the
   all-in-one image;
-- the air-gap bundle (`tools/airgap/bundle.sh`): images, the Compose kit, the Helm chart, the
-  frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by the release key;
+- the air-gap bundle (`tools/airgap/bundle.sh`), one for each platform (`PLATFORM=linux/amd64`
+  and `PLATFORM=linux/arm64`, each from the image pulled with `--platform`): images, the Compose
+  kit, the Helm chart, the frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by
+  the release key. An image archive holds one platform, and `bundle.sh` refuses an image of
+  another, which is what a Mac pulls or builds unless told;
 - the Builder page (`apps/web/dist-builder/index.html`), the frontend artefact and the server
   bundle, all stamped with the version (ADR-066);
 - `taskmoor-release.txt` and `taskmoor-release.txt.sig`, the signed statement of which image is

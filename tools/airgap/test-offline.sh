@@ -35,8 +35,10 @@ docker tag "$TAG" "$APP"
 KIT_DB=$(sed -n 's/^ *image: \${POSTGRES_IMAGE:-\([^}]*\)}.*$/\1/p' deploy/compose/docker-compose.yml | head -1)
 docker image inspect "$KIT_DB" >/dev/null 2>&1 || docker pull -q "$KIT_DB" >/dev/null
 docker tag "$KIT_DB" "$DB"
+# The bundle is for this machine, where it is installed below: arm64 on an Apple silicon Mac.
+PLATFORM=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')
 TASKMOOR_IMAGE=$APP POSTGRES_IMAGE=$DB SIGNING_KEY="$WORK/key.pem" PUBLIC_KEY="$WORK/cosign.pub" \
-  bash tools/airgap/bundle.sh "$VERSION" "$WORK/out"
+  PLATFORM=$PLATFORM bash tools/airgap/bundle.sh "$VERSION" "$WORK/out"
 B="$WORK/out/taskmoor-$VERSION"
 grep -q '"bomFormat": *"CycloneDX"' "$B/sbom.cdx.json" && echo "SBOM: CycloneDX"
 
