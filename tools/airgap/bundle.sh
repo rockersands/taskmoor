@@ -9,10 +9,13 @@
 #
 # A bundle is for servers of one platform, PLATFORM (default linux/amd64; or linux/arm64): an
 # image archive holds one, and an air-gapped server has no registry to fetch the other from.
-# Both images must be of it. An Apple silicon Mac builds and pulls arm64 ones, so an amd64
+# Both images must hold it, and an Apple silicon Mac builds and pulls arm64 ones: an amd64
 # bundle made there takes images pulled with `docker pull --platform linux/amd64` or built with
-# `docker buildx build --platform linux/amd64 --load`; a missing database image is pulled for
-# PLATFORM.
+# `docker buildx build --platform linux/amd64 --load`. A missing database image is pulled for
+# PLATFORM. With Docker 29's containerd image store a tag holds every platform pulled for it,
+# so a Docker whose `docker image inspect` and `docker save` take --platform (28.1 and later)
+# has the bundle check and save PLATFORM's image by name. An older one cannot pick a platform:
+# there the tag must hold only PLATFORM's image (`docker image rm` it before the pull).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # Git Bash: docker must see container paths as written, other tools need path conversion.
@@ -36,25 +39,55 @@ esac
 dir="$out/taskmoor-$version"
 
 echo "== images for $platform"
+# With the containerd image store (Docker 29's default) `docker pull --platform` adds a platform
+# beside the ones a tag holds, a plain `docker image inspect` reports the host's and a plain
+# `docker save` writes them all. So where both commands take --platform (Docker 28.1, API 1.49;
+# the help hides the flag when the daemon is older), the bundle names PLATFORM in both.
+# Otherwise the check is on the tag as a whole, as before.
+pick=()
+case "$(docker image inspect --help 2>&1)" in
+  *--platform*) case "$(docker save --help 2>&1)" in *--platform*) pick=(--platform "$platform") ;; esac ;;
+esac
+# Expanded as ${pick[@]+"${pick[@]}"}: an empty array is an error under set -u in bash 3.2.
 docker image inspect "$db" >/dev/null 2>&1 || docker pull -q --platform "$platform" "$db" >/dev/null
 for image in "$app" "$db"; do
-  found=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")
-  if [ "$found" != "$platform" ]; then
-    echo "$image is $found here, and this bundle is for $platform servers (PLATFORM)."
-    echo "Pull or build it for $platform (docker pull --platform $platform, or"
-    echo "docker buildx build --platform $platform --load), or set PLATFORM=$found."
+  # For a platform the tag lists but never pulled, Docker 29 answers "/" and succeeds.
+  found=$(docker image inspect ${pick[@]+"${pick[@]}"} --format '{{.Os}}/{{.Architecture}}' "$image" 2>/dev/null || true)
+  [ "$found" = "$platform" ] && continue
+  # What the tag is for this Docker: the host's platform when the tag holds it.
+  plain=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image" 2>/dev/null) || {
+    echo "$image is not in this Docker: pull or build it for $platform servers (PLATFORM)."
     exit 1
+  }
+  if [ ${#pick[@]} -gt 0 ]; then
+    echo "$image has no $platform image here, and this bundle is for $platform servers (PLATFORM)."
+    echo "Pull it for them; this Docker saves $platform's image alone from a tag that holds more:"
+    echo "  docker pull --platform $platform $image"
+    echo "or build it for them: docker buildx build --platform $platform --load"
+  else
+    echo "$image is $plain here, and this bundle is for $platform servers (PLATFORM)."
+    echo "This Docker cannot check or save one platform of a tag (docker image inspect and docker"
+    echo "save take --platform from Docker 28.1), so the tag must hold $platform's image alone:"
+    echo "remove it, then pull it for them."
+    echo "  docker image rm $image"
+    echo "  docker pull --platform $platform $image"
+    echo "or build it for them: docker buildx build --platform $platform --load"
   fi
+  case "$plain" in
+    "$platform") ;;
+    linux/amd64 | linux/arm64) echo "Or make the bundle for $plain servers: PLATFORM=$plain." ;;
+  esac
+  exit 1
 done
 
 rm -rf "$dir"
 mkdir -p "$dir/images" "$dir/compose" "$dir/web" "$dir/helm"
-docker save "$app" | gzip -6 > "$dir/images/taskmoor.tar.gz"
-docker save "$db" | gzip -6 > "$dir/images/postgres.tar.gz"
+docker save ${pick[@]+"${pick[@]}"} "$app" | gzip -6 > "$dir/images/taskmoor.tar.gz"
+docker save ${pick[@]+"${pick[@]}"} "$db" | gzip -6 > "$dir/images/postgres.tar.gz"
 # install-offline.sh reads the platform line and refuses a server of another one.
 {
-  echo "taskmoor $app $(docker image inspect --format '{{.Id}}' "$app")"
-  echo "postgres $db $(docker image inspect --format '{{.Id}}' "$db")"
+  echo "taskmoor $app $(docker image inspect ${pick[@]+"${pick[@]}"} --format '{{.Id}}' "$app")"
+  echo "postgres $db $(docker image inspect ${pick[@]+"${pick[@]}"} --format '{{.Id}}' "$db")"
   echo "platform $platform"
 } > "$dir/images.txt"
 
@@ -74,7 +107,7 @@ cp LICENSE "$dir/"
 
 echo "== frontend"
 # The static build that the image serves, also usable on any static host (OPS-013).
-container=$(docker create "$app")
+container=$(docker create --platform "$platform" "$app")
 docker cp "$container:/app/web" "$(host "$dir/web/taskmoor-web")" >/dev/null
 docker rm -v "$container" >/dev/null
 tar -czf "$dir/web/taskmoor-web-$version.tar.gz" -C "$dir/web" taskmoor-web

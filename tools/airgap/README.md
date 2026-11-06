@@ -23,10 +23,18 @@ when this server is the other kind, since there is no registry here to fetch the
 from. To see which one a server is: `docker version --format '{{.Server.Os}}/{{.Server.Arch}}'`.
 
 Making a bundle (`tools/airgap/bundle.sh` in the repository) takes the platform as `PLATFORM`,
-`linux/amd64` unless set, and refuses an image of another one. A machine of the other kind,
-such as an Apple silicon Mac for an amd64 bundle, needs the images for that platform:
-`docker pull --platform linux/amd64 <image>`, or `docker buildx build --platform linux/amd64
---load` for an image built there. A missing database image is pulled for `PLATFORM`.
+`linux/amd64` unless set, and refuses an image the local Docker does not hold for it. A machine
+of the other kind, such as an Apple silicon Mac for an amd64 bundle, needs the images for that
+platform: `docker pull --platform linux/amd64 <image>`, or `docker buildx build --platform
+linux/amd64 --load` for an image built there. A missing database image is pulled for
+`PLATFORM`.
+
+A tag can hold more than one platform: with the containerd image store, Docker 29's default,
+pulling for another platform adds it beside the one the tag held. Docker 28.1 and later
+(`docker image inspect` and `docker save` take `--platform`) let the bundle check and save
+`PLATFORM`'s image by name, so nothing else is needed. An older Docker cannot pick one, so there
+the tag must hold that platform's image alone: remove it first (`docker image rm <image>`), then
+pull it for the platform.
 
 ## Install with Docker Compose
 

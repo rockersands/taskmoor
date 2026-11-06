@@ -41,8 +41,11 @@ Every release, on every channel but preview:
 - the air-gap bundle (`tools/airgap/bundle.sh`), one for each platform (`PLATFORM=linux/amd64`
   and `PLATFORM=linux/arm64`, each from the image pulled with `--platform`): images, the Compose
   kit, the Helm chart, the frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by
-  the release key. An image archive holds one platform, and `bundle.sh` refuses an image of
-  another, which is what a Mac pulls or builds unless told;
+  the release key. An image archive holds one platform, and `bundle.sh` refuses an image the
+  local Docker does not hold for `PLATFORM`; a Mac pulls and builds arm64 unless told. With
+  Docker 28.1 or later both pulls can share one tag (the containerd image store keeps both) and
+  `bundle.sh` saves `PLATFORM`'s image by name; an older Docker cannot pick one, so remove the
+  tag (`docker image rm`) before pulling it for the other platform;
 - the Builder page (`apps/web/dist-builder/index.html`), the frontend artefact and the server
   bundle, all stamped with the version (ADR-066);
 - `taskmoor-release.txt` and `taskmoor-release.txt.sig`, the signed statement of which image is

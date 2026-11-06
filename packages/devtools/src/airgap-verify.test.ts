@@ -139,10 +139,15 @@ function temp(prefix: string): string {
 }
 
 /**
- * A stand-in for Docker with its images in $FAKE_STATE, one file per reference holding the
- * image's platform, and every call logged to $FAKE_STATE/calls. A pull without --platform gets
- * arm64, as on an Apple silicon Mac; the server's own platform is $FAKE_SERVER. A stand-in for
- * Helm keeps the real one out.
+ * A stand-in for Docker with its images in $FAKE_STATE, one file per reference listing the
+ * platforms its tag holds, and every call logged to $FAKE_STATE/calls. As with Docker 29's
+ * containerd image store, a tag holds every platform pulled for it: a pull adds one (arm64
+ * without --platform, as on an Apple silicon Mac), a plain inspect reports the first (the
+ * host's), and an inspect for a platform the tag lacks answers "/" and succeeds, as Docker 29
+ * does for a platform its image index lists but that was never pulled. $FAKE_OLD_DOCKER is a
+ * Docker without --platform on `image inspect` and `save` (before 28.1, or a daemon older than
+ * API 1.49, whose help hides the flag). The server's own platform is $FAKE_SERVER. A stand-in
+ * for Helm keeps the real one out.
  */
 function fakeBin(): string {
   const bin = temp('taskmoor-bin-');
@@ -150,15 +155,33 @@ function fakeBin(): string {
     '#!/bin/sh',
     'echo "$*" >> "$FAKE_STATE/calls"',
     `key() { printf '%s' "$1" | tr '/:@' '___'; }`,
+    'help() {',
+    '  echo "Usage:  docker $1 [OPTIONS] IMAGE"',
+    '  [ -n "$FAKE_OLD_DOCKER" ] || echo "      --platform string   One platform of the image"',
+    '}',
+    'unknown() { echo "unknown flag: --platform" >&2; exit 125; }',
     'case "$1" in',
     '  image)',
+    '    sub=$2',
     '    shift 2',
-    '    format=',
-    '    if [ "$1" = --format ]; then format=$2; shift 2; fi',
-    '    [ -f "$FAKE_STATE/$(key "$1")" ] || exit 1',
+    '    if [ "$1" = --help ]; then help "image $sub"; exit 0; fi',
+    '    platform= format=',
+    '    while [ $# -gt 1 ]; do',
+    '      case "$1" in',
+    '        --platform) [ -z "$FAKE_OLD_DOCKER" ] || unknown; platform=$2; shift 2 ;;',
+    '        --format) format=$2; shift 2 ;;',
+    '        *) shift ;;',
+    '      esac',
+    '    done',
+    '    file="$FAKE_STATE/$(key "$1")"',
+    '    if [ "$sub" = rm ]; then rm "$file" || exit 1; exit 0; fi',
+    '    [ -f "$file" ] || exit 1',
+    '    if [ -z "$platform" ]; then found=$(head -1 "$file")',
+    '    elif grep -qx "$platform" "$file"; then found=$platform',
+    '    else found=/; fi',
     '    case "$format" in',
-    '      *Architecture*) cat "$FAKE_STATE/$(key "$1")" ;;',
-    '      *Id*) echo sha256:0123456789abcdef ;;',
+    '      *Architecture*) echo "$found" ;;',
+    `      *Id*) echo "sha256:$(printf '%s' "$found" | tr -dc 'a-z0-9')" ;;`,
     '    esac ;;',
     '  pull)',
     '    shift',
@@ -166,8 +189,17 @@ function fakeBin(): string {
     '    while [ $# -gt 1 ]; do',
     '      case "$1" in --platform) platform=$2; shift 2 ;; *) shift ;; esac',
     '    done',
-    '    echo "$platform" > "$FAKE_STATE/$(key "$1")" ;;',
-    '  save) echo "archive of $2" ;;',
+    '    file="$FAKE_STATE/$(key "$1")"',
+    '    grep -qx "$platform" "$file" 2>/dev/null || echo "$platform" >> "$file" ;;',
+    '  save)',
+    '    shift',
+    '    if [ "$1" = --help ]; then help save; exit 0; fi',
+    '    if [ "$1" = --platform ]; then',
+    '      [ -z "$FAKE_OLD_DOCKER" ] || unknown',
+    '      echo "archive of $3 for $2"',
+    '    else',
+    '      echo "archive of $1, every platform its tag holds"',
+    '    fi ;;',
     '  create) echo 0123456789ab ;;',
     `  cp) mkdir -p "$3" && echo '{"version":"1.0.0"}' > "$3/version.json" ;;`,
     `  run) echo '{"bomFormat": "CycloneDX"}' ;;`,
@@ -203,11 +235,37 @@ function run(script: string, args: string[], state: string, extra: Record<string
   };
 }
 
-/** bundle.sh for version 1.0.0 with the given local images and their platforms. */
-function makeBundle(images: Record<string, string>, extra: Record<string, string> = {}) {
+/** The stand-in's local images: each reference with the platforms its tag holds, host's first. */
+function dockerState(images: Record<string, string | string[]>): string {
   const state = temp('taskmoor-docker-');
-  for (const [ref, platform] of Object.entries(images))
-    writeFileSync(imageFile(state, ref), `${platform}\n`);
+  for (const [ref, platforms] of Object.entries(images))
+    writeFileSync(
+      imageFile(state, ref),
+      [platforms]
+        .flat()
+        .map((platform) => `${platform}\n`)
+        .join(''),
+    );
+  return state;
+}
+
+/** A command a maintainer runs, on the stand-in for Docker. */
+const fakeDocker = (state: string, args: string[], extra: Record<string, string> = {}) =>
+  spawnSync('sh', [join(fakeBin(), 'docker'), ...args], {
+    env: { ...env, FAKE_STATE: state, ...extra },
+    encoding: 'utf8',
+  }).status;
+
+/**
+ * bundle.sh for version 1.0.0 with the given local images and their platforms, or on the
+ * stand-in's state from an earlier run (its calls start again).
+ */
+function makeBundle(
+  images: Record<string, string | string[]> | string,
+  extra: Record<string, string> = {},
+) {
+  const state = typeof images === 'string' ? images : dockerState(images);
+  rmSync(join(state, 'calls'), { force: true });
   const key = pair();
   writeFileSync(join(state, 'key.pem'), key.privateKey);
   writeFileSync(join(state, 'cosign.pub'), key.publicKey);
@@ -239,16 +297,79 @@ describe.skipIf(!hasTools)('tools/airgap/bundle.sh and the servers’ platform',
     const app = makeBundle({ 'taskmoor:1.0.0': 'linux/arm64', [POSTGRES_IMAGE]: 'linux/amd64' });
     expect(app.status).toBe(1);
     expect(app.out).toContain(
-      'taskmoor:1.0.0 is linux/arm64 here, and this bundle is for linux/amd64 servers',
+      'taskmoor:1.0.0 has no linux/amd64 image here, and this bundle is for linux/amd64 servers',
     );
+    expect(app.out).toContain('docker buildx build --platform linux/amd64 --load');
     expect(app.out).toContain('PLATFORM=linux/arm64');
     expect(existsSync(app.dir)).toBe(false);
-    expect(app.calls).not.toMatch(/^save /m);
+    expect(app.calls).not.toMatch(/^save (?!--help$)/m);
 
     // A database image pulled earlier on the Mac is arm64 too.
     const db = makeBundle({ 'taskmoor:1.0.0': 'linux/amd64', [POSTGRES_IMAGE]: 'linux/arm64' });
     expect(db.status).toBe(1);
-    expect(db.out).toContain(`${POSTGRES_IMAGE} is linux/arm64 here`);
+    expect(db.out).toContain(`${POSTGRES_IMAGE} has no linux/amd64 image here`);
+  });
+
+  // Docker 29's containerd image store keeps every platform pulled for a tag: on an Apple
+  // silicon Mac `docker pull --platform linux/amd64` adds amd64 beside the arm64 the tag held,
+  // while a plain `docker image inspect` still reports arm64 and a plain `docker save` writes
+  // both. bundle.sh refused the image its message had just told the maintainer to pull (T-023
+  // re-check); it now inspects and saves the servers' platform by name.
+  it('[OPS-005] takes the servers’ platform from a tag that holds two', () => {
+    const both = ['linux/arm64', 'linux/amd64'];
+    const images = { 'taskmoor:1.0.0': both, [POSTGRES_IMAGE]: both };
+    const made = makeBundle(images);
+    expect({ status: made.status, out: made.out }).toMatchObject({ status: 0 });
+    expect(made.calls).toMatch(/^save --platform linux\/amd64 taskmoor:1\.0\.0$/m);
+    expect(made.calls).toContain(`save --platform linux/amd64 ${POSTGRES_IMAGE}\n`);
+    expect(made.calls).not.toMatch(/^pull /m);
+    expect(made.imagesTxt).toBe(
+      `taskmoor taskmoor:1.0.0 sha256:linuxamd64\npostgres ${POSTGRES_IMAGE} sha256:linuxamd64\nplatform linux/amd64\n`,
+    );
+
+    const arm = makeBundle(images, { PLATFORM: 'linux/arm64' });
+    expect({ status: arm.status, out: arm.out }).toMatchObject({ status: 0 });
+    expect(arm.calls).toMatch(/^save --platform linux\/arm64 taskmoor:1\.0\.0$/m);
+    expect(arm.imagesTxt).toContain('platform linux/arm64\n');
+  });
+
+  it('[OPS-005] names the pull that gives a tag the servers’ platform, and that pull works', () => {
+    const state = dockerState({ 'taskmoor:1.0.0': 'linux/amd64', [POSTGRES_IMAGE]: 'linux/arm64' });
+    const refused = makeBundle(state);
+    expect(refused.status).toBe(1);
+    const pull = `docker pull --platform linux/amd64 ${POSTGRES_IMAGE}`;
+    expect(refused.out).toContain(pull);
+
+    expect(fakeDocker(state, pull.split(' ').slice(1))).toBe(0);
+    const made = makeBundle(state);
+    expect({ status: made.status, out: made.out }).toMatchObject({ status: 0 });
+    expect(made.calls).toContain(`save --platform linux/amd64 ${POSTGRES_IMAGE}\n`);
+  });
+
+  // An older Docker cannot pick one platform of a tag, so the tag must hold only the servers':
+  // its pull for another platform would add to the tag with the containerd store.
+  it('[OPS-005] keeps the check on the whole tag where Docker cannot pick a platform', () => {
+    const old = { FAKE_OLD_DOCKER: '1' };
+    const state = dockerState({
+      'taskmoor:1.0.0': 'linux/amd64',
+      [POSTGRES_IMAGE]: ['linux/arm64', 'linux/amd64'],
+    });
+    const refused = makeBundle(state, old);
+    expect(refused.status).toBe(1);
+    expect(refused.out).toContain(`${POSTGRES_IMAGE} is linux/arm64 here`);
+    const remove = `docker image rm ${POSTGRES_IMAGE}`;
+    const pull = `docker pull --platform linux/amd64 ${POSTGRES_IMAGE}`;
+    expect(refused.out).toContain(remove);
+    expect(refused.out).toContain(pull);
+    expect(refused.calls).not.toMatch(/--platform linux\/amd64 taskmoor/);
+
+    for (const command of [remove, pull])
+      expect(fakeDocker(state, command.split(' ').slice(1), old)).toBe(0);
+    const made = makeBundle(state, old);
+    expect({ status: made.status, out: made.out }).toMatchObject({ status: 0 });
+    expect(made.calls).toContain(`save ${POSTGRES_IMAGE}\n`);
+    expect(made.calls).toMatch(/^save taskmoor:1\.0\.0$/m);
+    expect(made.imagesTxt).toContain('platform linux/amd64\n');
   });
 
   it('[OPS-005] makes an arm64 bundle when PLATFORM names it, and takes no other', () => {
