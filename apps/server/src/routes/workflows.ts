@@ -367,6 +367,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if (ids.some((id) => !known.has(id))) throw new FollowersChanged();
     const changed: number[] = [];
     for (const w of held) {
+      // A board-managed workflow's board says which column closes, for its draft too (one saved
+      // through the API may leave the board out), as a draft save leaves its draft as sent.
+      if (w.published.board) continue;
       const published = followingStage(w.published, statusId, closes, completedId);
       const draft = w.draft && followingStage(w.draft, statusId, closes, completedId);
       if (!published && !draft) continue;
@@ -378,9 +381,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
 
   /**
    * The workflows whose free moves may follow this status's stage, by id: those whose published
-   * version or draft has it, leaving out a board-managed workflow. `followingStage` never rewrites
-   * one (its board says which column closes), and a board's sync holds a column's status (renaming
-   * it) before the workflow, so holding that workflow first could deadlock with it.
+   * version or draft has it. A board-managed one is among them: `followStage` leaves it as it is,
+   * deciding that on the row it holds, and a board's sync holds its workflow before any status, as
+   * this change does, so holding it first only waits for the sync.
    */
   async function workflowsFollowing(
     trx: Transaction<Database>,
@@ -392,17 +395,15 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         FROM workflow w
         JOIN workflow_version_status s
           ON s.workflow_id = w.id AND s.version IN (w.published_version, w.draft_version)
-        JOIN workflow_version p ON p.workflow_id = w.id AND p.version = w.published_version
        WHERE w.workspace_id = ${workspaceId} AND s.status_id = ${statusId}
-         AND p.definition -> 'board' IS NULL
        ORDER BY w.id`.execute(trx);
     return rows.map((r) => r.id);
   }
 
   /**
    * The workflows a change of this status's stage may rewrite, held before the status, as a
-   * ticket write and a draft save take a workflow before the statuses it names (see
-   * `workflows/store.ts`). No key update, so it never waits for a ticket write.
+   * ticket write, a draft save and a board's sync take a workflow before a status (the lock order
+   * in `workflows/store.ts`). No key update, so it never waits for a ticket write.
    */
   async function holdFollowing(
     trx: Transaction<Database>,

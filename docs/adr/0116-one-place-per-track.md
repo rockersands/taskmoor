@@ -88,19 +88,33 @@ them.
       published version and the draft is rewritten in place or moved above it, as when a close
       reason is replaced. The status's one event, `status.updated`, names those workflows
       (`workflowIds`). A move with a rule, another effect or a reason someone chose stays as it is,
-      and so does a board-managed workflow, whose board says which column closes. With no reason to
-      close with, nothing changes. A ticket write holds its workflow before the status it enters,
-      and a draft save holds its workflow before the statuses it names, so the change holds the
-      workflows first (no key update, so it never waits for a ticket write; it moves no ticket),
-      then the status; holding the status first deadlocked with a draft save. It holds no
-      board-managed workflow, which it never rewrites: a board's sync renames a column's status
-      before it publishes the workflow, so holding that workflow first deadlocked with the sync.
-      Nor does it hold a workflow after the status: when a draft saved while the change waited for
-      the status gave it another workflow to rewrite, the change starts again (up to five times)
-      and holds that workflow first. We considered
+      and so does a board-managed workflow, whose board says which column closes, its draft included
+      (one saved through the API may leave the board out). With no reason to close with, nothing
+      changes. We considered
       deciding the effect at move time from the status's stage, with nothing rewritten; rejected
       because the definition, the editor and an exported file would then say something other
       than what happens.
+    - *Lock order: the status list, then workflows, then statuses* (T-209). Every path that holds
+      a workflow row and a status row in one transaction takes the workflow first:
+      - a ticket write holds its workflow (key share) before the status it enters, and a draft
+        save holds its workflow (no key update) before the statuses it names;
+      - a stage change holds every workflow whose published version or draft has the status, in
+        id order (no key update, so it never waits for a ticket write; it moves no ticket), then
+        the status. Holding the status first deadlocked with a draft save. It holds no workflow
+        after the status: when a draft saved while it waited for the status gave it another
+        workflow to rewrite, it starts again (up to five times) and holds that workflow first;
+      - a board's sync (management turned on, a column added without a status, a managed board's
+        columns or closing column changed, the track's own board made) holds the status list, then
+        its track's own workflow (update), and
+        only then renames a column's status, makes one or settles their stages. It used to rename
+        the status first and hold the workflow only to publish; a stage change holding that
+        workflow and waiting for the status then deadlocked with it (`40P01`, a 500), so the stage
+        change left board-managed workflows out, which missed a board taking over a workflow that
+        had no board yet. With the sync holding the workflow first, the stage change holds
+        board-managed workflows too and leaves them as they are on the row it holds;
+      - the status list (`lockList`) comes before both: a workflow import holds it before the
+        workflow, and deleting or reordering statuses before the statuses, so a sync that renamed
+        a status and then waited for the list (to make a column's status) deadlocked with those.
     - *A status added through the draft API gets its free move* (T-210). Saving a draft
       (`PUT /api/v1/workflows/:id/draft`) on a workflow that moves freely, with a draft that still
       does, gives each status the draft adds and no transition reaches its global transition, as the

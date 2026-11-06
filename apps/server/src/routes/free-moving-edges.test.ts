@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { EVENT_TYPES } from '../events/catalogue';
+import { lockList } from '../tickets/fields';
 
 /**
  * The edges of free moving the T-207 review found (WF-008 (1), (4); ADR-116): a status whose stage
@@ -34,6 +35,7 @@ interface Definition {
   initialStatusId: number;
   statuses: { statusId: number }[];
   transitions: Transition[];
+  board?: { boardId: number; columns: number[] };
 }
 interface Version {
   version: number;
@@ -43,6 +45,16 @@ interface View {
   id: number;
   published: Version;
   draft: Version | null;
+}
+interface Column {
+  id?: string;
+  name: string;
+  statusIds: number[];
+}
+interface Board {
+  id: number;
+  version: number;
+  columns: Column[];
 }
 
 const CLEAR: Effect[] = [{ type: 'clear-field', field: 'close-reason' }];
@@ -178,6 +190,43 @@ describe('free moving at its edges (WF-008)', () => {
       closeReason: { name: string } | null;
       closedAt: string | null;
     };
+  };
+
+  /**
+   * A local-mode track whose board manages its workflow, with a column for each of `names` (after
+   * the first) whose status only that workflow uses.
+   */
+  const managedBoard = async (key: string, names: string[]) => {
+    const track = await post('/api/v1/tracks', { key, name: `Track ${key}`, mode: 'local' });
+    expect(track.statusCode, track.body).toBe(201);
+    const trackId = track.json().track.id as number;
+    const made = await post('/api/v1/boards', {
+      name: `Board ${key}`,
+      kind: 'kanban',
+      trackId,
+      source: { query: `track = ${key}` },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const managed = await put(`/api/v1/boards/${made.json().board.id}/workflow`, {
+      managed: true,
+    });
+    expect(managed.statusCode, managed.body).toBe(200);
+    const board = managed.json().board as Board;
+    const added = await patch(`/api/v1/boards/${board.id}`, {
+      version: board.version,
+      columns: [
+        ...board.columns.slice(0, 1),
+        ...names.map((name) => ({ name, statusIds: [] })),
+        ...board.columns.slice(1),
+      ],
+    });
+    expect(added.statusCode, added.body).toBe(200);
+    const workflow = await database.db
+      .selectFrom('workflow')
+      .select('id')
+      .where('owner_track_id', '=', trackId)
+      .executeTakeFirstOrThrow();
+    return { workflowId: workflow.id, board: added.json().board as Board };
   };
 
   describe('a status that changes stage (T-209)', () => {
@@ -365,66 +414,109 @@ describe('free moving at its edges (WF-008)', () => {
         setting(reason.Completed as number),
       );
     });
-    it('[WF-008] a stage change leaves a board-managed workflow unheld, so a board sync that holds the status first goes on', async () => {
-      // A board that manages its track's workflow, with a column whose status only it uses.
-      const track = await post('/api/v1/tracks', { key: 'BSYNC', name: 'Synced', mode: 'local' });
-      expect(track.statusCode, track.body).toBe(201);
-      const trackId = track.json().track.id as number;
-      const made = await post('/api/v1/boards', {
-        name: 'Synced board',
-        kind: 'kanban',
-        trackId,
-        source: { query: 'track = BSYNC' },
+    it("[WF-008] a board taking over its track's workflow and a stage change of a column's status both hold the workflow before the status", async () => {
+      // The track's own workflow as an ordinary one: its board stopped managing it, and a version
+      // without the board was published.
+      const { workflowId, board } = await managedBoard('BTAKE', ['Parked here']);
+      const off = await put(`/api/v1/boards/${board.id}/workflow`, { managed: false });
+      expect(off.statusCode, off.body).toBe(200);
+      const { board: _board, ...ordinary } = (await view(workflowId)).published.definition;
+      await saveDraft(workflowId, ordinary);
+      const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(published.statusCode, published.body).toBe(200);
+      const columns = off.json().board.columns as Column[];
+      const parked = columns[1]?.statusIds[0] as number;
+
+      // Another change of the status list is under way, so the board waits for it.
+      const listed = gate();
+      const finish = gate();
+      const other = database.db.transaction().execute(async (trx) => {
+        await lockList(trx, 1, 'status');
+        listed.open();
+        await finish.opened;
       });
-      expect(made.statusCode, made.body).toBe(201);
-      const managed = await put(`/api/v1/boards/${made.json().board.id}/workflow`, {
-        managed: true,
-      });
-      expect(managed.statusCode, managed.body).toBe(200);
-      const board = managed.json().board as {
-        id: number;
-        version: number;
-        columns: { id: string; name: string; statusIds: number[] }[];
-      };
-      const added = await patch(`/api/v1/boards/${board.id}`, {
-        version: board.version,
+      await listed.opened;
+      // A column without a status: the board takes the workflow over, renaming a column's status.
+      const takingOver = patch(`/api/v1/boards/${board.id}`, {
+        version: off.json().board.version,
         columns: [
-          ...board.columns.slice(0, 1),
-          { name: 'On hold', statusIds: [] },
-          ...board.columns.slice(1),
+          ...columns.slice(0, 1),
+          { ...columns[1], name: 'Paused here' },
+          { name: 'Signed off', statusIds: [] },
+          ...columns.slice(2),
         ],
       });
-      expect(added.statusCode, added.body).toBe(200);
-      const onHold = added.json().board.columns[1].statusIds[0] as number;
-      const workflowId = (
-        await database.db
-          .selectFrom('workflow')
-          .select('id')
-          .where('owner_track_id', '=', trackId)
-          .executeTakeFirstOrThrow()
-      ).id;
-      const before = await view(workflowId);
-
-      // A board's sync renames the column's status, then publishes the workflow (for update).
-      const renamed = gate();
-      const reaching = gate();
-      const sync = database.db.transaction().execute(async (trx) => {
-        await sql`UPDATE status SET name = 'Paused' WHERE id = ${onHold}`.execute(trx);
-        renamed.open();
-        await reaching.opened;
-        await sql`SELECT id FROM workflow WHERE id = ${workflowId} FOR UPDATE`.execute(trx);
-      });
-      await renamed.opened;
-      const changing = patch(`/api/v1/statuses/${onHold}`, { stage: 'closed' });
       await lockWaits(1);
-      reaching.open();
-      await expect(sync).resolves.toBeUndefined();
-      const changed = await changing;
+      // A board that held the renamed status and then waited for the workflow the stage change
+      // holds, while the stage change waits for that status, would have one of them ended (40P01).
+      const changing = patch(`/api/v1/statuses/${parked}`, { stage: 'closed' });
+      await Promise.race([changing, lockWaits(2)]);
+      finish.open();
+      await other;
+      const [took, changed] = await Promise.all([takingOver, changing]);
       expect(changed.statusCode, changed.body).toBe(200);
-      // The board's workflow is as its board made it, and the status's one event names none.
-      expect((await view(workflowId)).published).toEqual(before.published);
+      expect(took.statusCode, took.body).toBe(200);
+      expect(took.json().board.managesWorkflow).toBe(true);
+      expect((await view(workflowId)).published.definition.board).toBeDefined();
+      const renamed = (await get('/api/v1/statuses')).json().statuses as {
+        id: number;
+        name: string;
+      }[];
+      expect(renamed.find((s) => s.id === parked)?.name).toBe('Paused here');
+    });
+
+    it('[WF-008] a board-managed workflow stays as its board made it, and so does a draft of it without the board', async () => {
+      const { workflowId, board } = await managedBoard('BKEEP', ['Waiting here']);
+      const waiting = board.columns[1]?.statusIds[0] as number;
+      const before = await view(workflowId);
+      // A draft saved through the API may leave the board out; the board still says which closes.
+      const { board: _board, ...ordinary } = before.published.definition;
+      const drafted = await saveDraft(workflowId, ordinary);
+      expect(into(draftOf(drafted), waiting)?.effects).toEqual(CLEAR);
+      const changed = await patch(`/api/v1/statuses/${waiting}`, { stage: 'closed' });
+      expect(changed.statusCode, changed.body).toBe(200);
+      const after = await view(workflowId);
+      expect(after.published).toEqual(before.published);
+      expect(after.draft).toEqual(drafted.draft);
       const [event] = (await events('status.updated')).slice(-1);
       expect(event?.payload).toEqual({ changes: { stage: { from: 'active', to: 'closed' } } });
+    });
+
+    it('[WF-010] a board sync holds the status list before a status, so deleting a status it renames meanwhile is refused, not deadlocked', async () => {
+      const { board } = await managedBoard('BLIST', ['Queued here', 'Staged here']);
+      const [first, queued, staged, ...rest] = board.columns;
+      const queuedId = queued?.statusIds[0] as number;
+      const stagedId = staged?.statusIds[0] as number;
+      // Something holds the second column's status, so the sync stops between its two renames.
+      const holding = gate();
+      const finish = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${stagedId} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finish.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [
+          first,
+          { ...queued, name: 'Queued now' },
+          { ...staged, name: 'Staged now' },
+          { name: 'Shipped here', statusIds: [] },
+          ...rest,
+        ],
+      });
+      await lockWaits(1);
+      // Deleting a status holds the status list, then the status. A sync that renamed it and then
+      // waited for the list (its new column's status) would have one of them ended (40P01).
+      const deleting = as({ method: 'DELETE', url: `/api/v1/statuses/${queuedId}` });
+      await lockWaits(2);
+      finish.open();
+      await holder;
+      const [synced, deleted] = await Promise.all([syncing, deleting]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(deleted.statusCode, deleted.body).toBe(409);
+      expect(deleted.json().error).toBe('status_in_use');
     });
 
     it('[WF-008] a draft that takes the status while the change waits for it: the change starts again, holding that workflow first', async () => {

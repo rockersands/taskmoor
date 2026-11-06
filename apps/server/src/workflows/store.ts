@@ -10,11 +10,14 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
  * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
  * holds the workflow (no key update), then the statuses it names (key share). A status's change
- * of stage holds the workflows whose free moves follow it (no key update, so it never waits for
- * a ticket write), then the status (update), as a ticket write and a draft save take a workflow
- * before a status; it holds no board-managed workflow (a board's sync renames a column's status,
- * then publishes the workflow) and no workflow after the status (it starts again). A ticket's
- * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
+ * of stage holds every workflow whose published version or draft has the status (no key update,
+ * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
+ * save take a workflow before a status; it holds no workflow after the status (it starts again).
+ * A board's sync holds the status list (`lockList`), then its track's workflow (update), then the
+ * statuses it renames or makes closed; a workflow import holds the list before the workflow, and
+ * deleting or reordering statuses the list before the statuses. So everywhere: the status list,
+ * then workflows (by id), then statuses (ADR-116). A ticket's workflow comes from its track's map
+ * and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;
 

@@ -724,6 +724,19 @@ export async function syncBoardWorkflow(
   } = {},
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
   const track = await trackWorkflow(trx, by.workspaceId, board.trackId);
+  // Lock order (ADR-116, `workflows/store.ts`): the status list, then the workflow, then statuses.
+  // A column may need a status made, which takes the list; a workflow import and a status's
+  // deletion take the list before the workflow or the status. A stage change holds the workflow
+  // before the status, so the track's own workflow is held before any column's status is renamed.
+  await lockList(trx, by.workspaceId, 'status');
+  if (track.workflowId !== null) {
+    await trx
+      .selectFrom('workflow')
+      .select('id')
+      .where('id', '=', track.workflowId)
+      .forUpdate()
+      .execute();
+  }
   const closing = options.closing ?? null;
   // A column's name is its status's name (the user's decision, ADR-116).
   const renamed = await renamedStatuses(trx, by, track.workflowId, columns);
