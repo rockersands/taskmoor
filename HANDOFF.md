@@ -67,9 +67,14 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   on `wave8/multi-track-stages`.
 - **Chrome's window minimized:** the tab has a zero-size viewport, draws no frames and screenshots
   time out, while scripts still run. That looks like a frozen page and is not one.
-- **The demo** runs from `G:/tm-demo` at `http://localhost:8080`, with the real Backend, Front and
-  Flutter tracks and their tickets, its database in `.cache/pg-test/demo` there. Its one-time links
-  are in `.cache/demo.log`: never put them in chat.
+- **The demo** runs on the Mac from the worktree `.claude/worktrees/tm-demo` (detached at `main`
+  `82311c66`, 2026-11-06) at `http://localhost:8080`, started by the browser pane's launcher
+  (`.claude/launch.json` in the main checkout, excluded locally). It holds only the Backend (BE, 85),
+  Front (FE, 133) and Flutter (FL, 3) tracks with every ticket of `tickets.md` (states as statuses;
+  `needs-you` and `later` labels); the four sample tracks are in the trash. Its database is in
+  `.cache/pg-test/demo` there, and its one-time links are in its `.cache/demo.log`: never put them in
+  chat. The loader is `apps/server/src/demo/load-tickets.local.ts` in that worktree, untracked
+  (T-239 would make it a command). On Windows it ran from `G:/tm-demo`.
 - **Free numbers:** migrations 0106 and up, ADR-123 and up. Requirement IDs taken: AGL-024, AGL-025,
   IAM-033, CORE-034, IAM-034, PLN-012, PLN-013.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
