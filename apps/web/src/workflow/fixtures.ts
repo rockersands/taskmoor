@@ -187,6 +187,20 @@ export const DEFAULT_WORKFLOW = view(1, 'Default workflow', FREE_DEFINITION, {
   ],
 });
 
+/**
+ * The default workflow with a draft saved before free moving: still the first, strict steps
+ * (T-234). The published version moves freely.
+ */
+export const DEFAULT_WITH_SEEDED_DRAFT: WorkflowView = {
+  ...DEFAULT_WORKFLOW,
+  draft: {
+    version: 2,
+    definition: STEPPED_DEFINITION,
+    createdAt: '2026-10-25T09:00:00.000Z',
+    publishedAt: null,
+  },
+};
+
 export const SUPPORT_WORKFLOW = view(2, 'Support', SUPPORT_DEFINITION, {
   description: 'Requests with a review step',
   published: {

@@ -3755,6 +3755,13 @@ export const messagesEn = {
   'admin.workflow.status.added': 'Added {name} to the workflow.',
   'admin.workflow.status.addFailed':
     '{name} was not added: its close reason could not be read. Try again.',
+  'admin.workflow.seed.note':
+    'This draft still has the steps the default workflow first came with: tickets go one step at a time, and closing asks for a close reason. Workflows now move freely until someone adds a rule.',
+  'admin.workflow.seed.free': 'Let this draft move freely',
+  'admin.workflow.seed.freed':
+    'The first steps now move freely, and the rest of the draft is as it was. Save the draft to keep this.',
+  'admin.workflow.seed.failed':
+    'The draft was not changed: its close reason could not be read. Try again.',
   'admin.workflow.transition.heading': 'Transition: {name}',
   'admin.workflow.transition.name': 'Name',
   'admin.workflow.transition.nameRequired': 'Enter a name.',

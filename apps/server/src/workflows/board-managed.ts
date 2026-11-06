@@ -307,7 +307,11 @@ const reasonNamedCompleted = async (trx: Trx, workspaceId: number) =>
 /**
  * The reason a closing status that moves freely sets, or null when the workspace has none to name:
  * Completed by name, or what the default workflow closes with, so a renamed or replaced Completed
- * stays the one reason and no second Completed appears beside it.
+ * stays the one reason and no second Completed appears beside it. The name comes first: a default
+ * workflow that closes some steps with another reason, such as Not planned, never decides it while
+ * Completed exists. A reason named Completed made after Completed was replaced takes the free moves
+ * made from then on while the old ones keep the replacement; which one should win is open for the
+ * user (T-234), so this stays as it was.
  */
 export async function closingReasonId(trx: Trx, workspaceId: number): Promise<number | null> {
   return (
@@ -720,6 +724,19 @@ export async function syncBoardWorkflow(
   } = {},
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
   const track = await trackWorkflow(trx, by.workspaceId, board.trackId);
+  // Lock order (ADR-116, `workflows/store.ts`): the status list, then the workflow, then statuses.
+  // A column may need a status made, which takes the list; a workflow import and a status's
+  // deletion take the list before the workflow or the status. A stage change holds the workflow
+  // before the status, so the track's own workflow is held before any column's status is renamed.
+  await lockList(trx, by.workspaceId, 'status');
+  if (track.workflowId !== null) {
+    await trx
+      .selectFrom('workflow')
+      .select('id')
+      .where('id', '=', track.workflowId)
+      .forUpdate()
+      .execute();
+  }
   const closing = options.closing ?? null;
   // A column's name is its status's name (the user's decision, ADR-116).
   const renamed = await renamedStatuses(trx, by, track.workflowId, columns);

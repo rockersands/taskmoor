@@ -841,7 +841,11 @@ export const EVENT_TYPES = {
     subject: 'status',
     payload: z.object({ name: z.string(), stage: z.enum(['new', 'active', 'closed']) }),
   },
-  'status.updated': { subject: 'status', payload: z.object({ changes }) },
+  'status.updated': {
+    subject: 'status',
+    // A change of stage: any workflows whose free moves into it now follow it (T-209).
+    payload: z.object({ changes, workflowIds: z.array(id).optional() }),
+  },
   'status.reordered': { subject: 'workspace', payload: z.object({ statusIds: z.array(id) }) },
   'status.deleted': { subject: 'status', payload: z.object({ name: z.string() }) },
   'workflow.created': {

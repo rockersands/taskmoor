@@ -9,13 +9,15 @@ import { SessionProvider } from '../session/SessionProvider';
 import { stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import type { WorkflowsClient } from './client';
+import type { WorkflowsClient, WorkflowView } from './client';
 import { formatDefinition } from './definition';
 import {
+  DEFAULT_WITH_SEEDED_DRAFT,
   fakeWorkflowsClient,
   LOOKUPS,
   S,
   STATUSES,
+  STEPPED_DEFINITION,
   SUPPORT_DEFINITION,
   SUPPORT_WORKFLOW,
 } from './fixtures';
@@ -164,6 +166,96 @@ describe('workflow editor (M1-030)', () => {
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await screen.findByText(/^Saved draft version/);
     expect(save.mock.calls[0]?.[1].transitions).toEqual(SUPPORT_DEFINITION.transitions);
+  });
+
+  it('[WF-008] a default workflow draft with the first strict steps can move freely, and the rest stays', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient({
+      workflows: [
+        {
+          ...DEFAULT_WITH_SEEDED_DRAFT,
+          draft: {
+            ...(DEFAULT_WITH_SEEDED_DRAFT.draft as NonNullable<WorkflowView['draft']>),
+            definition: {
+              ...STEPPED_DEFINITION,
+              statuses: [...STEPPED_DEFINITION.statuses, { statusId: S.Draft as number }],
+              transitions: [
+                ...STEPPED_DEFINITION.transitions,
+                { id: 6, name: 'Park', from: [S.Active as number], to: S.Draft as number },
+              ],
+            },
+          },
+        },
+        SUPPORT_WORKFLOW,
+      ],
+    });
+    client.completedReason = vi.fn(async () => 42);
+    const save = vi.spyOn(client, 'saveDraft');
+    renderEditor(client, 1);
+    expect(await screen.findByText(/^This draft still has the steps/)).toBeVisible();
+    expect(within(transitionList()).getByText('Send to review')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Let this draft move freely' }));
+    expect(
+      await screen.findByText(/^The first steps now move freely, and the rest of the draft/),
+    ).toBeVisible();
+    expect(client.completedReason).toHaveBeenCalledWith(1);
+    expect(screen.queryByRole('button', { name: 'Let this draft move freely' })).toBeNull();
+    expect(within(transitionList()).queryByText('Send to review')).toBeNull();
+    expect(screen.getByText('Unsaved changes')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText(/^Saved draft version/);
+    const saved = save.mock.calls[0]?.[1];
+    // The free moves the published default has, numbered as the steps they replace; Park stays.
+    expect(saved?.transitions.map((t) => [t.id, t.name, t.from, t.to])).toEqual([
+      [5, 'New', 'any', S.New],
+      [1, 'Active', 'any', S.Active],
+      [2, 'In Review', 'any', S['In Review']],
+      [4, 'Closed', 'any', S.Closed],
+      [6, 'Park', [S.Active], S.Draft],
+    ]);
+    expect(saved?.transitions[3]?.effects).toEqual([
+      { type: 'update-system-field', field: 'close-reason', value: '42' },
+    ]);
+    expect(saved?.transitions[0]?.effects).toEqual([
+      { type: 'clear-field', field: 'close-reason' },
+    ]);
+  });
+
+  it('[WF-008] when the reason cannot be read the seeded steps stay, and it says so', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient({
+      workflows: [DEFAULT_WITH_SEEDED_DRAFT, SUPPORT_WORKFLOW],
+    });
+    client.completedReason = async () => {
+      throw new ApiError(500, {});
+    };
+    renderEditor(client, 1);
+    await user.click(await screen.findByRole('button', { name: 'Let this draft move freely' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The draft was not changed: its close reason could not be read. Try again.',
+    );
+    expect(within(transitionList()).getByText('Send to review')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  });
+
+  it('[WF-008] the same steps on another workflow, or published on purpose, are left alone', async () => {
+    const copy = { ...DEFAULT_WITH_SEEDED_DRAFT, id: 3, name: 'Copy', isDefault: false };
+    renderEditor(fakeWorkflowsClient({ workflows: [copy, SUPPORT_WORKFLOW] }), 3);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Copy' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Let this draft move freely' })).toBeNull();
+  });
+
+  it('[WF-008] a default workflow published with the first steps and no draft is not offered a change', async () => {
+    const published = {
+      ...DEFAULT_WITH_SEEDED_DRAFT,
+      draft: null,
+      published: { ...DEFAULT_WITH_SEEDED_DRAFT.published, definition: STEPPED_DEFINITION },
+    };
+    renderEditor(fakeWorkflowsClient({ workflows: [published, SUPPORT_WORKFLOW] }), 1);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Default workflow' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Let this draft move freely' })).toBeNull();
   });
 
   it('[WF-001] [WF-003] [WF-004] [WF-005] adds a transition with a guard, a check and an effect, and saves them in the draft', async () => {

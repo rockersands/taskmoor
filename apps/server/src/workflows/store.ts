@@ -8,8 +8,16 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * other configuration values: a ticket write holds its track (key share), then its track's
  * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
- * holds the track (update), then both maps and their workflows, then tickets. A ticket's
- * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
+ * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
+ * holds the workflow (no key update), then the statuses it names (key share). A status's change
+ * of stage holds every workflow whose published version or draft has the status (no key update,
+ * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
+ * save take a workflow before a status; it holds no workflow after the status (it starts again).
+ * A board's sync holds the status list (`lockList`), then its track's workflow (update), then the
+ * statuses it renames or makes closed; a workflow import holds the list before the workflow, and
+ * deleting or reordering statuses the list before the statuses. So everywhere: the status list,
+ * then workflows (by id), then statuses (ADR-116). A ticket's workflow comes from its track's map
+ * and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -161,4 +169,91 @@ export async function writeVersion(
       })),
     )
     .execute();
+}
+
+/** A workflow with its published version and its draft, as a rewrite of both reads them. */
+export interface CurrentVersions {
+  id: number;
+  name: string;
+  publishedVersion: number;
+  draftVersion: number | null;
+  published: WorkflowDefinition;
+  draft: WorkflowDefinition | null;
+}
+
+/**
+ * These workflows, by id, each row held until the transaction ends, with their current versions.
+ * `update` also waits for ticket writes on them, as a publish does; `no key update` lets them go
+ * on, for a rewrite that moves no ticket (a status's change of stage, which holds the status
+ * next, and a ticket write may be waiting for that).
+ */
+export async function holdCurrentVersions(
+  trx: Transaction<Database>,
+  ids: readonly number[],
+  lock: 'update' | 'no key update' = 'update',
+): Promise<CurrentVersions[]> {
+  if (ids.length === 0) return [];
+  const held = await sql<{
+    id: number;
+    name: string;
+    published_version: number;
+    draft_version: number | null;
+  }>`
+    SELECT id, name, published_version, draft_version FROM workflow
+     WHERE id = ANY(${[...new Set(ids)]}::int[]) ORDER BY id
+       FOR ${sql.raw(lock === 'update' ? 'UPDATE' : 'NO KEY UPDATE')}`.execute(trx);
+  const out: CurrentVersions[] = [];
+  for (const row of held.rows) {
+    out.push({
+      id: row.id,
+      name: row.name,
+      publishedVersion: row.published_version,
+      draftVersion: row.draft_version,
+      published: await loadDefinition(trx, row.id, row.published_version),
+      draft:
+        row.draft_version === null ? null : await loadDefinition(trx, row.id, row.draft_version),
+    });
+  }
+  return out;
+}
+
+/**
+ * Writes a held workflow's rewritten versions; statuses do not change, so no ticket moves. A new
+ * `published` definition becomes a new published version, and the draft (rewritten, or as it was)
+ * moves above it, since a draft always numbers above the published version. With only a `draft`,
+ * the draft is rewritten in place. Null for either leaves it as it is.
+ */
+export async function rewriteCurrentVersions(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  actorId: number | null,
+  w: CurrentVersions,
+  published: WorkflowDefinition | null,
+  draft: WorkflowDefinition | null,
+): Promise<void> {
+  if (published === null) {
+    if (draft && w.draftVersion !== null) {
+      await writeVersion(trx, workspaceId, w.id, w.draftVersion, draft, actorId, false);
+    }
+    return;
+  }
+  const latest = await sql<{ v: number }>`
+    SELECT max(version)::int AS v FROM workflow_version WHERE workflow_id = ${w.id}`.execute(trx);
+  const version = Number(latest.rows[0]?.v) + 1;
+  await writeVersion(trx, workspaceId, w.id, version, published, actorId, true);
+  const kept = draft ?? w.draft;
+  const draftVersion = kept ? version + 1 : null;
+  if (kept) await writeVersion(trx, workspaceId, w.id, version + 1, kept, actorId, false);
+  await trx
+    .updateTable('workflow')
+    .set({ published_version: version, draft_version: draftVersion, updated_at: new Date() })
+    .where('id', '=', w.id)
+    .execute();
+  if (kept && w.draftVersion !== null) {
+    await trx
+      .deleteFrom('workflow_version')
+      .where('workflow_id', '=', w.id)
+      .where('version', '=', w.draftVersion)
+      .execute();
+  }
 }

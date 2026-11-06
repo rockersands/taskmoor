@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
-accessed: 2026-11-04
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts
+accessed: 2026-11-06
 attestation: own-words
 ---
 # Workflows
@@ -35,6 +35,12 @@ The **Statuses** section of **Administration**, **Workflows** manages them: **Ad
 **Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**.
 
 - A status keeps its stage while tickets are in it.
+- Changing a status's stage takes the free moves into it along: on every workflow whose global
+  transition into it asks nothing and only sets or clears the close reason, entering a status made
+  closed-stage now sets the reason free moves close with (Completed, unless it was replaced), so the
+  ticket also gets its Closed time; entering one moved out of the closed stage clears the reason.
+  Each workflow that changes gets a new version, and its draft changes too. A transition with a
+  rule, or that sets a reason you chose, stays as it is, and so does a workflow a board manages.
 - A status is deleted only when no ticket is in it and no workflow's published version or draft
   uses it.
 
@@ -214,10 +220,18 @@ names cannot be deleted.
   freely (every transition global, with no guard, check, field or rule) it also adds the global
   transition into it, so tickets can enter it at once: a closed-stage status sets the close reason
   Completed, or what took its place if it was renamed or replaced, and any other clears the reason.
+  If you replace Completed and later make a new reason named Completed, the free moves already
+  there keep the replacement, and the ones added from then on set the new Completed.
   On a workflow with rules it adds only the status, and the
   steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
   it the initial status** or remove it from the workflow.
 - **Discard draft** throws the draft away; the published version stays as it is.
+- A draft of the default workflow saved before workflows moved freely may still have the steps the
+  site first came with: **Start**, **Send to review**, **Back to active**, **Close** (which asks
+  for a close reason) and **Reopen**. The editor says so and offers **Let this draft move freely**,
+  which puts in their place the global transitions the published version has, and keeps any step
+  you drew yourself. Nothing changes until you save the draft. A step you changed is yours, and the
+  offer does not appear.
 
 **Checks before publishing** list problems as you edit. Errors, such as a transition to a status
 that is not in the workflow, block saving. Warnings do not:
@@ -242,6 +256,18 @@ Through the API: `PUT /api/v1/workflows/:id/draft` with `{ "definition": ... }`,
 `GET /api/v1/workflows/:id/impact`, then `POST /api/v1/workflows/:id/publish` with
 `{ "statusMapping": { "<dropped status id>": <new status id> } }`. Without a needed mapping the
 publish answers `409 status_mapping_required` with the statuses and ticket counts.
+
+A draft saved through the API follows the same rule as **Add a status**: on a workflow that moves
+freely, each status the draft adds and no transition reaches gets its global transition, numbered
+above every transition id the workflow has used. A draft with no transitions, or the next draft of
+a workflow left with none, gets one into every status no transition reaches, as a new workflow
+does. A closed-stage status gets one only when there is a close reason to set. The answer shows the
+draft as saved. Statuses that were already in the workflow, steps you drew, any draft with a
+rule and the draft of a workflow a board manages are saved as sent. Send
+`"transitionsAsSent": true` beside the definition to keep the transitions of a draft that has any
+exactly as sent; the editor always does, since its **Add a status** gives the status its free move
+already, so a move you delete before saving stays deleted. A draft with no transitions at all still
+gets its free moves.
 
 ## Workflow files
 
