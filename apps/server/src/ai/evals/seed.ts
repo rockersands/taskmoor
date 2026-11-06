@@ -68,6 +68,15 @@ const PATH: Record<TicketSpec['status'], number[]> = {
   Closed: [1, 2, 4],
 };
 
+/**
+ * The reason a ticket closed for, when it is not Completed: the default workflow closes as
+ * Completed (WF-008), so that reason is set by hand right after the close, as a person does.
+ */
+const reasonSetByHand = (spec: TicketSpec) =>
+  spec.status === 'Closed' && spec.closeReason && spec.closeReason !== 'Completed'
+    ? spec.closeReason
+    : null;
+
 let address = 0;
 const nextAddress = () => `100.88.${Math.floor(++address / 250) % 250}.${(address % 250) + 1}`;
 
@@ -311,12 +320,13 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     }
     // The tracks use the default workflow, which moves freely and closes as Completed (WF-008). A
     // ticket closed for another reason says so the way a person does, by setting it afterwards.
-    if (spec.status === 'Closed' && spec.closeReason && spec.closeReason !== 'Completed') {
+    const byHand = reasonSetByHand(spec);
+    if (byHand) {
       await ok(
         as(actor, {
           method: 'PATCH',
           url: `/api/v1/tickets/${t.id}`,
-          payload: { closeReasonId: reasons[spec.closeReason] },
+          payload: { closeReasonId: reasons[byHand] },
         }),
         `close reason ${spec.name}`,
       );
@@ -376,15 +386,21 @@ async function backdate(db: Kysely<Database>, tickets: readonly SeededTicket[]):
     await sql`UPDATE ticket SET created_at = ${created}, updated_at = ${updated},
                 closed_at = CASE WHEN closed_at IS NULL THEN NULL ELSE ${updated}::timestamptz END
               WHERE id = ${t.id}`.execute(db);
-    // The change sets in the order they were written, spread from creation to the last update.
-    const { rows } = await sql<{ change_set: string }>`
-      SELECT change_set FROM ticket_change WHERE ticket_id = ${t.id}
+    // The change sets in the order they were written, spread from creation to the last update. A
+    // close reason set by hand is part of its close and shares its moment, so the ticket closes
+    // when it would have with the reason chosen on the way, not a step before.
+    const { rows } = await sql<{ change_set: string; reason_only: boolean }>`
+      SELECT change_set, bool_and(field = 'closeReason') AS reason_only
+        FROM ticket_change WHERE ticket_id = ${t.id}
        GROUP BY change_set ORDER BY min(id)`.execute(db);
+    const byHand = reasonSetByHand(t.spec) !== null;
+    const joins = rows.map((r, i) => byHand && i > 0 && r.reason_only);
+    const steps = joins.filter((j) => !j).length;
     const span = updated.getTime() - created.getTime();
+    let step = -1;
     for (const [i, r] of rows.entries()) {
-      const when = new Date(
-        created.getTime() + (rows.length > 1 ? (span * i) / (rows.length - 1) : 0),
-      );
+      if (!joins[i]) step += 1;
+      const when = new Date(created.getTime() + (steps > 1 ? (span * step) / (steps - 1) : 0));
       await sql`UPDATE ticket_change SET at = ${when}
                  WHERE ticket_id = ${t.id} AND change_set = ${r.change_set}`.execute(db);
     }
