@@ -44,11 +44,17 @@ fi
 # nothing on most installs; that must not trip set -e.
 port=${TASKMOOR_PORT:-$(grep -E '^TASKMOOR_PORT=' .env 2>/dev/null | cut -d= -f2 || true)}
 port=${port:-8080}
-for p in "$port"; do
-  if (command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$p ") || (command -v netstat >/dev/null 2>&1 && netstat -ltn 2>/dev/null | grep -q ":$p "); then
-    docker compose -f "$file" ps -q taskmoor >/dev/null 2>&1 || die "port $p is in use; set TASKMOOR_PORT in .env"
-  fi
-done
+# Something listens there: ss sees every address on Linux; elsewhere (a Mac has no ss, and its
+# netstat writes addresses another way) a connection to it is tried, as the Builder's kit does.
+in_use() {
+  if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$1 "; then return 0; fi
+  (exec 3<>"/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1
+}
+# A port this stack's own Taskmoor holds is fine (a second run). Compose answers that with a
+# container id, or with nothing and success when none runs.
+if in_use "$port" && [ -z "$(docker compose -f "$file" ps -q taskmoor 2>/dev/null || true)" ]; then
+  die "port $port is in use; set TASKMOOR_PORT in .env"
+fi
 
 # TASKMOOR_COMPOSE_OVERRIDE adds compose files (space-separated), for example to put the
 # stack on an internal network; TASKMOOR_PULL=never installs from images already loaded
@@ -84,6 +90,13 @@ fi
 
 # The link line is absent once setup is complete; an empty match is the normal second run.
 link=$( (compose logs --no-log-prefix taskmoor 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
+# Without PUBLIC_URL the backend names its own port in the container, 8080, in the link; the
+# browser reaches it on the published one.
+public=${PUBLIC_URL:-$(grep -E '^PUBLIC_URL=' .env 2>/dev/null | cut -d= -f2- || true)}
+inside=http://localhost:8080/
+if [ -z "$public" ] && [ "${link#"$inside"}" != "$link" ]; then
+  link="http://localhost:$port/${link#"$inside"}"
+fi
 say ""
 say "Taskmoor is running on port $port."
 if [ -n "$link" ]; then

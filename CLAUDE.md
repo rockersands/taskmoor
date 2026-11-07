@@ -53,7 +53,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`), the offline Builder page that carries it (`apps/web/dist-builder/index.html`, ADR-088) and the bundled server (`apps/server/dist/server.mjs`), all stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/update.sh [version] [--dry-run]` | The newest verified release, then `upgrade.sh` |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
-| `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
+| `bash tools/image/smoke.sh` | Builds the Docker image, checks its unpacked size and probes `/health` and `/ready` (the host's architecture, then the other of amd64 and arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
 | `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `upgrade [--dry-run]`, `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`, `report-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
 | `pnpm builder --project <file>` | The Builder CLI (ADR-031): backend kit, frontend kit zip and single file from a project file (or `--backend-url` and `--frontend-url`); `--seed` for byte-identical rebuilds |
@@ -62,6 +62,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `bash tools/image/smoke-backend-kit.sh` | Makes a backend kit for https://localhost:18443 and installs it against the local image: health through Caddy, the setup link, the kit's instance at `/api/meta` |
 | `bash tools/image/fresh-vm.sh` | M1-113: both Builder kits on a fresh machine (a Docker-in-Docker container with an empty image store), the frontend on a plain static server at another site, then setup, sign-in, a ticket, a board, a search and live updates in a browser; fails above 15 minutes from start to sign-in. Behind a TLS-re-signing proxy set `BUILD_CA` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
+| `pnpm secrets` | gitleaks over every commit of every local branch with `.gitleaks.toml`; prints only redacted findings (needs gitleaks: `brew install gitleaks`). Triage and the pull request refs in `docs/security/secret-scan.md` |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
 | `pnpm --filter @taskmoor/web storybook` | Storybook; every story also runs as a browser test with axe in `pnpm verify` |

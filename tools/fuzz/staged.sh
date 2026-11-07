@@ -28,7 +28,7 @@ for hours in $STAGES; do
     pids+=($!)
   done
   ok=1
-  for p in "${pids[@]}"; do wait "$p" || ok=0; done
+  for p in ${pids[@]+"${pids[@]}"}; do wait "$p" || ok=0; done
   for t in $TARGETS; do cp -f ".verify/fuzz-$t.json" "$dir/$t.json" 2>/dev/null || ok=0; done
   if [ $ok = 1 ]; then
     touch "$dir/done"

@@ -11,7 +11,7 @@
 // the attachments in .cache/demo. --fresh removes only the attachments: it keeps
 // the database. Not for production: no TLS, no backups, no email.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -21,6 +21,7 @@ import { sql } from 'kysely';
 import { seedEvalDataset } from '../ai/evals/seed';
 import { createPasswordLink, passwordLinkUrl } from '../directory';
 import { INSTANCE_KEY, readSetting, SETUP_KEY, writeSetting } from '../setup';
+import { buildMessage, frontendBuildNeeded } from './frontend';
 import { releaseSampleWorkflow } from './sample-workflow';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -38,10 +39,12 @@ const say = (line: string) => process.stdout.write(`${line}\n`);
 if (values.fresh) rmSync(DATA, { recursive: true, force: true });
 mkdirSync(DATA, { recursive: true });
 
-// The frontend the server serves: built once, again after `--fresh` or a pull that changed it.
+// The frontend the server serves: built once, and again when the checkout's frontend sources or
+// version moved past the build's (T-211), so a pull never leaves an older app being served.
 const webDir = join(ROOT, 'apps', 'web', 'dist');
-if (!existsSync(join(webDir, 'index.html'))) {
-  say('Building the frontend (once, about a minute)...');
+const build = frontendBuildNeeded(ROOT);
+if (build !== null) {
+  say(buildMessage(build));
   const built = spawnSync('corepack', ['pnpm', '--filter', '@taskmoor/web', 'build'], {
     cwd: ROOT,
     stdio: 'inherit',

@@ -43,7 +43,8 @@ trap cleanup EXIT
 echo "== the fresh machine's image"
 secret=()
 [ -n "${BUILD_CA:-}" ] && secret=(--secret "id=build_ca,src=$BUILD_CA" --network host)
-docker build -q "${secret[@]}" -t "$VM_IMAGE" tools/image/vm >/dev/null
+# ${a[@]+"${a[@]}"}: an empty array is "unbound" under set -u in bash 3.2, a Mac's own bash.
+docker build -q ${secret[@]+"${secret[@]}"} -t "$VM_IMAGE" tools/image/vm >/dev/null
 
 echo "== the kits ($TAG)"
 VERSION=$(docker run --rm --entrypoint cat "$TAG" /app/web/version.json |
@@ -62,11 +63,17 @@ others=$(unzip -p "$WORK/kits/taskmoor-backend-kit.zip" docker-compose.yml |
 for image in $others; do
   docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image" >/dev/null
 done
-# The kit names the image it was made for; this run's image stands in for it.
+# The kit names the image it was made for; this run's image stands in for it on the fresh
+# machine, tagged there (below). A tag here could neither be added nor removed safely: the
+# pinned name can be $TAG itself (a published release under test) or an image pulled here
+# before, and removing it would delete that image.
 pinned=$(unzip -p "$WORK/kits/taskmoor-backend-kit.zip" .env | sed -n 's/^TASKMOOR_IMAGE=//p')
-docker tag "$TAG" "$pinned"
+[ -n "$pinned" ] || {
+  echo "the backend kit names no image"
+  exit 1
+}
 # shellcheck disable=SC2086
-docker save "$TAG" "$pinned" $others -o "$WORK/images.tar"
+docker save "$TAG" $others -o "$WORK/images.tar"
 
 echo "== a fresh machine starts"
 started=$(date +%s)
@@ -80,6 +87,7 @@ docker exec "$VM" sh -c 'docker images -q | wc -l' | grep -qx 0 || {
 docker cp "$WORK/images.tar" "$VM:/root/images.tar"
 docker cp "$WORK/kits/taskmoor-backend-kit.zip" "$VM:/root/kit.zip"
 docker exec "$VM" sh -c 'docker load -q -i /root/images.tar >/dev/null && rm /root/images.tar'
+docker exec "$VM" docker tag "$TAG" "$pinned"
 
 echo "== install.sh on it"
 out=$(docker exec "$VM" bash -c 'mkdir -p /root/taskmoor && cd /root/taskmoor && unzip -q /root/kit.zip &&

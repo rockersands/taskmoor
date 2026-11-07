@@ -3856,6 +3856,13 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.status.added': 'Se añadió {name} al flujo de trabajo.',
   'admin.workflow.status.addFailed':
     '{name} no se añadió: no se pudo leer su motivo de cierre. Inténtalo de nuevo.',
+  'admin.workflow.seed.note':
+    'Este borrador aún tiene los pasos con los que llegó el flujo de trabajo predeterminado: los tickets avanzan paso a paso y cerrar pide un motivo de cierre. Ahora los flujos de trabajo se mueven libremente hasta que alguien añade una regla.',
+  'admin.workflow.seed.free': 'Deja que este borrador se mueva libremente',
+  'admin.workflow.seed.freed':
+    'Los primeros pasos ya se mueven libremente y el resto del borrador sigue igual. Guarda el borrador para conservarlo.',
+  'admin.workflow.seed.failed':
+    'El borrador no cambió: no se pudo leer su motivo de cierre. Inténtalo de nuevo.',
   'admin.workflow.transition.heading': 'Transición: {name}',
   'admin.workflow.transition.name': 'Nombre',
   'admin.workflow.transition.nameRequired': 'Introduce un nombre.',

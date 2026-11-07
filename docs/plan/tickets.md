@@ -55,7 +55,7 @@ reported, and the coordinator checked that it was pushed.
 | T-020 | Release 1.0 (M1-120) | To do | LTS, changelog, signed release files |
 | T-021 | Sign the air-gap bundle and release files with the key from Drive | To do | The user allows it; never committed; local copy removed afterwards |
 | T-022 | Run the checks only a real release can do | To do | `docs/plan/easy-updates-tasks.md`: Docker, GitHub, Linux, a real signature |
-| T-023 | Run the bash image and kit scripts somewhere that can | To do | Not run on this Windows setup |
+| T-023 | Run the bash image and kit scripts somewhere that can | Done | On `main` (2026-11-06; `docs/ops/image-and-kits-mac.md`): every image and kit script passes on the Mac with Colima: the image smoke on both architectures, both Compose kits, the backend kit, the offline bundle for either architecture with its SBOM from the saved archive, and the fresh machine to first sign-in in 23 s. Signing with the release key and ghcr.io stay with you (T-036) |
 | T-024 | The user's acceptance of 1.0 | You | The last step |
 
 ## Open source and going public
@@ -64,7 +64,8 @@ reported, and the coordinator checked that it was pushed.
 |---|---|---|---|
 | T-030 | Stay fully open source under AGPL-3.0-only | Done | Decision recorded |
 | T-031 | Make the repository public for 1.0 | You | The user confirms the switch itself |
-| T-032 | Scan the whole git history for secrets first | To do | Before T-031 |
+| T-032 | Scan the whole git history for secrets first | Done | On `main` (2026-11-05): no real secret in 816 commits, pull request refs included; `pnpm secrets` (gitleaks, `.gitleaks.toml`) stays clean and fails on anything new; `docs/security/secret-scan.md` |
+| T-032a | 221 commit messages carry a `Claude-Session:` link, public with the history: keep them, or drop them in the T-005 rewrite? | You | Not secrets; the links lead to sessions only you can open. Before T-031 |
 | T-033 | Trademark search for the name | You | No domain needed, but a clash could force a rename |
 | T-034 | Counsel review deferred to the first public release | You | Includes the clean room and AGPL questions |
 | T-035 | Turn on and test private vulnerability reporting | To do | `SECURITY.md` already points to it; no email needed |
@@ -261,16 +262,16 @@ reported, and the coordinator checked that it was pushed.
 | T-192 | Turning a track's sprints off while a sprint runs is not guarded | Done | On `main`: refused while a sprint runs, naming it; a sprint cannot start while sprints are off; the box shows only where the board can have sprints |
 | T-193 | A 5,000-card column is not smooth | Done | On `main` (ADR-049): columns over 100 cards draw only the cards near the screen, with roving focus and every card reachable by keyboard; measured 50 to 55 fps and a drop settled in about 110 ms on the Mac. Browser find sees only drawn cards |
 | T-194 | Home's "Your tracks" should show the tracks a person belongs to | Done | On `main` (ADR-046): a role given directly or through a group, owning the track, or a team on its board or a live area; policy grants and "open to everyone" only let people see. Recently opened tracks come first however many they belong to; "latest opened" stays per browser |
-| T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
+| T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | Done | On `main` (ADR-095): saved filters and a board's filter, sub-filter and quick filters read the field the backup's own Points became; a name several backup fields share reads the one field they became, or the query is left out, in a dry run too |
 | T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | Done | On `main` (ADR-120) except TT-7, which waits on the user; columns now written as their own form in Markdown and wiki markup |
 | T-196a | TT-7: tell followers when a checklist changes? | Done | Decided by the user on 2026-11-04: the recommended notice, per track, off by default (decisions.csv) |
 | T-196b | The "Checklist changed" notice | Done | On `main` (NTF-015, ADR-120, migration 0103): a notice track administrators turn on, off by default |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
 | T-207 | Free movement is the default everywhere, including a new demo's sample tracks | Done | On `main` (WF-008, ADR-116, migrations 0104 and 0105): new workflows, added statuses, sample data and close reasons all stay free moving |
 | T-208 | A fresh checkout's first full gate fails in the browser stories (Vite's dependency cache is cold; "optimized dependencies changed") | To do | 48 failures on this PC's first gate; all pass on a rerun. Warm the cache or list the dependencies up front, or every new clone and worktree meets this |
-| T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | To do | T-207 review (low): an empty In Review made closed-stage gets no close reason and no Closed time |
-| T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | To do | T-207 review (low): only the web editor's Add a status adds the free move; a warning in the draft's answer may be enough |
-| T-211 | `pnpm demo` keeps an older built frontend | To do | T-207 review (low): it rebuilds only when `apps/web/dist/index.html` is missing, so a checkout can serve an old editor |
+| T-209 | Changing a status's stage on a free-moving workflow leaves its transition's close rule as it was | Done | On `main` (ADR-116): a free move into a closed-stage status sets the default close reason and the Closed time; a stage change locks the status list, then workflows, then statuses, the same order as every other path, so a board sync no longer deadlocks with it |
+| T-210 | A status added through the API draft has no way in, and old workflows made empty stay with no moves | Done | On `main` (ADR-116): a status added through the draft API on a free-moving workflow gets its free move; an old workflow left with no moves gets them at its next saved draft (T-237) |
+| T-211 | `pnpm demo` keeps an older built frontend | Done | On `main`: the demo builds the frontend again when the checkout moved on since the last build |
 | T-212 | Sweep for buttons whose spoken name leaves out the words they show (WCAG 2.5.3) | In progress | Found on the inbox; axe only reports it where a test runs it. Part of T-164 |
 | T-213 | Sticky cells of the timeline and the capacity table: stay opaque inside glass, or the whole table on an opaque panel? | You | T-143 survey; built as opaque cells. The backlog's selection bar is sticky too and is floating glass |
 | T-214 | A not-found page, and the words "This area is under construction" on signed-out Search and on Home while the session is checked | You | T-143 survey: an unknown address shows Home. Signed-out `/tracks` says "No tracks yet" |
@@ -293,9 +294,13 @@ reported, and the coordinator checked that it was pushed.
 | T-231 | No automated check of the 44 px grips on touch | In progress | Wave 6 review (low): the rule was once hidden behind a width query with every test green. `test/touch.ts` from T-143 can hold it |
 | T-232 | Checklist notices: the batch can wait on an older notification of the ticket, and a refusal shows above where the person is looking | To do | Wave 6 review (low): NTF-015 (2), `deliver.ts:311`; `TrackPeoplePage.tsx:186` against `:404` |
 | T-233 | Tests that prove less than they say | To do | Wave 6 and T-207 reviews (low): the checklist notices' phone test runs in jsdom, two closing conditions have no test, the sample workflow's `fits` and the null-completed branch of the free transition are untested, the eval golden's close dates moved; also the no-op `scrollWidth` checks in 23 web test files (jsdom always answers 0) |
-| T-234 | Free-moving edge cases after a close reason's deletion or an old draft | To do | T-207 review (low): a new Completed reason after Completed was replaced; a default workflow's open draft from the strict seed stays strict in the editor |
-| T-235 | A release page's own dates still read `2026-12-01`, next to a locale date for its release across tracks | To do | Multi-track review |
-| T-236 | Multi-track: the questions of ADR-122 stage 4 (8) and stage 8 (7, one is a byte-order mark on CSV files for Excel), plus two behaviours to confirm: a bare number in a saved query means the id, and a same-day move brings back releases out of step | You | Built on the first answer each time |
+| T-234 | Free-moving edge cases after a close reason's deletion or an old draft | Done | On `main` (ADR-116): free moves use the new Completed reason after Completed was replaced; the editor offers "Let this draft move freely" on a default workflow's draft still holding the strict seed steps |
+| T-235 | The Windows Compose install (`install.ps1`) still prints a setup link on port 8080 | To do | Found by T-023 on the Mac (2026-11-06): `install.sh` now names the host port; the PowerShell script needs the same change and a run on Windows |
+| T-236 | The image build has no retry for corepack's pnpm download | To do | Found by T-023 (2026-11-06): on a slow link the build stalled at that step and had to be restarted by hand |
+| T-237 | An old workflow left with no moves gets its free moves only at its next saved draft | To do | T-210 follow-up (low): nothing rewrites it before then; a draft save and a stage change on the same status at once can race on which stage the new free move sees |
+| T-238 | A board's workflow takeover checks the workflow before locking it | To do | T-209 follow-up (low): `mayManageWorkflow` refuses a workflow with guards, checks or rules, and `addColumnPath` reads its published steps, both before the sync locks it, so a publish in that gap can be overwritten. Read them under the lock |
+| T-239 | A release page's own dates still read `2026-12-01`, next to a locale date for its release across tracks | To do | Multi-track review |
+| T-240 | Multi-track: the questions of ADR-122 stage 4 (8) and stage 8 (7, one is a byte-order mark on CSV files for Excel), plus two behaviours to confirm: a bare number in a saved query means the id, and a same-day move brings back releases out of step | You | Built on the first answer each time |
 | T-198 | Load these tickets into the demo again | Done | All tickets loaded on the demo on 2026-11-04, in the Backend, Front and Flutter tracks |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 | T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |

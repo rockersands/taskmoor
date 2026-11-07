@@ -7,6 +7,16 @@ set -euo pipefail
 cd "$(dirname "$0")"
 bash verify.sh "${1:-cosign.pub}"
 
+# The images are for one platform (images.txt); another's would not start here, and there is no
+# registry to fetch the right ones from. A bundle from before the line was added says nothing.
+want=$(awk '$1 == "platform" { print $2 }' images.txt)
+have=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')
+if [ -n "$want" ] && [ "$want" != "$have" ]; then
+  echo "This bundle's images are for $want servers, and this one is $have."
+  echo "Nothing was changed. Install the bundle made for $have."
+  exit 1
+fi
+
 echo "== loading images"
 for archive in images/*.tar.gz; do
   gzip -dc "$archive" | docker load

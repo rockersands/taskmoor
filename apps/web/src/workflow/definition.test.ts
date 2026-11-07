@@ -5,7 +5,10 @@ import {
   addingNeedsCloseReason,
   addStatus,
   addStatusFreely,
+  addTransition,
   formatDefinition,
+  freeingSeed,
+  freeingSeedNeedsCloseReason,
   isFreeMoving,
   jsonErrorOffset,
   nextTransitionId,
@@ -14,6 +17,7 @@ import {
   sameDefinition,
   setInitialStatus,
   statusRemoval,
+  strictSeedSteps,
   transitionIdsOf,
   updateTransition,
   type WorkflowDefinition,
@@ -242,6 +246,88 @@ describe('workflow definitions in the editor (M1-030)', () => {
         expect(added.transitions).toEqual(ruled.transitions);
         expect(added.statuses.at(-1)).toEqual({ statusId: S.Approved });
       }
+    });
+  });
+
+  describe('a draft that still has the first default steps (WF-008)', () => {
+    const COMPLETED = 7;
+    const clears = [{ type: 'clear-field', field: 'close-reason' }];
+
+    it('[WF-008] finds the five seeded steps only as they were seeded', () => {
+      expect(strictSeedSteps(STEPPED_DEFINITION)).toEqual({
+        fresh: S.New,
+        active: S.Active,
+        review: S['In Review'],
+        closed: S.Closed,
+      });
+      expect(strictSeedSteps(FREE_DEFINITION)).toBeNull();
+      expect(strictSeedSteps(SUPPORT_DEFINITION)).toBeNull();
+      // A step someone changed, removed or gave a rule is theirs.
+      for (const changed of [
+        updateTransition(STEPPED_DEFINITION, 1, (t) => ({ ...t, name: 'Begin' })),
+        updateTransition(STEPPED_DEFINITION, 4, (t) => ({ ...t, checks: [] })),
+        removeTransition(STEPPED_DEFINITION, 3),
+        withRules(STEPPED_DEFINITION, 2, [{ type: 'assign', to: 'requester' }]),
+        setInitialStatus(STEPPED_DEFINITION, S.Active as number),
+      ]) {
+        expect(strictSeedSteps(changed)).toBeNull();
+      }
+    });
+
+    it('[WF-008] replaces them with free moves, numbered as before, and keeps the rest', () => {
+      const freed = freeingSeed(STEPPED_DEFINITION, STATUSES, COMPLETED);
+      expect(freed.transitions).toEqual(
+        FREE_DEFINITION.transitions.map((t) =>
+          t.to === S.Closed
+            ? {
+                ...t,
+                effects: [
+                  { type: 'update-system-field', field: 'close-reason', value: String(COMPLETED) },
+                ],
+              }
+            : t,
+        ),
+      );
+      expect(isFreeMoving(freed)).toBe(true);
+      expect(strictSeedSteps(freed)).toBeNull();
+
+      // A status the author added and drew a step to keeps that step; the seeded ones move freely.
+      const drawn = addTransition(addStatus(STEPPED_DEFINITION, S.Draft as number), {
+        id: 6,
+        name: 'Park',
+        from: [S.Active as number],
+        to: S.Draft as number,
+      });
+      const kept = freeingSeed(drawn, STATUSES, COMPLETED);
+      expect(kept.transitions.map((t) => t.id)).toEqual([5, 1, 2, 4, 6]);
+      expect(kept.transitions.at(-1)).toEqual(drawn.transitions.at(-1));
+
+      // One added with no way in gets its free move when everything else moves freely.
+      const added = addStatus(STEPPED_DEFINITION, S.Approved as number);
+      expect(freeingSeedNeedsCloseReason(added, STATUSES)).toBe(true);
+      const reached = freeingSeed(added, STATUSES, COMPLETED, [8]);
+      expect(reached.transitions.at(-1)).toMatchObject({
+        id: 9,
+        name: 'Approved',
+        from: 'any',
+        to: S.Approved,
+      });
+      expect(isFreeMoving(reached)).toBe(true);
+    });
+
+    it('[WF-008] a closing status with no reason to set keeps no free move', () => {
+      const freed = freeingSeed(STEPPED_DEFINITION, STATUSES, null);
+      expect(freed.transitions.map((t) => [t.id, t.effects])).toEqual([
+        [5, clears],
+        [1, clears],
+        [2, clears],
+      ]);
+      expect(freeingSeedNeedsCloseReason(STEPPED_DEFINITION, STATUSES)).toBe(true);
+      const open = STATUSES.map((s) =>
+        s.id === S.Closed ? { ...s, stage: 'active' as const } : s,
+      );
+      expect(freeingSeedNeedsCloseReason(STEPPED_DEFINITION, open)).toBe(false);
+      expect(freeingSeedNeedsCloseReason(FREE_DEFINITION, STATUSES)).toBe(false);
     });
   });
 
