@@ -380,7 +380,8 @@ describe.skipIf(!hasTools)('tools/airgap/bundle.sh and the servers’ platform',
       `${archive}\n`,
     );
     expect(readFileSync(join(made.dir, 'SHA256SUMS'), 'utf8')).toMatch(
-      / images\/taskmoor\.tar\.gz$/m,
+      // sha256sum marks binary mode with a star on Windows.
+      /[ *]images\/taskmoor\.tar\.gz$/m,
     );
 
     const failed = makeBundle(

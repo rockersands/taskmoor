@@ -102,7 +102,7 @@ cp deploy/compose/docker-compose.yml deploy/compose/docker-compose.external.yml 
 if command -v helm >/dev/null 2>&1; then
   helm package deploy/helm/taskmoor --app-version "$version" -d "$dir/helm" >/dev/null
 else
-  tar -czf "$dir/helm/taskmoor-chart.tgz" -C deploy/helm taskmoor
+  tar -czf - -C deploy/helm taskmoor >"$dir/helm/taskmoor-chart.tgz"
 fi
 cp deploy/README.md "$dir/INSTALL.md"
 cp tools/airgap/verify.sh tools/airgap/install-offline.sh tools/airgap/README.md "$dir/"
@@ -113,7 +113,8 @@ echo "== frontend"
 container=$(docker create --platform "$platform" "$app")
 docker cp "$container:/app/web" "$(host "$dir/web/taskmoor-web")" >/dev/null
 docker rm -v "$container" >/dev/null
-tar -czf "$dir/web/taskmoor-web-$version.tar.gz" -C "$dir/web" taskmoor-web
+# Through a redirect: GNU tar reads an archive name with a colon, such as C:/..., as host:path.
+tar -czf - -C "$dir/web" taskmoor-web >"$dir/web/taskmoor-web-$version.tar.gz"
 rm -rf "$dir/web/taskmoor-web"
 
 echo "== SBOM"
