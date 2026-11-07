@@ -20,6 +20,44 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
+### Latest: the Windows coordinator's wrap-up (2026-11-07)
+
+Two coordinators worked at once on 2026-11-05 and 06: the Mac pushed 52 commits to `main`
+(T-023's image and kit runs, T-032, T-195, T-209 to T-211, T-234, the air-gap bundle's platforms)
+while the Windows session built Multi-track. Work from one device at a time: `git fetch` and read
+this file before anything else. The Mac took T-235 to T-238; the Windows session's two new tickets
+became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits this machine missed; T-170 is done (the live AI tests passed with the user's own key).
+
+- **On `main` now (`3d009636`, after a full gate on Windows):** Multi-track's releases across
+  tracks (T-089c, ADR-122 stage 4, PLN-007, migration 0106) and a plan's copy, link, CSV and
+  Timeline image (T-089g, stage 8, PLN-014), with the independent review's repairs; the generated
+  SDK; a CSV cell with a semicolon is now quoted; a test race on the refused layouts page; and the
+  air-gap bundle on Windows (GNU tar read `C:/...` archive names as host:path; Git Bash's
+  `sha256sum` writes ` *file`). Free numbers: migrations from 0107, ADRs from 123.
+- **Not merged, pushed for safety: `wave8/t164-phone-accessibility`.** It holds the sweep tool
+  (`pnpm sweep`, `tools/sweep/`, one CLAUDE.md row): it starts a private demo on port 8090, signs in
+  with a password made at run time and captures every route (163 entries, 686 images) at 1280 and
+  375 px in both skins, with measurements (sideways scroll, small targets, axe, names). It has no
+  tests of its own and no review yet. The branch is from `3e59102`: merge `main` into it first.
+- **The page review (T-220) is a quarter done.** A reader went through the track sections only and
+  found 34 faults and 11 questions of direction: `docs/plan/page-review-findings.md`. The other three
+  groups were cut off twice by the usage limit. Lesson: one reader per group reading all four images
+  per route costs too much; read the 1280 light and 375 dark images whole, use the measurements for
+  the rest, and keep running notes in a file so a cutoff loses nothing. Then the fixes: T-164,
+  T-212, T-221, T-222, T-226, T-228, T-229, T-231, without changing T-213 to T-219.
+- **Open for the user:** T-213 to T-219 (design), T-240 (Multi-track's 15 questions and two
+  behaviours to confirm), the page review's 11 questions, and the other tickets marked You. To try
+  on the demo: the CSV in Excel (T-240 asks about a byte-order mark), the Timeline image, a finger
+  drag on a real phone.
+- **The Windows demo on port 8080 is stopped** (the session's background task ended with it). To
+  restart it on `main`: `git checkout --detach origin/main`, `corepack pnpm install`,
+  `corepack pnpm demo` in its own checkout; the one-time links go to its log, never into chat.
+- **Next, in order:** the rest of the page review and its fixes; Multi-track T-089d (program
+  board; T-089i asks what it includes), T-089e, T-089f; the small fixes not in the Mac's wave 10 (that wave holds T-013a,
+  T-208, T-232, T-233 and T-236 to T-238): T-203, T-223 to T-225, T-227, T-230, T-235, T-239, T-240
+  and T-242; then the fuzz stages on final code
+  (T-019, T-197) and the release work.
+
 ### Where things are
 
 - **T-089c is built, not merged** (2026-11-04, on `wave8/multi-track-stages`, from `3e59102`):
@@ -77,15 +115,28 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   every route, with shared styles (`shared.css`) and a guard (`styles/design.test.ts`). Its gate found
   that a drag start moved the calendar and backlog under the finger (fixed). Gate: 7,714 tests, 244
   e2e. It has only been seen as stories and signed-out pages; T-220 sees it signed in.
+- **Wave 9 is on `main` (`82311c66`, 2026-11-06, on the Mac, each reviewed, fixed and re-checked,
+  then gated):** T-032 (no real secret in 816 commits; `pnpm secrets` with `.gitleaks.toml`;
+  `docs/security/secret-scan.md`), T-195 (a backup's queries read the field its own Points became,
+  in a dry run too), T-211 (`pnpm demo` rebuilds an old frontend), T-209, T-210 and T-234 (free-moving
+  edge cases; one lock order everywhere: the status list, then workflows, then statuses, in ADR-116)
+  and T-023 (every image and kit script passes on the Mac with Colima, both architectures, the offline
+  bundle for either, the fresh machine to sign-in in 23 s; `docs/ops/image-and-kits-mac.md`). New
+  follow-ups: T-032a (yours), T-235 to T-238. Last gate: 7,778 tests and 243 e2e. No migrations.
 - **In progress, a merge wave (both from `3e59102`, merged together when both are done):** the route
   sweep and phone pass (T-220, T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) in
   `G:/tm-t164` on `wave8/t164-phone-accessibility`; Multi-track's T-089c and T-089g in `G:/tm-plans`
   on `wave8/multi-track-stages`.
 - **Chrome's window minimized:** the tab has a zero-size viewport, draws no frames and screenshots
   time out, while scripts still run. That looks like a frozen page and is not one.
-- **The demo** runs from `G:/tm-demo` at `http://localhost:8080`, with the real Backend, Front and
-  Flutter tracks and their tickets, its database in `.cache/pg-test/demo` there. Its one-time links
-  are in `.cache/demo.log`: never put them in chat.
+- **The demo** runs on the Mac from the worktree `.claude/worktrees/tm-demo` (detached at `main`
+  `82311c66`, 2026-11-06) at `http://localhost:8080`, started by the browser pane's launcher
+  (`.claude/launch.json` in the main checkout, excluded locally). It holds only the Backend (BE, 85),
+  Front (FE, 133) and Flutter (FL, 3) tracks with every ticket of `tickets.md` (states as statuses;
+  `needs-you` and `later` labels); the four sample tracks are in the trash. Its database is in
+  `.cache/pg-test/demo` there, and its one-time links are in its `.cache/demo.log`: never put them in
+  chat. The loader is `apps/server/src/demo/load-tickets.local.ts` in that worktree, untracked
+  (T-239 would make it a command). On Windows it ran from `G:/tm-demo`.
 - **Free numbers:** migrations 0106 and up, ADR-123 and up. Requirement IDs taken: AGL-024, AGL-025,
   IAM-033, CORE-034, IAM-034, PLN-012, PLN-013.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
@@ -113,10 +164,10 @@ corepack pnpm install
 
 ### Next, in order
 
-1. Nothing waits to merge.
-2. Each reviewed first: the wave above, then Multi-track's T-089d, T-089e, T-089f (and T-089j once
-   the user answers), T-013a, T-195, T-203, T-208 to T-211, T-223 to T-225, T-227, T-230, T-232 to
-   T-234. Questions for the user are the rows marked You in `tickets.md`; T-089j was
+1. Wave 8 is on `main` except the page review: see "Latest: the Windows coordinator's wrap-up" above.
+2. Each reviewed first: wave 8, then Multi-track's T-089d, T-089e, T-089f (and T-089j once
+   the user answers), T-013a, T-203 (needs a migration number agreed with wave 8), T-208, T-223 to
+   T-225, T-227, T-230, T-232, T-233, T-235 (Windows) to T-238. Questions for the user are the rows marked You in `tickets.md`; T-089j was
    explained to them on 2026-11-04 (unbuilt capacity parts; whether hidden work counts toward
    "elsewhere"; notes in the history after erasure; whole-week counting), awaiting their answer.
 3. The fuzz stages, on the final code (T-019; the user's decision).
@@ -137,9 +188,18 @@ corepack pnpm install
   `@embedded-postgres` native bin) and `git worktree remove` it; the branch stays. The e2e servers now
   drop their clusters' leftover databases at start (they had grown to 9 GB), and the docs check skips
   `.claude`.
-- **A gate can hang:** on 2026-11-03 the tests stage sat idle for hours. If `.verify/budgets.jsonl`
-  stops growing for 15 minutes, stop the `pnpm verify` process tree, `rmdir /tmp/taskmoor-gate.lock`
+- **A gate can hang:** on 2026-11-03 the tests stage sat idle for hours. A hang shows as the
+  `pnpm verify` process group using no CPU; a slow run keeps using it. Files under `.verify` are a
+  poor sign: the tests write their log only at the end. Stop the whole process group (start the gate
+  under `set -m` so one kill reaches tsc, vitest and Playwright), `rmdir /tmp/taskmoor-gate.lock`
   and run it again.
+- **On the Mac, run the gate with `VITEST_MAX_WORKERS=5`** (2026-11-06). With the user's own apps open
+  (Unity, Steam, VS Code, Chrome, Slack), the default worker count pushed the 36 GB machine into swap:
+  one database checkpoint took 17 minutes, gates ran for hours and failed on hook timeouts. With five
+  workers the gate takes about 9 minutes. Builders use 4. The variable keeps the gate a full run.
+- **Docker work and a gate never overlap.** The lock covers every Docker or Colima build, pull and
+  run as well as every test run. On 2026-11-05 a builder ran the image scripts while the gate held
+  the lock, and the gate ran overnight with load near 130.
 - **Builders by workflow** run in worktrees under `.claude/worktrees/wf_*`; a usage limit can stop
   them mid-task, leaving uncommitted work there: resume in the same worktree rather than restart.
 - **Agents' tests at size** go behind an env var like `TASKMOOR_LARGE_SPRINTS`; the outcomes test reads
