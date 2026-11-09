@@ -474,25 +474,88 @@ export async function publishBoardVersion(
   return { version, ticketCount, removed };
 }
 
-/** Whether a status appears in a workflow other than this one. */
-async function usedElsewhere(trx: Trx, statusId: number, workflowId: number | null) {
-  const other = await trx
+/** The statuses among these that a workflow other than this one has, in any version. */
+async function usedElsewhere(
+  trx: Trx,
+  statusIds: readonly number[],
+  workflowId: number | null,
+): Promise<Set<number>> {
+  if (statusIds.length === 0) return new Set();
+  const rows = await trx
     .selectFrom('workflow_version_status')
-    .select('workflow_id')
-    .where('status_id', '=', statusId)
+    .select('status_id')
+    .distinct()
+    .where('status_id', 'in', [...new Set(statusIds)])
     .where((eb) => (workflowId === null ? eb.val(true) : eb('workflow_id', '!=', workflowId)))
-    .executeTakeFirst();
-  return other !== undefined;
+    .execute();
+  return new Set(rows.map((r) => r.status_id));
+}
+
+/**
+ * The statuses among `ids` that no workflow but this one has, held (update, in id order) so a
+ * board's change may rename them or settle their stage, and checked again once held (ADR-116,
+ * T-237). A plain update holds a row only against other updates: a draft save adding the status
+ * holds it with key share, which does not wait for that, so it read the name and stage from before
+ * the change, and a draft saved between the check and the update made a status another workflow
+ * has change. Held, a draft that took the status first is waited for and then seen here, and one
+ * that comes after waits and reads what the change leaves. They are held after the status list and
+ * the workflow, as the status route holds its status after the workflows. A status another workflow
+ * has is not held: it keeps its name and stage, whoever else takes it meanwhile.
+ */
+async function holdOwnStatuses(
+  trx: Trx,
+  ws: number,
+  workflowId: number | null,
+  ids: readonly number[],
+): Promise<Set<number>> {
+  const shared = await usedElsewhere(trx, ids, workflowId);
+  const own = [...new Set(ids)].filter((id) => !shared.has(id));
+  if (own.length === 0) return new Set();
+  await trx
+    .selectFrom('status')
+    .select('id')
+    .where('workspace_id', '=', ws)
+    .where('id', 'in', own)
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+  const taken = await usedElsewhere(trx, own, workflowId);
+  return new Set(own.filter((id) => !taken.has(id)));
+}
+
+/**
+ * The statuses named as a column is, which it may take by that name (`columnsWithStatuses`): a
+ * column without a status, or one whose status keeps its name because another workflow has it, or
+ * whose new name another status has. Held with the columns' own
+ * statuses at the start of a sync, in one id order, so settling their stage later holds nothing
+ * new: a draft save holding one of them (key share) while it waits for a column's status would
+ * otherwise have one of the two ended (40P01).
+ */
+async function statusesColumnsMayTake(
+  trx: Trx,
+  ws: number,
+  columns: readonly Column[],
+): Promise<number[]> {
+  const names = [...new Set(columns.map((c) => c.name.toLowerCase()))];
+  if (names.length === 0) return [];
+  const rows = await trx
+    .selectFrom('status')
+    .select('id')
+    .where('workspace_id', '=', ws)
+    .where(sql`lower(name)`, 'in', names)
+    .execute();
+  return rows.map((r) => r.id);
 }
 
 /**
  * Renames a column's status with it. A status other workflows use keeps its name for them: the
- * column then takes a status of its own, and its tickets follow.
+ * column then takes a status of its own, and its tickets follow. `own` holds the statuses only this
+ * workflow has, held (`holdOwnStatuses`); only those are renamed.
  */
 async function renamedStatuses(
   trx: Trx,
   by: Actor,
-  workflowId: number | null,
+  own: ReadonlySet<number>,
   columns: readonly Column[],
 ): Promise<Column[]> {
   const out: Column[] = [];
@@ -518,7 +581,7 @@ async function renamedStatuses(
       .where('workspace_id', '=', by.workspaceId)
       .where(sql`lower(name)`, '=', column.name.toLowerCase())
       .executeTakeFirst();
-    if (taken || (await usedElsewhere(trx, first, workflowId))) {
+    if (taken || !own.has(first)) {
       out.push({ ...column, statusIds: [] });
       continue;
     }
@@ -535,7 +598,9 @@ async function renamedStatuses(
 /**
  * The closing column's status is a closed one, the others not, for statuses only this workflow
  * uses. A status other workflows share keeps its stage. Tickets already closed keep their close
- * reason and history: only moving a ticket out clears a reason.
+ * reason and history: only moving a ticket out clears a reason. The statuses are held before they
+ * are checked (`holdOwnStatuses`): most already are, since the sync began; a status a column took by
+ * its name is held here.
  */
 async function settleStages(
   trx: Trx,
@@ -545,9 +610,15 @@ async function settleStages(
   closing: string | null,
 ) {
   const closes = closingIndex(columns, closing);
+  const own = await holdOwnStatuses(
+    trx,
+    by.workspaceId,
+    workflowId,
+    columns.map((c) => c.statusIds[0] as number),
+  );
   for (const [index, column] of columns.entries()) {
     const statusId = column.statusIds[0] as number;
-    if (await usedElsewhere(trx, statusId, workflowId)) continue;
+    if (!own.has(statusId)) continue;
     const status = await trx
       .selectFrom('status')
       .select('stage')
@@ -757,11 +828,16 @@ export async function syncBoardWorkflow(
     closing?: string | null;
   } = {},
 ): Promise<{ columns: Column[]; change: BoardWorkflowChange }> {
-  // Lock order (ADR-116): the status list, then the workflow, then statuses.
+  // Lock order (ADR-116): the status list, then the workflow, then statuses (in id order): the
+  // columns' statuses this change may rename or settle are held before any is renamed (T-237).
   const track = await holdTrackWorkflow(trx, by.workspaceId, board.trackId);
+  const own = await holdOwnStatuses(trx, by.workspaceId, track.workflowId, [
+    ...columns.flatMap((c) => c.statusIds.slice(0, 1)),
+    ...(await statusesColumnsMayTake(trx, by.workspaceId, columns)),
+  ]);
   const closing = options.closing ?? null;
   // A column's name is its status's name (the user's decision, ADR-116).
-  const renamed = await renamedStatuses(trx, by, track.workflowId, columns);
+  const renamed = await renamedStatuses(trx, by, own, columns);
   const {
     columns: stored,
     merged,

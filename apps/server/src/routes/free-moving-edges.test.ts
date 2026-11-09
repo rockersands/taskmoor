@@ -1073,6 +1073,146 @@ describe('free moving at its edges (WF-008)', () => {
     });
   });
 
+  describe("a board's sync and a draft taking a column's status at the same time (T-237)", () => {
+    it('[WF-010] a draft that holds the status first: the sync sees it once it may, and leaves the status its name and stage', async () => {
+      const { board } = await managedBoard('BSETL', ['Doing here']);
+      const doing = board.columns[1] as Column;
+      const doingId = doing.statusIds[0] as number;
+      // Something holds a status made after Doing here, so a draft save that adds both holds Doing
+      // here (key share, in id order) and then waits.
+      const blocker = await newStatus('Settle blocker', 'active');
+      const taking = await freeWorkflow('Takes the doing', [status.New as number]);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${blocker} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: {
+          ...published,
+          statuses: [...published.statuses, { statusId: doingId }, { statusId: blocker }],
+        },
+      });
+      await lockWaits(1);
+      // Meanwhile the board renames Doing here and makes it the closing column. A sync that changed
+      // the status with a plain update would not wait for the draft, which read the stage before.
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        closingColumn: doing.id,
+        columns: board.columns.map((c) => (c.id === doing.id ? { ...c, name: 'Doing now' } : c)),
+      });
+      await Promise.race([syncing, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [saved, synced] = await Promise.all([saving, syncing]);
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(synced.statusCode, synced.body).toBe(200);
+      // Doing here is the draft's too now: it keeps its name and stage, and the draft's free move
+      // into it follows that stage. The column takes a status of its own, which closes.
+      const statuses = (await get('/api/v1/statuses')).json().statuses as {
+        id: number;
+        name: string;
+        stage: string;
+      }[];
+      expect(statuses.find((s) => s.id === doingId)).toMatchObject({
+        name: 'Doing here',
+        stage: 'active',
+      });
+      expect(into(draftOf(saved.json().workflow), doingId)?.effects).toEqual(CLEAR);
+      const column = (synced.json().board.columns as Column[]).find((c) => c.id === doing.id);
+      const own = column?.statusIds[0] as number;
+      expect(own).not.toBe(doingId);
+      expect(statuses.find((s) => s.id === own)).toMatchObject({
+        name: 'Doing now',
+        stage: 'closed',
+      });
+    });
+
+    it('[WF-010] a draft that comes while the sync holds the status waits, and gives its free move the stage the sync leaves', async () => {
+      const { board } = await managedBoard('BSETW', ['Settling here', 'Reviewed here']);
+      const settling = board.columns[1] as Column;
+      const settlingId = settling.statusIds[0] as number;
+      const reviewedId = board.columns[2]?.statusIds[0] as number;
+      const taking = await freeWorkflow('Takes the settling', [status.New as number]);
+      // Something holds the later column's status, so the sync holds Settling here and waits.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${reviewedId} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        closingColumn: settling.id,
+      });
+      await lockWaits(1);
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: { ...published, statuses: [...published.statuses, { statusId: settlingId }] },
+      });
+      await Promise.race([saving, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, saved] = await Promise.all([syncing, saving]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(saved.statusCode, saved.body).toBe(200);
+      const statuses = (await get('/api/v1/statuses')).json().statuses as {
+        id: number;
+        stage: string;
+      }[];
+      expect(statuses.find((s) => s.id === settlingId)?.stage).toBe('closed');
+      expect(into(draftOf(saved.json().workflow), settlingId)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
+    });
+
+    it('[WF-010] a status a new column takes by its name is held with the rest, so a draft adding it and a column status is not deadlocked', async () => {
+      // A status named as the new column will be, made before the board's: lower in id order.
+      const named = await newStatus('Signed off there', 'active');
+      const { board } = await managedBoard('BSETN', ['Queued there', 'Reviewed there']);
+      const queuedId = board.columns[1]?.statusIds[0] as number;
+      const reviewedId = board.columns[2]?.statusIds[0] as number;
+      const taking = await freeWorkflow('Takes the named', [status.New as number]);
+      // Something holds the later column's status, so the sync holds what it holds and waits.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${reviewedId} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Signed off there', statusIds: [] }],
+      });
+      await lockWaits(1);
+      // A draft adding the named status and the first column's: it holds them in id order. A sync
+      // that held the named status only when settling stages would wait for this draft while it
+      // waits for the sync (40P01).
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: {
+          ...published,
+          statuses: [...published.statuses, { statusId: named }, { statusId: queuedId }],
+        },
+      });
+      await Promise.race([saving, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, saved] = await Promise.all([syncing, saving]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect((synced.json().board.columns as Column[]).at(-1)?.statusIds).toEqual([named]);
+    });
+  });
+
   describe('the reason free moves close with (T-234)', () => {
     it('[WF-008] while Completed exists, a default workflow that closes some steps with another reason does not decide it', async () => {
       // A site's own default workflow: its Close step asks for the reason and sets none, and a

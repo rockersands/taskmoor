@@ -126,7 +126,19 @@ them.
         columns. When the answer is no, the locks stay to the end of the board's change, as they
         would after a takeover. A column's path on a workflow the board does not manage holds the
         list (when the column needs a status made), then the workflow, and builds the new version
-        on the published one read after that, so a version published meanwhile is kept;
+        on the published one read after that, so a version published meanwhile is kept.
+        *2026-11-08 (T-237):* the sync then holds the statuses it may rename or settle (update, in
+        id order): its columns' statuses and any status named as a column, which a column may take
+        by that name. It checks whether another workflow has each only once it holds it, and
+        renames or settles only those no other workflow has. It used to check without a lock and
+        change the status with a plain update, which waits for no draft save (that holds a status
+        with key share): a draft adding the status in between read the old stage, and the status
+        changed its name and stage although another workflow now had it. Held, a draft that took
+        the status first is waited for and then seen by the check, so the status keeps its name
+        and stage and the column takes a status of its own; a draft that comes later waits and
+        reads the stage the sync leaves. A status the column takes by name is held at the start
+        with the rest, not when stages are settled: a draft holding it while waiting for a column's
+        status would otherwise deadlock with the sync;
       - the status list (`lockList`) comes before both: a workflow import holds it before the
         workflow, and deleting or reordering statuses before the statuses, so a sync that renamed
         a status and then waited for the list (to make a column's status) deadlocked with those.

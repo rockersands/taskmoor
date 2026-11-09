@@ -16,8 +16,9 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
  * save take a workflow before a status; it holds no workflow after the status (it starts again).
  * A board's sync holds the status list (`lockList`), then its track's workflow (update), then the
- * statuses it renames or makes closed, and reads whether it may take the workflow over only once
- * it holds them; a column's path holds the list (when it makes a status), then the workflow, and
+ * statuses it may rename or settle (update, in id order; whether another workflow has one is read
+ * only once it is held, T-237), and reads whether it may take the workflow over only once it holds
+ * the list and the workflow; a column's path holds the list (when it makes a status), then the workflow, and
  * reads the published version after that (T-238). A workflow import holds the list before the
  * workflow, and deleting or reordering statuses the list before the statuses. So everywhere: the
  * status list, then workflows (by id), then statuses (ADR-116). A ticket's workflow comes from its
