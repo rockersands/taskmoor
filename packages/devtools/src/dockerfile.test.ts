@@ -96,6 +96,19 @@ describe('the image build fetching pnpm', () => {
     expect(Number(limit)).toBe(300);
     expect(pnpmFetchScript()).toContain('timeout "$PNPM_FETCH_TIMEOUT" corepack install');
   });
+
+  // The manual once said a failed download "is tried again, up to four times": five attempts to
+  // a reader, where the build makes four in all.
+  it('[OPS-001] is described in the manual with the number of attempts the build makes', () => {
+    const attempts = Number(pnpmFetchScript().match(/"\$attempt" -ge (\d+)/)?.[1]);
+    const words = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+    expect(words[attempts]).toBeDefined();
+    const manual = readFileSync(join(ROOT, 'docs/manual/admin/install.md'), 'utf8')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+    expect(manual).toContain(`in up to ${words[attempts]} attempts`);
+    expect(manual).not.toMatch(/tried again,? up to \w+ times/);
+  });
 });
 
 const hasSh = spawnSync('sh', ['-c', 'exit 0']).status === 0 && existsSync('/bin/sleep');

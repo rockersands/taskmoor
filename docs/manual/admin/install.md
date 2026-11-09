@@ -48,9 +48,9 @@ docker build --network host --secret id=build_ca,src=/path/to/proxy-ca.pem \
   --build-arg TASKMOOR_VERSION=1.0.0 -t taskmoor:dev .
 ```
 
-The build fetches pnpm, the exact version the source names, in a step of its own. A download
-that drops or stalls is tried again, up to four times, and each attempt is stopped after five
-minutes. On a very slow connection, give each attempt longer, in seconds:
+The build fetches pnpm, the exact version the source names, in a step of its own, in up to four
+attempts: a download that drops or stalls is tried again after a pause, and each attempt is
+stopped after five minutes. On a very slow connection, give each attempt longer, in seconds:
 `--build-arg PNPM_FETCH_TIMEOUT=900`.
 
 The first command builds the main image (`taskmoor:dev` is the name the Compose files use when
