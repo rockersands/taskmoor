@@ -389,14 +389,38 @@ describe('checklist notices (NTF-015)', () => {
       sent.filter((e) => e.to === `${who}@example.com` && e.text.includes(key));
   }
   const later = () => new Date(Date.now() + 10 * MINUTE);
-  /** Ticket notifications from before the run, nearly due, so the mailer comes in mid-run. */
-  const nearlyDue = (ticketId: number) =>
-    database.db
+  /**
+   * The mailer's clock once the first change's window (two minutes) has passed, while a change
+   * made inside that window is still on its way to the worker: the email goes in mid-run.
+   */
+  const pastTheWindow = () => new Date(Date.now() + 150 * 1000);
+  /**
+   * Ana renames the ticket, written `seconds` before the run that follows: under the two-minute
+   * window it falls due in mid-run (110) or was due before the run began (130).
+   */
+  const renamedBefore = async (ticket: { id: number; key: string }, seconds: number) => {
+    const renamed = await as('ana', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${ticket.id}`,
+      payload: { summary: `${ticket.key}, renamed` },
+    });
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    await deliver();
+    await database.db
       .updateTable('notification')
-      .set({ created_at: new Date(Date.now() - 110 * 1000) })
-      .where('ticket_id', '=', ticketId)
+      .set({ created_at: new Date(Date.now() - seconds * 1000) })
+      .where('ticket_id', '=', ticket.id)
       .where('event', '!=', CHECKLIST_EVENT)
       .execute();
+  };
+  const setInbox = async (who: Person, inbox: boolean) => {
+    const res = await as(who, {
+      method: 'PATCH',
+      url: '/api/v1/account/notification-preferences',
+      payload: { events: { [CHECKLIST_EVENT]: { inbox } } },
+    });
+    expect(res.statusCode, res.body).toBe(200);
+  };
   const noticesOf = async (who: Person, ticketId: number) =>
     (await notices(ticketId)).filter((n) => n.who === who);
   const emailReads = async (who: Person, ticketId: number) =>
@@ -418,13 +442,65 @@ describe('checklist notices (NTF-015)', () => {
   const inboxRow = (rows: Awaited<ReturnType<typeof noticesOf>>, at = 0) =>
     rows.filter((r) => r.channel === 'inbox')[at]?.id as string;
 
+  it("[NTF-002] (1) [NTF-015] (2) a run begun inside an email's window goes whole in that email", async () => {
+    const ticket = await followedTicket('Older notice first');
+    // Ana renames the ticket, then starts a run of checklist changes within the window.
+    await renamedBefore(ticket, 110);
+    const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two', 'Three']);
+    await deliver();
+
+    // The rename falls due while the run is still gathering: the email waits for the run, so it
+    // does not go without it, nor cut it short.
+    expect((await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key)).toEqual([]);
+    for (const item of list.items) await tick('ana', ticket.id, list.id, item.id);
+    await deliver();
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 4],
+      ['inbox', 4],
+    ]);
+
+    // Once the run's own window has passed, one email holds both, the run as one line.
+    const email = (await mailAt(later()))('finn', ticket.key);
+    expect(email).toHaveLength(1);
+    expect(email[0]?.text).toContain('- ana updated the ticket');
+    expect(email[0]?.text).toContain('- ana made 4 changes to checklists');
+  });
+
+  it("[NTF-015] (2) a run begun after an email's window waits for its own, and the email does not wait for it", async () => {
+    const ticket = await followedTicket('Older notice due');
+    // The rename was due before the run began, and the mailer had not run since.
+    await renamedBefore(ticket, 130);
+    const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two', 'Three']);
+    await deliver();
+
+    // The rename goes without the run, which carries on.
+    const first = (await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key);
+    expect(first).toHaveLength(1);
+    expect(first[0]?.text).toContain('- ana updated the ticket');
+    expect(first[0]?.text).not.toMatch(/checklist/);
+    for (const item of list.items) await tick('ana', ticket.id, list.id, item.id);
+    await deliver();
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 4],
+      ['inbox', 4],
+    ]);
+
+    // Once the run's own window has passed, it goes as one line counting every change.
+    const second = (await mailAt(later()))('finn', ticket.key);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.text).toContain('- ana made 4 changes to checklists');
+    expect(second[0]?.text).not.toContain('updated the ticket');
+  });
+
   it('[NTF-003] (2) reading a notice that outlived a sent email keeps the next email from going', async () => {
     const ticket = await followedTicket('Mail in mid-run');
-    await nearlyDue(ticket.id);
     const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two']);
     await deliver();
-    // The mailer comes when the earlier notification is due, and takes the first change along.
-    const first = await mailAt(new Date(Date.now() + 15 * 1000));
+    // The mailer runs once the first change's window has passed, before the worker has handled a
+    // second change made inside it: the first change goes alone.
+    const first = await mailAt(pastTheWindow());
     expect(first('finn', ticket.key).map((e) => /ana changed a checklist/.test(e.text))).toEqual([
       true,
     ]);
@@ -504,10 +580,9 @@ describe('checklist notices (NTF-015)', () => {
 
   it('[NTF-003] (2) an email still open when its inbox notice ages out does not take the next change', async () => {
     const ticket = await followedTicket('Window passed');
-    await nearlyDue(ticket.id);
     const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two']);
     await deliver();
-    await mailAt(new Date(Date.now() + 15 * 1000));
+    await mailAt(pastTheWindow());
     await tick('ana', ticket.id, list.id, list.items[0]?.id as number);
     await deliver();
     // The inbox notice's window ends; the second email, younger, still has room.
@@ -539,14 +614,6 @@ describe('checklist notices (NTF-015)', () => {
   });
 
   it('[NTF-003] (2) a channel turned on or off in mid-run starts afresh, so read and email still agree', async () => {
-    const setInbox = async (who: Person, inbox: boolean) => {
-      const res = await as(who, {
-        method: 'PATCH',
-        url: '/api/v1/account/notification-preferences',
-        payload: { events: { [CHECKLIST_EVENT]: { inbox } } },
-      });
-      expect(res.statusCode, res.body).toBe(200);
-    };
     const ticket = await followedTicket('Choice changes');
     await addList('ana', ticket.id, 'First', []);
     await deliver();
@@ -575,6 +642,36 @@ describe('checklist notices (NTF-015)', () => {
     expect(await emailReads('finn', ticket.id)).toEqual([true, false]);
     await setInbox('gil', false);
     await setInbox('finn', true);
+  });
+
+  it('[NTF-003] (2) a notice taken up again after its channel came back never joins an email it does not hold', async () => {
+    const ticket = await followedTicket('Inbox back on');
+    await addList('ana', ticket.id, 'First', []);
+    await deliver();
+    // Finn takes no inbox for the second change, then takes it again for the third, while his
+    // first notice is still open.
+    await setInbox('finn', false);
+    await addList('ana', ticket.id, 'Second', []);
+    await deliver();
+    await setInbox('finn', true);
+    await addList('ana', ticket.id, 'Third', []);
+    await deliver();
+    // The notice takes the third change; the second's email, which the notice never showed, does
+    // not, so the third starts an email of its own.
+    const finn = await noticesOf('finn', ticket.id);
+    expect(finn.map((r) => [r.channel, r.payload.changes])).toEqual([
+      ['email', 1],
+      ['inbox', 2],
+      ['email', 1],
+      ['email', 1],
+    ]);
+    // Reading the notice settles the emails of what it shows, and only those.
+    await readItem('finn', inboxRow(finn));
+    expect(await emailReads('finn', ticket.id)).toEqual([true, false, true]);
+    const toFinn = (await mailAt(later()))('finn', ticket.key);
+    expect(toFinn).toHaveLength(1);
+    expect(toFinn[0]?.text).toContain('- ana changed a checklist');
+    expect(toFinn[0]?.text).not.toContain('2 changes');
   });
 
   it(`[NTF-015] holds at most ${MAX_NOTICE_CHANGES} changes in one notice, and counts an event delivered twice once`, async () => {

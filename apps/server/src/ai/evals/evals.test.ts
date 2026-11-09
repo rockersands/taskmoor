@@ -279,6 +279,25 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
       ).json().ticket;
       expect(ticket.closeReason?.name, t.key).toBe(t.spec.closeReason);
       expect(ticket.closedAt, t.key).not.toBeNull();
+      // Its history has the reason set at the moment of the close: setting it by hand is no step
+      // of its own that would move the close earlier than the dataset puts it.
+      const changes = await world.db
+        .selectFrom('ticket_change')
+        .select(['field', 'at', 'to_display'])
+        .where('ticket_id', '=', t.id)
+        .where('field', 'in', ['status', 'closeReason'])
+        .orderBy('id', 'desc')
+        .limit(3)
+        .execute();
+      expect(
+        changes.map((c) => [c.field, c.to_display]),
+        t.key,
+      ).toEqual([
+        ['closeReason', t.spec.closeReason],
+        ['closeReason', 'Completed'],
+        ['status', 'Closed'],
+      ]);
+      expect(new Set(changes.map((c) => c.at.getTime())).size, t.key).toBe(1);
     }
     const duplicates = await runAs(world, 'grace', 'closeReason = Duplicate');
     expect(duplicates.ok && duplicates.ids.length).toBeGreaterThan(0);

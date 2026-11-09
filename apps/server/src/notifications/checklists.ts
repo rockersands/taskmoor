@@ -24,11 +24,12 @@ import { CHANNELS } from './model';
  *   up to `MAX_NOTICE_CHANGES` changes; after that the next change starts a new one. The notice
  *   counts its changes and keeps who made them.
  * - **An email stays within one inbox notice**, so that reading the notice settles every email it
- *   covers (NTF-003 (2)). The mailer may send an email in mid-run, with an earlier notification
- *   about the ticket: the inbox notice goes on and the next change starts another email, so one
- *   notice can cover several emails. The reverse never happens: when the inbox notice closes, by
- *   a snooze or its window, the email closes with it, even with room left, and the next change
- *   starts both afresh.
+ *   covers (NTF-003 (2)). An instant email holds a run that is still gathering (`email/deliver.ts`),
+ *   but a digest at its hour, or a mailer that runs while a change made inside the window is still
+ *   on its way to the worker, sends one in mid-run: the inbox notice goes on and the next change
+ *   starts another email, so one notice can cover several emails. The reverse never happens: when
+ *   the inbox notice closes, by a snooze or its window, the email closes with it, even with room
+ *   left, and the next change starts both afresh.
  *
  * Delivery is at least once: a notice lists the events it holds, so an event delivered twice
  * counts once. Changes to one ticket are written one at a time (an advisory lock on the ticket),
@@ -177,13 +178,14 @@ export async function notifyChecklist(
       .select(['id', 'user_id', 'channel', 'domain_event_id', 'payload'])
       .select(
         sql<boolean>`read_at IS NULL AND delivered_at IS NULL AND snoozed_until IS NULL
-          AND created_at > ${opensAfter}
           AND coalesce((payload->>'changes')::int, 1) < ${MAX_NOTICE_CHANGES}`.as('open'),
       )
       .where('user_id', 'in', userIds)
       .where('ticket_id', '=', ticket.id)
       .where('event', '=', CHECKLIST_EVENT)
-      // Those that may still take this change, and any that holds it already.
+      // Those that may still take this change, inside the window from their first change (the one
+      // place the window is read: any other row here holds the change and so takes nothing), and
+      // any that holds it already.
       .where(
         sql<boolean>`(created_at > ${opensAfter} OR domain_event_id = ${event.id}::bigint
           OR payload->'events' ? ${event.id}::text)`,
