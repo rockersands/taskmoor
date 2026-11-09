@@ -176,16 +176,16 @@ function TicketReport({
   ].includes(report);
 
   useEffect(() => {
-    if (!byField) return;
+    if (!byField || trackId === null) return;
     let live = true;
-    client.groupFields(trackKey).then(
+    client.groupFields(trackId).then(
       (list) => live && setCustom(list),
       () => {},
     );
     return () => {
       live = false;
     };
-  }, [byField, client, trackKey]);
+  }, [byField, client, trackId]);
 
   useEffect(() => {
     if (!byRelease) return;

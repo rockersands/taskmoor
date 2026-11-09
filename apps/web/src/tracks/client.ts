@@ -73,8 +73,11 @@ export interface TrackClient {
   summaryWidget(key: string, widgetId: string): Promise<unknown>;
   /** A report of the track's tickets; always the track, always as the viewer sees it. */
   statistics(key: string, kind: StatisticKind, settings: StatisticSettings): Promise<unknown>;
-  /** The track's custom fields as things a report can group by. */
-  groupFields(key: string): Promise<{ id: string; name: string }[]>;
+  /**
+   * The custom fields that apply in the track (by its id) and that a report can group by, as the
+   * report's axes name them.
+   */
+  groupFields(trackId: number): Promise<{ id: string; name: string }[]>;
   /** The tracks the person can see. */
   list(): Promise<TrackListItem[]>;
   /** The track's one board, made the first time anyone opens it (ADR-116). */
@@ -129,6 +132,18 @@ export interface TrackListItem {
   owner: { id: number; name: string } | null;
 }
 
+/** The custom field types a report groups by; the server's `parseAxis` refuses the others. */
+export const GROUPABLE_TYPES: ReadonlySet<string> = new Set([
+  'select',
+  'cascading-select',
+  'user',
+  'group',
+  'release',
+  'area',
+  'team',
+  'labels',
+]);
+
 const trackPath = (key: string) => `/tracks/${encodeURIComponent(key)}`;
 
 export const trackClient: TrackClient = {
@@ -170,10 +185,16 @@ export const trackClient: TrackClient = {
       )
     ).data;
   },
-  groupFields: async (key) =>
-    (await api<{ fields: { id: number; name: string }[] }>(`${trackPath(key)}/fields`)).fields.map(
-      (f) => ({ id: `cf[${f.id}]`, name: f.name }),
-    ),
+  // The stable list of fields, narrowed to the track: `/tracks/{key}/fields` describes one ticket
+  // type's fields and refuses a request without one (T-251).
+  groupFields: async (trackId) =>
+    (
+      await api<{ fields: { id: number; name: string; type: string }[] }>(
+        `/fields?trackId=${trackId}`,
+      )
+    ).fields
+      .filter((f) => GROUPABLE_TYPES.has(f.type))
+      .map((f) => ({ id: `cf[${f.id}]`, name: f.name })),
   list: async () =>
     (await api<{ tracks: TrackListItem[] }>('/tracks?limit=200')).tracks.filter((t) => t.key),
   files: (key) => api<TrackFiles>(`/tracks/${encodeURIComponent(key)}/files`),

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boards/client';
@@ -187,6 +187,33 @@ describe('a track’s statistics (ADR-116)', () => {
     await waitFor(() =>
       expect(client.statisticCalls.at(-1)?.settings).toEqual({ x: 'status', y: 'cf[9]' }),
     );
+  });
+
+  it('[RPT-002] [RPT-005] the reports by a field ask for the track’s custom fields by its id (T-251)', async () => {
+    for (const report of [
+      'group-by',
+      'pie',
+      'ticket-statistics',
+      'two-dimensional',
+      'workload-pie',
+    ] as const) {
+      const { client } = open(report);
+      await waitFor(() => expect(client.groupFieldCalls, report).toEqual([1]));
+      cleanup();
+    }
+  });
+
+  it('[RPT-005] a report by a field still draws, with the system fields, when its custom fields cannot be read', async () => {
+    const client = fakeTrackClient();
+    client.groupFields = async () => {
+      throw new Error('unavailable');
+    };
+    open('two-dimensional', KANBAN, { client });
+    const table = await screen.findByRole('region', { name: 'Two-dimensional statistics' });
+    expect(within(table).getByRole('rowheader', { name: 'New' })).toBeVisible();
+    const across = screen.getByRole('combobox', { name: 'Columns' });
+    expect(within(across).getByRole('option', { name: 'Priority' })).toBeInTheDocument();
+    expect(within(across).queryByRole('option', { name: 'Team' })).toBeNull();
   });
 
   it('[RPT-002] tickets by date counts by the date chosen, with running totals', async () => {

@@ -275,6 +275,8 @@ export interface FakeTrackOptions {
 export type FakeTrackClient = TrackClient & {
   saved: unknown[];
   statisticCalls: { kind: string; settings: unknown }[];
+  /** The track ids the custom fields to group by were asked for. */
+  groupFieldCalls: number[];
 };
 
 export function fakeTrackClient(
@@ -292,9 +294,11 @@ export function fakeTrackClient(
   };
   const saved: unknown[] = [];
   const statisticCalls: { kind: string; settings: unknown }[] = [];
+  const groupFieldCalls: number[] = [];
   return {
     saved,
     statisticCalls,
+    groupFieldCalls,
     summaryLayout: async () => read(),
     saveSummaryLayout: async (_key, layout) => {
       saved.push(layout);
@@ -314,7 +318,10 @@ export function fakeTrackClient(
       statisticCalls.push({ kind, settings });
       return STATISTICS[kind] ?? CREATED_VS_CLOSED;
     },
-    groupFields: async () => [{ id: 'cf[9]', name: 'Team' }],
+    groupFields: async (trackId) => {
+      groupFieldCalls.push(trackId);
+      return [{ id: 'cf[9]', name: 'Team' }];
+    },
     list: async () => [
       { id: 1, key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
       { id: 2, key: 'WEB', name: 'Web', owner: null },
