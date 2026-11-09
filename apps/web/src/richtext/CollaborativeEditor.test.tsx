@@ -1,6 +1,6 @@
 import type { HocuspocusProvider } from '@hocuspocus/provider';
 import type { PmJson } from '@taskmoor/richtext';
-import { docFromYDoc, writeDocToYDoc } from '@taskmoor/richtext';
+import { docFromYDoc, fromMarkdown, writeDocToYDoc } from '@taskmoor/richtext';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -97,6 +97,75 @@ describe('the collaborative editor (M1-017)', () => {
         'Connection lost. What you type now is kept and sent when the connection is back.',
       ),
     ).toBeVisible();
+  });
+
+  it('[NTF-008] [CORE-022] opening a description that ends in a code block changes nothing in it', async () => {
+    // MOB-50's description in the page review's demo (T-250): a heading, bold text, a link, a
+    // list and a code block last. The editor used to add an empty paragraph after the code
+    // block as it opened, which the server saved as an edit by the person who only looked.
+    const description = fromMarkdown(
+      '## What this is\n\nPeople **sign in once** and stay signed in without a connection. ' +
+        'See [the notes](https://example.com/notes).\n\n- First point of the list\n' +
+        '- Second point, a little longer than the first so it wraps on a phone\n\n' +
+        '```\nconst retries = 3;\n```',
+    );
+    const shared = localDocument(description, true);
+    const asStored = docFromYDoc(shared.document);
+    const changes: unknown[] = [];
+    shared.document.on('update', (_update: Uint8Array, origin: unknown) => changes.push(origin));
+    renderField(shared.connect);
+    const textbox = await screen.findByRole('textbox', { name: 'Description' });
+    await waitFor(() => expect(textbox).toHaveTextContent('const retries = 3;'));
+    // What the editor does once it has the document happens in later tasks: let them run.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(changes).toEqual([]);
+    expect(docFromYDoc(shared.document)).toEqual(asStored);
+    // A change from someone else is no edit here either.
+    act(() =>
+      writeDocToYDoc(
+        shared.document,
+        fromMarkdown('Rewritten elsewhere\n\n```\nconst retries = 5;\n```'),
+        'someone else',
+      ),
+    );
+    await waitFor(() => expect(textbox).toHaveTextContent('const retries = 5;'));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(changes).toEqual(['someone else']);
+
+    // The person's own edit still leaves a line to type on below the code block.
+    const user = userEvent.setup();
+    await user.click(textbox);
+    await user.keyboard('x');
+    await waitFor(() => expect(changes.length).toBeGreaterThan(1));
+    const content = docFromYDoc(shared.document).content ?? [];
+    expect(JSON.stringify(content)).toContain('x');
+    expect(content.at(-1)?.type).toBe('paragraph');
+  });
+
+  it('[NTF-008] does not count the person’s own other pages as someone else editing', async () => {
+    const shared = localDocument(text('Together'), true);
+    renderField(shared.connect);
+    await screen.findByRole('textbox', { name: 'Description' });
+    const join = (userId: number, name: string) => {
+      const other = new Awareness(new Y.Doc());
+      other.setLocalStateField('user', { id: userId, name, color: '#2f5f8f' });
+      act(() => {
+        if (!shared.awareness) throw new Error('no awareness');
+        applyAwarenessUpdate(
+          shared.awareness,
+          encodeAwarenessUpdate(other, [other.clientID]),
+          'test',
+        );
+      });
+    };
+    // The same person (id 3, as renderField signs in) in another tab, or the page just reloaded.
+    join(3, 'Kalo');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(screen.getByText('Changes are saved as you type.')).toBeVisible();
+    expect(screen.queryByText(/Also editing/)).toBeNull();
+    // Someone else is named.
+    join(8, 'Ana');
+    expect(await screen.findByText('Also editing: Ana')).toBeVisible();
   });
 
   it('[IAM-011] shows people who may not edit the text read-only', async () => {

@@ -14,7 +14,8 @@ import { RichTextEditor } from './RichTextEditor';
  * A rich text field edited by several people at once (M1-017; NTF-008; ADR-014): the editor
  * bound to the field's Yjs document on the server (`/api/v1/collab`, document
  * `ticket/<id>/<field>`). Changes merge character by character and are saved as people type;
- * others' cursors carry their names, and the field says who else is in it.
+ * others' cursors carry their names, and the field says who else is in it. Opening the field
+ * writes nothing: only a person's own edits are saved.
  *
  * Until the document arrives, and for people who may read but not edit the field (the server
  * refuses them), the field shows `fallback`, the text the ticket view gave, read-only.
@@ -112,22 +113,24 @@ export function CollaborativeEditor({
     };
   }, [connect, ticketId, field]);
 
-  // Who else is in the document (NTF-008): everyone in its awareness but this page.
+  // Who else is in the document (NTF-008): everyone in its awareness but this page and this
+  // person's other pages, a tab or a page just reloaded, which are no one else (T-250).
   useEffect(() => {
     const awareness = session?.provider?.awareness;
     if (!awareness) return;
     const read = () => {
       const names: string[] = [];
       for (const [clientId, state] of awareness.getStates()) {
-        const name = (state as { user?: { name?: unknown } }).user?.name;
-        if (clientId !== awareness.clientID && typeof name === 'string') names.push(name);
+        const who = (state as { user?: { id?: unknown; name?: unknown } }).user;
+        if (clientId === awareness.clientID || who?.id === user.id) continue;
+        if (typeof who?.name === 'string') names.push(who.name);
       }
       setOthers([...new Set(names)].sort());
     };
     read();
     awareness.on('change', read);
     return () => awareness.off('change', read);
-  }, [session]);
+  }, [session, user.id]);
 
   const extensions = useMemo<AnyExtension[] | null>(() => {
     if (!session) return null;
@@ -137,7 +140,7 @@ export function CollaborativeEditor({
         ? [
             CollaborationCaret.configure({
               provider: session.provider,
-              user: { name: user.name, color: colorOf(user.id) },
+              user: { id: user.id, name: user.name, color: colorOf(user.id) },
               render: (who: { name?: string; color?: string }) => {
                 const caret = document.createElement('span');
                 caret.className = 'rt-caret';

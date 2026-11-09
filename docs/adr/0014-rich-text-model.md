@@ -112,6 +112,14 @@ Migration 0034 adds `ticket_text_original` and `ticket_text_state`. The editor i
   ticket still holds that text. After any successful API mutation (and every 30 s) open
   documents are checked again: text written another way replaces the live text (last write
   wins; history keeps what was replaced) and people who lost access are disconnected.
+- **Opening is not editing** (T-250): a collaborative editor changes the shared document only
+  for the person's own edits. StarterKit's trailing node added an empty paragraph after a last
+  block that is not one (a code block, a list, a table) as the document arrived, which the
+  server saved as an edit by whoever had only opened the ticket. There the editor uses
+  `trailingParagraph: 'own-edits'`: the paragraph goes in only after a change made in that
+  editor, never after one Yjs brings in (the loaded document, others' changes, undo). The
+  field's "Also editing" leaves out every page of the person (a second tab, a page just
+  reloaded): each page puts the person's id in its awareness state.
 - **People to mention** (NTF-005): `GET /api/v1/people/mentionable?ticket=|track=&q=` needs
   "Browse users and groups"; it lists active people by name or email prefix with `canView`, those
   who can see the ticket first. The editor marks the others and says they will not be notified.
