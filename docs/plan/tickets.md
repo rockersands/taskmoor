@@ -44,7 +44,7 @@ reported, and the coordinator checked that it was pushed.
 | T-011 | Fix the flaky keyboard e2e test | Done | Passed 20 of 20 |
 | T-012 | Fix the flaky MCP consent e2e test | Done | Passed 10 of 10 |
 | T-013 | Look into the AI settings Strict mode test that needed its retry | Done | Late answers overwrote unsaved settings; fixed |
-| T-013a | Look into the boards and sprints e2e tests that need their retry in full gates | In progress | On the Mac (wave 10, 2026-11-06). Passed alone; may be the proxy losing connections, may be a real race |
+| T-013a | Look into the boards and sprints e2e tests that need their retry in full gates | Done | On `main` (2026-11-08): the boards and sprints retries were the board's first-read race, fixed on 2026-11-03 (7e215734); they passed 282 runs since with no retry. Also fixed: the board-drag finger test (waits for the swipe's scroll to settle) and the tutorial's Dashboards test (waits for the last save). The proxy idea is Windows-only and unchecked: keep the trace if a board or sprint test retries there |
 | T-013b | Rerun the 1M import after the two fixes | To do | Optional; those fixes have only quick tests so far |
 | T-014 | 500k-issue import | Done | 100% of sampled entities in 1 h 58 min; ADR-092 |
 | T-015 | Find out why records failed in the large imports | Done | Reserved words as generated keys, and sprints too large for one statement; both fixed; the seven at 500k fit the first cause, as the key BY appears by then, though that run did not capture reasons |
@@ -303,6 +303,9 @@ reported, and the coordinator checked that it was pushed.
 | T-240 | A release page's own dates still read `2026-12-01`, next to a locale date for its release across tracks | To do | Multi-track review |
 | T-241 | Multi-track: the questions of ADR-122 stage 4 (8) and stage 8 (7, one is a byte-order mark on CSV files for Excel), plus two behaviours to confirm: a bare number in a saved query means the id, and a same-day move brings back releases out of step | You | Built on the first answer each time |
 | T-242 | Speed limits this Windows machine missed in the gate of 2026-11-07: plan duplicate with 500 sources and 50 teams (1,386 of 1,000 ms, new with T-089g), permission check p95 (10.5 of 10 ms), ticket edit with 1,500 fields p95 (274 of 50 ms, seen before) | To do | Not enforced by `pnpm verify`; check with `pnpm bench:check` before 1.0 |
+| T-243 | Two lists can show an older answer when two reads cross: the board's sprints and the backlog | To do | Found reading the code for T-013a, never seen failing: `BoardPage` `loadSprints` and `BacklogPage` `load()` have no ordering check (the board's own read has one); a completed sprint's Complete button could come back |
+| T-244 | Some e2e specs make track keys from the time alone and collide when repeated | To do | T-013a: checklist-notices, releases, list-calendar and others fail with `key_taken` under `--repeat-each`; board-drag is fixed |
+| T-245 | Tutorial progress is lost when someone presses Finish and leaves at once | To do | T-013a: the save is sent without waiting; `keepalive: true` on it would keep the Done state |
 | T-198 | Load these tickets into the demo again | Done | All tickets loaded on the demo on 2026-11-04, in the Backend, Front and Flutter tracks; again on the Mac's demo on 2026-11-06 (221 tickets) |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 | T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |
