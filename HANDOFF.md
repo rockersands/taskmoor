@@ -20,7 +20,19 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the Windows coordinator's wrap-up (2026-11-07)
+### Latest: the Mac, after the Windows wrap-up (2026-11-08)
+
+- **On `main` (`819c5ae4`, full gate on the Mac: 8,048 tests, 248 e2e):** the Windows work below
+  plus wave 10: T-013a (the retries were an already-fixed board race; two flaky specs fixed),
+  T-208 (story dependencies listed up front), T-232, T-233, T-236, T-237 (`cli.mjs workflow-moves
+  [--repair]`), T-238. New tickets T-243 to T-249; T-246 and T-248 are questions for the user.
+- **The Mac's demo** runs again at `http://localhost:8080` from `.claude/worktrees/tm-demo` (now at
+  `3d009636`), with the tickets up to T-242 and the user's own site-administrator account; its link
+  is in that worktree's `.cache/demo-user.txt`. A restart makes new one-time links.
+- **Next:** the page review (T-220) and its fixes, starting by merging `main` into
+  `wave8/t164-phone-accessibility` and reviewing the sweep tool; then the list below.
+
+### The Windows coordinator's wrap-up (2026-11-07)
 
 Two coordinators worked at once on 2026-11-05 and 06: the Mac pushed 52 commits to `main`
 (T-023's image and kit runs, T-032, T-195, T-209 to T-211, T-234, the air-gap bundle's platforms)
