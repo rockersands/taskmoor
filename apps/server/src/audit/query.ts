@@ -215,13 +215,15 @@ export const CSV_COLUMNS = [
 
 /**
  * One CSV field (RFC 4180). Text a spreadsheet would run as a formula (starting with =, +, -,
- * @, tab or carriage return) gets a leading apostrophe, so an exported name cannot become one.
+ * @, tab or carriage return, or their full-width forms) gets a leading apostrophe, so an exported
+ * name cannot become one. A semicolon is quoted too: where a list separator is a semicolon, as in
+ * Spanish settings, a spreadsheet would split the cell there and read what follows as a new cell.
  */
 export function csvField(value: unknown): string {
   if (value === null || value === undefined) return '';
   let text = typeof value === 'string' ? value : String(value);
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  if (typeof value === 'string' && /^[=+\-@\t\r＝＋－＠]/.test(text)) text = `'${text}`;
+  return /[",;\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
 export function csvLine(record: AuditView): string {

@@ -14,12 +14,13 @@ VOL=taskmoor-aio-data-$ID
 PG=taskmoor-ext-pg-$ID
 NET=taskmoor-ext-$ID
 cleanup() {
-  docker rm -f "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
+  # Every container first: the external kit's Taskmoor is on $NET too, and Docker refuses to
+  # remove a network that still has a container on it.
+  docker rm -f -v "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
+  docker rm -f -v "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
-  docker network rm "$NET" >/dev/null 2>&1 || true
-  docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
   docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_postgres-ca" "ts-smoke-${ID}_postgres-tls" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
-  docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
+  docker network rm "$NET" "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -49,9 +50,12 @@ echo "== all-in-one image"
 secret=()
 [ -n "${BUILD_CA:-}" ] && secret=(--secret "id=build_ca,src=$BUILD_CA" --network host)
 [ -n "${HTTPS_PROXY:-}" ] && secret+=(--build-arg "HTTPS_PROXY=$HTTPS_PROXY" --build-arg "https_proxy=$HTTPS_PROXY")
-docker build "${secret[@]}" -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
-size=$(docker image inspect "$AIO" --format '{{.Size}}')
-echo "all-in-one size: $((size / 1000000)) MB"
+# ${a[@]+"${a[@]}"}: an empty array is "unbound" under set -u in bash 3.2, a Mac's own bash.
+docker build ${secret[@]+"${secret[@]}"} -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
+# Unpacked, the layers' sizes added up, as smoke.sh measures (not `docker image inspect`'s Size,
+# the compressed download with the containerd image store).
+size=$(docker history --human=false --format '{{.Size}}' "$AIO" | awk '{ s += $1 } END { printf "%.0f", s }')
+echo "all-in-one size: $((size / 1000000)) MB unpacked"
 docker volume create "$VOL" >/dev/null
 docker run -d --name "$AIO_NAME" -v "$VOL:/data" -p 18090:8080 "$AIO" >/dev/null
 wait_for http://127.0.0.1:18090/ready 90 "$AIO_NAME"
@@ -70,7 +74,7 @@ wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
 docker logs "$AIO_NAME" 2>&1 | grep -c "initialising PostgreSQL" | grep -qx 1 && echo "data kept: initialised once"
 # Removed without a clean stop, as an out-of-memory kill would: the next start finds
 # PostgreSQL's stale lock file and must still come up.
-docker rm -f "$AIO_NAME" >/dev/null
+docker rm -f -v "$AIO_NAME" >/dev/null
 # OPS-006: the upgrade by hand, with the container stopped (never beside a running one: both
 # would start PostgreSQL on the same files). Same image, so nothing to apply.
 out=$(docker run --rm -v "$VOL:/data" "$AIO" upgrade)

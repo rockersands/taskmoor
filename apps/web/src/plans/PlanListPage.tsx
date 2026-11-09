@@ -14,6 +14,7 @@ import type { SearchClient, SearchField, SearchTicket } from '../search/client';
 import { DEFAULT_COLUMNS } from '../search/columns';
 import { EmptyState } from '../shell/EmptyState';
 import type { PlanGroup } from './address';
+import { DownloadMenu } from './DownloadMenu';
 import type { PlanSectionProps } from './PlanSummaryPage';
 
 /** How many rows the List shows of a plan, or of one of its groups (PLN-012). */
@@ -31,19 +32,29 @@ type Sort = keyof typeof SORTS;
  * columns and sorted, grouped by track, assignee, status, type or priority with each group's
  * count; cells edit in place through the ticket route, as in search results. Each group, or the
  * whole list, stops at 10,000 rows and says so. Columns are kept per person and plan in this
- * browser.
+ * browser; the order is in the address, so a link holds it. Its file (PLN-014) comes from the
+ * server and holds every ticket of the plan the person sees, in these columns and this order.
  */
 export function PlanListPage({
   id,
   plan,
+  filters,
+  client,
   group,
   search,
   list,
+  position,
+  onPosition,
 }: PlanSectionProps & { group: PlanGroup | null; search: SearchClient; list: ListClient }) {
   const t = useT();
   const store = `plan-${id}`;
   const [fields, setFields] = useState<SearchField[]>([]);
-  const [sort, setSort] = useState<Sort>('created');
+  const [sortHere, setSortHere] = useState<Sort>('created');
+  const sort = position?.sort ?? sortHere;
+  const setSort = (next: Sort) => {
+    setSortHere(next);
+    onPosition?.({ sort: next === 'created' ? undefined : next });
+  };
   const [columns, setColumns] = useState<string[]>(
     () => loadListColumns(store) ?? [...DEFAULT_COLUMNS],
   );
@@ -123,6 +134,16 @@ export function PlanListPage({
             ))}
           </select>
         </label>
+        <DownloadMenu
+          items={[
+            {
+              key: 'csv',
+              label: t('plans.download.csv'),
+              href: client.exportHref(id, { filters, columns, sort }),
+            },
+          ]}
+          notes={[t('plans.download.everyTicket')]}
+        />
       </div>
       <details className="glass-card list-panel">
         <summary>{t('list.columns')}</summary>

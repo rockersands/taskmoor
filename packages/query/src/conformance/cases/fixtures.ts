@@ -36,7 +36,8 @@ export type ValueType =
   | 'sprint'
   | 'attachments'
   | 'area'
-  | 'savedSearch';
+  | 'savedSearch'
+  | 'crossTrackRelease';
 
 export interface SpecField {
   canonical: string;
@@ -138,6 +139,7 @@ export const FIELDS: readonly SpecField[] = [
     type: 'savedSearch',
     sample: '10001',
   },
+  { canonical: 'crossTrackRelease', aliases: [], type: 'crossTrackRelease', sample: '7' },
   {
     canonical: 'targetRelease',
     aliases: ['fixVersion'],

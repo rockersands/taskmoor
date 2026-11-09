@@ -28,6 +28,8 @@ import {
   addStatusFreely,
   addTransition,
   formatDefinition,
+  freeingSeed,
+  freeingSeedNeedsCloseReason,
   nextTransitionId,
   type RuleDef,
   removeStatus,
@@ -36,6 +38,7 @@ import {
   sameDefinition,
   setInitialStatus,
   statusIdsOf,
+  strictSeedSteps,
   type Transition,
   transitionIdsOf,
   updateTransition,
@@ -437,6 +440,39 @@ export function WorkflowEditorPage({
     setMessage(t('admin.workflow.status.added', { name: names.status(statusId) }));
   };
 
+  // A default workflow's draft saved before free moving still has the seeded steps nobody chose
+  // (T-234; WF-008): the editor says so and offers the free moves the published version has.
+  const seeded = workflow.isDefault && workflow.draft !== null && strictSeedSteps(working) !== null;
+  const freeSeed = async () => {
+    setError(null);
+    let completedId: number | null = null;
+    if (freeingSeedNeedsCloseReason(working, statuses)) {
+      setBusy(true);
+      try {
+        completedId = await client.completedReason(workflow.id);
+      } catch (e) {
+        if (!refuse(e)) setError(t('admin.workflow.seed.failed'));
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+    // The request may have let an edit in, so this builds on what is there now.
+    setWorking(
+      (current) =>
+        current &&
+        freeingSeed(
+          current,
+          statuses,
+          completedId,
+          transitionIdsOf(workflow.published.definition, workflow.draft?.definition),
+        ),
+    );
+    setSelection(null);
+    setMessage(t('admin.workflow.seed.freed'));
+    setFocusTarget('transitions');
+  };
+
   const newTransition = (from?: number) => {
     const ids = statusIdsOf(working);
     const source = from ?? (selection?.kind === 'status' ? selection.id : working.initialStatusId);
@@ -558,6 +594,22 @@ export function WorkflowEditorPage({
           )
         }
       />
+
+      {seeded && mode === 'diagram' && (
+        <div className="workflow-seed">
+          <p>{t('admin.workflow.seed.note')}</p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={busy}
+              onClick={() => void freeSeed()}
+            >
+              {t('admin.workflow.seed.free')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="workflow-toolbar">
         <fieldset className="filter-chips">

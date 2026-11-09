@@ -188,6 +188,27 @@ export const AGILE_CONFIGURATION_TABLES: ReadonlySet<string> = new Set([
 // --- Reading filters -------------------------------------------------------------------------
 
 /**
+ * The fields a query's conditions name by name rather than by id (`cf[10010]`), as written, in
+ * order; null when it does not parse. ORDER BY is not read: a board orders by rank. System fields
+ * are among them: which name means which field is the mapper's call, made with the backup's
+ * custom fields of each name (T-195).
+ */
+export function fieldNamesIn(query: string): string[] | null {
+  let parsed: ReturnType<typeof parseQuery>;
+  try {
+    parsed = parseQuery(query);
+  } catch {
+    return null;
+  }
+  const out: string[] = [];
+  const add = (f: { name: string; custom?: number; property?: unknown }) => {
+    if (f.custom === undefined && !f.property && !out.includes(f.name)) out.push(f.name);
+  };
+  for (const c of clauses(parsed.where)) add(c.field);
+  return out;
+}
+
+/**
  * The projects a board's filter names in `project = X` or `project in (X, Y)` clauses that are
  * not negated, as written (keys, names or ids), in order; null when the query does not parse.
  * A board shows the issues its filter finds, so these say which projects a board spans (Our

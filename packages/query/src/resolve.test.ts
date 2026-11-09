@@ -156,7 +156,8 @@ describe('field and operator resolver (M1-036)', () => {
           expect(plan.orderBy[0]?.field, name).toBe(field);
           continue;
         }
-        const op = takes(field, 'empty') ? 'IS EMPTY' : 'CHANGED';
+        // A release across tracks takes neither (PLN-007): only =, !=, IN and NOT IN.
+        const op = takes(field, 'empty') ? 'IS EMPTY' : takes(field, 'history') ? 'CHANGED' : '= 1';
         const plan = resolve(`${printed} ${op}`);
         expect((plan.where as { field: Field }).field, name).toBe(field);
       }

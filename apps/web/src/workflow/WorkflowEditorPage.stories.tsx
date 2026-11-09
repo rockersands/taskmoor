@@ -4,6 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import {
+  DEFAULT_WITH_SEEDED_DRAFT,
   DEFAULT_WORKFLOW,
   fakeWorkflowsClient,
   S,
@@ -68,6 +69,34 @@ type Story = StoryObj<typeof meta>;
 export const Diagram: Story = {};
 
 export const DefaultWorkflow: Story = { args: { workflowId: DEFAULT_WORKFLOW.id } };
+
+const seededDraft = () => ({
+  workflowId: DEFAULT_WORKFLOW.id,
+  client: fakeWorkflowsClient({ workflows: [DEFAULT_WITH_SEEDED_DRAFT, SUPPORT_WORKFLOW] }),
+});
+
+/** A default workflow's draft from before free moving: the editor offers the free moves (T-234). */
+export const DraftWithFirstSteps: Story = {
+  args: seededDraft(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Let this draft move freely' }),
+    ).toBeVisible();
+  },
+};
+
+export const DraftWithFirstStepsAtPhoneWidth: Story = {
+  args: seededDraft(),
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Let this draft move freely' }),
+    ).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
 
 export const TransitionSelected: Story = {
   args: { client: fakeWorkflowsClient() },

@@ -4,6 +4,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage } from './PlanPage';
 
@@ -262,5 +263,41 @@ export const NotFound: Story = {
     await expect(await canvas.findByRole('alert')).toBeVisible();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Multi-track' })).toBeVisible();
     await expect(canvas.getByRole('link', { name: 'All plans' })).toBeVisible();
+  },
+};
+
+/** The Releases tab: linked releases gathered under theirs, then the rest by track. */
+export const Releases: Story = {
+  args: { section: 'releases' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Launch across tracks' })).toBeVisible();
+    await expect(canvas.getByText('Out of step')).toBeVisible();
+  },
+};
+
+/** A finger reaches a group's heading and each release on the Releases tab (ADR-033). */
+export const ReleasesOnATouchScreen: Story = {
+  args: { section: 'releases' },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('region', { name: 'Launch across tracks' });
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.cross-track-group-head h2 a',
+        '.plan-releases .release-name',
+      ]),
+    ).toEqual([]);
+  },
+};
+
+/** The Releases tab at a phone's width: each group is a card, nothing sticking out. */
+export const ReleasesAtPhoneWidth: Story = {
+  args: { section: 'releases' },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Launch across tracks' });
+    await fitsPhoneWidth(canvas);
   },
 };

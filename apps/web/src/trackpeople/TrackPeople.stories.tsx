@@ -3,8 +3,10 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
+import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeSignInSso } from '../sso/fixtures';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES } from './fixtures';
@@ -156,7 +158,7 @@ export const CreateTracksBoxAlone: StoryObj<typeof CreateTracksBox> = {
   render: () => <CreateTracksBox checked onChange={() => {}} />,
 };
 
-/** Whoever runs the track has its followers told of checklist changes (NTF-015). */
+/** Whoever runs the track has its followers told of checklist changes (NTF-015), said under the box. */
 export const ChecklistNotices: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -165,10 +167,68 @@ export const ChecklistNotices: Story = {
     });
     await expect(box).not.toBeChecked();
     await userEvent.click(box);
+    const card = canvas.getByRole('region', { name: 'Notices to followers' });
     await expect(
-      await canvas.findByText('Followers of tickets in SHOP now hear when a checklist changes.'),
+      await within(card).findByText(
+        'Followers of tickets in SHOP now hear when a checklist changes.',
+      ),
     ).toBeVisible();
     await expect(box).toBeChecked();
+  },
+};
+
+/** The server refuses: the box goes back, and why is said under it, where the person is (T-232). */
+export const ChecklistNoticesRefused: Story = {
+  args: { client: fakeTrackPeopleClient({ refuseNotices: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const box = await canvas.findByRole('checkbox', {
+      name: 'Tell followers when a checklist changes',
+    });
+    await userEvent.click(box);
+    const card = canvas.getByRole('region', { name: 'Notices to followers' });
+    const alert = await within(card).findByRole('alert');
+    await expect(alert).toHaveTextContent('The track is archived, so its settings cannot change.');
+    await expect(alert).toBeVisible();
+    await expect(box).not.toBeChecked();
+    // Below the box, not far above it: the two are on screen together.
+    const gap = alert.getBoundingClientRect().top - box.getBoundingClientRect().bottom;
+    await expect(gap).toBeGreaterThanOrEqual(0);
+    await expect(gap).toBeLessThan(200);
+  },
+};
+
+/**
+ * The notices box at a small phone's width, in Spanish, whose words are the longest it has, and as
+ * on a touch screen (T-233): it fits with what it says once ticked, and a finger reaches the box
+ * through its label (ADR-033).
+ */
+export const ChecklistNoticesAtPhoneWidth: Story = {
+  // A client of its own: the default one is shared, and another story may have turned it on.
+  args: { client: fakeTrackPeopleClient() },
+  decorators: [
+    atPhoneWidth,
+    (Story) => (
+      <I18nProvider locale="es">
+        <Story />
+      </I18nProvider>
+    ),
+  ],
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const box = await canvas.findByRole('checkbox', {
+      name: 'Avisar a quienes siguen un ticket cuando cambia una lista de comprobación',
+    });
+    await userEvent.click(box);
+    const card = canvas.getByRole('region', { name: 'Avisos a quienes siguen tickets' });
+    await expect(
+      await within(card).findByText(
+        'Quienes siguen tickets de SHOP ahora se enteran cuando cambia una lista de comprobación.',
+      ),
+    ).toBeVisible();
+    await expect(tooSmallForAFinger(card, ['.form-field-inline label'])).toEqual([]);
+    await fitsPhoneWidth(canvas);
   },
 };
 

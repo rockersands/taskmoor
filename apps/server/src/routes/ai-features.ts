@@ -283,6 +283,7 @@ export function registerAiFeatureRoutes(
           now: at,
           timeZone: person.timeZone,
           allowedTracks: person.allowedTracks,
+          crossTrackSight: person.crossTrackSight,
         });
         return null;
       } catch (error) {

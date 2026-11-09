@@ -20,6 +20,7 @@ import type { Catalog } from '../fields/catalog';
 import { findTeam, teamMemberIds } from '../teams';
 import { masterTextSet, RANKED_CAP, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
+import { type CrossTrackSight, seenCrossTrackReleases } from './cross-track';
 import type {
   Bound,
   Cond,
@@ -80,6 +81,11 @@ export interface BindContext {
   filter: RawBuilder<boolean>;
   /** The tracks where the viewer holds a permission (`tracksWhereUserHasPermission()`). */
   allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
+  /**
+   * Which releases across tracks the person sees (PLN-007). Without it none is named, so
+   * `crossTrackRelease` answers `unknown_value`.
+   */
+  crossTrackSight?: CrossTrackSight;
   /**
    * The board whose query this is: `@current`, `@next` and `@previous` are its sprints. Without
    * a board (a search) every board counts on its own (QRY-013).
@@ -1417,6 +1423,11 @@ class Binder {
           ids: await this.named('release', this.typed(p), label(field)),
         });
       }
+      case 'crossTrackRelease':
+        return this.related(p, {
+          relation: 'targetRelease',
+          ids: await this.crossTrackMembers(this.typed(p), label(field)),
+        });
       case 'attachments':
         if (p.kind !== 'empty') throw new Error('unreachable');
         return { kind: 'relatedEmpty', relation: 'attachment', negated: p.negated };
@@ -1898,6 +1909,38 @@ class Binder {
             .execute()) as Named[];
       }
     });
+  }
+
+  /**
+   * The releases linked to the releases across tracks named, by name (any case) or id, reading only
+   * those the person sees: another's answers `unknown_value`, word for word as one that does not
+   * exist. A name shared by several means all of them the person sees (PLN-007).
+   *
+   * Two rules keep what this says true. A bare number is an id before it is a name, and a quoted
+   * one a name before an id, so naming a release across tracks "5" cannot take over the page of
+   * number 5, which reads `crossTrackRelease = 5`. And it binds only to linked releases of tracks
+   * the person sees: a ticket seen through a grant, in a track they do not see, never shows that
+   * its release is linked to this one.
+   */
+  private async crossTrackMembers(values: Typed[], field: string): Promise<number[]> {
+    const seen = await this.once('crossTrackReleases', () =>
+      seenCrossTrackReleases(this.db, this.ws, this.ctx.currentUserId, this.ctx.crossTrackSight),
+    );
+    const found: number[] = [];
+    for (const value of values) {
+      const typed = content(value);
+      const given = String(typed.value);
+      const wanted = lower(given);
+      const byName = seen.filter((r) => lower(r.name) === wanted);
+      const byId = seen.filter((r) => String(r.id) === wanted);
+      const [first, second] = typed.type === 'number' ? [byId, byName] : [byName, byId];
+      const named = first.length > 0 ? first : second;
+      if (named.length === 0) {
+        throw new SearchError(`${field} has no value "${given}"`, 'unknown_value');
+      }
+      for (const r of named) found.push(...r.releaseIds);
+    }
+    return idList(found);
   }
 
   /** Ids by name (any case) or by id; a name nobody uses is refused. */

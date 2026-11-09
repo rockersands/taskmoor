@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
   useId,
@@ -12,6 +13,7 @@ import { routeHref } from '../routing/router';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { dayNumber, isoDay } from '../timeline/client';
+import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
 import type { CalendarData, CalendarTicket, Moved } from './client';
 
@@ -72,6 +74,8 @@ export interface CalendarViewProps {
   /** The month shown, as the day number of its first day. */
   month: number;
   onMonth: (month: number) => void;
+  /** More controls beside the month's. */
+  tools?: ReactNode;
   /** New days for a ticket through the ticket route; only the days given change. */
   move: (
     ticketKey: string,
@@ -102,6 +106,7 @@ export function CalendarView({
   data,
   month,
   onMonth,
+  tools,
   move: moveTicket,
   reload,
   now,
@@ -268,6 +273,7 @@ export function CalendarView({
     intl.formatDate(new Date((first + i) * 86_400_000), { weekday: 'short', timeZone: 'UTC' }),
   );
   const days = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+  const drawn = drawnReleases(data.releases);
   const thisMonth = new Date(month * 86_400_000).getUTCMonth();
 
   return (
@@ -297,6 +303,7 @@ export function CalendarView({
         <button type="button" className="button-secondary" onClick={() => onMonth(monthOf(today))}>
           {t('calendar.thisMonth')}
         </button>
+        {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
         {t('calendar.hint')}
@@ -326,7 +333,7 @@ export function CalendarView({
           const sprints = data.sprints.filter(
             (s) => dayNumber(s.start) <= day && day <= dayNumber(s.end),
           );
-          const releases = data.releases.filter((r) => dayNumber(r.date) === day);
+          const releases = drawn.filter((r) => dayNumber(r.date) === day);
           const outside = date.getUTCMonth() !== thisMonth;
           // Monday to Wednesday open a grip's menu towards the later days, the rest towards the
           // earlier ones, so it stays on the page.
@@ -356,8 +363,8 @@ export function CalendarView({
                 ),
               )}
               {releases.map((r) => (
-                <span key={`r${r.id}`} className="calendar-release">
-                  {t('calendar.release', { name: r.name })}
+                <span key={r.key} className="calendar-release">
+                  {t('calendar.release', { name: releaseMarkerText(t, r) })}
                 </span>
               ))}
               {shown.map((entry) => {

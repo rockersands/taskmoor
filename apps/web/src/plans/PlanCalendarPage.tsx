@@ -4,16 +4,36 @@ import { useT } from '../i18n/I18nProvider';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { dayNumber, isoDay } from '../timeline/client';
 import type { PlanCalendar } from './client';
+import { DownloadMenu } from './DownloadMenu';
+import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
+import { calendarCsv } from './planExport';
 
 /**
  * A plan's Calendar (PLN-012): a month of its tickets across tracks on their due and start days,
  * with their tracks' sprints and releases, drawn by `CalendarView`; at most 10,000 tickets, and it
  * says so. Moving one is the ticket's own change, so its track's permission and history apply.
  */
-export function PlanCalendarPage({ id, filters, client, now }: PlanSectionProps) {
+export function PlanCalendarPage({
+  id,
+  plan,
+  filters,
+  client,
+  now,
+  position,
+  onPosition,
+}: PlanSectionProps) {
   const t = useT();
-  const [month, setMonth] = useState(() => monthOf(dayNumber(now().toISOString().slice(0, 10))));
+  const today = now().toISOString().slice(0, 10);
+  // Kept in the address on a plan's page, so a link opens the same month.
+  const [monthHere, setMonthHere] = useState(() => monthOf(dayNumber(today)));
+  const month = position?.month ? dayNumber(`${position.month}-01`) : monthHere;
+  const setMonth = (next: number) => {
+    setMonthHere(next);
+    onPosition?.({
+      month: next === monthOf(dayNumber(today)) ? undefined : isoDay(next).slice(0, 7),
+    });
+  };
   const [data, setData] = useState<PlanCalendar | null>(null);
   const [failed, setFailed] = useState(false);
   const { first, last } = monthWeeks(month);
@@ -58,6 +78,31 @@ export function PlanCalendarPage({ id, filters, client, now }: PlanSectionProps)
         reload={load}
         now={now}
         truncatedText={t('plans.truncated', { count: data.tickets.length })}
+        tools={
+          <DownloadMenu
+            items={[
+              {
+                key: 'csv',
+                label: t('plans.download.csv'),
+                make: async () => {
+                  const fresh = await client.calendar(
+                    id,
+                    filters,
+                    isoDay(first),
+                    isoDay(last),
+                    true,
+                  );
+                  const name = fileName(plan.name, 'calendar', isoDay(month).slice(0, 7), 'csv');
+                  saveBlob(name, new Blob([calendarCsv(t, fresh)], { type: 'text/csv' }));
+                  return name;
+                },
+              },
+            ]}
+            notes={
+              data.truncated ? [t('plans.download.first', { count: data.tickets.length })] : []
+            }
+          />
+        }
       />
     </div>
   );

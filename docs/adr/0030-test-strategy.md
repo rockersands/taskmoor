@@ -70,6 +70,35 @@ input handling, focus or clipboard code.
   dialog now listens on the document), and the workflow map's Add button could be pressed
   before the default workflow loaded (now disabled until it has).
 
+### Story tests on a cold dependency cache (T-208, 2026-11-06, revised 2026-11-08)
+
+A fresh checkout's first full gate on the Windows PC lost 48 story tests on 2026-11-04 to
+"optimized dependencies changed. reloading"; a rerun passed. Vite logs that in one place: when
+its browser server meets a package mid-run that its first bundle lacks, bundles again and gets
+a different result, it reloads every test page, and the stories in flight fail. On a cold cache
+(a fresh clone or worktree, a new lockfile) the first bundle holds only what Vite's scan found
+before the browser started. On the Mac the scan finds every package, so cold runs passed there;
+a scan that misses a package, fails or is cut short under a full gate's load leaves the rest to
+be met mid-run. With the scan switched off, a cold run on the Mac reloaded three times and
+failed every story in flight, then hung.
+
+The stories' config (`storiesProject()` in `apps/web/vitest.stories.config.ts`, which makes both
+skins, `stories` and `stories-dark`, ADR-036) therefore lists every package a full run optimizes
+in `optimizeDeps.include` (`STORY_DEPS`), so the first bundle does not depend on the scan. A
+package the web app reaches only through another one is named with the one that brings it
+(`@taskmoor/richtext > mdast-util-gfm-table`): Vite resolves each entry from `apps/web` and skips
+one it cannot with only a warning. With the scan switched off and the list in place, a cold run
+bundled nothing mid-run and passed, as did cold runs of one skin and of both together.
+`vitest.stories.config.test.ts` bundles the light stories the way a cold start does, once from
+the scan alone and once from the list alone, and fails on a listed package that was not bundled
+or a scanned file the list does not cover.
+
+Each skin also keeps its optimized dependencies in a folder of its own
+(`apps/web/node_modules/.vite/stories-<skin>`). The Storybook plugin points every project made
+from one `.storybook` folder at a single folder, and the two skins, which start together, both
+optimized into it: the later one moved the earlier one's finished folder aside while its browser
+could be loading from it.
+
 ## Consequences
 
 Running every suite on each change stays fast while the suite is small; `--changed` limits the

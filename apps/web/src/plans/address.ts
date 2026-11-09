@@ -8,6 +8,7 @@ export const PLAN_SECTIONS = [
   { id: 'list', path: '/list', labelId: 'plans.section.list' },
   { id: 'calendar', path: '/calendar', labelId: 'plans.section.calendar' },
   { id: 'capacity', path: '/capacity', labelId: 'plans.section.capacity' },
+  { id: 'releases', path: '/releases', labelId: 'plans.section.releases' },
   { id: 'settings', path: '/settings', labelId: 'plans.section.settings' },
 ] as const satisfies readonly { id: string; path: string; labelId: MessageId }[];
 
@@ -17,17 +18,70 @@ export type PlanSection = (typeof PLAN_SECTIONS)[number]['id'];
 export const PLAN_GROUPS = ['track', 'assignee', 'status', 'type', 'priority'] as const;
 export type PlanGroup = (typeof PLAN_GROUPS)[number];
 
-/** The view in the page's address: the filters and the grouping. */
+/** The words of each grouping, on the filter bar and in a Timeline's image. */
+export const GROUP_LABELS: Record<PlanGroup | 'none', MessageId> = {
+  none: 'plans.group.none',
+  track: 'plans.group.track',
+  assignee: 'plans.group.assignee',
+  status: 'plans.group.status',
+  type: 'plans.group.type',
+  priority: 'plans.group.priority',
+};
+
+export const PLAN_ZOOMS = ['weeks', 'months', 'quarters'] as const;
+export type PlanZoom = (typeof PLAN_ZOOMS)[number];
+export const PLAN_SORTS = ['created', 'updated', 'due', 'priority'] as const;
+export type PlanSort = (typeof PLAN_SORTS)[number];
+
+/**
+ * Where a view stands (PLN-014): the Timeline's zoom, the Calendar's month (`2026-11`), the first
+ * day Capacity asks for and the List's order. A link holds them, but moving through them reads
+ * nothing again, so they are kept apart from the filters and the grouping.
+ */
+export interface PlanPosition {
+  zoom?: PlanZoom | undefined;
+  month?: string | undefined;
+  from?: string | undefined;
+  sort?: PlanSort | undefined;
+}
+
+/** The view in the page's address: the filters, the grouping and where the view stands. */
 export interface PlanView {
   filters: PlanFilters;
   group: PlanGroup | null;
+  position?: PlanPosition;
 }
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|settings))?(?:[/?]|$)/;
 
 const STAGES = ['new', 'active', 'closed'] as const;
+
+/** A day that exists, as `YYYY-MM-DD`. */
+function isDay(text: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const when = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(when.getTime()) && when.toISOString().slice(0, 10) === text;
+}
+
+/** One of the allowed values, or nothing. */
+const oneOf = <T extends string>(values: readonly T[], text: string | null): T | undefined =>
+  text !== null && (values as readonly string[]).includes(text) ? (text as T) : undefined;
+
+/** Where the view stands; values that could not be meant are left out. */
+function readPosition(params: URLSearchParams): PlanPosition {
+  const position: PlanPosition = {};
+  const zoom = oneOf(PLAN_ZOOMS, params.get('zoom'));
+  if (zoom) position.zoom = zoom;
+  const month = params.get('month');
+  if (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) position.month = month;
+  const from = params.get('from');
+  if (from && isDay(from)) position.from = from;
+  const sort = oneOf(PLAN_SORTS, params.get('sort'));
+  if (sort) position.sort = sort;
+  return position;
+}
 
 /** The view an address holds; values that could not be meant are left out. */
 export function readView(route: string): PlanView {
@@ -49,6 +103,7 @@ export function readView(route: string): PlanView {
     filters,
     group:
       group && (PLAN_GROUPS as readonly string[]).includes(group) ? (group as PlanGroup) : null,
+    position: readPosition(params),
   };
 }
 
@@ -62,6 +117,17 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     if (value) params.set(key, value);
   }
   if (view.group) params.set('group', view.group);
+  for (const key of ['zoom', 'month', 'from', 'sort'] as const) {
+    const value = view.position?.[key];
+    if (value) params.set(key, value);
+  }
   const text = params.toString();
   return text ? `${path}?${text}` : path;
 }
+
+/**
+ * What decides whether a plan is read again: the filters and the grouping, never where the view
+ * stands, so moving a month or changing the zoom reads nothing more than its own view does.
+ */
+export const planViewKey = (id: number, view: PlanView): string =>
+  planHref(id, 'summary', { filters: view.filters, group: view.group });

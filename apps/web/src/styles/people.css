@@ -14,6 +14,11 @@
   margin: 0;
 }
 
+/* A card's status line with nothing to say stays in place for a screen reader, and takes no gap. */
+.people-card > .form-status:empty {
+  margin-block-start: calc(-1 * var(--space-3));
+}
+
 .people-form,
 .people-inline {
   display: grid;

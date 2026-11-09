@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import { finger } from './touch';
 
 /**
@@ -16,12 +16,15 @@ async function drag(page: Page, card: string, column: string) {
   await from.dragTo(to);
 }
 
-/** A track of its own with one ticket, for one test. */
-async function oneTicket(page: Page, prefix: string) {
+/**
+ * A track of its own with one ticket, for one test. Its key names the worker as well as the
+ * moment, so runs started in the same millisecond (with --repeat-each, say) never share one.
+ */
+async function oneTicket(page: Page, prefix: string, testInfo: TestInfo) {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `${prefix}${Date.now()}`;
-  const key = `D${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const key = `D${testInfo.parallelIndex}${Date.now().toString(36).toUpperCase().slice(-7)}`;
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Drag ${key}`, mode: 'shared' },
   });
@@ -41,7 +44,7 @@ test('[AGL-002] a mouse drag moves a card to any column with nothing asked', asy
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'dragging with a mouse is a desktop path');
-  const { key, word, status } = await oneTicket(page, 'drag');
+  const { key, word, status } = await oneTicket(page, 'drag', testInfo);
 
   await page.goto(`${BASE}/#/tracks/${key}/board`);
   await expect(page.getByRole('link', { name: new RegExp(word) })).toBeVisible();
@@ -81,7 +84,7 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'a finger on a phone');
   test.setTimeout(60_000);
-  const { key, word, ticket, status } = await oneTicket(page, 'touch');
+  const { key, word, ticket, status } = await oneTicket(page, 'touch', testInfo);
 
   await page.goto(`${BASE}/#/tracks/${key}/board`);
   const link = page.getByRole('link', { name: new RegExp(word) });
@@ -96,6 +99,20 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
   expect((await active.boundingBox())?.x ?? 0).toBeGreaterThan(region.x + region.width / 2);
 
   // A finger on the card itself is the browser's: it scrolls, and the card stays where it is.
+  // That scroll goes on after the finger lifts, gliding and then snapping to a column. The
+  // columns scroll back only once it has ended: sooner, the snap would carry them off again,
+  // as it did under load (T-013a).
+  const browserScroll = await columns.evaluateHandle((el) => {
+    const scroll = { ended: false };
+    el.addEventListener(
+      'scrollend',
+      () => {
+        scroll.ended = true;
+      },
+      { once: true },
+    );
+    return scroll;
+  });
   const card = (await link.boundingBox()) as NonNullable<typeof region>;
   const swipe = await finger(page);
   await swipe.down({ x: card.x + card.width / 2, y: card.y + card.height / 2 });
@@ -103,6 +120,7 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
   await swipe.up();
   await expect(page.locator('.board-card.is-dragging')).toHaveCount(0);
   expect(await status()).toBe('New');
+  await expect.poll(() => browserScroll.evaluate((scroll) => scroll.ended)).toBe(true);
   await columns.evaluate((el) => el.scrollTo({ left: 0 }));
   await expect.poll(scrolled).toBe(0);
 

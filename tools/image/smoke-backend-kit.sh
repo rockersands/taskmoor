@@ -22,9 +22,14 @@ trap cleanup EXIT
 # The image's own version: the kit pins it, and the backend refuses a frontend of another.
 VERSION=$(docker run --rm --entrypoint cat "$TAG" /app/web/version.json | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)
 echo "== kit for https://localhost:18443 ($TAG, version $VERSION)"
+# The kits carry the image's own web build, as fresh-vm.sh's do: a checkout has none until
+# `pnpm build`, and one built from other sources would not be the image's version.
+cid=$(docker create "$TAG")
+docker cp "$cid:/app/web" "$WORK/web" >/dev/null
+docker rm -v "$cid" >/dev/null
 node node_modules/tsx/dist/cli.mjs packages/devtools/src/cli/builder.ts \
   --backend-url https://localhost:18443 --frontend-url https://localhost:18443/ \
-  --out "$WORK/out" --version "$VERSION" >/dev/null
+  --web "$WORK/web" --out "$WORK/out" --version "$VERSION" >/dev/null
 mkdir "$WORK/kit"
 (cd "$WORK/kit" && unzip -q "$WORK/out/taskmoor-backend-kit.zip")
 instance=$(sed -n 's/^TASKMOOR_INSTANCE_ID=//p' "$WORK/kit/.env")

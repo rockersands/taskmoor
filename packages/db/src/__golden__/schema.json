@@ -592,6 +592,39 @@
       "CREATE INDEX comment_embedding_workspace_idx ON public.comment_embedding USING btree (workspace_id, model)"
     ]
   },
+  "cross_track_release": {
+    "columns": [
+      "id integer not null default nextval('cross_track_release_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "owner_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "end_rule text not null",
+      "release_date date",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX cross_track_release_list_idx ON public.cross_track_release USING btree (workspace_id, release_date, id)",
+      "CREATE INDEX cross_track_release_owner_idx ON public.cross_track_release USING btree (workspace_id, owner_id)",
+      "CREATE UNIQUE INDEX cross_track_release_pkey ON public.cross_track_release USING btree (id)"
+    ]
+  },
+  "cross_track_release_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "cross_track_release_id integer not null",
+      "release_id integer not null",
+      "track_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX cross_track_release_member_pkey ON public.cross_track_release_member USING btree (release_id)",
+      "CREATE INDEX cross_track_release_member_track_idx ON public.cross_track_release_member USING btree (track_id)",
+      "CREATE UNIQUE INDEX cross_track_release_member_track_key ON public.cross_track_release_member USING btree (cross_track_release_id, track_id)"
+    ]
+  },
   "dashboard": {
     "columns": [
       "id integer not null default nextval('dashboard_id_seq'::regclass)",
@@ -1757,6 +1790,7 @@
       "updated_at timestamp with time zone not null default now()"
     ],
     "indexes": [
+      "CREATE UNIQUE INDEX release_id_track_key ON public.release USING btree (id, track_id)",
       "CREATE UNIQUE INDEX release_name_idx ON public.release USING btree (track_id, lower(name))",
       "CREATE UNIQUE INDEX release_order_key ON public.release USING btree (track_id, sort_order)",
       "CREATE UNIQUE INDEX release_pkey ON public.release USING btree (id)"

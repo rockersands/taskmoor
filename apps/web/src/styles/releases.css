@@ -220,6 +220,7 @@
 }
 
 .release-table-wrap {
+  position: relative;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -267,6 +268,118 @@
   .release-table a {
     display: inline-flex;
     align-items: center;
+    min-width: var(--hit-target-touch);
+  }
+}
+
+/* Releases across tracks (PLN-007; ADR-122 stage 4). */
+.cross-track-page > :is(.release-section, .release-group) {
+  min-width: 0;
+}
+
+.cross-track-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 2fr);
+}
+
+.cross-track-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.cross-track-group-head h2 {
+  margin: 0;
+}
+
+.cross-track-hidden {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+}
+
+.release-cross-track {
+  overflow-wrap: anywhere;
+}
+
+.plan-releases {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cross-track-dialog form,
+.cross-track-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.cross-track-move-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.cross-track-lines,
+.cross-track-candidates,
+.cross-track-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cross-track-lines li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--glass-edge);
+  overflow-wrap: anywhere;
+}
+
+.cross-track-candidates {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.cross-track-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--glass-edge);
+  overflow-wrap: anywhere;
+}
+
+.cross-track-card h3,
+.cross-track-card p {
+  margin: 0;
+}
+
+/* The list scrolls and the button under it stays in view, on a phone too. */
+.cross-track-lines {
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 40rem) {
+  .cross-track-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .cross-track-row .release-name,
+  .cross-track-card a,
+  .cross-track-candidates label,
+  .cross-track-dialog label.form-field-inline,
+  .cross-track-group-head h2 a,
+  .release-cross-track,
+  .release-cross-track-all,
+  .release-facts a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
     min-width: var(--hit-target-touch);
   }
 }

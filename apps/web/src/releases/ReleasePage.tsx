@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -6,7 +6,6 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
-  type Counted,
   notesFileHref,
   type Release,
   type ReleaseClient,
@@ -16,21 +15,25 @@ import {
   searchHref,
   type Warning,
 } from './client';
+import {
+  type CrossTrackClient,
+  type CrossTrackRow,
+  crossTrackClient,
+  UNREACHABLE,
+} from './crossTrackClient';
+import { dayText } from './crossTrackText';
 import { ReleaseState } from './ReleaseState';
+import { StageProgress } from './StageProgress';
 
 export interface ReleasePageProps {
   releaseId: number;
   client?: ReleaseClient;
+  /** Releases across tracks, to link this one to (PLN-007). */
+  crossTrack?: CrossTrackClient;
   /** Today, the default day a release ships on. */
   now?: () => Date;
 }
 
-const STAGES = ['new', 'active', 'closed'] as const;
-const STAGE_LABELS: Record<(typeof STAGES)[number], MessageId> = {
-  new: 'search.stage.new',
-  active: 'search.stage.active',
-  closed: 'search.stage.closed',
-};
 const WARNINGS: Record<Warning['code'], MessageId> = {
   overdue: 'release.warning.overdue',
   open_after_ship: 'release.warning.openAfterShip',
@@ -39,6 +42,7 @@ const WARNINGS: Record<Warning['code'], MessageId> = {
   no_approvers: 'release.warning.noApprovers',
   approvals_waiting: 'release.warning.approvalsWaiting',
   approval_declined: 'release.warning.approvalDeclined',
+  cross_track_out_of_step: 'release.warning.outOfStep',
 };
 const DECISIONS: Record<'approved' | 'declined' | 'none', MessageId> = {
   approved: 'release.approval.approved',
@@ -46,20 +50,18 @@ const DECISIONS: Record<'approved' | 'declined' | 'none', MessageId> = {
   none: 'release.approval.waiting',
 };
 
-/** A stage's fill: one blue from light (new) to dark (closed), the flow reports' ordinal ramp. */
-const stageFill = (index: number): CSSProperties => ({
-  background: `color-mix(in oklab, var(--color-flow-first) ${100 - index * 50}%, var(--color-flow-last))`,
-});
-
 /**
  * A release's page (M1-050; CORE-016): its state and dates, its tickets by stage (each number
  * linking to the search that finds them), its warnings, its approvers (who approve or decline
  * here), shipping (with somewhere for the open tickets to go), its tickets in rank order, and
- * release notes generated from its closed tickets, to copy as Markdown or download.
+ * release notes generated from its closed tickets, to copy as Markdown or download. A release in a
+ * release across tracks (PLN-007) says so in its facts, says in words when it is out of step, and
+ * its track's administrators get Align, which is this release's own change.
  */
 export function ReleasePage({
   releaseId,
   client = releaseClient,
+  crossTrack = crossTrackClient,
   now = () => new Date(),
 }: ReleasePageProps) {
   const t = useT();
@@ -101,12 +103,19 @@ export function ReleasePage({
     return <p className="report-loading">{t('reports.loading')}</p>;
   }
 
-  const number = (c: Counted) =>
-    c.exact ? intl.formatNumber(c.count) : t('summary.atLeast', { count: c.count });
-  const total = STAGES.reduce((sum, s) => sum + overview.stages[s].count, 0);
   const track = notes.release.track;
   const canShip = overview.viewer.mayManage && !release.shipped && !release.archived;
   const mayDecide = overview.viewer.approver !== null && !release.shipped;
+  const linked = release.crossTrack ?? null;
+  const align = async (date: string) => {
+    const done = await client.setDate(releaseId, date).catch(() => null);
+    setNotice(
+      done?.ok
+        ? t('release.crossTrack.aligned', { date: dayText(intl, date) })
+        : t('release.crossTrack.alignFailed'),
+    );
+    if (done?.ok) load();
+  };
 
   return (
     <section className="page release-page" aria-labelledby={`${id}-title`}>
@@ -139,6 +148,16 @@ export function ReleasePage({
             <dd>{notes.release.shippedOn}</dd>
           </div>
         )}
+        {linked && (
+          <div>
+            <dt>{t('release.crossTrack.fact')}</dt>
+            <dd>
+              <a href={routeHref(`#/cross-track-releases/${linked.id}`)}>{linked.name}</a>
+              {' · '}
+              {linked.date ? dayText(intl, linked.date) : t('crossTrack.end.whenComplete')}
+            </dd>
+          </div>
+        )}
       </dl>
       {release.description && <p className="release-description">{release.description}</p>}
       <p className="board-hint" role="status">
@@ -147,34 +166,7 @@ export function ReleasePage({
 
       <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
         <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
-        <div className="release-bar" aria-hidden="true">
-          {STAGES.map((s, i) =>
-            overview.stages[s].count > 0 ? (
-              <span
-                key={s}
-                style={{ ...stageFill(i), flexGrow: overview.stages[s].count }}
-                title={`${t(STAGE_LABELS[s])}: ${number(overview.stages[s])}`}
-              />
-            ) : null,
-          )}
-          {total === 0 && <span className="release-bar-empty" />}
-        </div>
-        <ul className="release-legend">
-          {STAGES.map((s, i) => (
-            <li key={s}>
-              <span className="release-swatch" style={stageFill(i)} aria-hidden="true" />
-              <a
-                href={searchHref(overview.stages[s].query)}
-                aria-label={t('summary.linkLabel', {
-                  label: t(STAGE_LABELS[s]),
-                  count: number(overview.stages[s]),
-                })}
-              >
-                <span>{t(STAGE_LABELS[s])}</span> <strong>{number(overview.stages[s])}</strong>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <StageProgress stages={overview.stages} />
       </section>
 
       {overview.warnings.length > 0 && (
@@ -186,8 +178,25 @@ export function ReleasePage({
                 <span className="release-warning-mark" aria-hidden="true">
                   !
                 </span>
-                <span>{t(WARNINGS[w.code], { count: w.count })}</span>
+                <span>
+                  {t(WARNINGS[w.code], {
+                    count: w.count,
+                    name: linked?.name ?? '',
+                    date: linked?.date ? dayText(intl, linked.date) : '',
+                  })}
+                </span>
                 {w.query && <a href={searchHref(w.query)}>{t('release.warning.show')}</a>}
+                {w.code === 'cross_track_out_of_step' &&
+                  linked?.date &&
+                  overview.viewer.mayManage && (
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      onClick={() => void align(linked.date as string)}
+                    >
+                      {t('release.crossTrack.align', { date: dayText(intl, linked.date) })}
+                    </button>
+                  )}
               </li>
             ))}
           </ul>
@@ -232,6 +241,17 @@ export function ReleasePage({
             />
           )}
         </section>
+      )}
+
+      {overview.viewer.mayManage && (
+        <CrossTrackLink
+          release={release}
+          client={crossTrack}
+          onChanged={(message) => {
+            setNotice(message);
+            load();
+          }}
+        />
       )}
 
       {canShip && (
@@ -291,6 +311,167 @@ export function ReleasePage({
       <NotesView notes={notes} releaseId={releaseId} onCopied={setNotice} />
     </section>
   );
+}
+
+/**
+ * For the track's administrators: adding this release to a release across tracks, or taking it out
+ * (PLN-007). Neither changes its date: on another day it reads as out of step until someone moves it.
+ */
+function CrossTrackLink({
+  release,
+  client,
+  onChanged,
+}: {
+  release: Release;
+  client: CrossTrackClient;
+  onChanged: (message: string) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const [opened, setOpened] = useState(false);
+  const [rows, setRows] = useState<CrossTrackRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [chosen, setChosen] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const linked = release.crossTrack ?? null;
+
+  useEffect(() => {
+    if (!opened || rows !== null) return;
+    let live = true;
+    allUpcoming(client).then(
+      (all) => {
+        if (live) setRows(all.filter((r) => !r.tracks.some((x) => x.id === release.trackId)));
+      },
+      () => {
+        if (live) setFailed(true);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [opened, rows, client, release.trackId]);
+
+  const link = async () => {
+    setProblem(null);
+    const done = await client.link(Number(chosen), release.id);
+    if (done.ok) {
+      setOpened(false);
+      setRows(null);
+      setChosen('');
+      onChanged(t('release.crossTrack.linked', { name: done.value.name }));
+    } else {
+      setProblem(
+        done.code === 'release_taken' || done.code === 'track_taken'
+          ? t('crossTrack.new.taken')
+          : done.code === UNREACHABLE
+            ? t('crossTrack.unreachable')
+            : t('crossTrack.linked.addFailed'),
+      );
+    }
+  };
+  const unlink = async () => {
+    if (!linked) return;
+    setProblem(null);
+    const done = await client.unlink(linked.id, release.id);
+    if (done.ok) onChanged(t('release.crossTrack.unlinked', { name: linked.name }));
+    else {
+      setProblem(
+        done.code === UNREACHABLE
+          ? t('crossTrack.unreachable')
+          : t('crossTrack.linked.removeFailed'),
+      );
+    }
+  };
+
+  if (!linked && (release.shipped || release.archived)) return null;
+  return (
+    <section className="glass-card release-section" aria-labelledby={`${id}-cross`}>
+      <h2 id={`${id}-cross`}>{t('release.crossTrack.fact')}</h2>
+      {linked ? (
+        <button type="button" className="button-secondary" onClick={() => void unlink()}>
+          {t('release.crossTrack.remove', { name: linked.name })}
+        </button>
+      ) : !opened ? (
+        <>
+          <button type="button" className="button-secondary" onClick={() => setOpened(true)}>
+            {t('release.crossTrack.add')}
+          </button>
+          <p className="board-hint">
+            <a className="release-cross-track-all" href={routeHref('#/cross-track-releases')}>
+              {t('crossTrack.title')}
+            </a>
+          </p>
+        </>
+      ) : (
+        <form
+          className="release-ship"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void link();
+          }}
+        >
+          {failed && (
+            <p className="board-problem" role="alert">
+              {t('release.crossTrack.listFailed')}
+            </p>
+          )}
+          {rows === null && !failed && <p className="report-loading">{t('reports.loading')}</p>}
+          {rows?.length === 0 && (
+            <EmptyState compact title={t('release.crossTrack.noneToJoin')}>
+              {t('empty.release.crossTrack')}{' '}
+              <a className="release-cross-track-all" href={routeHref('#/cross-track-releases')}>
+                {t('crossTrack.title')}
+              </a>
+            </EmptyState>
+          )}
+          {rows !== null && rows.length > 0 && (
+            <label className="form-field" htmlFor={`${id}-pick`}>
+              <span className="form-label">{t('release.crossTrack.pick')}</span>
+              <select
+                id={`${id}-pick`}
+                value={chosen}
+                required
+                onChange={(event) => setChosen(event.target.value)}
+              >
+                <option value="">{t('crossTrack.linked.choose')}</option>
+                {rows.map((r) => (
+                  <option key={r.id} value={String(r.id)}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="board-hint">{t('crossTrack.new.noMove')}</p>
+          <div className="form-actions">
+            <button type="submit" className="button-primary" disabled={chosen === ''}>
+              {t('crossTrack.linked.addSubmit')}
+            </button>
+            <button type="button" className="button-secondary" onClick={() => setOpened(false)}>
+              {t('crossTrack.move.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
+      {problem && (
+        <p className="board-problem" role="alert">
+          {problem}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Every upcoming release across tracks the person sees, whatever number of pages that takes. */
+async function allUpcoming(client: CrossTrackClient): Promise<CrossTrackRow[]> {
+  const rows: CrossTrackRow[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await client.list('upcoming', cursor);
+    rows.push(...page.releases);
+    cursor = page.next ?? undefined;
+  } while (cursor);
+  return rows;
 }
 
 /** An approver's decision, with an optional comment (CORE-016 (2)). */

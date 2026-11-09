@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
+import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
 
@@ -20,6 +21,157 @@ function renderRelease(releaseId = 2, client = fakeReleaseClient({ approver: tru
 }
 const section = (name: string) => within(screen.getByRole('region', { name }));
 const searchOf = (href: string | null) => new URLSearchParams(href?.split('?')[1]).get('q');
+
+describe('a release in a release across tracks (PLN-007)', () => {
+  it('[PLN-007] names it in the facts, says out of step in words, and Align is the release’s own change', async () => {
+    const user = userEvent.setup();
+    const client = fakeReleaseClient({ linked: true });
+    const setDate = vi.spyOn(client, 'setDate');
+    renderRelease(3, client);
+    const link = await screen.findByRole('link', { name: 'Spring launch' });
+    expect(link.getAttribute('href')).toContain('#/cross-track-releases/5');
+    const warnings = section('Warnings');
+    expect(
+      warnings.getByText('Out of step with Spring launch, which ends on Dec 20, 2026.'),
+    ).toBeVisible();
+    await user.click(warnings.getByRole('button', { name: 'Align to Dec 20, 2026' }));
+    await waitFor(() => expect(setDate).toHaveBeenCalledWith(3, '2026-12-20'));
+    expect(await screen.findByText('This release now ends on Dec 20, 2026.')).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Warnings' })).toBeNull());
+  });
+
+  it('[PLN-007] keeps Align and Remove to the track’s administrators', async () => {
+    renderRelease(3, fakeReleaseClient({ linked: true, mayManage: false }));
+    expect(await screen.findByRole('link', { name: 'Spring launch' })).toBeVisible();
+    expect(
+      section('Warnings').getByText('Out of step with Spring launch, which ends on Dec 20, 2026.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Align to/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Remove from/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Add to a release across tracks/ })).toBeNull();
+  });
+
+  it('[PLN-007] adds an upcoming release to one, and offers only those its track is not yet in', async () => {
+    const user = userEvent.setup();
+    const crossTrack = fakeCrossTrackClient();
+    const link = vi.spyOn(crossTrack, 'link');
+    crossTrack.list = async () => ({
+      releases: [
+        {
+          id: 8,
+          name: 'Autumn launch',
+          endRule: 'work_complete',
+          date: null,
+          state: 'upcoming',
+          owner: { id: 3, name: 'Ana Ruiz' },
+          tracks: [{ id: 2, key: 'OPS', name: 'Operations' }],
+          progress: { tickets: 0, closed: 0, open: 0 },
+          hidden: { releases: 0, open: 0 },
+          version: 1,
+        },
+        {
+          id: 9,
+          name: 'Has this track',
+          endRule: 'work_complete',
+          date: null,
+          state: 'upcoming',
+          owner: { id: 3, name: 'Ana Ruiz' },
+          tracks: [{ id: 1, key: 'CHK', name: 'Checkout' }],
+          progress: { tickets: 0, closed: 0, open: 0 },
+          hidden: { releases: 0, open: 0 },
+          version: 1,
+        },
+      ],
+      next: null,
+    });
+    crossTrack.link = async (...args) => {
+      link(...args);
+      return { ok: false, code: 'not_found' };
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={fakeReleaseClient()} crossTrack={crossTrack} />
+      </I18nProvider>,
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Add to a release across tracks…' }),
+    );
+    const select = await screen.findByLabelText('Which one to join');
+    expect(within(select).queryByRole('option', { name: 'Has this track' })).toBeNull();
+    await user.selectOptions(select, 'Autumn launch');
+    await user.click(screen.getByRole('button', { name: 'Link it' }));
+    await waitFor(() => expect(link).toHaveBeenCalledWith(8, 3));
+    expect(await screen.findByRole('alert')).toHaveTextContent('could not be linked');
+  });
+
+  it('[PLN-007] offers every one the person sees, however many pages, and the way to the list', async () => {
+    const user = userEvent.setup();
+    const base = fakeCrossTrackClient();
+    const [row] = (await base.list('upcoming')).releases;
+    const rowNamed = (id: number, name: string) => ({
+      ...(row as NonNullable<typeof row>),
+      id,
+      name,
+      tracks: [],
+    });
+    const crossTrack = {
+      ...base,
+      list: vi.fn(async (_state: 'upcoming' | 'shipped', cursor?: string) =>
+        cursor
+          ? { releases: [rowNamed(9, 'On the second page')], next: null }
+          : { releases: [rowNamed(8, 'On the first page')], next: 'next-page' },
+      ),
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={fakeReleaseClient()} crossTrack={crossTrack} />
+      </I18nProvider>,
+    );
+    const add = await screen.findByRole('button', { name: 'Add to a release across tracks…' });
+    expect(screen.getByRole('link', { name: 'Releases across tracks' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('#/cross-track-releases'),
+    );
+    await user.click(add);
+    const select = await screen.findByLabelText('Which one to join');
+    expect(within(select).getByRole('option', { name: 'On the first page' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'On the second page' })).toBeInTheDocument();
+  });
+
+  it('[PLN-007] tells an outage from none to join, and says when Align got no answer', async () => {
+    const user = userEvent.setup();
+    const crossTrack = {
+      ...fakeCrossTrackClient(),
+      list: async () => {
+        throw new Error('down');
+      },
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={fakeReleaseClient()} crossTrack={crossTrack} />
+      </I18nProvider>,
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Add to a release across tracks…' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The releases across tracks could not be read.',
+    );
+    expect(screen.queryByText('None to join')).toBeNull();
+    cleanup();
+    const client = fakeReleaseClient({ linked: true });
+    client.setDate = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage releaseId={3} client={client} crossTrack={fakeCrossTrackClient()} />
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: /Align to/ }));
+    expect(await screen.findByText('The date could not be changed.')).toBeVisible();
+  });
+});
 
 describe('a release’s page (M1-050)', () => {
   it('[CORE-016] shows the tickets by stage, each number opening the search that finds them', async () => {

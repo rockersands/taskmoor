@@ -2,7 +2,7 @@
 title: "Notifications and your inbox"
 audience: users
 sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/comments.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, docs/adr/0120-ticket-tools.md
-accessed: 2026-11-04
+accessed: 2026-11-06
 attestation: own-words
 ---
 # Notifications and your inbox
@@ -167,7 +167,10 @@ it, and links to your **Tracks** page. It follows your choice under **Email** li
 it is not sent if the group is no longer yours by the time it would go.
 
 A run of checklist changes is one line in the ticket's email, such as "Ana made 5 changes to
-checklists", with no checklist's name and no item's words.
+checklists", with no checklist's name and no item's words. With email as changes happen, a run
+that starts within the couple of minutes of the ticket's email holds that email until the run's
+own couple of minutes have passed, so you get one email with the whole run in it. A run that
+starts later comes in an email of its own.
 
 ## Unsubscribing from email
 

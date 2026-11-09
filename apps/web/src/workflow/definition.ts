@@ -204,6 +204,114 @@ export function addStatusFreely(
   );
 }
 
+/** The statuses the first default workflow's steps went between, by the part they played. */
+export interface SeededStatuses {
+  fresh: number;
+  active: number;
+  review: number;
+  closed: number;
+}
+
+/**
+ * The statuses of the steps the default workflow was first seeded with, when a definition still has
+ * all five exactly as seeded (T-234; WF-008): Start, Send to review, Back to active, Close, which
+ * asked for a close reason, and Reopen. Nobody chose those rules, so they are not a reason to keep
+ * a draft strict; a site's default workflow moves freely since (ADR-116). Null otherwise, and for
+ * any step someone changed or gave a local-mode rule.
+ */
+export function strictSeedSteps(definition: WorkflowDefinition): SeededStatuses | null {
+  const step = (id: number) => definition.transitions.find((t) => t.id === id);
+  const [start, review, back, close, reopen] = [1, 2, 3, 4, 5].map(step);
+  if (!start || !review || !back || !close || !reopen) return null;
+  const fresh = definition.initialStatusId;
+  const active = start.to;
+  const inReview = review.to;
+  const closed = close.to;
+  const seeded: Transition[] = [
+    { id: 1, name: 'Start', from: [fresh], to: active },
+    { id: 2, name: 'Send to review', from: [active], to: inReview },
+    { id: 3, name: 'Back to active', from: [inReview], to: active },
+    {
+      id: 4,
+      name: 'Close',
+      from: 'any',
+      to: closed,
+      layout: ['close-reason'],
+      checks: [{ type: 'field-required', field: 'close-reason' }],
+    },
+    {
+      id: 5,
+      name: 'Reopen',
+      from: [closed],
+      to: fresh,
+      effects: [{ type: 'clear-field', field: 'close-reason' }],
+    },
+  ];
+  const untouched =
+    sameDefinition([start, review, back, close, reopen], seeded) &&
+    seeded.every((t) => !(String(t.id) in (definition.rules ?? {})));
+  return untouched ? { fresh, active, review: inReview, closed } : null;
+}
+
+/**
+ * Whether making a draft's seeded steps move freely needs a close reason to set: its seeded closing
+ * status, or a status no transition reaches, is in the closed stage.
+ */
+export function freeingSeedNeedsCloseReason(
+  definition: WorkflowDefinition,
+  statuses: readonly Status[],
+): boolean {
+  const seeded = strictSeedSteps(definition);
+  if (!seeded) return false;
+  const closing = (id: number) => statuses.find((s) => s.id === id)?.stage === 'closed';
+  if (closing(seeded.closed)) return true;
+  const rest = definition.transitions.filter((t) => t.id > 5 || t.id < 1);
+  if (!isFreeMoving({ ...definition, transitions: rest })) return false;
+  const reached = new Set([...Object.values(seeded), ...rest.map((t) => t.to)]);
+  return statusIdsOf(definition).some((id) => !reached.has(id) && closing(id));
+}
+
+/**
+ * The definition with the seeded steps replaced by free moves, as the published default workflow
+ * moves (migration 0104): a global transition into each seeded status, numbered as the step that
+ * led there before so history names the same steps, and named after the status. Everything else
+ * stays as its author saved it; when the rest moves freely too, any status no transition reaches
+ * gets its free move as well. A closing status with no reason to set keeps no free move.
+ */
+export function freeingSeed(
+  definition: WorkflowDefinition,
+  statuses: readonly Status[],
+  completedId: number | null,
+  reserved: Iterable<number> = [],
+): WorkflowDefinition {
+  const seeded = strictSeedSteps(definition);
+  if (!seeded) return definition;
+  const statusOf = (id: number) => statuses.find((s) => s.id === id);
+  const free = (
+    [
+      [5, seeded.fresh],
+      [1, seeded.active],
+      [2, seeded.review],
+      [4, seeded.closed],
+    ] as const
+  ).flatMap(([id, statusId]) => {
+    const status = statusOf(statusId);
+    if (!status || (status.stage === 'closed' && completedId === null)) return [];
+    return [freeTransition(id, status, completedId)];
+  });
+  const rest = definition.transitions.filter((t) => t.id > 5 || t.id < 1);
+  let next: WorkflowDefinition = { ...definition, transitions: [...free, ...rest] };
+  if (!isFreeMoving(next)) return next;
+  const used = [...reserved, 1, 2, 3, 4, 5];
+  for (const { statusId } of next.statuses) {
+    if (next.transitions.some((t) => t.to === statusId)) continue;
+    const status = statusOf(statusId);
+    if (!status || (status.stage === 'closed' && completedId === null)) continue;
+    next = addTransition(next, freeTransition(nextTransitionId(next, used), status, completedId));
+  }
+  return next;
+}
+
 export function setInitialStatus(
   definition: WorkflowDefinition,
   statusId: number,

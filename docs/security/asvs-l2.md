@@ -40,7 +40,7 @@ ADR-111).
 | 1.5.4 | Output encoding close to its interpreter | Met | React escaping; `escapeHtml` in `email/render.ts`; Kysely parameters |
 | 1.6.1 | A key management policy exists | Met | ADR-098 (envelope encryption, rotation), pepper ring (`packages/iam/src/password.ts`) |
 | 1.6.2 | Keys are protected by the services that use them | Met | Master key and pepper from the environment or files, never the database (`apps/server/src/secrets.ts`); KMS or Vault adapters (ADR-098) |
-| 1.6.3 | No hard-coded keys or passwords | Met | Secret scan of the whole history clean (`scan-triage.md`); tests build credentials at run time |
+| 1.6.3 | No hard-coded keys or passwords | Met | Secret scan of the whole history clean (`secret-scan.md`, `pnpm secrets`); tests build credentials at run time |
 | 1.6.4 | Client-side secrets are never trusted | Met | The frontend holds no secret (`packages/webconfig`); the Builder's secrets go only into kits (`packages/builder-core/src/secrets.ts`) |
 | 1.7.1 | One logging format across the system | Met | Pino JSON (Fastify), audit records (`audit/record.ts`), syslog export (`audit/syslog.ts`) |
 | 1.7.2 | Logs can go to a remote system | Met | Audit syslog forwarding (`apps/server/src/audit/syslog.ts`; `syslog.test.ts`); stdout for the log collector |
@@ -114,7 +114,7 @@ ADR-111).
 | 2.10.1 | Service secrets do not rely on unchanging credentials | Met | API tokens and service accounts are revocable and rotatable (`routes/service-accounts.ts`, `tokens/api-tokens.ts`) |
 | 2.10.2 | No default credentials for services | Met | Setup and kits generate every password (`packages/builder-core/src/secrets.ts`, `deploy/compose`) |
 | 2.10.3 | Service passwords are protected | Met | Environment or mounted files; sealed when stored (`packages/iam/src/envelope.ts`) |
-| 2.10.4 | Secrets are never in source code | Met | Secret scan clean over the whole history (`scan-triage.md`); `.gitleaks.toml` |
+| 2.10.4 | Secrets are never in source code | Met | Secret scan clean over the whole history (`secret-scan.md`); `.gitleaks.toml` |
 
 ## V3 Session management
 

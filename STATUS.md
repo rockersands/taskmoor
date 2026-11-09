@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-11-03. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-11-07. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 

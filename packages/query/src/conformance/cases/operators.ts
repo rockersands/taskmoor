@@ -196,6 +196,32 @@ export const OPERATOR_CASES: QueryCase[] = [
     catalogue: CATALOGUE,
     expect: { ok: true },
   }),
+  // A release across tracks (PLN-007): =, !=, IN and NOT IN, by id or name, and nothing else.
+  ...['= 7', '!= 7', 'IN (7, "Spring launch")', 'NOT IN (7)', '= "Spring launch"'].map(
+    (clause, i) =>
+      c(`cross-track-release-${i}`, {
+        kind: 'resolve',
+        title: `crossTrackRelease ${clause}`,
+        text: `crossTrackRelease ${clause}`,
+        catalogue: CATALOGUE,
+        expect: { ok: true },
+      }),
+  ),
+  ...[
+    ['IS EMPTY', 'does not take'],
+    ['IS NOT EMPTY', 'does not take'],
+    ['> 7', 'no order'],
+    ['WAS 7', 'no change history'],
+    ['CHANGED', 'no change history'],
+  ].map(([clause, message], i) =>
+    c(`cross-track-release-refused-${i}`, {
+      kind: 'resolve',
+      title: `crossTrackRelease ${clause} is refused`,
+      text: `crossTrackRelease ${clause}`,
+      catalogue: CATALOGUE,
+      expect: { ok: false, message: message as string },
+    }),
+  ),
   c('number-compared-with-text', {
     kind: 'resolve',
     title: 'A number field compared with text is refused',

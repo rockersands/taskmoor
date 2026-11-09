@@ -17,16 +17,14 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { dayNumber, isoDay, type Rescheduled, type Timeline, type TimelineItem } from './client';
 import { type Blocked, barOf, blockerCount, dependencyState } from './dependencies';
+import { drawnReleases, releaseMarkerText } from './markers';
 import { scheduleRefusal } from './refusal';
+import { type TimelineRow as Row, type TimelineGroup, timelineRows } from './rows';
+
+export type { TimelineGroup } from './rows';
 
 /** What a timeline draws: a track's, or a Multi-track plan's (ADR-064, ADR-122). */
 export type TimelineData = Omit<Timeline, 'track'>;
-
-/** A group of rows: its id and its heading, for one ticket. */
-export interface TimelineGroup {
-  id: string;
-  label: string;
-}
 
 export interface TimelineViewProps {
   data: TimelineData;
@@ -50,9 +48,12 @@ export interface TimelineViewProps {
   dependencies?: ReadonlyMap<number, Blocked>;
   /** More controls beside the zoom. */
   tools?: ReactNode;
+  /** The zoom, when the page keeps it (a plan's, in its address); else this view does. */
+  zoom?: Zoom;
+  onZoom?: (zoom: Zoom) => void;
 }
 
-type Zoom = 'weeks' | 'months' | 'quarters';
+export type Zoom = 'weeks' | 'months' | 'quarters';
 /** Pixels per day at each zoom. */
 const SCALE: Record<Zoom, number> = { weeks: 28, months: 8, quarters: 3 };
 const ZOOMS: { id: Zoom; label: MessageId }[] = [
@@ -67,10 +68,6 @@ const WINDOW_AFTER = 200;
 const OVERSCAN = 20;
 /** Scrolling moves the drawn rows in steps of this many, not on every pixel. */
 const STEP = 10;
-
-type Row =
-  | { kind: 'group'; id: string; label: string; count: number }
-  | { kind: 'item'; item: TimelineItem; depth: number; hasChildren: boolean };
 
 /** A bar being dragged: what moves, from where, and the days it shows now. */
 interface Drag {
@@ -109,11 +106,15 @@ export function TimelineView({
   truncatedText,
   dependencies,
   tools,
+  zoom: zoomKept,
+  onZoom,
 }: TimelineViewProps) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
-  const [zoom, setZoom] = useState<Zoom>('weeks');
+  const [zoomHere, setZoomHere] = useState<Zoom>('weeks');
+  const zoom = zoomKept ?? zoomHere;
+  const setZoom = onZoom ?? setZoomHere;
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
   const [closedGroups, setClosedGroups] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<number | null>(null);
@@ -130,43 +131,10 @@ export function TimelineView({
   const today = dayNumber(now().toISOString().slice(0, 10));
   const px = SCALE[zoom];
 
-  const rows = useMemo(() => {
-    const listed = new Set(data.items.map((i) => i.id));
-    const out: Row[] = [];
-    const tree = (items: TimelineItem[]) => {
-      const inGroup = new Set(items.map((i) => i.id));
-      const children = new Map<number, TimelineItem[]>();
-      for (const i of items) {
-        if (i.parentId !== null && inGroup.has(i.parentId)) {
-          children.set(i.parentId, [...(children.get(i.parentId) ?? []), i]);
-        }
-      }
-      const visit = (item: TimelineItem, depth: number) => {
-        const kids = children.get(item.id) ?? [];
-        out.push({ kind: 'item', item, depth, hasChildren: kids.length > 0 });
-        if (!collapsed.has(item.id)) for (const k of kids) visit(k, depth + 1);
-      };
-      for (const i of items) {
-        if (i.parentId === null || !listed.has(i.parentId) || !inGroup.has(i.parentId)) visit(i, 0);
-      }
-    };
-    if (!groupOf) {
-      tree(data.items);
-      return out;
-    }
-    const groups = new Map<string, { label: string; items: TimelineItem[] }>();
-    for (const i of data.items) {
-      const g = groupOf(i);
-      const entry = groups.get(g.id) ?? { label: g.label, items: [] };
-      entry.items.push(i);
-      groups.set(g.id, entry);
-    }
-    for (const [gid, g] of [...groups].sort((a, b) => a[1].label.localeCompare(b[1].label))) {
-      out.push({ kind: 'group', id: gid, label: g.label, count: g.items.length });
-      if (!closedGroups.has(gid)) tree(g.items);
-    }
-    return out;
-  }, [data, collapsed, closedGroups, groupOf]);
+  const rows = useMemo(
+    () => timelineRows(data.items, groupOf, collapsed, closedGroups),
+    [data, collapsed, closedGroups, groupOf],
+  );
 
   // The calendar shown: every bar and marker, today, and some room on both sides.
   const range = useMemo(() => {
@@ -625,16 +593,19 @@ export function TimelineView({
                   {s.name}
                 </span>
               ))}
-              {data.markers.releases.map((r) => (
-                <span
-                  key={`r${r.id}`}
-                  className="timeline-release-label"
-                  style={{ left: x(dayNumber(r.date)) }}
-                  title={r.name}
-                >
-                  ◆ {r.name}
-                </span>
-              ))}
+              {drawnReleases(data.markers.releases).map((r) => {
+                const text = releaseMarkerText(t, r);
+                return (
+                  <span
+                    key={r.key}
+                    className="timeline-release-label"
+                    style={{ left: x(dayNumber(r.date)) }}
+                    title={text}
+                  >
+                    ◆ {text}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div className="timeline-grid" style={{ height: rows.length * ROW }}>
@@ -660,9 +631,9 @@ export function TimelineView({
                   }}
                 />
               ))}
-              {data.markers.releases.map((r) => (
+              {drawnReleases(data.markers.releases).map((r) => (
                 <span
-                  key={`rl${r.id}`}
+                  key={`l${r.key}`}
                   className="timeline-release-line"
                   style={{ left: x(dayNumber(r.date) + 1) }}
                 />

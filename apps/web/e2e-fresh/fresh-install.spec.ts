@@ -135,8 +135,9 @@ test('[NFR-013] [OPS-013] the frontend at another site: sign in, a ticket, its b
   await page.keyboard.press('c');
   const dialog = page.getByRole('dialog', { name: 'Create ticket' });
   await dialog.getByLabel('Track').selectOption({ value: 'FRESH' });
-  // The track's own form and its ticket types load after the choice: type once they have.
-  await expect(dialog.getByLabel('Ticket type')).not.toHaveValue('');
+  // The track's own form and its ticket types load after the choice: type once they have. The
+  // type is a combobox that names the chosen type (CORE-005), shown once the types are in.
+  await expect(dialog.getByRole('combobox', { name: 'Ticket type' })).toHaveText(/\S/);
   const summary = dialog.getByLabel('Summary (required)');
   await summary.fill('Lighthouse lamp flickers');
   await expect(summary).toHaveValue('Lighthouse lamp flickers');

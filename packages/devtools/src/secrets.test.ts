@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { scanRepository, scanText } from './secrets';
+import { SECRET_RULES, scanRepository, scanText } from './secrets';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -54,5 +56,41 @@ describe('secret scan', () => {
 
   it('accepts a line marked as reviewed', () => {
     expect(scanText('ci.yml', `URL: ${fake.dbUrl} # secret-scan: ${'allow'}`)).toEqual([]);
+  });
+});
+
+// The history scan's configuration (`pnpm secrets`, T-032): gitleaks itself is a local tool, so
+// these read the file as text.
+describe('the gitleaks configuration', () => {
+  const toml = readFileSync(join(REPO, '.gitleaks.toml'), 'utf8');
+  const allowlists = toml.split(/^\[\[allowlists\]\]$/m).slice(1);
+  const list = (block: string, key: string) => {
+    const body = block.match(new RegExp(`^${key} = \\[([\\s\\S]*?)\\]$`, 'm'))?.[1] ?? '';
+    return [...body.matchAll(/'''(.*?)'''/g)].map((m) => m[1] ?? '');
+  };
+
+  it('[IAM-007] matches API tokens with the pattern of the working-tree scan', () => {
+    const rule = toml.match(/^id = "taskmoor-api-token"\n[^\n]*\nregex = '''(.+)'''$/m);
+    const ours = SECRET_RULES.find((r) => r.id === 'taskmoor-api-token');
+    expect(rule?.[1]).toBe(ours?.pattern.source);
+  });
+
+  it('[NFR-008] allows exact values in named files only, never a path or a rule alone', () => {
+    expect(toml).not.toMatch(/^\[allowlist\]$/m); // no global allowlist
+    expect(allowlists.length).toBeGreaterThan(0);
+    for (const block of allowlists) {
+      expect(block).toMatch(/^targetRules = \["[a-z-]+"\]$/m);
+      expect(block).toMatch(/^condition = "AND"$/m);
+      expect(block).not.toMatch(/regexTarget|stopwords|commits = /);
+      const paths = list(block, 'paths');
+      const values = list(block, 'regexes');
+      expect(paths.length).toBeGreaterThan(0);
+      expect(values.length).toBeGreaterThan(0);
+      for (const path of paths) expect(path).toMatch(/^\^[^*+?|()[\]]+\$$/);
+      for (const value of values) {
+        expect(value).toMatch(/^\^.+\$$/);
+        expect(value).not.toMatch(/\.[*+]/);
+      }
+    }
   });
 });

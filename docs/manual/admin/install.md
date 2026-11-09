@@ -2,7 +2,7 @@
 title: "Installing Taskmoor"
 audience: admins
 sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv, packages/builder-core/src/postgres-tls.ts, deploy/compose/upgrade.sh, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-02
+accessed: 2026-11-06
 attestation: own-words
 ---
 # Installing Taskmoor
@@ -48,6 +48,11 @@ docker build --network host --secret id=build_ca,src=/path/to/proxy-ca.pem \
   --build-arg TASKMOOR_VERSION=1.0.0 -t taskmoor:dev .
 ```
 
+The build fetches pnpm, the exact version the source names, in a step of its own, in up to four
+attempts: a download that drops or stalls is tried again after a pause, and each attempt is
+stopped after five minutes. On a very slow connection, give each attempt longer, in seconds:
+`--build-arg PNPM_FETCH_TIMEOUT=900`.
+
 The first command builds the main image (`taskmoor:dev` is the name the Compose files use when
 `TASKMOOR_IMAGE` is not set); the second builds the all-in-one image on top of it. The build
 argument stamps the version into both the server and the web app; without it the version is
@@ -87,15 +92,18 @@ The script:
    may use it, and says how to fix each;
 2. writes `.env` with a fresh 32-character database password when there is no `.env` yet (an
    existing one is left alone);
-3. checks that the port is free, unless Taskmoor already runs;
+3. checks that the port is free, unless this kit's Taskmoor already runs there, and stops
+   before starting anything if another program holds it;
 4. starts the stack, pulling the images that are missing;
 5. waits up to two minutes for the backend to be ready, asking from inside the container, and
    shows the last 40 log lines if it is not;
-6. prints the setup link, or says that setup is already complete.
+6. prints the setup link, or says that setup is already complete. Without `PUBLIC_URL` the link
+   names the host port (`TASKMOOR_PORT`, 8080 unless set), where the browser reaches the server.
 
 It is safe to run again: it only starts or updates what is there. On Windows run
 `powershell -ExecutionPolicy Bypass -File install.ps1`, which does the same except the port
-check.
+check; without `PUBLIC_URL` its setup link names port 8080 even when `TASKMOOR_PORT` is another,
+so change the port in the link to match.
 
 #### Encryption between the backend and PostgreSQL
 

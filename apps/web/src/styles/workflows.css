@@ -146,6 +146,19 @@
   gap: var(--space-3);
 }
 
+/* A default workflow's draft that still has its first, strict steps (T-234). */
+.workflow-seed {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.workflow-seed p {
+  margin: 0;
+}
+
 .workflow-pick:focus-visible,
 .workflow-diagram:focus-visible {
   outline: 2px solid var(--color-focus);

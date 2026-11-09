@@ -1,0 +1,6 @@
+Key,Summary,Type,Track,Status,Start,Due,Days come from,Children start,Children due,Children closed,Children,Blockers listed,Late blockers,Blockers outside this plan or hidden,Blockers of this plan left out here
+SHOP-1,Spring launch,Outcome,SHOP,New,,,,2026-11-02,2026-11-20,0,2,0,0,0,0
+SHOP-2,Build the shop page,Feature,SHOP,Active,2026-11-02,2026-11-10,The ticket,,,,,0,0,0,0
+SHOP-3,Take payments,Feature,SHOP,New,2026-11-09,2026-11-20,The ticket,,,,,1,1,0,0
+OPS-4,Scale the servers,Feature,OPS,New,2026-11-12,2026-11-18,The ticket,,,,,1,0,2,0
+OPS-5,Write the runbook,Chore,OPS,New,,,,,,,,1,0,0,0

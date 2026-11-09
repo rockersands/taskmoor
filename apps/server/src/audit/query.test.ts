@@ -1,7 +1,16 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CSV_COLUMNS, csvField, csvLine } from './query';
 
 describe('audit export format (M1-003)', () => {
+  it('[PLN-014] guards a cell by the table the web app is held to as well', () => {
+    const table = JSON.parse(
+      readFileSync(new URL('../../../web/src/plans/csvGuardTable.json', import.meta.url), 'utf8'),
+    ) as [string | number | null, string][];
+    expect(table.length).toBeGreaterThan(10);
+    for (const [value, written] of table) expect(csvField(value)).toBe(written);
+  });
+
   it('[IAM-013] quotes CSV fields that need it and defuses spreadsheet formulas', () => {
     expect(csvField(null)).toBe('');
     expect(csvField(42)).toBe('42');

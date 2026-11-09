@@ -841,7 +841,11 @@ export const EVENT_TYPES = {
     subject: 'status',
     payload: z.object({ name: z.string(), stage: z.enum(['new', 'active', 'closed']) }),
   },
-  'status.updated': { subject: 'status', payload: z.object({ changes }) },
+  'status.updated': {
+    subject: 'status',
+    // A change of stage: any workflows whose free moves into it now follow it (T-209).
+    payload: z.object({ changes, workflowIds: z.array(id).optional() }),
+  },
   'status.reordered': { subject: 'workspace', payload: z.object({ statusIds: z.array(id) }) },
   'status.deleted': { subject: 'status', payload: z.object({ name: z.string() }) },
   'workflow.created': {
@@ -1062,6 +1066,17 @@ export const EVENT_TYPES = {
     }),
   },
   'plan.updated': { subject: 'plan', payload: z.object({ changes }) },
+  // A copy of a plan (PLN-014): the sources and teams it took, and how many it left out, a number.
+  'plan.duplicated': {
+    subject: 'plan',
+    payload: z.object({
+      name: z.string(),
+      from: id,
+      sources: z.array(z.string()),
+      teams: z.array(id),
+      hiddenSources: z.number().int().nonnegative(),
+    }),
+  },
   'plan.deleted': { subject: 'plan', payload: z.object({ name: z.string() }) },
   /**
    * Capacity set, changed or removed in a plan (PLN-005, PLN-009; ADR-122 stage 3): for a team
@@ -1081,6 +1096,47 @@ export const EVENT_TYPES = {
           }),
         )
         .min(1),
+    }),
+  },
+  /**
+   * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
+   * its old day, each it left with the reason, and how many were hidden from the mover; each
+   * release moved also emits its own `release.updated`.
+   */
+  'cross_track_release.created': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      name: z.string(),
+      endRule: z.enum(['fixed_date', 'work_complete']),
+      date: z.string().nullable(),
+      releaseIds: z.array(id),
+    }),
+  },
+  'cross_track_release.updated': { subject: 'cross_track_release', payload: z.object({ changes }) },
+  'cross_track_release.moved': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      from: z.string().nullable(),
+      to: z.string(),
+      moved: z.array(z.object({ releaseId: id, from: z.string().nullable() })),
+      refused: z.array(z.object({ releaseId: id, reason: z.string() })),
+      hidden: z.number().int().min(0),
+    }),
+  },
+  'cross_track_release.deleted': {
+    subject: 'cross_track_release',
+    payload: z.object({ name: z.string(), releaseIds: z.array(id) }),
+  },
+  'cross_track_release.member_added': {
+    subject: 'cross_track_release',
+    payload: z.object({ releaseId: id, trackId: id }),
+  },
+  'cross_track_release.member_removed': {
+    subject: 'cross_track_release',
+    payload: z.object({
+      releaseId: id,
+      trackId: id,
+      reason: z.enum(['removed', 'release_merged', 'release_deleted']),
     }),
   },
   /**

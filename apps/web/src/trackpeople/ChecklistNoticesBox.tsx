@@ -3,13 +3,15 @@ import { useT } from '../i18n/I18nProvider';
 import type { TrackPeopleClient } from './client';
 
 export interface ChecklistNoticesBoxProps {
+  /** The id of its heading, for the card that names itself after it. */
+  titleId?: string;
   track: { id: number; key: string };
   /** What the track has stored. */
   on: boolean;
   client: Pick<TrackPeopleClient, 'setChecklistNotices'>;
-  /** Says what changed, in the page's status line. */
+  /** Says what changed, for the page to say under the box. */
   onSaid: (text: string) => void;
-  /** A refusal, for the page to say why. */
+  /** A refusal, for the page to say why under the box. */
   onRefused: (error: unknown) => void;
 }
 
@@ -20,6 +22,7 @@ export interface ChecklistNoticesBoxProps {
  * server's: their own channel choices, never their own changes, one notice for a run.
  */
 export function ChecklistNoticesBox({
+  titleId,
   track,
   on: stored,
   client,
@@ -53,7 +56,9 @@ export function ChecklistNoticesBox({
 
   return (
     <>
-      <h2 className="facts-title">{t('trackPeople.notices')}</h2>
+      <h2 id={titleId} className="facts-title">
+        {t('trackPeople.notices')}
+      </h2>
       <div className="form-field form-field-inline">
         <input
           id={`${id}-box`}

@@ -18,8 +18,10 @@ corepack pnpm install
 corepack pnpm demo
 ```
 
-The first start builds the frontend and adds the sample data (a few minutes). It then prints the
-address, http://localhost:8080, and a one-time link per person to set a password. Open the site
+The first start builds the frontend and adds the sample data (a few minutes). A later start builds
+the frontend again only when a pull changed it (its files, the packages it uses or its version), so
+you always review the strings of the checkout you have. It then prints the address,
+http://localhost:8080, and a one-time link per person to set a password. Open the site
 administrator's link first: it can see and change everything. The other links sign you in as
 ordinary people, who see less. Each start prints new links.
 
