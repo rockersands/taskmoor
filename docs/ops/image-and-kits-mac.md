@@ -157,9 +157,18 @@ and the script was run again.
 - **`install.ps1` still names port 8080 in the setup link** when `TASKMOOR_PORT` is another and
   `PUBLIC_URL` is not set; `install.sh` no longer does. There is no PowerShell on this Mac to
   run a change, so it waits for a Windows session; the manual's install page says so meanwhile.
-- **The image build has no retry for corepack's download of pnpm**, so a dropped connection
-  fails the build (once here); a rerun passed. Over a slow, unreliable link the dependency
-  install can also stall without failing, as in the second run.
+- **Fixed by T-236 (2026-11-06): corepack's download of pnpm had no retry**, so a dropped
+  connection failed the build (once here) and a slow link could stall it. The Dockerfile now
+  fetches pnpm in a step of its own: four attempts, each stopped after `PNPM_FETCH_TIMEOUT`
+  seconds (300 unless raised), with corepack's signature check kept and its network switched
+  off afterwards. `smoke.sh` passed with it at `98cb9df7`, both architectures, in 4,042 s; that
+  step took 1.1 s.
+- **The dependency install can still stall over a slow, unreliable link**, as in the second run
+  and again in T-236's run: with the install layer rebuilt (the new step comes before it), it
+  took 3,060 s, nearly all of it waiting: nothing for about 950 s after connection resets at
+  10 s, then about 35 minutes at 807 of 820 packages, broken once by socket time-outs and resets
+  at 1,968 s, before pnpm's own retries finished. Each quiet stretch lasted 16 to 18 minutes. It
+  never failed, and nothing bounds the step as a whole.
 - `fresh-vm.sh` prints a harmless "Terminated" line when it stops its static server.
 - **`fresh-vm.sh`'s journey under heavy load** (second run, above): on a quiet machine it passed
   twice in the third run and again in the fourth, so the second run's failure did not come

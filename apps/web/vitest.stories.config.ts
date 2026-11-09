@@ -5,30 +5,130 @@ import { defineProject } from 'vitest/config';
 
 const configDir = fileURLToPath(new URL('./.storybook', import.meta.url));
 
+/** The skins the story tests render in (ADR-036). */
+export type StorySkin = 'light' | 'dark';
+
+/**
+ * Every package the stories load in the browser, optimized before the first story runs (T-208).
+ *
+ * Vite's optimizer reloads the page when it meets a package mid-run that it has not optimized:
+ * it bundles the packages again and, if the bundle changed, logs "optimized dependencies changed.
+ * reloading" and reloads every test page, which fails the story tests in flight. On a warm cache
+ * the packages are already there. On a cold one (a fresh clone or worktree, a new lockfile) the
+ * first bundle holds only what Vite's scan found before the browser started, from the story
+ * files, the setup file and the entries Vitest and Storybook add: on the Mac the scan finds every
+ * package, but a scan that misses one, fails (Vite then bundles nothing up front) or is cut short
+ * under a full gate's load leaves the rest to be met mid-run, one reload each. Listed here, they
+ * are all in the first bundle whatever the scan does.
+ *
+ * The list is the set a full stories run optimized (its `deps/_metadata.json`) less what Vitest
+ * and the Storybook plugin pin themselves (`vitest > chai` and the like, the addon's
+ * `internal/*` setup files). `vitest.stories.config.test.ts` runs Vite's scan over the stories
+ * and fails on a package it finds that is missing here: add it. Should a story still meet one
+ * mid-run, Vitest warns "Vite unexpectedly reloaded a test" and Vite names the package: add it.
+ */
+export const STORY_DEPS: readonly string[] = [
+  // The web app's own dependencies.
+  '@formatjs/icu-messageformat-parser',
+  '@hocuspocus/provider',
+  '@simplewebauthn/browser',
+  '@storybook/react-vite',
+  '@tiptap/core',
+  '@tiptap/extension-collaboration',
+  '@tiptap/extension-collaboration-caret',
+  '@tiptap/pm/model',
+  '@tiptap/pm/state',
+  '@tiptap/react',
+  '@tiptap/y-tiptap',
+  'axe-core',
+  'qrcode',
+  'react',
+  'react-dom',
+  'react-dom/client',
+  'react-dom/test-utils',
+  'react-intl',
+  'react/jsx-dev-runtime',
+  'storybook/internal/channels',
+  'storybook/internal/docs-tools',
+  'storybook/internal/preview-api',
+  'storybook/internal/preview-errors',
+  'storybook/internal/preview/runtime',
+  'storybook/preview-api',
+  'storybook/test',
+  'yjs',
+  // Packages the web app reaches only through another one: Vite resolves an entry from this
+  // folder and skips, with a warning, one it cannot, so these name the package that brings them.
+  '@storybook/react-vite > @storybook/react > @storybook/global',
+  '@storybook/react-vite > @storybook/react > @storybook/react-dom-shim',
+  '@taskmoor/builder-core > zod',
+  '@taskmoor/richtext > @tiptap/extension-mention',
+  '@taskmoor/richtext > @tiptap/extension-table',
+  '@taskmoor/richtext > @tiptap/extension-task-item',
+  '@taskmoor/richtext > @tiptap/extension-task-list',
+  '@taskmoor/richtext > @tiptap/starter-kit',
+  '@taskmoor/richtext > mdast-util-from-markdown',
+  '@taskmoor/richtext > mdast-util-gfm-autolink-literal',
+  '@taskmoor/richtext > mdast-util-gfm-strikethrough',
+  '@taskmoor/richtext > mdast-util-gfm-table',
+  '@taskmoor/richtext > mdast-util-gfm-task-list-item',
+  '@taskmoor/richtext > mdast-util-to-markdown',
+  '@taskmoor/richtext > micromark-extension-gfm-autolink-literal',
+  '@taskmoor/richtext > micromark-extension-gfm-strikethrough',
+  '@taskmoor/richtext > micromark-extension-gfm-table',
+  '@taskmoor/richtext > micromark-extension-gfm-task-list-item',
+  'vitest > @opentelemetry/api',
+];
+
+/**
+ * The folder where one skin's browser server keeps its optimized dependencies.
+ *
+ * The Storybook plugin points every project made from one `.storybook` folder at the same cache
+ * folder, overriding the per-project folder Vitest would give each. In a gate both skins start
+ * together, so on a cold cache two Vite servers optimized into that one folder at once, and the
+ * later one moved the earlier one's finished folder aside while the earlier one's browser could
+ * be loading from it. Each skin has its own folder, so neither can change the other's.
+ */
+export function storyDepsCache(skin: StorySkin): string {
+  return fileURLToPath(new URL(`./node_modules/.vite/stories-${skin}`, import.meta.url));
+}
+
 /**
  * Every story runs as a test in a real browser, with the a11y addon's axe checks. This is the
  * design system's gate (M0-031): a story with a serious or critical violation fails `pnpm verify`.
+ * Both skins come from this one function, so the light and dark runs cannot drift apart.
  */
-export default defineProject({
-  plugins: [storybookTest({ configDir })],
-  test: {
-    name: 'stories',
-    browser: {
-      enabled: true,
-      headless: true,
-      // Axe measures colour as the page is at that moment, so a surface still fading in would fail
-      // it. Stories test the place things come to rest, with the one switch in tokens.css on.
-      provider: playwright({ contextOptions: { reducedMotion: 'reduce' } }),
-      instances: [{ browser: 'chromium' }],
-      // In a full gate the browser starts while everything else does too.
-      connectTimeout: 180_000,
+export function storiesProject(skin: StorySkin) {
+  return defineProject({
+    optimizeDeps: { include: [...STORY_DEPS] },
+    plugins: [
+      storybookTest({ configDir }),
+      {
+        name: 'taskmoor:story-deps-cache',
+        // After the Storybook plugin's own config hook, which sets the shared folder.
+        config: { order: 'post', handler: () => ({ cacheDir: storyDepsCache(skin) }) },
+      },
+    ],
+    test: {
+      name: skin === 'light' ? 'stories' : 'stories-dark',
+      browser: {
+        enabled: true,
+        headless: true,
+        // Axe measures colour as the page is at that moment, so a surface still fading in would
+        // fail it. Stories test the place things come to rest, with the one switch in tokens.css on.
+        provider: playwright({ contextOptions: { reducedMotion: 'reduce' } }),
+        instances: [{ browser: 'chromium' }],
+        // In a full gate the browser starts while everything else does too.
+        connectTimeout: 180_000,
+      },
+      setupFiles: ['./.storybook/vitest.setup.ts'],
+      // The skin the stories render in (the setup file reads it). Speed limits are enforced
+      // only in the benchmark run (pnpm bench:check).
+      env: {
+        STORY_SKIN: skin,
+        TASKMOOR_ENFORCE_BUDGETS: process.env.TASKMOOR_ENFORCE_BUDGETS ?? '',
+      },
     },
-    setupFiles: ['./.storybook/vitest.setup.ts'],
-    // The skin the stories render in; vitest.stories-dark.config.ts runs them again in dark.
-    // Speed limits are enforced only in the benchmark run (pnpm bench:check).
-    env: {
-      STORY_SKIN: 'light',
-      TASKMOOR_ENFORCE_BUDGETS: process.env.TASKMOOR_ENFORCE_BUDGETS ?? '',
-    },
-  },
-});
+  });
+}
+
+export default storiesProject('light');
