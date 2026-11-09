@@ -185,6 +185,28 @@ describe('a track’s statistics and its customized summary', () => {
     expect(bad.data).toEqual({ unavailable: 'field' });
   });
 
+  it('[RPT-002] [RPT-005] a member reads the custom fields to group by from the list of fields for the track, and groups by one (T-251)', async () => {
+    const field = (
+      await call(
+        'admin',
+        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Squad', type: 'select' } },
+        201,
+      )
+    ).field as { id: number };
+    // What the statistics page asks: the stable list, narrowed to the track by its id.
+    const listed = await call('member', {
+      method: 'GET',
+      url: `/api/v1/fields?trackId=${trackId}`,
+    });
+    expect(listed.fields.map((f: { id: number }) => f.id)).toContain(field.id);
+    // The per-type route describes one ticket type's fields and needs the type: the page's old
+    // request, without one, is refused.
+    const perType = await as('member', { method: 'GET', url: '/api/v1/tracks/STA/fields' });
+    expect(perType.statusCode).toBe(400);
+    const grouped = await statistic('member', 'ticket-statistics', `?field=cf[${field.id}]`);
+    expect(grouped.data.total).toBe(3);
+  });
+
   it('[RPT-002] reads each general report, and only for those who see the track', async () => {
     for (const kind of ['recently-created', 'average-age', 'time-to-close']) {
       expect((await statistic('member', kind)).data, kind).toBeTruthy();
