@@ -31,7 +31,13 @@ export async function withFreeMoves(
 ): Promise<WorkflowDefinition> {
   const wanting = statusesWantingFreeMove(current, draft, transitionsAsSent);
   if (wanting.length === 0) return draft;
-  const info = await heldStatusInfo(trx, workspaceId, wanting);
+  // Every status of the draft is held at once, in id order, not only those that get a move: the
+  // version written next holds the rest, and one held out of order deadlocks with a board's sync.
+  const info = await heldStatusInfo(
+    trx,
+    workspaceId,
+    draft.statuses.map((s) => s.statusId),
+  );
   const closing = wanting.some((id) => info.get(id)?.stage === 'closed')
     ? await closingReasonId(trx, workspaceId)
     : null;

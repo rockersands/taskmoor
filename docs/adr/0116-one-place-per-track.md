@@ -138,7 +138,14 @@ them.
         and stage and the column takes a status of its own; a draft that comes later waits and
         reads the stage the sync leaves. A status the column takes by name is held at the start
         with the rest, not when stages are settled: a draft holding it while waiting for a column's
-        status would otherwise deadlock with the sync;
+        status would otherwise deadlock with the sync. Since the sync's update conflicts with the
+        key share a version's statuses take, every version written (a draft save, a workflow
+        created, a column's path, a publish) now holds all its statuses at once, in id order,
+        before it writes them. The rows of the version used to take them one by one in the order
+        the definition lists them, so a draft listing a later status before an earlier one held
+        the later and waited for the earlier while a sync held the earlier and waited for the
+        later (`40P01`, a 500). A draft save that gives free moves holds the draft's statuses all
+        at once too, not only those that get a move;
       - the status list (`lockList`) comes before both: a workflow import holds it before the
         workflow, and deleting or reordering statuses before the statuses, so a sync that renamed
         a status and then waited for the list (to make a column's status) deadlocked with those.

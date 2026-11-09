@@ -1211,6 +1211,82 @@ describe('free moving at its edges (WF-008)', () => {
       expect(saved.statusCode, saved.body).toBe(200);
       expect((synced.json().board.columns as Column[]).at(-1)?.statusIds).toEqual([named]);
     });
+
+    /**
+     * A version written while a board's sync holds the earlier of two column statuses and waits for
+     * the later one, which something else holds with key share (as another draft save would): the
+     * version names the later status first. Its rows used to hold the statuses in that order, so it
+     * held the later one (key share does not wait for key share) and waited for the earlier, and
+     * once the other holder let go the sync waited for it: 40P01, one of the two a 500.
+     */
+    const versionWhileSyncHolds = async (
+      key: string,
+      write: (later: number, earlier: number) => ReturnType<typeof put>,
+    ) => {
+      const { board } = await managedBoard(key, [`Earlier ${key}`, `Later ${key}`]);
+      const earlier = board.columns[1] as Column;
+      const earlierId = earlier.statusIds[0] as number;
+      const laterId = board.columns[2]?.statusIds[0] as number;
+      expect(earlierId).toBeLessThan(laterId);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${laterId} FOR KEY SHARE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: board.columns.map((c) =>
+          c.id === earlier.id ? { ...c, name: `Earlier ${key} renamed` } : c,
+        ),
+      });
+      await lockWaits(1);
+      const writing = write(laterId, earlierId);
+      await Promise.race([writing, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, written] = await Promise.all([syncing, writing]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(written.statusCode, written.body).toBeLessThan(300);
+      return written;
+    };
+
+    it('[WF-010] a draft that lists a later status first waits for the sync instead of deadlocking with it', async () => {
+      const taking = await freeWorkflow('Takes them in reverse', [status.New as number]);
+      const published = (await view(taking)).published.definition;
+      const saved = await versionWhileSyncHolds('BSETO', (later, earlier) =>
+        put(`/api/v1/workflows/${taking}/draft`, {
+          // As sent: no status gets a free move, so the draft holds no status before its rows.
+          transitionsAsSent: true,
+          definition: {
+            ...published,
+            statuses: [...published.statuses, { statusId: later }, { statusId: earlier }],
+          },
+        }),
+      );
+      expect(draftOf(saved.json().workflow as View).statuses).toHaveLength(3);
+    });
+
+    it('[WF-010] a workflow created with transitions that lists a later status first waits for the sync instead of deadlocking with it', async () => {
+      const created = await versionWhileSyncHolds('BSETC', (later, earlier) =>
+        post('/api/v1/workflows', {
+          name: 'Created in reverse',
+          definition: {
+            initialStatusId: status.New,
+            statuses: [{ statusId: status.New }, { statusId: later }, { statusId: earlier }],
+            transitions: [later, earlier].map((to, i) => ({
+              id: i + 1,
+              name: `Into ${to}`,
+              from: [status.New],
+              to,
+            })),
+          },
+        }),
+      );
+      expect(created.statusCode, created.body).toBe(201);
+    });
   });
 
   describe('the reason free moves close with (T-234)', () => {

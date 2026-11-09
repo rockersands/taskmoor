@@ -9,9 +9,10 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
  * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
- * holds the workflow (no key update), then the statuses it names (key share), and reads the stage
- * of a status it gives a free move only once it holds it (`heldStatusInfo`, T-237); creating a
- * workflow with no transitions and a column's path do the same. A status's change
+ * holds the workflow (no key update), then the statuses it names (key share, all of them at once in
+ * id order, never in the order the definition lists them: `writeVersion`), and reads the stage of a
+ * status it gives a free move only once it holds it (`heldStatusInfo`, T-237); creating a workflow
+ * and a column's path do the same. A status's change
  * of stage holds every workflow whose published version or draft has the status (no key update,
  * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
  * save take a workflow before a status; it holds no workflow after the status (it starts again).
@@ -162,7 +163,13 @@ export async function remapStatuses(
   });
 }
 
-/** Writes a version of a workflow, with the statuses it holds; published when asked. */
+/**
+ * Writes a version of a workflow, with the statuses it holds; published when asked. The statuses
+ * are held first (key share, in id order), as the rows of the version would hold them one by one in
+ * the order the definition lists them: a board's sync holding two of them (update, in id order)
+ * would otherwise wait for this save while it waits for the sync (40P01, T-237). Held already, by
+ * `heldStatusInfo` or by a sync, they are not waited for again.
+ */
 export async function writeVersion(
   trx: Transaction<Database>,
   workspaceId: number,
@@ -188,10 +195,12 @@ export async function writeVersion(
       ...(published ? { published_at: new Date(), published_by: actorId } : {}),
     })
     .execute();
+  const statusIds = [...statusIdsOf(definition)].sort((a, b) => a - b);
+  await heldStatusInfo(trx, workspaceId, statusIds);
   await trx
     .insertInto('workflow_version_status')
     .values(
-      [...statusIdsOf(definition)].map((status_id) => ({
+      statusIds.map((status_id) => ({
         workspace_id: workspaceId,
         workflow_id: workflowId,
         version,
