@@ -14,18 +14,18 @@ export type StorySkin = 'light' | 'dark';
  * Vite's optimizer reloads the page when it meets a package mid-run that it has not optimized:
  * it bundles the packages again and, if the bundle changed, logs "optimized dependencies changed.
  * reloading" and reloads every test page, which fails the story tests in flight. On a warm cache
- * the packages are already there; on a cold one (a fresh clone or worktree, a new lockfile) Vite
- * knows only what its scan of the story files found before the browser started. The scan reads
- * the files as written, so it never sees what Storybook's transforms add to them: its preview
- * runtime, the React renderer's shim, the a11y addon's axe-core and the like are met only while
- * the stories run, after the first bundle, and on a cold cache each one meant a reload. Listed
- * here, they are all in the first bundle whatever the scan finds.
+ * the packages are already there. On a cold one (a fresh clone or worktree, a new lockfile) the
+ * first bundle holds only what Vite's scan found before the browser started, from the story
+ * files, the setup file and the entries Vitest and Storybook add: on the Mac the scan finds every
+ * package, but a scan that misses one, fails (Vite then bundles nothing up front) or is cut short
+ * under a full gate's load leaves the rest to be met mid-run, one reload each. Listed here, they
+ * are all in the first bundle whatever the scan does.
  *
  * The list is the set a full stories run optimized (its `deps/_metadata.json`) less what Vitest
  * and the Storybook plugin pin themselves (`vitest > chai` and the like, the addon's
  * `internal/*` setup files). `vitest.stories.config.test.ts` runs Vite's scan over the stories
- * and fails on a package it finds that is missing here: add it. A package only a running story
- * finds shows up as Vitest's "Vite unexpectedly reloaded a test" warning, naming it: add it too.
+ * and fails on a package it finds that is missing here: add it. Should a story still meet one
+ * mid-run, Vitest warns "Vite unexpectedly reloaded a test" and Vite names the package: add it.
  */
 export const STORY_DEPS: readonly string[] = [
   '@formatjs/icu-messageformat-parser',
