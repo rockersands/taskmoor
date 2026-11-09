@@ -338,6 +338,7 @@ export function RichTextEditor({
     });
     const base = editorExtensions({
       undoRedo: !collaboration,
+      trailingParagraph: collaboration ? 'own-edits' : 'any-change',
       taskItem: { a11y: { checkboxLabel: (node) => labelsRef.current.checkbox(node.textContent) } },
       mention: {
         suggestions: [

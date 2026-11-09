@@ -4,7 +4,9 @@ import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table
 import TaskItem, { type TaskItemOptions } from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import type { Schema } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
+import { ySyncPluginKey } from '@tiptap/y-tiptap';
 import { columnTracks, expandTitleLine, isAttachmentDigest, TICKET_KEY } from './adf';
 
 /**
@@ -320,17 +322,48 @@ export interface EditorOptions {
   mention?: Partial<MentionOptions>;
   /** Checklist items in an editor: their checkboxes' accessible names. */
   taskItem?: Partial<TaskItemOptions>;
+  /**
+   * When an empty paragraph goes in after a last block that is not one, so there is a line to
+   * type on below a list, a code block or a table: after any change (`any-change`, the
+   * default), or only after the person's own edits (`own-edits`). A collaborative editor needs
+   * the second: the document arriving from the server is no edit, and adding the paragraph
+   * then would save the ticket for someone who only opened it (T-250).
+   */
+  trailingParagraph?: 'any-change' | 'own-edits';
 }
+
+/**
+ * The trailing paragraph of a collaborative editor: added in answer to an edit made in this
+ * editor, never to what Yjs brings in (the document as loaded, others' changes, undo).
+ */
+const OwnTrailingParagraph = Extension.create({
+  name: 'ownTrailingParagraph',
+  addProseMirrorPlugins: () => [
+    new Plugin({
+      key: new PluginKey('ownTrailingParagraph'),
+      appendTransaction: (transactions, _before, state) => {
+        const edited = transactions.some((tr) => tr.docChanged && !tr.getMeta(ySyncPluginKey));
+        const last = state.doc.lastChild;
+        const paragraph = state.schema.nodes.paragraph;
+        if (!edited || !last || !paragraph || last.type === paragraph) return null;
+        return state.tr.insert(state.doc.content.size, paragraph.create());
+      },
+    }),
+  ],
+});
 
 /** The schema's extensions, set up for an editor. */
 export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
+  const ownEdits = options.trailingParagraph === 'own-edits';
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       codeBlock: { defaultLanguage: null },
       link: { openOnClick: false },
       ...(options.undoRedo === false ? { undoRedo: false as const } : {}),
+      ...(ownEdits ? { trailingNode: false as const } : {}),
     }),
+    ...(ownEdits ? [OwnTrailingParagraph] : []),
     // Inline atoms take no marks: the other format gives them none, and Yjs keeps marks on
     // text only, so a mark on one would not reach the other people editing.
     Mention.extend({ marks: '' }).configure(options.mention ?? {}),

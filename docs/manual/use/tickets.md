@@ -213,7 +213,9 @@ or a group changes none of these. The first three are also [search fields](searc
 ### Descriptions and rich text
 
 The description is edited in place by everyone who may edit the ticket, at the same time.
-Changes save as you type, and the field names the others who are editing it. If the connection
+Changes save as you type, and the field names the others who are editing it (not you in another
+tab). Opening a ticket without typing in it saves nothing and leaves its **Updated** time alone.
+If the connection
 drops, what you type is kept and sent when it is back. People who may only read it see
 **You can read this text but not edit it.**
 
