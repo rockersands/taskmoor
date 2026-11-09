@@ -7,11 +7,13 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { EVENT_TYPES } from '../events/catalogue';
 import { lockList } from '../tickets/fields';
+import { repairWorkflowMoves } from '../workflows/free-moves';
 
 /**
  * The edges of free moving the T-207 review found (WF-008 (1), (4); ADR-116): a status whose stage
  * changes (T-209), a status added through the draft API and a workflow left with no transitions
- * (T-210), and the reason free moves close with, before and after Completed is replaced (T-234).
+ * (T-210, T-237), a board's change of its workflow read under the lock (T-238), and the reason
+ * free moves close with, before and after Completed is replaced (T-234).
  */
 const PASSWORD = 'harbour ladder violet';
 let address = 0;
@@ -229,6 +231,43 @@ describe('free moving at its edges (WF-008)', () => {
     return { workflowId: workflow.id, board: added.json().board as Board };
   };
 
+  /**
+   * A track's own workflow as an ordinary one: its board stopped managing it, and a version without
+   * the board was published. A column added without a status lets the board take it over again.
+   */
+  const ordinaryTrackWorkflow = async (key: string, names: string[]) => {
+    const { workflowId, board } = await managedBoard(key, names);
+    const off = await put(`/api/v1/boards/${board.id}/workflow`, { managed: false });
+    expect(off.statusCode, off.body).toBe(200);
+    const { board: _board, ...ordinary } = (await view(workflowId)).published.definition;
+    await saveDraft(workflowId, ordinary);
+    const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+    expect(published.statusCode, published.body).toBe(200);
+    return { workflowId, board: off.json().board as Board };
+  };
+  /** Publishes the workflow's published definition as `change` makes it, through the API. */
+  const publishChanged = async (workflowId: number, change: (d: Definition) => Definition) => {
+    await saveDraft(workflowId, change((await view(workflowId)).published.definition));
+    const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+    expect(published.statusCode, published.body).toBe(200);
+  };
+  const ASSIGNEE_REQUIRED = [{ type: 'field-required', field: 'assignee' }];
+  /** Another change of the status list under way: `finish()` ends it. */
+  const holdStatusList = async () => {
+    const listed = gate();
+    const finished = gate();
+    const other = database.db.transaction().execute(async (trx) => {
+      await lockList(trx, 1, 'status');
+      listed.open();
+      await finished.opened;
+    });
+    await listed.opened;
+    return async () => {
+      finished.open();
+      await other;
+    };
+  };
+
   describe('a status that changes stage (T-209)', () => {
     it('[WF-008] a status made closed-stage closes the tickets a free move brings in, with the Closed time', async () => {
       const workflowId = await defaultId();
@@ -415,30 +454,15 @@ describe('free moving at its edges (WF-008)', () => {
       );
     });
     it("[WF-008] a board taking over its track's workflow and a stage change of a column's status both hold the workflow before the status", async () => {
-      // The track's own workflow as an ordinary one: its board stopped managing it, and a version
-      // without the board was published.
-      const { workflowId, board } = await managedBoard('BTAKE', ['Parked here']);
-      const off = await put(`/api/v1/boards/${board.id}/workflow`, { managed: false });
-      expect(off.statusCode, off.body).toBe(200);
-      const { board: _board, ...ordinary } = (await view(workflowId)).published.definition;
-      await saveDraft(workflowId, ordinary);
-      const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
-      expect(published.statusCode, published.body).toBe(200);
-      const columns = off.json().board.columns as Column[];
+      const { workflowId, board } = await ordinaryTrackWorkflow('BTAKE', ['Parked here']);
+      const columns = board.columns;
       const parked = columns[1]?.statusIds[0] as number;
 
       // Another change of the status list is under way, so the board waits for it.
-      const listed = gate();
-      const finish = gate();
-      const other = database.db.transaction().execute(async (trx) => {
-        await lockList(trx, 1, 'status');
-        listed.open();
-        await finish.opened;
-      });
-      await listed.opened;
+      const finish = await holdStatusList();
       // A column without a status: the board takes the workflow over, renaming a column's status.
       const takingOver = patch(`/api/v1/boards/${board.id}`, {
-        version: off.json().board.version,
+        version: board.version,
         columns: [
           ...columns.slice(0, 1),
           { ...columns[1], name: 'Paused here' },
@@ -451,8 +475,7 @@ describe('free moving at its edges (WF-008)', () => {
       // holds, while the stage change waits for that status, would have one of them ended (40P01).
       const changing = patch(`/api/v1/statuses/${parked}`, { stage: 'closed' });
       await Promise.race([changing, lockWaits(2)]);
-      finish.open();
-      await other;
+      await finish();
       const [took, changed] = await Promise.all([takingOver, changing]);
       expect(changed.statusCode, changed.body).toBe(200);
       expect(took.statusCode, took.body).toBe(200);
@@ -571,6 +594,100 @@ describe('free moving at its edges (WF-008)', () => {
         changes: { stage: { from: 'active', to: 'closed' } },
         workflowIds: [id],
       });
+    });
+
+    /**
+     * A change of `statusId` to the closed stage that has set the new stage and holds the status,
+     * and has not finished (T-237): it rewrites a workflow's free move into the status, and writing
+     * that version waits for another status of that workflow, which something else holds.
+     * `finish()` lets it end. Two connections of the test's five while it waits.
+     */
+    const stageChangeUnderWay = async (statusId: number, name: string) => {
+      const held = await newStatus(`${name}, held`, 'active');
+      const rewritten = await freeWorkflow(`Rewritten for ${name}`, [
+        status.New as number,
+        held,
+        statusId,
+      ]);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${held} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const changing = patch(`/api/v1/statuses/${statusId}`, { stage: 'closed' });
+      await lockWaits(1);
+      return async () => {
+        finished.open();
+        await holder;
+        const changed = await changing;
+        expect(changed.statusCode, changed.body).toBe(200);
+        expect(into((await view(rewritten)).published.definition, statusId)?.effects).toEqual(
+          setting(reason.Completed as number),
+        );
+      };
+    };
+
+    it('[WF-008] a draft saved or a workflow made while a stage change holds the status gives its new free move the stage the change leaves (T-237)', async () => {
+      const landing = await newStatus('Landing', 'active');
+      const taking = await freeWorkflow('Takes the landing', [
+        status.New as number,
+        status.Active as number,
+      ]);
+      const finish = await stageChangeUnderWay(landing, 'Landing');
+      // A draft that adds Landing, and a new workflow with it: neither may decide its free move
+      // from the stage Landing had before the change.
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: { ...published, statuses: [...published.statuses, { statusId: landing }] },
+      });
+      const creating = post('/api/v1/workflows', {
+        name: 'Made with the landing',
+        definition: {
+          initialStatusId: status.New,
+          statuses: [status.New as number, landing].map((statusId) => ({ statusId })),
+        },
+      });
+      await lockWaits(3);
+      await finish();
+      const [saved, created] = await Promise.all([saving, creating]);
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(created.statusCode, created.body).toBe(201);
+      const closing = setting(reason.Completed as number);
+      expect.soft(into(draftOf(saved.json().workflow), landing)?.effects).toEqual(closing);
+      expect
+        .soft(into(created.json().workflow.published.definition, landing)?.effects)
+        .toEqual(closing);
+    });
+
+    it("[WF-010] a column's path added while a stage change holds the column's status gives its free move the stage the change leaves (T-237)", async () => {
+      const arrival = await newStatus('Arrival', 'active');
+      // A track's board with a column holding Arrival, which no transition of its workflow
+      // reaches: a check keeps the board from managing that workflow.
+      const { workflowId, board } = await ordinaryTrackWorkflow('BLAND', []);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const withArrival = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Arrival', statusIds: [arrival] }],
+      });
+      expect(withArrival.statusCode, withArrival.body).toBe(200);
+      const column = (withArrival.json().board.columns as Column[]).at(-1) as Column;
+      const finish = await stageChangeUnderWay(arrival, 'Arrival');
+      const adding = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      await lockWaits(2);
+      await finish();
+      const added = await adding;
+      expect(added.statusCode, added.body).toBe(200);
+      expect(into((await view(workflowId)).published.definition, arrival)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
     });
   });
 
@@ -741,6 +858,434 @@ describe('free moving at its edges (WF-008)', () => {
         ['any', status.New],
       ]);
       expect(into(draftOf(reopened), status.New as number)?.id).toBe(8);
+    });
+
+    /** A workflow made before free moving and left with no transitions (T-237). */
+    const leftEmpty = async (name: string, statusIds: number[]) => {
+      const made = await post('/api/v1/workflows', {
+        name,
+        definition: {
+          initialStatusId: statusIds[0],
+          statuses: statusIds.map((statusId) => ({ statusId })),
+          transitions: [{ id: 4, name: 'Start', from: [statusIds[0]], to: statusIds[1] }],
+        },
+      });
+      expect(made.statusCode, made.body).toBe(201);
+      const id = made.json().workflow.id as number;
+      const stored = (await view(id)).published.definition;
+      await database.db
+        .updateTable('workflow_version')
+        .set({ definition: JSON.stringify({ ...stored, transitions: [] }) as never })
+        .where('workflow_id', '=', id)
+        .execute();
+      return { id, stored };
+    };
+
+    it('[WF-008] an old workflow left with no moves gets them from the operator repair, as a new published version (T-237)', async () => {
+      const { id, stored } = await leftEmpty('Empty until repaired', [
+        status.New as number,
+        status.Active as number,
+        status.Closed as number,
+      ]);
+      // A draft someone saved: it stays as they saved it.
+      await saveDraft(id, stored);
+      const count = await eventCount();
+
+      // Without --repair it only lists.
+      const listed = await repairWorkflowMoves(database.db, 1, { repair: false });
+      expect(listed.found).toContain(id);
+      expect(listed.repaired).toEqual([]);
+      expect(await eventCount()).toBe(count);
+      expect((await view(id)).published.version).toBe(1);
+
+      const run = await repairWorkflowMoves(database.db, 1, { repair: true });
+      expect(run.found).toEqual(listed.found);
+      expect(run.repaired).toEqual(run.found);
+      const after = await view(id);
+      expect(after.published.version).toBeGreaterThan(1);
+      expect(
+        after.published.definition.transitions.map((t) => [t.name, t.from, t.to, t.effects]),
+      ).toEqual([
+        ['New', 'any', status.New, CLEAR],
+        ['Active', 'any', status.Active, CLEAR],
+        ['Closed', 'any', status.Closed, setting(reason.Completed as number)],
+      ]);
+      // Numbered above every transition id the workflow used (its draft's Start is 4).
+      for (const t of after.published.definition.transitions) expect(t.id).toBeGreaterThan(4);
+      expect(after.draft?.version).toBeGreaterThan(after.published.version);
+      expect(draftOf(after).transitions).toEqual(stored.transitions);
+
+      // One event per workflow repaired, by the system.
+      expect(await eventCount()).toBe(count + run.repaired.length);
+      const repairedEvents = await database.db
+        .selectFrom('domain_event')
+        .select(['actor_id', 'payload'])
+        .where('type', '=', 'workflow.published')
+        .where('subject_id', '=', String(id))
+        .execute();
+      expect(repairedEvents).toEqual([
+        {
+          actor_id: null,
+          payload: {
+            version: after.published.version,
+            removedStatuses: [],
+            statusMapping: {},
+            ticketCount: 0,
+          },
+        },
+      ]);
+      expect(
+        EVENT_TYPES['workflow.published'].payload.safeParse(repairedEvents[0]?.payload).success,
+      ).toBe(true);
+      // Done once: the next run finds nothing to do.
+      expect(await repairWorkflowMoves(database.db, 1, { repair: true })).toEqual({
+        found: [],
+        repaired: [],
+      });
+
+      // Its tickets move again, a closing move with the reason.
+      const map = await post('/api/v1/workflow-maps', { name: 'Map RPRD', defaultWorkflowId: id });
+      expect(map.statusCode, map.body).toBe(201);
+      const track = await post('/api/v1/tracks', { key: 'RPRD', name: 'RPRD', mode: 'shared' });
+      const linked = await patch(`/api/v1/tracks/${track.json().track.id}`, {
+        workflowMapId: map.json().workflowMap.id,
+      });
+      expect(linked.statusCode, linked.body).toBe(200);
+      const made = await post('/api/v1/tickets', { track: 'RPRD', summary: 'Moves again' });
+      const closed = await move(
+        made.json().ticket.id,
+        into(after.published.definition, status.Closed as number)?.id,
+      );
+      expect(closed.status.id).toBe(status.Closed);
+      expect(closed.closeReason?.name).toBe('Completed');
+    });
+
+    it('[WF-008] the operator repair leaves a workflow given transitions while it waited for it (T-237)', async () => {
+      const { id } = await leftEmpty('Filled meanwhile', [
+        status.New as number,
+        status.Active as number,
+      ]);
+      const step = { id: 5, name: 'Start', from: [status.New], to: status.Active };
+      // A publish under way holds the workflow and gives it a step.
+      const holding = gate();
+      const finish = gate();
+      const publisher = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM workflow WHERE id = ${id} FOR UPDATE`.execute(trx);
+        const { rows } = await sql<{ definition: Definition }>`
+          SELECT definition FROM workflow_version WHERE workflow_id = ${id} AND version = 1`.execute(
+          trx,
+        );
+        const definition = { ...(rows[0]?.definition as Definition), transitions: [step] };
+        await sql`
+          UPDATE workflow_version SET definition = ${JSON.stringify(definition)}::jsonb
+           WHERE workflow_id = ${id} AND version = 1`.execute(trx);
+        holding.open();
+        await finish.opened;
+      });
+      await holding.opened;
+      const repairing = repairWorkflowMoves(database.db, 1, { repair: true });
+      await lockWaits(1);
+      finish.open();
+      await publisher;
+      const run = await repairing;
+      expect(run.found).toContain(id);
+      expect(run.repaired).not.toContain(id);
+      const after = await view(id);
+      expect(after.published.version).toBe(1);
+      expect(after.published.definition.transitions).toEqual([step]);
+    });
+  });
+
+  describe("a board's change of its track's workflow reads it under the lock (T-238)", () => {
+    it('[WF-010] a board takes its workflow over only as it stands once held: a check published meanwhile keeps the board out', async () => {
+      const { workflowId, board } = await ordinaryTrackWorkflow('BRULE', ['Checked here']);
+      // Another change of the status list is under way, so the board waits for it.
+      const finish = await holdStatusList();
+      // A column without a status, where nothing stood in the way: the board would take over.
+      const takingOver = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Signed off here', statusIds: [] }],
+      });
+      await lockWaits(1);
+      // Meanwhile someone publishes a check: it stays in force (ADR-116), so the board must not
+      // replace the workflow with its columns.
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      await finish();
+      const took = await takingOver;
+      expect(took.statusCode, took.body).toBe(200);
+      expect(took.json().board.managesWorkflow).toBe(false);
+      expect(took.json().board.columns.at(-1)).toMatchObject({
+        name: 'Signed off here',
+        statusIds: [],
+      });
+      const after = (await view(workflowId)).published.definition;
+      expect(after.board).toBeUndefined();
+      expect(after.transitions[0]?.checks).toEqual(ASSIGNEE_REQUIRED);
+    });
+
+    it("[WF-010] a column's path is added to the workflow as it stands once held, keeping a version published meanwhile", async () => {
+      const { workflowId, board } = await ordinaryTrackWorkflow('BPATH', []);
+      // A check keeps the board from taking the workflow over: a new column stays without a status.
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const added = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Audited here', statusIds: [] }],
+      });
+      expect(added.statusCode, added.body).toBe(200);
+      const column = (added.json().board.columns as Column[]).at(-1) as Column;
+      expect(column.statusIds).toEqual([]);
+
+      const finish = await holdStatusList();
+      const pathing = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      await lockWaits(1);
+      // Meanwhile someone publishes a new step.
+      const [from, to] = board.columns.map((c) => c.statusIds[0] as number);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: [
+          ...d.transitions,
+          {
+            id: Math.max(...d.transitions.map((t) => t.id)) + 1,
+            name: 'Escalate',
+            from: [from as number],
+            to: to as number,
+          },
+        ],
+      }));
+      await finish();
+      const pathed = await pathing;
+      expect(pathed.statusCode, pathed.body).toBe(200);
+      const made = (pathed.json().board.columns as Column[]).at(-1)?.statusIds[0] as number;
+      const after = (await view(workflowId)).published.definition;
+      expect(after.transitions.filter((t) => t.name === 'Escalate')).toHaveLength(1);
+      expect(after.transitions[0]?.checks).toEqual(ASSIGNEE_REQUIRED);
+      expect(into(after, made)?.from).toBe('any');
+    });
+  });
+
+  describe("a board's sync and a draft taking a column's status at the same time (T-237)", () => {
+    it('[WF-010] a draft that holds the status first: the sync sees it once it may, and leaves the status its name and stage', async () => {
+      const { board } = await managedBoard('BSETL', ['Doing here']);
+      const doing = board.columns[1] as Column;
+      const doingId = doing.statusIds[0] as number;
+      // Something holds a status made after Doing here, so a draft save that adds both holds Doing
+      // here (key share, in id order) and then waits.
+      const blocker = await newStatus('Settle blocker', 'active');
+      const taking = await freeWorkflow('Takes the doing', [status.New as number]);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${blocker} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: {
+          ...published,
+          statuses: [...published.statuses, { statusId: doingId }, { statusId: blocker }],
+        },
+      });
+      await lockWaits(1);
+      // Meanwhile the board renames Doing here and makes it the closing column. A sync that changed
+      // the status with a plain update would not wait for the draft, which read the stage before.
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        closingColumn: doing.id,
+        columns: board.columns.map((c) => (c.id === doing.id ? { ...c, name: 'Doing now' } : c)),
+      });
+      await Promise.race([syncing, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [saved, synced] = await Promise.all([saving, syncing]);
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(synced.statusCode, synced.body).toBe(200);
+      // Doing here is the draft's too now: it keeps its name and stage, and the draft's free move
+      // into it follows that stage. The column takes a status of its own, which closes.
+      const statuses = (await get('/api/v1/statuses')).json().statuses as {
+        id: number;
+        name: string;
+        stage: string;
+      }[];
+      expect(statuses.find((s) => s.id === doingId)).toMatchObject({
+        name: 'Doing here',
+        stage: 'active',
+      });
+      expect(into(draftOf(saved.json().workflow), doingId)?.effects).toEqual(CLEAR);
+      const column = (synced.json().board.columns as Column[]).find((c) => c.id === doing.id);
+      const own = column?.statusIds[0] as number;
+      expect(own).not.toBe(doingId);
+      expect(statuses.find((s) => s.id === own)).toMatchObject({
+        name: 'Doing now',
+        stage: 'closed',
+      });
+    });
+
+    it('[WF-010] a draft that comes while the sync holds the status waits, and gives its free move the stage the sync leaves', async () => {
+      const { board } = await managedBoard('BSETW', ['Settling here', 'Reviewed here']);
+      const settling = board.columns[1] as Column;
+      const settlingId = settling.statusIds[0] as number;
+      const reviewedId = board.columns[2]?.statusIds[0] as number;
+      const taking = await freeWorkflow('Takes the settling', [status.New as number]);
+      // Something holds the later column's status, so the sync holds Settling here and waits.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${reviewedId} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        closingColumn: settling.id,
+      });
+      await lockWaits(1);
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: { ...published, statuses: [...published.statuses, { statusId: settlingId }] },
+      });
+      await Promise.race([saving, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, saved] = await Promise.all([syncing, saving]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(saved.statusCode, saved.body).toBe(200);
+      const statuses = (await get('/api/v1/statuses')).json().statuses as {
+        id: number;
+        stage: string;
+      }[];
+      expect(statuses.find((s) => s.id === settlingId)?.stage).toBe('closed');
+      expect(into(draftOf(saved.json().workflow), settlingId)?.effects).toEqual(
+        setting(reason.Completed as number),
+      );
+    });
+
+    it('[WF-010] a status a new column takes by its name is held with the rest, so a draft adding it and a column status is not deadlocked', async () => {
+      // A status named as the new column will be, made before the board's: lower in id order.
+      const named = await newStatus('Signed off there', 'active');
+      const { board } = await managedBoard('BSETN', ['Queued there', 'Reviewed there']);
+      const queuedId = board.columns[1]?.statusIds[0] as number;
+      const reviewedId = board.columns[2]?.statusIds[0] as number;
+      const taking = await freeWorkflow('Takes the named', [status.New as number]);
+      // Something holds the later column's status, so the sync holds what it holds and waits.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${reviewedId} FOR UPDATE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Signed off there', statusIds: [] }],
+      });
+      await lockWaits(1);
+      // A draft adding the named status and the first column's: it holds them in id order. A sync
+      // that held the named status only when settling stages would wait for this draft while it
+      // waits for the sync (40P01).
+      const published = (await view(taking)).published.definition;
+      const saving = put(`/api/v1/workflows/${taking}/draft`, {
+        definition: {
+          ...published,
+          statuses: [...published.statuses, { statusId: named }, { statusId: queuedId }],
+        },
+      });
+      await Promise.race([saving, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, saved] = await Promise.all([syncing, saving]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect((synced.json().board.columns as Column[]).at(-1)?.statusIds).toEqual([named]);
+    });
+
+    /**
+     * A version written while a board's sync holds the earlier of two column statuses and waits for
+     * the later one, which something else holds with key share (as another draft save would): the
+     * version names the later status first. Its rows used to hold the statuses in that order, so it
+     * held the later one (key share does not wait for key share) and waited for the earlier, and
+     * once the other holder let go the sync waited for it: 40P01, one of the two a 500.
+     */
+    const versionWhileSyncHolds = async (
+      key: string,
+      write: (later: number, earlier: number) => ReturnType<typeof put>,
+    ) => {
+      const { board } = await managedBoard(key, [`Earlier ${key}`, `Later ${key}`]);
+      const earlier = board.columns[1] as Column;
+      const earlierId = earlier.statusIds[0] as number;
+      const laterId = board.columns[2]?.statusIds[0] as number;
+      expect(earlierId).toBeLessThan(laterId);
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT id FROM status WHERE id = ${laterId} FOR KEY SHARE`.execute(trx);
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const syncing = patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: board.columns.map((c) =>
+          c.id === earlier.id ? { ...c, name: `Earlier ${key} renamed` } : c,
+        ),
+      });
+      await lockWaits(1);
+      const writing = write(laterId, earlierId);
+      await Promise.race([writing, lockWaits(2)]);
+      finished.open();
+      await holder;
+      const [synced, written] = await Promise.all([syncing, writing]);
+      expect(synced.statusCode, synced.body).toBe(200);
+      expect(written.statusCode, written.body).toBeLessThan(300);
+      return written;
+    };
+
+    it('[WF-010] a draft that lists a later status first waits for the sync instead of deadlocking with it', async () => {
+      const taking = await freeWorkflow('Takes them in reverse', [status.New as number]);
+      const published = (await view(taking)).published.definition;
+      const saved = await versionWhileSyncHolds('BSETO', (later, earlier) =>
+        put(`/api/v1/workflows/${taking}/draft`, {
+          // As sent: no status gets a free move, so the draft holds no status before its rows.
+          transitionsAsSent: true,
+          definition: {
+            ...published,
+            statuses: [...published.statuses, { statusId: later }, { statusId: earlier }],
+          },
+        }),
+      );
+      expect(draftOf(saved.json().workflow as View).statuses).toHaveLength(3);
+    });
+
+    it('[WF-010] a workflow created with transitions that lists a later status first waits for the sync instead of deadlocking with it', async () => {
+      const created = await versionWhileSyncHolds('BSETC', (later, earlier) =>
+        post('/api/v1/workflows', {
+          name: 'Created in reverse',
+          definition: {
+            initialStatusId: status.New,
+            statuses: [{ statusId: status.New }, { statusId: later }, { statusId: earlier }],
+            transitions: [later, earlier].map((to, i) => ({
+              id: i + 1,
+              name: `Into ${to}`,
+              from: [status.New],
+              to,
+            })),
+          },
+        }),
+      );
+      expect(created.statusCode, created.body).toBe(201);
     });
   });
 

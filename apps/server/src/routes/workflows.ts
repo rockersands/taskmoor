@@ -9,12 +9,8 @@ import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
 import { closingReasonId, completedReasonId } from '../workflows/board-managed';
 import { closeReasonProblem } from '../workflows/close-reasons';
-import {
-  followingStage,
-  freeTransition,
-  freeTransitions,
-  statusesWantingFreeMove,
-} from '../workflows/free-moving';
+import { withFreeMoves } from '../workflows/free-moves';
+import { followingStage, freeTransitions } from '../workflows/free-moving';
 import {
   defaultMapId,
   loadMap,
@@ -33,12 +29,12 @@ import {
 } from '../workflows/model';
 import {
   type CurrentVersions,
+  heldStatusInfo,
   holdCurrentVersions,
   holdWorkflow,
   loadDefinition,
   remapStatuses,
   rewriteCurrentVersions,
-  statusInfo,
   ticketsInStatuses,
   writeVersion,
 } from '../workflows/store';
@@ -830,14 +826,17 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     }
   });
 
-  /** The definition with a global transition into each of its statuses (WF-008 (4)). */
+  /**
+   * The definition with a global transition into each of its statuses (WF-008 (4)). The stages
+   * are read with the statuses held, so a stage change under way decides them (T-237).
+   */
   async function movingFreely(
     trx: Transaction<Database>,
     actor: { workspaceId: number; actorId: number | null },
     definition: WorkflowDefinition,
   ): Promise<WorkflowDefinition> {
     const ids = definition.statuses.map((s) => s.statusId);
-    const info = await statusInfo(trx, actor.workspaceId, ids);
+    const info = await heldStatusInfo(trx, actor.workspaceId, ids);
     const statuses = ids.flatMap((id) => {
       const status = info.get(id);
       return status ? [{ id, ...status }] : [];
@@ -927,44 +926,6 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if (version === null) return notFound(reply);
     return { workflow: await workflowView(ws, params.data.id) };
   });
-
-  /**
-   * A draft with the free moves its new statuses get (T-210; WF-008 (4)), as the editor's Add a
-   * status gives them: see `statusesWantingFreeMove`. A closing status takes the reason free moves
-   * close with, and none when the workspace has no reason to name. New transitions number above
-   * every id any version of the workflow used, since history names transitions by id. A draft the
-   * additions would push past a limit is saved as sent, and so is one sent with
-   * `transitionsAsSent` that has any transition.
-   */
-  async function withFreeMoves(
-    trx: Transaction<Database>,
-    workspaceId: number,
-    workflowId: number,
-    current: WorkflowDefinition,
-    draft: WorkflowDefinition,
-    transitionsAsSent: boolean,
-  ): Promise<WorkflowDefinition> {
-    const wanting = statusesWantingFreeMove(current, draft, transitionsAsSent);
-    if (wanting.length === 0) return draft;
-    const info = await statusInfo(trx, workspaceId, wanting);
-    const closing = wanting.some((id) => info.get(id)?.stage === 'closed')
-      ? await closingReasonId(trx, workspaceId)
-      : null;
-    const used = await sql<{ n: number | null }>`
-      SELECT max((t ->> 'id')::int) AS n
-        FROM workflow_version v, jsonb_array_elements(v.definition -> 'transitions') t
-       WHERE v.workflow_id = ${workflowId}`.execute(trx);
-    let next = Math.max(Number(used.rows[0]?.n ?? 0), ...draft.transitions.map((t) => t.id)) + 1;
-    const added = wanting.flatMap((statusId) => {
-      const status = info.get(statusId);
-      const closes = status?.stage === 'closed';
-      if (!status || (closes && closing === null)) return [];
-      return [freeTransition(statusId, status.name, closes, closing, next++)];
-    });
-    if (added.length === 0) return draft;
-    const shaped = { ...draft, transitions: [...draft.transitions, ...added] };
-    return definitionSchema.safeParse(shaped).success ? shaped : draft;
-  }
 
   // What a closing status sets when the editor adds it to a workflow that moves freely (WF-008):
   // the same answer the server's own paths use, made here if the workspace has no reason to name.

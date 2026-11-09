@@ -9,15 +9,21 @@ import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model'
  * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
  * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
  * holds the track (update), then both maps and their workflows, then tickets. Saving a draft
- * holds the workflow (no key update), then the statuses it names (key share). A status's change
+ * holds the workflow (no key update), then the statuses it names (key share, all of them at once in
+ * id order, never in the order the definition lists them: `writeVersion`), and reads the stage of a
+ * status it gives a free move only once it holds it (`heldStatusInfo`, T-237); creating a workflow
+ * and a column's path do the same. A status's change
  * of stage holds every workflow whose published version or draft has the status (no key update,
  * so it never waits for a ticket write), then the status (update), as a ticket write and a draft
  * save take a workflow before a status; it holds no workflow after the status (it starts again).
  * A board's sync holds the status list (`lockList`), then its track's workflow (update), then the
- * statuses it renames or makes closed; a workflow import holds the list before the workflow, and
- * deleting or reordering statuses the list before the statuses. So everywhere: the status list,
- * then workflows (by id), then statuses (ADR-116). A ticket's workflow comes from its track's map
- * and its ticket type (`workflows/maps.ts`).
+ * statuses it may rename or settle (update, in id order; whether another workflow has one is read
+ * only once it is held, T-237), and reads whether it may take the workflow over only once it holds
+ * the list and the workflow; a column's path holds the list (when it makes a status), then the workflow, and
+ * reads the published version after that (T-238). A workflow import holds the list before the
+ * workflow, and deleting or reordering statuses the list before the statuses. So everywhere: the
+ * status list, then workflows (by id), then statuses (ADR-116). A ticket's workflow comes from its
+ * track's map and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -81,6 +87,31 @@ export async function statusInfo(
 }
 
 /**
+ * Name and stage of statuses by id, each row held (key share, in id order) until the transaction
+ * ends, for a free move that follows the stage (T-237). A stage change holds its status (update)
+ * while it rewrites the free moves of the workflows that have it; a workflow that takes the status
+ * meanwhile is not among them, so its own free move must see the stage the change leaves, not the
+ * one before. Key share waits for that change and is what writing a version's statuses takes
+ * anyway, after the workflow: the lock order of ADR-116.
+ */
+export async function heldStatusInfo(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  ids: readonly number[],
+): Promise<Map<number, { name: string; stage: StatusStage }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await trx
+    .selectFrom('status')
+    .select(['id', 'name', 'stage'])
+    .where('workspace_id', '=', workspaceId)
+    .where('id', 'in', [...new Set(ids)])
+    .orderBy('id')
+    .forKeyShare()
+    .execute();
+  return new Map(rows.map((r) => [r.id, { name: r.name, stage: r.stage }]));
+}
+
+/**
  * Tickets, the trash included, whose workflow (their track's map for their ticket type) is
  * `workflowId` and whose status is one of `statusIds`, by status.
  */
@@ -132,7 +163,13 @@ export async function remapStatuses(
   });
 }
 
-/** Writes a version of a workflow, with the statuses it holds; published when asked. */
+/**
+ * Writes a version of a workflow, with the statuses it holds; published when asked. The statuses
+ * are held first (key share, in id order), as the rows of the version would hold them one by one in
+ * the order the definition lists them: a board's sync holding two of them (update, in id order)
+ * would otherwise wait for this save while it waits for the sync (40P01, T-237). Held already, by
+ * `heldStatusInfo` or by a sync, they are not waited for again.
+ */
 export async function writeVersion(
   trx: Transaction<Database>,
   workspaceId: number,
@@ -158,10 +195,12 @@ export async function writeVersion(
       ...(published ? { published_at: new Date(), published_by: actorId } : {}),
     })
     .execute();
+  const statusIds = [...statusIdsOf(definition)].sort((a, b) => a - b);
+  await heldStatusInfo(trx, workspaceId, statusIds);
   await trx
     .insertInto('workflow_version_status')
     .values(
-      [...statusIdsOf(definition)].map((status_id) => ({
+      statusIds.map((status_id) => ({
         workspace_id: workspaceId,
         workflow_id: workflowId,
         version,
@@ -221,7 +260,8 @@ export async function holdCurrentVersions(
  * Writes a held workflow's rewritten versions; statuses do not change, so no ticket moves. A new
  * `published` definition becomes a new published version, and the draft (rewritten, or as it was)
  * moves above it, since a draft always numbers above the published version. With only a `draft`,
- * the draft is rewritten in place. Null for either leaves it as it is.
+ * the draft is rewritten in place. Null for either leaves it as it is. The new published version's
+ * number, or null when there is none.
  */
 export async function rewriteCurrentVersions(
   trx: Transaction<Database>,
@@ -230,12 +270,12 @@ export async function rewriteCurrentVersions(
   w: CurrentVersions,
   published: WorkflowDefinition | null,
   draft: WorkflowDefinition | null,
-): Promise<void> {
+): Promise<number | null> {
   if (published === null) {
     if (draft && w.draftVersion !== null) {
       await writeVersion(trx, workspaceId, w.id, w.draftVersion, draft, actorId, false);
     }
-    return;
+    return null;
   }
   const latest = await sql<{ v: number }>`
     SELECT max(version)::int AS v FROM workflow_version WHERE workflow_id = ${w.id}`.execute(trx);
@@ -256,4 +296,5 @@ export async function rewriteCurrentVersions(
       .where('version', '=', w.draftVersion)
       .execute();
   }
+  return version;
 }
