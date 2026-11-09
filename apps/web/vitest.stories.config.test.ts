@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { type ResolvedConfig, resolveConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
@@ -49,38 +49,65 @@ describe('story tests in two skins', () => {
   });
 });
 
-/**
- * The Vite the story tests run on: Vitest's own, which can differ from the app's (`vite` here).
- */
-async function vitestVite(): Promise<typeof import('vite')> {
+/** The Vite the story tests run on: Vitest's own, which can differ from the app's (`vite` here). */
+async function vitestVite(): Promise<{ vite: typeof import('vite'); vitestDir: string }> {
   const fromWeb = createRequire(fileURLToPath(import.meta.url));
-  const fromVitest = createRequire(fromWeb.resolve('vitest/package.json'));
-  return import(pathToFileURL(fromVitest.resolve('vite')).href);
+  const vitestPackage = fromWeb.resolve('vitest/package.json');
+  const vite = await import(pathToFileURL(createRequire(vitestPackage).resolve('vite')).href);
+  return { vite, vitestDir: dirname(vitestPackage) };
 }
 
-// Vitest's browser server scans the story files and its setup files for packages before the
-// browser starts, and leaves out the packages it serves itself.
-const SCAN_ENTRIES = ['src/**/*.stories.@(ts|tsx)', '.storybook/vitest.setup.ts'];
-const SERVED_BY_VITEST = /^(vitest|@vitest\/)/;
+// What Vitest's browser server adds to a stories project before Vite optimizes anything
+// (@vitest/browser's config hook): its runtime as scan entries, the packages it serves itself
+// unbundled, and three it pins. Storybook's plugin adds its own entries and pins in the config.
+const VITEST_ENTRIES = ['browser', 'index', 'runners'].map((f) => `dist/${f}.js`);
+const SERVED_BY_VITEST =
+  /^(vitest|@vitest\/.*|vite\/module-runner|std-env|tinybench|tinyspy|tinyrainbow|pathe|msw)$/;
+const PINNED_BY_VITEST = [
+  'vitest > expect-type',
+  'vitest > @vitest/snapshot > magic-string',
+  'vitest > @vitest/expect > chai',
+];
 
-/** What Vite's scan of the stories finds, as a cold cache's first bundle would hold it. */
-async function scannedPackages(): Promise<string[]> {
-  const vite = await vitestVite();
+/**
+ * The packages one cold start of the light stories' server bundles before the browser starts,
+ * each with the file it was bundled from: with the scan alone (`scan`), or with no scan at all,
+ * only what the config lists up front (`listed`).
+ */
+async function firstBundle(mode: 'scan' | 'listed'): Promise<Record<string, string>> {
+  const { vite, vitestDir } = await vitestVite();
   const config = await vite.resolveConfig(
-    { configFile: CONFIGS.light, logLevel: 'silent', optimizeDeps: { entries: SCAN_ENTRIES } },
+    {
+      configFile: CONFIGS.light,
+      logLevel: 'silent',
+      optimizeDeps: {
+        entries: [
+          'src/**/*.stories.@(ts|tsx)',
+          '.storybook/vitest.setup.ts',
+          ...VITEST_ENTRIES.map((f) => join(vitestDir, f)),
+        ],
+      },
+    },
     'serve',
   );
-  // Only what the scan finds, in a folder of its own: not the list under test, not the run's cache.
   for (const options of [config.optimizeDeps, config.environments.client?.optimizeDeps]) {
-    if (options) options.include = [];
+    if (!options) continue;
+    if (mode === 'scan') options.include = [];
+    else {
+      options.entries = ['no-such-folder/*.ts'];
+      options.include = [...(options.include ?? []), ...PINNED_BY_VITEST];
+    }
   }
-  const cacheDir = mkdtempSync(join(tmpdir(), 'story-scan-'));
+  // A folder of its own, not the stories' cache.
+  const cacheDir = mkdtempSync(join(tmpdir(), 'story-deps-'));
   (config as { cacheDir: string }).cacheDir = cacheDir;
   try {
     const metadata = await vite.optimizeDeps(config, true);
-    return Object.keys(metadata.optimized)
-      .filter((id) => !SERVED_BY_VITEST.test(id))
-      .sort();
+    return Object.fromEntries(
+      Object.entries(metadata.optimized)
+        .filter(([id]) => !SERVED_BY_VITEST.test(id))
+        .map(([id, dep]) => [id, dep.src ?? '']),
+    );
   } finally {
     rmSync(cacheDir, { recursive: true, force: true });
   }
@@ -88,18 +115,23 @@ async function scannedPackages(): Promise<string[]> {
 
 // On a cold cache a package Vite meets only after its first bundle makes it bundle again and
 // reload every test page, failing the stories in flight (T-208: 48 failures on a fresh clone).
+// The first bundle must not depend on the scan, which can miss a package, fail or be cut short.
 describe('story tests on a cold dependency cache', () => {
-  it('[NFR-005] optimize every package up front, in both skins', async () => {
+  it('[NFR-005] optimize every listed package up front, in both skins', async () => {
     const [light, dark] = await Promise.all([resolved('light'), resolved('dark')]);
     for (const config of [light, dark]) {
       expect(config.optimizeDeps.include).toEqual(expect.arrayContaining([...STORY_DEPS]));
     }
   });
 
-  it('[NFR-005] list every package the scan of the stories finds', async () => {
-    const [scanned, light] = await Promise.all([scannedPackages(), resolved('light')]);
-    expect(scanned.length).toBeGreaterThan(10);
-    const listed = new Set(light.optimizeDeps.include);
-    expect(scanned.filter((id) => !listed.has(id))).toEqual([]);
+  it('[NFR-005] bundle, with no scan at all, every package the scan of the stories finds', async () => {
+    const scanned = await firstBundle('scan');
+    const listed = await firstBundle('listed');
+    expect(Object.keys(scanned).length).toBeGreaterThan(20);
+    // An entry Vite cannot resolve from apps/web is skipped with only a warning.
+    expect(STORY_DEPS.filter((id) => !(id in listed))).toEqual([]);
+    const bundled = new Set(Object.values(listed));
+    const missing = Object.entries(scanned).filter(([, src]) => !bundled.has(src));
+    expect(missing.map(([id]) => id)).toEqual([]);
   });
 });
