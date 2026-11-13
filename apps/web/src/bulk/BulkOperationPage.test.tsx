@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
@@ -83,13 +83,43 @@ describe('bulk operation progress (M1-021)', () => {
     );
     const warning = await screen.findByRole('alert');
     expect(warning).toHaveTextContent(
-      'The bulk edit finished with problems: 1,199 tickets were changed, and 1 ticket was not. Each one is listed below with the reason.',
+      'The bulk edit finished with problems: 1,199 tickets were changed, and 1 ticket was not. The list below gives the reasons.',
     );
     expect(warning).toHaveClass('bulk-warning');
     expect(screen.queryByText('Done.')).toBeNull();
     // Each failed ticket, with its reason.
     const failures = screen.getByRole('region', { name: 'Tickets that were not changed' });
     expect(within(failures).getAllByRole('listitem').length).toBeGreaterThan(0);
+  });
+
+  it('[CORE-024] a cancelled bulk change with failures says how many were changed, failed and skipped (PL-23)', async () => {
+    const client = fakeBulkClient({
+      ...RUNNING,
+      status: 'cancelled',
+      cancelRequested: true,
+      succeeded: 640,
+      failed: 3,
+      skipped: 557,
+      pending: 0,
+    });
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The bulk edit was cancelled with problems: 640 tickets were changed, 3 tickets were not, and 557 tickets were skipped. The list below gives the reasons.',
+    );
+    // The same in Spanish.
+    cleanup();
+    render(
+      <I18nProvider locale="es">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La edición masiva se canceló con problemas: se cambiaron 640 tickets, 3 tickets no y se omitieron 557 tickets. En la lista de abajo tienes los motivos.',
+    );
   });
 
   it('[CORE-024] says so when the bulk change is not there', async () => {

@@ -216,10 +216,10 @@ export function TicketPage(props: TicketPageProps) {
 }
 
 /**
- * Where the ticket's columns go side by side: the `.ticket-columns` rule of ticket-view.css, at
- * 64rem, written in pixels at the browser's default text size.
+ * Where the ticket's columns go side by side: the `.ticket-columns` rule of ticket-view.css, in
+ * the same rem, so both follow the reader's text size.
  */
-const SIDE_BY_SIDE = '(min-width: 1024px)';
+const SIDE_BY_SIDE = '(min-width: 64rem)';
 
 /**
  * The ticket view (M1-051; CORE-022, AGL-018): the ticket's summary and description, its details

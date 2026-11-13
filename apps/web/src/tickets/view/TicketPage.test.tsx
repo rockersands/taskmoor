@@ -15,7 +15,7 @@ import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { applyStylesheet } from '../../test/stylesheets';
-import { setViewportWidth } from '../../test/viewport';
+import { setRootFontSize, setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketToolsClient } from '../tools/client';
 import { fakeToolsClient } from '../tools/fixtures';
@@ -680,6 +680,19 @@ describe('the ticket view after the page review (T-220)', () => {
     const activity = await screen.findByRole('region', { name: 'Activity' });
     expect(follows(details(), activity)).toBe(true);
     // The help says where they are on this screen, not "on the side" (PL-48).
+    await userEvent.setup().click(screen.getByRole('button', { name: 'What is SHOP-41 for?' }));
+    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+      'Details, after the description',
+    );
+  });
+
+  it('[CORE-022] places Details by the same rem as the stylesheet, so a larger text size keeps them in the flow (PL-48)', async () => {
+    // 1100px is wider than 64rem at 16px (1024px) but narrower at 20px (1280px): the columns
+    // of ticket-view.css stack, and the help must say Details come after the description.
+    setRootFontSize(20);
+    setViewportWidth(1100);
+    renderPage();
+    await heading();
     await userEvent.setup().click(screen.getByRole('button', { name: 'What is SHOP-41 for?' }));
     expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
       'Details, after the description',

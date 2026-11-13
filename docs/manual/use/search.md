@@ -346,10 +346,10 @@ by your administrator.
 
 Results show as a table, fifty tickets at a time; **Show more** adds the next fifty. The
 count above says how many tickets match, and a line beside it says their order, for example
-**Sorted by Created, newest first**; the column they follow carries an arrow in its heading. The
-summary takes the width the other columns leave, and short values and dates stay on one line.
-On a phone the table becomes stacked rows: each ticket's key, its summary, and then its status,
-assignee and priority. Beyond 10,000 it is an estimate, "About 120,000 tickets",
+**Sorted by Created, latest first** (a date column reads earliest or latest first); the column
+they follow carries an arrow in its heading. The summary takes the width the other columns
+leave, and short values and dates stay on one line. On a phone the table becomes stacked rows:
+each ticket's key, its summary, and then its status, assignee and priority. Beyond 10,000 it is an estimate, "About 120,000 tickets",
 or "More than 10,000 tickets" when an estimate would not be close enough.
 
 - **Columns** opens a panel over the page to choose the columns: move them up or down, remove them, **Add a column** (system

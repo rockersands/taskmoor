@@ -720,7 +720,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.sorted':
     'Ordenado por {column}, {direction, select, ascending {ascendente} other {descendente}}',
   'search.sorted.date':
-    'Ordenado por {column}, {direction, select, ascending {primero lo más antiguo} other {primero lo más reciente}}',
+    'Ordenado por {column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
   'search.table': 'Tabla de resultados',
   'search.columns': 'Columnas',
   'search.columns.keyFirst': 'La clave siempre va primero.',
@@ -2561,6 +2561,9 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.create.openDialog': 'Ticket nuevo',
   'tickets.create.openDialogHint': 'Crear un ticket (C)',
   'tickets.create.fixErrors': 'Algunos campos necesitan atención antes de poder crear el ticket.',
+  'tickets.create.notSetHere':
+    'Este formulario todavía no puede rellenar este campo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pide a un administrador que lo haga opcional en el formulario de creación.',
+  'tickets.create.fieldProblem': '{field}: {problem}',
   'tickets.create.createFailed': 'No se pudo crear el ticket. Inténtalo de nuevo en un momento.',
   'tickets.error.required': 'Este campo es obligatorio.',
   'tickets.error.hidden': 'Este campo no se puede definir para este tipo de ticket.',
@@ -3528,7 +3531,7 @@ export const messagesEs: Record<MessageId, string> = {
   'bulk.status.done': 'Hecho.',
   'bulk.status.cancelled': 'Cancelado. Se omitieron los tickets aún sin cambiar.',
   'bulk.warning':
-    '{action, select, edit {La edición masiva} move {El traslado masivo} transition {La transición masiva} delete {El borrado masivo} clone {La copia} other {El cambio masivo}} {cancelled, select, yes {se canceló} other {terminó}} con problemas: {succeeded, plural, =0 {no se {action, select, clone {copió} delete {borró} other {cambió}} ningún ticket} one {se {action, select, clone {copió} delete {borró} other {cambió}} # ticket} other {se {action, select, clone {copiaron} delete {borraron} other {cambiaron}} # tickets}} y {failed, plural, one {# ticket no} other {# tickets no}}. Abajo tienes cada uno con el motivo.',
+    '{action, select, edit {La edición masiva} move {El traslado masivo} transition {La transición masiva} delete {El borrado masivo} clone {La copia} other {El cambio masivo}} {cancelled, select, yes {se canceló} other {terminó}} con problemas: {succeeded, plural, =0 {no se {action, select, clone {copió} delete {borró} other {cambió}} ningún ticket} one {se {action, select, clone {copió} delete {borró} other {cambió}} # ticket} other {se {action, select, clone {copiaron} delete {borraron} other {cambiaron}} # tickets}}{skipped, plural, =0 { y} other {,}} {failed, plural, one {# ticket no} other {# tickets no}}{skipped, plural, =0 {} one { y se omitió # ticket} other { y se omitieron # tickets}}. En la lista de abajo tienes los motivos.',
   'bulk.progress': '{done} de {total} tickets terminados',
   'bulk.count.succeeded': 'Cambiados',
   'bulk.count.failed': 'Sin cambiar',

@@ -270,8 +270,8 @@ describe('search results (M1-042)', () => {
   it('[QRY-014] says the order the results are in and marks that column (PL-11)', async () => {
     renderPage();
     const table = await screen.findByRole('table');
-    // No ORDER BY: newest created first, as the server sorts them.
-    expect(screen.getByText('Sorted by Created, newest first')).toBeVisible();
+    // No ORDER BY: latest created first, as the server sorts them.
+    expect(screen.getByText('Sorted by Created, latest first')).toBeVisible();
     for (const header of within(table).getAllByRole('columnheader')) {
       expect(header).not.toHaveAttribute('aria-sort');
     }
@@ -284,7 +284,14 @@ describe('search results (M1-042)', () => {
       'aria-sort',
       'ascending',
     );
-    expect(screen.getByText('Sorted by Updated, oldest first')).toBeVisible();
+    expect(screen.getByText('Sorted by Updated, earliest first')).toBeVisible();
+  });
+
+  it('[QRY-014] reads a date order as earliest or latest first, a due date too (PL-11)', async () => {
+    renderPage('track = SHOP ORDER BY due ASC');
+    await screen.findByRole('table');
+    // A due date lies ahead as often as behind: "oldest" would not fit it.
+    expect(screen.getByText('Sorted by Due date, earliest first')).toBeVisible();
   });
 });
 

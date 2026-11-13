@@ -205,6 +205,7 @@ export function BulkOperationPage({
             cancelled: op.status === 'cancelled' ? 'yes' : 'no',
             succeeded: op.succeeded,
             failed: op.failed,
+            skipped: op.skipped,
           })}
         </p>
       ) : (

@@ -48,6 +48,14 @@
   border: 0;
 }
 
+/* A field required at create that the form cannot set: its name and why, no groove. */
+.create-unset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .create-choice {
   display: flex;
   align-items: center;

@@ -7,6 +7,7 @@ import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/b
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { BUG_FORM, CHORE_FORM, LOCKED_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
+import type { TicketForm } from './form';
 
 function openCreate(handlers: Record<string, Handler> = {}, locale?: 'en-XA') {
   const calls = stubBackend({
@@ -102,6 +103,49 @@ describe('the create form (M1-012)', () => {
       dueDate: '2026-12-01',
       fields: { 7: 70, 8: { parent: 80, child: 81 } },
     });
+  });
+
+  it('[CORE-013] keeps a field required at create that it cannot set, so its refusal has a place (D30)', async () => {
+    const user = userEvent.setup();
+    // An administrator made Assignee required on the create layout.
+    const required: TicketForm = {
+      ...BUG_FORM,
+      layout: {
+        ...BUG_FORM.layout,
+        tabs: BUG_FORM.layout.tabs.map((tab) => ({
+          ...tab,
+          sections: tab.sections.map((section) => ({
+            ...section,
+            fields: section.fields.map((field) =>
+              field.key === 'assignee' ? { ...field, required: true } : field,
+            ),
+          })),
+        })),
+      },
+    };
+    openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () => jsonResponse(200, required),
+      'POST /tickets': () =>
+        jsonResponse(400, {
+          error: 'invalid_fields',
+          // Requester has no row on this form at all.
+          fields: { assigneeId: 'required', requesterId: 'required' },
+        }),
+    });
+    const assignee = await screen.findByRole('group', { name: 'Assignee (required)' });
+    expect(assignee).toHaveAccessibleDescription(/^This form cannot set this field yet\./);
+    await user.type(screen.getByLabelText('Summary (required)'), 'Checkout fails');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    const alert = await screen.findByText(
+      'Some fields need attention before the ticket can be created.',
+    );
+    expect(alert).toHaveAttribute('role', 'alert');
+    // The refusal shows at the row; the one with no row is named in the alert.
+    expect(assignee).toHaveAccessibleDescription(/This field is required\.$/);
+    expect(alert).toHaveTextContent(
+      'Some fields need attention before the ticket can be created. Requester: This field is required.',
+    );
+    expect(alert).not.toHaveTextContent('Assignee');
   });
 
   it('[CORE-013] another ticket type brings its own form', async () => {

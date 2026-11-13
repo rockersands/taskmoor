@@ -1,6 +1,6 @@
 import type { HocuspocusProvider } from '@hocuspocus/provider';
 import type { PmJson } from '@taskmoor/richtext';
-import { docFromYDoc, fromMarkdown, writeDocToYDoc } from '@taskmoor/richtext';
+import { COLLAB_FRAGMENT, docFromYDoc, fromMarkdown, writeDocToYDoc } from '@taskmoor/richtext';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -78,6 +78,37 @@ describe('the collaborative editor (M1-017)', () => {
     // Someone else's change shows in the field.
     act(() => writeDocToYDoc(shared.document, text('Rewritten elsewhere')));
     await waitFor(() => expect(textbox).toHaveTextContent('Rewritten elsewhere'));
+  });
+
+  it('[NTF-008] undo takes back the person’s own edit and leaves someone else’s alone (PL-44)', async () => {
+    const user = userEvent.setup();
+    const shared = localDocument(text('Shared text'));
+    renderField(shared.connect);
+    const textbox = await screen.findByRole('textbox', { name: 'Description' });
+    await user.click(textbox);
+    await user.keyboard('Mine: ');
+    await waitFor(() => expect(textbox).toHaveTextContent('Mine: Shared text'));
+    // Someone else adds a paragraph of their own, as the server would pass it on.
+    act(() =>
+      shared.document.transact(() => {
+        const paragraph = new Y.XmlElement('paragraph');
+        paragraph.insert(0, [new Y.XmlText('Added elsewhere')]);
+        const fragment = shared.document.getXmlFragment(COLLAB_FRAGMENT);
+        fragment.insert(fragment.length, [paragraph]);
+      }, 'someone else'),
+    );
+    await waitFor(() => expect(textbox).toHaveTextContent('Added elsewhere'));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(textbox).not.toHaveTextContent('Mine:'));
+    expect(textbox).toHaveTextContent('Shared text');
+    expect(textbox).toHaveTextContent('Added elsewhere');
+    const written = JSON.stringify(docFromYDoc(shared.document));
+    expect(written).not.toContain('Mine: ');
+    expect(written).toContain('Added elsewhere');
+    // Undo again has nothing of this person's left to take back: the other edit stays.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(JSON.stringify(docFromYDoc(shared.document))).toContain('Added elsewhere');
   });
 
   it('[NTF-008] says who else is editing', async () => {
