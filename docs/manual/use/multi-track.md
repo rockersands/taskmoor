@@ -1,8 +1,8 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-05
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Multi-track
@@ -45,6 +45,8 @@ The **Multi-track** page lists **Your plans** and those **Shared with you**.
 
 Every view shows at most the first 10,000 tickets of the plan and says so when there are more:
 filter the plan to see the rest.
+
+On a phone, the tab bar scrolls sideways and starts with the open tab in view.
 
 - **Summary**: how many tickets the plan holds, how many are **Open**, **Overdue**, **Due within 7
   days**, **Open without dates** and **Closed in the last 7 days**, then the tickets by stage, by
@@ -111,9 +113,13 @@ remaining teams, with it.
 ### Reading Capacity
 
 Each team has a row, followed by a row for each of its people; then **Unassigned** and **People in
-none of these teams**. Each column is a period, the one holding today marked **Now**, and the
-last column is the open work without a due date. **Earlier periods**, **Later periods** and **This
-period** move through time, six periods at a time. On a phone, each row is a card.
+none of these teams**. A plan without teams has no teams to be outside of, so that last row reads
+**Assigned to someone** instead. Each column is a period, the one holding today marked **Now**, and
+the last column, **Open, no due date**, is the open work without a due date; it stays in view at
+the table's end even on a narrow window. **Earlier periods**, **Later periods** and **This period**
+move through time: four periods at a time on a computer, so the whole table fits, and six on a
+phone, where each row is a card. The dates of the periods shown come first, with the buttons
+after them.
 
 In each period:
 
@@ -122,7 +128,7 @@ In each period:
   estimate are counted and shown as **without an estimate**.
 - **"16 of 10 points"** is the work due against the capacity. Over capacity, the cell turns red
   and says **Over capacity by** how much in words.
-- **"+13 points in 1 ticket elsewhere"** is the rest of that person's work due then: outside the
+- **"+13 points in 1 ticket elsewhere"** (explained above the table only when one shows) is the rest of that person's work due then: outside the
   plan, left out by your filters, or in tracks you may not see. It counts against their capacity,
   because they have to do it all, but it is never named, dated or linked. It is counted by whole
   weeks, Monday to Sunday, each in the period that holds most of the week, so however the
@@ -148,7 +154,9 @@ unit or periods while you type, nothing is saved and the dialog asks you to relo
 
 Above every view, choose one **Track**, one **Assignee** (**Me**, **Nobody** or a person), one
 **Type** and one **Stage**. The Timeline and the List also **Group by** track, assignee, status,
-type or priority; on the Timeline, a group's heading hides or shows its tickets.
+type or priority; on the Timeline, a group's heading hides or shows its tickets. On a phone the
+filters wait behind one **Filters** button, which says how many are set, for example **Filters
+(2)**, so the plan's work shows first.
 
 Filters and grouping are kept in the page's address. Copy the address to share the same view, and
 the browser's back button undoes a change. **Clear filters** removes them all.
@@ -170,10 +178,11 @@ deleted or is hidden from you, the dates are not valid, or someone changed the t
 ## Changing and sharing a plan
 
 The plan's owner and site administrators see **Settings**: its name, description, sources and
-**Who sees it** (**Only you** or **Everyone signed in**). Sharing a plan needs the permission to
+**Who sees it** (**Only me** or **Everyone signed in**). Sharing a plan needs the permission to
 share dashboards and saved searches. The sources hidden from the person editing stay in the plan,
-so nobody removes what they cannot see. **Delete plan** removes the plan; its tickets stay as
-they are.
+so nobody removes what they cannot see. Under **A period starts on**, the day chosen is also
+written out in words. **Delete plan**, in the danger colour, first asks whether to delete the plan
+for everyone who sees it, its views and capacity with it; its tickets stay as they are.
 
 Sharing a plan does not share its tracks or saved searches: someone who may not see a source sees
 nothing from it. Share those as well when they should.
@@ -268,8 +277,9 @@ out of step.
   person searching sees it (see [Search](search.md)). A bare number is its id; to find one named with
   a number, put the name in quotes.
 - **A plan's Releases tab:** the releases of the plan's tracks you may browse, those of a release
-  across tracks gathered under it first with its own whole numbers, then the rest by track, upcoming
-  first, at most 200. Only the **Track** filter applies here, and the tab says so.
+  across tracks gathered under it first with its own whole numbers, then the rest by track, each
+  group in date order with releases without a date last, at most 200. A shipped release says when
+  it shipped, an upcoming one when it is due. Only the **Track** filter applies here, and the tab says so.
 - **The Timeline and the Calendar:** linked releases on its date become one marker, "Spring launch,
   3 releases"; those on another day keep their own, marked "out of step" in words. They are not
   dragged there.

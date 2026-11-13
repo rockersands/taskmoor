@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-04
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -97,11 +97,15 @@ created in the track with that summary; open it to fill in the rest.
 
 ## The calendar
 
-**Calendar** shows a month in weeks starting on Monday, with today marked.
+**Calendar** shows a month in weeks starting on Monday, with today marked. Like the timeline, it is
+titled by its section, with the track's name above; the tab bar leads back to the summary, and
+**What is Calendar for?** beside the title says what it shows.
 
 - Each ticket appears on its due day, and also on its start day when that is different (marked
-  **Starts:**).
-- Sprints of the track's boards show as bands, named on their first day and on Mondays.
+  **Starts:**, which a screen reader reads first too).
+- Sprints of the track's boards show as bands, named on their first day and on Mondays. Since the
+  calendar is the track's, a sprint named after the track drops the track's name: "Mobile apps
+  Sprint 2" reads **Sprint 2**.
 - Releases with a date show on their day, with a diamond before the name.
 
 **Previous month**, **Next month** and **This month** move between months. A day lists six
@@ -132,12 +136,18 @@ Rescheduling needs the **Set due dates** permission. When a change is refused, t
 why: you may not schedule tickets in the track, its status or dates are locked for you, the track
 is archived, the ticket is gone, the dates are not valid, or the ticket changed meanwhile.
 
-On a phone, the calendar becomes a list of the month's days.
+On a phone, the month's name has a line of its own above **Previous month** and **Next month**,
+and the calendar becomes a list of only the days that have something on them (a ticket, a
+release, or the first day of a sprint), each named by its weekday and date, such as "Thu, Nov 5".
+A month with nothing on it says so. To move a ticket to a day the list does not show, use its
+grip's menu. On a phone or a touch screen, the hint under the month speaks of fingers and grips
+instead of the keyboard.
 
 ## The timeline
 
 **Timeline** shows the track's tickets as bars over time, in rank order, with children under
-their parents.
+their parents. Each row starts with the ticket's key, always whole, and its summary, cut short when
+it is long; on a phone the summary sits under the key.
 
 - **Bars** run from a ticket's start day to its due day. A ticket without days of its own that is
   in a sprint takes the sprint's days; its bar is hatched.
@@ -148,19 +158,32 @@ their parents.
 - **Dependencies**: "blocks" links between listed tickets show as lines. A line turns dashed
   and red when the blocked ticket starts on or before the day its blocker is due, unless one of
   the two is already closed.
+- **No dates** marks a ticket without any, at today.
+
+Under the chart, **What the bars mean** explains each of these styles, listing only those the
+timeline draws.
 
 The **Zoom** buttons switch between **Weeks**, **Months** and **Quarters**. **Today** scrolls
-to the current day.
+to the current day. The month's name stays in view at the left of the days while you scroll. When
+a ticket's bar lies wholly before or after the days in view, its row shows **Earlier** or
+**Later** at that edge instead of looking empty; choose it to scroll to the bar. When more rows
+wait below the chart's lower edge, the last ones fade out: scroll the chart, which you can also
+reach with Tab and scroll with the arrow keys.
 
 ### Rescheduling on the timeline
 
-- Drag a bar to move it, or drag one of its ends to change only the start or the due day.
+- Drag a bar to move it, or drag one of its ends to change only the start or the due day. On a
+  touch screen a bar narrower than a finger still takes one: press just past its ends to move it
+  whole.
 - With the keyboard, focus a bar and press Alt with the left or right arrow to move it a day, or
   with Shift as well to move it a week.
 - Press Enter on a bar, or choose **No dates** on a ticket without any, to open the panel
   **Days of PAY-42**. It shows the **Start date** and **Due date**, where the days come from (its
   own, its sprint, or its children), and the tickets it **Blocks** or is **Blocked by**. Press
   **Save dates** to keep a change. The start date must not be after the due date.
+
+On a phone or a touch screen, the hint above the chart says what a finger can do instead of
+listing keys.
 
 A bar moved keeps the days it had: a ticket with only a due day keeps only that. A ticket dated
 by its sprint gets days of its own once you save. As in the calendar, rescheduling needs the
