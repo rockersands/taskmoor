@@ -2,10 +2,12 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
+import type { MessageId } from '../../i18n/messages.en';
 import { useSession } from '../../session/SessionProvider';
 import { EmptyState } from '../../shell/EmptyState';
 import { PageHeader } from '../../shell/PageHeader';
 import { COMPACT_QUERY, useMediaQuery } from '../../shell/useMediaQuery';
+import { TableScroller } from '../TableScroller';
 import { AuditSettings } from './AuditSettings';
 import {
   type AuditClient,
@@ -14,7 +16,7 @@ import {
   auditClient,
   type ChainStatus,
 } from './client';
-import { auditActionWords, auditSubjectText } from './words';
+import { AUDIT_SUBJECTS, AUDIT_VERBS, auditActionWords, auditSubjectText } from './words';
 
 type Log =
   | { status: 'loading' }
@@ -35,7 +37,11 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   const compact = useMediaQuery(COMPACT_QUERY);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [forbidden, setForbidden] = useState(notAdmin);
-  const [draft, setDraft] = useState<AuditFilter>({});
+  const [draft, setDraft] = useState<Omit<AuditFilter, 'action'>>({});
+  // The action is picked in words, what it is about and then what happened, and sent as its code:
+  // `user.` for every event about a person, `user.deactivated` for one kind (AD-2).
+  const [subject, setSubject] = useState('');
+  const [verb, setVerb] = useState('');
   const [filter, setFilter] = useState<AuditFilter>({});
   const [log, setLog] = useState<Log>({ status: 'loading' });
   const [chain, setChain] = useState<ChainStatus | 'checking' | 'failed' | null>(null);
@@ -69,7 +75,7 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    setFilter({ ...draft });
+    setFilter({ ...draft, ...(subject ? { action: `${subject}.${verb}` } : {}) });
   };
   const verify = async () => {
     setChain('checking');
@@ -79,6 +85,17 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
       setChain('failed');
     }
   };
+  // The pickers' choices in words, in the order of the language.
+  const byWords = (a: [string, string], b: [string, string]) =>
+    a[1].localeCompare(b[1], intl.locale);
+  const subjects = AUDIT_SUBJECTS.map((code): [string, string] => [
+    code,
+    t(`admin.audit.subject.${code}` as MessageId),
+  ]).sort(byWords);
+  const verbs = AUDIT_VERBS.map((code): [string, string] => {
+    const words = t(`admin.audit.verb.${code}` as MessageId);
+    return [code, words.charAt(0).toLocaleUpperCase(intl.locale) + words.slice(1)];
+  }).sort(byWords);
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'medium' });
   const who = (r: AuditRecord) =>
@@ -125,13 +142,34 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
         </label>
         <label className="form-field">
           <span className="form-label">{t('admin.audit.action')}</span>
-          <input
-            type="text"
-            value={draft.action ?? ''}
-            placeholder={t('admin.audit.actionPlaceholder')}
-            onChange={(e) => setDraft({ ...draft, action: e.target.value || undefined })}
-          />
+          <select
+            value={subject}
+            onChange={(e) => {
+              setSubject(e.target.value);
+              setVerb('');
+            }}
+          >
+            <option value="">{t('admin.audit.anySubject')}</option>
+            {subjects.map(([code, words]) => (
+              <option key={code} value={code}>
+                {words}
+              </option>
+            ))}
+          </select>
         </label>
+        {subject && (
+          <label className="form-field">
+            <span className="form-label">{t('admin.audit.actionVerb')}</span>
+            <select value={verb} onChange={(e) => setVerb(e.target.value)}>
+              <option value="">{t('admin.audit.anyVerb')}</option>
+              {verbs.map(([code, words]) => (
+                <option key={code} value={code}>
+                  {words}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="submit" className="button-primary">
           {t('admin.audit.search')}
         </button>
@@ -210,7 +248,7 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
         </ul>
       )}
       {log.status === 'loaded' && log.records.length > 0 && !compact && (
-        <div className="glass-card glass-scroller">
+        <TableScroller label={t('admin.audit.table')} className="glass-card glass-scroller">
           <table className="data-table audit-table">
             <caption className="visually-hidden">{t('admin.audit.table')}</caption>
             <thead>
@@ -227,14 +265,14 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
                 <tr key={r.seq}>
                   <td className="audit-when">{when(r.occurredAt)}</td>
                   <td>{who(r)}</td>
-                  <td title={r.action}>{auditActionWords(t, r.action)}</td>
+                  <td>{auditActionWords(t, r.action)}</td>
                   <td>{r.subject ? auditSubjectText(t, r.subject) : ''}</td>
                   <td>{r.ip ? t('common.value', { value: r.ip }) : ''}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroller>
       )}
       {log.status === 'loaded' && log.next && (
         <button

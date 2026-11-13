@@ -40,7 +40,9 @@ describe('audit log page (M1-085)', () => {
     ]);
     expect(within(rows[0] as HTMLElement).getAllByRole('cell')[0]).toHaveClass('audit-when');
     expect(within(rows[2] as HTMLElement).getByText('Taskmoor')).toBeVisible();
-    await userEvent.type(screen.getByLabelText('Action'), 'user.');
+    // The action is picked in words and sent as its code: every event about a person (AD-2).
+    expect(screen.queryByRole('combobox', { name: 'What happened' })).toBeNull();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Action about' }), 'Person');
     await userEvent.click(screen.getByRole('button', { name: 'Show' }));
     await expect.poll(() => within(screen.getByRole('table')).getAllByRole('row').length).toBe(2);
     expect(client.calls.at(-1)).toContain('"action":"user."');
@@ -48,6 +50,29 @@ describe('audit log page (M1-085)', () => {
     expect(screen.getByRole('link', { name: 'Download as CSV' }).getAttribute('href')).toBe(
       '/api/v1/audit/export?format=csv&action=user.',
     );
+    // Then one kind of event about it.
+    const happened = screen.getByRole('combobox', { name: 'What happened' });
+    expect(within(happened).getByRole('option', { name: 'Signed in' })).toBeInTheDocument();
+    await userEvent.selectOptions(happened, 'Signed in');
+    await userEvent.click(screen.getByRole('button', { name: 'Show' }));
+    await expect.poll(() => client.calls.at(-1)).toContain('"action":"user.signed_in"');
+    // Back to anything: no action filter at all.
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Action about' }),
+      'Anything',
+    );
+    expect(screen.queryByRole('combobox', { name: 'What happened' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Show' }));
+    await expect.poll(() => client.calls.at(-1)).not.toContain('"action"');
+  });
+
+  it('[IAM-013] scrolls a table too wide for a tablet in a named region the keyboard reaches (AD-3)', async () => {
+    setViewportWidth(900);
+    renderPage();
+    const table = await screen.findByRole('table', { name: 'Audit records, newest first' });
+    const scroller = screen.getByRole('region', { name: 'Audit records, newest first' });
+    expect(scroller).toContainElement(table);
+    expect(scroller).toHaveAttribute('tabindex', '0');
   });
 
   it('[IAM-013] pages back through older records', async () => {
@@ -102,14 +127,8 @@ describe('audit log page (M1-085)', () => {
   it('passes every string through the pseudo-locale', async () => {
     const { container, errors } = renderPage(fakeAuditClient(), 'en-XA');
     await screen.findByRole('table');
-    // Names and addresses, and the code behind each action's words as the filter takes it.
-    const data = [
-      'Ada Lovelace',
-      '203.0.113.5',
-      'token.created',
-      'user.signed_in',
-      'backup.completed',
-    ];
+    // Names and addresses: no action reads as its code.
+    const data = ['Ada Lovelace', '203.0.113.5'];
     const texts = visibleTexts(container).filter(
       (t) => !/\d{4}|\d:\d\d/.test(t) && !data.includes(t),
     );
