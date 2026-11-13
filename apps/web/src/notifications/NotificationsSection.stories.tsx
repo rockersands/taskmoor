@@ -81,7 +81,12 @@ function drawnAsTheAppsCheckBox(box: Element, beside: Element): string[] {
 
 /** Every check box here is the app's one check box, as on the rest of Account (TR-24, AC-11). */
 export const OneCheckBoxLook: Story = {
-  args: DigestWithQuietHours.args,
+  args: {
+    client: fakeNotificationsClient(
+      {},
+      { ...defaultPreferences(), quietHours: { start: 22, end: 7 } },
+    ),
+  },
   play: async ({ canvasElement }) => {
     const boxes = await within(canvasElement).findAllByRole('checkbox');
     await expect(boxes.flatMap((box) => drawnAsTheAppsCheckBox(box, canvasElement))).toEqual([]);
