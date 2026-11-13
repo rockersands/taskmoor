@@ -884,7 +884,8 @@
   .glass-card,
   .help-tip-body,
   .create-dialog,
-  .ticket-dialog {
+  .ticket-dialog,
+  .board-choice {
     border-color: CanvasText;
   }
 }
@@ -1307,7 +1308,8 @@
 .popover::before,
 .palette::before,
 .create-dialog::before,
-.ticket-dialog::before {
+.ticket-dialog::before,
+.board-choice::before {
   content: "";
   position: absolute;
   inset: -1px;
@@ -1387,7 +1389,8 @@
 .popover,
 .palette,
 .create-dialog,
-.ticket-dialog {
+.ticket-dialog,
+.board-choice {
   background: var(--overlay-fill);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -1523,7 +1526,8 @@
   .popover::before,
   .palette::before,
   .create-dialog::before,
-  .ticket-dialog::before {
+  .ticket-dialog::before,
+  .board-choice::before {
     display: none;
   }
 }

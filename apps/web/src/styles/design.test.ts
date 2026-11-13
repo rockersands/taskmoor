@@ -185,6 +185,7 @@ export const OVERLAYS = [
   '.palette',
   '.create-dialog',
   '.ticket-dialog',
+  '.board-choice',
 ] as const;
 
 const OVERLAY_FILL = 'var(--overlay-fill)';
@@ -475,7 +476,8 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
 }
 
 /** What draws a check box: its kind, its fill, its edge, its shadow, a mark over it. */
-const DRAWS_A_BOX = /^((-webkit-)?(appearance|mask)|background(-color)?|border(-color)?|box-shadow)$/;
+const DRAWS_A_BOX =
+  /^((-webkit-)?(appearance|mask)|background(-color)?|border(-color)?|box-shadow)$/;
 
 /**
  * Check boxes and radios that a page draws its own way (TR-24, AC-11): a class written on an

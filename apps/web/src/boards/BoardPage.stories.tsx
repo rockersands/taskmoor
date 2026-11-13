@@ -167,9 +167,15 @@ export const ChooseTransition: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Move SHOP-23' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Forward to Review and done' }));
-    await expect(
-      await canvas.findByRole('dialog', { name: 'Move SHOP-23 to Review and done' }),
-    ).toBeVisible();
+    // Drawn at the end of the body (OverlayLayer), opaque with no blur like every dialog (D3).
+    const dialog = await within(document.body).findByRole('dialog', {
+      name: 'Move SHOP-23 to Review and done',
+    });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.parentElement).toBe(document.body);
+    await expect(getComputedStyle(dialog).backdropFilter).toBe('none');
+    // An opaque fill: Chrome writes a colour with any transparency as rgba().
+    await expect(getComputedStyle(dialog).backgroundColor).toMatch(/^rgb\(/);
   },
 };
 

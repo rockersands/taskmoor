@@ -17,6 +17,7 @@ import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing
 import { EmptyState } from '../shell/EmptyState';
 import { playMotion } from '../shell/motion';
 import { NotFoundPage } from '../shell/NotFoundPage';
+import { OverlayLayer } from '../shell/OverlayLayer';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { followPointerDrag } from '../shell/pointerDrag';
@@ -1153,93 +1154,101 @@ export function BoardPage({
           }}
         />
       )}
+      {/* Choices asked over the board: overlays, opaque (D3) and drawn at the body's end. */}
       {asking && (
-        <div
-          className="glass-card board-choice"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={askingTitleId}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              setAsking(null);
-              links.current.get(asking.card.id)?.focus();
-            }
-          }}
-          ref={(el) => {
-            if (el && !el.contains(document.activeElement)) {
-              el.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
-            }
-          }}
-        >
-          <h2 id={askingTitleId}>
-            {t('boards.choose.title', { key: asking.card.key, column: asking.column.name })}
-          </h2>
-          <p>{t('boards.asking.intro', { name: asking.transition.name })}</p>
-          <TransitionForm
-            transition={asking.transition}
-            client={client}
-            onRun={(fields) => {
-              void move(
-                asking.card,
-                { ...asking.move, transitionId: asking.transition.id, fields },
-                t('boards.moved', { key: asking.card.key, column: asking.column.name }),
-              );
+        <OverlayLayer>
+          <div
+            className="board-choice"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={askingTitleId}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setAsking(null);
+                links.current.get(asking.card.id)?.focus();
+              }
             }}
-            onCancel={() => {
-              setAsking(null);
-              links.current.get(asking.card.id)?.focus();
-            }}
-          />
-        </div>
-      )}
-      {choice && (
-        <div
-          className="glass-card board-choice"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={choiceTitleId}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              setChoice(null);
-              links.current.get(choice.card.id)?.focus();
-            }
-          }}
-        >
-          <h2 id={choiceTitleId}>
-            {t('boards.choose.title', { key: choice.card.key, column: choice.column.name })}
-          </h2>
-          <p>{t('boards.choose.intro')}</p>
-          <ul>
-            {choice.transitions.map((transition, i) => (
-              <li key={transition.id}>
-                <button
-                  type="button"
-                  className="button-primary"
-                  ref={i === 0 ? firstChoice : undefined}
-                  onClick={() =>
-                    void move(
-                      choice.card,
-                      { ...choice.move, transitionId: transition.id },
-                      t('boards.moved', { key: choice.card.key, column: choice.column.name }),
-                    )
-                  }
-                >
-                  {t('boards.choose.option', { name: transition.name, status: transition.to.name })}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => {
-              setChoice(null);
-              links.current.get(choice.card.id)?.focus();
+            ref={(el) => {
+              if (el && !el.contains(document.activeElement)) {
+                el.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
+              }
             }}
           >
-            {t('boards.choose.cancel')}
-          </button>
-        </div>
+            <h2 id={askingTitleId}>
+              {t('boards.choose.title', { key: asking.card.key, column: asking.column.name })}
+            </h2>
+            <p>{t('boards.asking.intro', { name: asking.transition.name })}</p>
+            <TransitionForm
+              transition={asking.transition}
+              client={client}
+              onRun={(fields) => {
+                void move(
+                  asking.card,
+                  { ...asking.move, transitionId: asking.transition.id, fields },
+                  t('boards.moved', { key: asking.card.key, column: asking.column.name }),
+                );
+              }}
+              onCancel={() => {
+                setAsking(null);
+                links.current.get(asking.card.id)?.focus();
+              }}
+            />
+          </div>
+        </OverlayLayer>
+      )}
+      {choice && (
+        <OverlayLayer>
+          <div
+            className="board-choice"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={choiceTitleId}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setChoice(null);
+                links.current.get(choice.card.id)?.focus();
+              }
+            }}
+          >
+            <h2 id={choiceTitleId}>
+              {t('boards.choose.title', { key: choice.card.key, column: choice.column.name })}
+            </h2>
+            <p>{t('boards.choose.intro')}</p>
+            <ul>
+              {choice.transitions.map((transition, i) => (
+                <li key={transition.id}>
+                  <button
+                    type="button"
+                    className="button-primary"
+                    ref={i === 0 ? firstChoice : undefined}
+                    onClick={() =>
+                      void move(
+                        choice.card,
+                        { ...choice.move, transitionId: transition.id },
+                        t('boards.moved', { key: choice.card.key, column: choice.column.name }),
+                      )
+                    }
+                  >
+                    {t('boards.choose.option', {
+                      name: transition.name,
+                      status: transition.to.name,
+                    })}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => {
+                setChoice(null);
+                links.current.get(choice.card.id)?.focus();
+              }}
+            >
+              {t('boards.choose.cancel')}
+            </button>
+          </div>
+        </OverlayLayer>
       )}
     </section>
   );

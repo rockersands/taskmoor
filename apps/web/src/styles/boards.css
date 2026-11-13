@@ -415,22 +415,23 @@
   cursor: pointer;
 }
 
+/*
+ * A choice asked over the board (which transition, or the fields one needs): a dialog, so opaque
+ * with no blur (D3), in the overlay rule of surfaces.css, and drawn at the end of the body
+ * (OverlayLayer) so no blurred surface of the page holds it. It floats near the bottom edge.
+ */
 .board-choice {
   position: fixed;
   inset: auto var(--space-4) var(--space-4) var(--space-4);
-  z-index: 20;
+  z-index: 80;
+  box-sizing: border-box;
   max-width: 28rem;
   margin: 0 auto;
   padding: var(--space-4);
-}
-
-/* Floating glass: a `glass-card` in everything but where it sits and how far it floats. */
-.board-choice.glass-card {
-  position: fixed;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
   box-shadow: var(--glass-highlight), var(--shadow-3);
+  isolation: isolate;
 }
 
 .board-choice h2 {
