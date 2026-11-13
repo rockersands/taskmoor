@@ -316,3 +316,9 @@
   resize: none;
   field-sizing: content;
 }
+
+@media (pointer: coarse) {
+  .form-field .redirect-uri-value {
+    min-height: var(--hit-target-touch);
+  }
+}
