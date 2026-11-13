@@ -70,6 +70,36 @@
   outline-offset: 2px;
 }
 
+/* Columns past an edge (D2, TR-23): ADR-114's 16 rem columns stay, the board scrolls sideways,
+   and the edge with more beyond it fades, so a cut card reads as "more this way". Its scroll bar
+   stays drawn too. In focus the whole region shows, outline included. */
+.board-scroll:is([data-more="end"], [data-more="start"], [data-more="both"]) {
+  scrollbar-width: thin;
+}
+
+.board-scroll[data-more="end"]:not(:focus-visible) {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8) * 2), transparent);
+}
+
+.board-scroll[data-more="start"]:not(:focus-visible) {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8) * 2), transparent);
+}
+
+.board-scroll[data-more="both"]:not(:focus-visible) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 calc(var(--space-8) * 2),
+    #000 calc(100% - var(--space-8) * 2),
+    transparent
+  );
+}
+
+/* The board's filters: a slab of their own, clear in both skins (D28). */
+.board-filters {
+  padding: var(--space-2) var(--space-4);
+}
+
 .board-grid {
   display: grid;
   gap: var(--space-2);
@@ -551,6 +581,23 @@
   min-height: var(--hit-target);
 }
 
+/* One check box on board and sprint settings, the same size and colour as the form's own and the
+   statistics' (TR-24). */
+.board-settings-check input[type="checkbox"] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+@media (pointer: coarse) {
+  .board-settings-check input[type="checkbox"] {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* Sprint settings (M1-044, M1-045): a checkbox with its hint; a long time zone shrinks on phones. */
 .sprint-settings-option {
   display: grid;
@@ -688,10 +735,90 @@
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
 }
 
 .sprint-report-totals dd {
   margin: 0;
+}
+
+/* A sprint report's tickets (TR-11, TR-22): a column each for key, summary, status and estimate,
+   so keys and summaries line up and the estimate has its heading. In a narrow card each row folds
+   into two lines, key and summary first, then status and estimate together. */
+.sprint-report-group {
+  container: sprint-report / inline-size;
+}
+
+.sprint-report-table {
+  width: 100%;
+}
+
+.sprint-report-table .sprint-report-key {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.sprint-report-table .sprint-report-summary {
+  overflow-wrap: break-word;
+}
+
+.sprint-report-table :is(.sprint-report-status, .sprint-report-estimate) {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.sprint-report-table td.sprint-report-key a {
+  font-weight: var(--font-weight-strong);
+}
+
+@container sprint-report (max-width: 34rem) {
+  .sprint-report-table,
+  .sprint-report-table :is(thead, tbody) {
+    display: block;
+  }
+
+  .sprint-report-table tr {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "key summary summary"
+      ". status estimate";
+    column-gap: var(--space-3);
+    border-top: 1px solid var(--glass-edge);
+    padding-block: var(--space-2);
+  }
+
+  .data-table.sprint-report-table :is(th, td) {
+    padding: 0;
+    border: 0;
+  }
+
+  .sprint-report-table .sprint-report-key {
+    grid-area: key;
+    width: auto;
+  }
+
+  .sprint-report-table .sprint-report-summary {
+    grid-area: summary;
+  }
+
+  .sprint-report-table .sprint-report-status {
+    grid-area: status;
+    white-space: normal;
+  }
+
+  .sprint-report-table .sprint-report-estimate {
+    grid-area: estimate;
+    text-align: end;
+  }
+}
+
+/* A backlog row holds the priority's place when it has none, so keys line up (TR-22). */
+.ticket-icon-slot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
 }
 
 /* Completing a sprint from its board (T-106): a small pop-up over the board, full width on phones. */
@@ -713,12 +840,21 @@
 
 @media (pointer: coarse) {
   .sprint-ticket-key,
+  .sprint-report-table a,
   .sprint-complete select,
   .sprint-complete button,
   .sprint-complete-dialog select,
   .sprint-complete-dialog button,
-  .sprint-section .form-actions button {
+  .sprint-section .form-actions button,
+  .sprint-report-link {
     min-height: var(--hit-target-touch);
+  }
+
+  /* A bare link in a row is a finger's target too (TR-20). */
+  .sprint-report-table a,
+  .sprint-report-link {
+    display: inline-flex;
+    align-items: center;
   }
 }
 

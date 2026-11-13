@@ -124,7 +124,15 @@ export function NoBacklog({ board }: { board: Board }) {
 export function BacklogOfTrack({ board }: { board: Board }) {
   const sections = useTrackSections();
   return board.kind === 'scrum' && sections?.backlog !== false ? (
-    <BacklogPage key={board.id} boardId={board.id} />
+    <BacklogPage
+      key={board.id}
+      boardId={board.id}
+      trackName={
+        board.location.type === 'track' && board.location.track.key
+          ? (board.location.track.name ?? board.location.track.key)
+          : null
+      }
+    />
   ) : (
     <NoBacklog board={board} />
   );

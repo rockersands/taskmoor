@@ -16,7 +16,7 @@ function renderSettings(client = fakeBoardClient()) {
   );
   return client;
 }
-const ready = () => screen.findByRole('heading', { level: 1, name: 'Settings of Checkout team' });
+const ready = () => screen.findByRole('heading', { level: 1, name: 'Board settings' });
 
 describe("changing the board's kind (ADR-116)", () => {
   it("[CORE-002] tells the track's tab bar at once, so Backlog comes or goes without a reload", async () => {
@@ -110,6 +110,22 @@ describe('columns no card can reach (ADR-116)', () => {
 });
 
 describe('board settings (M1-043)', () => {
+  it('[AGL-001] is titled Board settings under its track, says only what it has, and repeats no tab (D26, TR-26, D7, TR-28)', async () => {
+    renderSettings();
+    const header = (await ready()).closest('header') as HTMLElement;
+    expect(within(header).getByText('Shop')).toBeVisible();
+    expect(
+      within(header).getByText(
+        'How this board works: its columns, swimlanes and filters, what a card shows and its sprints.',
+      ),
+    ).toBeVisible();
+    expect(within(header).queryByText(/who may change it/)).toBeNull();
+    expect(within(header).queryByRole('link', { name: 'Back to the board' })).toBeNull();
+    expect(
+      within(header).getByRole('button', { name: 'What is Board settings for?' }),
+    ).toBeVisible();
+  });
+
   it('[AGL-002] [AGL-003] maps statuses to columns and sets WIP limits', async () => {
     const user = userEvent.setup();
     const client = renderSettings();

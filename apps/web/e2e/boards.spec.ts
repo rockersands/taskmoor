@@ -56,7 +56,7 @@ test("[AGL-001] [AGL-002] [AGL-003] [AGL-005] a track's board, keyboard moves an
 
   // Made when the track's board is first opened.
   await page.goto(`${BASE}/#/tracks/${track}/board`);
-  const board = page.getByRole('region', { name: `Team ${track}` });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   await expect(board.getByRole('heading', { level: 1 })).toBeVisible();
   const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
   const card = (key: string) => board.getByRole('link', { name: new RegExp(`^${key} `) });
@@ -91,13 +91,17 @@ test("[AGL-001] [AGL-002] [AGL-003] [AGL-005] a track's board, keyboard moves an
 
   // Settings: at most no ticket in Active, so its one card breaks the limit (AGL-003).
   await board.getByRole('link', { name: 'Board settings' }).click();
-  const settings = page.getByRole('region', { name: `Settings of Team ${track}` });
+  const settings = page.getByRole('region', { name: 'Board settings', exact: true });
   await settings.getByRole('spinbutton', { name: 'Maximum in Active' }).fill('0');
   await settings.getByRole('button', { name: 'Save settings' }).click();
   await expect(settings.getByRole('status')).toHaveText('Saved.');
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await settings.getByRole('link', { name: 'Back to the board' }).click();
+  // The Board tab leads back (D7).
+  await page
+    .getByRole('navigation', { name: `Sections of ${track}` })
+    .getByRole('link', { name: 'Board' })
+    .click();
   await expect(board.getByText('Over the maximum')).toBeVisible();
 
   // Nothing scrolls sideways but the columns; no serious axe issue at the end either.

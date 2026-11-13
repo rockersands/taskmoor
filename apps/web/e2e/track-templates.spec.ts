@@ -104,7 +104,7 @@ test('[CORE-002] each template makes a working track', async ({ page }, testInfo
         }),
       ).toBeVisible();
     } else {
-      const board = page.getByRole('region', { name });
+      const board = page.getByRole('region', { name: 'Board', exact: true });
       await expect(board.getByRole('link', { name: new RegExp(`^${ticketKey} `) })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

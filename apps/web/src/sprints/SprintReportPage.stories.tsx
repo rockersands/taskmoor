@@ -29,6 +29,34 @@ export const Report: Story = {
   },
 };
 
+/**
+ * In a phone-wide card each row folds into two lines: the key and summary, then the status and
+ * the estimate together, never a dash alone under the key (TR-11).
+ */
+export const RowsFoldInANarrowCard: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 340 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = await canvas.findByRole('region', { name: 'Tickets not completed' });
+    for (const row of within(open).getAllByRole('row').slice(1)) {
+      const [key, summary, status, estimate] = within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.getBoundingClientRect());
+      if (!key || !summary || !status || !estimate) throw new Error('a row with a missing cell');
+      await expect(Math.round(summary.top)).toBe(Math.round(key.top));
+      await expect(Math.round(estimate.top)).toBe(Math.round(status.top));
+      await expect(status.top).toBeGreaterThanOrEqual(key.bottom - 1);
+      await expect(estimate.right).toBeLessThanOrEqual(row.getBoundingClientRect().right + 0.5);
+    }
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

@@ -52,7 +52,7 @@ test('[AGL-012] [AGL-007] a cycle turned on in the board settings and read back'
   const boardId = (await made.json()).board.id as number;
 
   await page.goto(`${BASE}/#/boards/${boardId}/settings`);
-  const settings = page.getByRole('region', { name: `Settings of Cycle ${word}` });
+  const settings = page.getByRole('region', { name: 'Board settings', exact: true });
   const sprints = settings.getByRole('group', { name: 'Sprints' });
   const cycle = sprints.getByRole('checkbox', { name: 'Roll sprints over automatically' });
   await expect(cycle).not.toBeChecked();

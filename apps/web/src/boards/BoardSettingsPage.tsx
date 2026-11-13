@@ -302,6 +302,12 @@ const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
   updatedAt: 'boards.settings.field.updatedAt',
 };
 
+/** What a board's settings sit under: its track's name, or the board's own outside any track. */
+const placeOf = (board: Board) =>
+  board.location.type === 'track' && board.location.track.key
+    ? (board.location.track.name ?? board.location.track.key)
+    : board.name;
+
 /**
  * A board's settings (M1-043; AGL-002 to AGL-006, AGL-014), for its board admins and the
  * administrators of its track: name, kind, query and sub-filter; columns with their minimum
@@ -377,8 +383,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       <section className="page board-settings" aria-labelledby={`${id}-title`}>
         <PageHeader
           titleId={`${id}-title`}
-          title={t('boards.settings.title', { name: board.name })}
+          title={t('boards.settings.link')}
+          eyebrow={placeOf(board)}
           purpose={t('purpose.boardSettings')}
+          about={t('boards.settings.about')}
         />
         <p className="page-note">{t('boards.settings.readOnly')}</p>
       </section>
@@ -546,12 +554,18 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     <section className="page board-settings" aria-labelledby={`${id}-title`}>
       <PageHeader
         titleId={`${id}-title`}
-        title={t('boards.settings.title', { name: board.name })}
+        // 'Board settings' under the track's name, like the track's other pages (D26); inside a
+        // track the Board tab leads back, so no pill repeats it (D7).
+        title={t('boards.settings.link')}
+        eyebrow={placeOf(board)}
         purpose={t('purpose.boardSettings')}
+        about={t('boards.settings.about')}
         actions={
-          <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
-            {t('boards.settings.back')}
-          </a>
+          board.location.type === 'track' && board.location.track.key ? undefined : (
+            <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
+              {t('boards.settings.back')}
+            </a>
+          )
         }
       />
       {notice && (

@@ -363,7 +363,7 @@ export function SprintReportPage({
         <>
           {/* The totals sit on a card of their own, like the rest of the report (TR-14). */}
           {!empty && (
-            <dl className="glass-card sprint-report-totals" aria-label={t('sprints.report.totals')}>
+            <dl className="glass-card sprint-report-totals">
               <dt>{t('sprints.report.committed')}</dt>
               <dd>{est(report.totals.committed)}</dd>
               <dt>{t('sprints.report.added')}</dt>

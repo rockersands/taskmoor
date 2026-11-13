@@ -42,6 +42,29 @@ export const Settings: Story = {
   },
 };
 
+/**
+ * Every check box of board and sprint settings is the one control: the same size and the
+ * accent colour as the form's own (TR-24), never the browser's default blue.
+ */
+export const OneCheckBox: Story = {
+  args: { client: fakeBoardClient({ board: SCRUM_BOARD }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('group', { name: 'Sprints' });
+    const boxes = canvas.getAllByRole('checkbox');
+    await expect(boxes.length).toBeGreaterThan(2);
+    const looks = new Set(
+      boxes.map((box) => {
+        const style = getComputedStyle(box);
+        const { width, height } = box.getBoundingClientRect();
+        return `${Math.round(width)}x${Math.round(height)} ${style.accentColor}`;
+      }),
+    );
+    await expect([...looks]).toHaveLength(1);
+    await expect([...looks][0]).not.toMatch(/auto$/);
+  },
+};
+
 /** Colours by query, with a rule. */
 export const ColourRules: Story = {
   args: {
