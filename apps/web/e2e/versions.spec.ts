@@ -55,6 +55,8 @@ test('[API-018] (2) too old for the backend: "update required" instead of the ap
   await backendWants(page, { minimum: '99.0.0', recommended: '99.1.0' });
   await page.goto(`${BASE}/#/home`);
   await expect(page.getByRole('heading', { level: 1, name: 'Update required' })).toBeVisible();
-  await expect(page.getByRole('banner')).toHaveCount(0);
+  // Not the app: the stand-alone frame, with only the product name on top and no navigation.
+  await expect(page.getByRole('banner')).toHaveText('Taskmoor');
+  await expect(page.getByRole('navigation')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reload' })).toBeVisible();
 });

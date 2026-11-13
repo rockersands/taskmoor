@@ -55,10 +55,12 @@ for (const mode of MODES) {
       ).toBeVisible();
     }
 
-    // The old board link opens the board.
+    // The old board link opens the board: titled by its section, under its track's name.
     await page.goto(`${base}/secure/RapidBoard.jspa?rapidView=12`);
     await expect(page).toHaveURL(/\/boards\/\d+$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Routes board' })).toBeVisible();
+    const board = page.getByRole('region', { name: 'Board' });
+    await expect(board.getByRole('heading', { level: 1, name: 'Board' })).toBeVisible();
+    await expect(board.locator('.page-eyebrow')).toHaveText('Routes');
 
     // A filter no import brought says so.
     await page.goto(`${base}/issues/?filter=99999`);

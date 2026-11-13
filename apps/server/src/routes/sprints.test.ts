@@ -142,9 +142,11 @@ describe('sprints (M1-044)', () => {
     expect(res.statusCode, res.body).toBe(200);
     return res.json() as { added: number; afterStart: boolean };
   }
+  // Starting begins now, so the default end is relative to the clock: a fixed date ages
+  // into the past and the start fails with `before_start`.
   async function start(sprintId: number, body: Record<string, unknown> = {}) {
     return post('alice', `/api/v1/sprints/${sprintId}/start`, {
-      endAt: '2026-11-12T09:00:00Z',
+      endAt: new Date(Date.now() + 14 * 24 * HOUR * 1000).toISOString(),
       ...body,
     });
   }

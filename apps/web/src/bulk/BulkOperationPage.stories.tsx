@@ -90,7 +90,7 @@ export const AtPhoneWidth: Story = {
   },
 };
 
-/** A bulk change that cannot be found still has its page: a title and what the page is for. */
+/** A bulk change that cannot be found gets the shared not-found page (D4): it says so, with Home and Search. */
 export const NotFound: Story = {
   args: {
     client: {
@@ -102,7 +102,11 @@ export const NotFound: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('heading', { level: 1, name: 'Bulk change' })).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'Bulk change not found' }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('alert')).toHaveTextContent(/^This bulk change does not exist/);
+    await expect(canvas.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Go to Search' })).toBeVisible();
   },
 };

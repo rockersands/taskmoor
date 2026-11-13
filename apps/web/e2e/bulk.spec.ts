@@ -36,7 +36,7 @@ test('[CORE-024] follows a bulk edit to the end and lists the ticket it could no
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bulk edit of 4 tickets');
   // One ticket failed: a warning, never a green "Done." (PL-23, D14).
   await expect(page.getByRole('main').getByRole('alert')).toHaveText(
-    'The bulk edit finished with problems: 3 tickets were changed, and 1 ticket was not. Each one is listed below with the reason.',
+    'The bulk edit finished with problems: 3 tickets were changed, and 1 ticket was not. The list below gives the reasons.',
   );
   await expect(page.getByRole('progressbar', { name: '4 of 4 tickets finished' })).toBeVisible();
   const counts = page.locator('.bulk-counts');

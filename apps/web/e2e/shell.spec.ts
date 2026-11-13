@@ -1,7 +1,19 @@
 import { expect, test } from '@playwright/test';
 
+/**
+ * The app frame: sidebar, drawer and touch targets. A signed-out visitor sees a reduced frame
+ * with only the product name and sign-in (D8), so each test signs in first. It uses the
+ * attachments database (preview 4174) and its administrator (Ada Attach).
+ */
+const BASE = 'http://localhost:4174';
+const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
+
+test.beforeEach(async ({ page }) => {
+  expect((await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
+});
+
 test('the page never scrolls sideways', async ({ page }) => {
-  await page.goto('./');
+  await page.goto(`${BASE}/`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
@@ -13,7 +25,7 @@ test.describe('desktop', () => {
   test.skip(({ isMobile }) => isMobile, 'desktop layout only');
 
   test('the sidebar is always visible and collapses to an icon rail', async ({ page }) => {
-    await page.goto('./');
+    await page.goto(`${BASE}/`);
     const sidebar = page.locator('#shell-sidebar');
     await expect(sidebar.getByRole('navigation', { name: 'Main' })).toBeVisible();
     expect((await sidebar.boundingBox())?.width).toBeGreaterThan(200);
@@ -24,7 +36,7 @@ test.describe('desktop', () => {
   });
 
   test('navigation changes the page', async ({ page }) => {
-    await page.goto('./');
+    await page.goto(`${BASE}/`);
     await page.getByRole('link', { name: 'Tracks' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tracks');
     await expect(page).toHaveURL(/#\/tracks$/);
@@ -35,7 +47,7 @@ test.describe('mobile', () => {
   test.skip(({ isMobile }) => !isMobile, 'compact layout only');
 
   test('navigation lives in a drawer opened from the menu button', async ({ page }) => {
-    await page.goto('./');
+    await page.goto(`${BASE}/`);
     await expect(page.getByRole('navigation')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Open navigation' }).tap();
@@ -48,7 +60,7 @@ test.describe('mobile', () => {
   });
 
   test('touch targets are at least 44px tall', async ({ page }) => {
-    await page.goto('./');
+    await page.goto(`${BASE}/`);
     const menu = page.getByRole('button', { name: 'Open navigation' });
     expect((await menu.boundingBox())?.height).toBeGreaterThanOrEqual(44);
 

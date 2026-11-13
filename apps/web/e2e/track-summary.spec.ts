@@ -24,7 +24,9 @@ test('[RPT-006] a track’s summary counts what its searches find', async ({ pag
     expect(res.status(), await res.text()).toBe(201);
   }
   await page.goto(`${BASE}/#/tracks/${key}`);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(`(${key})`);
+  // Titled by its section, with the track named above it (the page review's track titles).
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Summary');
+  await expect(page.locator('.page-eyebrow')).toHaveText(`Summary ${key}`);
   const openNumber = page.locator('dl.report-stats div').first().locator('dd a');
   await expect(openNumber).toHaveText('3');
   const search = await page.request.get(
