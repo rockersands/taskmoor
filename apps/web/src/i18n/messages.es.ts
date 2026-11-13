@@ -837,7 +837,9 @@ export const messagesEs: Record<MessageId, string> = {
   'guardrails.loading': 'Leyendo las salvaguardas…',
   'guardrails.loadFailed':
     'No se pudieron leer las salvaguardas. Inténtalo de nuevo en un momento.',
-  'guardrails.failed': 'No se pudo guardar el límite. Inténtalo de nuevo en un momento.',
+  'guardrails.failedSome':
+    '{count, plural, one {No se guardó: {names}. Inténtalo de nuevo en un momento; lo que escribiste sigue en el formulario.} other {No se guardaron: {names}. Inténtalo de nuevo en un momento; lo que escribiste sigue en el formulario.}}',
+  'guardrails.savedSome': 'Guardado: {names}.',
   'guardrails.saved': '{name} está limitado ahora a {limit, number}.',
   'guardrails.guidance':
     'Los límites ampliados se aplican al instante. Las páginas que muestran todo esto (listas, formularios, tableros) se vuelven más lentas a medida que crecen; vigílalas tras una ampliación grande.',

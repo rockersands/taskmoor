@@ -8,10 +8,9 @@ import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { fakeGuardrailsClient, fakeStorageClient } from './fixtures';
-import { GuardrailsPage } from './GuardrailsPage';
+import { GuardrailsPage, parseLimit } from './GuardrailsPage';
 
-function renderPage(locale: Locale = 'en') {
-  const client = fakeGuardrailsClient();
+function renderPage(locale: Locale = 'en', client = fakeGuardrailsClient()) {
   render(
     <I18nProvider locale={locale}>
       <SessionProvider session={ADMIN}>
@@ -81,6 +80,68 @@ describe('guardrails (M1-055)', () => {
       { name: 'fields_per_track', limit: 800 },
       { name: 'options_per_field', limit: 15_000 },
     ]);
+  });
+
+  it('[CORE-026] says which limits were saved when one fails partway, and keeps what was typed', async () => {
+    const user = userEvent.setup();
+    const client = fakeGuardrailsClient();
+    const set = client.set;
+    client.set = async (name, limit) => {
+      if (name === 'releases_per_track') throw new Error('offline');
+      await set(name, limit);
+    };
+    renderPage('en', client);
+    const form = await screen.findByRole('form', { name: 'Limits' });
+    const type = async (label: string, value: string) => {
+      const field = within(form).getByLabelText(`Limit: ${label}`);
+      await user.clear(field);
+      await user.type(field, value);
+      return field;
+    };
+    const fields = await type('Custom fields per track', '800');
+    const releases = await type('Releases per track (archived ones aside)', '16,000');
+    const options = await type('Options per field', '25,000');
+    const save = within(form).getByRole('button', { name: 'Save the limits' });
+    await user.click(save);
+    // The second of three failed: the first and third are saved and named, the second is named
+    // as not saved, and every field keeps what was typed.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Not saved: Releases per track (archived ones aside). Try again in a moment',
+    );
+    expect(
+      screen.getByText('Saved: Custom fields per track and Options per field.'),
+    ).toHaveAttribute('role', 'status');
+    expect(client.calls).toEqual([
+      { name: 'fields_per_track', limit: 800 },
+      { name: 'options_per_field', limit: 25_000 },
+    ]);
+    expect(fields).toHaveValue('800');
+    expect(releases).toHaveValue('16,000');
+    expect(options).toHaveValue('25,000');
+    // The form is the same one: the focus stays on Save.
+    expect(within(form).getByRole('button', { name: 'Save the limits' })).toHaveFocus();
+    expect(screen.getByRole('form', { name: 'Limits' })).toBe(form);
+
+    // Saving again sends only what is still unsaved and clears the old messages.
+    client.set = set;
+    await user.click(save);
+    expect(await screen.findByText(/is limited to 16,000 now/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Saved:/)).not.toBeInTheDocument();
+    expect(client.calls.at(-1)).toEqual({ name: 'releases_per_track', limit: 16_000 });
+    expect(save).toHaveFocus();
+  });
+
+  it("[CORE-026] reads only the locale's group separator and refuses a decimal", () => {
+    expect(parseLimit('20,000', 'en')).toBe(20_000);
+    expect(parseLimit(' 20000 ', 'en')).toBe(20_000);
+    expect(parseLimit('1.5', 'en')).toBeNull();
+    expect(parseLimit('20.000', 'en')).toBeNull();
+    expect(parseLimit('20.000', 'es')).toBe(20_000);
+    expect(parseLimit('1,5', 'es')).toBeNull();
+    // Where the separator is a space, an ordinary one will do.
+    expect(parseLimit('20 000', 'fr')).toBe(20_000);
+    expect(parseLimit('20,5', 'fr')).toBeNull();
   });
 
   it('[CORE-026] names a permission and a bulk change by their words, not their codes (AD-32)', async () => {

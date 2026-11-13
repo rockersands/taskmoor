@@ -25,6 +25,7 @@ export interface GuardrailsPageProps {
  */
 export function GuardrailsPage({ client = guardrailsClient, storage }: GuardrailsPageProps) {
   const t = useT();
+  const intl = useIntl();
   const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
@@ -53,31 +54,50 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
     if (!notAdmin) void load();
   }, [load, notAdmin]);
 
-  /** Every changed limit, saved together with the page's one Save (D20). */
+  /**
+   * Every changed limit, saved together with the page's one Save (D20). The server takes one
+   * limit at a time, so a failure partway says which limits were saved and which were not; the
+   * form stays as it is, with what was typed, so nothing is lost.
+   */
   const saveAll = async (changes: { guardrail: Guardrail; limit: number }[]) => {
     setProblem(null);
+    setMessage('');
+    setRaised(false);
     if (changes.length === 0) {
       setMessage(t('guardrails.nothingChanged'));
-      setRaised(false);
       return;
     }
-    try {
-      for (const { guardrail, limit } of changes) await client.set(guardrail.name, limit);
-      const [only] = changes;
+    const saved: typeof changes = [];
+    const failed: typeof changes = [];
+    for (const change of changes) {
+      try {
+        await client.set(change.guardrail.name, change.limit);
+        saved.push(change);
+      } catch (error) {
+        if (expired(error)) return;
+        failed.push(change);
+      }
+    }
+    const names = (list: typeof changes) =>
+      intl.formatList(
+        list.map(({ guardrail }) => t(`guardrails.name.${guardrail.name}` as MessageId)),
+      );
+    const [only] = saved;
+    if (failed.length > 0) {
+      if (saved.length > 0) setMessage(t('guardrails.savedSome', { names: names(saved) }));
+      setProblem(t('guardrails.failedSome', { count: failed.length, names: names(failed) }));
+    } else {
       setMessage(
-        changes.length === 1 && only
+        saved.length === 1 && only
           ? t('guardrails.saved', {
               name: t(`guardrails.name.${only.guardrail.name}` as MessageId),
               limit: only.limit,
             })
-          : t('guardrails.savedMany', { count: changes.length }),
+          : t('guardrails.savedMany', { count: saved.length }),
       );
-      setRaised(changes.some(({ guardrail, limit }) => limit > guardrail.limit));
-      await load();
-    } catch {
-      setProblem(t('guardrails.failed'));
-      await load();
     }
+    setRaised(saved.some(({ guardrail, limit }) => limit > guardrail.limit));
+    await load();
   };
 
   return (
@@ -109,12 +129,7 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
             </p>
           )}
           {state.status === 'loaded' && (
-            <LimitsForm
-              key={state.guardrails.map((g) => `${g.name}:${g.limit}`).join()}
-              guardrails={state.guardrails}
-              ceiling={state.ceiling}
-              onSave={saveAll}
-            />
+            <LimitsForm guardrails={state.guardrails} ceiling={state.ceiling} onSave={saveAll} />
           )}
           {!notAdmin && <StorageQuotas {...(storage ? { client: storage } : {})} />}
         </>
@@ -123,9 +138,23 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
   );
 }
 
-/** A number typed with or without separators ("20,000", "20 000"), or null when it is not one. */
-export function parseLimit(text: string): number | null {
-  const digits = text.replace(/[\s,.  ']/g, '');
+/**
+ * A whole number typed with or without the locale's group separator ("20,000" in English,
+ * "20.000" in Spanish), or null when it is not one. Only that separator is skipped, so a
+ * decimal ("1.5" in English, "1,5" in Spanish) is refused rather than read as thousands. Where
+ * the separator is a space, any space will do.
+ */
+export function parseLimit(text: string, locale: string): number | null {
+  const group =
+    new Intl.NumberFormat(locale).formatToParts(1_000_000).find((part) => part.type === 'group')
+      ?.value ?? '';
+  const trimmed = text.trim();
+  const digits =
+    group === ''
+      ? trimmed
+      : /^\s$/.test(group)
+        ? trimmed.replace(/\s/g, '')
+        : trimmed.split(group).join('');
   return /^\d+$/.test(digits) ? Number(digits) : null;
 }
 
@@ -150,16 +179,20 @@ function LimitsForm({
   const [busy, setBusy] = useState(false);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     const wrong = guardrails
       .filter((g) => {
-        const limit = parseLimit(values[g.name] ?? '');
+        const limit = parseLimit(values[g.name] ?? '', intl.locale);
         return limit === null || limit < 1 || limit > ceiling;
       })
       .map((g) => g.name);
     setInvalid(wrong);
     if (wrong.length > 0) return;
     const changes = guardrails
-      .map((guardrail) => ({ guardrail, limit: parseLimit(values[guardrail.name] ?? '') ?? 0 }))
+      .map((guardrail) => ({
+        guardrail,
+        limit: parseLimit(values[guardrail.name] ?? '', intl.locale) ?? 0,
+      }))
       .filter(({ guardrail, limit }) => limit !== guardrail.limit);
     setBusy(true);
     try {
@@ -193,7 +226,8 @@ function LimitsForm({
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button-primary" disabled={busy}>
+        {/* aria-disabled rather than disabled: a disabled button drops the focus to the page. */}
+        <button type="submit" className="button-primary" aria-disabled={busy || undefined}>
           {t('guardrails.saveAll')}
         </button>
       </div>

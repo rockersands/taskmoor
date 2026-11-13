@@ -815,7 +815,9 @@ export const messagesEn = {
   'guardrails.forbidden': 'Only site administrators change guardrails.',
   'guardrails.loading': 'Reading the guardrails…',
   'guardrails.loadFailed': 'The guardrails could not be read. Try again in a moment.',
-  'guardrails.failed': 'The limit could not be saved. Try again in a moment.',
+  'guardrails.failedSome':
+    'Not saved: {names}. Try again in a moment; what you typed is still in the form.',
+  'guardrails.savedSome': 'Saved: {names}.',
   'guardrails.saved': '{name} is limited to {limit, number} now.',
   'guardrails.guidance':
     'Raised limits take effect at once. Pages that show all of these (lists, forms, boards) get slower as they grow; keep an eye on them after a large raise.',
