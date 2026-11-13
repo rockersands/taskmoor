@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { ApiError } from '../api/client';
 import type { TrackClient, TrackSections } from './client';
 
 /** What was last read per track, so a track's tabs do not wait or jump on each section. */
@@ -15,13 +16,16 @@ export function trackSectionsChanged(key: string): void {
  * The sections a track has beyond those every track has (ADR-116), for its tab bar. Null until the
  * first answer, so a Kanban track never shows a Backlog tab, even for a moment. It is read again on
  * each change of section, so someone else's change of the board's kind reaches the next page.
+ * 'missing' when no track has that key, or the reader may not see it (the page-review fault AC-8).
  */
 export function useLoadedTrackSections(
   trackKey: string,
   client: TrackClient,
   section: string,
-): TrackSections | null {
-  const [sections, setSections] = useState(() => known.get(id(trackKey)) ?? null);
+): TrackSections | null | 'missing' {
+  const [sections, setSections] = useState<TrackSections | null | 'missing'>(
+    () => known.get(id(trackKey)) ?? null,
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: a change of section reads them again
   useEffect(() => {
     let live = true;
@@ -31,7 +35,9 @@ export function useLoadedTrackSections(
           known.set(id(trackKey), answer);
           if (live) setSections(answer);
         },
-        () => {},
+        (error: unknown) => {
+          if (live && error instanceof ApiError && error.status === 404) setSections('missing');
+        },
       );
     setSections(known.get(id(trackKey)) ?? null);
     void read();

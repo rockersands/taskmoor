@@ -144,20 +144,16 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
     <section className="page releases-page" aria-labelledby={`${id}-title`}>
       <PageHeader
         titleId={`${id}-title`}
-        title={t('releases.title', { name: track.name })}
+        // Titled by the section, the track named above it (D26); no pill back to the summary,
+        // whose tab is right above (D7).
+        title={t('track.section.releases')}
+        eyebrow={track.name}
         purpose={t('purpose.releases')}
+        about={t('releases.about')}
         actions={
-          <>
-            <a className="button-quiet" href={routeHref('#/cross-track-releases')}>
-              {t('crossTrack.title')}
-            </a>
-            <a
-              className="button-quiet"
-              href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}
-            >
-              {t('releases.toSummary')}
-            </a>
-          </>
+          <a className="button-quiet" href={routeHref('#/cross-track-releases')}>
+            {t('crossTrack.title')}
+          </a>
         }
       />
       {list.mayManage && (

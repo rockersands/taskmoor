@@ -55,6 +55,7 @@ export const messagesEs: Record<MessageId, string> = {
   'track.section.statistics': 'Estadísticas',
   'track.boardFailed':
     'No se pudo cargar el tablero de este track. Inténtalo de nuevo en un momento.',
+  'track.notFound': 'Ningún track tiene la clave {key}, o no puedes verlo.',
   'track.backlog.noneTitle': 'Este track no tiene backlog',
   'track.backlog.none':
     'Un backlog planifica el trabajo en sprints, y solo un tablero Scrum los tiene. En este track, todos los tickets están en el tablero: su primera columna es donde espera el trabajo nuevo.',
@@ -241,7 +242,7 @@ export const messagesEs: Record<MessageId, string> = {
   'purpose.release':
     'Una versión: sus tickets, cuánto han avanzado y las notas que resultan de ellos.',
   'purpose.boardSettings':
-    'Cómo funciona este tablero: sus columnas, lo que muestra en una tarjeta y quién puede cambiarlo.',
+    'Cómo funciona este tablero: sus columnas, carriles y filtros, qué muestra una tarjeta y sus sprints.',
   'purpose.boardReports': 'Cómo fluye el trabajo por este tablero: dónde espera y cuánto tarda.',
   'purpose.sprintReport':
     'Cómo fue este sprint: lo planificado, lo terminado y lo que cambió por el camino.',
@@ -4257,6 +4258,8 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.card.points': '{points, plural, one {# punto} other {# puntos}}',
   'boards.keyboardHint':
     'Arriba y Abajo te llevan de una tarjeta a otra en una columna, Inicio y Fin a su primera y su última tarjeta, y Tab a la columna siguiente. Alt+Izquierda y Alt+Derecha mueven una tarjeta a la columna siguiente; Alt+Arriba y Alt+Abajo la mueven dentro de su columna.',
+  'boards.touchHint':
+    'Arrastra una tarjeta por su asa a otra columna, o toca el asa para ver un menú con todos los movimientos.',
   'boards.empty': 'Ningún ticket de este tablero coincide.',
   'boards.columns': 'Columnas',
   'boards.column.count': '{count, plural, one {# ticket} other {# tickets}}',
@@ -4358,7 +4361,8 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.create.submit': 'Crear el tablero',
   'boards.create.failed': 'No se pudo crear el tablero. Revisa la consulta.',
   'boards.settings.link': 'Configuración del tablero',
-  'boards.settings.title': 'Configuración de {name}',
+  'boards.settings.about':
+    'Todos los que abren este tablero lo ven como se configura aquí. Las columnas siguen los estados del flujo de trabajo, los carriles y los filtros ordenan las tarjetas y, en un tablero Scrum, los sprints fijan cómo se estima y planifica el trabajo.',
   'boards.settings.back': 'Volver al tablero',
   'boards.settings.readOnly':
     'Solo los administradores del tablero y los de su track cambian este tablero.',
@@ -4462,6 +4466,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien cambió este tablero mientras tanto. Vuelve a abrir la configuración para ver su cambio.',
   'sprints.backlog.link': 'Backlog',
   'sprints.backlog.pageTitle': 'Backlog y sprints',
+  'sprints.backlog.about':
+    'El backlog guarda el trabajo que ningún sprint ha tomado todavía, lo más importante primero. Planifica un sprint moviendo tickets a él, inícialo cuando el equipo esté listo y complétalo desde aquí o desde el tablero.',
   'sprints.backlog.title': 'Backlog',
   'sprints.backlog.toBoard': 'Volver al tablero',
   'sprints.backlog.failed': 'No se pudo cargar el backlog.',
@@ -4506,6 +4512,8 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.move.failed': 'No se pudieron mover los tickets.',
   'sprints.rank.hint':
     'Arrastra un ticket por su asa, o con el ratón desde cualquier punto de su fila, para ordenarlo o moverlo a otra sección, un objetivo o una versión; un ticket seleccionado se lleva toda la selección, y Escape lo cancela. Con el teclado, el asa abre un menú con los mismos movimientos, Alt y la flecha arriba o abajo mueven un ticket más allá de su vecino, y los menús de la selección hacen el resto.',
+  'sprints.rank.touchHint':
+    'Arrastra un ticket por su asa para ordenarlo o moverlo a otra sección, o toca el asa para ver un menú con todos los movimientos.',
   'sprints.rank.up': '{key} se movió arriba.',
   'sprints.rank.down': '{key} se movió abajo.',
   'sprints.rank.top': '{key} se movió arriba del todo.',
@@ -4569,6 +4577,11 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.report.link': 'Informe del sprint',
   'sprints.report.title': 'Informe del sprint: {name}',
   'sprints.report.toBacklog': 'Volver al backlog',
+  'sprints.report.totals': 'Totales',
+  'sprints.report.column.key': 'Clave',
+  'sprints.report.column.summary': 'Resumen',
+  'sprints.report.column.status': 'Estado',
+  'sprints.report.column.estimate': 'Estimación',
   'sprints.report.failed': 'No se pudo cargar el informe del sprint.',
   'sprints.charts.burndown': 'Burndown',
   'sprints.charts.burndownSummary':
@@ -4585,6 +4598,9 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.charts.velocityAverage': 'Completado de media: {average}',
   'sprints.charts.velocityNone':
     'La velocidad aparece cuando se completa un sprint de este tablero.',
+  'sprints.charts.noEstimates.title': 'No hay estimaciones que sumar',
+  'sprints.charts.noEstimates':
+    'Estos gráficos suman las estimaciones de los tickets del sprint, y ninguno tiene una todavía. Dales una estimación, o cuenta tickets en su lugar en la configuración del tablero, en Sprints.',
   'sprints.charts.committed': 'Comprometido',
   'sprints.charts.table': 'Mostrar los números',
   'sprints.charts.day': 'Día',
@@ -5114,7 +5130,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.empty': 'Los administradores del track aún no eligieron widgets para él.',
   'summary.emptyEditable':
     'Elige Personalizar para añadir algunos, o Volver al predeterminado para los números con los que empieza esta página.',
-  'statistics.title': 'Estadísticas de {name}',
+  'statistics.report': 'Informe',
   'statistics.purpose':
     'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus sprints, sus versiones y sus tickets.',
   'statistics.about':
@@ -5309,8 +5325,9 @@ export const messagesEs: Record<MessageId, string> = {
   'schedule.refused.invalid': 'No se pudo reprogramar {key}: esas fechas no son válidas.',
   'schedule.refused.conflict':
     'No se pudo reprogramar {key}: cambió mientras tanto. Inténtalo de nuevo.',
-  'releases.title': 'Versiones de {name}',
   'releases.toSummary': 'Resumen del track',
+  'releases.about':
+    'Cada versión reúne los tickets dirigidos a ella. Las próximas muestran cuántos de sus tickets están cerrados; abre una para ver sus avisos, sus aprobaciones y el botón que la entrega.',
   'releases.notFound': 'Este track no existe, o no puedes verlo.',
   'releases.upcoming': 'Próximas',
   'releases.shipped': 'Entregadas',
@@ -5333,8 +5350,9 @@ export const messagesEs: Record<MessageId, string> = {
   'releases.create.taken': 'Este track ya tiene una versión con ese nombre.',
   'releases.create.failed': 'No se pudo añadir la versión.',
   'release.notFound': 'Esta versión no existe, o no puedes verla.',
-  'release.title': '{track} {name}',
-  'release.toReleases': 'Todas las versiones de {track}',
+  'release.failed': 'No se pudo cargar esta versión. Inténtalo de nuevo en un momento.',
+  'release.about':
+    'Una versión reúne los tickets que se entregan juntos. Su progreso los cuenta por etapa, sus avisos dicen qué se interpone y, una vez entregada, sus notas recogen qué cambió.',
   'release.startDate': 'Fecha de inicio',
   'release.releaseDate': 'Fecha de la versión',
   'release.shippedOn': 'Entregada el',
@@ -5366,7 +5384,9 @@ export const messagesEs: Record<MessageId, string> = {
   'release.approval.doneApproved': 'Aprobaste esta versión.',
   'release.approval.doneDeclined': 'Rechazaste esta versión.',
   'release.approval.failed': 'No se pudo guardar tu decisión.',
-  'release.ship.title': 'Entrega',
+  'release.ship.title': '¿Entregar {name}?',
+  'release.ship.weight':
+    'Al entregarla, esta versión queda como entregada el día de abajo, para todos en el track. Sus tickets abiertos se quedan en ella o pasan a la versión que elijas.',
   'release.ship.open': 'Entregar esta versión…',
   'release.ship.day': 'Entregar el',
   'release.ship.openLegend':
@@ -6219,8 +6239,9 @@ export const messagesEs: Record<MessageId, string> = {
   'settings.ticketTemplatesHint':
     'Plantillas que se ofrecen al crear un ticket en cualquier track.',
   'tickets.templates.adminTitle': 'Plantillas de ticket para todos los tracks',
-  'tickets.templates.trackTitle': 'Plantillas de ticket de {name}',
-  'tickets.templates.toSummary': 'Volver al resumen',
+  'tickets.templates.trackTitle': 'Plantillas de ticket',
+  'tickets.templates.trackPurpose':
+    'Plantillas que se ofrecen al crear un ticket en este track, incluidas las de todos los tracks.',
   'tickets.templates.intro':
     'Una plantilla inicia un ticket nuevo con un resumen, un esquema, valores predeterminados y subtickets. Las personas revisan los valores en el formulario de creación antes de crear el ticket, y lo que no pueden establecer se omite.',
   'tickets.templates.loading': 'Cargando las plantillas…',

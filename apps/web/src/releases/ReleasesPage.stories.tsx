@@ -36,9 +36,7 @@ type Story = StoryObj<typeof meta>;
 export const Hub: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByRole('heading', { name: 'Releases of Checkout' }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole('heading', { level: 1, name: 'Releases' })).toBeVisible();
     await expect(canvas.getByText('Overdue')).toBeVisible();
     await expect(canvas.getByRole('form', { name: 'New release' })).toBeVisible();
   },

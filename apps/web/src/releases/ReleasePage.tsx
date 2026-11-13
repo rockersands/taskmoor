@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
+import { type TrackClient, trackClient } from '../tracks/client';
+import { TrackLayout } from '../tracks/TrackLayout';
 import {
   notesFileHref,
   type Release,
@@ -32,6 +36,8 @@ export interface ReleasePageProps {
   crossTrack?: CrossTrackClient;
   /** Today, the default day a release ships on. */
   now?: () => Date;
+  /** The track's sections, for its tab bar. */
+  tracks?: TrackClient;
 }
 
 const WARNINGS: Record<Warning['code'], MessageId> = {
@@ -63,6 +69,7 @@ export function ReleasePage({
   client = releaseClient,
   crossTrack = crossTrackClient,
   now = () => new Date(),
+  tracks = trackClient,
 }: ReleasePageProps) {
   const t = useT();
   const intl = useIntl();
@@ -70,33 +77,40 @@ export function ReleasePage({
   const [release, setRelease] = useState<Release | null>(null);
   const [overview, setOverview] = useState<ReleaseOverview | null>(null);
   const [notes, setNotes] = useState<ReleaseNotes | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'missing' | 'failed' | null>(null);
   const [notice, setNotice] = useState('');
+  const [shipping, setShipping] = useState(false);
 
   const load = useCallback(() => {
-    Promise.all([client.get(releaseId), client.overview(releaseId), client.notes(releaseId)]).then(
-      ([r, o, n]) => {
-        setRelease(r);
-        setOverview(o);
-        setNotes(n);
-      },
-      () => setFailed(true),
+    // The release first: once it is not there, nothing else is asked for (PL-50).
+    client.get(releaseId).then(
+      (r) =>
+        Promise.all([client.overview(releaseId), client.notes(releaseId)]).then(
+          ([o, n]) => {
+            setRelease(r);
+            setOverview(o);
+            setNotes(n);
+          },
+          () => setFailed('failed'),
+        ),
+      (error: unknown) =>
+        setFailed(
+          error instanceof ApiError && (error.status === 404 || error.status === 403)
+            ? 'missing'
+            : 'failed',
+        ),
     );
   }, [client, releaseId]);
   useEffect(load, [load]);
 
+  if (failed === 'missing') {
+    return <NotFoundPage title={t('notFound.release')}>{t('release.notFound')}</NotFoundPage>;
+  }
   if (failed) {
     return (
-      <section className="page release-page" aria-labelledby={`${id}-title`}>
-        <PageHeader
-          titleId={`${id}-title`}
-          title={t('track.section.releases')}
-          purpose={t('purpose.release')}
-        />
-        <p className="board-problem" role="alert">
-          {t('release.notFound')}
-        </p>
-      </section>
+      <p className="board-problem" role="alert">
+        {t('release.failed')}
+      </p>
     );
   }
   if (!release || !overview || !notes) {
@@ -118,198 +132,214 @@ export function ReleasePage({
   };
 
   return (
-    <section className="page release-page" aria-labelledby={`${id}-title`}>
-      <PageHeader
-        titleId={`${id}-title`}
-        title={t('release.title', { track: track.name, name: release.name })}
-        eyebrow={<ReleaseState release={release} />}
-        purpose={t('purpose.release')}
-        actions={
-          <a
-            className="button-quiet"
-            href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/releases`)}
-          >
-            {t('release.toReleases', { track: track.name })}
-          </a>
-        }
-      />
-      <dl className="release-facts">
-        <div>
-          <dt>{t('release.startDate')}</dt>
-          <dd>{release.startDate ?? t('release.noDate')}</dd>
-        </div>
-        <div>
-          <dt>{t('release.releaseDate')}</dt>
-          <dd>{release.releaseDate ?? t('release.noDate')}</dd>
-        </div>
-        {release.shipped && notes.release.shippedOn && (
+    <TrackLayout trackKey={track.key} section="releases" client={tracks}>
+      <section className="page release-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          // Titled by the release, its track named above as on the track's other pages (D26); the
+          // track's tab bar leads back to its releases (T-215, D7).
+          title={release.name}
+          eyebrow={
+            <>
+              {track.name} <ReleaseState release={release} />
+            </>
+          }
+          purpose={t('purpose.release')}
+          about={t('release.about')}
+          actions={
+            // A normal primary action; the step it opens carries the weight (D27).
+            canShip && !shipping ? (
+              <button
+                type="button"
+                className="button-primary"
+                data-tutorial="release-ship"
+                onClick={() => setShipping(true)}
+              >
+                {t('release.ship.open')}
+              </button>
+            ) : undefined
+          }
+        />
+        <dl className="release-facts">
           <div>
-            <dt>{t('release.shippedOn')}</dt>
-            <dd>{notes.release.shippedOn}</dd>
+            <dt>{t('release.startDate')}</dt>
+            <dd>{release.startDate ?? t('release.noDate')}</dd>
           </div>
-        )}
-        {linked && (
           <div>
-            <dt>{t('release.crossTrack.fact')}</dt>
-            <dd>
-              <a href={routeHref(`#/cross-track-releases/${linked.id}`)}>{linked.name}</a>
-              {' · '}
-              {linked.date ? dayText(intl, linked.date) : t('crossTrack.end.whenComplete')}
-            </dd>
+            <dt>{t('release.releaseDate')}</dt>
+            <dd>{release.releaseDate ?? t('release.noDate')}</dd>
           </div>
-        )}
-      </dl>
-      {release.description && <p className="release-description">{release.description}</p>}
-      <p className="board-hint" role="status">
-        {notice}
-      </p>
+          {release.shipped && notes.release.shippedOn && (
+            <div>
+              <dt>{t('release.shippedOn')}</dt>
+              <dd>{notes.release.shippedOn}</dd>
+            </div>
+          )}
+          {linked && (
+            <div>
+              <dt>{t('release.crossTrack.fact')}</dt>
+              <dd>
+                <a href={routeHref(`#/cross-track-releases/${linked.id}`)}>{linked.name}</a>
+                {' · '}
+                {linked.date ? dayText(intl, linked.date) : t('crossTrack.end.whenComplete')}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {release.description && <p className="release-description">{release.description}</p>}
+        <p className="board-hint" role="status">
+          {notice}
+        </p>
 
-      <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
-        <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
-        <StageProgress stages={overview.stages} />
-      </section>
-
-      {overview.warnings.length > 0 && (
-        <section className="glass-card release-section" aria-labelledby={`${id}-warnings`}>
-          <h2 id={`${id}-warnings`}>{t('release.warnings')}</h2>
-          <ul className="release-warnings">
-            {overview.warnings.map((w) => (
-              <li key={w.code}>
-                <span className="release-warning-mark" aria-hidden="true">
-                  !
-                </span>
-                <span>
-                  {t(WARNINGS[w.code], {
-                    count: w.count,
-                    name: linked?.name ?? '',
-                    date: linked?.date ? dayText(intl, linked.date) : '',
-                  })}
-                </span>
-                {w.query && <a href={searchHref(w.query)}>{t('release.warning.show')}</a>}
-                {w.code === 'cross_track_out_of_step' &&
-                  linked?.date &&
-                  overview.viewer.mayManage && (
-                    <button
-                      type="button"
-                      className="button-secondary"
-                      onClick={() => void align(linked.date as string)}
-                    >
-                      {t('release.crossTrack.align', { date: dayText(intl, linked.date) })}
-                    </button>
-                  )}
-              </li>
-            ))}
-          </ul>
+        <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
+          <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
+          <StageProgress stages={overview.stages} />
         </section>
-      )}
 
-      {(release.requireApprovals || overview.approvers.length > 0) && (
-        <section className="glass-card release-section" aria-labelledby={`${id}-approvals`}>
-          <h2 id={`${id}-approvals`}>{t('release.approvals')}</h2>
-          {overview.approvers.length === 0 ? (
-            <EmptyState compact title={t('release.approval.nobody')} />
-          ) : (
-            <ul className="release-approvers">
-              {overview.approvers.map((a) => (
-                <li key={a.user.id}>
-                  <span className="release-approver">{a.user.name}</span>
-                  <span
-                    className={`badge release-decision${
-                      a.decision === 'approved'
-                        ? ' badge-success'
-                        : a.decision === 'declined'
-                          ? ' badge-danger'
-                          : ''
-                    }`}
-                    data-decision={a.decision ?? 'none'}
-                  >
-                    {t(DECISIONS[a.decision ?? 'none'])}
+        {overview.warnings.length > 0 && (
+          <section className="glass-card release-section" aria-labelledby={`${id}-warnings`}>
+            <h2 id={`${id}-warnings`}>{t('release.warnings')}</h2>
+            <ul className="release-warnings">
+              {overview.warnings.map((w) => (
+                <li key={w.code}>
+                  <span className="release-warning-mark" aria-hidden="true">
+                    !
                   </span>
-                  {a.comment && <span className="board-meta">{a.comment}</span>}
+                  <span>
+                    {t(WARNINGS[w.code], {
+                      count: w.count,
+                      name: linked?.name ?? '',
+                      date: linked?.date ? dayText(intl, linked.date) : '',
+                    })}
+                  </span>
+                  {w.query && <a href={searchHref(w.query)}>{t('release.warning.show')}</a>}
+                  {w.code === 'cross_track_out_of_step' &&
+                    linked?.date &&
+                    overview.viewer.mayManage && (
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() => void align(linked.date as string)}
+                      >
+                        {t('release.crossTrack.align', { date: dayText(intl, linked.date) })}
+                      </button>
+                    )}
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {(release.requireApprovals || overview.approvers.length > 0) && (
+          <section className="glass-card release-section" aria-labelledby={`${id}-approvals`}>
+            <h2 id={`${id}-approvals`}>{t('release.approvals')}</h2>
+            {overview.approvers.length === 0 ? (
+              <EmptyState compact title={t('release.approval.nobody')} />
+            ) : (
+              <ul className="release-approvers">
+                {overview.approvers.map((a) => (
+                  <li key={a.user.id}>
+                    <span className="release-approver">{a.user.name}</span>
+                    <span
+                      className={`badge release-decision${
+                        a.decision === 'approved'
+                          ? ' badge-success'
+                          : a.decision === 'declined'
+                            ? ' badge-danger'
+                            : ''
+                      }`}
+                      data-decision={a.decision ?? 'none'}
+                    >
+                      {t(DECISIONS[a.decision ?? 'none'])}
+                    </span>
+                    {a.comment && <span className="board-meta">{a.comment}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {mayDecide && (
+              <Decision
+                client={client}
+                releaseId={releaseId}
+                onDone={(message) => {
+                  setNotice(message);
+                  load();
+                }}
+              />
+            )}
+          </section>
+        )}
+
+        {overview.viewer.mayManage && (
+          <CrossTrackLink
+            release={release}
+            client={crossTrack}
+            onChanged={(message) => {
+              setNotice(message);
+              load();
+            }}
+          />
+        )}
+
+        {canShip && shipping && (
+          <Ship
+            client={client}
+            release={release}
+            open={overview.open.count}
+            today={now().toISOString().slice(0, 10)}
+            onCancel={() => setShipping(false)}
+            onShipped={() => {
+              setShipping(false);
+              setNotice(t('release.ship.done', { name: release.name }));
+              load();
+            }}
+          />
+        )}
+
+        <section className="glass-card release-section" aria-labelledby={`${id}-tickets`}>
+          <h2 id={`${id}-tickets`}>{t('release.tickets')}</h2>
+          {overview.tickets.length === 0 ? (
+            <EmptyState compact title={t('release.noTickets')}>
+              {t('empty.release.tickets')}
+            </EmptyState>
+          ) : (
+            <div className="release-table-wrap">
+              <table className="data-table release-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('release.column.key')}</th>
+                    <th scope="col">{t('release.column.summary')}</th>
+                    <th scope="col">{t('release.column.type')}</th>
+                    <th scope="col">{t('release.column.status')}</th>
+                    <th scope="col">{t('release.column.assignee')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.tickets.map((k) => (
+                    <tr key={k.id} data-stage={k.stage}>
+                      <td>
+                        <a href={routeHref(`#/tickets/${encodeURIComponent(k.key)}`)}>{k.key}</a>
+                      </td>
+                      <td>{k.summary}</td>
+                      <td>{k.type}</td>
+                      <td>{k.status}</td>
+                      <td>{k.assignee ?? t('summary.unassigned')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-          {mayDecide && (
-            <Decision
-              client={client}
-              releaseId={releaseId}
-              onDone={(message) => {
-                setNotice(message);
-                load();
-              }}
-            />
+          {overview.truncated && (
+            <p className="board-hint">
+              <a href={searchHref(`targetRelease = ${releaseId}`)}>{t('release.allTickets')}</a>
+            </p>
           )}
         </section>
-      )}
 
-      {overview.viewer.mayManage && (
-        <CrossTrackLink
-          release={release}
-          client={crossTrack}
-          onChanged={(message) => {
-            setNotice(message);
-            load();
-          }}
-        />
-      )}
-
-      {canShip && (
-        <Ship
-          client={client}
-          release={release}
-          open={overview.open.count}
-          today={now().toISOString().slice(0, 10)}
-          onShipped={() => {
-            setNotice(t('release.ship.done', { name: release.name }));
-            load();
-          }}
-        />
-      )}
-
-      <section className="glass-card release-section" aria-labelledby={`${id}-tickets`}>
-        <h2 id={`${id}-tickets`}>{t('release.tickets')}</h2>
-        {overview.tickets.length === 0 ? (
-          <EmptyState compact title={t('release.noTickets')}>
-            {t('empty.release.tickets')}
-          </EmptyState>
-        ) : (
-          <div className="release-table-wrap">
-            <table className="data-table release-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t('release.column.key')}</th>
-                  <th scope="col">{t('release.column.summary')}</th>
-                  <th scope="col">{t('release.column.type')}</th>
-                  <th scope="col">{t('release.column.status')}</th>
-                  <th scope="col">{t('release.column.assignee')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overview.tickets.map((k) => (
-                  <tr key={k.id} data-stage={k.stage}>
-                    <td>
-                      <a href={routeHref(`#/tickets/${encodeURIComponent(k.key)}`)}>{k.key}</a>
-                    </td>
-                    <td>{k.summary}</td>
-                    <td>{k.type}</td>
-                    <td>{k.status}</td>
-                    <td>{k.assignee ?? t('summary.unassigned')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {overview.truncated && (
-          <p className="board-hint">
-            <a href={searchHref(`targetRelease = ${releaseId}`)}>{t('release.allTickets')}</a>
-          </p>
-        )}
+        <NotesView notes={notes} releaseId={releaseId} onCopied={setNotice} />
       </section>
-
-      <NotesView notes={notes} releaseId={releaseId} onCopied={setNotice} />
-    </section>
+    </TrackLayout>
   );
 }
 
@@ -553,30 +583,35 @@ function Ship({
   release,
   open,
   today,
+  onCancel,
   onShipped,
 }: {
   client: ReleaseClient;
   release: Release;
   open: number;
   today: string;
+  onCancel: () => void;
   onShipped: () => void;
 }) {
   const t = useT();
   const id = useId();
-  const [opened, setOpened] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
   const [day, setDay] = useState(today);
   const [others, setOthers] = useState<Release[] | null>(null);
   const [moveTo, setMoveTo] = useState('stay');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // The step opens away from the button that opened it: focus goes to it, so it is read at once.
+  useEffect(() => heading.current?.focus(), []);
+
   useEffect(() => {
-    if (!opened || others !== null) return;
+    if (others !== null) return;
     client.list(release.trackId).then(
       (l) => setOthers(l.releases.filter((r) => r.id !== release.id && !r.shipped && !r.archived)),
       () => setOthers([]),
     );
-  }, [opened, others, client, release]);
+  }, [others, client, release]);
 
   const ship = async () => {
     setBusy(true);
@@ -587,7 +622,6 @@ function Ship({
     });
     setBusy(false);
     if (outcome.ok) {
-      setOpened(false);
       onShipped();
       return;
     }
@@ -606,70 +640,67 @@ function Ship({
       data-tutorial="release-ship"
       aria-labelledby={`${id}-ship`}
     >
-      <h2 id={`${id}-ship`}>{t('release.ship.title')}</h2>
-      {!opened ? (
-        <button type="button" className="button-primary" onClick={() => setOpened(true)}>
-          {t('release.ship.open')}
-        </button>
-      ) : (
-        <form
-          className="release-ship"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void ship();
-          }}
-        >
-          <label className="form-field">
-            <span className="form-label">{t('release.ship.day')}</span>
-            <input
-              type="date"
-              value={day}
-              required
-              onChange={(event) => setDay(event.target.value)}
-            />
-          </label>
-          {open > 0 && (
-            <fieldset className="release-ship-open">
-              <legend>{t('release.ship.openLegend', { count: open })}</legend>
-              <label className="form-field-inline">
+      <h2 id={`${id}-ship`} ref={heading} tabIndex={-1}>
+        {t('release.ship.title', { name: release.name })}
+      </h2>
+      <p>{t('release.ship.weight')}</p>
+      <form
+        className="release-ship"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void ship();
+        }}
+      >
+        <label className="form-field">
+          <span className="form-label">{t('release.ship.day')}</span>
+          <input
+            type="date"
+            value={day}
+            required
+            onChange={(event) => setDay(event.target.value)}
+          />
+        </label>
+        {open > 0 && (
+          <fieldset className="release-ship-open">
+            <legend>{t('release.ship.openLegend', { count: open })}</legend>
+            <label className="form-field-inline">
+              <input
+                type="radio"
+                name={`${id}-open`}
+                value="stay"
+                checked={moveTo === 'stay'}
+                onChange={() => setMoveTo('stay')}
+              />
+              {t('release.ship.stay')}
+            </label>
+            {others?.map((r) => (
+              <label key={r.id} className="form-field-inline">
                 <input
                   type="radio"
                   name={`${id}-open`}
-                  value="stay"
-                  checked={moveTo === 'stay'}
-                  onChange={() => setMoveTo('stay')}
+                  value={String(r.id)}
+                  checked={moveTo === String(r.id)}
+                  onChange={() => setMoveTo(String(r.id))}
                 />
-                {t('release.ship.stay')}
+                {t('release.ship.moveTo', { name: r.name })}
               </label>
-              {others?.map((r) => (
-                <label key={r.id} className="form-field-inline">
-                  <input
-                    type="radio"
-                    name={`${id}-open`}
-                    value={String(r.id)}
-                    checked={moveTo === String(r.id)}
-                    onChange={() => setMoveTo(String(r.id))}
-                  />
-                  {t('release.ship.moveTo', { name: r.name })}
-                </label>
-              ))}
-            </fieldset>
-          )}
-          <div className="form-actions">
-            <button type="submit" className="button-primary" disabled={busy || day === ''}>
-              {t('release.ship.submit', { name: release.name })}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setOpened(false)}>
-              {t('release.ship.cancel')}
-            </button>
-          </div>
-          {problem && (
-            <p className="board-problem" role="alert">
-              {problem}
-            </p>
-          )}
-        </form>
-      )}
+            ))}
+          </fieldset>
+        )}
+        <div className="form-actions">
+          <button type="submit" className="button-primary" disabled={busy || day === ''}>
+            {t('release.ship.submit', { name: release.name })}
+          </button>
+          <button type="button" className="button-secondary" onClick={onCancel}>
+            {t('release.ship.cancel')}
+          </button>
+        </div>
+        {problem && (
+          <p className="board-problem" role="alert">
+            {problem}
+          </p>
+        )}
+      </form>
     </section>
   );
 }

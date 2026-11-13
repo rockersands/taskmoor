@@ -171,6 +171,26 @@
 .track-tabs {
   margin-bottom: var(--space-4);
   overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* More tabs past an edge (TR-4): that edge fades, so a cut tab reads as "more this way". */
+.track-tabs[data-more="end"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.track-tabs[data-more="start"] {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.track-tabs[data-more="both"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
 }
 
 .track-tabs ul {

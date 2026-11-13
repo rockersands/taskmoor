@@ -49,7 +49,7 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
   // From the track's summary to its releases hub; two releases added with the form.
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Releases', exact: true }).click();
-  const hub = page.getByRole('region', { name: `Releases of Shop ${key}` });
+  const hub = page.getByRole('region', { name: 'Releases', exact: true });
   await expect(hub).toBeVisible();
   const form = hub.getByRole('form', { name: 'New release' });
   for (const [name, day] of [
@@ -90,7 +90,7 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
   // The release's page: its tickets by stage, each number a search.
   await page.reload();
   await hub.getByRole('link', { name: '1.0', exact: true }).click();
-  const release = page.getByRole('region', { name: `Shop ${key} 1.0` });
+  const release = page.getByRole('region', { name: '1.0', exact: true });
   await expect(release.getByRole('link', { name: 'Closed 1, open the search' })).toBeVisible();
   await expect(release.getByRole('link', { name: 'New 2, open the search' })).toBeVisible();
   await expect(
@@ -100,8 +100,8 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   // Shipped, with the two open tickets moved to 1.1.
-  const shipping = release.getByRole('region', { name: 'Shipping' });
-  await shipping.getByRole('button', { name: 'Ship this release…' }).click();
+  await release.getByRole('button', { name: 'Ship this release…' }).click();
+  const shipping = release.getByRole('region', { name: 'Ship 1.0?' });
   await shipping.getByRole('radio', { name: 'Move them to 1.1' }).check();
   await shipping.getByRole('button', { name: 'Ship 1.0' }).click();
   await expect(release.getByRole('status')).toHaveText('1.0 shipped.');
@@ -113,7 +113,10 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // Back in the hub: 1.0 shipped, 1.1 holding the two open tickets.
-  await release.getByRole('link', { name: `All releases of Shop ${key}` }).click();
+  await page
+    .getByRole('navigation', { name: `Sections of ${key}` })
+    .getByRole('link', { name: 'Releases' })
+    .click();
   const shipped = hub.getByRole('region', { name: 'Shipped' });
   await expect(shipped.getByRole('link', { name: '1.0', exact: true })).toBeVisible();
   const next = hub.getByRole('region', { name: 'Upcoming' }).getByRole('listitem');

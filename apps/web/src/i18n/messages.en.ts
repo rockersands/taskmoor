@@ -43,6 +43,7 @@ export const messagesEn = {
   'track.section.files': 'Files and links',
   'track.section.statistics': 'Statistics',
   'track.boardFailed': "This track's board could not be loaded. Try again in a moment.",
+  'track.notFound': 'No track has the key {key}, or you cannot see it.',
   'track.backlog.noneTitle': 'This track has no backlog',
   'track.backlog.none':
     'A backlog plans work in sprints, which only a Scrum board has. On this track, every ticket is on the board: its first column is where new work waits.',
@@ -228,7 +229,7 @@ export const messagesEn = {
   'purpose.release':
     'One release: the tickets in it, how far they have come and the notes they add up to.',
   'purpose.boardSettings':
-    'How this board works: its columns, what it shows on a card and who may change it.',
+    'How this board works: its columns, swimlanes and filters, what a card shows and its sprints.',
   'purpose.boardReports':
     'How the work flows through this board: where it waits and how long it takes.',
   'purpose.sprintReport':
@@ -4145,6 +4146,8 @@ export const messagesEn = {
   'boards.warnings': 'Some lanes or colours could not be read: {list}',
   'boards.keyboardHint':
     'Up and Down go from card to card in a column, Home and End to its first and last card, and Tab to the next column. Alt+Left and Alt+Right move a card to the next column; Alt+Up and Alt+Down move it within its column.',
+  'boards.touchHint':
+    'Drag a card by its grip to another column, or tap the grip for a menu of every move.',
   'boards.empty': 'No tickets on this board match.',
   'boards.columns': 'Columns',
   'boards.column.count': '{count, plural, one {# ticket} other {# tickets}}',
@@ -4223,7 +4226,8 @@ export const messagesEn = {
   'boards.create.submit': 'Create board',
   'boards.create.failed': 'The board could not be created. Check the query.',
   'boards.settings.link': 'Board settings',
-  'boards.settings.title': 'Settings of {name}',
+  'boards.settings.about':
+    'Everyone who opens this board sees it as it is set here. Columns follow the workflow’s statuses, swimlanes and filters sort the cards, and on a Scrum board the sprints set how work is estimated and planned.',
   'boards.settings.back': 'Back to the board',
   'boards.settings.readOnly':
     'Only board admins and the administrators of its track change this board.',
@@ -4346,6 +4350,8 @@ export const messagesEn = {
   // Sprints (M1-044): a Scrum board's backlog with sprint sections, and a sprint's report.
   'sprints.backlog.link': 'Backlog',
   'sprints.backlog.pageTitle': 'Backlog and sprints',
+  'sprints.backlog.about':
+    'The backlog holds the work no sprint has taken yet, most important first. Plan a sprint by moving tickets into it, start it when the team is ready, and complete it from here or from the board.',
   'sprints.backlog.title': 'Backlog',
   'sprints.backlog.toBoard': 'Back to the board',
   'sprints.backlog.failed': 'The backlog could not be loaded.',
@@ -4391,6 +4397,8 @@ export const messagesEn = {
   // Planning on the backlog (M1-047): selection, drag and drop, panels and inline create.
   'sprints.rank.hint':
     'Drag a ticket by its grip, or with a mouse from anywhere on its row, to rank it or move it to another section, an outcome or a release; a selected ticket takes the whole selection with it, and Escape cancels. With the keyboard, the grip opens a menu of the same moves, Alt and the up or down arrow move a ticket past its neighbour, and the menus of the selection do the rest.',
+  'sprints.rank.touchHint':
+    'Drag a ticket by its grip to rank it or move it to another section, or tap the grip for a menu of every move.',
   'sprints.rank.up': '{key} moved up.',
   'sprints.rank.down': '{key} moved down.',
   'sprints.rank.top': '{key} moved to the top.',
@@ -4454,6 +4462,11 @@ export const messagesEn = {
   'sprints.report.link': 'Sprint report',
   'sprints.report.title': 'Sprint report: {name}',
   'sprints.report.toBacklog': 'Back to the backlog',
+  'sprints.report.totals': 'Totals',
+  'sprints.report.column.key': 'Key',
+  'sprints.report.column.summary': 'Summary',
+  'sprints.report.column.status': 'Status',
+  'sprints.report.column.estimate': 'Estimate',
   'sprints.report.failed': 'The sprint report could not be loaded.',
   'sprints.charts.burndown': 'Burndown',
   'sprints.charts.burndownSummary':
@@ -4469,6 +4482,9 @@ export const messagesEn = {
     'Velocity of the last {count, plural, one {sprint} other {# sprints}}: {average} completed on average.',
   'sprints.charts.velocityAverage': 'Average completed: {average}',
   'sprints.charts.velocityNone': 'Velocity appears once a sprint of this board is completed.',
+  'sprints.charts.noEstimates.title': 'No estimates to add up',
+  'sprints.charts.noEstimates':
+    'These charts add up the estimates of the sprint’s tickets, and none of them has one yet. Give the tickets an estimate, or count tickets instead in the board’s settings under Sprints.',
   'sprints.charts.committed': 'Committed',
   'sprints.charts.table': 'Show the numbers',
   'sprints.charts.day': 'Day',
@@ -4989,7 +5005,7 @@ export const messagesEn = {
   'summary.empty': "The track's administrators chose no widgets for it yet.",
   'summary.emptyEditable':
     'Choose Customize to add some, or Back to the default for the numbers this page starts with.',
-  'statistics.title': 'Statistics of {name}',
+  'statistics.report': 'Report',
   'statistics.purpose':
     'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
   'statistics.about':
@@ -5185,8 +5201,9 @@ export const messagesEn = {
   'schedule.refused.invalid': '{key} could not be rescheduled: those dates are not valid.',
   'schedule.refused.conflict': '{key} could not be rescheduled: it changed meanwhile. Try again.',
   // The releases hub (M1-050): a track's releases and a release's page.
-  'releases.title': 'Releases of {name}',
   'releases.toSummary': 'Track summary',
+  'releases.about':
+    'Each release gathers the tickets aimed at it. Upcoming releases show how many of their tickets are closed; open one for its warnings, its approvals and the button that ships it.',
   'releases.notFound': 'This track does not exist, or you cannot see it.',
   'releases.upcoming': 'Upcoming',
   'releases.shipped': 'Shipped',
@@ -5208,8 +5225,9 @@ export const messagesEn = {
   'releases.create.taken': 'This track already has a release with that name.',
   'releases.create.failed': 'The release could not be added.',
   'release.notFound': 'This release does not exist, or you cannot see it.',
-  'release.title': '{track} {name}',
-  'release.toReleases': 'All releases of {track}',
+  'release.failed': 'This release could not be loaded. Try again in a moment.',
+  'release.about':
+    'A release gathers the tickets that ship together. Its progress counts them by stage, its warnings say what stands in the way, and once it ships its notes list what changed.',
   'release.startDate': 'Start date',
   'release.releaseDate': 'Release date',
   'release.shippedOn': 'Shipped on',
@@ -5241,7 +5259,9 @@ export const messagesEn = {
   'release.approval.doneApproved': 'You approved this release.',
   'release.approval.doneDeclined': 'You declined this release.',
   'release.approval.failed': 'Your decision could not be saved.',
-  'release.ship.title': 'Shipping',
+  'release.ship.title': 'Ship {name}?',
+  'release.ship.weight':
+    'Shipping marks this release as shipped on the day below, for everyone on the track. Its open tickets stay in it or move to the release you choose.',
   'release.ship.open': 'Ship this release…',
   'release.ship.day': 'Ship on',
   'release.ship.openLegend':
@@ -6076,8 +6096,9 @@ export const messagesEn = {
   'settings.ticketTemplates': 'Ticket templates',
   'settings.ticketTemplatesHint': 'Templates offered when a ticket is created in any track.',
   'tickets.templates.adminTitle': 'Ticket templates for every track',
-  'tickets.templates.trackTitle': 'Ticket templates of {name}',
-  'tickets.templates.toSummary': 'Back to the summary',
+  'tickets.templates.trackTitle': 'Ticket templates',
+  'tickets.templates.trackPurpose':
+    'Templates offered when a ticket is created in this track, those for every track included.',
   'tickets.templates.intro':
     'A template starts a new ticket with a summary, an outline, default values and subtickets. People review the values in the create form before the ticket is made, and what they may not set is left out.',
   'tickets.templates.loading': 'Loading the templates…',

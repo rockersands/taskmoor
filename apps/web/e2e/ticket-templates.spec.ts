@@ -54,9 +54,9 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
   // From the track's summary to its templates; one made with the form.
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Ticket templates', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: `Ticket templates of ${name}` }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ticket templates' })).toBeVisible();
+  // The track's tab bar stays above its templates (T-215).
+  await expect(page.getByRole('navigation', { name: `Sections of ${key}` })).toBeVisible();
   await page.getByRole('button', { name: 'New template' }).click();
   const form = page.getByRole('form', { name: 'New template' });
   await form.getByRole('textbox', { name: 'Name' }).fill('Release checklist');

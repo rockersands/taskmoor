@@ -847,7 +847,12 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
-    content = <TicketTemplatesPage key={key} trackKey={key} />;
+    // Under the track's tab bar, with no tab of its own (T-215).
+    content = (
+      <TrackLayout trackKey={key} section={null}>
+        <TicketTemplatesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (RELEASE.test(hash)) {
     active = 'tracks';
     guarded = true;

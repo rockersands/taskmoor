@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { routeHref } from '../../routing/router';
 import { useSessionExpiry } from '../../session/useSessionExpiry';
 import { EmptyState } from '../../shell/EmptyState';
 import { PageHeader } from '../../shell/PageHeader';
@@ -73,25 +72,19 @@ export function TicketTemplatesPage({
     );
   };
 
-  const title =
-    state.status === 'loaded' && state.options.track
-      ? t('tickets.templates.trackTitle', { name: state.options.track.name })
-      : t('tickets.templates.adminTitle');
+  // A track's templates sit under its tab bar (T-215): titled like its other pages, the track named
+  // above the title (D26); the line under it says what this page covers (TR-27).
+  const trackName = state.status === 'loaded' ? (state.options.track?.name ?? null) : null;
+  const title = track ? t('tickets.templates.trackTitle') : t('tickets.templates.adminTitle');
 
   return (
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
         title={title}
-        purpose={t('settings.ticketTemplatesHint')}
+        eyebrow={track ? (trackName ?? track) : undefined}
+        purpose={track ? t('tickets.templates.trackPurpose') : t('settings.ticketTemplatesHint')}
         about={t('tickets.templates.intro')}
-        actions={
-          track && (
-            <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track)}`)}>
-              {t('tickets.templates.toSummary')}
-            </a>
-          )
-        }
       />
       <p role="status" className="form-status">
         {message}

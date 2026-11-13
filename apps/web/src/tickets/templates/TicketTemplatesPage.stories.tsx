@@ -69,13 +69,15 @@ export const Editing: Story = {
   },
 };
 
-/** A track's templates on a phone: the way back to its summary is at the top. */
+/** A track's templates on a phone: the track's name over the title, the line saying what it covers. */
 export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('link', { name: 'Back to the summary' })).toBeVisible();
-    await expect(canvas.getByText(/^Templates offered when/)).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'Ticket templates' }),
+    ).toBeVisible();
+    await expect(canvas.getByText(/^Templates offered when .* in this track/)).toBeVisible();
     await fitsPhoneWidth(canvas);
   },
 };
