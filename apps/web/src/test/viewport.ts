@@ -1,5 +1,6 @@
-// jsdom has no layout engine and no matchMedia. This stand-in evaluates width queries against a
-// viewport width the test sets, and fires change events like a browser when it changes.
+// jsdom has no layout engine and no matchMedia. This stand-in evaluates width and pointer queries
+// against a viewport width and a pointer the test sets, and fires change events like a browser
+// when either changes. A comma list matches when any of its queries does.
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -10,20 +11,26 @@ interface TrackedList {
 }
 
 let width = 1440;
+/** Whether the main pointer is a finger: `(pointer: coarse)`. A mouse unless a test says so. */
+let coarse = false;
 const lists = new Set<TrackedList>();
 
-function evaluate(query: string, viewportWidth: number): boolean {
+function evaluateOne(query: string): boolean {
   return query.split(/\s+and\s+/).every((part) => {
+    const pointer = /\((any-)?pointer:\s*(coarse|fine)\)/.exec(part);
+    if (pointer) return (pointer[2] === 'coarse') === coarse;
     const match = /\((min|max)-width:\s*(\d+)px\)/.exec(part);
     if (!match) return false;
     const limit = Number(match[2]);
-    return match[1] === 'min' ? viewportWidth >= limit : viewportWidth <= limit;
+    return match[1] === 'min' ? width >= limit : width <= limit;
   });
 }
 
+const evaluate = (query: string) => query.split(',').some((one) => evaluateOne(one.trim()));
+
 export function installMatchMedia(): void {
   window.matchMedia = (query: string): MediaQueryList => {
-    const tracked: TrackedList = { query, matches: evaluate(query, width), listeners: new Set() };
+    const tracked: TrackedList = { query, matches: evaluate(query), listeners: new Set() };
     lists.add(tracked);
     const list = {
       media: query,
@@ -47,12 +54,22 @@ export function installMatchMedia(): void {
 export function setViewportWidth(next: number): void {
   width = next;
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: next });
+  refresh();
+  window.dispatchEvent(new Event('resize'));
+}
+
+/** Makes the main pointer a finger (true) or a mouse (false). Wrap in act() when components are mounted. */
+export function setCoarsePointer(next: boolean): void {
+  coarse = next;
+  refresh();
+}
+
+function refresh(): void {
   for (const list of lists) {
-    const matches = evaluate(list.query, next);
+    const matches = evaluate(list.query);
     if (matches === list.matches) continue;
     list.matches = matches;
     const event = { matches, media: list.query } as MediaQueryListEvent;
     for (const listener of list.listeners) listener(event);
   }
-  window.dispatchEvent(new Event('resize'));
 }

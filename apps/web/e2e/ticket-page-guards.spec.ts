@@ -63,7 +63,8 @@ test('[NFR-005] the full ticket page asks before unsaved text goes: a link, Back
 
   // From the board to the pop-up, then to the full page, which leads back to the board.
   await page.goto(`${BASE}/#/tracks/${key}/board`);
-  const onBoard = page.getByRole('region', { name: board.name, exact: true });
+  // The track's board is titled by its section (D26); the way back still names the board.
+  const onBoard = page.getByRole('region', { name: 'Board', exact: true });
   await onBoard.getByRole('link', { name: new RegExp(`^${ticket.key} `) }).click();
   await page.getByRole('dialog').getByRole('link', { name: 'Open full page' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

@@ -40,6 +40,12 @@ interface TrackLayoutProps {
   section: TrackSection | null;
   children: ReactNode;
   client?: TrackClient;
+  /**
+   * The page has been read already and stands without its track: a board its administrator may
+   * see though not the track (D4). When the track is not there for the reader, the page shows
+   * without the tab bar instead of "Track not found".
+   */
+  pageStands?: boolean;
 }
 
 /** Which ends of a sideways scroller have more beyond them, for the fade that says so. */
@@ -86,13 +92,15 @@ export function useMoreSides(
  * brought into view and a fade at either end says more tabs are there (the page-review fault
  * TR-4). A Backlog tab shows only on a track that has a backlog: never on a Kanban one, not even
  * greyed out. A track that does not exist, or that the reader may not see, has no tabs: the page
- * says so and leads on (D4, AC-8).
+ * says so and leads on (D4, AC-8); a page that stands without it, such as a board its
+ * administrator may see, shows without the tabs.
  */
 export function TrackLayout({
   trackKey,
   section,
   children,
   client = trackClient,
+  pageStands = false,
 }: TrackLayoutProps) {
   const t = useT();
   const loaded = useLoadedTrackSections(trackKey, client, section ?? 'other');
@@ -109,12 +117,17 @@ export function TrackLayout({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tabs move when Backlog comes or goes
   useLayoutEffect(() => {
-    const current = bar.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    // Only the bar moves: 'nearest' keeps the page where it is, 'center' shows a neighbour each side.
-    current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    const scroller = bar.current;
+    const current = scroller?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!scroller || !current) return;
+    // Only the bar scrolls, never the page: the current tab to its middle, a neighbour each side.
+    const tab = current.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const by = tab.left + tab.width / 2 - (view.left + view.width / 2);
+    if (Math.abs(by) > 1) scroller.scrollLeft += by;
   }, [section, hasBacklog, missing]);
 
-  if (missing) {
+  if (missing && !pageStands) {
     return (
       <NotFoundPage title={t('notFound.track')}>
         {t('track.notFound', { key: trackKey })}
@@ -123,26 +136,29 @@ export function TrackLayout({
   }
   return (
     <TrackSectionsContext.Provider value={sections}>
-      <nav
-        ref={bar}
-        className="track-tabs"
-        data-more={more}
-        aria-label={t('track.sections', { key: trackKey })}
-      >
-        <ul>
-          {tabs.map((s) => (
-            <li key={s.id}>
-              <a
-                href={routeHref(trackHref(trackKey, s.id))}
-                data-tutorial={`track-tab-${s.id}`}
-                aria-current={s.id === section ? 'page' : undefined}
-              >
-                {t(s.labelId)}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {/* A page that stands without its track keeps its place in the tree, so it does not start again. */}
+      {!missing && (
+        <nav
+          ref={bar}
+          className="track-tabs"
+          data-more={more}
+          aria-label={t('track.sections', { key: trackKey })}
+        >
+          <ul>
+            {tabs.map((s) => (
+              <li key={s.id}>
+                <a
+                  href={routeHref(trackHref(trackKey, s.id))}
+                  data-tutorial={`track-tab-${s.id}`}
+                  aria-current={s.id === section ? 'page' : undefined}
+                >
+                  {t(s.labelId)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
       <div ref={body}>{children}</div>
     </TrackSectionsContext.Provider>
   );

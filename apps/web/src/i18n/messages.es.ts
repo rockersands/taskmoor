@@ -4864,6 +4864,8 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.time.estimated':
     '{estimated} de {tickets, plural, one {# ticket} other {# tickets}} tienen estimación original.',
   'dashboards.settingsOf': 'Configuración de {kind}',
+  'dashboards.title': 'Panel',
+  'dashboards.failed': 'No se pudo cargar este panel. Inténtalo de nuevo en un momento.',
   'dashboards.notFound': 'Este panel no existe, o no se comparte contigo.',
   'dashboards.meta': 'De {owner}.',
   'dashboards.isDefault': 'El panel de inicio de todos.',
@@ -5363,6 +5365,7 @@ export const messagesEs: Record<MessageId, string> = {
   'releases.create.taken': 'Este track ya tiene una versión con ese nombre.',
   'releases.create.failed': 'No se pudo añadir la versión.',
   'release.notFound': 'Esta versión no existe, o no puedes verla.',
+  'release.title': 'Versión',
   'release.failed': 'No se pudo cargar esta versión. Inténtalo de nuevo en un momento.',
   'release.about':
     'Una versión reúne los tickets que se entregan juntos. Su progreso los cuenta por etapa, sus avisos dicen qué se interpone y, una vez entregada, sus notas recogen qué cambió.',

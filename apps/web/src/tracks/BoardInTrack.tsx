@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { redirectRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { BacklogPage } from '../sprints/BacklogPage';
+import { type TrackClient, trackClient } from './client';
 import { TrackLayout, type TrackSection, trackHref } from './TrackLayout';
 import { useTrackSections } from './trackSections';
 
@@ -21,10 +22,13 @@ export function BoardInTrack({
   boardId,
   section,
   children,
+  client = trackClient,
 }: {
   boardId: number;
   section: TrackSection;
   children: ReactNode;
+  /** The track's sections, for its tab bar. */
+  client?: TrackClient;
 }) {
   const t = useT();
   // The page waits for the answer: wrapping it in the tabs afterwards would make it start again,
@@ -47,8 +51,10 @@ export function BoardInTrack({
     };
   }, [boardId]);
   if (known?.boardId !== boardId) return <p className="page-note">{t('boards.loading')}</p>;
+  // The board was read: one its administrator may see without seeing its track still shows,
+  // without the track's tabs (D4).
   return known.key ? (
-    <TrackLayout trackKey={known.key} section={section}>
+    <TrackLayout trackKey={known.key} section={section} client={client} pageStands>
       {children}
     </TrackLayout>
   ) : (

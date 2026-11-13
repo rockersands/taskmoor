@@ -175,15 +175,15 @@
 }
 
 /* More tabs past an edge (TR-4): that edge fades, so a cut tab reads as "more this way". */
-.track-tabs[data-more="end"] {
+.track-tabs[data-more="end"]:not(:focus-within) {
   mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
 }
 
-.track-tabs[data-more="start"] {
+.track-tabs[data-more="start"]:not(:focus-within) {
   mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
 }
 
-.track-tabs[data-more="both"] {
+.track-tabs[data-more="both"]:not(:focus-within) {
   mask-image: linear-gradient(
     to right,
     transparent,

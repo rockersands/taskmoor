@@ -723,6 +723,17 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
     expect(shortOnTouch(cssSources.map(([, source]) => source))).toEqual([]);
   });
 
+  it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {
+    const fades = cssSources.flatMap(([file, source]) =>
+      cssDeclarations(source)
+        .filter((d) => /^(-webkit-)?mask(-image)?$/.test(d.property))
+        .filter((d) => d.selector.includes('[data-more'))
+        .filter((d) => !d.selector.includes(':not(:focus-within)'))
+        .map((d) => `${name(file)} ${d.selector}`),
+    );
+    expect(fades).toEqual([]);
+  });
+
   it('[NFR-005] takes radii from the tokens', () => {
     expect(ratchet(fromCss('radii'), {})).toEqual([]);
   });

@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { setViewportWidth } from '../test/viewport';
+import { setCoarsePointer, setViewportWidth } from '../test/viewport';
 import type { TrackSections } from '../tracks/client';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
@@ -135,6 +135,23 @@ describe('the backlog with sprint sections (M1-044)', () => {
       section('Checkout Sprint 2').getByRole('button', { name: 'Start sprint' }),
     ).toBeVisible();
     expect(screen.queryByText(/sprints turned off/)).toBeNull();
+  });
+
+  it('[AGL-010] tells a finger how to rank, and a keyboard the keys, on any width (D6, TR-7)', async () => {
+    const keys = /With the keyboard, the grip opens a menu/;
+    const finger =
+      'Drag a ticket by its grip to rank it or move it to another section, or tap the grip for a menu of every move.';
+    setViewportWidth(375);
+    renderBacklog();
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    expect(screen.getByText(keys)).toBeInTheDocument();
+    expect(screen.queryByText(finger)).toBeNull();
+    cleanup();
+    setCoarsePointer(true);
+    renderBacklog();
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    expect(screen.getByText(finger)).toBeInTheDocument();
+    expect(screen.queryByText(keys)).toBeNull();
   });
 
   it('[AGL-010] fits a phone: sections stack, nothing scrolls sideways', async () => {

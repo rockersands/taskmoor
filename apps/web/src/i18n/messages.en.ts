@@ -4747,6 +4747,8 @@ export const messagesEn = {
   'dashboards.time.estimated':
     '{estimated} of {tickets, plural, one {# ticket} other {# tickets}} have an original estimate.',
   'dashboards.settingsOf': 'Settings of {kind}',
+  'dashboards.title': 'Dashboard',
+  'dashboards.failed': 'This dashboard could not be loaded. Try again in a moment.',
   'dashboards.notFound': 'This dashboard does not exist, or is not shared with you.',
   'dashboards.meta': 'By {owner}.',
   'dashboards.isDefault': 'Everyone’s home dashboard.',
@@ -5238,6 +5240,7 @@ export const messagesEn = {
   'releases.create.taken': 'This track already has a release with that name.',
   'releases.create.failed': 'The release could not be added.',
   'release.notFound': 'This release does not exist, or you cannot see it.',
+  'release.title': 'Release',
   'release.failed': 'This release could not be loaded. Try again in a moment.',
   'release.about':
     'A release gathers the tickets that ship together. Its progress counts them by stage, its warnings say what stands in the way, and once it ships its notes list what changed.',

@@ -20,7 +20,8 @@ name. The release pages and the track's **Ticket templates** keep the tab bar to
 marked on a release. On a phone the tab bar scrolls sideways inside itself: the current tab is
 brought into view, and the edge past which more tabs wait fades. A track that does not exist, or
 that you may not see, shows a **Track not found** page with no tabs and the way to **Home** and to
-**Search**; so does a board, a release or a dashboard that is not there.
+**Search**; so does a board, a release or a dashboard that is not there. A board you administer on
+a track you may not see still opens, without the track's tabs.
 
 Open a track and choose **Board** in its tab bar. There is no list of boards and no form to make
 one. A track gets its board from its template, or the first time anyone who can see the track opens
@@ -50,9 +51,9 @@ holds its **Backlog** (Scrum boards only) and its
 own to them. The filters sit on a panel of their own above the columns. Each column is at least
 16 rem wide, so a board with more columns than the window holds scrolls sideways inside the board,
 never the whole page: the edge past which more columns wait fades, and the columns keep a scroll
-bar. Under the filters, a line says how to move cards: the keys on a computer, and on a phone or a
-touch screen, "Drag a card by its grip to another column, or tap the grip for a menu of every
-move." 
+bar. Under the filters, a line says how to move cards: the keys when you work with a mouse and a
+keyboard, however narrow the window, and on a phone or another touch screen, "Drag a card by its
+grip to another column, or tap the grip for a menu of every move." 
 
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
 above its maximum says **Over the maximum**; below its minimum, **Under the minimum**.
@@ -229,8 +230,9 @@ goes to its first status, unless one of the ways in has a rule: then the board a
 A Scrum board's **Backlog**, in the track's tab bar, opens **Backlog and sprints**: the active and planned sprints,
 then the backlog, each with its tickets in rank order and their totals (count, estimate and,
 when time tracking is on, the remaining estimate). The **Board** tab leads back to the board. A
-row whose ticket has no priority keeps the priority's place, so keys line up. On a phone or a
-touch screen the line about moving tickets gives the touch wording instead of the keys, and an
+row whose ticket has no priority keeps the priority's place, so keys line up. On a phone or
+another touch screen (not merely a narrow window) the line about moving tickets gives the touch
+wording instead of the keys, and an
 active sprint's **Sprint report** link is large enough for a finger.
 
 ### Ranking and moving tickets
@@ -329,7 +331,9 @@ release across tracks, and **Releases across tracks** at the top opens their lis
 A release's own page stays under the track's tab bar with **Releases** marked: that tab leads
 back to the list. It is titled by the release's name, with the track's name and the release's
 state above it. A release that does not exist, or that you may not see, shows **Release not
-found** and nothing else is read. The page shows:
+found** and nothing else is read; one that cannot be read for another reason keeps its header and
+says so under it. When you cancel shipping, focus goes back to **Ship this release…**; once it has
+shipped, to the release's name, with the notice under it. The page shows:
 
 - **Start date**, **Release date**, **Shipped on** and, when it has one, its **Release across
   tracks** with its date;

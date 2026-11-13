@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { installMatchMedia, setViewportWidth } from './viewport';
+import { installMatchMedia, setCoarsePointer, setViewportWidth } from './viewport';
 
 installMatchMedia();
 
@@ -24,9 +24,10 @@ export function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-// Every test starts on a desktop-sized viewport, the primary target.
+// Every test starts on a desktop-sized viewport with a mouse, the primary target.
 beforeEach(() => {
   setViewportWidth(1440);
+  setCoarsePointer(false);
   window.location.hash = '';
   vi.stubGlobal(
     'fetch',

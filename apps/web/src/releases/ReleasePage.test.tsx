@@ -227,9 +227,21 @@ describe('a release’s page (M1-050)', () => {
       expect(screen.getByText('Shipped', { selector: '.release-state' })).toBeVisible(),
     );
     expect(screen.getByRole('status')).toHaveTextContent('2.0 shipped.');
+    // Ship is gone: focus lands on the page's name, with the notice under it.
+    expect(screen.getByRole('heading', { level: 1, name: '2.0' })).toHaveFocus();
     expect(client.releases().find((r) => r.name === '2.1')?.progress.open).toBe(4);
     expect(screen.queryByRole('region', { name: 'Ship 2.0?' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
+  });
+
+  it('[CORE-016] gives focus back to Ship when the shipping step is cancelled', async () => {
+    const user = userEvent.setup();
+    renderRelease();
+    await screen.findByRole('heading', { level: 1, name: '2.0' });
+    await user.click(screen.getByRole('button', { name: 'Ship this release…' }));
+    await user.click(section('Ship 2.0?').getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('region', { name: 'Ship 2.0?' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ship this release…' })).toHaveFocus();
   });
 
   it('[CORE-016] shows the generated notes, to copy as Markdown or download', async () => {
@@ -288,6 +300,33 @@ describe('a release’s page (M1-050)', () => {
     expect(client.overview).not.toHaveBeenCalled();
     expect(client.notes).not.toHaveBeenCalled();
     expect(screen.queryByRole('navigation', { name: /^Sections of / })).toBeNull();
+  });
+
+  it('[CORE-016] keeps its header when it cannot be read, with the alert under it (UI-T22)', async () => {
+    const client = fakeReleaseClient({ approver: true });
+    client.get = async () => {
+      throw new ApiError(500, { error: 'internal' });
+    };
+    renderRelease(2, client);
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Release' });
+    expect(screen.getByRole('alert')).toHaveTextContent('This release could not be loaded.');
+    expect(heading.closest('section')).toContainElement(screen.getByRole('alert'));
+    expect(screen.queryByRole('heading', { name: 'Release not found' })).toBeNull();
+  });
+
+  it('[CORE-016] keeps its name and its track’s tab bar when only its numbers fail (UI-T22)', async () => {
+    const client = fakeReleaseClient({ approver: true });
+    client.overview = async () => {
+      throw new ApiError(500, { error: 'internal' });
+    };
+    renderRelease(2, client);
+    expect(await screen.findByRole('alert')).toHaveTextContent('This release could not be loaded.');
+    expect(screen.getByRole('heading', { level: 1, name: '2.0' })).toBeVisible();
+    const bar = await screen.findByRole('navigation', { name: /^Sections of / });
+    expect(within(bar).getByRole('link', { name: 'Releases' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('[CORE-016] fits a phone: nothing scrolls sideways', async () => {

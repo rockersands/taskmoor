@@ -80,19 +80,33 @@ export function ReleasePage({
   const [failed, setFailed] = useState<'missing' | 'failed' | null>(null);
   const [notice, setNotice] = useState('');
   const [shipping, setShipping] = useState(false);
+  const shipButton = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  /** Where focus goes once the shipping step closes: back to Ship, or to the page's name. */
+  const focusAfterShipping = useRef<'ship' | 'title' | null>(null);
+  useEffect(() => {
+    if (shipping) return;
+    const next = focusAfterShipping.current;
+    focusAfterShipping.current = null;
+    if (next === 'ship') shipButton.current?.focus();
+    if (next === 'title') title.current?.focus();
+  }, [shipping]);
 
   const load = useCallback(() => {
     // The release first: once it is not there, nothing else is asked for (PL-50).
     client.get(releaseId).then(
-      (r) =>
-        Promise.all([client.overview(releaseId), client.notes(releaseId)]).then(
-          ([o, n]) => {
-            setRelease(r);
-            setOverview(o);
-            setNotes(n);
-          },
+      (r) => {
+        setRelease(r);
+        // The notes name the track: a failure after them keeps its tab bar.
+        const read = client.notes(releaseId).then((n) => {
+          setNotes(n);
+          return n;
+        });
+        return Promise.all([client.overview(releaseId), read]).then(
+          ([o]) => setOverview(o),
           () => setFailed('failed'),
-        ),
+        );
+      },
       (error: unknown) =>
         setFailed(
           error instanceof ApiError && (error.status === 404 || error.status === 403)
@@ -107,10 +121,28 @@ export function ReleasePage({
     return <NotFoundPage title={t('notFound.release')}>{t('release.notFound')}</NotFoundPage>;
   }
   if (failed) {
-    return (
-      <p className="board-problem" role="alert">
-        {t('release.failed')}
-      </p>
+    // The page keeps its header, and its track's tab bar when the track is known (UI-T22).
+    const known = notes?.release.track ?? null;
+    const failure = (
+      <section className="page release-page" aria-labelledby={`${id}-title`}>
+        <PageHeader
+          titleId={`${id}-title`}
+          title={release?.name ?? t('release.title')}
+          eyebrow={known?.name}
+          purpose={t('purpose.release')}
+          about={t('release.about')}
+        />
+        <p className="board-problem" role="alert">
+          {t('release.failed')}
+        </p>
+      </section>
+    );
+    return known ? (
+      <TrackLayout trackKey={known.key} section="releases" client={tracks}>
+        {failure}
+      </TrackLayout>
+    ) : (
+      failure
     );
   }
   if (!release || !overview || !notes) {
@@ -136,6 +168,7 @@ export function ReleasePage({
       <section className="page release-page" aria-labelledby={`${id}-title`}>
         <PageHeader
           titleId={`${id}-title`}
+          titleRef={title}
           // Titled by the release, its track named above as on the track's other pages (D26); the
           // track's tab bar leads back to its releases (T-215, D7).
           title={release.name}
@@ -150,6 +183,7 @@ export function ReleasePage({
             // A normal primary action; the step it opens carries the weight (D27).
             canShip && !shipping ? (
               <button
+                ref={shipButton}
                 type="button"
                 className="button-primary"
                 data-tutorial="release-ship"
@@ -287,8 +321,13 @@ export function ReleasePage({
             release={release}
             open={overview.open.count}
             today={now().toISOString().slice(0, 10)}
-            onCancel={() => setShipping(false)}
+            onCancel={() => {
+              focusAfterShipping.current = 'ship';
+              setShipping(false);
+            }}
             onShipped={() => {
+              // Ship is gone once shipped: the page's name, with the notice under it, takes focus.
+              focusAfterShipping.current = 'title';
               setShipping(false);
               setNotice(t('release.ship.done', { name: release.name }));
               load();

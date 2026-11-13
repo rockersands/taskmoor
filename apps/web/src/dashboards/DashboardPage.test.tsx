@@ -377,13 +377,25 @@ describe('the dashboards list (M1-064)', () => {
   it('[RPT-005] says a dashboard that is not there is not found, with a way on (D4)', async () => {
     const client = fakeDashboardClient();
     client.get = async () => {
-      throw new Error('not_found');
+      throw new ApiError(404, { error: 'not_found' });
     };
     open({ client });
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Dashboard not found' }),
     ).toBeVisible();
     expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+  });
+
+  it('[RPT-005] keeps its header when it cannot be read for another reason, with the alert under it (UI-T22)', async () => {
+    const client = fakeDashboardClient();
+    client.get = async () => {
+      throw new ApiError(500, { error: 'internal' });
+    };
+    open({ client });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    expect(screen.getByRole('alert')).toHaveTextContent('This dashboard could not be loaded.');
+    expect(heading.closest('section')).toContainElement(screen.getByRole('alert'));
+    expect(screen.queryByRole('heading', { name: 'Dashboard not found' })).toBeNull();
   });
 
   it('[RPT-004] starts a wallboard with the chosen dashboards', async () => {
