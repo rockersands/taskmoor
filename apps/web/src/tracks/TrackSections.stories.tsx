@@ -110,7 +110,8 @@ export const NewTrackOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'New track' }));
-    const dialog = within(canvas.getByRole('dialog', { name: 'New track' }));
+    // The dialog is drawn at the end of the page's body (shell/OverlayLayer.tsx).
+    const dialog = within(within(document.body).getByRole('dialog', { name: 'New track' }));
     await expect(dialog.getByLabelText('Key')).toHaveFocus();
     await expect(dialog.getByRole('button', { name: 'Create track' })).toBeVisible();
   },

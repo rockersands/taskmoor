@@ -74,7 +74,7 @@ export function DangerAction({
   }
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Escape, from either button inside
+    // biome-ignore lint/a11y/useSemanticElements: a question and its two answers, not a set of fields
     <div
       className="danger-confirm"
       role="group"

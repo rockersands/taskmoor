@@ -57,8 +57,8 @@ type Story = StoryObj<typeof meta>;
 
 /** Over the page: the same view as the ticket page, with a bar to leave by. */
 export const OverThePage: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    const canvas = within(document.body);
     const dialog = await canvas.findByRole('dialog', { name: NAME });
     await expect(dialog).toBeVisible();
     await expect(await within(dialog).findByRole('button', { name: 'Follow (2)' })).toBeVisible();
@@ -71,16 +71,16 @@ export const Loading: Story = {
   args: {
     client: { ...fakeTicketClient(), get: () => new Promise<TicketDetails>(() => {}) },
   },
-  play: async ({ canvasElement }) => {
-    const dialog = await within(canvasElement).findByRole('dialog', { name: 'SHOP-41' });
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog', { name: 'SHOP-41' });
     await expect(within(dialog).getByRole('status')).toBeVisible();
   },
 };
 
 /** Unsaved text stops a click outside and asks first. */
 export const AskingAboutADraft: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    const canvas = within(document.body);
     const dialog = await canvas.findByRole('dialog', { name: NAME });
     await userEvent.click(await within(dialog).findByRole('button', { name: 'Edit labels' }));
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Labels' }), ' typed');
@@ -94,8 +94,8 @@ export const AskingAboutADraft: Story = {
 /** The same view: a member who may change some fields gets controls only there. */
 export const SomeFieldsOnly: Story = {
   args: { client: fakeTicketClient({ ticket: SHOP_41_SOME_FIELDS }) },
-  play: async ({ canvasElement }) => {
-    const dialog = within(await within(canvasElement).findByRole('dialog', { name: NAME }));
+  play: async () => {
+    const dialog = within(await within(document.body).findByRole('dialog', { name: NAME }));
     await expect(await dialog.findByRole('button', { name: 'Edit labels' })).toBeVisible();
     await expect(dialog.queryByRole('button', { name: 'Edit summary' })).toBeNull();
     await expect(dialog.queryByRole('combobox', { name: 'Priority' })).toBeNull();
@@ -105,7 +105,7 @@ export const SomeFieldsOnly: Story = {
 /** A phone: a full-screen sheet. */
 export const OnAPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('dialog', { name: NAME })).toBeVisible();
+  play: async () => {
+    await expect(await within(document.body).findByRole('dialog', { name: NAME })).toBeVisible();
   },
 };

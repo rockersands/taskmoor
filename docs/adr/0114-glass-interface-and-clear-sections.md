@@ -147,8 +147,8 @@ become **translucent glass**:
     blue slightly, so the colour at the edge comes from what is really behind the glass. Only
     Chromium draws this (confirmed by what the user's Chrome showed); other browsers, and people
     who ask for less transparency or forced colours, keep the blur and the sheen.
-  - Refraction goes where something passes under the glass: the top bar, and menus, dialogs and
-    help popovers that do not sit inside another glass surface. Chromium paints the filter solid
+  - Refraction goes where something passes under the glass: the top bar, and (until D3, below made
+    them opaque) menus, dialogs and help popovers that do not sit inside another glass surface. Chromium paints the filter solid
     grey on a backdrop with nothing in it, so the clear part of a control has a slight blur over
     its colour and no bend. Cards and panels over the smooth canvas
     and the sidebar show none, so they do not pay for it, and board cards have no blur at all.
@@ -185,8 +185,8 @@ become **translucent glass**:
     `.form-error`, `.board-problem` and a `.page-note` that is an alert, and `.form fieldset`: a
     slab on the canvas, a well with no blur of its own inside other glass.
   - `styles/surfaces.css`: `.glass-scroller` beside `.glass-card` for a card that scrolls, its rim
-    inside it. Dialogs (`.create-dialog`, `.ticket-dialog`) are floating glass, with the strong fill,
-    the rim and the lens where it works.
+    inside it. Dialogs (`.create-dialog`, `.ticket-dialog`) were floating glass, with the strong fill,
+    the rim and the lens where it works; they are opaque since D3 (below).
   - `EmptyState` always draws the one picture; `compact` is the words alone, for a short list inside
     a card. `PageHeader` can take focus through `titleRef`.
   - Tokens: `--radius-mark` (4 px) for marks too small for the radii of this section (a key cap, a
@@ -217,6 +217,30 @@ become **translucent glass**:
     them an empty list.
   - A timeline's head has rows that never cross: months, ticks, then a row for sprints and a row for
     releases where there are any.
+- **Menus, pop-overs, the command palette and dialogs are opaque** (the user, 2026-11-13, D3 of the
+  page review, T-220; this replaces the floating glass above for them). Menu text was hard to read
+  over the page beneath. They are drawn on one opaque `--overlay-fill` (the skin's raised surface)
+  with no blur, and keep the rim, the highlight and shadow-3; one rule at the end of the glass
+  details in `surfaces.css` holds `.shell-drawer`, `.help-tip-body`, `.user-menu-popup`,
+  `.icon-select-list`, `.rt-mentions`, `.popover`, `.palette`, `.create-dialog` and
+  `.ticket-dialog`, and `design.test.ts` fails when one of them ends on anything else in the order
+  the app loads its stylesheets, or a variant gives one glass back. The lens is left on the top bar.
+  - Why not a blur behind an opaque fill: an element with a `backdrop-filter` is the containing block
+    of every fixed element inside it. The palette and its veil sat inside the top bar, so the veil
+    covered only the bar (a story measured 1174 × 46 px of a 1200 × 900 window) and the palette blurred
+    nothing; a dialog opened from a glass card was held to the card. With no blur on overlays, a
+    dialog opened inside one (over the ticket pop-up) is placed by the window.
+  - `ModalDialog`, the palette and the keyboard shortcuts dialog render at the end of the page's body
+    through `shell/OverlayLayer.tsx` (a React portal), so nothing they are opened from holds them.
+    Other dialogs on `.ticket-dialog-backdrop` should move onto it as their pages are next touched.
+  - `DialogHead` gives a `ModalDialog` the create dialog's title row with **Close**.
+- **Destructive actions** (D13): `button-danger-quiet` is the first step of Deactivate, Erase,
+  Delete and Revoke tokens, the quiet pill's shape in the danger colours; `shell/DangerAction.tsx`
+  opens a question in its place that says what will happen, with the action by name as
+  `.button-danger` beside Cancel, focus on Cancel.
+- **Check boxes and radios** are one control, drawn by `forms.css` with no specificity: a clear well
+  with the 3:1 field edge when off, the accent with a tick or a dot when on, 20 px; the system's own
+  under forced colours. The browser's box was flat grey in the dark skin.
 
 ### 4. Light and dark
 
