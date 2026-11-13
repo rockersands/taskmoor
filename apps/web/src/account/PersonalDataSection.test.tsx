@@ -72,6 +72,29 @@ describe('a download of one’s own data (ASVS 8.3.2, ADR-111)', () => {
     );
   });
 
+  it('[IAM-008] speaks to the reader on their own page, and about the person on an administrator’s (AC-19)', async () => {
+    renderSection();
+    expect(screen.getByText(/^Download everything Taskmoor keeps about you:/)).toBeVisible();
+    expect(screen.queryByText(/about this person/)).toBeNull();
+    document.body.innerHTML = '';
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={SIGNED_IN}>
+          <main>
+            <PersonalDataSection
+              client={fakePersonalDataClient('Nia Okafor')}
+              timeZone="UTC"
+              pollMs={0}
+            />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(
+      screen.getByText(/^Download everything Taskmoor keeps about this person:/),
+    ).toBeVisible();
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(360);
     renderSection();

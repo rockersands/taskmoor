@@ -1,7 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
-import { currentRoute, navigate, routeHref } from '../routing/router';
+import { currentRoute, navigate } from '../routing/router';
 import { EnrollmentStep } from '../session/EnrollmentStep';
 import {
   PASSWORD_MIN_LENGTH,
@@ -15,6 +15,7 @@ import type { SecondFactorMethod, SessionUser } from '../session/SessionProvider
 import { useSession } from '../session/SessionProvider';
 import { SignInForm } from '../session/SignInForm';
 import { PageHeader } from '../shell/PageHeader';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { hashParam, type SignInSsoClient, signInSsoClient } from '../sso/client';
 import { type InvitationClient, type InvitationLink, invitationClient } from './client';
 
@@ -58,6 +59,12 @@ type State =
   | { status: 'ready'; link: InvitationLink }
   | { status: 'invalid' }
   | { status: 'unavailable'; error: unknown };
+
+/** The invitation's sentence: who invited, and the role, each only when known (AD-7). */
+function introId(by: boolean, role: boolean) {
+  if (by) return role ? 'invite.introBy' : 'invite.introByNoRole';
+  return role ? 'invite.intro' : 'invite.introNoRole';
+}
 
 type Step =
   | { kind: 'form' }
@@ -254,20 +261,21 @@ export function InvitationPage({
           : state.status === 'invalid'
             ? t('invite.invalid')
             : (tooManyAttemptsMessage(t, state.error) ?? t('invite.failed'));
+    // The intro is for an invitation that works; with a problem it would contradict it (AC-7).
     return (
-      <main className="setup">
-        <PageHeader title={title} purpose={t('purpose.invitation')} />
-        <div className="glass-card account-section">
-          <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-            {note}
-          </p>
-          {state.status !== 'checking' && (
-            <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
-              {t('invite.goToSignIn')}
-            </a>
-          )}
-        </div>
-      </main>
+      <StandaloneFrame>
+        <main className="setup">
+          <PageHeader
+            title={title}
+            {...(state.status === 'checking' ? { purpose: t('purpose.invitation') } : {})}
+          />
+          <div className="glass-card account-section">
+            <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
+              {note}
+            </p>
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
 
@@ -276,9 +284,9 @@ export function InvitationPage({
     <>
       <PageHeader
         title={t('invite.titleFor', { key: link.track.key, name: link.track.name })}
-        purpose={t(link.invitedBy ? 'invite.introBy' : 'invite.intro', {
+        purpose={t(introId(Boolean(link.invitedBy), Boolean(link.roleName?.trim())), {
           who: link.invitedBy ?? '',
-          role: link.roleName,
+          role: link.roleName ?? '',
           email: link.email,
         })}
       />
@@ -288,34 +296,38 @@ export function InvitationPage({
 
   if (step.kind === 'second-factor' && !signedInAs) {
     return (
-      <main className="setup">
-        {intro}
-        <div className="glass-card account-section">
-          <SecondFactorStep
-            challenge={step.challenge}
-            methods={step.methods}
-            onSignedIn={onSignedIn}
-            onExpired={backToForm}
-            onBack={backToForm}
-          />
-        </div>
-      </main>
+      <StandaloneFrame>
+        <main className="setup">
+          {intro}
+          <div className="glass-card account-section">
+            <SecondFactorStep
+              challenge={step.challenge}
+              methods={step.methods}
+              onSignedIn={onSignedIn}
+              onExpired={backToForm}
+              onBack={backToForm}
+            />
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
   if (step.kind === 'enroll' && !signedInAs) {
     return (
-      <main className="setup">
-        {intro}
-        <div className="glass-card account-section">
-          <EnrollmentStep
-            challenge={step.challenge}
-            email={link.email}
-            onSignedIn={onSignedIn}
-            onExpired={backToForm}
-            onBack={backToForm}
-          />
-        </div>
-      </main>
+      <StandaloneFrame>
+        <main className="setup">
+          {intro}
+          <div className="glass-card account-section">
+            <EnrollmentStep
+              challenge={step.challenge}
+              email={link.email}
+              onSignedIn={onSignedIn}
+              onExpired={backToForm}
+              onBack={backToForm}
+            />
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
 
@@ -334,113 +346,117 @@ export function InvitationPage({
 
   if (signedInAs !== null) {
     return (
-      <main className="setup">
-        {intro}
-        {errorBox}
-        <div className="glass-card account-section">
-          {ownInvitation ? (
-            <button
-              type="button"
-              className="button-primary"
-              disabled={busy}
-              onClick={() => void join()}
-            >
-              {t('invite.join', { key: link.track.key })}
-            </button>
-          ) : (
-            <>
-              <p className="page-note">{t('invite.otherAccount', { email: link.email })}</p>
-              <button type="button" className="button-secondary" onClick={() => void signOut()}>
-                {t('invite.signOut')}
+      <StandaloneFrame>
+        <main className="setup">
+          {intro}
+          {errorBox}
+          <div className="glass-card account-section">
+            {ownInvitation ? (
+              <button
+                type="button"
+                className="button-primary"
+                disabled={busy}
+                onClick={() => void join()}
+              >
+                {t('invite.join', { key: link.track.key })}
               </button>
-            </>
-          )}
-        </div>
-      </main>
+            ) : (
+              <>
+                <p className="page-note">{t('invite.otherAccount', { email: link.email })}</p>
+                <button type="button" className="button-secondary" onClick={() => void signOut()}>
+                  {t('invite.signOut')}
+                </button>
+              </>
+            )}
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
 
   return (
-    <main className="setup">
-      {intro}
-      {notice && (
-        <p role="status" className="page-note">
-          {notice}
-        </p>
-      )}
-      <div className="glass-card account-section">
-        <fieldset className="form-field invite-delivery">
-          <legend className="form-label">{t('invite.howIn')}</legend>
-          <label>
-            <input
-              type="radio"
-              name={`${id}-mode`}
-              checked={mode === 'new'}
-              onChange={() => {
-                modeTouched.current = true;
-                setMode('new');
-              }}
-            />{' '}
-            {t('invite.mode.new')}
-          </label>
-          <label>
-            <input
-              type="radio"
-              name={`${id}-mode`}
-              checked={mode === 'account'}
-              onChange={() => {
-                modeTouched.current = true;
-                setMode('account');
-              }}
-            />{' '}
-            {t('invite.mode.account')}
-          </label>
-        </fieldset>
-        {mode === 'new' ? (
-          <form className="form" onSubmit={choosePassword} aria-label={t('invite.mode.new')}>
-            {/* Lets password managers file the new password under the right account. */}
-            <input type="email" autoComplete="username" value={link.email} readOnly hidden />
-            <div className="form-field">
-              <label htmlFor={`${id}-name`} className="form-label">
-                {t('invite.name')}
-              </label>
-              <input
-                id={`${id}-name`}
-                type="text"
-                required
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </div>
-            <PasswordField
-              label={t('password.new')}
-              toggleLabel={t('password.showNew')}
-              autoComplete="new-password"
-              hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
-              value={password}
-              onChange={setPassword}
-            />
-            <PasswordField
-              label={t('password.confirmNew')}
-              toggleLabel={t('password.showConfirm')}
-              autoComplete="new-password"
-              value={confirm}
-              onChange={setConfirm}
-            />
-            {errorBox}
-            <button type="submit" className="button-primary" disabled={busy}>
-              {t('invite.submit')}
-            </button>
-          </form>
-        ) : (
-          <SignInForm
-            initialEmail={link.email}
-            ssoReturnRoute="#/invite"
-            {...(ssoClient ? { ssoClient } : {})}
-          />
+    <StandaloneFrame>
+      <main className="setup">
+        {intro}
+        {notice && (
+          <p role="status" className="page-note">
+            {notice}
+          </p>
         )}
-      </div>
-    </main>
+        <div className="glass-card account-section">
+          <fieldset className="form-field invite-delivery">
+            <legend className="form-label">{t('invite.howIn')}</legend>
+            <label>
+              <input
+                type="radio"
+                name={`${id}-mode`}
+                checked={mode === 'new'}
+                onChange={() => {
+                  modeTouched.current = true;
+                  setMode('new');
+                }}
+              />{' '}
+              {t('invite.mode.new')}
+            </label>
+            <label>
+              <input
+                type="radio"
+                name={`${id}-mode`}
+                checked={mode === 'account'}
+                onChange={() => {
+                  modeTouched.current = true;
+                  setMode('account');
+                }}
+              />{' '}
+              {t('invite.mode.account')}
+            </label>
+          </fieldset>
+          {mode === 'new' ? (
+            <form className="form" onSubmit={choosePassword} aria-label={t('invite.mode.new')}>
+              {/* Lets password managers file the new password under the right account. */}
+              <input type="email" autoComplete="username" value={link.email} readOnly hidden />
+              <div className="form-field">
+                <label htmlFor={`${id}-name`} className="form-label">
+                  {t('invite.name')}
+                </label>
+                <input
+                  id={`${id}-name`}
+                  type="text"
+                  required
+                  autoComplete="name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <PasswordField
+                label={t('password.new')}
+                toggleLabel={t('password.showNew')}
+                autoComplete="new-password"
+                hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
+                value={password}
+                onChange={setPassword}
+              />
+              <PasswordField
+                label={t('password.confirmNew')}
+                toggleLabel={t('password.showConfirm')}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={setConfirm}
+              />
+              {errorBox}
+              <button type="submit" className="button-primary" disabled={busy}>
+                {t('invite.submit')}
+              </button>
+            </form>
+          ) : (
+            <SignInForm
+              initialEmail={link.email}
+              ssoReturnRoute="#/invite"
+              {...(ssoClient ? { ssoClient } : {})}
+            />
+          )}
+        </div>
+      </main>
+    </StandaloneFrame>
   );
 }

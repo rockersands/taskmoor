@@ -116,6 +116,8 @@ test('[NFR-005] every page passes axe at WCAG 2.1 AA', async ({ page }, testInfo
     ['administration', '#/admin'],
     ['administration group', '#/admin/group/setup'],
     ['account', '#/account'],
+    ['account notifications', '#/account/notifications'],
+    ['account security', '#/account/security'],
     ['admin visibility policies', '#/admin/visibility'],
     ['admin permission explainer', '#/admin/permission-explainer'],
     ['admin webhooks', '#/admin/webhooks'],

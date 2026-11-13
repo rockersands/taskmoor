@@ -2,7 +2,14 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
+import {
+  type APIRequestContext,
+  devices,
+  expect,
+  type Locator,
+  type Page,
+  test,
+} from '@playwright/test';
 import { ENFORCE_BUDGETS, expectWithinBudget } from './budget';
 
 const TOKEN = 'e2e-setup-token-0123456789';
@@ -172,12 +179,19 @@ test('[IAM-001] signing out through the user menu and back in with the password 
   await page.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(heading(page)).toHaveText('Sign in');
   await expect(page).toHaveURL(/#\/sign-in$/);
-  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+  // The reduced frame (D8): the product name and the form, no navigation and no other way in.
+  await expect(page.getByRole('banner')).toHaveText('Taskmoor');
+  await expect(page.getByRole('navigation')).toHaveCount(0);
   // The backend ended the session too, not just the page.
   expect((await page.request.get('/api/v1/session')).status()).toBe(401);
 
   await signInThroughForm(page, { email: ADMIN.email, password: 'not the password' });
   await expect(page.getByRole('alert')).toContainText('do not match');
+  // Both fields say what went wrong, and who gives a new password link (AC-14, D15).
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAccessibleDescription(
+    /do not match.*Ask a site administrator for a new password link/,
+  );
   await page.getByRole('button', { name: 'Show password' }).click();
   await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'text');
   await signInThroughForm(page, ADMIN);
@@ -351,33 +365,46 @@ test('[IAM-008] the account page and the user menu work on a small phone', async
   });
   const page = await context.newPage();
   await signInThroughApi(context.request, ADMIN);
+  const overflow = () =>
+    page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  const tall = async (targets: Locator[]) => {
+    for (const target of targets) {
+      expect((await target.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    }
+  };
+
+  // Account's sections at their own addresses (D17).
   await page.goto('./#/account');
   await expect(heading(page)).toHaveText('Account');
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await tall([
+    page.getByRole('button', { name: 'Save profile' }),
+    page.getByLabel('Time zone'),
+    page.getByLabel('Language and region'),
+    page.getByRole('link', { name: 'Security' }),
+  ]);
+
+  await page.goto('./#/account/security');
   await expect(
     page.getByRole('region', { name: 'Sessions' }).getByRole('listitem'),
   ).not.toHaveCount(0);
-
-  const overflow = () =>
-    page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(await overflow()).toBeLessThanOrEqual(0);
-
-  const targets = [
+  const toggles = [
     page.getByRole('button', { name: ADMIN.name, exact: true }),
     page.getByRole('button', { name: 'Show current password' }),
     page.getByRole('button', { name: 'Show new password' }),
     page.getByRole('button', { name: 'Show password confirmation' }),
-    page.getByRole('button', { name: 'Save profile' }),
-    page.getByRole('button', { name: 'Change password' }),
-    page.getByLabel('Time zone'),
-    page.getByLabel('Language and region'),
   ];
-  for (const target of targets) {
-    const box = await target.boundingBox();
-    expect(box?.height).toBeGreaterThanOrEqual(44);
-  }
-  for (const toggle of targets.slice(0, 4)) {
+  await tall([...toggles, page.getByRole('button', { name: 'Change password' })]);
+  for (const toggle of toggles) {
     expect((await toggle.boundingBox())?.width).toBeGreaterThanOrEqual(44);
   }
+
+  // The notification settings stack per event on a phone (D23, AC-1).
+  await page.goto('./#/account/notifications');
+  await expect(page.getByRole('group', { name: 'What you hear about, and where' })).toBeVisible();
+  await expect(page.getByRole('table')).toHaveCount(0);
+  expect(await overflow()).toBeLessThanOrEqual(0);
 
   await page.getByRole('button', { name: ADMIN.name, exact: true }).tap();
   const menu = page.getByRole('menu', { name: ADMIN.name });
@@ -417,7 +444,7 @@ test('[IAM-007] a person creates an API token on the Account page, uses it and r
   baseURL,
 }) => {
   await signInThroughApi(page.request, ADMIN);
-  await page.goto('./#/account');
+  await page.goto('./#/account/tokens');
   await expect(heading(page)).toHaveText('Account');
   const tokens = page.getByRole('region', { name: 'API tokens' });
   await tokens.getByLabel('Token name').fill('E2E script');
@@ -583,7 +610,7 @@ test('[IAM-001] a person turns on an authenticator app and signs in with a code,
   await signInThroughForm(page, INES);
   await expect(heading(page)).toHaveText('Home');
 
-  await page.goto('./#/account');
+  await page.goto('./#/account/security');
   const twoFactor = page.getByRole('region', { name: 'Two-factor authentication' });
   await expect(twoFactor.getByText('Two-factor authentication is off.')).toBeVisible();
   await twoFactor.getByRole('button', { name: 'Set up authenticator app' }).click();
@@ -626,7 +653,7 @@ test('[IAM-001] a person turns on an authenticator app and signs in with a code,
   await step.getByLabel('Recovery code', { exact: true }).fill(first);
   await step.getByRole('button', { name: 'Verify' }).click();
   await expect(heading(page)).toHaveText('Home');
-  await page.goto('./#/account');
+  await page.goto('./#/account/security');
   await expect(twoFactor.getByText('9 recovery codes left.')).toBeVisible();
 
   await signOutThroughMenu(page, INES.name);
@@ -670,7 +697,7 @@ test('[IAM-001] a person registers a security key and signs in with it', async (
   await signInThroughForm(page, OMAR);
   await expect(heading(page)).toHaveText('Home');
 
-  await page.goto('./#/account');
+  await page.goto('./#/account/security');
   const twoFactor = page.getByRole('region', { name: 'Two-factor authentication' });
   await twoFactor.getByRole('button', { name: 'Add a security key' }).click();
   await twoFactor.getByLabel('Name of the key').fill('Desk key');
@@ -694,7 +721,7 @@ test('[IAM-001] a person registers a security key and signs in with it', async (
   await expect(heading(page)).toHaveText('Home');
 
   // Removing the key asks for the password; without a factor, two-factor is off again.
-  await page.goto('./#/account');
+  await page.goto('./#/account/security');
   await expect(key).toContainText('Last used');
   await twoFactor.getByRole('button', { name: 'Remove Desk key' }).click();
   const confirm = twoFactor.getByRole('form', { name: 'Remove Desk key' });
@@ -769,7 +796,7 @@ test('[IAM-001] when the policy covers everyone, a person without a second facto
     expect((await context.request.get('/api/v1/session')).status()).toBe(200);
 
     // The app is Theo's only factor and the policy requires one: it stays on.
-    await phone.goto('./#/account');
+    await phone.goto('./#/account/security');
     const twoFactor = phone.getByRole('region', { name: 'Two-factor authentication' });
     await expect(twoFactor.getByRole('button', { name: 'Switch off the app' })).toBeDisabled();
     await expect(twoFactor.getByText(/so your last method cannot be switched off/)).toBeVisible();

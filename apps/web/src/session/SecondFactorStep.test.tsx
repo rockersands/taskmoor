@@ -243,7 +243,8 @@ describe('sign-in: second factor', () => {
     for (const name of ['Verify', 'Use a security key', 'Use a recovery code', 'Back']) {
       expect(within(form).getByRole('button', { name })).toBeVisible();
     }
-    expect(screen.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+    // Signing in happens in the reduced frame, with no navigation to open (D8).
+    expect(screen.queryByRole('button', { name: 'Open navigation' })).toBeNull();
   });
 
   it('passes every string through the pseudo-locale', async () => {

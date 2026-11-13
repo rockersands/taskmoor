@@ -123,7 +123,9 @@ describe('user menu', () => {
     expect(window.location.hash).toBe('#/sign-in');
     expect(heading).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Kalo Mendes' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '#/sign-in');
+    // The reduced frame (D8): no navigation, and no second way in beside the form (AC-13).
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
     expect(
       fetch.mock.calls.some(([url, init]) => url.endsWith('/session') && init?.method === 'DELETE'),
     ).toBe(true);
@@ -156,15 +158,14 @@ describe('user menu', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('[IAM-001] offers a sign-in link to visitors who are not signed in', async () => {
+  it('[IAM-001] has no menu and no top-bar sign-in link for visitors who are not signed in', async () => {
     render(<App session={{ status: 'anonymous' }} />);
-    // The top bar's link (the start page offers one too, M1-113).
+    // The reduced frame (D8, AC-13): the product name, and the sign-in form is the way in.
     // The first banner: the test library counts a page's own header too, where a browser does not.
-    expect(
-      within(screen.getAllByRole('banner')[0] as HTMLElement).getByRole('link', {
-        name: 'Sign in',
-      }),
-    ).toHaveAttribute('href', '#/sign-in');
+    const bar = screen.getAllByRole('banner')[0] as HTMLElement;
+    expect(bar).toHaveTextContent('Taskmoor');
+    expect(within(bar).queryByRole('link')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /Kalo/ })).toBeNull();
   });
 

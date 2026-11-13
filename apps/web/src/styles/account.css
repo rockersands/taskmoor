@@ -1,8 +1,57 @@
-/* The Account page: profile, password and sessions. Desktop first; one column on phones. */
+/*
+ * The Account page: its sections at their own addresses (D17), profile, notifications, security,
+ * tokens and data. Desktop first; one column on phones. A page of forms keeps a reading width
+ * (T-219), narrower than the 76 rem of the wide tables elsewhere.
+ */
+.page.account-page {
+  max-width: 60rem;
+}
+
 .account-sections {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
+}
+
+/* A link to a section stops below the sticky top bar, not under it (AC-9). */
+.account-sections > section {
+  scroll-margin-top: calc(var(--shell-topbar-reach, 0px) + var(--space-3));
+}
+
+/* The sections, as a row of tabs that scrolls inside itself on a phone. */
+.account-tabs {
+  overflow-x: auto;
+}
+
+.account-tabs ul {
+  display: flex;
+  gap: var(--space-1);
+  width: max-content;
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+}
+
+.account-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.account-tabs a:hover {
+  background: var(--glass-surface-sunken);
+}
+
+.account-tabs a[aria-current="page"] {
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  font-weight: var(--font-weight-strong);
 }
 
 /*
@@ -29,6 +78,14 @@
 
 .account-section .form {
   max-width: 28rem;
+}
+
+/*
+ * One rule for Account's buttons (AC-16): as wide as their words, like the buttons outside a
+ * form ('Prepare a download'), rather than filling the form's column.
+ */
+.account-page .form > :is(.button-primary, .button-secondary) {
+  justify-self: start;
 }
 
 .session-list {
@@ -225,6 +282,15 @@
   gap: var(--space-1);
 }
 
+/* The app's radio, in the accent as everywhere else (AC-11). */
+.notification-choice input[type="radio"] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
 .notification-hours {
   display: flex;
   flex-wrap: wrap;
@@ -254,7 +320,48 @@
 
 .notification-events tbody th {
   font-weight: normal;
-  overflow-wrap: anywhere;
+}
+
+/* On phones (D23): one block per event, its channel switches beneath. */
+.notification-event-list {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.notification-events-title {
+  float: left;
+  width: 100%;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  font-weight: var(--font-weight-strong);
+}
+
+.notification-event {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+}
+
+.notification-event legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-1);
+}
+
+.notification-event-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
 }
 
 @media (pointer: coarse) {
@@ -264,8 +371,18 @@
     align-items: center;
   }
 
+  .account-tabs a {
+    min-height: var(--hit-target-touch);
+  }
+
+  /*
+   * The app's boxes and radios at the touch size (AC-12). A phone capture showed the native
+   * boxes at 13 px despite this rule (cause not established); the app's own boxes are drawn by
+   * these sizes, and outrank the 24 px of `.glass-check` here.
+   */
   .notification-choice input,
-  .notification-events input {
+  .notification-events input,
+  .notification-event input {
     width: 28px;
     height: 28px;
   }

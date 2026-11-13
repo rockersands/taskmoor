@@ -5,6 +5,7 @@
 export const messagesEn = {
   'app.name': 'Taskmoor',
   'app.instanceTitle': '{instance} · Taskmoor',
+  'standalone.goToSignIn': 'Go to sign in',
   'update.availableTitle': 'A newer version is available.',
   'update.available':
     'This app is version {version} and the server runs {server}. Reload the page to update it.',
@@ -312,7 +313,8 @@ export const messagesEn = {
     'Try a wider filter. Tokens show here once a person or a service account creates one.',
   'empty.tokens.body':
     'A token lets a program or script call the API as you. Create one when you need it.',
-  'empty.personalData.body':
+  'empty.personalData.body': 'Prepare a download to get everything Taskmoor keeps about you.',
+  'empty.personalData.bodyOf':
     'Prepare a download to get everything Taskmoor keeps about this person.',
   'empty.trackPeople.body':
     'A track shows here once you run it: when someone gives you the role, or you create the track.',
@@ -877,7 +879,7 @@ export const messagesEn = {
   'palette.ticket.copyLink': 'Copy the link to {key}',
   'palette.ticket.shortcuts': 'Keyboard shortcuts of the ticket view',
   'auth.signInRequired': 'Sign in to continue',
-  'auth.signInExplanation': 'This area is only available to signed-in users.',
+  'auth.signInExplanation': 'You need to sign in to see this page.',
   'auth.signIn': 'Sign in',
   'auth.checking': 'Checking your session…',
   'auth.oauth.explanation': 'You sign in on {host}, where this tracker keeps your account.',
@@ -887,6 +889,7 @@ export const messagesEn = {
   'auth.email': 'Email',
   'auth.password': 'Password',
   'auth.invalidCredentials': 'That email and password do not match.',
+  'auth.forgotPassword': 'Forgot your password? Ask a site administrator for a new password link.',
   'auth.failed': 'Sign-in failed. Try again in a moment.',
   'auth.tooManyAttemptsSeconds':
     '{seconds, plural, one {Too many attempts. Try again in # second.} other {Too many attempts. Try again in # seconds.}}',
@@ -978,9 +981,10 @@ export const messagesEn = {
   'setup.smtpPasswordHint':
     'The SMTP password is not entered here: set TASKMOOR_SMTP_PASSWORD in the backend environment.',
   'setup.submit': 'Finish setup',
+  'setup.checking': 'Checking whether this site is set up…',
   'setup.noToken':
-    'This page needs the setup link the installer printed; it contains a one-time token.',
-  'setup.alreadySetUp': 'This instance is already set up. Sign in to continue.',
+    'This page needs the whole setup link the installer printed, with its one-time token.',
+  'setup.alreadySetUp': 'This site is already set up. Sign in with your account.',
   'setup.invalidToken':
     'The setup token is invalid or has expired. Restart the backend to get a new link.',
   'setup.invalid': 'Some values were not accepted:',
@@ -1053,11 +1057,24 @@ export const messagesEn = {
   'settings.workflowsHint':
     'Statuses, and the transitions between them with their guards, checks and effects.',
   'account.title': 'Account',
-  'account.intro':
-    'Your profile, your password, two-factor authentication and the devices where you are signed in.',
+  'account.sections': 'Account sections',
+  'account.section.profile': 'Profile',
+  'account.section.notifications': 'Notifications',
+  'account.section.security': 'Security',
+  'account.section.tokens': 'API tokens',
+  'account.section.data': 'Your data',
+  'account.intro.profile':
+    'Your name, email, time zone and language, and how Taskmoor looks for you.',
+  'account.intro.notifications':
+    'When Taskmoor tells you about changes, and whether by email, in your inbox or both.',
+  'account.intro.security':
+    'Your password, two-factor authentication and the devices where you are signed in.',
+  'account.intro.tokens': 'The tokens your programs and scripts use to call the API as you.',
+  'account.intro.data': 'A download of everything Taskmoor keeps about you.',
   'account.profile': 'Profile',
   'account.appearance': 'Appearance',
-  'account.appearance.intro': 'How Taskmoor looks for you, on every device where you sign in.',
+  'account.appearance.intro':
+    'How Taskmoor looks for you, on every device where you sign in. A choice saves at once.',
   'account.appearance.system': 'System',
   'account.appearance.systemHint': 'Light or dark, following the setting of your device.',
   'account.appearance.saved': 'Appearance saved to your account.',
@@ -1108,8 +1125,10 @@ export const messagesEn = {
   'notifications.event.checklist_changed': 'A checklist changes on a ticket you follow',
   'unsubscribe.title': 'Unsubscribe',
   'unsubscribe.checking': 'Checking the link…',
+  'unsubscribe.noToken':
+    'This address has no unsubscribe link in it. Open the whole link from the email, or change your notification settings after signing in.',
   'unsubscribe.invalid':
-    'This unsubscribe link is not valid. Change your notification settings after signing in instead.',
+    'This unsubscribe link is not valid any more. Change your notification settings after signing in instead.',
   'unsubscribe.question': 'Stop {what} to {email}?',
   'unsubscribe.allEmail': 'all notification emails',
   'unsubscribe.oneEvent': 'emails about “{event}”',
@@ -1121,6 +1140,8 @@ export const messagesEn = {
   'consent.titlePlain': 'Connect an app',
   'consent.title': 'Allow {name} to use Taskmoor?',
   'consent.loading': 'Reading the request…',
+  'consent.noRequest':
+    'This address names no request from an app. Start the connection again from the app.',
   'consent.intro': '{name} asks to act as you through the MCP server. If you allow it:',
   'consent.reads': 'It sees what you can see: tickets, tracks, boards and sprints.',
   'consent.writes': 'It can create and change tickets, comment and link, as you.',
@@ -1134,7 +1155,6 @@ export const messagesEn = {
   'consent.deny': 'Don’t allow',
   'consent.leaving': 'Sending you back to the app…',
   'consent.signedOut': 'Sign in to answer this request.',
-  'consent.signIn': 'Sign in',
   'consent.gone':
     'This request has expired or was already answered. Start the connection again from the app.',
   'consent.failed': 'That did not work. Try again in a moment.',
@@ -1178,6 +1198,8 @@ export const messagesEn = {
   'personalData.title': 'Your data',
   'personalData.titleOf': 'Data of {name}',
   'personalData.intro':
+    'Download everything Taskmoor keeps about you: your profile, settings, the tickets you reported or are assigned, comments, time, uploaded files and the audit records about you. The download is made in the background and kept for a week.',
+  'personalData.introOf':
     'Download everything Taskmoor keeps about this person: profile, settings, the tickets they reported or are assigned, comments, time, uploaded files and the audit records about them. The download is made in the background and kept for a week.',
   'personalData.request': 'Prepare a download',
   'personalData.requested': 'The download is being prepared. It appears below when it is ready.',
@@ -1326,13 +1348,12 @@ export const messagesEn = {
     'Choose a new password for {email}. Every other session of this account is signed out; you are signed in here right after.',
   'passwordLink.checking': 'Checking the link…',
   'passwordLink.noToken':
-    'This page needs the password link you were given; it contains a one-time code.',
+    'This address has no password link in it. Open the whole link you were given, or ask a site administrator for a new one.',
   'passwordLink.invalid':
     'This link is invalid, has expired or was already used. Ask a site administrator for a new one.',
   'passwordLink.failed': 'The link could not be checked. Try again in a moment.',
   'passwordLink.submit': 'Save password and sign in',
   'passwordLink.saveFailed': 'The password could not be saved. Try again in a moment.',
-  'passwordLink.goToSignIn': 'Go to sign in',
   'admin.apiUsage.title': 'API usage and limits',
   'admin.apiUsage.forbidden': 'Only site administrators see API usage and change rate limits.',
   'admin.apiUsage.busiest': 'Busiest clients',
@@ -2790,13 +2811,15 @@ export const messagesEn = {
   'invite.title': 'Your invitation',
   'invite.titleFor': 'Your invitation to {key} · {name}',
   'invite.intro': 'You are invited as {role}, at {email}.',
+  'invite.introNoRole': 'You are invited, at {email}.',
   'invite.introBy': '{who} invited you as {role}, at {email}.',
+  'invite.introByNoRole': '{who} invited you, at {email}.',
   'invite.checking': 'Checking the link…',
-  'invite.noToken': 'This address has no invitation in it. Use the whole link you were given.',
+  'invite.noToken':
+    'This address has no invitation in it. Open the whole link you were given, or ask a site administrator for a new one.',
   'invite.invalid':
-    'This invitation can no longer be used: it was used, withdrawn or ran out. Ask the person who invited you for a new one.',
+    'This invitation can no longer be used: it was used, withdrawn or ran out. Ask a site administrator for a new one.',
   'invite.failed': 'That did not work. Try again in a moment.',
-  'invite.goToSignIn': 'Go to sign-in',
   'invite.secondFactorNote':
     'This site asks for two-factor authentication at this address: you will set it up when you sign in, with an authenticator app.',
   'invite.howIn': 'How do you want to come in?',
@@ -5326,8 +5349,6 @@ export const messagesEn = {
   'sprints.settings.timeZoneHint':
     'Days count on this clock, so a sprint that ends at 09:00 still does after a change of summer time.',
   'sprints.settings.unknownTimeZone': 'The server does not know this time zone. Pick another.',
-  'home.signedOut': 'Sign in to see your work, the tickets you follow and what you opened lately.',
-  'page.underConstruction': 'This area is under construction.',
   'notFound.title': 'Page not found',
   'notFound.page': 'Nothing is at this address. The link may be mistyped or out of date.',
   'notFound.waysOn': 'Ways on',

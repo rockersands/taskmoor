@@ -101,7 +101,10 @@ export function PersonalDataSection({ client, timeZone, pollMs = 3000 }: Persona
           ? t('personalData.titleOf', { name: client.subject })
           : t('personalData.title')}
       </h2>
-      <p className="page-note">{t('personalData.intro')}</p>
+      {/* The person's own page speaks to them; an administrator's about the person (AC-19). */}
+      <p className="page-note">
+        {t(client.subject ? 'personalData.introOf' : 'personalData.intro')}
+      </p>
       <div className="form-actions">
         <button type="button" className="button-primary" disabled={busy} onClick={() => void ask()}>
           {t('personalData.request')}
@@ -124,7 +127,7 @@ export function PersonalDataSection({ client, timeZone, pollMs = 3000 }: Persona
       {state.status === 'loaded' &&
         (state.exports.length === 0 ? (
           <EmptyState compact title={t('personalData.none')}>
-            {t('empty.personalData.body')}
+            {t(client.subject ? 'empty.personalData.bodyOf' : 'empty.personalData.body')}
           </EmptyState>
         ) : (
           <ul className="session-list">

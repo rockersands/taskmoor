@@ -29,10 +29,12 @@ export function NotFoundPage({ title, children }: NotFoundPageProps) {
   useEffect(() => notFound?.(route), [notFound, route]);
   return (
     <section className="page not-found-page" aria-labelledby={titleId}>
-      <PageHeader titleId={titleId} title={title} />
-      <p className="page-note" role="alert">
-        {children ?? t('notFound.page')}
-      </p>
+      {/* What happened is the page's purpose line, said as an alert. */}
+      <PageHeader
+        titleId={titleId}
+        title={title}
+        purpose={<span role="alert">{children ?? t('notFound.page')}</span>}
+      />
       <nav className="form-actions" aria-label={t('notFound.waysOn')}>
         <a className="button-primary" href={routeHref('#/home')}>
           {t('notFound.home')}

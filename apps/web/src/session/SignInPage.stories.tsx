@@ -1,11 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { fakeSignInSso, PARTNERS, STAFF, UMBRELLA } from '../sso/fixtures';
 import { SessionProvider } from './SessionProvider';
 import { SignInPage } from './SignInPage';
 
-/** Where "Sign in" in the top bar leads, where signing out lands and where SSO errors return. */
+/**
+ * Where signing out lands and where SSO errors return, in the reduced frame (D8): the product
+ * name and the sign-in page, nothing else.
+ */
 const meta = {
   title: 'Session/SignInPage',
   component: SignInPage,
@@ -16,9 +20,9 @@ const meta = {
       // The form reads `sso_error` and `method` from the address when it opens.
       window.history.replaceState(null, '', `#${parameters.hash ?? '/sign-in'}`);
       return (
-        <main style={{ padding: 32 }}>
+        <StandaloneFrame wayOut={false}>
           <Story />
-        </main>
+        </StandaloneFrame>
       );
     },
   ],

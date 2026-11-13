@@ -49,9 +49,11 @@ export const InvalidLink: Story = {
     },
   },
   play: async ({ canvasElement }) => {
+    // The frame's one way out, at the top (D24).
     const link = await within(canvasElement).findByRole('link', { name: 'Go to sign in' });
+    await expect(link.closest('.standalone-bar')).not.toBeNull();
     // The same card as Unsubscribe and Consent, not flat text on the canvas.
-    await expect(link.closest('.glass-card')).not.toBeNull();
+    await expect(canvasElement.querySelector('.glass-card .page-note')).not.toBeNull();
   },
 };
 

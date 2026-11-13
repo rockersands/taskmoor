@@ -31,17 +31,21 @@ const tokensAnswer = () =>
 
 const region = (name: string) => screen.getByRole('region', { name });
 
-async function openAccount(handlers: Record<string, Handler> = {}) {
+async function openAccount(handlers: Record<string, Handler> = {}, route = '#/account') {
   const calls = stubBackend({
     'GET /sessions': sessionsAnswer(),
     'GET /account/tokens': tokensAnswer,
     ...handlers,
   });
-  window.location.hash = '#/account';
+  window.location.hash = route;
   render(<App session={SIGNED_IN} />);
   await screen.findByRole('heading', { level: 1, name: 'Account' });
   return calls;
 }
+
+/** The password, two-factor authentication and sessions, at their own address (D17). */
+const openSecurity = (handlers: Record<string, Handler> = {}) =>
+  openAccount(handlers, '#/account/security');
 
 async function fillPassword(
   user: ReturnType<typeof userEvent.setup>,
@@ -57,17 +61,39 @@ async function fillPassword(
 }
 
 describe('account page: profile', () => {
-  it('[IAM-008] shows profile, password, sessions and API tokens to the signed-in person', async () => {
+  it.each([
+    ['#/account', 'Profile', ['Profile', 'Appearance']],
+    ['#/account/notifications', 'Notifications', ['Notifications']],
+    ['#/account/security', 'Security', ['Password', 'Two-factor authentication', 'Sessions']],
+    ['#/account/tokens', 'API tokens', ['API tokens']],
+    ['#/account/data', 'Your data', ['Your data']],
+  ])('[IAM-008] shows only its own section at %s (D17)', async (route, tab, regions) => {
+    await openAccount({}, route);
+    const tabs = screen.getByRole('navigation', { name: 'Account sections' });
+    expect(within(tabs).getAllByRole('link')).toHaveLength(5);
+    expect(within(tabs).getByRole('link', { name: tab })).toHaveAttribute('aria-current', 'page');
+    const shown = within(screen.getByRole('main'))
+      .getAllByRole('heading', { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(shown).toEqual(regions);
+  });
+
+  it('[IAM-008] says what the section holds, and that Appearance saves at once', async () => {
     await openAccount();
-    for (const name of [
-      'Profile',
-      'Password',
-      'Two-factor authentication',
-      'Sessions',
-      'API tokens',
-    ]) {
-      expect(within(region(name)).getByRole('heading', { level: 2, name })).toBeVisible();
-    }
+    expect(
+      screen.getByText('Your name, email, time zone and language, and how Taskmoor looks for you.'),
+    ).toBeVisible();
+    expect(screen.getByText(/A choice saves at once\./)).toBeVisible();
+  });
+
+  it('[IAM-008] says an address under Account that names no section is not found', () => {
+    window.location.hash = '#/account/nothing-here';
+    render(<App session={SIGNED_IN} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible();
+  });
+
+  it('[IAM-008] shows the profile to the signed-in person', async () => {
+    await openAccount();
     expect(screen.getByLabelText('Name')).toHaveValue('Kalo Mendes');
     expect(screen.getByLabelText('Email')).toHaveValue('kalo@example.com');
     expect(screen.getByLabelText('Email')).toHaveAttribute('readonly');
@@ -159,7 +185,7 @@ describe('account page: profile', () => {
 describe('account page: password', () => {
   it('[IAM-001] changes the password and says how many other sessions were signed out', async () => {
     const user = userEvent.setup();
-    const calls = await openAccount({
+    const calls = await openSecurity({
       'PUT /account/password': () => jsonResponse(200, { signedOutSessions: 2 }),
     });
     await fillPassword(user, 'the current passphrase', 'a brand new passphrase');
@@ -183,7 +209,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] says so when there were no other sessions', async () => {
     const user = userEvent.setup();
-    await openAccount({
+    await openSecurity({
       'PUT /account/password': () => jsonResponse(200, { signedOutSessions: 0 }),
     });
     await fillPassword(user, 'the current passphrase', 'a brand new passphrase');
@@ -194,7 +220,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] catches different new passwords before calling the backend', async () => {
     const user = userEvent.setup();
-    const calls = await openAccount();
+    const calls = await openSecurity();
     await fillPassword(user, 'the current passphrase', 'a brand new passphrase', 'a typo');
     expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords differ.');
     expect(screen.getByLabelText('Confirm new password')).toHaveAttribute('aria-invalid', 'true');
@@ -203,7 +229,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] says when the current password is wrong', async () => {
     const user = userEvent.setup();
-    await openAccount({
+    await openSecurity({
       'PUT /account/password': () => jsonResponse(403, { error: 'wrong_password' }),
     });
     await fillPassword(user, 'not my password', 'a brand new passphrase');
@@ -216,7 +242,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] explains each password problem in the reader’s language', async () => {
     const user = userEvent.setup();
-    await openAccount({
+    await openSecurity({
       'PUT /account/password': () =>
         jsonResponse(400, {
           error: 'weak_password',
@@ -247,7 +273,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] shows how long to wait after too many wrong passwords', async () => {
     const user = userEvent.setup();
-    await openAccount({
+    await openSecurity({
       'PUT /account/password': () =>
         jsonResponse(429, { error: 'too_many_attempts', retryAfterSeconds: 125 }),
     });
@@ -259,7 +285,7 @@ describe('account page: password', () => {
 
   it('[IAM-001] shows and hides each password on its own', async () => {
     const user = userEvent.setup();
-    await openAccount();
+    await openSecurity();
     const password = within(region('Password'));
     const toggle = password.getByRole('button', { name: 'Show new password' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -286,7 +312,7 @@ describe('account page: sessions', () => {
       ...sessions.filter((s) => !s.current),
       ...sessions.filter((s) => s.current),
     ];
-    await openAccount({ 'GET /sessions': sessionsAnswer(currentLast) });
+    await openSecurity({ 'GET /sessions': sessionsAnswer(currentLast) });
     const items = await within(region('Sessions')).findAllByRole('listitem');
     expect(items).toHaveLength(3);
     const [here, firefox, iphone] = items as [HTMLElement, HTMLElement, HTMLElement];
@@ -309,7 +335,7 @@ describe('account page: sessions', () => {
   it('[IAM-004] signs out one other session', async () => {
     const user = userEvent.setup();
     let sessions = sampleSessions();
-    const calls = await openAccount({
+    const calls = await openSecurity({
       'GET /sessions': () => jsonResponse(200, { sessions }),
       'DELETE /sessions/12': () => {
         sessions = sessions.filter((s) => s.id !== 12);
@@ -332,7 +358,7 @@ describe('account page: sessions', () => {
 
   it('[IAM-004] treats a session that is already gone as signed out', async () => {
     const user = userEvent.setup();
-    await openAccount({ 'DELETE /sessions/13': () => jsonResponse(404, { error: 'not_found' }) });
+    await openSecurity({ 'DELETE /sessions/13': () => jsonResponse(404, { error: 'not_found' }) });
     await user.click(await screen.findByRole('button', { name: 'Sign out Safari on iOS' }));
     expect(await screen.findByText('Signed out Safari on iOS.')).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -341,7 +367,7 @@ describe('account page: sessions', () => {
   it('[IAM-004] signs out every other session at once', async () => {
     const user = userEvent.setup();
     let sessions = sampleSessions();
-    await openAccount({
+    await openSecurity({
       'GET /sessions': () => jsonResponse(200, { sessions }),
       'DELETE /sessions/others': () => {
         sessions = sessions.filter((s) => s.current);
@@ -357,7 +383,7 @@ describe('account page: sessions', () => {
 
   it('[IAM-004] reports a failed sign-out and keeps the list', async () => {
     const user = userEvent.setup();
-    await openAccount({ 'DELETE /sessions/others': () => jsonResponse(500, { error: 'boom' }) });
+    await openSecurity({ 'DELETE /sessions/others': () => jsonResponse(500, { error: 'boom' }) });
     await user.click(await screen.findByRole('button', { name: 'Sign out all other sessions' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The session could not be signed out. Try again in a moment.',
@@ -366,14 +392,14 @@ describe('account page: sessions', () => {
   });
 
   it('[IAM-004] reports a list that could not be read', async () => {
-    await openAccount({ 'GET /sessions': () => jsonResponse(500, { error: 'boom' }) });
+    await openSecurity({ 'GET /sessions': () => jsonResponse(500, { error: 'boom' }) });
     expect(await within(region('Sessions')).findByRole('alert')).toHaveTextContent(
       'Your sessions could not be read. Try again in a moment.',
     );
   });
 
   it('[IAM-004] asks to sign in again when the session ended elsewhere', async () => {
-    await openAccount({
+    await openSecurity({
       'GET /sessions': () => jsonResponse(401, { error: 'not_signed_in' }),
       'GET /session': () => jsonResponse(401, { error: 'not_signed_in' }),
     });
@@ -418,9 +444,8 @@ describe('account page: access and layout', () => {
 
   it('[IAM-008] works on a phone-sized screen', async () => {
     setViewportWidth(375);
-    await openAccount();
+    await openSecurity();
     expect(await within(region('Sessions')).findAllByRole('listitem')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: 'Save profile' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Change password' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open navigation' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Kalo Mendes' })).toBeVisible();

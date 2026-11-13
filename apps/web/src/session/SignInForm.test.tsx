@@ -42,12 +42,31 @@ describe('sign-in form', () => {
     await user.type(screen.getByLabelText('Email'), 'kalo@example.com');
     await user.type(screen.getByLabelText('Password'), 'wrong password here');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('do not match');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('do not match');
+    // Both fields say so, and the password field says who gives a new password link (AC-14, D15).
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Email')).toHaveAccessibleDescription(/do not match/);
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription(
+      'That email and password do not match. Forgot your password? Ask a site administrator for a new password link.',
+    );
 
     await user.clear(screen.getByLabelText('Password'));
     await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  });
+
+  it('[IAM-001] says who gives a new password link, before any attempt (D15)', async () => {
+    window.location.hash = '#/sign-in';
+    render(<App />);
+    await screen.findByRole('form', { name: 'Sign in' });
+    expect(
+      screen.getByText('Forgot your password? Ask a site administrator for a new password link.'),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-invalid');
   });
 
   it('[IAM-001] shows and hides the password with a toggle button, and accepts paste', async () => {

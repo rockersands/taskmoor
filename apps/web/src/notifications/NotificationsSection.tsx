@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
   CHANNELS,
   type Channel,
@@ -41,11 +42,15 @@ function applied(
  * How Taskmoor tells this person about changes (M1-056, M1-057; NTF-002, NTF-004): email at
  * once or as a digest, quiet hours, their own changes, and per event whether email and the
  * inbox carry it. Each change saves at once. Emails link here (#/account/notifications).
+ * Per event, a table on wide screens; on phones one block per event with its channel switches
+ * beneath (D23), so no translation runs off the page or breaks a word. Every box and radio is
+ * the app's own (AC-11).
  */
 export function NotificationsSection({ client }: NotificationsSectionProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const id = useId();
+  const compact = useMediaQuery(COMPACT_QUERY);
   const [prefs, setPrefs] = useState<NotificationPreferences | 'loading' | 'failed'>('loading');
   const [status, setStatus] = useState<'idle' | 'saved' | 'failed'>('idle');
 
@@ -134,6 +139,7 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
         <label className="notification-choice">
           <input
             type="checkbox"
+            className="glass-check"
             checked={quiet !== null}
             onChange={(e) => save({ quietHours: e.target.checked ? { start: 22, end: 7 } : null })}
           />
@@ -166,49 +172,82 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
       <label className="notification-choice">
         <input
           type="checkbox"
+          className="glass-check"
           checked={prefs.ownChanges}
           onChange={(e) => save({ ownChanges: e.target.checked })}
         />
         <span>{t('notifications.ownChanges')}</span>
       </label>
-      <table className="data-table notification-events">
-        <caption>{t('notifications.events')}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('notifications.event')}</th>
-            {CHANNELS.map((channel) => (
-              <th key={channel} scope="col">
-                {t(`notifications.channel.${channel}` as MessageId)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
+      {compact ? (
+        <fieldset className="notification-event-list">
+          <legend className="notification-events-title">{t('notifications.events')}</legend>
           {NOTIFICATION_EVENTS.map((event) => {
             const label = t(`notifications.event.${event}` as MessageId);
             return (
-              <tr key={event}>
-                <th scope="row">{label}</th>
-                {CHANNELS.map((channel) => (
-                  <td key={channel}>
-                    <label className="notification-cell">
-                      <input
-                        type="checkbox"
-                        aria-label={t('notifications.toggle', {
-                          channel: t(`notifications.channel.${channel}` as MessageId),
-                          event: label,
-                        })}
-                        checked={prefs.events[event]?.[channel] ?? true}
-                        onChange={(e) => choose(event, channel, e.target.checked)}
-                      />
-                    </label>
-                  </td>
-                ))}
-              </tr>
+              <fieldset key={event} className="notification-event">
+                <legend>{label}</legend>
+                <div className="notification-event-channels">
+                  {CHANNELS.map((channel) => {
+                    const name = t(`notifications.channel.${channel}` as MessageId);
+                    return (
+                      <label key={channel} className="check-row">
+                        <input
+                          type="checkbox"
+                          className="glass-check"
+                          aria-label={t('notifications.toggle', { channel: name, event: label })}
+                          checked={prefs.events[event]?.[channel] ?? true}
+                          onChange={(e) => choose(event, channel, e.target.checked)}
+                        />
+                        <span>{name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
             );
           })}
-        </tbody>
-      </table>
+        </fieldset>
+      ) : (
+        <table className="data-table notification-events">
+          <caption>{t('notifications.events')}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t('notifications.event')}</th>
+              {CHANNELS.map((channel) => (
+                <th key={channel} scope="col">
+                  {t(`notifications.channel.${channel}` as MessageId)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {NOTIFICATION_EVENTS.map((event) => {
+              const label = t(`notifications.event.${event}` as MessageId);
+              return (
+                <tr key={event}>
+                  <th scope="row">{label}</th>
+                  {CHANNELS.map((channel) => (
+                    <td key={channel}>
+                      <label className="notification-cell">
+                        <input
+                          type="checkbox"
+                          className="glass-check"
+                          aria-label={t('notifications.toggle', {
+                            channel: t(`notifications.channel.${channel}` as MessageId),
+                            event: label,
+                          })}
+                          checked={prefs.events[event]?.[channel] ?? true}
+                          onChange={(e) => choose(event, channel, e.target.checked)}
+                        />
+                      </label>
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
       <p className="form-status" role="status">
         {status === 'saved' ? t('notifications.saved') : ''}
       </p>

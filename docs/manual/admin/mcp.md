@@ -2,7 +2,7 @@
 title: "The MCP server"
 audience: admins
 sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/oauth.ts, apps/server/src/oauth/clients.ts, apps/server/src/oauth/tokens.ts, apps/web/src/oauth/ConsentPage.tsx, docs/adr/0084-oauth-for-mcp-clients.md
-accessed: 2026-11-03
+accessed: 2026-11-13
 attestation: own-words
 ---
 # The MCP server
@@ -102,7 +102,8 @@ them the server's address (`https://tracker.example.com/api/v1/mcp`) and they do
    (`/.well-known/oauth-protected-resource/api/v1/mcp`), which names this server's OAuth
    endpoints (`/.well-known/oauth-authorization-server`).
 2. The app registers itself and opens the person's browser. Someone not signed in signs in
-   first.
+   first, with **Go to sign in** at the top of the page, and comes back to the request. A request
+   that has expired or was already answered says so at once, before anyone signs in.
 3. A page asks the person whether to allow the app. It names the app and where the browser
    goes back to (a website, an app on the same computer, or an app's own kind of link), and says
    what the app may do: see what the person can see, and, unless the person unticks **Also let

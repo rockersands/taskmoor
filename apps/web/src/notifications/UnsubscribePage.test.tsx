@@ -49,6 +49,19 @@ describe('unsubscribe page (M1-057)', () => {
     expect(await screen.findByText(/This unsubscribe link is not valid/)).toBeVisible();
   });
 
+  it('[NTF-002] says a missing link is missing, apart from one that is not valid (AC-15)', () => {
+    window.location.hash = '#/unsubscribe';
+    renderPage();
+    expect(screen.getByText(/This address has no unsubscribe link in it/)).toBeVisible();
+    expect(screen.queryByText(/not valid/)).toBeNull();
+    // No intro that would contradict it (AC-7), and the frame's one way out (D24).
+    expect(screen.queryByText(/Stop the emails this link stands for/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
+  });
+
   it('reports a failed unsubscribe', async () => {
     const user = userEvent.setup();
     renderPage(fakeUnsubscribeClient({ confirm: () => Promise.reject(new Error('down')) }));
