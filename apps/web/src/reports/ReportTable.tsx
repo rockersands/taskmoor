@@ -1,5 +1,5 @@
 import { type ReactNode, useRef } from 'react';
-import { useMoreSides } from '../tracks/TrackLayout';
+import { useMoreSides } from '../shell/moreSides';
 
 /**
  * A report's table in a region of its own that scrolls sideways when the card is narrower than the

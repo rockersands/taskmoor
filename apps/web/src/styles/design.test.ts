@@ -943,11 +943,13 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   });
 
   it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {
+    // Any focus in it, or (Account's sections, whose link keeps focus after a tap) keyboard focus.
+    const lifted = /:not\(:focus-within\)|:not\(:has\(:focus-visible\)\)/;
     const fades = cssSources.flatMap(([file, source]) =>
       cssDeclarations(source)
         .filter((d) => /^(-webkit-)?mask(-image)?$/.test(d.property))
         .filter((d) => d.selector.includes('[data-more'))
-        .filter((d) => !d.selector.includes(':not(:focus-within)'))
+        .filter((d) => !lifted.test(d.selector))
         .map((d) => `${name(file)} ${d.selector}`),
     );
     expect(fades).toEqual([]);

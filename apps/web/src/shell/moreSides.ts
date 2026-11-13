@@ -11,8 +11,13 @@ export function moreSides(scroller: HTMLElement): MoreSides {
 
 /**
  * Keeps `data-more` on a sideways scroller current: which of its ends hide more, so a fade can say
- * so (the page-review faults TR-4 and D17 on Account's sections). Returns the value for the first
- * paint. The same rule as the track tab bar's, to be shared with it when the two meet.
+ * so (the page-review faults TR-4, TR-23 and D17). Returns the value for the first paint. The one
+ * helper for every such scroller: a track's tab bar, Account's sections, a board, a report table.
+ *
+ * The fade itself is each stylesheet's, and lifts while focus is in the strip, so a focus ring is
+ * never faded out: `:not(:focus-within)` on the tab bar, the board and report tables, and
+ * `:not(:has(:focus-visible))` on Account's sections, whose link keeps focus after a tap and so
+ * keeps its fade until the keyboard is used (design.test.ts holds both).
  */
 export function useMoreSides(
   scroller: RefObject<HTMLElement | null>,

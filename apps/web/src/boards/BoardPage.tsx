@@ -29,7 +29,7 @@ import { useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
-import { useMoreSides } from '../tracks/TrackLayout';
+import { useMoreSides } from '../shell/moreSides';
 import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardCardItem, type CardActions } from './BoardCard';
