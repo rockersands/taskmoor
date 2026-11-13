@@ -14,6 +14,7 @@ import { rememberBoard } from '../../routing/cameFrom';
 import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/router';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
+import { applyStylesheet } from '../../test/stylesheets';
 import { setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketToolsClient } from '../tools/client';
@@ -665,5 +666,89 @@ describe('unsaved text on the full page (T-190)', () => {
     await user.click(within(details()).getByRole('button', { name: 'Save' }));
     await within(details()).findByText('payments, checkout, typed');
     expect(unloadAsks()).toBe(false);
+  });
+});
+
+describe('the ticket view after the page review (T-220)', () => {
+  const follows = (first: Element, second: Element) =>
+    Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it('[CORE-022] [NFR-005] shows Details before Activity on a phone (PL-25, D33)', async () => {
+    setViewportWidth(375);
+    renderPage();
+    await heading();
+    const activity = await screen.findByRole('region', { name: 'Activity' });
+    expect(follows(details(), activity)).toBe(true);
+    // The help says where they are on this screen, not "on the side" (PL-48).
+    await userEvent.setup().click(screen.getByRole('button', { name: 'What is SHOP-41 for?' }));
+    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+      'Details, after the description',
+    );
+  });
+
+  it('[CORE-022] keeps the help mark beside the title and says Details stand at the side on a wide screen (PL-44, PL-48)', async () => {
+    setViewportWidth(1440);
+    renderPage();
+    const title = await heading();
+    const help = screen.getByRole('button', { name: 'What is SHOP-41 for?' });
+    // In the title's own line, which never lets it wrap away from the title.
+    expect(help.closest('.ticket-title-line')).toBe(title.parentElement);
+    await userEvent.setup().click(help);
+    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+      'Details on the side',
+    );
+  });
+
+  it('[AGL-007] shows an empty Points as None, as other empty fields (PL-44)', async () => {
+    renderPage({ ticket: SHOP_41_SOME_FIELDS });
+    await heading();
+    const points = await within(details()).findByRole('spinbutton', { name: 'Points' });
+    expect(points).toHaveValue(null);
+    expect(points).toHaveAttribute('placeholder', 'None');
+  });
+
+  it('[WF-006] heads the status menu with the current status, marked, outside its items (PL-47)', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: /^Status: / }));
+    const menu = screen.getByRole('menu');
+    const now = screen.getByText(`Now: ${SHOP_41.status.name}`);
+    expect(now).toBeVisible();
+    expect(menu.contains(now)).toBe(false);
+    expect(follows(now, menu)).toBe(true);
+  });
+
+  it('[CORE-022] prints only the ticket: no top bar, sidebar, toolbars, comment box or buttons (PL-27, D37)', async () => {
+    const gone = applyStylesheet('print.css', 'print');
+    try {
+      renderPage();
+      await heading();
+      const hidden = (element: Element | null) =>
+        element !== null && getComputedStyle(element).display === 'none';
+      const page = document.querySelector('.ticket-page') as HTMLElement;
+      for (const selector of ['.ticket-toolbar', '.help-tip', '.ticket-tabs', '.ticket-tool']) {
+        expect(page.querySelector(selector), selector).not.toBeNull();
+        expect(hidden(page.querySelector(selector)), selector).toBe(true);
+      }
+      // What a reader wants stays: the title, the description and the fields.
+      expect(hidden(await heading())).toBe(false);
+      expect(hidden(details())).toBe(false);
+      expect(hidden(page.querySelector('.ticket-text'))).toBe(false);
+    } finally {
+      gone();
+    }
+  });
+
+  it('[NFR-005] gives a short tab a finger’s room (PL-26)', async () => {
+    const gone = applyStylesheet('ticket-view.css', 'pointer: coarse');
+    try {
+      renderPage();
+      await heading();
+      const all = await screen.findByRole('tab', { name: 'All' });
+      expect(getComputedStyle(all).minWidth).toBe('var(--hit-target-touch)');
+      expect(getComputedStyle(all).minHeight).toBe('var(--hit-target-touch)');
+    } finally {
+      gone();
+    }
   });
 });

@@ -658,11 +658,8 @@ function ChecklistBlock({
             />
           </div>
           <div className="form-actions">
-            <button
-              type="submit"
-              className="button-secondary"
-              disabled={busy || text.trim() === ''}
-            >
+            {/* The same primary Add as a new subticket's (PL-44). */}
+            <button type="submit" className="button-primary" disabled={busy || text.trim() === ''}>
               {t('ticketTools.subtickets.add')}
             </button>
           </div>

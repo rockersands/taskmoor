@@ -41,6 +41,7 @@ import './styles/track-groups.css';
 import './styles/drag.css';
 import './styles/layout-editor.css';
 import './styles/motion.css';
+import './styles/print.css';
 
 async function start() {
   // Back from a backend on another site with a sign-in code (M1-107): trade it and restore the

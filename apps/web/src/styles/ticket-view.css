@@ -52,10 +52,34 @@
   gap: var(--space-2) var(--space-4);
 }
 
-.ticket-title-row .page-title {
+/*
+ * The title and its help mark on one line, the mark never wrapping away from the title (PL-44);
+ * the explanation opens in the flow under them, so it never covers the buttons below (PL-48).
+ */
+.ticket-title-line {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto;
+  align-items: start;
+  column-gap: var(--space-1);
   flex: 0 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+}
+
+.ticket-title-line .help-tip {
+  display: contents;
+}
+
+.ticket-title-line .help-tip-body {
+  position: static;
+  grid-column: 1 / -1;
+  width: auto;
+  max-width: 40rem;
+  margin-top: var(--space-2);
+}
+
+.ticket-title-row .page-title {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .ticket-title-row > .ticket-action {
@@ -146,6 +170,35 @@
   background: var(--color-success);
 }
 
+/* The current status, above the menu's items and not one of them (PL-47). */
+.status-menu-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--glass-edge);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  font-weight: var(--font-weight-strong);
+}
+
+.status-menu-current::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.status-menu-current[data-stage="active"]::before {
+  background: var(--color-blue);
+}
+
+.status-menu-current[data-stage="closed"]::before {
+  background: var(--color-success);
+}
+
 .ticket-transitions .ticket-action:hover:not(:disabled) {
   background: var(--color-primary-hover);
 }
@@ -160,6 +213,11 @@
   box-shadow: none;
 }
 
+/*
+ * One column in the page's order on phones: the ticket, its Details, then Activity (D33). On a
+ * wide screen Details stand at the side across both rows, and Activity follows the main column
+ * at once: the side's extra height goes to the second row, under Activity, never between them.
+ */
 .ticket-columns {
   display: grid;
   gap: var(--space-4);
@@ -169,8 +227,28 @@
 @media (min-width: 64rem) {
   .ticket-columns {
     grid-template-columns: minmax(0, 1fr) 20rem;
+    grid-template-rows: auto 1fr;
     align-items: start;
   }
+
+  .ticket-main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ticket-side {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .ticket-activity-area {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
+
+.ticket-activity-area {
+  min-width: 0;
 }
 
 .ticket-main,
@@ -417,6 +495,18 @@
   .ticket-facts :is(input, select),
   .ticket-status,
   .ticket-tab {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* A short tab such as "All", and a link among the details such as the parent (PL-26). */
+  .ticket-tab {
+    min-width: var(--hit-target-touch);
+  }
+
+  .ticket-facts dd > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
   }
 }

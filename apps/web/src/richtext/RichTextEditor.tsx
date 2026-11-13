@@ -688,7 +688,9 @@ export function RichTextEditor({
       const tools = [
         ...TOOLS,
         ...(e.isActive('table') ? TABLE_TOOLS : []),
-        ...(collaboration ? [] : HISTORY_TOOLS),
+        // Undo and redo on every editor (PL-44): with collaboration they walk Yjs's own history,
+        // which takes back only this person's edits.
+        ...HISTORY_TOOLS,
       ];
       return {
         tools: tools.map((tool) => ({

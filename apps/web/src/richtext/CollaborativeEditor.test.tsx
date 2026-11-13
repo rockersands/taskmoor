@@ -69,11 +69,15 @@ describe('the collaborative editor (M1-017)', () => {
     const written = JSON.stringify(docFromYDoc(shared.document));
     expect(written).toContain('Edited: ');
     expect(written).toContain('Shared text');
+    // Undo and Redo walk Yjs's history of this person's own edits (PL-44).
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(textbox).not.toHaveTextContent('Edited:'));
+    expect(textbox).toHaveTextContent('Shared text');
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => expect(textbox).toHaveTextContent('Edited: Shared text'));
     // Someone else's change shows in the field.
     act(() => writeDocToYDoc(shared.document, text('Rewritten elsewhere')));
     await waitFor(() => expect(textbox).toHaveTextContent('Rewritten elsewhere'));
-    // Yjs keeps the history: there is no separate undo button.
-    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 
   it('[NTF-008] says who else is editing', async () => {

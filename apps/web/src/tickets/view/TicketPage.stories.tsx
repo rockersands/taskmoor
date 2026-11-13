@@ -10,6 +10,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
+import { asOnATouchScreen, tooSmallForAFinger } from '../../test/touch';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
 import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
@@ -245,5 +246,28 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole('heading', { level: 1 });
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** On a touch screen a child's key and a short Activity tab are a finger wide (PL-26). */
+export const OnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('tab', { name: 'All' });
+    await canvas.findAllByRole('link', { name: /^SHOP-2\d\d$/ });
+    await expect(tooSmallForAFinger(canvasElement, ['.ticket-tab', '.ticket-child > a'])).toEqual(
+      [],
+    );
+  },
+};
+
+/** The status menu says where the ticket is now, above the places it can go (PL-47). */
+export const StatusMenuOpen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: /^Status: / }));
+    await expect(canvas.getByText(`Now: ${SHOP_41.status.name}`)).toBeVisible();
+    await expect(canvas.getByRole('menu')).toBeVisible();
   },
 };
