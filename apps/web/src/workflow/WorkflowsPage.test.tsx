@@ -199,10 +199,20 @@ describe('workflows administration (M1-030)', () => {
     });
     window.location.hash = '#/admin/workflows';
     const support = await workflowItem('Support');
+    const trigger = within(support).getByRole('button', { name: 'Delete Support' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, as every destructive action does (D13): the focus on Cancel.
+    const question = within(support).getByRole('group', {
+      name: 'Delete Support with all its versions? This cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(within(support).getByRole('button', { name: 'Delete Support' })).toHaveFocus();
     await user.click(within(support).getByRole('button', { name: 'Delete Support' }));
-    const confirm = within(support).getByRole('button', { name: 'Delete workflow' });
-    expect(confirm).toHaveFocus();
-    await user.click(confirm);
+    await user.click(
+      within(within(support).getByRole('group')).getByRole('button', { name: 'Delete Support' }),
+    );
     expect(await screen.findByText('Deleted Support.')).toBeVisible();
     expect(calls.some((c) => c.method === 'DELETE' && c.path === '/workflows/2')).toBe(true);
     expect(screen.getByRole('heading', { name: 'Workflows in this workspace' })).toHaveFocus();
@@ -260,11 +270,20 @@ describe('workflows administration (M1-030)', () => {
       statusIds: [2, 1, 3, 40],
     });
 
-    await user.click(within(section).getByRole('button', { name: 'Delete Open' }));
-    await user.click(within(section).getByRole('button', { name: 'Delete status' }));
+    const trigger = within(section).getByRole('button', { name: 'Delete Open' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = within(section).getByRole('group', {
+      name: 'Delete the status Open? No workflow can use it afterwards.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete Open' }));
     expect(await within(section).findByRole('alert')).toHaveTextContent(
       'Remove Open from every workflow and move its tickets first (4 tickets, 1 workflow).',
     );
+    // Refused: the question stays open, to cancel; Cancel gives the focus back to Delete.
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(within(section).getByRole('button', { name: 'Delete Open' })).toHaveFocus();
   });
 
   it('[WF-002] is not offered to people who are not administrators', async () => {

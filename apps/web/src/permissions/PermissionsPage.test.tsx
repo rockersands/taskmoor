@@ -59,14 +59,29 @@ describe('permission administration (M1-053)', () => {
     expect(await screen.findByText('Role Reviewers was changed.')).toBeInTheDocument();
     expect(await screen.findByText('Read and approve')).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Delete role Members' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    // Deleting asks first, as every destructive action does (D13): the focus on Cancel.
+    const members = screen.getByRole('button', { name: 'Delete role Members' });
+    expect(members).toHaveClass('button-danger-quiet');
+    await user.click(members);
+    const question = screen.getByRole('group', { name: /^Delete the role Members\?/ });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete role Members' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Access policies or tracks still use this role',
     );
+    // Refused: the question stays, to cancel; the focus goes back to Delete.
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete role Members' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Delete role Reviewers' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Delete the role Reviewers\?/ })).getByRole(
+        'button',
+        { name: 'Delete role Reviewers' },
+      ),
+    );
     expect(await screen.findByText('Role Reviewers was deleted.')).toBeInTheDocument();
+    // Its row is gone with its button: the list's heading keeps the focus.
+    expect(screen.getByRole('heading', { name: 'Roles' })).toHaveFocus();
     expect(client.calls.map((c) => c.action)).toEqual([
       'createRole',
       'updateRole',
@@ -107,6 +122,15 @@ describe('permission administration (M1-053)', () => {
       { permission: 'edit_tickets', grantee: 'role', roleId: 9 },
       { permission: 'edit_tickets', grantee: 'user', userId: 2 },
     ]);
+
+    // Deleting the policy asks first (D13); once deleted, the list's heading keeps the focus.
+    await user.click(screen.getByRole('button', { name: 'Delete policy Partners' }));
+    const question = screen.getByRole('group', { name: /^Delete the access policy Partners\?/ });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete policy Partners' }));
+    expect(await screen.findByText('Partners was deleted.')).toBeInTheDocument();
+    expect(within(policies).getByRole('heading', { name: 'Access policies' })).toHaveFocus();
+    expect(client.calls.some((c) => c.action === 'deletePolicy')).toBe(true);
   });
 
   it('[IAM-010] refuses to delete a policy tracks use', async () => {

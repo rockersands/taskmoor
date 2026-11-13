@@ -4,6 +4,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -256,27 +257,18 @@ function WorkflowItem({
 }) {
   const t = useT();
   const intl = useIntl();
-  const id = useId();
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const name = t('common.value', { value: workflow.name });
   const deletable = !workflow.isDefault && workflow.trackCount === 0;
 
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
-
+  // Asks first (D13). Once deleted, the list's heading takes the focus (onDeleted); a refusal keeps
+  // the question open, the reason above it.
   const remove = async () => {
-    setBusy(true);
     setError(null);
     try {
       await client.remove(workflow.id);
-      await onDeleted(t('admin.workflows.deleted', { name }));
     } catch (e) {
-      if (refuse(e)) return;
-      setConfirming(false);
+      if (refuse(e)) throw e;
       if (e instanceof ApiError && e.code === 'workflow_in_use') {
         const tracks = ((e.body as { tracks?: { key: string }[] }).tracks ?? []).map((x) =>
           t('common.value', { value: x.key }),
@@ -287,9 +279,9 @@ function WorkflowItem({
       } else {
         setError(t('admin.workflows.actionFailed'));
       }
-    } finally {
-      setBusy(false);
+      throw e;
     }
+    await onDeleted(t('admin.workflows.deleted', { name }));
   };
 
   return (
@@ -323,53 +315,32 @@ function WorkflowItem({
           </p>
         )}
       </div>
-      {confirming ? (
-        <div className="token-confirm">
-          <p id={`${id}-confirm`}>{t('admin.workflows.confirmDelete', { name })}</p>
-          <div className="token-confirm-actions">
-            <button
-              ref={confirmButton}
-              type="button"
-              className="button-danger"
-              disabled={busy}
-              onClick={() => void remove()}
-            >
-              {t('admin.workflows.confirmDeleteButton')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.workflows.cancel')}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="token-actions">
-          <a
-            className="button-secondary"
-            href={routeHref(workflowHref(workflow.id))}
-            aria-label={t('admin.workflows.editNamed', { name })}
-          >
-            {t('admin.workflows.edit')}
-          </a>
-          <a
-            className="button-secondary"
-            href={client.exportHref(workflow.id)}
-            download
-            aria-label={t('admin.workflows.exportNamed', { name })}
-          >
-            {t('admin.workflows.export')}
-          </a>
-          {deletable && (
-            <button
-              type="button"
-              className="button-secondary button-danger-quiet"
-              aria-label={t('admin.workflows.deleteNamed', { name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('admin.workflows.delete')}
-            </button>
-          )}
-        </div>
-      )}
+      <div className="token-actions">
+        <a
+          className="button-secondary"
+          href={routeHref(workflowHref(workflow.id))}
+          aria-label={t('admin.workflows.editNamed', { name })}
+        >
+          {t('admin.workflows.edit')}
+        </a>
+        <a
+          className="button-secondary"
+          href={client.exportHref(workflow.id)}
+          download
+          aria-label={t('admin.workflows.exportNamed', { name })}
+        >
+          {t('admin.workflows.export')}
+        </a>
+        {deletable && (
+          <DangerAction
+            label={t('admin.workflows.delete')}
+            name={t('admin.workflows.deleteNamed', { name })}
+            outcome={t('admin.workflows.confirmDelete', { name })}
+            confirmLabel={t('admin.workflows.deleteNamed', { name })}
+            onConfirm={remove}
+          />
+        )}
+      </div>
     </li>
   );
 }

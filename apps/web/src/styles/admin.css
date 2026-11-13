@@ -809,28 +809,6 @@ details[open] > summary.admin-disclosure::after,
   }
 }
 
-/*
- * A row's destructive action (D13): the secondary shape in the danger colour, so Deactivate,
- * Erase, Delete and Revoke no longer look like their harmless neighbours. Its confirmation uses
- * the full `.button-danger`. Named as G6's shared `.button-danger-quiet` in shared.css; this local
- * rule goes once that lands.
- */
-.button-secondary.button-danger-quiet {
-  border-color: color-mix(in srgb, var(--color-danger) 60%, transparent);
-  color: var(--color-danger);
-}
-
-.button-secondary.button-danger-quiet:hover:not(:disabled) {
-  background: var(--color-danger-soft);
-}
-
-.danger-confirm {
-  flex: 1 1 100%;
-  min-width: 0;
-  margin: 0;
-  border: 0;
-}
-
 /* People: every row lays out the same, its actions on a line of their own (AD-17). */
 .people-list-users .people-actions {
   flex: 1 1 100%;

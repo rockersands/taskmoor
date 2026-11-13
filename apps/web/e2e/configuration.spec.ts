@@ -212,19 +212,29 @@ test('[IAM-010] the administrator adds a role and a policy, grants, and deletes 
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // A role a policy uses stays; once the grant goes, both go.
+  // Deleting asks first, as every destructive action does (D13); a refusal keeps the question.
   await page.getByRole('button', { name: `Delete role ${role}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  const askRole = page.getByRole('group', { name: `Delete the role ${role}?` });
+  await expect(askRole.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await askRole.getByRole('button', { name: `Delete role ${role}` }).click();
   await expect(page.getByRole('alert')).toHaveText(
     'Access policies or tracks still use this role: take it out of them first.',
   );
+  await askRole.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: `Delete role ${role}` })).toBeFocused();
   await page.getByRole('button', { name: `Remove Role ${role} from Edit tickets` }).click();
   await expect(page.getByText(`Role ${role} no longer has Edit tickets.`)).toBeVisible();
   await page.getByRole('button', { name: `Delete policy ${policy}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await page
+    .getByRole('group', { name: `Delete the access policy ${policy}?` })
+    .getByRole('button', { name: `Delete policy ${policy}` })
+    .click();
   await expect(page.getByText(`${policy} was deleted.`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Access policies' })).toBeFocused();
   await page.getByRole('button', { name: `Delete role ${role}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await askRole.getByRole('button', { name: `Delete role ${role}` }).click();
   await expect(page.getByText(`Role ${role} was deleted.`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Roles', exact: true })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

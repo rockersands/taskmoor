@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { DangerAction } from '../shell/DangerAction';
 import type { StatusInput, WorkflowsClient } from './client';
 import { STAGES, type Stage, type Status } from './definition';
 import { STAGE_HINTS, STAGE_LABELS } from './describe';
@@ -31,16 +32,10 @@ export function StatusesSection({
   const heading = useRef<HTMLHeadingElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState<'new' | number | null>(null);
-  const [confirming, setConfirming] = useState<number | null>(null);
   const [done, setDone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const confirmButton = useRef<HTMLButtonElement>(null);
   const value = (text: string) => t('common.value', { value: text });
-
-  useEffect(() => {
-    if (confirming !== null) confirmButton.current?.focus();
-  }, [confirming]);
 
   const act = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -76,30 +71,38 @@ export function StatusesSection({
       setDone(t('admin.statuses.moved', { name: value(list[index]?.name ?? '') }));
     });
 
-  const remove = (status: Status) =>
-    act(async () => {
-      try {
-        await client.deleteStatus(status.id);
-      } catch (e) {
-        if (e instanceof ApiError && e.code === 'status_in_use') {
-          const body = e.body as { ticketCount?: number; workflows?: unknown[] };
-          setConfirming(null);
-          setError(
-            t('admin.statuses.inUse', {
-              name: value(status.name),
-              tickets: body.ticketCount ?? 0,
-              workflows: body.workflows?.length ?? 0,
-            }),
-          );
-          return;
-        }
-        throw e;
+  // Asks first (D13). Once deleted, the list's heading takes the focus, as the row is gone; a
+  // refusal keeps the question open, the reason above the list.
+  const remove = async (status: Status) => {
+    setBusy(true);
+    setError(null);
+    setDone('');
+    try {
+      await client.deleteStatus(status.id);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'status_in_use') {
+        const body = e.body as { ticketCount?: number; workflows?: unknown[] };
+        setError(
+          t('admin.statuses.inUse', {
+            name: value(status.name),
+            tickets: body.ticketCount ?? 0,
+            workflows: body.workflows?.length ?? 0,
+          }),
+        );
+      } else if (!refuse(e)) {
+        setError(t('admin.workflows.actionFailed'));
       }
-      setConfirming(null);
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+    // Deleted: reading the list again cannot take that back, so a failure here is only said.
+    await act(async () => {
       onChanged(await client.statuses());
       setDone(t('admin.statuses.deleted', { name: value(status.name) }));
       heading.current?.focus();
     });
+  };
 
   return (
     <section aria-labelledby={`${id}-title`} className="glass-card account-section">
@@ -164,30 +167,6 @@ export function StatusesSection({
                   onSave={(input) => save(status, input)}
                   onCancel={() => setEditing(null)}
                 />
-              ) : confirming === status.id ? (
-                <div className="token-confirm">
-                  <p id={`${id}-c-${status.id}`}>
-                    {t('admin.statuses.confirmDelete', { name: value(status.name) })}
-                  </p>
-                  <div className="token-confirm-actions">
-                    <button
-                      ref={confirmButton}
-                      type="button"
-                      className="button-danger"
-                      disabled={busy}
-                      onClick={() => void remove(status)}
-                    >
-                      {t('admin.statuses.confirmDeleteButton')}
-                    </button>
-                    <button
-                      type="button"
-                      className="button-secondary"
-                      onClick={() => setConfirming(null)}
-                    >
-                      {t('admin.statuses.cancel')}
-                    </button>
-                  </div>
-                </div>
               ) : (
                 <div className="token-actions">
                   <button
@@ -223,14 +202,13 @@ export function StatusesSection({
                       {t('admin.workflow.rule.down')}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="button-secondary button-danger-quiet"
-                    aria-label={t('admin.statuses.deleteNamed', { name: value(status.name) })}
-                    onClick={() => setConfirming(status.id)}
-                  >
-                    {t('admin.statuses.delete')}
-                  </button>
+                  <DangerAction
+                    label={t('admin.statuses.delete')}
+                    name={t('admin.statuses.deleteNamed', { name: value(status.name) })}
+                    outcome={t('admin.statuses.confirmDelete', { name: value(status.name) })}
+                    confirmLabel={t('admin.statuses.deleteNamed', { name: value(status.name) })}
+                    onConfirm={() => remove(status)}
+                  />
                 </div>
               )}
             </li>

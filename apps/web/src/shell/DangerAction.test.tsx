@@ -147,4 +147,23 @@ describe('an action that removes something (D13)', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
     expect(button).toBeDisabled();
   });
+  it('[NFR-005] names its button for the row it acts on, when a list repeats it', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <DangerAction
+          label="Revoke"
+          name="Revoke Sync job of River Stone"
+          outcome="Programs using Sync job stop working at once."
+          confirmLabel="Revoke Sync job of River Stone"
+          onConfirm={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+    const button = screen.getByRole('button', { name: 'Revoke Sync job of River Stone' });
+    expect(button).toHaveTextContent(/^Revoke$/);
+    await user.click(button);
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Revoke Sync job of River Stone' })).toHaveFocus();
+  });
 });

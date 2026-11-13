@@ -607,6 +607,34 @@ describe('workflow editor (M1-030)', () => {
     ).toBeVisible();
   });
 
+  it('[WF-002] a workflow that does not exist is a not-found page (D4, AD-30)', async () => {
+    const client = fakeWorkflowsClient();
+    client.get = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    renderEditor(client);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Workflow not found' }),
+    ).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Nothing is at this address.');
+    const waysOn = screen.getByRole('navigation', { name: 'Ways on' });
+    expect(within(waysOn).getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    expect(within(waysOn).getByRole('link', { name: 'Go to Search' })).toBeVisible();
+    // Not the Workflows page header, nor its way back to the list.
+    expect(screen.queryByRole('heading', { name: 'Workflows' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'All workflows' })).toBeNull();
+  });
+
+  it('[WF-002] a workflow that cannot be read keeps the page header and says so', async () => {
+    const client = fakeWorkflowsClient();
+    client.get = async () => {
+      throw new ApiError(500, { error: 'internal' });
+    };
+    renderEditor(client);
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Workflows' })).toBeVisible();
+  });
+
   it('[WF-002] opens from its address and passes the pseudo-locale check', async () => {
     const user = userEvent.setup();
     const errors: Error[] = [];

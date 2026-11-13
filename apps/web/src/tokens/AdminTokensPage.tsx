@@ -1,9 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { DangerConfirm, useReturnFocus } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -164,11 +164,9 @@ function InventorySection({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState('');
   const [error, setError] = useState<string | null>(null);
-  /** The token whose revocation waits for a yes (D13). */
-  const [confirming, setConfirming] = useState<number | null>(null);
-  // Cancel brings the focus back to the token's Revoke; a revocation takes it to the list's heading.
-  const back = useReturnFocus<number>();
 
+  // Revoke asks first (D13); Cancel gives the focus back to the token's Revoke. A revocation takes
+  // that button away, so the list's heading keeps the focus.
   const revoke = async (token: ApiToken) => {
     setBusy(true);
     setDone('');
@@ -179,14 +177,15 @@ function InventorySection({
       } catch (e) {
         if (!(e instanceof ApiError && e.status === 404)) throw e;
       }
-      heading.current?.focus();
-      setDone(t('admin.tokens.revoked', { name: token.name, owner: token.owner.name }));
     } catch (e) {
-      if (refuse(e)) return;
-      setError(t('tokens.revokeFailed'));
+      // Refused: the question stays, to try again or cancel.
+      if (!refuse(e)) setError(t('tokens.revokeFailed'));
+      throw e;
     } finally {
       setBusy(false);
     }
+    heading.current?.focus();
+    setDone(t('admin.tokens.revoked', { name: token.name, owner: token.owner.name }));
     await onChanged();
   };
 
@@ -235,38 +234,24 @@ function InventorySection({
                   timeZone={timeZone}
                   showOwner
                   actions={
-                    token.status !== 'active' ? undefined : confirming === token.id ? (
-                      <DangerConfirm
-                        message={t('admin.tokens.revokeConfirm', {
+                    token.status !== 'active' ? undefined : (
+                      <DangerAction
+                        label={t('tokens.revoke')}
+                        name={t('admin.tokens.revokeNamed', {
                           name: token.name,
                           owner: token.owner.name,
                         })}
-                        confirmLabel={t('admin.tokens.confirm')}
-                        cancelLabel={t('admin.tokens.cancel')}
-                        busy={busy}
-                        onCancel={() => {
-                          back.returnTo(token.id);
-                          setConfirming(null);
-                        }}
-                        onConfirm={() => {
-                          setConfirming(null);
-                          void revoke(token);
-                        }}
-                      />
-                    ) : (
-                      <button
-                        ref={back.ref(token.id)}
-                        type="button"
-                        className="button-secondary button-danger-quiet"
-                        aria-label={t('admin.tokens.revokeNamed', {
+                        outcome={t('admin.tokens.revokeConfirm', {
+                          name: token.name,
+                          owner: token.owner.name,
+                        })}
+                        confirmLabel={t('admin.tokens.revokeNamed', {
                           name: token.name,
                           owner: token.owner.name,
                         })}
                         disabled={busy}
-                        onClick={() => setConfirming(token.id)}
-                      >
-                        {t('tokens.revoke')}
-                      </button>
+                        onConfirm={() => revoke(token)}
+                      />
                     )
                   }
                 />
@@ -302,7 +287,10 @@ function BulkSection({
 }) {
   const t = useT();
   const id = useId();
-  const confirmButton = useRef<HTMLButtonElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  // Set when the question closes by Cancel, Escape or a revocation: the focus goes back to Revoke.
+  const returnFocus = useRef(false);
   const [mode, setMode] = useState<Mode>('owner');
   const [ownerId, setOwnerId] = useState('');
   const [before, setBefore] = useState('');
@@ -312,9 +300,22 @@ function BulkSection({
   const [error, setError] = useState<string | null>(null);
   const field = (key: string) => `${id}-${key}`;
 
+  // The question looks and behaves as every destructive action's does (D13, shell/DangerAction):
+  // focus on Cancel, the safe choice; Escape and Cancel put Revoke back and focus it.
   useEffect(() => {
-    if (pending) confirmButton.current?.focus();
+    if (pending) {
+      cancelButton.current?.focus();
+    } else if (returnFocus.current) {
+      returnFocus.current = false;
+      trigger.current?.focus();
+    }
   }, [pending]);
+
+  const close = () => {
+    if (busy) return;
+    returnFocus.current = true;
+    setPending(null);
+  };
 
   const criteria = (): BulkCriteria | null => {
     if (mode === 'all') return { all: true };
@@ -340,11 +341,12 @@ function BulkSection({
   };
 
   const confirm = async () => {
-    if (!pending) return;
+    if (!pending || busy) return;
     setBusy(true);
     setError(null);
     try {
       const count = await client.bulkRevoke(pending.criteria, false);
+      returnFocus.current = true;
       setPending(null);
       setDone(t('admin.tokens.bulkDone', { count }));
       onRevoked();
@@ -436,28 +438,47 @@ function BulkSection({
         )}
         {!pending && (
           <div>
-            <button type="submit" className="button-secondary button-danger-quiet" disabled={busy}>
+            <button ref={trigger} type="submit" className="button-danger-quiet" disabled={busy}>
               {t('admin.tokens.bulkRevoke')}
             </button>
           </div>
         )}
       </form>
       {pending && (
-        <div className="token-confirm">
-          <p>{t('admin.tokens.bulkConfirm', { count: pending.count })}</p>
-          <div className="token-confirm-actions">
+        // biome-ignore lint/a11y/useSemanticElements: a question and its two answers, not a set of fields
+        <div
+          className="danger-confirm"
+          role="group"
+          aria-labelledby={field('outcome')}
+          aria-busy={busy || undefined}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+          }}
+        >
+          <p id={field('outcome')} className="danger-confirm-outcome">
+            {t('admin.tokens.bulkConfirm', { count: pending.count })}
+          </p>
+          <div className="danger-confirm-actions">
             {pending.count > 0 && (
               <button
-                ref={confirmButton}
                 type="button"
                 className="button-danger"
-                disabled={busy}
+                aria-disabled={busy || undefined}
                 onClick={() => void confirm()}
               >
                 {t('admin.tokens.confirm')}
               </button>
             )}
-            <button type="button" className="button-secondary" onClick={() => setPending(null)}>
+            <button
+              ref={cancelButton}
+              type="button"
+              className="button-secondary"
+              aria-disabled={busy || undefined}
+              onClick={close}
+            >
               {t('admin.tokens.cancel')}
             </button>
           </div>

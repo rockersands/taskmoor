@@ -116,12 +116,16 @@ describe('admin token inventory', () => {
     await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
     // Revoking asks first and says what happens (D13, AD-16).
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    const asked = tokens.getByRole('group', { name: /Revoke Sync job of River Stone\?/ });
+    expect(within(asked).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     // The way back gives the focus to the token's Revoke button again, not to the page.
     await user.keyboard('{Escape}');
     expect(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' })).toHaveFocus();
     await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
     const confirm = tokens.getByRole('group', { name: /Revoke Sync job of River Stone\?/ });
-    await user.click(within(confirm).getByRole('button', { name: 'Confirm revocation' }));
+    await user.click(
+      within(confirm).getByRole('button', { name: 'Revoke Sync job of River Stone' }),
+    );
     expect(await tokens.findByText('Revoked Sync job of River Stone.')).toHaveAttribute(
       'role',
       'status',
@@ -150,13 +154,17 @@ describe('admin token inventory', () => {
         'This revokes 3 active tokens. Programs using them stop working at once.',
       ),
     ).toBeVisible();
-    const confirm = bulk.getByRole('button', { name: 'Confirm revocation' });
-    expect(confirm).toHaveFocus();
+    // It asks as every destructive action does (D13): the focus on Cancel, the safe choice.
+    const question = bulk.getByRole('group', { name: /^This revokes 3 active tokens\./ });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    const confirm = within(question).getByRole('button', { name: 'Confirm revocation' });
     expect(calls.filter((c) => c.method === 'POST')).toEqual([
       { method: 'POST', path: '/admin/tokens/revoke', body: { ownerId: 1, dryRun: true } },
     ]);
     await user.click(confirm);
     expect(await bulk.findByText('Revoked 3 tokens.')).toHaveAttribute('role', 'status');
+    // The question is answered: the focus goes back to Revoke tokens.
+    expect(bulk.getByRole('button', { name: 'Revoke tokens' })).toHaveFocus();
     expect(calls.filter((c) => c.method === 'POST').at(-1)?.body).toEqual({
       ownerId: 1,
       dryRun: false,
@@ -191,6 +199,13 @@ describe('admin token inventory', () => {
     expect(new Date(preview.createdBefore).getTime()).toBe(new Date(`${day}T00:00:00`).getTime());
     await user.click(bulk.getByRole('button', { name: 'Cancel' }));
     expect(bulk.queryByRole('button', { name: 'Confirm revocation' })).toBeNull();
+    expect(bulk.getByRole('button', { name: 'Revoke tokens' })).toHaveFocus();
+    // Escape goes back the same way.
+    await user.click(bulk.getByRole('button', { name: 'Revoke tokens' }));
+    await bulk.findByRole('button', { name: 'Confirm revocation' });
+    await user.keyboard('{Escape}');
+    expect(bulk.queryByRole('button', { name: 'Confirm revocation' })).toBeNull();
+    expect(bulk.getByRole('button', { name: 'Revoke tokens' })).toHaveFocus();
 
     await user.click(bulk.getByRole('radio', { name: 'Every token' }));
     await user.click(bulk.getByRole('button', { name: 'Revoke tokens' }));

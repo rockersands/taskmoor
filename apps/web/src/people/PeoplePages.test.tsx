@@ -82,23 +82,30 @@ describe('people (M1-053, IAM-008)', () => {
     expect(client.calls.some((c) => c.action === 'deactivate')).toBe(false);
     const confirm = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
     // The way back has the focus, and Escape takes it.
-    expect(within(confirm).getByRole('button', { name: 'Keep active' })).toHaveFocus();
-    expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveClass(
+    expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(within(confirm).getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveClass(
       'button-danger',
     );
     // Escape takes the way back, and the focus goes back to the button that asked.
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBeNull();
-    expect(trigger).toHaveFocus();
-    await user.click(trigger);
+    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
     // Cancel does the same.
-    await user.click(screen.getByRole('button', { name: 'Keep active' }));
-    expect(trigger).toHaveFocus();
-    await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ })).getByRole(
+        'button',
+        { name: 'Deactivate Bo Rivera' },
+      ),
+    );
     expect(
       await screen.findByText('Bo Rivera was deactivated and signed out everywhere.'),
     ).toBeInTheDocument();
+    // The button went with the deactivation: the page's heading keeps the focus.
+    expect(screen.getByRole('heading', { level: 1, name: 'People' })).toHaveFocus();
     expect(screen.queryByText('Bo Rivera')).toBeNull();
     await user.selectOptions(screen.getByRole('combobox', { name: 'Show' }), 'all');
     await user.click(await screen.findByRole('button', { name: 'Reactivate Bo Rivera' }));
@@ -177,7 +184,11 @@ describe('people (M1-053, IAM-008)', () => {
     expect(screen.queryByRole('region', { name: 'Data of Grace Hopper' })).toBeNull();
     // Nobody erases themselves: Ada (signed in) has no erase button.
     expect(screen.queryByRole('button', { name: 'Erase Ada Lovelace' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Erase Grace Hopper' }));
+    // Erase has the danger look of every destructive action, but asks for the email (D13).
+    const eraseTrigger = screen.getByRole('button', { name: 'Erase Grace Hopper' });
+    expect(eraseTrigger).toHaveClass('button-danger-quiet');
+    expect(eraseTrigger).not.toHaveClass('button-secondary');
+    await userEvent.click(eraseTrigger);
     const form = screen.getByRole('form', { name: 'Erase Grace Hopper' });
     const erase = within(form).getByRole('button', { name: 'Erase permanently' });
     expect(erase).toBeDisabled();
@@ -221,6 +232,25 @@ describe('people (M1-053, IAM-008)', () => {
       'Erasing them would take back a role their shared track groups gave the only other person running a track.',
     );
     expect(screen.getByText('Bo Rivera')).toBeVisible();
+  });
+
+  it('[IAM-008] keeps the deactivation question open when it is refused, saying why', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('users');
+    client.deactivate = async () => {
+      throw new ApiError(409, { error: 'last_admin' });
+    };
+    await list();
+    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
+    const question = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
+    await user.click(within(question).getByRole('button', { name: 'Deactivate Bo Rivera' }));
+    expect(await screen.findByRole('alert')).toBeVisible();
+    // Open still, to try again or cancel.
+    expect(screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBe(
+      question,
+    );
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
   });
 
   it('fits a small phone', async () => {

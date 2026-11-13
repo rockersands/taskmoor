@@ -81,7 +81,10 @@ export const ConfirmingDelete: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Support' }));
-    await expect(canvas.getByRole('button', { name: 'Delete workflow' })).toHaveFocus();
+    // Asks first, saying what will happen; the focus on Cancel, the safe choice (D13).
+    const question = canvas.getByRole('group', { name: /^Delete Support with all its versions\?/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await expect(within(question).getByRole('button', { name: 'Delete Support' })).toBeVisible();
   },
 };
 

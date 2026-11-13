@@ -4,6 +4,11 @@ import { useT } from '../i18n/I18nProvider';
 export interface DangerActionProps {
   /** The first step: the action alone, such as "Deactivate" or "Revoke". */
   label: string;
+  /**
+   * The first step's name when a list repeats it, such as "Deactivate Ana Ruiz" on each person's
+   * row; the label alone otherwise.
+   */
+  name?: string;
   /** What will happen, said before anything does: what is lost, who is locked out, for how long. */
   outcome: ReactNode;
   /** The button that does it: the action and what it acts on, such as "Deactivate Ana Ruiz". */
@@ -27,6 +32,7 @@ export interface DangerActionProps {
  */
 export function DangerAction({
   label,
+  name,
   outcome,
   confirmLabel,
   onConfirm,
@@ -89,6 +95,7 @@ export function DangerAction({
         ref={trigger}
         type="button"
         className="button-danger-quiet"
+        aria-label={name}
         disabled={unavailable && !held}
         aria-disabled={held || undefined}
         onBlur={() => setHolding(false)}

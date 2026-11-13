@@ -138,8 +138,11 @@
   box-shadow: inset 0 0 0 1px var(--color-danger);
 }
 
-/* The question in its place: what will happen, the action by name, and Cancel. */
+/* The question in its place: what will happen, the action by name, and Cancel. In a row of
+   actions it takes a line of its own. */
 .danger-confirm {
+  flex: 1 1 100%;
+  min-width: 0;
   display: grid;
   gap: var(--space-3);
   justify-items: start;

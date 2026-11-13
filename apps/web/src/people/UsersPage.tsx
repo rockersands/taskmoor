@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { PersonalDataSection } from '../account/PersonalDataSection';
-import { DangerConfirm, useReturnFocus } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type PeopleClient, peopleClient, type User, type UserStatus } from './client';
@@ -45,12 +45,9 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState<{ name: string; url: string } | null>(null);
   /** The person whose data panel or erase form is open. */
-  const [open, setOpen] = useState<{
-    user: User;
-    panel: 'data' | 'erase' | 'deactivate';
-  } | null>(null);
-  // The way back from a deactivation gives the focus back to its button.
-  const back = useReturnFocus<number>();
+  const [open, setOpen] = useState<{ user: User; panel: 'data' | 'erase' } | null>(null);
+  // A deactivation takes the person's Deactivate away: the page's heading keeps the focus.
+  const title = useRef<HTMLHeadingElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -106,6 +103,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.users.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -253,21 +251,26 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                           )}
                           {u.id !== me &&
                             (u.active ? (
-                              <button
-                                type="button"
-                                className="button-secondary button-danger-quiet people-action"
-                                ref={back.ref(u.id)}
-                                aria-label={t('admin.users.deactivateOf', { name: u.name })}
-                                aria-expanded={
-                                  open?.user.id === u.id && open.panel === 'deactivate'
-                                }
-                                onClick={() => {
+                              // Asks first, saying what will happen (D13).
+                              <DangerAction
+                                label={t('admin.users.deactivate')}
+                                name={t('admin.users.deactivateOf', { name: u.name })}
+                                outcome={t('admin.users.deactivateConfirm', { name: u.name })}
+                                confirmLabel={t('admin.users.deactivateOf', { name: u.name })}
+                                onConfirm={async () => {
                                   setProblem(null);
-                                  setOpen({ user: u, panel: 'deactivate' });
+                                  try {
+                                    await client.deactivate(u.id);
+                                  } catch (error) {
+                                    // Refused: the question stays, and the reason shows above.
+                                    if (!expired(error)) setProblem(refusal(error));
+                                    throw error;
+                                  }
+                                  setMessage(t('admin.users.deactivatedSaid', { name: u.name }));
+                                  title.current?.focus();
+                                  await load();
                                 }}
-                              >
-                                {t('admin.users.deactivate')}
-                              </button>
+                              />
                             ) : (
                               <button
                                 type="button"
@@ -301,7 +304,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                           {u.id !== me && (
                             <button
                               type="button"
-                              className="button-secondary button-danger-quiet people-action"
+                              className="button-danger-quiet people-action"
                               aria-label={t('admin.users.eraseOf', { name: u.name })}
                               onClick={() => {
                                 setProblem(null);
@@ -329,24 +332,6 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             </button>
                           </div>
                         </div>
-                      )}
-                      {open?.user.id === u.id && open.panel === 'deactivate' && (
-                        <DangerConfirm
-                          message={t('admin.users.deactivateConfirm', { name: u.name })}
-                          confirmLabel={t('admin.users.deactivate')}
-                          cancelLabel={t('admin.users.deactivateCancel')}
-                          onCancel={() => {
-                            back.returnTo(u.id);
-                            setOpen(null);
-                          }}
-                          onConfirm={() => {
-                            setOpen(null);
-                            void act(
-                              () => client.deactivate(u.id),
-                              t('admin.users.deactivatedSaid', { name: u.name }),
-                            );
-                          }}
-                        />
                       )}
                       {open?.user.id === u.id && open.panel === 'erase' && (
                         <div className="people-panel">

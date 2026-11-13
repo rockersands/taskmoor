@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -124,7 +125,7 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
   const failed = (error: unknown) => setProblem(refusal(error));
 
@@ -186,7 +187,8 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
 }
 
 interface Feedback {
-  said: (message: string) => void;
+  /** Says what was done and reads the page again; settles once it is read. */
+  said: (message: string) => Promise<void>;
   failed: (error: unknown) => void;
 }
 
@@ -198,6 +200,7 @@ function RolesSection({
 }: Feedback & { client: PermissionsClient; roles: Role[] }) {
   const t = useT();
   const headingId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
   const nameId = useId();
   const [name, setName] = useState('');
   const creating = useNewForm();
@@ -213,7 +216,7 @@ function RolesSection({
           />
         }
       >
-        <h2 id={headingId} className="facts-title">
+        <h2 id={headingId} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.permissions.roles')}
         </h2>
       </CardHead>
@@ -256,7 +259,15 @@ function RolesSection({
       )}
       <ul className="people-list">
         {roles.map((role) => (
-          <RoleRow key={role.id} role={role} client={client} said={said} failed={failed} />
+          <RoleRow
+            key={role.id}
+            role={role}
+            client={client}
+            said={said}
+            failed={failed}
+            // A deleted role's row goes with it: the list's heading keeps the focus.
+            onDeleted={() => heading.current?.focus()}
+          />
         ))}
       </ul>
     </section>
@@ -268,11 +279,11 @@ function RoleRow({
   client,
   said,
   failed,
-}: Feedback & { role: Role; client: PermissionsClient }) {
+  onDeleted,
+}: Feedback & { role: Role; client: PermissionsClient; onDeleted: () => void }) {
   const t = useT();
   const formId = useId();
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(role.name);
   const [description, setDescription] = useState(role.description);
   return (
@@ -282,55 +293,32 @@ function RoleRow({
         {role.description && <p className="people-meta">{role.description}</p>}
       </div>
       <div className="people-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t('admin.permissions.confirmDeleteRole', { name: role.name })}
-            </span>
-            <button
-              type="button"
-              className="button-danger people-action"
-              onClick={() => {
-                setConfirming(false);
-                client
-                  .deleteRole(role.id)
-                  .then(
-                    () => said(t('admin.permissions.roleDeleted', { name: role.name })),
-                    failed,
-                  );
-              }}
-            >
-              {t('admin.permissions.confirmYes')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              onClick={() => setConfirming(false)}
-            >
-              {t('admin.permissions.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-expanded={editing}
-              aria-label={t('admin.permissions.editRoleOf', { name: role.name })}
-              onClick={() => setEditing(!editing)}
-            >
-              {t('admin.permissions.editRole')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary button-danger-quiet people-action"
-              aria-label={t('admin.permissions.deleteRoleOf', { name: role.name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('admin.permissions.deleteRole')}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-expanded={editing}
+          aria-label={t('admin.permissions.editRoleOf', { name: role.name })}
+          onClick={() => setEditing(!editing)}
+        >
+          {t('admin.permissions.editRole')}
+        </button>
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.permissions.deleteRole')}
+          name={t('admin.permissions.deleteRoleOf', { name: role.name })}
+          outcome={t('admin.permissions.confirmDeleteRole', { name: role.name })}
+          confirmLabel={t('admin.permissions.deleteRoleOf', { name: role.name })}
+          onConfirm={async () => {
+            try {
+              await client.deleteRole(role.id);
+            } catch (error) {
+              failed(error);
+              throw error;
+            }
+            await said(t('admin.permissions.roleDeleted', { name: role.name }));
+            onDeleted();
+          }}
+        />
       </div>
       {editing && (
         <form
@@ -406,6 +394,8 @@ function PoliciesSection({
   const creating = useNewForm();
   // Only shared policies are managed here; a local-mode track's own goes with the track.
   const shared = policies.filter((p) => p.ownerTrackId === null);
+  // A deleted policy's panel goes with it: the list's heading keeps the focus.
+  const heading = useRef<HTMLHeadingElement>(null);
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
       <CardHead
@@ -418,7 +408,7 @@ function PoliciesSection({
           />
         }
       >
-        <h2 id={headingId} className="facts-title">
+        <h2 id={headingId} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.permissions.policies')}
         </h2>
       </CardHead>
@@ -517,9 +507,10 @@ function PoliciesSection({
                 groups={groups}
                 said={said}
                 failed={failed}
-                onDeleted={(deleted) => {
+                onDeleted={async (deleted) => {
                   setOpen(null);
-                  said(t('admin.permissions.policyDeleted', { name: deleted }));
+                  heading.current?.focus();
+                  await said(t('admin.permissions.policyDeleted', { name: deleted }));
                 }}
               />
             )}
@@ -545,11 +536,10 @@ function PolicyPanel({
   catalogue: Catalogue;
   roles: Role[];
   groups: Named[];
-  onDeleted: (name: string) => void;
+  onDeleted: (name: string) => Promise<void>;
 }) {
   const t = useT();
   const [policy, setPolicy] = useState<Policy | null>(null);
-  const [confirming, setConfirming] = useState(false);
   const reload = useCallback(() => client.policy(id).then(setPolicy, failed), [client, id, failed]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per policy
   useEffect(() => {
@@ -602,39 +592,22 @@ function PolicyPanel({
       )}
       {!policy.policy.isDefault && (
         <div className="form-actions">
-          {confirming ? (
-            <>
-              <span className="people-confirm">
-                {t('admin.permissions.confirmDeletePolicy', { name })}
-              </span>
-              <button
-                type="button"
-                className="button-danger"
-                onClick={() => {
-                  setConfirming(false);
-                  client.deletePolicy(id).then(() => onDeleted(name), failed);
-                }}
-              >
-                {t('admin.permissions.confirmYes')}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setConfirming(false)}
-              >
-                {t('admin.permissions.confirmNo')}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="button-secondary button-danger-quiet"
-              aria-label={t('admin.permissions.deletePolicyOf', { name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('admin.permissions.deletePolicy')}
-            </button>
-          )}
+          {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+          <DangerAction
+            label={t('admin.permissions.deletePolicy')}
+            name={t('admin.permissions.deletePolicyOf', { name })}
+            outcome={t('admin.permissions.confirmDeletePolicy', { name })}
+            confirmLabel={t('admin.permissions.deletePolicyOf', { name })}
+            onConfirm={async () => {
+              try {
+                await client.deletePolicy(id);
+              } catch (error) {
+                failed(error);
+                throw error;
+              }
+              await onDeleted(name);
+            }}
+          />
         </div>
       )}
     </div>

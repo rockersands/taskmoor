@@ -2911,7 +2911,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.deactivateOf': 'Desactivar a {name}',
   'admin.users.deactivateConfirm':
     'Se cierra la sesión de {name} en todas partes y ya no puede iniciar sesión. Sus tickets y su historial se quedan, y puedes reactivarle más tarde.',
-  'admin.users.deactivateCancel': 'Mantener activo',
   'admin.users.reactivate': 'Reactivar',
   'admin.users.reactivateOf': 'Reactivar a {name}',
   'admin.users.deactivatedSaid': 'Se desactivó a {name} y se cerró su sesión en todos los lugares.',
@@ -3965,7 +3964,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.deleteNamed': 'Eliminar {name}',
   'admin.workflows.confirmDelete':
     '¿Eliminar {name} con todas sus versiones? No se puede deshacer.',
-  'admin.workflows.confirmDeleteButton': 'Eliminar el flujo de trabajo',
   'admin.workflows.cancel': 'Cancelar',
   'admin.workflows.deleted': 'Se eliminó {name}.',
   'admin.workflows.inUse':
@@ -4051,7 +4049,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.statuses.deleteNamed': 'Eliminar {name}',
   'admin.statuses.confirmDelete':
     '¿Eliminar el estado {name}? Ningún flujo de trabajo podrá usarlo después.',
-  'admin.statuses.confirmDeleteButton': 'Eliminar el estado',
   'admin.statuses.added': 'Se añadió {name}.',
   'admin.statuses.saved': 'Se guardó {name}.',
   'admin.statuses.moved': 'Se movió {name}.',
@@ -4074,7 +4071,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.back': 'Todos los flujos de trabajo',
   'admin.workflow.loading': 'Cargando el flujo de trabajo…',
   'admin.workflow.failed': 'No se pudo cargar el flujo de trabajo. Inténtalo más tarde.',
-  'admin.workflow.notFound': 'No existe ese flujo de trabajo.',
   'admin.workflow.published': 'Versión {version} publicada',
   'admin.workflow.draft': 'Borrador de la versión {version}',
   'admin.workflow.noDraft': 'Sin borrador: el primer cambio guardado empieza uno.',

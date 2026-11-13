@@ -63,8 +63,12 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   await page.getByRole('button', { name: `Deactivate ${name}` }).click();
   // Deactivating asks first, saying what will happen (D13).
   const confirm = page.getByRole('group', { name: new RegExp(`${name} is signed out everywhere`) });
-  await confirm.getByRole('button', { name: 'Deactivate', exact: true }).click();
+  await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await confirm.getByRole('button', { name: `Deactivate ${name}` }).click();
   await expect(page.getByText(`${name} was deactivated and signed out everywhere.`)).toBeVisible();
+  // The button went with the deactivation: the page's heading keeps the focus.
+  await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeFocused();
   await page.getByRole('combobox', { name: 'Show' }).selectOption('all');
   await page.getByRole('button', { name: `Reactivate ${name}` }).click();
   await expect(page.getByText(`${name} was reactivated.`)).toBeVisible();

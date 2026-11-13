@@ -13,6 +13,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
@@ -224,6 +225,9 @@ export function WorkflowEditorPage({
   // The breadcrumb ends at the workflow's name, under Workflows (AD-28).
   useAdminTrail(workflow ? [{ label: t('common.value', { value: workflow.name }) }] : null);
 
+  // A workflow that does not exist is a not-found page (D4, AD-30): Home and Search, no header.
+  if (load.status === 'missing') return <NotFoundPage title={t('notFound.workflow')} />;
+
   if (load.status !== 'loaded' || !workflow || !working) {
     const notes = {
       loading: (
@@ -237,7 +241,6 @@ export function WorkflowEditorPage({
         </p>
       ),
       forbidden: <p className="page-note">{t('admin.workflows.forbidden')}</p>,
-      missing: <p className="page-note">{t('admin.workflow.notFound')}</p>,
       loaded: null,
     };
     return (
@@ -248,9 +251,7 @@ export function WorkflowEditorPage({
         <PageHeader
           titleId={`${id}-title`}
           title={t('admin.workflows.title')}
-          {...(load.status === 'forbidden' || load.status === 'missing'
-            ? {}
-            : { purpose: t('purpose.workflowEditor') })}
+          {...(load.status === 'forbidden' ? {} : { purpose: t('purpose.workflowEditor') })}
         />
         {notes[load.status]}
       </section>

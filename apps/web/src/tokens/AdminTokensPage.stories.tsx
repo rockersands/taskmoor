@@ -55,7 +55,9 @@ export const AskingToConfirm: Story = {
     const bulk = within(await canvas.findByRole('region', { name: 'Revoke in bulk' }));
     await userEvent.click(bulk.getByRole('radio', { name: 'Every token' }));
     await userEvent.click(bulk.getByRole('button', { name: 'Revoke tokens' }));
-    await expect(await bulk.findByRole('button', { name: 'Confirm revocation' })).toHaveFocus();
+    // As every destructive action asks (D13): the focus on Cancel, the safe choice.
+    await bulk.findByRole('button', { name: 'Confirm revocation' });
+    await expect(bulk.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };
 
