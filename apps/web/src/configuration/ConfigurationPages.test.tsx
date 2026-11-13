@@ -38,6 +38,7 @@ describe('track and workflow map administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage('tracks');
     await screen.findByText('SHOP · Shop');
+    await user.click(screen.getByRole('button', { name: 'New track' }));
     const form = screen.getByRole('form', { name: 'Add a track' });
     await user.type(within(form).getByLabelText('Key'), 'pay');
     await user.type(within(form).getByLabelText('Track name'), 'Payments');
@@ -62,6 +63,7 @@ describe('track and workflow map administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage('tracks');
     await screen.findByText('SHOP · Shop');
+    await user.click(screen.getByRole('button', { name: 'New track' }));
     const form = within(screen.getByRole('form', { name: 'Add a track' }));
     await user.type(form.getByLabelText('Key'), 'pay');
     await user.type(form.getByLabelText('Track name'), 'Payments');
@@ -87,6 +89,7 @@ describe('track and workflow map administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage('tracks');
     await screen.findByText('SHOP · Shop');
+    await user.click(screen.getByRole('button', { name: 'New track' }));
     const form = within(screen.getByRole('form', { name: 'Add a track' }));
     await user.type(form.getByLabelText('Key'), 'web');
     await user.type(form.getByLabelText('Track name'), 'Web shop');
@@ -94,9 +97,13 @@ describe('track and workflow map administration (M1-053)', () => {
     await user.click(form.getByRole('button', { name: 'Add a track' }));
     expect(await screen.findByText('Track WEB was added.')).toBeInTheDocument();
     expect(client.calls.at(-1)?.args[0]).toMatchObject({ key: 'WEB', copyFrom: 3 });
+    // The form closes once the track is added; New track opens it again (D11).
+    expect(screen.queryByRole('form', { name: 'Add a track' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'New track' }));
+    const again = within(screen.getByRole('form', { name: 'Add a track' }));
     // A local-mode track cannot copy: only templates are offered.
-    await user.selectOptions(form.getByRole('combobox', { name: 'Configuration' }), 'local');
-    expect(form.queryByRole('option', { name: 'Shop (SHOP)' })).toBeNull();
+    await user.selectOptions(again.getByRole('combobox', { name: 'Configuration' }), 'local');
+    expect(again.queryByRole('option', { name: 'Shop (SHOP)' })).toBeNull();
   });
 
   it('[IAM-002] gives a role to a person and a group, and takes it back', async () => {
@@ -251,6 +258,7 @@ describe('track and workflow map administration (M1-053)', () => {
     await screen.findByText('Default workflow map');
     // The map's workflow is labelled, so its name never reads as a doubled word (AD-26).
     expect(screen.getAllByText(/^Workflow for every other type: /).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: 'New workflow map' }));
     const form = screen.getByRole('form', { name: 'Add a workflow map' });
     await user.type(within(form).getByLabelText('Map name'), 'Tasks apart');
     await user.click(within(form).getByRole('button', { name: 'Add a workflow map' }));

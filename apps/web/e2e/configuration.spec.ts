@@ -51,6 +51,7 @@ function trackKey(project: string, prefix: string): string {
 async function addTrack(page: Page, key: string, name: string) {
   await page.goto(`${BASE}/#/admin/tracks`);
   await expect(page.getByRole('heading', { level: 1, name: 'Tracks' })).toBeVisible();
+  await page.getByRole('button', { name: 'New track' }).click();
   const form = page.getByRole('form', { name: 'Add a track' });
   await form.getByLabel('Key').fill(key);
   await form.getByLabel('Track name').fill(name);
@@ -101,6 +102,7 @@ test('[WF-001] the administrator makes a workflow map, puts a track on it and de
   const map = `Map ${testInfo.project.name} ${Date.now()}`;
   await page.goto(`${BASE}/#/admin/workflow-maps`);
   await expect(page.getByRole('heading', { level: 1, name: 'Workflow maps' })).toBeVisible();
+  await page.getByRole('button', { name: 'New workflow map' }).click();
   const add = page.getByRole('form', { name: 'Add a workflow map' });
   await add.getByLabel('Map name').fill(map);
   await add.getByRole('button', { name: 'Add a workflow map' }).click();
@@ -147,6 +149,7 @@ test('[CORE-009] the administrator adds a choice list, keeps its options and del
   const field = `Region ${testInfo.project.name} ${Date.now()}`;
   await page.goto(`${BASE}/#/admin/fields`);
   await expect(page.getByRole('heading', { level: 1, name: 'Fields' })).toBeVisible();
+  await page.getByRole('button', { name: 'New field' }).click();
   const add = page.getByRole('form', { name: 'Add a field' });
   await add.getByLabel('Field name').fill(field);
   await add.getByLabel('Type').selectOption('select');

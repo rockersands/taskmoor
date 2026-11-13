@@ -178,7 +178,11 @@ function AddPolicy({ client, said, failed }: Feedback & { client: VisibilityClie
     }, failed);
   };
   return (
-    <form className="people-inline" aria-label={t('admin.visibility.addPolicy')} onSubmit={submit}>
+    <form
+      className="glass-card people-card people-inline"
+      aria-label={t('admin.visibility.addPolicy')}
+      onSubmit={submit}
+    >
       <div className="form-field">
         <label htmlFor={`${id}-name`} className="form-label">
           {t('admin.visibility.policyName')}

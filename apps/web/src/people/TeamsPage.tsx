@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { NewButton } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -31,6 +32,7 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -69,20 +71,34 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
         title={t('admin.teams.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('settings.teamsHint'), about: t('admin.teams.intro') })}
+          : {
+              purpose: t('settings.teamsHint'),
+              about: t('admin.teams.intro'),
+              actions: (
+                <NewButton
+                  label={t('admin.teams.new')}
+                  open={creating}
+                  onToggle={() => setCreating(!creating)}
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.teams.forbidden')}</p>
       ) : (
         <>
-          <AddTeam
-            client={client}
-            onAdded={(made) => {
-              said(t('admin.teams.added', { name: made.name }));
-              setOpen(made.id);
-            }}
-            onProblem={(error) => setProblem(refusal(error))}
-          />
+          {creating && (
+            <AddTeam
+              client={client}
+              onAdded={(made) => {
+                setCreating(false);
+                said(t('admin.teams.added', { name: made.name }));
+                setOpen(made.id);
+              }}
+              onCancel={() => setCreating(false)}
+              onProblem={(error) => setProblem(refusal(error))}
+            />
+          )}
           <p role="status" className="form-status">
             {message}
           </p>
@@ -151,10 +167,12 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
 function AddTeam({
   client,
   onAdded,
+  onCancel,
   onProblem,
 }: {
   client: TeamsClient;
   onAdded: (made: TeamSummary) => void;
+  onCancel: () => void;
   onProblem: (error: unknown) => void;
 }) {
   const t = useT();
@@ -163,7 +181,7 @@ function AddTeam({
   const [description, setDescription] = useState('');
   return (
     <form
-      className="people-form"
+      className="glass-card people-card people-form"
       aria-label={t('admin.teams.add')}
       onSubmit={(event) => {
         event.preventDefault();
@@ -204,6 +222,9 @@ function AddTeam({
       <div className="form-actions">
         <button type="submit" className="button-primary">
           {t('admin.teams.add')}
+        </button>
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t('admin.teams.cancelNew')}
         </button>
       </div>
     </form>

@@ -61,6 +61,9 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
 
   await page.getByRole('searchbox', { name: 'Find by name or email' }).fill(email);
   await page.getByRole('button', { name: `Deactivate ${name}` }).click();
+  // Deactivating asks first, saying what will happen (D13).
+  const confirm = page.getByRole('group', { name: new RegExp(`${name} is signed out everywhere`) });
+  await confirm.getByRole('button', { name: 'Deactivate', exact: true }).click();
   await expect(page.getByText(`${name} was deactivated and signed out everywhere.`)).toBeVisible();
   await page.getByRole('combobox', { name: 'Show' }).selectOption('all');
   await page.getByRole('button', { name: `Reactivate ${name}` }).click();
@@ -77,10 +80,13 @@ test('[IAM-008] the administrator makes a group, adds a person, nests a group an
   const inner = `Refunds ${suffix}`;
   await page.goto(`${BASE}/#/admin/groups`);
   await expect(page.getByRole('heading', { level: 1, name: 'Groups' })).toBeVisible();
+  // The list first; New group opens the form, which closes once the group is added (D11).
   const add = page.getByRole('form', { name: 'Add a group' });
+  await page.getByRole('button', { name: 'New group' }).click();
   await add.getByLabel('Group name').fill(inner);
   await add.getByRole('button', { name: 'Add a group' }).click();
   await expect(page.getByText(`${inner} was added.`)).toBeVisible();
+  await page.getByRole('button', { name: 'New group' }).click();
   await add.getByLabel('Group name').fill(outer);
   await add.getByRole('button', { name: 'Add a group' }).click();
   await expect(page.getByText(`${outer} was added.`)).toBeVisible();

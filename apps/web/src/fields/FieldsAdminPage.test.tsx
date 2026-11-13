@@ -29,6 +29,7 @@ describe('field administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     await screen.findByText('Customer');
+    await user.click(screen.getByRole('button', { name: 'New field' }));
     const form = screen.getByRole('form', { name: 'Add a field' });
     await user.type(within(form).getByLabelText('Field name'), 'Region');
     await user.selectOptions(within(form).getByLabelText('Type'), 'select');

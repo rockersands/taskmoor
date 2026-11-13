@@ -30,6 +30,8 @@ describe('permission administration (M1-053)', () => {
     const client = renderPage();
     const form = await screen.findByRole('form', { name: 'Add a role' });
     await user.type(within(form).getByLabelText('Role name'), 'Reviewers');
+    // Every add action has the one filled style (D11, AD-19).
+    expect(within(form).getByRole('button', { name: 'Add a role' })).toHaveClass('button-primary');
     await user.click(within(form).getByRole('button', { name: 'Add a role' }));
     expect(await screen.findByText('Role Reviewers was added.')).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Change role Reviewers' }));

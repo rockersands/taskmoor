@@ -89,7 +89,7 @@ area values; set them through the API, a CSV import or bulk changes.
 
 ### Adding and managing fields
 
-On **Administration**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
+On **Administration**, **Fields**, **New field** opens the form; **Add a field** asks for a **Field name**, a **Type** and, for types
 that allow it, **Holds several values**. **Manage** on a field offers:
 
 - **Rename**.

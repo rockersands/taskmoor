@@ -324,7 +324,7 @@ function TypeSetsSection({
             chosen={chosen}
             onChange={setChosen}
           />
-          <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
+          <button type="submit" className="button-primary" disabled={chosen.length === 0}>
             {t('admin.sets.addTypeSet')}
           </button>
         </form>
@@ -557,7 +557,7 @@ function RuleSetsSection({
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <button type="submit" className="button-secondary">
+        <button type="submit" className="button-primary">
           {t('admin.sets.addRuleSet')}
         </button>
       </form>

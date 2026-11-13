@@ -115,6 +115,12 @@ describe('people (M1-053, IAM-008)', () => {
     const user = userEvent.setup();
     const client = renderPage('groups');
     await list();
+    // The list comes first; "New group" opens the form (D11, AD-18).
+    expect(screen.queryByRole('form', { name: 'Add a group' })).toBeNull();
+    const opener = screen.getByRole('button', { name: 'New group' });
+    expect(opener).toHaveClass('button-primary');
+    await user.click(opener);
+    expect(opener).toHaveAttribute('aria-expanded', 'true');
     const form = screen.getByRole('form', { name: 'Add a group' });
     await user.type(within(form).getByLabelText('Group name'), 'Payments');
     await user.click(within(form).getByRole('button', { name: 'Add a group' }));
@@ -255,6 +261,7 @@ describe('teams (M1-123, CORE-027)', () => {
     const user = userEvent.setup();
     const client = renderTeams();
     await list();
+    await user.click(screen.getByRole('button', { name: 'New team' }));
     const form = screen.getByRole('form', { name: 'Add a team' });
     await user.type(within(form).getByLabelText('Team name'), 'Payments');
     await user.type(within(form).getByLabelText('Description (optional)'), 'Money in and out');
@@ -283,6 +290,7 @@ describe('teams (M1-123, CORE-027)', () => {
     const user = userEvent.setup();
     renderTeams();
     await list();
+    await user.click(screen.getByRole('button', { name: 'New team' }));
     const form = screen.getByRole('form', { name: 'Add a team' });
     await user.type(within(form).getByLabelText('Team name'), 'platform');
     await user.click(within(form).getByRole('button', { name: 'Add a team' }));

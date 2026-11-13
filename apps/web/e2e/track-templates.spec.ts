@@ -53,6 +53,7 @@ test('[CORE-002] each template makes a working track', async ({ page }, testInfo
     const key = `T${project}${i}${stamp}`;
     const name = `Template ${template.id} ${stamp}`;
     await page.goto(`${BASE}/#/admin/tracks`);
+    await page.getByRole('button', { name: 'New track' }).click();
     const form = page.getByRole('form', { name: 'Add a track' });
     await form.getByLabel('Key').fill(key);
     await form.getByLabel('Track name').fill(name);

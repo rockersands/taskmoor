@@ -140,7 +140,7 @@ page offers it too.
    of another track**.
 5. Press **Create track**. You land in the new track.
 
-Administrators can also use **Administration**, **Tracks**, with the same form under **Add a track**.
+Administrators can also use **Administration**, **Tracks**, where **New track** opens the same form, **Add a track**.
 There, when the template makes a board, the page shows a link, **Open the board of** and the key.
 
 ### Keys

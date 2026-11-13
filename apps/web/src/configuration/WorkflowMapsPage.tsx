@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
+import { NewButton } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -40,6 +41,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
   const [workflows, setWorkflows] = useState<Named[]>([]);
   const [types, setTypes] = useState<Named[]>([]);
   const [open, setOpen] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [defaultWorkflow, setDefaultWorkflow] = useState('');
   const [message, setMessage] = useState('');
@@ -94,67 +96,87 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
         title={t('admin.maps.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('settings.workflowMapsHint'), about: t('admin.maps.intro') })}
+          : {
+              purpose: t('settings.workflowMapsHint'),
+              about: t('admin.maps.intro'),
+              actions: (
+                <NewButton
+                  label={t('admin.maps.new')}
+                  open={creating}
+                  onToggle={() => setCreating(!creating)}
+                  data-tutorial="workflow-map-new"
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.maps.forbidden')}</p>
       ) : (
         <>
-          <form
-            className="glass-card people-card people-form"
-            data-tutorial="workflow-map-new"
-            aria-label={t('admin.maps.add')}
-            onSubmit={(event) => {
-              event.preventDefault();
-              const wanted = name.trim();
-              if (!wanted || !defaultWorkflow) return;
-              client
-                .createWorkflowMap({ name: wanted, defaultWorkflowId: Number(defaultWorkflow) })
-                .then(
-                  (made) => {
-                    setName('');
-                    said(t('admin.maps.added', { name: made.name }));
-                    setOpen(made.id);
-                  },
-                  (error) => setProblem(refusal(error)),
-                );
-            }}
-          >
-            <div className="form-field">
-              <label htmlFor={nameId} className="form-label">
-                {t('admin.maps.name')}
-              </label>
-              <input
-                id={nameId}
-                type="text"
-                required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor={workflowId} className="form-label">
-                {t('admin.maps.defaultWorkflow')}
-              </label>
-              <select
-                id={workflowId}
-                value={defaultWorkflow}
-                onChange={(event) => setDefaultWorkflow(event.target.value)}
-              >
-                {workflows.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-actions">
-              {/* Until the workflows are in, there is no default to give the map (M1-132). */}
-              <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
-                {t('admin.maps.add')}
-              </button>
-            </div>
-          </form>
+          {creating && (
+            <form
+              className="glass-card people-card people-form"
+              aria-label={t('admin.maps.add')}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const wanted = name.trim();
+                if (!wanted || !defaultWorkflow) return;
+                client
+                  .createWorkflowMap({ name: wanted, defaultWorkflowId: Number(defaultWorkflow) })
+                  .then(
+                    (made) => {
+                      setName('');
+                      setCreating(false);
+                      said(t('admin.maps.added', { name: made.name }));
+                      setOpen(made.id);
+                    },
+                    (error) => setProblem(refusal(error)),
+                  );
+              }}
+            >
+              <div className="form-field">
+                <label htmlFor={nameId} className="form-label">
+                  {t('admin.maps.name')}
+                </label>
+                <input
+                  id={nameId}
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor={workflowId} className="form-label">
+                  {t('admin.maps.defaultWorkflow')}
+                </label>
+                <select
+                  id={workflowId}
+                  value={defaultWorkflow}
+                  onChange={(event) => setDefaultWorkflow(event.target.value)}
+                >
+                  {workflows.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-actions">
+                {/* Until the workflows are in, there is no default to give the map (M1-132). */}
+                <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
+                  {t('admin.maps.add')}
+                </button>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => setCreating(false)}
+                >
+                  {t('admin.maps.cancelNew')}
+                </button>
+              </div>
+            </form>
+          )}
           <p role="status" className="form-status">
             {message}
           </p>

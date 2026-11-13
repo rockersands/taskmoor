@@ -229,7 +229,7 @@ function RolesSection({
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <button type="submit" className="button-secondary">
+        <button type="submit" className="button-primary">
           {t('admin.permissions.addRole')}
         </button>
       </form>
@@ -435,7 +435,7 @@ function PoliciesSection({
             ))}
           </select>
         </div>
-        <button type="submit" className="button-secondary">
+        <button type="submit" className="button-primary">
           {t('admin.permissions.addPolicy')}
         </button>
       </form>
@@ -859,7 +859,7 @@ function GrantForm({
           </select>
         </div>
       )}
-      <button type="submit" className="button-secondary">
+      <button type="submit" className="button-primary">
         {t('admin.permissions.give')}
       </button>
     </form>

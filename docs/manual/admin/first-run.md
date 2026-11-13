@@ -1,8 +1,8 @@
 ---
 title: "First-run setup"
 audience: admins
-sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
-accessed: 2026-11-01
+sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/web/src/configuration/TracksAdminPage.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # First-run setup
@@ -126,7 +126,7 @@ administrators see.
    administrator** for another administrator. Taskmoor then shows a one-time link to set a
    password, only once; send it to the person yourself. **Groups** gathers people for
    permissions ([people and groups](people-and-groups.md)).
-5. **Make the first track.** On **Tracks**, **Add a track** with a key and a name, then choose
+5. **Make the first track.** On **Tracks**, **New track** opens the form; **Add a track** with a key and a name, then choose
    its workflow map and who does what in it ([tracks](tracks.md)).
 6. **Review permissions.** **Permissions** holds the roles, access policies and the permissions
    that apply everywhere ([permissions and access](permissions.md)).

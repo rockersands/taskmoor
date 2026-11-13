@@ -298,7 +298,7 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
               </div>
               <button
                 type="submit"
-                className="button-secondary"
+                className="button-primary"
                 disabled={dirty}
                 aria-describedby={dirty ? `${id}-set-hint` : undefined}
               >

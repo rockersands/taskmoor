@@ -276,7 +276,8 @@ administrators the same way.
 Groups gather people so you can give them permissions, require two-factor authentication,
 restrict who sees tickets, or share dashboards and saved searches with them.
 
-- **Add a group** asks for a **Group name** and a **Description (optional)**. Names are unique.
+- **New group** opens the form above the list: **Add a group** asks for a **Group name** and a
+  **Description (optional)**. Names are unique.
 - Each group in the list shows how many members and groups inside it has. **Manage** opens it.
 - Under **Members of** a group, **Add a person**: type two letters or more of a name or email,
   then select **Add**. **Remove** takes a person out.
@@ -327,7 +328,8 @@ must use the new one).
 
 On **Administration** > **Teams**:
 
-- **Add a team** asks for a **Team name** and a **Description (optional)**. Names are unique,
+- **New team** opens the form above the list: **Add a team** asks for a **Team name** and a
+  **Description (optional)**. Names are unique,
   ignoring case: "There is a team with that name already."
 - Each team in the list shows how many members it has, who leads it and its description.
   **Manage** opens it.
