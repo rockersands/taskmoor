@@ -91,7 +91,7 @@ reported, and the coordinator checked that it was pushed.
 | T-050 | Sign in with any email, personal or company | Done | `claude/track-invites`; no open sign-up |
 | T-051 | Invite by email with a set role | Done | `claude/track-invites`; real email not yet tested |
 | T-052 | A link to copy when a site has no mail server | Done | `claude/track-invites` |
-| T-053 | Should managers copy links where email works? | You | Today every inviter can; recommended: only site administrators there |
+| T-053 | Should managers copy links where email works? | To do | The user decided on 2026-11-13: where email works, only site administrators copy invitation links; managers send them by email |
 | T-054 | A manager can tell an account exists when inviting it | Done | Accepted by the user |
 | T-055 | Site administrators give track administrators permission to invite | Done | Off by default |
 | T-056 | Managers appoint managers by default, through a removable permission | Done | Decided by the user |
@@ -99,9 +99,9 @@ reported, and the coordinator checked that it was pushed.
 | T-058 | Google sign-in option, invited people only | Done | `claude/google-signin`; tested against a fake provider |
 | T-059 | Real Google test | You | Create the client and enter the secret on a demo; the user said later |
 | T-060 | A provider sign-in does not need Taskmoor's second factor | Done | Decided by the user; the guide says so plainly |
-| T-061 | Google's logo on the button? | You | Recommended: plain text for now |
-| T-062 | Treat Gmail spellings as the same address? | You | Recommended: no |
-| T-063 | Allow `@googlemail.com`? | You | Recommended: no for now |
+| T-061 | Google's logo on the button? | To do | The user decided on 2026-11-13: show Google's logo, following Google's sign-in branding guidelines |
+| T-062 | Treat Gmail spellings as the same address? | Done | The user decided on 2026-11-13: no; dots and +tags are not the same address (as built) |
+| T-063 | Allow `@googlemail.com`? | Done | The user decided on 2026-11-13: no, not for now (as built) |
 
 ## Navigation and tracks
 
