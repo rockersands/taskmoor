@@ -5714,6 +5714,8 @@ export const messagesEn = {
   'admin.group.system': 'System',
   'admin.group.systemPurpose':
     'The health of this instance, its limits, imports and what was deleted.',
+  'admin.group.about':
+    'Each page of this group changes one part of the site. The list of every Administration page is beside the page, or behind the bar at the top on a phone; its groups open and close.',
   'admin.overview.title': 'Overview',
   'admin.overview.purpose':
     'How this instance is doing and what is waiting for you. The pages to run the site are listed here too.',

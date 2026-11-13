@@ -121,9 +121,11 @@
   font-weight: var(--font-weight-strong);
 }
 
+/* A disclosure with the shared chevron beside its words (AD-28). */
 .workflow-details summary {
   display: flex;
   align-items: center;
+  width: fit-content;
   min-height: var(--hit-target);
   color: var(--color-accent);
   font-weight: var(--font-weight-strong);
@@ -748,4 +750,8 @@
   margin: 0;
   padding-inline-start: var(--space-5);
   overflow-wrap: anywhere;
+}
+
+.workflow-details summary.admin-disclosure::after {
+  margin-inline-start: 0;
 }

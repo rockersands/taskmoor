@@ -12,6 +12,7 @@ import {
   type ScopeTrack,
   TrackScopeLine,
   useSetScope,
+  useTrackPageTrail,
 } from '../sets/trackScope';
 import { PageHeader } from '../shell/PageHeader';
 import { DraftDialog } from '../tickets/view/drafts';
@@ -79,6 +80,7 @@ export function LayoutEditorPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('layouts.title'));
   const [refused, setRefused] = useState(false);
   return (
     <section aria-labelledby={titleId} className="page page-full admin-page layout-editor-page">

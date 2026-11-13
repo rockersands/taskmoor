@@ -80,7 +80,7 @@
 /* Administration (ADR-114): its own navigation beside the page, folded above it when narrow. */
 .admin-section {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: 16.5rem minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5);
 }
@@ -89,8 +89,49 @@
   min-width: 0;
 }
 
+/* Beside the page while it scrolls, never longer than the window, so it no longer sets the
+   page's length (D18). */
 .admin-nav-side {
+  position: sticky;
+  top: calc(var(--topbar-height) + 2 * var(--shell-gap));
+  max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
   padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* A control that opens and closes what follows: a chevron drawn with borders, down while open. */
+.admin-disclosure {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.admin-disclosure::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: auto;
+  border-inline-end: 2px solid currentcolor;
+  border-block-end: 2px solid currentcolor;
+  transform: rotate(-45deg);
+  transition: transform var(--motion-fast) var(--ease-settle);
+}
+
+summary.admin-disclosure {
+  list-style: none;
+}
+
+summary.admin-disclosure::-webkit-details-marker {
+  display: none;
+}
+
+details[open] > summary.admin-disclosure::after,
+.admin-disclosure[aria-expanded="true"]::after {
+  margin-block-start: -4px;
+  transform: rotate(45deg);
 }
 
 .admin-nav-fold {
@@ -99,16 +140,8 @@
 }
 
 .admin-nav-fold summary {
-  display: flex;
-  align-items: center;
   min-height: var(--hit-target);
   font-weight: var(--font-weight-strong);
-  cursor: pointer;
-}
-
-.admin-section-main + .admin-nav-fold {
-  margin-top: var(--space-4);
-  margin-bottom: 0;
 }
 
 .admin-nav-list {
@@ -119,8 +152,40 @@
   list-style: none;
 }
 
+.admin-nav-list[hidden] {
+  display: none;
+}
+
 .admin-nav-group {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* A group's heading opens its pages. Quieter tracking than the main navigation's headings, so
+   the longest Spanish heading stays on one line (AD-45). */
+.admin-nav-group-title {
+  width: 100%;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0.02em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.admin-nav-group-title:hover {
+  background: var(--glass-surface-strong);
+  color: var(--color-text);
+}
+
+.admin-nav-group-title[aria-current="page"] {
+  background: var(--glass-tint-accent);
+  color: var(--color-text);
 }
 
 .admin-nav-link {
@@ -159,9 +224,18 @@
   list-style: none;
 }
 
-.admin-breadcrumb li + li::before {
-  content: "›";
-  margin-inline-end: var(--space-2);
+/* The separator belongs to the step before it, so a wrapped line never starts with one (AD-14). */
+.admin-breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-breadcrumb li:not(:last-child)::after {
+  content: "\203a";
+  flex: none;
+  margin-inline-start: var(--space-2);
   color: var(--color-text-muted);
 }
 
@@ -280,6 +354,7 @@
 
 @media (pointer: coarse) {
   .admin-nav-link,
+  .admin-nav-group-title,
   .admin-nav-fold summary,
   .admin-breadcrumb a,
   .admin-panel-more a {

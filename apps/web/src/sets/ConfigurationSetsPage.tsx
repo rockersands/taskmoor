@@ -23,6 +23,7 @@ import {
   type ScopeTrack,
   TrackScopeLine,
   useSetScope,
+  useTrackPageTrail,
 } from './trackScope';
 
 /** The layout editor: where fields appear, the other half of how a form comes out. */
@@ -57,6 +58,7 @@ export function ConfigurationSetsPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('admin.sets.title'));
   /** The purpose shows only to someone who may be here; only the sets themselves can tell. */
   const header = (allowed: boolean) => (
     <PageHeader

@@ -1,8 +1,8 @@
 ---
 title: "Administration"
 audience: admins
-sources: docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx
-accessed: 2026-11-04
+sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Administration
@@ -49,10 +49,20 @@ A configuration administrator sees the list of setup pages instead.
 
 ## Finding a page
 
-The section has its own list of pages: beside the page on a wide screen, and on a narrow one under
-**Administration pages**, folded above each page and open below the overview. Each page shows where it sits with a breadcrumb,
-**Administration**, then its group, then the page. The group's own page says what each of its pages
-is for. Addresses of pages did not change, so links you saved keep working.
+The section has its own list of pages. On a wide screen it sits beside the page and stays in view
+while the page scrolls. On the overview every group shows its pages. On any other page only the
+group of the page you are on does; the heading of any group opens or closes it, and a group you
+opened stays open while you stay within the group. On a group's own page its heading is marked as
+the page you are on. On a narrow screen the list is a bar
+named **Administration pages** at the top of every page, the overview too, with a chevron: it opens
+the same list.
+
+Each page shows where it sits with a breadcrumb: **Administration**, then its group, then the page.
+A page inside another one goes further: a workflow ends at its name, under **Workflows**, and a
+track's own pages go through **Tracks you run** and the track, as in **Tracks you run › OPS ›
+Layout sets**. A group you may not open, such as **Tracks and setup** for someone who only runs
+tracks, is named without a link. The group's own page says what each of its pages is for. Addresses
+of pages did not change, so links you saved keep working.
 
 ## The groups
 

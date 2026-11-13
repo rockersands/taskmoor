@@ -608,7 +608,8 @@ describe('identity provider administration (M1-080)', () => {
     const add = within(main)
       .getAllByRole('button')
       .find(
-        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+        (b) =>
+          b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header, .admin-nav'),
       ) as HTMLElement;
     await user.click(add);
     await user.click(within(main).getAllByRole('radio')[1] as HTMLElement);
@@ -773,7 +774,7 @@ describe('identity provider administration (M1-080)', () => {
       const add = await waitFor(() => {
         const found = within(main)
           .getAllByRole('button', { expanded: false })
-          .find((button) => !button.closest('.page-header'));
+          .find((button) => !button.closest('.page-header, .admin-nav'));
         expect(found).toBeDefined();
         return found as HTMLElement;
       });
@@ -807,7 +808,8 @@ describe('identity provider administration (M1-080)', () => {
     const buttons = within(main).getAllByRole('button');
     await user.click(
       buttons.find(
-        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+        (b) =>
+          b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header, .admin-nav'),
       ) as HTMLElement,
     );
     await user.click(

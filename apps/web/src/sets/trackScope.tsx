@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminTrail } from '../admin/AdminLayout';
 import { useAdminAccess } from '../admin/access';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
@@ -175,6 +176,23 @@ export function ScopeNote({
     default:
       return null;
   }
+}
+
+/**
+ * On a track's own page the breadcrumb goes on past "Tracks you run" to the track and then this
+ * page (AD-15), so the page is not mistaken for the list of tracks.
+ */
+export function useTrackPageTrail(scope: SetScope, title: string) {
+  const t = useT();
+  const track = 'track' in scope ? scope.track : null;
+  useAdminTrail(
+    track
+      ? [
+          { label: t('common.value', { value: track.key }), href: manageTrackHref(track.id) },
+          { label: title },
+        ]
+      : null,
+  );
 }
 
 /** The line under the title of a track's own page: which track, and the way back to it. */

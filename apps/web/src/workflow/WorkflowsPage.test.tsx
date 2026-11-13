@@ -102,7 +102,7 @@ const formButtons = (main: HTMLElement) =>
   waitFor(() => {
     const found = within(main)
       .getAllByRole('button', { expanded: false })
-      .filter((button) => !button.closest('.page-header'));
+      .filter((button) => !button.closest('.page-header, .admin-nav'));
     expect(found.length).toBeGreaterThan(0);
     return found;
   });

@@ -5847,6 +5847,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.group.system': 'Sistema',
   'admin.group.systemPurpose':
     'El estado de esta instancia, sus límites, importaciones y lo que se eliminó.',
+  'admin.group.about':
+    'Cada página de este grupo cambia una parte del sitio. La lista de todas las páginas de Administración está junto a la página, o tras la barra de arriba en un teléfono; sus grupos se abren y se cierran.',
   'admin.overview.title': 'Resumen',
   'admin.overview.purpose':
     'Cómo va esta instancia y qué está pendiente. Aquí también están las páginas para gestionar el sitio.',

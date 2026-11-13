@@ -8,10 +8,12 @@ import { type Session, SessionProvider } from '../session/SessionProvider';
 import { stubBackend, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import { AdminLayout } from './AdminLayout';
+import { fakeTrackPeopleClient } from '../trackpeople/fixtures';
+import { TrackPeoplePage } from '../trackpeople/TrackPeoplePage';
+import { type AdminCrumb, AdminLayout, useAdminTrail } from './AdminLayout';
 import { AdminOverviewPage, healthProblems, type OverviewClient } from './AdminOverviewPage';
 import { RECENT_ALERTS } from './alertsFixtures';
-import { ADMIN, CONFIG_ADMIN, HEALTHY, MEMBER } from './fixtures';
+import { ADMIN, CONFIG_ADMIN, HEALTHY, MEMBER, TRACK_ADMIN } from './fixtures';
 import { ADMIN_GROUPS } from './sections';
 
 const person = (id: number, name: string, fields: Partial<User> = {}): User => ({
@@ -52,6 +54,26 @@ function renderOverview(session: Session, client: OverviewClient = CLIENT) {
 
 const pagesNav = () => screen.getByRole('navigation', { name: 'Administration pages' });
 
+/** A page that adds its own steps to the breadcrumb, as a track's or a workflow's page does. */
+function Trail({ trail }: { trail: AdminCrumb[] | null }) {
+  useAdminTrail(trail);
+  return <p>Page</p>;
+}
+
+function renderAt(hash: string, session: Session, trail: AdminCrumb[] | null = null) {
+  render(
+    <I18nProvider locale="en">
+      <SessionProvider session={session}>
+        <main>
+          <AdminLayout hash={hash}>
+            <Trail trail={trail} />
+          </AdminLayout>
+        </main>
+      </SessionProvider>
+    </I18nProvider>,
+  );
+}
+
 describe('Administration (ADR-114)', () => {
   it('[AGL-018] is under Manage for those allowed, and leaves Tracks as it is', () => {
     stubBackend({ 'GET /*': () => jsonResponse(403, { error: 'forbidden' }) });
@@ -90,9 +112,6 @@ describe('Administration (ADR-114)', () => {
 
   it('[AGL-018] shows a site administrator every group, and health, people and alerts', async () => {
     renderOverview(ADMIN);
-    for (const group of ADMIN_GROUPS) {
-      expect(within(pagesNav()).getAllByRole('link').length).toBeGreaterThan(group.pages.length);
-    }
     for (const name of [
       'People and access',
       'Tracks and setup',
@@ -100,6 +119,10 @@ describe('Administration (ADR-114)', () => {
       'Integrations and AI',
       'System',
     ]) {
+      expect(within(pagesNav()).getByRole('button', { name })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
       expect(within(pagesNav()).getByRole('list', { name })).toBeVisible();
     }
     expect(within(pagesNav()).getByRole('link', { name: 'Overview' })).toHaveAttribute(
@@ -161,16 +184,16 @@ describe('Administration (ADR-114)', () => {
       'href',
       '#/manage/tracks',
     );
-    expect(within(pagesNav()).queryByRole('list', { name: 'Tracks and setup' })).toBeNull();
+    expect(within(pagesNav()).queryByRole('button', { name: 'Tracks and setup' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'Workflow maps' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
   });
 
   it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', () => {
     renderOverview(CONFIG_ADMIN);
-    expect(within(pagesNav()).getByRole('list', { name: 'Tracks and setup' })).toBeVisible();
-    expect(within(pagesNav()).getByRole('list', { name: 'Your tracks' })).toBeVisible();
-    expect(within(pagesNav()).getAllByRole('list')).toHaveLength(3);
+    expect(within(pagesNav()).getByRole('button', { name: 'Tracks and setup' })).toBeVisible();
+    expect(within(pagesNav()).getByRole('button', { name: 'Your tracks' })).toBeVisible();
+    expect(within(pagesNav()).getAllByRole('button')).toHaveLength(2);
     expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'System status' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
@@ -221,10 +244,91 @@ describe('Administration (ADR-114)', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
-  it('[AGL-018] folds its navigation on a phone, open only on the overview', () => {
+  it('[AGL-018] folds its navigation on a phone into one closed bar above every page, the overview too (D21)', () => {
     setViewportWidth(375);
     renderOverview(ADMIN);
-    expect(screen.getByText('Administration pages').closest('details')).toHaveAttribute('open');
+    const bar = screen.getByText('Administration pages');
+    expect(bar.tagName).toBe('SUMMARY');
+    expect(bar).toHaveClass('admin-disclosure');
+    expect(bar.closest('details')).not.toHaveAttribute('open');
+    const title = screen.getByRole('heading', { level: 1, name: 'Administration' });
+    expect(bar.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('[AGL-018] opens only the group of the page shown, and keeps a group opened by hand (D18)', async () => {
+    const user = userEvent.setup();
+    renderAt('#/admin/users', ADMIN);
+    const people = within(pagesNav()).getByRole('button', { name: 'People and access' });
+    expect(people).toHaveAttribute('aria-expanded', 'true');
+    expect(within(pagesNav()).getByRole('link', { name: 'People' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const system = within(pagesNav()).getByRole('button', { name: 'System' });
+    expect(system).toHaveAttribute('aria-expanded', 'false');
+    expect(within(pagesNav()).queryByRole('link', { name: 'Trash' })).toBeNull();
+    await user.click(system);
+    expect(system).toHaveAttribute('aria-expanded', 'true');
+    expect(within(pagesNav()).getByRole('link', { name: 'Trash' })).toBeVisible();
+    await user.click(people);
+    expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
+  });
+
+  it('[AGL-018] marks the group heading current and open on a group page (D18)', () => {
+    renderAt('#/admin/group/system', ADMIN);
+    const system = within(pagesNav()).getByRole('button', { name: 'System' });
+    expect(system).toHaveAttribute('aria-current', 'page');
+    expect(system).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(pagesNav()).getByRole('button', { name: 'People and access' }),
+    ).not.toHaveAttribute('aria-current');
+  });
+
+  it('[AGL-018] ends the breadcrumb with what the page adds, the page itself a link back (AD-15, AD-28)', () => {
+    renderAt('#/manage/tracks/4/layouts', TRACK_ADMIN, [
+      { label: 'OPS', href: '#/manage/tracks/4' },
+      { label: 'Layout sets' },
+    ]);
+    const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+    expect(
+      within(crumbs)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Administration', 'Your tracks', 'Tracks you run', 'OPS', 'Layout sets']);
+    expect(within(crumbs).getByRole('link', { name: 'Tracks you run' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks',
+    );
+    expect(within(crumbs).getByRole('link', { name: 'OPS' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4',
+    );
+    expect(within(crumbs).getByText('Layout sets')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('[IAM-030] names a group a track manager may not open without linking to it (T-227)', () => {
+    renderAt('#/admin/layouts', TRACK_ADMIN);
+    const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+    expect(within(crumbs).getByText('Tracks and setup')).toBeVisible();
+    expect(within(crumbs).queryByRole('link', { name: 'Tracks and setup' })).toBeNull();
+    expect(within(crumbs).getByText('Layout sets')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it("[IAM-030] ends the breadcrumb of a track's people at the track (AD-15)", async () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={TRACK_ADMIN}>
+          <main>
+            <AdminLayout hash="#/manage/tracks/3">
+              <TrackPeoplePage trackId={3} client={fakeTrackPeopleClient()} />
+            </AdminLayout>
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+    expect(await within(crumbs).findByText('SHOP')).toHaveAttribute('aria-current', 'page');
+    expect(within(crumbs).getByRole('link', { name: 'Tracks you run' })).toBeVisible();
   });
 
   it('passes every string through the pseudo-locale', async () => {
