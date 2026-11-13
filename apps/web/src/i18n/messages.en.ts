@@ -712,7 +712,7 @@ export const messagesEn = {
   'search.sorted':
     'Sorted by {column}, {direction, select, ascending {ascending} other {descending}}',
   'search.sorted.date':
-    'Sorted by {column}, {direction, select, ascending {oldest first} other {newest first}}',
+    'Sorted by {column}, {direction, select, ascending {earliest first} other {latest first}}',
   'search.table': 'Result table',
   'search.columns': 'Columns',
   'search.columns.keyFirst': 'The key always comes first.',
@@ -2514,6 +2514,9 @@ export const messagesEn = {
   'tickets.create.openDialog': 'New ticket',
   'tickets.create.openDialogHint': 'Create a ticket (C)',
   'tickets.create.fixErrors': 'Some fields need attention before the ticket can be created.',
+  'tickets.create.notSetHere':
+    'This form cannot set this field yet. The ticket is created only if a default or the workflow fills it in; if not, ask an administrator to make it optional on the create form.',
+  'tickets.create.fieldProblem': '{field}: {problem}',
   'tickets.create.createFailed': 'The ticket could not be created. Try again in a moment.',
   'tickets.error.required': 'This field is required.',
   'tickets.error.hidden': 'This field cannot be set for this ticket type.',
@@ -3468,7 +3471,7 @@ export const messagesEn = {
   'bulk.status.done': 'Done.',
   'bulk.status.cancelled': 'Cancelled. The tickets not yet changed were skipped.',
   'bulk.warning':
-    '{action, select, edit {The bulk edit} move {The bulk move} transition {The bulk transition} delete {The bulk delete} clone {The clone} other {The bulk change}} {cancelled, select, yes {was cancelled} other {finished}} with problems: {succeeded, plural, =0 {no ticket was} one {# ticket was} other {# tickets were}} {action, select, clone {copied} delete {deleted} other {changed}}, and {failed, plural, one {# ticket was} other {# tickets were}} not. Each one is listed below with the reason.',
+    '{action, select, edit {The bulk edit} move {The bulk move} transition {The bulk transition} delete {The bulk delete} clone {The clone} other {The bulk change}} {cancelled, select, yes {was cancelled} other {finished}} with problems: {succeeded, plural, =0 {no ticket was} one {# ticket was} other {# tickets were}} {action, select, clone {copied} delete {deleted} other {changed}}, {skipped, plural, =0 {and } other {}}{failed, plural, one {# ticket was} other {# tickets were}} not{skipped, plural, =0 {} one {, and # ticket was skipped} other {, and # tickets were skipped}}. The list below gives the reasons.',
   'bulk.progress': '{done} of {total} tickets finished',
   'bulk.count.succeeded': 'Changed',
   'bulk.count.failed': 'Not changed',

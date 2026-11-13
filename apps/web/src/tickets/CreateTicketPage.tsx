@@ -126,6 +126,34 @@ const RICH_TYPES = new Set(['description', 'environment', 'paragraph']);
 
 type Loaded<T> = { status: 'loading' } | { status: 'failed' } | { status: 'loaded'; value: T };
 
+/** The custom field a layout key names, when the form has it. */
+function customField(form: TicketForm, key: string): CustomField | undefined {
+  const id = customId(key);
+  return id === null ? undefined : form.customFields.find((f) => f.id === id);
+}
+
+/** Whether the form edits a field: with a control of its own, or as a set of checkboxes. */
+function editability(field: FormField, custom: CustomField | undefined) {
+  const multiple = custom?.type === 'select' && custom.multiple;
+  const editable = custom
+    ? EDITABLE_CUSTOM.has(custom.type) && !multiple
+    : EDITABLE_SYSTEM.has(field.key);
+  return { editable, multiple };
+}
+
+/**
+ * The fields that have a row on the form: those it edits, and those required at create that it
+ * cannot edit yet (D30 leaves out only what is set after creation).
+ */
+function shownKeys(form: TicketForm): Set<string> {
+  const out = new Set<string>();
+  for (const field of form.layout.tabs.flatMap((tab) => tab.sections.flatMap((s) => s.fields))) {
+    const { editable, multiple } = editability(field, customField(form, field.key));
+    if (editable || multiple || field.required) out.add(field.key);
+  }
+  return out;
+}
+
 export interface CreateTicketPageProps {
   client?: CreateClient;
   /** In the create dialog (M1-052): a second-level heading with this id, and a close button. */
@@ -145,7 +173,8 @@ export interface CreateTicketPageProps {
  * Creating a ticket (#/create; M1-012, CORE-008, CORE-013): the create form of the chosen
  * track and ticket type as the backend lays it out, required fields marked, hidden ones absent,
  * and the backend's refusals shown at each field. Fields this form cannot edit yet (people,
- * releases, areas) say so; they are set on the ticket once it exists.
+ * releases, areas) are left out and set on the ticket once it exists (D30), unless the layout
+ * requires them at create: those stay, saying the form cannot set them, so a refusal has a place.
  */
 export function CreateTicketPage({
   client = createClient,
@@ -354,9 +383,12 @@ export function CreateTicketPage({
     }
   };
 
+  const nameOf = (key: string, custom: CustomField | undefined) => {
+    const system = SYSTEM_FIELDS[key];
+    return custom ? fieldName(t, custom.name) : system ? t(system.label) : key;
+  };
   const labelOf = (field: FormField, custom: CustomField | undefined) => {
-    const system = SYSTEM_FIELDS[field.key];
-    const name = custom ? fieldName(t, custom.name) : system ? t(system.label) : field.key;
+    const name = nameOf(field.key, custom);
     return field.required ? t('tickets.create.requiredLabel', { label: name }) : name;
   };
 
@@ -510,8 +542,7 @@ export function CreateTicketPage({
 
   function fieldRow(field: FormField, loaded: TicketForm) {
     const id = `${prefix}-${field.key}`;
-    const fieldId = customId(field.key);
-    const custom = fieldId === null ? undefined : loaded.customFields.find((f) => f.id === fieldId);
+    const custom = customField(loaded, field.key);
     const label = labelOf(field, custom);
     const help = field.description ?? (custom?.description || null);
     const error = errors[field.key];
@@ -522,12 +553,36 @@ export function CreateTicketPage({
     const lockId = lock ? `${id}-lock` : '';
     const errorId = error ? `${id}-error` : '';
     const described = [helpId, lockId, errorId].filter(Boolean).join(' ');
-    const editable = custom
-      ? EDITABLE_CUSTOM.has(custom.type) && !(custom.type === 'select' && custom.multiple)
-      : EDITABLE_SYSTEM.has(field.key);
-    const multiple = custom?.type === 'select' && custom.multiple;
+    const { editable, multiple } = editability(field, custom);
     // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30).
-    if (!editable && !multiple) return null;
+    if (!editable && !multiple && !field.required) return null;
+    if (!editable && !multiple) {
+      // Required at create, yet this form cannot set it: it stays, saying so, and the backend's
+      // refusal shows here rather than nowhere.
+      const noteId = `${id}-note`;
+      return (
+        <fieldset
+          key={field.key}
+          aria-describedby={[noteId, helpId, errorId].filter(Boolean).join(' ')}
+          className="form-field create-field create-unset"
+        >
+          <legend className="form-label">{label}</legend>
+          <p id={noteId} className="form-hint">
+            {t('tickets.create.notSetHere')}
+          </p>
+          {(help || hint) && (
+            <p id={helpId || undefined} className="form-hint">
+              {help ?? hint}
+            </p>
+          )}
+          {error && (
+            <p id={errorId} className="form-error">
+              {t(errorMessage(error))}
+            </p>
+          )}
+        </fieldset>
+      );
+    }
     return (
       <div key={field.key} className="form-field create-field">
         {multiple ? (
@@ -785,6 +840,19 @@ export function CreateTicketPage({
           {problem && (
             <p role="alert" className="form-error">
               {problem}
+              {/* Refusals of fields with no row on this form, by name. */}
+              {form?.status === 'loaded' &&
+                Object.entries(errors)
+                  .filter(([key]) => !shownKeys(form.value).has(key))
+                  .map(([key, code]) => (
+                    <span key={key}>
+                      {' '}
+                      {t('tickets.create.fieldProblem', {
+                        field: nameOf(key, customField(form.value, key)),
+                        problem: t(errorMessage(code)),
+                      })}
+                    </span>
+                  ))}
             </p>
           )}
           <p role="status" className="form-status">
