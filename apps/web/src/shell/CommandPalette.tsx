@@ -129,11 +129,16 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
         ref={trigger}
         type="button"
         className="palette-trigger"
+        aria-label={t('shell.openCommandPalette')}
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
+        {/* A small phone shows the first word only; the name stays whole (TR-3). */}
         <span className="palette-trigger-label">{t('shell.openCommandPalette')}</span>
+        <span className="palette-trigger-short" aria-hidden="true">
+          {t('shell.openCommandPaletteShort')}
+        </span>
       </button>
 
       {open && (

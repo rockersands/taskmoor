@@ -369,10 +369,15 @@ a {
   cursor: pointer;
 }
 
-.palette-trigger-label {
+.palette-trigger-label,
+.palette-trigger-short {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.palette-trigger-short {
+  display: none;
 }
 
 .palette {
@@ -548,6 +553,15 @@ a {
   .palette-trigger {
     flex: 1 1 0;
     padding-inline: var(--space-2);
+  }
+
+  /* A finger's controls leave the field about 100 px: one word, never cut (TR-3). */
+  .palette-trigger-label {
+    display: none;
+  }
+
+  .palette-trigger-short {
+    display: inline;
   }
 }
 

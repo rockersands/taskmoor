@@ -638,6 +638,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.emptyBody':
     'El tablero muestra los tickets que encuentra su consulta. Crea un ticket en uno de sus tracks o cambia la consulta en la configuración del tablero.',
   'shell.openCommandPalette': 'Buscar o ir a…',
+  'shell.openCommandPaletteShort': 'Buscar',
   'palette.title': 'Paleta de comandos',
   'palette.placeholder':
     'Escribe un comando o el nombre de una página (Ctrl K abre esto desde cualquier lugar)',

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NAV_ITEMS } from '../App';
+import { asOnATouchScreen } from '../test/touch';
 import { AppShell } from './AppShell';
 import { CommandPalette } from './CommandPalette';
 import { IconSelect } from './IconSelect';
@@ -92,6 +93,28 @@ export const PaletteFromTheTopBar: Story = {
     await expect(palette.closest('.shell-topbar')).toBeNull();
     await expectOpaque(palette);
     await expectWholeWindow(body.getByRole('button', { name: 'Close the command palette' }));
+  },
+};
+
+/**
+ * TR-3: on a small phone, with a finger's controls beside it, the search field shows one word that
+ * fits rather than "Search or j…", and keeps its whole name. The same top bar on every page.
+ */
+export const TopBarOnASmallPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => asOnATouchScreen(),
+  render: (args) => (
+    <AppShell {...args} topbarEnd={<CommandPalette commands={commands} />}>
+      <PageBehind />
+    </AppShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('button', { name: 'Search or jump to…' });
+    const shown = [...trigger.querySelectorAll('span')].filter(
+      (span) => getComputedStyle(span).display !== 'none',
+    );
+    await expect(shown.map((span) => span.textContent)).toEqual(['Search']);
+    for (const span of shown) await expect(span.scrollWidth).toBeLessThanOrEqual(span.clientWidth);
   },
 };
 

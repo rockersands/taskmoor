@@ -619,6 +619,7 @@ export const messagesEn = {
   'boards.emptyBody':
     'The board shows the tickets its query finds. Create a ticket in one of its tracks, or change the query in the board settings.',
   'shell.openCommandPalette': 'Search or jump to…',
+  'shell.openCommandPaletteShort': 'Search',
   'palette.title': 'Command palette',
   'palette.placeholder': 'Type a command or a page name (Ctrl K opens this anywhere)',
   'palette.placeholderShort': 'Type a command or a page',
