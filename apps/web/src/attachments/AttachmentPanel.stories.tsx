@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { AttachmentPanel } from './AttachmentPanel';
 import { ATTACHMENTS, fakeAttachmentClient } from './fixtures';
@@ -115,6 +115,30 @@ export const ConfirmDelete: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete server.log' }));
     await expect(canvas.getByText('Delete server.log for good?')).toBeVisible();
+  },
+};
+
+/**
+ * D3 and PL-46: the preview opens from the panel, which is glass, and its veil still covers the
+ * whole window rather than the panel's box.
+ */
+export const PreviewOverTheWholeWindow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview server.log' }));
+    const body = within(document.body);
+    const dialog = await body.findByRole('dialog', { name: 'server.log' });
+    await expect(dialog.closest('.attachment-panel')).toBeNull();
+    const veil = dialog.parentElement as HTMLElement;
+    await waitFor(() => {
+      const box = veil.getBoundingClientRect();
+      expect([box.left, box.top, box.width, box.height].map(Math.round)).toEqual([
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight,
+      ]);
+    });
   },
 };
 

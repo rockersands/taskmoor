@@ -202,6 +202,9 @@ describe('the attachment panel (M1-016)', () => {
     const trigger = await screen.findByRole('button', { name: 'Preview server.log' });
     await user.click(trigger);
     const dialog = await screen.findByRole('dialog', { name: 'server.log' });
+    // Out of the panel's glass, whose blur would hold the veil to the panel (D3, PL-46).
+    expect(dialog.closest('.attachment-panel')).toBeNull();
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
     expect(await within(dialog).findByText(/payment declined: card expired/)).toBeVisible();
     expect(within(dialog).getByText(/Only the start of the file is shown/)).toBeVisible();
     expect(within(dialog).getByRole('button', { name: 'Close the preview' })).toHaveFocus();
