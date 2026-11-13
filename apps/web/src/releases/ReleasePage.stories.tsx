@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
+import { ApiError } from '../api/client';
 import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { fakeTrackClient } from '../tracks/fixtures';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
@@ -25,6 +27,7 @@ const meta = {
     client: fakeReleaseClient({ approver: true }),
     crossTrack: fakeCrossTrackClient(),
     now: () => new Date('2026-10-30T09:00:00Z'),
+    tracks: fakeTrackClient(),
   },
   decorators: [
     (Story) => (
@@ -42,7 +45,7 @@ type Story = StoryObj<typeof meta>;
 export const Upcoming: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Checkout 2.0' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { level: 1, name: '2.0' })).toBeVisible();
     await expect(canvas.getByRole('region', { name: 'Warnings' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Approve' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Ship this release…' })).toBeVisible();
@@ -69,25 +72,27 @@ export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Checkout 2.0' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { level: 1, name: '2.0' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },
 };
 
-/** A release that is not there, or not for this person: the page still says what it is. */
+/** A release that is not there, or not for this person: a not-found page with a way on (D4). */
 export const NotFound: Story = {
   args: {
     client: {
       ...fakeReleaseClient(),
       get: async () => {
-        throw new Error('not found');
+        throw new ApiError(404, { error: 'not_found' });
       },
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('heading', { name: 'Releases', level: 1 })).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Release not found', level: 1 }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Go to Home' })).toBeVisible();
   },
 };
 

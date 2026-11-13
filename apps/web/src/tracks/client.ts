@@ -55,6 +55,8 @@ export type StatisticSettings = Record<string, string | number | boolean>;
 export interface TrackSections {
   backlog: boolean;
   sprints: boolean;
+  /** The track's name, for the line above a section's title (D26); not every source has it. */
+  name?: string;
 }
 
 export interface TrackClient {
@@ -147,8 +149,12 @@ export const GROUPABLE_TYPES: ReadonlySet<string> = new Set([
 const trackPath = (key: string) => `/tracks/${encodeURIComponent(key)}`;
 
 export const trackClient: TrackClient = {
-  sections: async (key) =>
-    (await api<{ track: { sections: TrackSections } }>(trackPath(key))).track.sections,
+  sections: async (key) => {
+    const { track } = await api<{ track: { name: string; sections: TrackSections } }>(
+      trackPath(key),
+    );
+    return { ...track.sections, name: track.name };
+  },
   summary: (key) => api<TrackSummary>(`/tracks/${encodeURIComponent(key)}/summary`),
   summaryLayout: (key) => api<TrackSummaryLayout>(`${trackPath(key)}/summary-layout`),
   saveSummaryLayout: async (key, layout) => {

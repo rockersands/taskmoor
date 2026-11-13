@@ -5,9 +5,12 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { estimateText } from '../sprints/client';
+import { noEstimates } from '../sprints/SprintReportPage';
+import type { TrackClient } from '../tracks/client';
 import { ColumnChart } from './ColumnChart';
 import type { OutcomeReport, ReleaseReport, ReportClient, ScopeBurndown } from './client';
 import { LineChart } from './LineChart';
+import { ReportTable } from './ReportTable';
 
 export const SCOPE_REPORTS = [
   'release-burndown',
@@ -21,7 +24,12 @@ export interface ScopeReportProps {
   board: Board;
   kind: ScopeReportKind;
   client: ReportClient;
+  /** The track's outcomes, for the outcome reports' picker (D25); a typed key without them. */
+  outcomes?: TrackClient['outcomes'];
 }
+
+/** How many pages of outcomes the picker reads at most: a track's planning, not its history. */
+const OUTCOME_PAGES = 10;
 
 /**
  * A Scrum board's release and outcome reports (M1-062; RPT-001): the release or outcome burndown
@@ -31,11 +39,14 @@ export interface ScopeReportProps {
  * tickets done, still open and without an estimate). Values follow the board's estimation
  * statistic.
  */
-export function ScopeReport({ board, kind, client }: ScopeReportProps) {
+export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
   const trackId = board.location.type === 'track' ? board.location.track.id : null;
+  // Inside a track the outcomes are listed to pick from; elsewhere a key is typed.
+  const trackKey = outcomes && board.location.type === 'track' ? board.location.track.key : null;
+  const [outcomeList, setOutcomeList] = useState<{ key: string; summary: string }[] | null>(null);
   const [releases, setReleases] = useState<{ id: number; name: string }[] | null>(null);
   const [release, setRelease] = useState<number | null>(null);
   const [outcomeText, setOutcomeText] = useState('');
@@ -65,6 +76,33 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
       live = false;
     };
   }, [client, trackId, forRelease]);
+
+  // The track's outcomes to pick from, like its releases (D25): open ones first, the first chosen.
+  useEffect(() => {
+    if (forRelease || trackKey === null || !outcomes) return;
+    let live = true;
+    (async () => {
+      const list: { key: string; summary: string }[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < OUTCOME_PAGES; page++) {
+        const read = await outcomes(trackKey, cursor);
+        list.push(...read.outcomes.map((o) => ({ key: o.key, summary: o.summary })));
+        if (!read.next) break;
+        cursor = read.next;
+      }
+      return list;
+    })().then(
+      (list) => {
+        if (!live) return;
+        setOutcomeList(list);
+        setOutcome((current) => current ?? list[0]?.key ?? null);
+      },
+      () => live && setFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [outcomes, trackKey, forRelease]);
 
   useEffect(() => {
     let live = true;
@@ -130,7 +168,31 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
         </div>
       </div>
     )
+  ) : trackKey !== null ? (
+    outcomeList && outcomeList.length === 0 ? (
+      <EmptyState title={t('reports.scope.noOutcomes')}>
+        {t('reports.scope.noOutcomesHint')}
+      </EmptyState>
+    ) : (
+      <div className="reports-controls">
+        <div className="form-field">
+          <label htmlFor={`${id}-outcome`}>{t('reports.scope.outcome')}</label>
+          <select
+            id={`${id}-outcome`}
+            value={outcome ?? ''}
+            onChange={(e) => setOutcome(e.target.value)}
+          >
+            {(outcomeList ?? []).map((o) => (
+              <option key={o.key} value={o.key}>
+                {t('reports.scope.outcomeOption', { key: o.key, summary: o.summary })}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    )
   ) : (
+    // A board outside any track has no outcomes to list: its key is typed instead.
     <form
       className="reports-controls"
       onSubmit={(e: FormEvent) => {
@@ -158,6 +220,22 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
     if (b.sprints.length === 0) {
       return (
         <EmptyState title={t('reports.scope.noSprints')}>{t('empty.reports.noSprints')}</EmptyState>
+      );
+    }
+    // Nothing estimated: empty charts and '0 remaining of 0' would contradict the tickets in
+    // the release, so it says why instead (TR-13), as the sprint report does.
+    if (
+      noEstimates(b.statistic.statistic, [
+        b.now.scope,
+        b.now.completed,
+        b.now.remaining,
+        ...b.sprints.flatMap((s) => [s.start, s.completed, s.added, s.removed, s.end]),
+      ])
+    ) {
+      return (
+        <EmptyState title={t('sprints.charts.noEstimates.title')}>
+          {t('reports.scope.noEstimates')}
+        </EmptyState>
       );
     }
     const first = b.sprints[0];
@@ -224,11 +302,10 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
           ]}
           format={value}
           unit={time ? 3600 : 1}
-          tableLabel={t('reports.table')}
+          // The table below holds these numbers and more: no second way to them (TR-32).
           categoryHeader={t('reports.scope.sprint')}
         />
-        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard */}
-        <section className="report-table" aria-label={t('reports.scope.table')} tabIndex={0}>
+        <ReportTable label={t('reports.scope.table')}>
           <table className="data-table">
             <thead>
               <tr>
@@ -253,7 +330,7 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
               ))}
             </tbody>
           </table>
-        </section>
+        </ReportTable>
       </>
     );
   };
@@ -321,8 +398,7 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
           {t('empty.reports.outcome')}
         </EmptyState>
       ) : (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-        <section className="report-table" aria-label={t('reports.outcome.tickets')} tabIndex={0}>
+        <ReportTable label={t('reports.outcome.tickets')}>
           <table className="data-table">
             <thead>
               <tr>
@@ -344,22 +420,30 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
               ))}
             </tbody>
           </table>
-        </section>
+        </ReportTable>
       )}
     </>
   );
 
+  // A shipped release: the day it shipped on, as its page and the Releases list say, and no
+  // forecast, which only an open release has (TR-15).
   const releaseView = (r: ReleaseReport) => (
     <>
       <p className="report-note">
-        {r.release.shippedAt
-          ? t('reports.release.shipped', { date: day(r.release.shippedAt.slice(0, 10)) })
-          : r.release.releaseDate
-            ? t('reports.release.planned', { date: day(r.release.releaseDate) })
-            : t('reports.release.unplanned')}{' '}
-        {r.forecast
-          ? t('reports.release.forecast', { date: day(r.forecast) })
-          : t('reports.release.noForecast')}
+        {r.release.shippedAt ? (
+          t('reports.release.shipped', {
+            date: day(r.release.releaseDate ?? r.release.shippedAt.slice(0, 10)),
+          })
+        ) : (
+          <>
+            {r.release.releaseDate
+              ? t('reports.release.planned', { date: day(r.release.releaseDate) })
+              : t('reports.release.unplanned')}{' '}
+            {r.forecast
+              ? t('reports.release.forecast', { date: day(r.forecast) })
+              : t('reports.release.noForecast')}
+          </>
+        )}
       </p>
       {byDay(r.days)}
     </>
@@ -369,16 +453,21 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
   if (failed) {
     body = (
       <p className="board-problem" role="alert">
-        {forRelease ? t('reports.failed') : t('reports.scope.notFound')}
+        {forRelease || trackKey !== null ? t('reports.failed') : t('reports.scope.notFound')}
       </p>
     );
   } else if (!forRelease && outcome === null) {
-    body = (
-      <EmptyState
-        compact
-        title={t(kind === 'outcome-report' ? 'reports.outcome.pick' : 'reports.scope.pick')}
-      />
-    );
+    body =
+      trackKey !== null ? (
+        outcomeList === null ? (
+          <p className="report-loading">{t('reports.loading')}</p>
+        ) : null
+      ) : (
+        <EmptyState
+          compact
+          title={t(kind === 'outcome-report' ? 'reports.outcome.pick' : 'reports.scope.pick')}
+        />
+      );
   } else if (burndown) body = burndownView(burndown);
   else if (report) body = releaseView(report);
   else if (outcomeReport) body = outcomeView(outcomeReport);

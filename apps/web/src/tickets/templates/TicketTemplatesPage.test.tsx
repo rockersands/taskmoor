@@ -33,7 +33,7 @@ describe('ticket templates page (CORE-029)', () => {
   it('[CORE-029] lists a track’s templates and those for every track, which it only reads', async () => {
     renderPage();
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ticket templates of Shop' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ticket templates' }),
     ).toBeVisible();
     const own = screen.getByText('Release checklist').closest('li') as HTMLElement;
     expect(within(own).getByText('Everything a release needs')).toBeVisible();
@@ -46,6 +46,19 @@ describe('ticket templates page (CORE-029)', () => {
     expect(within(shared).getByText('Every track')).toBeVisible();
     expect(within(shared).getByText('Every ticket type')).toBeVisible();
     expect(within(shared).queryByRole('button')).toBeNull();
+  });
+
+  it('[CORE-029] titles a track’s templates like its other pages, the track above and no way back that repeats a tab (TR-27, D7, D26)', async () => {
+    renderPage();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Ticket templates' });
+    const header = heading.closest('header') as HTMLElement;
+    expect(within(header).getByText('Shop')).toBeVisible();
+    expect(
+      within(header).getByText(
+        'Templates offered when a ticket is created in this track, those for every track included.',
+      ),
+    ).toBeVisible();
+    expect(within(header).queryByRole('link')).toBeNull();
   });
 
   it('[CORE-029] (1) shows those who may not change them no way to', async () => {

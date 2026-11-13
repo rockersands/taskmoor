@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -29,15 +36,57 @@ export const trackHref = (key: string, section: TrackSection = 'summary') =>
 
 interface TrackLayoutProps {
   trackKey: string;
-  section: TrackSection;
+  /** The tab to mark; null on a page of the track with no tab of its own (its Templates). */
+  section: TrackSection | null;
   children: ReactNode;
   client?: TrackClient;
 }
 
+/** Which ends of a sideways scroller have more beyond them, for the fade that says so. */
+export type MoreSides = 'none' | 'start' | 'end' | 'both';
+
+export function moreSides(scroller: HTMLElement): MoreSides {
+  const before = scroller.scrollLeft > 1;
+  const after = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1;
+  return before && after ? 'both' : before ? 'start' : after ? 'end' : 'none';
+}
+
+/**
+ * Keeps `data-more` on a sideways scroller current: which of its ends hide more, so a fade can say
+ * so (the page-review faults TR-4 and TR-23). Returns the value for the first paint.
+ */
+export function useMoreSides(
+  scroller: RefObject<HTMLElement | null>,
+  /** Changes whenever what the scroller holds may have changed width. */
+  contents: unknown,
+): MoreSides {
+  const [more, setMore] = useState<MoreSides>('none');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: new contents measure anew
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const update = () => setMore(moreSides(element));
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }, [scroller, contents]);
+  return more;
+}
+
 /**
  * One place per track (the user's decision, ADR-116): every page of a track shares this tab bar.
- * On a phone the bar scrolls inside itself, so the page never scrolls sideways. A Backlog tab shows
- * only on a track that has a backlog: never on a Kanban one, not even greyed out.
+ * On a phone the bar scrolls inside itself, so the page never scrolls sideways: the current tab is
+ * brought into view and a fade at either end says more tabs are there (the page-review fault
+ * TR-4). A Backlog tab shows only on a track that has a backlog: never on a Kanban one, not even
+ * greyed out. A track that does not exist, or that the reader may not see, has no tabs: the page
+ * says so and leads on (D4, AC-8).
  */
 export function TrackLayout({
   trackKey,
@@ -46,19 +95,40 @@ export function TrackLayout({
   client = trackClient,
 }: TrackLayoutProps) {
   const t = useT();
-  const loaded = useLoadedTrackSections(trackKey, client, section);
+  const loaded = useLoadedTrackSections(trackKey, client, section ?? 'other');
   const missing = loaded === 'missing';
   const sections = missing ? null : loaded;
-  useEffect(() => rememberTrack(trackKey), [trackKey]);
+  useEffect(() => {
+    if (!missing) rememberTrack(trackKey);
+  }, [trackKey, missing]);
   const tabs = TRACK_SECTIONS.filter((s) => s.id !== 'backlog' || sections?.backlog === true);
   const body = useMotionOnChange<HTMLDivElement>('motion-rise', `${trackKey}/${section}`);
-  // No tabs to more pages of a track that is not there (D4).
+  const bar = useRef<HTMLElement>(null);
+  const hasBacklog = sections?.backlog === true;
+  const more = useMoreSides(bar, `${section}/${hasBacklog}/${missing}`);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the tabs move when Backlog comes or goes
+  useLayoutEffect(() => {
+    const current = bar.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    // Only the bar moves: 'nearest' keeps the page where it is, 'center' shows a neighbour each side.
+    current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }, [section, hasBacklog, missing]);
+
   if (missing) {
-    return <NotFoundPage title={t('notFound.track')}>{t('summary.notFound')}</NotFoundPage>;
+    return (
+      <NotFoundPage title={t('notFound.track')}>
+        {t('track.notFound', { key: trackKey })}
+      </NotFoundPage>
+    );
   }
   return (
     <TrackSectionsContext.Provider value={sections}>
-      <nav className="track-tabs" aria-label={t('track.sections', { key: trackKey })}>
+      <nav
+        ref={bar}
+        className="track-tabs"
+        data-more={more}
+        aria-label={t('track.sections', { key: trackKey })}
+      >
         <ul>
           {tabs.map((s) => (
             <li key={s.id}>

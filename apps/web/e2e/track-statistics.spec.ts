@@ -107,6 +107,13 @@ async function newTrack(api: APIRequestContext, projectName: string) {
   return { key, id: made.track.id };
 }
 
+/** A report of a track's Statistics: its link on a wide screen, the one Report picker on a phone (D5). */
+async function openReport(page: Page, name: string): Promise<void> {
+  const picker = page.getByRole('combobox', { name: 'Report' });
+  if (await picker.isVisible()) await picker.selectOption({ label: name });
+  else await page.getByRole('navigation', { name: 'Reports' }).getByRole('link', { name }).click();
+}
+
 test('[RPT-006] the track’s administrator puts a report on the Summary; a member reads it as it is', async ({
   page,
 }, testInfo) => {
@@ -116,7 +123,9 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
 
   // The administrator customizes: today's numbers stay, and the workload joins them.
   await visit(page, `#/tracks/${key}`);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(`(${key})`);
+  // Titled by its section under the track's tab bar (D26).
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Summary');
+  await expect(page.getByRole('navigation', { name: `Sections of ${key}` })).toBeVisible();
   await page.getByRole('button', { name: 'Customize' }).click();
   await page.getByRole('combobox', { name: 'Widget to add' }).selectOption({ label: 'Workload' });
   await page.getByRole('button', { name: 'Add widget' }).click();
@@ -165,19 +174,28 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
 
 test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count what search finds', async ({
   page,
+  isMobile,
 }, testInfo) => {
   test.setTimeout(90_000);
   const api = page.request;
   const { key } = await newTrack(api, testInfo.project.name);
 
   await visit(page, `#/tracks/${key}/statistics/group-by`);
-  const nav = page.getByRole('navigation', { name: 'Reports' });
-  await expect(nav.getByRole('group', { name: 'Time and workload' })).toBeVisible();
-  await expect(nav.getByRole('group', { name: 'Sprints' })).toHaveCount(0);
-  await expect(nav.getByRole('link', { name: 'Grouped tickets' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  if (isMobile) {
+    // On a phone one Report picker stands for the grouped links (D5).
+    const picker = page.getByRole('combobox', { name: 'Report' });
+    await expect(picker).toHaveValue('group-by');
+    await expect(picker.locator('optgroup[label="Time and workload"]')).toHaveCount(1);
+    await expect(picker.locator('optgroup[label="Sprints"]')).toHaveCount(0);
+  } else {
+    const nav = page.getByRole('navigation', { name: 'Reports' });
+    await expect(nav.getByRole('group', { name: 'Time and workload' })).toBeVisible();
+    await expect(nav.getByRole('group', { name: 'Sprints' })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Grouped tickets' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  }
   // Each status a group: their totals add up to the track, their done counts to the closed stage.
   const groups = page.getByRole('list', { name: 'Grouped tickets' });
   await expect(groups).toBeVisible();
@@ -194,7 +212,7 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
 
   // Time tracking: 2h, 3h and half an hour estimated, an hour logged, 4.5h left (the closed
   // ticket keeps its half hour), so the work is on the estimate.
-  await nav.getByRole('link', { name: 'Time tracking' }).click();
+  await openReport(page, 'Time tracking');
   const totals = page.locator('dl.report-stats');
   await expect(totals.getByText('5.5h')).toBeVisible();
   await expect(totals.getByText('1h', { exact: true })).toBeVisible();
@@ -210,7 +228,7 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
   await noSidewaysScroll(page);
 
   // Workload by person: the open tickets' remaining estimate, as the search finds them.
-  await nav.getByRole('link', { name: 'Workload by person' }).click();
+  await openReport(page, 'Workload by person');
   const table = page.getByRole('region', { name: 'Workload by person' });
   const total = table.getByRole('row', { name: /Total/ });
   await expect(total).toContainText(

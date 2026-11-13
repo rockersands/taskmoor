@@ -41,7 +41,13 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
   const others = (list ?? []).filter((d) => d.owner.id !== me);
   const row = (d: DashboardSummary) => (
     <li key={d.id} className="dashboard-row">
-      <label className="reports-check">
+      <a href={routeHref(`#/dashboards/${d.id}`)}>{d.name}</a>
+      <span className="board-meta">
+        {t('dashboards.meta', { owner: d.owner.name })}
+        {d.isDefault && ` ${t('dashboards.isDefault')}`}
+      </span>
+      {/* The box says what it does, in words a sighted reader sees too (PL-14). */}
+      <label className="reports-check dashboard-wallboard-pick">
         <input
           type="checkbox"
           checked={chosen.includes(d.id)}
@@ -50,12 +56,8 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
           }
           aria-label={t('dashboards.chooseForWallboard', { name: d.name })}
         />
+        <span aria-hidden="true">{t('dashboards.onWallboard')}</span>
       </label>
-      <a href={routeHref(`#/dashboards/${d.id}`)}>{d.name}</a>
-      <span className="board-meta">
-        {t('dashboards.meta', { owner: d.owner.name })}
-        {d.isDefault && ` ${t('dashboards.isDefault')}`}
-      </span>
     </li>
   );
 
@@ -100,7 +102,11 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
         </section>
       )}
       {list && list.length > 0 && (
-        <div className="glass-card reports-controls">
+        <section
+          className="glass-card reports-controls dashboard-wallboard"
+          aria-labelledby={`${id}-wallboard`}
+        >
+          <h2 id={`${id}-wallboard`}>{t('dashboards.wallboardTitle')}</h2>
           <div className="form-field">
             <label htmlFor={`${id}-seconds`}>{t('dashboards.wallboardSeconds')}</label>
             <input
@@ -125,7 +131,7 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
           ) : (
             <p className="report-note">{t('dashboards.chooseHint')}</p>
           )}
-        </div>
+        </section>
       )}
     </section>
   );

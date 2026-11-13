@@ -182,7 +182,9 @@ export function TrackSummaryPage({
     <section className="page track-summary" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
-        title={t('summary.title', { name: read.track.name, key: read.track.key })}
+        // Titled by its section, the track named above it, like the track's other pages (D26).
+        title={t('track.section.summary')}
+        eyebrow={read.track.name}
         purpose={t('summary.purpose')}
         about={t('summary.about')}
         actions={

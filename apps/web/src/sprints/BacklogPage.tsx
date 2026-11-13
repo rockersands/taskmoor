@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { TOUCH_QUERY } from '../boards/touch';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
@@ -15,6 +16,7 @@ import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useMediaQuery } from '../shell/useMediaQuery';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { useTrackSections } from '../tracks/trackSections';
 import { CompleteTargetSelect, completeRefusal, targetOf } from './CompleteSprint';
@@ -38,6 +40,8 @@ export interface BacklogPageProps {
   client?: SprintClient;
   /** Today, for the default end date of a sprint being started (two weeks later). */
   now?: () => Date;
+  /** The name of the track the board belongs to, shown above the title; none outside a track. */
+  trackName?: string | null;
 }
 
 const TWO_WEEKS = 14 * 24 * 3600 * 1000;
@@ -95,8 +99,10 @@ export function BacklogPage({
   boardId,
   client = sprintClient,
   now = () => new Date(),
+  trackName = null,
 }: BacklogPageProps) {
   const t = useT();
+  const touch = useMediaQuery(TOUCH_QUERY);
   const id = useId();
   const page = useRef<HTMLElement>(null);
   /**
@@ -562,8 +568,11 @@ export function BacklogPage({
             />
             <span className="ticket-icons">
               <TypeIcon name={ticket.type} icon={ticket.typeIcon} />
-              {ticket.priority && (
+              {ticket.priority ? (
                 <PriorityIcon name={ticket.priority.name} level={ticket.priority.level} />
+              ) : (
+                // The priority's place is kept, so this row's key lines up with the others (TR-22).
+                <span className="ticket-icon-slot" aria-hidden="true" />
               )}
             </span>
             <a
@@ -636,11 +645,17 @@ export function BacklogPage({
       <PageHeader
         titleId={`${id}-title`}
         title={t('sprints.backlog.pageTitle')}
+        // The track named above the section's title, as on its other pages (D26). Its Board tab
+        // is right above, so no pill leads back to the board inside a track (D7).
+        eyebrow={trackName ?? undefined}
         purpose={t('purpose.backlog')}
+        about={t('sprints.backlog.about')}
         actions={
-          <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
-            {t('sprints.backlog.toBoard')}
-          </a>
+          trackName ? undefined : (
+            <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
+              {t('sprints.backlog.toBoard')}
+            </a>
+          )
         }
       />
       {failed && (
@@ -654,7 +669,8 @@ export function BacklogPage({
         </p>
       )}
       <p className="board-hint" id={`${id}-hint`}>
-        {t('sprints.rank.hint')}
+        {/* On a touch screen the keys mean nothing: the short touch wording instead (D6, TR-7). */}
+        {t(touch ? 'sprints.rank.touchHint' : 'sprints.rank.hint')}
       </p>
       <p className="board-hint" role="status">
         {notice}
@@ -952,7 +968,10 @@ function SprintPanel({
         </span>
         <span className="board-meta">{totals}</span>
         {section.state === 'active' && (
-          <a href={routeHref(`#/boards/${section.boardId}/sprints/${section.id}/report`)}>
+          <a
+            className="sprint-report-link"
+            href={routeHref(`#/boards/${section.boardId}/sprints/${section.id}/report`)}
+          >
             {t('sprints.report.link')}
           </a>
         )}

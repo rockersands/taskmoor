@@ -64,7 +64,9 @@ describe('a Summary on a Kanban track (ADR-116)', () => {
 describe('track summary page (M1-064)', () => {
   it('[RPT-006] every number opens the search that counts it', async () => {
     open();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Shop (SHOP)' })).toBeVisible();
+    // Titled by its section, the track named above it (D26).
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Summary' });
+    expect(within(heading.closest('header') as HTMLElement).getByText('Shop')).toBeVisible();
     const open26 = await screen.findByRole('link', { name: '26' });
     expect(open26).toHaveAttribute(
       'href',
@@ -118,7 +120,16 @@ describe('track summary page (M1-064)', () => {
     const { container, errors } = open('en-XA');
     await screen.findByRole('heading', { level: 1 });
     await waitFor(() => expect(container.querySelector('.summary-sections')).not.toBeNull());
-    const data = new Set(['High', 'Medium', 'Bug', 'Feature', 'Ada Lovelace', 'Grace Hopper']);
+    // The track's name above the title is data too.
+    const data = new Set([
+      'Shop',
+      'High',
+      'Medium',
+      'Bug',
+      'Feature',
+      'Ada Lovelace',
+      'Grace Hopper',
+    ]);
     const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);

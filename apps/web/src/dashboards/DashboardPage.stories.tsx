@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { DashboardPage } from './DashboardPage';
@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const Widgets: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('figure', { name: 'Pie chart' })).toBeVisible();
+    await expect(await canvas.findByRole('figure', { name: 'Tickets by Priority' })).toBeVisible();
     await expect(await canvas.findByRole('figure', { name: 'Created vs closed' })).toBeVisible();
   },
 };
@@ -43,13 +43,27 @@ export const Editing: Story = {
   },
 };
 
-/** On a wall: the title and the widgets, with no line about what the page is for. */
+/**
+ * On a wall (D31): its own layout in large type, the title and the widgets alone. No line about
+ * the page, no "Show the numbers", and the way out shows only once the keyboard or a pointer
+ * reaches it.
+ */
 export const Wallboard: Story = {
   args: { wallboard: { rotation: [5], seconds: 60 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('link', { name: 'Leave the wallboard' })).toBeVisible();
+    const leave = await canvas.findByRole('link', { name: 'Leave the wallboard' });
+    const exits = leave.closest('.wallboard-exits') as HTMLElement;
+    await expect(getComputedStyle(exits).opacity).toBe('0');
     await expect(canvas.queryByText(/^The charts and lists gathered here/)).toBeNull();
+    await canvas.findAllByRole('figure');
+    for (const numbers of canvasElement.querySelectorAll('.chart-table')) {
+      await expect(getComputedStyle(numbers).display).toBe('none');
+    }
+    const page = canvasElement.querySelector('.is-wallboard') as HTMLElement;
+    await expect(Number.parseFloat(getComputedStyle(page).fontSize)).toBeGreaterThanOrEqual(20);
+    leave.focus();
+    await waitFor(() => expect(getComputedStyle(exits).opacity).toBe('1'));
   },
 };
 
@@ -67,7 +81,7 @@ export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
-/** A dashboard that cannot be found still has its page: a title and what the section is for. */
+/** A dashboard that cannot be found: the shared not-found page, with a way on (D4). */
 export const NotFound: Story = {
   args: {
     client: {
@@ -79,7 +93,9 @@ export const NotFound: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('heading', { level: 1, name: 'Dashboards' })).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'Dashboard not found' }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Go to Home' })).toBeVisible();
   },
 };

@@ -1,5 +1,6 @@
 import type { Board } from '../boards/client';
 import { BOARD } from '../boards/fixtures';
+import { SHOP_OUTCOMES } from '../tracks/fixtures';
 import type {
   CumulativeFlow,
   CycleParams,
@@ -176,6 +177,14 @@ export const RELEASES: { id: number; name: string }[] = [
   { id: 32, name: 'Checkout 2.1' },
 ];
 
+/** An outcome the fake reports know: SHOP-7, or one of the track fixture's outcomes. */
+function knownOutcome(key: string): { id: number; key: string; summary: string } {
+  if (key === 'SHOP-7') return { id: 77, key: 'SHOP-7', summary: 'One-page checkout' };
+  const found = SHOP_OUTCOMES.find((o) => o.key === key);
+  if (!found) throw new Error('not_found');
+  return { id: found.id, key: found.key, summary: found.summary };
+}
+
 /** Three sprints of a release in points: two completed, one running. */
 export function scopeFixture(): ScopeBurndown {
   const sprint = (
@@ -293,17 +302,12 @@ export function fakeReportClient(board: Board = REPORT_BOARD): FakeReportClient 
     },
     outcomeBurndown: async (_board, outcome) => {
       calls.push({ report: 'outcome-burndown', params: { outcome } });
-      if (outcome !== 'SHOP-7') throw new Error('not_found');
-      return {
-        ...scopeFixture(),
-        outcome: { id: 77, key: 'SHOP-7', summary: 'One-page checkout' },
-      };
+      return { ...scopeFixture(), outcome: knownOutcome(outcome) };
     },
     releaseReport: async () => releaseReportFixture(),
     outcomeReport: async (_board, outcome) => {
       calls.push({ report: 'outcome-report', params: { outcome } });
-      if (outcome !== 'SHOP-7') throw new Error('not_found');
-      return outcomeReportFixture();
+      return { ...outcomeReportFixture(), outcome: knownOutcome(outcome) };
     },
   };
 }

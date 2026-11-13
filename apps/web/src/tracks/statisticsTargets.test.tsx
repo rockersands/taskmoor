@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
 import type { Board } from '../boards/client';
@@ -106,10 +105,8 @@ describe('ticket links and tables in the reports (ADR-033)', () => {
   });
 
   it('[RPT-001] the outcome report’s tickets are 44px targets in a table that takes focus', async () => {
-    const user = userEvent.setup();
+    // The first of the track's outcomes is chosen from the list (D25).
     const container = open('outcome-report');
-    await user.type(await screen.findByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
-    await user.click(screen.getByRole('button', { name: 'Show' }));
     await screen.findByRole('region', { name: 'Tickets under the outcome' });
     expect(check(container, rules)).toEqual({ links: 4, tables: 1 });
   });

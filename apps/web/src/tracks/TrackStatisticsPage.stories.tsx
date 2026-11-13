@@ -140,11 +140,52 @@ export const OutcomeReport: Story = {
   args: { report: 'outcome-report', board: SCRUM, reports: fakeReportClient(SCRUM) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
-    await userEvent.click(canvas.getByRole('button', { name: 'Show' }));
+    await userEvent.selectOptions(
+      await canvas.findByRole('combobox', { name: 'Outcome' }),
+      'SHOP-51',
+    );
     await expect(
       await canvas.findByRole('region', { name: 'Tickets under the outcome' }),
     ).toBeVisible();
+  },
+};
+
+/**
+ * In a narrow column the links wrap: every row of a group starts where its first link does, in
+ * a column of its own beside the labels, never back under the label (TR-6).
+ */
+export const WrappedLinksLineUp: Story = {
+  args: { board: SCRUM, reports: fakeReportClient(SCRUM) },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 520 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nav = await canvas.findByRole('navigation', { name: 'Reports' });
+    const starts = new Set<number>();
+    let wrapped = 0;
+    for (const group of within(nav).getAllByRole('group')) {
+      const links = within(group).getAllByRole('link');
+      const first = links[0]?.getBoundingClientRect();
+      const label = group.querySelector('.statistics-tab-label')?.getBoundingClientRect();
+      if (!first || !label) throw new Error('a group with no label or links');
+      await expect(label.right).toBeLessThanOrEqual(first.left);
+      starts.add(Math.round(first.left));
+      for (const link of links.slice(1)) {
+        const box = link.getBoundingClientRect();
+        if (box.top > first.top + 1 && box.left < first.left + 1) {
+          wrapped += 1;
+          await expect(Math.round(box.left)).toBe(Math.round(first.left));
+        }
+      }
+    }
+    // The column of links is one for every group, and some rows did wrap.
+    await expect(starts.size).toBe(1);
+    await expect(wrapped).toBeGreaterThan(0);
   },
 };
 

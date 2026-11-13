@@ -52,9 +52,8 @@ async function boardWithFilter(page: Page, prefix: string, projectName: string) 
 
   const opened = await page.request.get(`${BASE}/api/v1/tracks/${key}/board`);
   expect(opened.status(), await opened.text()).toBe(200);
-  const boardName = (await opened.json()).board.name as string;
   await page.goto(`${BASE}/#/tracks/${key}/board`);
-  const board = page.getByRole('region', { name: boardName, exact: true });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   const card = board.getByRole('link', { name: new RegExp(`^${ticketKey} `) });
   await expect(card).toBeVisible();
   await board

@@ -61,12 +61,9 @@ test('[AGL-005] a board filtered by person, by keyboard and from a shared addres
   // the checks look only at this run's two cards.
   const opened = await page.request.get(`${BASE}/api/v1/tracks/ATT/board`);
   expect(opened.status(), await opened.text()).toBe(200);
-  const { id: boardId, name: boardName } = (await opened.json()).board as {
-    id: number;
-    name: string;
-  };
+  const { id: boardId } = (await opened.json()).board as { id: number };
   await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: boardName, exact: true });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   const links = board.getByRole('link', { name: new RegExp(`^ATT-\\d+ .*${word}`) });
   await expect(links).toHaveCount(2);
 

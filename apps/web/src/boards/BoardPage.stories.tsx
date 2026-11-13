@@ -82,9 +82,16 @@ const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
 export const Board: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Checkout team' })).toBeVisible();
+    // A track's board: titled by its section, the track named above it (D26).
+    await expect(await canvas.findByRole('heading', { level: 1, name: 'Board' })).toBeVisible();
     await expect(canvas.getByText('Over the maximum')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: /^Expedite/ })).toBeVisible();
+    // The filters sit on a slab of their own, with a fill and an edge in either skin (D28).
+    const slab = getComputedStyle(
+      canvas.getByRole('group', { name: 'Board filters' }).closest('.board-filters') as Element,
+    );
+    await expect(slab.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    await expect(slab.borderTopWidth).toBe('1px');
   },
 };
 

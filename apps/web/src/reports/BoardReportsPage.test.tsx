@@ -156,6 +156,28 @@ describe('board reports (M1-061)', () => {
     ]);
   });
 
+  it('[RPT-001] time in status has one way to its numbers: the table, scrolled by keyboard with a cue (TR-12, TR-32)', async () => {
+    const restore = (['scrollWidth', 'clientWidth'] as const).map((name) => {
+      Object.defineProperty(HTMLElement.prototype, name, {
+        configurable: true,
+        get(this: HTMLElement) {
+          if (!this.classList.contains('report-table')) return 0;
+          return name === 'scrollWidth' ? 620 : 343;
+        },
+      });
+      return () => delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
+    });
+    try {
+      open('time-in-status');
+      const region = await screen.findByRole('region', { name: 'Time in each status' });
+      expect(screen.queryByText('Show the numbers')).toBeNull();
+      expect(region).toHaveAttribute('tabindex', '0');
+      await waitFor(() => expect(region).toHaveAttribute('data-more', 'end'));
+    } finally {
+      for (const undo of restore) undo();
+    }
+  });
+
   it('[RPT-001] says when a report cannot be loaded or has nothing to show', async () => {
     const failing = fakeReportClient();
     failing.cumulativeFlow = async () => {

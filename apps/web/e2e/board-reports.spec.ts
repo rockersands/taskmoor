@@ -34,6 +34,13 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
   });
 }
 
+/** A report of a track's Statistics: its link on a wide screen, the one Report picker on a phone (D5). */
+async function openReport(page: Page, name: string): Promise<void> {
+  const picker = page.getByRole('combobox', { name: 'Report' });
+  if (await picker.isVisible()) await picker.selectOption({ label: name });
+  else await page.getByRole('navigation', { name: 'Reports' }).getByRole('link', { name }).click();
+}
+
 test('[RPT-001] a board’s cumulative flow, control chart and time in status', async ({
   page,
 }, testInfo) => {
@@ -67,16 +74,19 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
 
   // One card starts from the board (New to Active), as people move them.
   await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: `Flow ${word}` });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
   await expect(cell('New').getByRole('link')).toHaveCount(3);
   await board.getByRole('link', { name: new RegExp(`^${keys[1]} `) }).focus();
   await page.keyboard.press('Alt+ArrowRight');
   await expect(cell('Active').getByRole('link')).toHaveCount(1);
 
-  await board.getByRole('link', { name: 'Reports' }).click();
-  // The link goes to the Statistics section of the board's track (ADR-116).
-  const reports = page.getByRole('region', { name: /^Statistics of / });
+  // The track's Statistics tab holds the board's reports (ADR-116); no pill repeats it (D7).
+  await page
+    .getByRole('navigation', { name: `Sections of ${key}` })
+    .getByRole('link', { name: 'Statistics' })
+    .click();
+  const reports = page.getByRole('region', { name: 'Statistics', exact: true });
   const flow = reports.getByRole('figure', { name: 'Cumulative flow' });
   await expect(flow.getByRole('img')).toHaveAttribute(
     'aria-label',
@@ -91,7 +101,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   // Nothing finished yet; the period and a board filter change what the chart reads.
-  await reports.getByRole('link', { name: 'Control chart' }).click();
+  await openReport(page, 'Control chart');
   await expect(
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
@@ -104,7 +114,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // The choices stay from report to report: none of the tickets is Ada's.
-  await reports.getByRole('link', { name: 'Time in status' }).click();
+  await openReport(page, 'Time in status');
   await expect(
     reports.getByText('No ticket of this board was in a status in this period.'),
   ).toBeVisible();

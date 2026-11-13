@@ -49,7 +49,7 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
   // Any card to any column: straight to the rightmost, then back to the new one. The card's
   // Move menu offers every column (dragging the same moves is the board-drag test's).
   await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: `Board workflow ${suffix}` });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
   await expect(cell('New').getByRole('link')).toHaveCount(1);
   const moveTo = async (label: string) => {

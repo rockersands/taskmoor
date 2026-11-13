@@ -1,8 +1,10 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
+import { fakeTrackClient } from '../tracks/fixtures';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
@@ -14,6 +16,7 @@ function renderRelease(releaseId = 2, client = fakeReleaseClient({ approver: tru
         releaseId={releaseId}
         client={client}
         now={() => new Date('2026-10-30T09:00:00Z')}
+        tracks={fakeTrackClient()}
       />
     </I18nProvider>,
   );
@@ -176,7 +179,7 @@ describe('a release in a release across tracks (PLN-007)', () => {
 describe('a release’s page (M1-050)', () => {
   it('[CORE-016] shows the tickets by stage, each number opening the search that finds them', async () => {
     renderRelease();
-    expect(await screen.findByRole('heading', { name: 'Checkout 2.0' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: '2.0' })).toBeVisible();
     const progress = section('Progress');
     const closed = progress.getByRole('link', { name: 'Closed 1, open the search' });
     expect(searchOf(closed.getAttribute('href'))).toBe('targetRelease = 2 AND stage = closed');
@@ -203,9 +206,12 @@ describe('a release’s page (M1-050)', () => {
   it('[CORE-016] ships only once approved, moving the open tickets to the next release', async () => {
     const user = userEvent.setup();
     const client = renderRelease();
-    await screen.findByRole('heading', { name: 'Checkout 2.0' });
-    const shipping = section('Shipping');
-    await user.click(shipping.getByRole('button', { name: 'Ship this release…' }));
+    await screen.findByRole('heading', { level: 1, name: '2.0' });
+    expect(screen.queryByRole('region', { name: 'Ship 2.0?' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Ship this release…' }));
+    const shipping = section('Ship 2.0?');
+    expect(screen.getByRole('heading', { name: 'Ship 2.0?' })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
     expect(shipping.getByLabelText('Ship on')).toHaveValue('2026-10-30');
     await user.click(await shipping.findByRole('radio', { name: 'Move them to 2.1' }));
     await user.click(shipping.getByRole('button', { name: 'Ship 2.0' }));
@@ -222,7 +228,8 @@ describe('a release’s page (M1-050)', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent('2.0 shipped.');
     expect(client.releases().find((r) => r.name === '2.1')?.progress.open).toBe(4);
-    expect(screen.queryByRole('region', { name: 'Shipping' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Ship 2.0?' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
   });
 
   it('[CORE-016] shows the generated notes, to copy as Markdown or download', async () => {
@@ -243,15 +250,50 @@ describe('a release’s page (M1-050)', () => {
       'href',
       '/api/v1/releases/1/notes?format=markdown',
     );
-    // Shipped: no shipping section, the day it shipped.
-    expect(screen.queryByRole('region', { name: 'Shipping' })).toBeNull();
+    // Shipped: no way to ship it again, the day it shipped.
+    expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
     expect(screen.getByText('Shipped on').nextElementSibling).toHaveTextContent('2026-10-01');
+  });
+
+  it('[CORE-016] sits under its track’s tab bar with Releases marked, titled by its name under the track (T-215, D26, D7)', async () => {
+    renderRelease();
+    const heading = await screen.findByRole('heading', { level: 1, name: '2.0' });
+    const header = heading.closest('header') as HTMLElement;
+    expect(within(header).getByText('Checkout', { exact: false })).toBeVisible();
+    expect(within(header).queryByRole('link')).toBeNull();
+    const bar = await screen.findByRole('navigation', { name: /^Sections of / });
+    expect(within(bar).getByRole('link', { name: 'Releases' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    // Shipping is an ordinary primary action beside the title (D27).
+    expect(within(header).getByRole('button', { name: 'Ship this release…' })).toHaveClass(
+      'button-primary',
+    );
+    expect(within(header).getByRole('button', { name: 'What is 2.0 for?' })).toBeVisible();
+  });
+
+  it('[CORE-016] asks for nothing more once the release is not there, and says so on a not-found page (PL-50, D4)', async () => {
+    const client = fakeReleaseClient({ approver: true });
+    client.get = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    client.overview = vi.fn(client.overview);
+    client.notes = vi.fn(client.notes);
+    renderRelease(999, client);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Release not found' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    expect(client.overview).not.toHaveBeenCalled();
+    expect(client.notes).not.toHaveBeenCalled();
+    expect(screen.queryByRole('navigation', { name: /^Sections of / })).toBeNull();
   });
 
   it('[CORE-016] fits a phone: nothing scrolls sideways', async () => {
     setViewportWidth(375);
     renderRelease();
-    await screen.findByRole('heading', { name: 'Checkout 2.0' });
+    await screen.findByRole('heading', { level: 1, name: '2.0' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

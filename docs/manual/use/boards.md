@@ -1,8 +1,8 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-04
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Boards, sprints and the backlog
@@ -13,6 +13,14 @@ the track's tickets, and Scrum adds a backlog and sprints. A Kanban track shows 
 all, and changing the board's kind brings it back or takes it away at once.
 
 ## A track's board
+
+Every page of a track sits under the track's tab bar, titled by its section with the track's name
+above it: **Board** under the track's name, **Board settings**, **Releases**, a release's own
+name. The release pages and the track's **Ticket templates** keep the tab bar too, with **Releases**
+marked on a release. On a phone the tab bar scrolls sideways inside itself: the current tab is
+brought into view, and the edge past which more tabs wait fades. A track that does not exist, or
+that you may not see, shows a **Track not found** page with no tabs and the way to **Home** and to
+**Search**; so does a board, a release or a dashboard that is not there.
 
 Open a track and choose **Board** in its tab bar. There is no list of boards and no form to make
 one. A track gets its board from its template, or the first time anyone who can see the track opens
@@ -36,10 +44,15 @@ track became that track's board, if the track had none; the others stay readable
 
 ## Using a board
 
-The board's header names its kind and location and links to **Board settings** (when you may change
-the board). The track's tab bar holds its **Backlog** (Scrum boards only) and its
-[**Statistics**](dashboards-and-reports.md#a-tracks-statistics). The columns scroll sideways inside
-the board, never the whole page.
+The board's header links to **Board settings** (when you may change the board). The track's tab bar
+holds its **Backlog** (Scrum boards only) and its
+[**Statistics**](dashboards-and-reports.md#a-tracks-statistics), so the board has no links of its
+own to them. The filters sit on a panel of their own above the columns. Each column is at least
+16 rem wide, so a board with more columns than the window holds scrolls sideways inside the board,
+never the whole page: the edge past which more columns wait fades, and the columns keep a scroll
+bar. Under the filters, a line says how to move cards: the keys on a computer, and on a phone or a
+touch screen, "Drag a card by its grip to another column, or tap the grip for a menu of every
+move." 
 
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
 above its maximum says **Over the maximum**; below its minimum, **Under the minimum**.
@@ -158,8 +171,10 @@ how many tickets it holds. Dragging a card never changes its lane.
 
 ## Board settings
 
-**Board settings** is for the board's administrators and the administrators of its track. It
-has these sections, saved together with **Save settings**:
+**Board settings** is for the board's administrators and the administrators of its track. It is
+titled **Board settings** under the track's name and stays under the track's tab bar with
+**Board** marked; that tab leads back to the board. Its check boxes look the same as everywhere
+else. It has these sections, saved together with **Save settings**:
 
 | Section | What you set |
 |---|---|
@@ -213,7 +228,10 @@ goes to its first status, unless one of the ways in has a rule: then the board a
 
 A Scrum board's **Backlog**, in the track's tab bar, opens **Backlog and sprints**: the active and planned sprints,
 then the backlog, each with its tickets in rank order and their totals (count, estimate and,
-when time tracking is on, the remaining estimate).
+when time tracking is on, the remaining estimate). The **Board** tab leads back to the board. A
+row whose ticket has no priority keeps the priority's place, so keys line up. On a phone or a
+touch screen the line about moving tickets gives the touch wording instead of the keys, and an
+active sprint's **Sprint report** link is large enough for a finger.
 
 ### Ranking and moving tickets
 
@@ -298,7 +316,8 @@ time, so it cannot be combined with several active sprints.
 
 ## Releases
 
-Each track has a releases hub, **Releases** in its tab bar. It lists **Upcoming** releases in the track's order and
+Each track has a releases hub, **Releases** in its tab bar, titled **Releases** under the track's
+name, with a **What is Releases for?** button. It lists **Upcoming** releases in the track's order and
 **Shipped** ones, latest first, with archived releases folded away. Each release shows its date,
 a state (**Upcoming**, **Overdue**, **Shipped** or **Archived**) and how many of its tickets are
 closed. The track's administrators add releases with **New release**: a **Name** and an
@@ -307,7 +326,10 @@ there and how it gets there. A release lined up with other tracks' says **In** a
 release across tracks, and **Releases across tracks** at the top opens their list (see
 [Multi-track](multi-track.md#releases-across-tracks)).
 
-A release's own page shows:
+A release's own page stays under the track's tab bar with **Releases** marked: that tab leads
+back to the list. It is titled by the release's name, with the track's name and the release's
+state above it. A release that does not exist, or that you may not see, shows **Release not
+found** and nothing else is read. The page shows:
 
 - **Start date**, **Release date**, **Shipped on** and, when it has one, its **Release across
   tracks** with its date;
@@ -325,6 +347,8 @@ A release's own page shows:
   done (not planned, duplicates) are left out and counted. Use **Copy as Markdown** or
   **Download Markdown**.
 
-To ship, the track's administrators press **Ship this release…**, choose the day under **Ship
-on** and, if tickets are still open, whether to **Leave them in this release** or move them to
+To ship, the track's administrators press **Ship this release…**, an ordinary button beside the
+title. It opens **Ship 2.0?** (with the release's name), which says what shipping does: the
+release is marked as shipped on the chosen day for everyone on the track. Choose the day under
+**Ship on** and, if tickets are still open, whether to **Leave them in this release** or move them to
 another upcoming release. When approvals are required, every approver must approve first.

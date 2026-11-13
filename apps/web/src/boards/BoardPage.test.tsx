@@ -21,7 +21,7 @@ function renderBoard(client = fakeBoardClient()) {
   );
   return client;
 }
-const page = async () => within(await screen.findByRole('region', { name: 'Checkout team' }));
+const page = async () => within(await screen.findByRole('region', { name: 'Board' }));
 const cell = (name: string) => within(screen.getByRole('list', { name }));
 const keysIn = (name: string) =>
   cell(name)
@@ -270,15 +270,16 @@ describe('the board page (M1-043)', () => {
     renderBoard(client);
     act(() => announceTicketChange());
     await act(async () => arrive(board));
-    expect(await screen.findByRole('region', { name: board.name })).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'Board' })).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('[AGL-004] shows columns per lane, the query lane before the catch-all, in rank order', async () => {
     renderBoard();
     const board = await page();
-    expect(board.getByRole('heading', { level: 1 })).toHaveTextContent('Checkout team');
-    expect(board.getByText('Kanban board · in Shop')).toBeVisible();
+    // A track's board is titled by its section, the track named above it (D26).
+    expect(board.getByRole('heading', { level: 1 })).toHaveTextContent('Board');
+    expect(board.getByText('Shop')).toBeVisible();
     expect(board.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
       'Expedite 1 ticket',
       'Everything else 4 tickets',
@@ -557,6 +558,69 @@ describe('the board page (M1-043)', () => {
     expect(keysIn('Doing in Everything else')).toContain('SHOP-23');
   });
 
+  it('[AGL-013] fades the edge past which more columns wait, and drops the fade at the end (D2, TR-23)', async () => {
+    const at = { left: 0 };
+    const restore = [
+      ['scrollWidth', () => 1400],
+      ['clientWidth', () => 960],
+      ['scrollLeft', () => at.left],
+    ].map(([name, get]) => {
+      Object.defineProperty(HTMLElement.prototype, name as string, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.classList.contains('board-scroll') ? (get as () => number)() : 0;
+        },
+      });
+      return () =>
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name as string];
+    });
+    try {
+      renderBoard();
+      await page();
+      const region = screen.getByRole('region', { name: 'Columns' });
+      await waitFor(() => expect(region).toHaveAttribute('data-more', 'end'));
+      at.left = 440;
+      fireEvent.scroll(region);
+      expect(region).toHaveAttribute('data-more', 'start');
+    } finally {
+      for (const undo of restore) undo();
+    }
+  });
+
+  it('[AGL-002] tells a finger how to move cards, and a keyboard the keys (D6, TR-7)', async () => {
+    renderBoard();
+    await page();
+    expect(screen.getByText(/^Up and Down go from card to card/)).toBeInTheDocument();
+    cleanup();
+    setViewportWidth(375);
+    renderBoard();
+    await page();
+    expect(
+      screen.getByText(
+        'Drag a card by its grip to another column, or tap the grip for a menu of every move.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/Alt\+Left/)).toBeNull();
+    setViewportWidth(1440);
+  });
+
+  it('[AGL-005] shows its filters on a slab of their own (D28)', async () => {
+    renderBoard();
+    await page();
+    const filters = screen.getByRole('group', { name: 'Board filters' });
+    expect(filters.closest('.filter-row')).toHaveClass('board-filters');
+  });
+
+  it('[AGL-001] says a board that is not there is not found, with a way on (D4, AC-8)', async () => {
+    const client = fakeBoardClient();
+    client.board = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    renderBoard(client);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Board not found' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+  });
+
   it('[AGL-013] keeps its columns in a scrolling region on a phone', async () => {
     setViewportWidth(375);
     renderBoard(fakeBoardClient({ cards: CARDS.slice(0, 2) }));
@@ -637,30 +701,49 @@ describe('a card leads to its ticket and back (ADR-114)', () => {
 });
 
 describe('a link to the backlog (ADR-116)', () => {
-  const openWith = (kind: 'scrum' | 'kanban', backlog: boolean | null) =>
+  const openWith = (
+    kind: 'scrum' | 'kanban',
+    backlog: boolean | null,
+    location: (typeof BOARD)['location'] = BOARD.location,
+  ) =>
     render(
       <I18nProvider locale="en">
         <TrackSectionsContext.Provider
           value={backlog === null ? null : { backlog, sprints: backlog }}
         >
-          <BoardPage boardId={7} client={fakeBoardClient({ board: { ...BOARD, kind } })} />
+          <BoardPage
+            boardId={7}
+            client={fakeBoardClient({ board: { ...BOARD, kind, location } })}
+          />
         </TrackSectionsContext.Provider>
       </I18nProvider>,
     );
+  const OUTSIDE = { type: 'user', user: { id: 1, name: 'Ana' } } as (typeof BOARD)['location'];
+  const outside = async () => within(await screen.findByRole('region', { name: 'Checkout team' }));
 
-  it('[CORE-002] is on a Scrum board', async () => {
+  it('[CORE-002] is not a pill on a track’s board, whose Backlog and Statistics tabs are right above (D7)', async () => {
     openWith('scrum', true);
-    expect((await page()).getByRole('link', { name: 'Backlog' })).toBeVisible();
+    const board = await page();
+    expect(board.queryByRole('link', { name: 'Backlog' })).toBeNull();
+    expect(board.queryByRole('link', { name: 'Reports' })).toBeNull();
+    expect(board.getByRole('link', { name: 'Board settings' })).toBeVisible();
+  });
+
+  it('[CORE-002] is on a Scrum board outside any track, with its reports', async () => {
+    openWith('scrum', true, OUTSIDE);
+    const board = await outside();
+    expect(board.getByRole('link', { name: 'Backlog' })).toBeVisible();
+    expect(board.getByRole('link', { name: 'Reports' })).toBeVisible();
   });
 
   it('[CORE-002] is not on a Kanban board', async () => {
-    openWith('kanban', false);
-    expect((await page()).queryByRole('link', { name: 'Backlog' })).toBeNull();
+    openWith('kanban', false, OUTSIDE);
+    expect((await outside()).queryByRole('link', { name: 'Backlog' })).toBeNull();
   });
 
-  it('[CORE-002] is not on a Scrum board whose track turned its backlog off', async () => {
-    openWith('scrum', false);
-    expect((await page()).queryByRole('link', { name: 'Backlog' })).toBeNull();
+  it('[CORE-002] is not on a Scrum board whose backlog is turned off', async () => {
+    openWith('scrum', false, OUTSIDE);
+    expect((await outside()).queryByRole('link', { name: 'Backlog' })).toBeNull();
   });
 });
 
@@ -965,7 +1048,8 @@ describe('completing a sprint from the board (T-106)', () => {
     );
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(client.dataCalls.length).toBeGreaterThan(reads);
-    expect(board.getByRole('link', { name: 'Backlog' })).toHaveFocus();
+    // No Backlog pill on a track's board (D7): focus goes to the columns.
+    expect(screen.getByRole('region', { name: 'Columns' })).toHaveFocus();
     expect(screen.getByText('Checkout Sprint 1 completed.')).toBeInTheDocument();
   });
 
@@ -989,7 +1073,7 @@ describe('completing a sprint from the board (T-106)', () => {
   it('[AGL-010] is not offered to someone who may not manage the sprints', async () => {
     open(scrumBoard(), fakeSprints([ACTIVE], { mayManage: false }));
     const board = await page();
-    expect(board.getByRole('link', { name: 'Backlog' })).toBeVisible();
+    expect(await board.findByRole('link', { name: 'Board settings' })).toBeVisible();
     expect(board.queryByRole('button', { name: /^Complete/ })).toBeNull();
   });
 

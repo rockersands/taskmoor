@@ -32,7 +32,7 @@ describe('the releases hub (M1-050)', () => {
 
   it('[CORE-016] lists upcoming releases in order, then shipped, with state and progress', async () => {
     renderHub();
-    expect(await screen.findByRole('heading', { name: 'Releases of Checkout' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Releases' })).toBeVisible();
     expect(names('Upcoming')).toEqual(['2.0', '2.1']);
     expect(names('Shipped')).toEqual(['1.9']);
     const first = screen.getByRole('link', { name: '2.0' }).closest('li') as HTMLElement;
@@ -42,6 +42,15 @@ describe('the releases hub (M1-050)', () => {
     expect(screen.getByRole('link', { name: '2.0' })).toHaveAttribute('href', '#/releases/2');
     expect(screen.getByText('1 archived release')).toBeInTheDocument();
     expect(screen.getByText('Shipped on Oct 1, 2026')).toBeVisible();
+  });
+
+  it('[CORE-016] is titled by its section under the track, with its help and no pill that repeats a tab (D26, D7, TR-28)', async () => {
+    renderHub();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Releases' });
+    const header = heading.closest('header') as HTMLElement;
+    expect(within(header).getByText('Checkout')).toBeVisible();
+    expect(within(header).queryByRole('link', { name: 'Track summary' })).toBeNull();
+    expect(within(header).getByRole('button', { name: 'What is Releases for?' })).toBeVisible();
   });
 
   it('[CORE-016] adds a release, and says when the name is taken', async () => {
@@ -60,7 +69,7 @@ describe('the releases hub (M1-050)', () => {
 
   it('[CORE-016] shows no way to add releases to someone who may not manage them', async () => {
     renderHub(fakeReleaseClient({ mayManage: false }));
-    await screen.findByRole('heading', { name: 'Releases of Checkout' });
+    await screen.findByRole('heading', { level: 1, name: 'Releases' });
     expect(screen.queryByRole('form', { name: 'New release' })).toBeNull();
   });
 
@@ -72,7 +81,7 @@ describe('the releases hub (M1-050)', () => {
   it('[CORE-016] fits a phone: nothing scrolls sideways', async () => {
     setViewportWidth(375);
     renderHub();
-    await screen.findByRole('heading', { name: 'Releases of Checkout' });
+    await screen.findByRole('heading', { level: 1, name: 'Releases' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

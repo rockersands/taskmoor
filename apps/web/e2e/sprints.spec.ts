@@ -97,18 +97,19 @@ test('[AGL-010] [AGL-008] a sprint planned, started, reported and completed from
   await expect(section(sprintName).getByText('Active', { exact: true })).toBeVisible();
 
   // The board shows the active sprint's tickets only.
-  await backlog.getByRole('link', { name: 'Back to the board' }).click();
-  const board = page.getByRole('region', { name: `Sprint ${word}` });
+  const tabs = page.getByRole('navigation', { name: `Sections of ${key}` });
+  await tabs.getByRole('link', { name: 'Board' }).click();
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   await expect(board.getByRole('link', { name: new RegExp(`^${first} `) })).toBeVisible();
   await expect(board.getByRole('link', { name: new RegExp(`^${third} `) })).toHaveCount(0);
-  await board.getByRole('link', { name: 'Backlog' }).click();
+  await tabs.getByRole('link', { name: 'Backlog' }).click();
 
   // The report, then completion to the backlog.
   await section(sprintName).getByRole('link', { name: 'Sprint report' }).click();
   const report = page.getByRole('region', { name: `Sprint report: ${sprintName}` });
   await expect(report.getByRole('region', { name: 'Tickets not completed' })).toContainText(first);
   expect(await seriousAxeViolations(page)).toEqual([]);
-  await report.getByRole('link', { name: 'Back to the backlog' }).click();
+  await tabs.getByRole('link', { name: 'Backlog' }).click();
   await section(sprintName).getByRole('button', { name: 'Complete sprint' }).click();
   await expect(section(sprintName)).toHaveCount(0);
   await expect(section('Backlog').getByRole('link', { name: second })).toBeVisible();
@@ -176,7 +177,7 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
   expect(closed.status(), await closed.text()).toBe(200);
 
   await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: `Finish ${word}` });
+  const board = page.getByRole('region', { name: 'Board', exact: true });
   await expect(board.getByRole('link', { name: new RegExp(`^${second} `) })).toBeVisible();
   // The page header's button; the pop-up, over the board, has a Complete sprint of its own.
   const button = board.locator('header').getByRole('button', { name: 'Complete sprint' });
@@ -212,7 +213,8 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
   // The board shows the next state at once: no sprint running, focus on the way to the backlog.
   await expect(board.getByText('No sprint is running')).toBeVisible();
   await expect(button).toHaveCount(0);
-  await expect(board.getByRole('link', { name: 'Backlog', exact: true })).toBeFocused();
+  // No Backlog pill on a track's board (D7): focus goes to the columns.
+  await expect(board.getByRole('region', { name: 'Columns' })).toBeFocused();
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // The open tickets went to the planned sprint; the closed one stayed with the completed sprint.
@@ -220,7 +222,10 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
   expect(
     (sprints.sprints as { id: number; state: string }[]).find((s) => s.id === running)?.state,
   ).toBe('closed');
-  await board.getByRole('link', { name: 'Backlog', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: `Sections of ${key}` })
+    .getByRole('link', { name: 'Backlog', exact: true })
+    .click();
   const backlog = page.getByRole('region', { name: 'Backlog and sprints' });
   const planned = backlog.getByRole('region', { name: nextName, exact: true });
   await expect(planned.getByRole('link', { name: second })).toBeVisible();

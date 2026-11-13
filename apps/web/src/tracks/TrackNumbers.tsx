@@ -99,8 +99,9 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
     );
   };
 
+  // Measured by its own width, as it is both the Summary and a widget of a customized one.
   return (
-    <>
+    <div className="track-numbers">
       <dl className="report-stats">
         {summary.overview.map((item) => (
           <div key={item.id}>
@@ -128,6 +129,6 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
           (i) => i.name ?? t('summary.unassigned'),
         )}
       </div>
-    </>
+    </div>
   );
 }

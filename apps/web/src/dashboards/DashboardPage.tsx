@@ -107,6 +107,7 @@ export function DashboardPage({
   }, [wallboard, id]);
 
   if (failed) {
+    // Not there, or not shared with this person: the shared not-found page, with a way on (D4).
     return <NotFoundPage title={t('notFound.dashboard')}>{t('dashboards.notFound')}</NotFoundPage>;
   }
   if (!dashboard) return <p className="report-loading">{t('reports.loading')}</p>;
@@ -205,7 +206,9 @@ export function DashboardPage({
         }
         actions={
           wallboard ? (
-            <>
+            // Read from across a room, the wallboard shows no controls (D31): the way out and full
+            // screen stay hidden until a pointer or the keyboard reaches them.
+            <div className="wallboard-exits">
               <button
                 type="button"
                 className="button-secondary"
@@ -216,7 +219,7 @@ export function DashboardPage({
               <a className="button-quiet" href={routeHref(`#/dashboards/${dashboard.id}`)}>
                 {t('dashboards.leaveWallboard')}
               </a>
-            </>
+            </div>
           ) : editing ? undefined : (
             <>
               {dashboard.editable && (

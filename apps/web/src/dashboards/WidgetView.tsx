@@ -62,9 +62,31 @@ function durations(t: Translate, intl: ReturnType<typeof useIntl>, max: number) 
   };
 }
 
-/** The title a widget shows: its own, or its kind's. */
+/** The fields a pie can count by whose names the catalogue holds. */
+const FIELD_NAMES: Record<string, MessageId> = {
+  status: 'statistics.axis.status',
+  priority: 'statistics.axis.priority',
+  type: 'statistics.axis.type',
+  assignee: 'statistics.axis.assignee',
+  requester: 'statistics.axis.requester',
+  creator: 'statistics.axis.creator',
+  closeReason: 'statistics.axis.closeReason',
+  labels: 'statistics.axis.labels',
+  targetRelease: 'statistics.axis.targetRelease',
+  foundInRelease: 'statistics.axis.foundInRelease',
+  area: 'statistics.axis.area',
+};
+
+/**
+ * The title a widget shows: its own, or its kind's. An untitled pie names what it counts, such as
+ * 'Tickets by Status', rather than the shape it is drawn as (PL-35).
+ */
 export function widgetTitle(t: Translate, widget: Widget): string {
-  return widget.title || t(`dashboards.kind.${widget.kind}` as MessageId);
+  if (widget.title) return widget.title;
+  const field = widget.kind === 'pie' ? widget.config.field : undefined;
+  const name = typeof field === 'string' ? FIELD_NAMES[field] : undefined;
+  if (name) return t('dashboards.title.byField', { field: t(name) });
+  return t(`dashboards.kind.${widget.kind}` as MessageId);
 }
 
 /**

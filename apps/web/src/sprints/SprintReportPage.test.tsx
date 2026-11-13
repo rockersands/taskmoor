@@ -70,6 +70,76 @@ describe('sprint charts on the report (M1-060)', () => {
     expect(await screen.findByText('The charts could not be loaded.')).toBeVisible();
   });
 
+  it('[AGL-010] lists the tickets in columns, the estimate under a heading of its own (TR-11, TR-22)', async () => {
+    open();
+    const completed = await screen.findByRole('region', { name: 'Completed tickets' });
+    const table = within(completed).getByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Key', 'Summary', 'Status', 'Estimate']);
+    const row = within(table).getAllByRole('row')[1] as HTMLElement;
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['CHK-2', 'Show the order total', 'Closed', '2h']);
+    // The totals sit on a card of their own (TR-14).
+    expect(screen.getByText('Committed at the start').closest('dl')).toHaveClass('glass-card');
+  });
+
+  it('[RPT-001] explains a sprint with no estimates instead of drawing empty charts and zero totals (TR-13)', async () => {
+    const client = fakeSprintClient();
+    const report = client.report;
+    client.report = async (id) => {
+      const read = await report(id);
+      const none = (list: typeof read.completed) =>
+        list.map((x) => ({ ...x, estimate: null, estimateAtEntry: null, estimateChanged: false }));
+      return {
+        ...read,
+        completed: none(read.completed),
+        notCompleted: none(read.notCompleted),
+        totals: {
+          committed: 0,
+          added: 0,
+          removed: 0,
+          completed: 0,
+          notCompleted: 0,
+          estimateChange: 0,
+          remaining: 0,
+        },
+      };
+    };
+    const burndown = client.burndown;
+    client.burndown = async (id) => {
+      const read = await burndown(id);
+      return {
+        ...read,
+        start: { ...read.start, remaining: 0, scope: 0 },
+        guideline: { ...read.guideline, from: { ...read.guideline.from, value: 0 } },
+        days: read.days.map((d) => ({ ...d, remaining: 0, scope: 0, completed: 0 })),
+        end: { ...read.end, remaining: 0, scope: 0, completed: 0 },
+      };
+    };
+    client.velocity = async () => ({
+      statistic: { statistic: 'originalEstimate' },
+      sprints: [
+        ...(await fakeSprintClient().velocity(7)).sprints
+          .slice(0, 1)
+          .map((x) => ({ ...x, committed: 0, completed: 0 })),
+      ],
+      average: 0,
+    });
+    open('en', client);
+    expect(await screen.findAllByText('No estimates to add up')).toHaveLength(2);
+    expect(screen.queryByRole('figure', { name: 'Burndown' })).toBeNull();
+    expect(screen.queryByRole('figure', { name: 'Velocity' })).toBeNull();
+    expect(screen.queryByText('Committed at the start')).toBeNull();
+    // The tickets are still listed.
+    expect(screen.getByRole('link', { name: 'CHK-2' })).toBeVisible();
+  });
+
   it('[RPT-001] fits a phone without sideways scrolling', async () => {
     setViewportWidth(375);
     open();

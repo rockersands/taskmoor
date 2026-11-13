@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { boardClient } from '../boards/client';
 import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { onRouteChange } from '../routing/router';
+import { setViewportWidth } from '../test/viewport';
 import { BoardInTrack, NoBacklog, Redirect } from './BoardInTrack';
 import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
@@ -14,6 +16,16 @@ import { trackSectionsChanged } from './trackSections';
 
 const inEnglish = (node: React.ReactNode) =>
   render(<I18nProvider locale="en">{node}</I18nProvider>);
+
+/** Gives a prototype a property for one test; returns how to take it back. */
+function stub(target: object, name: string, descriptor: PropertyDescriptor): () => void {
+  const before = Object.getOwnPropertyDescriptor(target, name);
+  Object.defineProperty(target, name, { configurable: true, ...descriptor });
+  return () => {
+    if (before) Object.defineProperty(target, name, before);
+    else delete (target as Record<string, unknown>)[name];
+  };
+}
 
 describe('a track is one place with its sections (ADR-116)', () => {
   it('[CORE-001] shares one tab bar, with the current section marked', async () => {
@@ -47,6 +59,61 @@ describe('a track is one place with its sections (ADR-116)', () => {
       'href',
       '#/tracks/SHOP/board',
     );
+  });
+
+  it('[CORE-001] brings the current tab into view on a phone and fades the edge with more tabs (TR-4)', async () => {
+    setViewportWidth(375);
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    const width = (element: Element, wide: number, narrow: number) =>
+      element.tagName === 'NAV' ? (wide > 0 ? wide : narrow) : 0;
+    const restore = [
+      stub(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView }),
+      stub(HTMLElement.prototype, 'scrollWidth', {
+        get(this: Element) {
+          return width(this, 900, 0);
+        },
+      }),
+      stub(HTMLElement.prototype, 'clientWidth', {
+        get(this: Element) {
+          return width(this, 0, 343);
+        },
+      }),
+    ];
+    try {
+      inEnglish(
+        <TrackLayout trackKey="SHOP" section="statistics" client={fakeTrackClient()}>
+          <p>page</p>
+        </TrackLayout>,
+      );
+      const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
+      const current = within(bar).getByRole('link', { name: 'Statistics' });
+      await waitFor(() => expect(scrolled).toContain(current));
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'center' });
+      // At its start, the bar hides tabs past its right edge, and says so.
+      expect(bar).toHaveAttribute('data-more', 'end');
+    } finally {
+      for (const undo of restore) undo();
+    }
+  });
+
+  it('[CORE-001] has no tabs and a way on for a track that is not there (AC-8, D4)', async () => {
+    const client = fakeTrackClient();
+    client.sections = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    inEnglish(
+      <TrackLayout trackKey="GONE" section="summary" client={client}>
+        <h1>Summary</h1>
+      </TrackLayout>,
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Track not found' })).toBeVisible();
+    expect(screen.getByText('No track has the key GONE, or you cannot see it.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: 'Sections of GONE' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Summary' })).toBeNull();
   });
 
   it('[CORE-002] shows no Backlog tab on a Kanban track, not even while it finds out', async () => {

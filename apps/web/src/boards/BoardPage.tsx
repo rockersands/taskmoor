@@ -16,9 +16,11 @@ import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { playMotion } from '../shell/motion';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { followPointerDrag } from '../shell/pointerDrag';
+import { useMediaQuery } from '../shell/useMediaQuery';
 import { CompleteSprintDialog, type SprintCounts } from '../sprints/CompleteSprint';
 import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
 import { useSyncEngine } from '../sync/SyncProvider';
@@ -26,6 +28,7 @@ import { useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { useMoreSides } from '../tracks/TrackLayout';
 import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardCardItem, type CardActions } from './BoardCard';
@@ -42,6 +45,7 @@ import {
   type MoveRequest,
   type Transition,
 } from './client';
+import { TOUCH_QUERY } from './touch';
 
 export interface BoardPageProps {
   boardId: number;
@@ -249,7 +253,7 @@ export function BoardPage({
   const [board, setBoard] = useState<Board | null>(null);
   const [data, setData] = useState<BoardData | null>(null);
   const progress = useSubticketProgress(data?.cards ?? null, client.subticketProgress);
-  const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
+  const [state, setState] = useState<'loading' | 'loaded' | 'failed' | 'missing'>('loading');
   const [filters, setFilters] = useState<string[]>([]);
   const [people, setPeople] = useState<string[]>(() => peopleFromRoute(currentRoute()));
   const [announcement, setAnnouncement] = useState('');
@@ -272,6 +276,9 @@ export function BoardPage({
   const completed = useRef(false);
   const backlogLink = useRef<HTMLAnchorElement>(null);
   const scrollRegion = useRef<HTMLElement>(null);
+  const touch = useMediaQuery(TOUCH_QUERY);
+  // Read again whenever the board draws anew: its columns set how far it reaches sideways.
+  const more = useMoreSides(scrollRegion, data);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
   const [dragging, setDragging] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<DropPlace | null>(null);
@@ -318,8 +325,14 @@ export function BoardPage({
           sayShown.current = false;
           setAnnouncement(tRef.current('boards.people.shown', { count: d.cards.length }));
         }
-      } catch {
-        if (mine === generation.current) setState('failed');
+      } catch (error) {
+        if (mine !== generation.current) return;
+        // A board that is not there gets the not-found page, with a way on (D4, AC-8).
+        setState(
+          error instanceof ApiError && (error.status === 404 || error.status === 403)
+            ? 'missing'
+            : 'failed',
+        );
       }
     },
     [client, boardId],
@@ -446,6 +459,9 @@ export function BoardPage({
         <p className="page-note">{t('boards.loading')}</p>
       </section>
     );
+  }
+  if (state === 'missing') {
+    return <NotFoundPage title={t('notFound.board')}>{t('boards.failed')}</NotFoundPage>;
   }
   if (state === 'failed' || !board || !data) {
     return (
@@ -748,6 +764,12 @@ export function BoardPage({
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
       : t('boards.location.user', { name: board.location.user.name ?? '' });
   const hasBacklog = board.kind === 'scrum' && sections?.backlog !== false;
+  // A track's board sits under the track's tabs: titled by its section with the track above
+  // (D26), and with no pills that repeat a tab (D7). An old board outside any track keeps both.
+  const trackName =
+    board.location.type === 'track' && board.location.track.key
+      ? (board.location.track.name ?? board.location.track.key)
+      : null;
   const activeSprints =
     board.kind === 'scrum' && sprintList?.mayManage
       ? sprintList.sprints.filter((s) => s.state === 'active')
@@ -904,16 +926,19 @@ export function BoardPage({
     <section className="page page-full board-page" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
-        title={board.name}
-        eyebrow={t('boards.meta', {
-          kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),
-          location,
-        })}
+        title={trackName === null ? board.name : t('track.section.board')}
+        eyebrow={
+          trackName ??
+          t('boards.meta', {
+            kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),
+            location,
+          })
+        }
         purpose={t('purpose.board')}
         about={t('about.board')}
         actions={
           <>
-            {hasBacklog && (
+            {hasBacklog && trackName === null && (
               <a
                 ref={backlogLink}
                 className="button-quiet"
@@ -934,16 +959,11 @@ export function BoardPage({
                   : t('boards.sprint.complete', { name: sprint.name })}
               </button>
             ))}
-            <a
-              className="button-quiet"
-              href={routeHref(
-                board.location.type === 'track' && board.location.track.key
-                  ? `#/tracks/${encodeURIComponent(board.location.track.key)}/statistics`
-                  : `#/boards/${boardId}/reports`,
-              )}
-            >
-              {t('reports.link')}
-            </a>
+            {trackName === null && (
+              <a className="button-quiet" href={routeHref(`#/boards/${boardId}/reports`)}>
+                {t('reports.link')}
+              </a>
+            )}
             {board.mayConfigure && (
               <a className="button-quiet" href={routeHref(`#/boards/${boardId}/settings`)}>
                 {t('boards.settings.link')}
@@ -952,7 +972,8 @@ export function BoardPage({
           </>
         }
       />
-      <div className="filter-row">
+      {/* The filters are a slab of their own, clear in both skins (D28). */}
+      <div className="filter-row board-filters">
         {offered.length > 0 &&
           (board.boardFilterDisplay === 'dropdown' ? (
             <Popover
@@ -993,7 +1014,8 @@ export function BoardPage({
         </p>
       )}
       <p id={hintId} className="board-hint">
-        {t('boards.keyboardHint')}
+        {/* On a touch screen the keys mean nothing: the short touch wording instead (D6, TR-7). */}
+        {t(touch ? 'boards.touchHint' : 'boards.keyboardHint')}
       </p>
       {data.cards.length === 0 &&
         (people.length > 0 ? (
@@ -1024,6 +1046,8 @@ export function BoardPage({
       <section
         ref={scrollRegion}
         className="board-scroll"
+        // Columns past the edge fade there, so the board reads as going on (D2, TR-23).
+        data-more={more}
         data-tutorial="board-columns"
         aria-label={t('boards.columns')}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region is reached by keyboard to scroll it

@@ -10,6 +10,7 @@ import { SCOPE_REPORTS, ScopeReport, type ScopeReportKind } from '../reports/Sco
 import { navigate, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
 import { SprintReportPage, VelocityReport } from '../sprints/SprintReportPage';
 import {
@@ -483,7 +484,6 @@ function SprintReports({
         sprintId={chosen.id}
         client={client}
         embedded
-        backlogHref={backlog}
       />
     </>
   );
@@ -527,31 +527,70 @@ export function TrackStatisticsPage({
   const sections = useTrackSections();
   const hasSprints = board.kind === 'scrum' && sections?.sprints !== false;
   const groups = GROUPS.filter((g) => hasSprints || (g.id !== 'sprints' && g.id !== 'releases'));
+  const compact = useMediaQuery(COMPACT_QUERY);
 
   return (
     <section className="page reports-page" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
-        title={t('statistics.title', { name })}
+        // Titled by the section, the track named above it like its other pages (D26).
+        title={t('track.section.statistics')}
+        eyebrow={name}
         purpose={t('statistics.purpose')}
         about={t('statistics.about')}
       />
-      <nav className="reports-tabs statistics-tabs" aria-label={t('reports.tabs')}>
-        {groups.map((group) => (
-          <fieldset key={group.id} className="statistics-tab-group">
-            <legend>{t(group.label)}</legend>
-            {group.reports.map((r) => (
-              <a
-                key={r}
-                href={reportHref(trackKey, r)}
-                aria-current={r === report ? 'page' : undefined}
-              >
-                {t(NAMES[r])}
-              </a>
+      {compact ? (
+        // On a phone the grouped links would fill the first screen: one picker instead (D5, TR-5).
+        <div className="form-field statistics-picker">
+          <label htmlFor={`${titleId}-report`}>{t('statistics.report')}</label>
+          <select
+            id={`${titleId}-report`}
+            value={report}
+            onChange={(event) =>
+              navigate(`#/tracks/${encodeURIComponent(trackKey)}/statistics/${event.target.value}`)
+            }
+          >
+            {groups.map((group) => (
+              <optgroup key={group.id} label={t(group.label)}>
+                {group.reports.map((r) => (
+                  <option key={r} value={r}>
+                    {t(NAMES[r])}
+                  </option>
+                ))}
+              </optgroup>
             ))}
-          </fieldset>
-        ))}
-      </nav>
+          </select>
+        </div>
+      ) : (
+        <nav className="reports-tabs statistics-tabs" aria-label={t('reports.tabs')}>
+          {groups.map((group) => (
+            // A group's label sits in a column of its own, so wrapped links line up under the
+            // first ones rather than under the label (TR-6).
+            // biome-ignore lint/a11y/useSemanticElements: a legend cannot take a grid column of its own
+            <div
+              key={group.id}
+              role="group"
+              className="statistics-tab-group"
+              aria-labelledby={`${titleId}-${group.id}`}
+            >
+              <span id={`${titleId}-${group.id}`} className="statistics-tab-label">
+                {t(group.label)}
+              </span>
+              <div className="statistics-tab-links">
+                {group.reports.map((r) => (
+                  <a
+                    key={r}
+                    href={reportHref(trackKey, r)}
+                    aria-current={r === report ? 'page' : undefined}
+                  >
+                    {t(NAMES[r])}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+      )}
       {needsScrum ? (
         <EmptyState
           title={t('statistics.needsScrum.title', { report: t(NAMES[report]) })}
@@ -568,7 +607,12 @@ export function TrackStatisticsPage({
       ) : has<FlowReport>(FLOW_REPORTS, report) ? (
         <FlowReportBody boardId={board.id} board={board} report={report} client={reports} />
       ) : isScope ? (
-        <ScopeReport board={board} kind={report as ScopeReportKind} client={reports} />
+        <ScopeReport
+          board={board}
+          kind={report as ScopeReportKind}
+          client={reports}
+          outcomes={client.outcomes}
+        />
       ) : report === 'sprint-report' ? (
         <SprintReports trackKey={trackKey} board={board} sprintId={sprintId} client={sprints} />
       ) : report === 'velocity' ? (

@@ -18,7 +18,11 @@ export interface ColumnChartProps {
   format: (value: number) => string;
   /** The value of one displayed unit, for round ticks (3600 when seconds show as hours). */
   unit?: number;
-  tableLabel: string;
+  /**
+   * The disclosure that shows the numbers as a table. Left out where the report's own table
+   * follows with the same numbers: two ways to the same numbers read as two things (TR-32).
+   */
+  tableLabel?: string;
   categoryHeader: string;
 }
 
@@ -201,31 +205,33 @@ export function ColumnChart({
           </div>
         )}
       </div>
-      <details className="chart-table">
-        <summary>{tableLabel}</summary>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th scope="col">{categoryHeader}</th>
-              {series.map((s) => (
-                <th key={s.id} scope="col">
-                  {s.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((category, i) => (
-              <tr key={category.key}>
-                <th scope="row">{category.label}</th>
+      {tableLabel && (
+        <details className="chart-table">
+          <summary>{tableLabel}</summary>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">{categoryHeader}</th>
                 {series.map((s) => (
-                  <td key={s.id}>{format(s.values[i] ?? 0)}</td>
+                  <th key={s.id} scope="col">
+                    {s.label}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
+            </thead>
+            <tbody>
+              {categories.map((category, i) => (
+                <tr key={category.key}>
+                  <th scope="row">{category.label}</th>
+                  {series.map((s) => (
+                    <td key={s.id}>{format(s.values[i] ?? 0)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
     </figure>
   );
 }
