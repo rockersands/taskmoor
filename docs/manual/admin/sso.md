@@ -65,8 +65,8 @@ with **Create accounts at a first sign-in** on, anyone with such an address coul
 ## Adding an OpenID Connect provider
 
 1. At the provider, create a client (an application) using the authorization code flow.
-   Register the **Redirect URI** shown at the top of the Single sign-on page; on a phone the
-   address wraps so all of it shows, and **Copy** copies it. It is the same
+   Register the **Redirect URI** shown at the top of the Single sign-on page; the field grows
+   to the whole address, which wraps on a phone so all of it shows, and **Copy** copies it. It is the same
    for every OpenID Connect provider:
 
    ```text

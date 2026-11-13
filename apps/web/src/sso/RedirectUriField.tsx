@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 
@@ -17,6 +17,34 @@ export function RedirectUriField({ uri }: RedirectUriFieldProps) {
   const input = useRef<HTMLTextAreaElement>(null);
   const narrow = useMediaQuery(COMPACT_QUERY);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+  // The field grows to its whole address, so a long one is never cut on a phone. CSS
+  // `field-sizing: content` does this only in some browsers; this does it in all of them, again
+  // whenever the field's width changes.
+  const fit = useCallback(() => {
+    const field = input.current;
+    if (!field) return;
+    field.style.height = 'auto';
+    const style = getComputedStyle(field);
+    const border =
+      (Number.parseFloat(style.borderTopWidth) || 0) +
+      (Number.parseFloat(style.borderBottomWidth) || 0);
+    if (field.scrollHeight > 0) field.style.height = `${field.scrollHeight + border}px`;
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new address or width is fitted again
+  useLayoutEffect(() => {
+    fit();
+    const field = input.current;
+    if (!field || typeof ResizeObserver === 'undefined') return;
+    let width = field.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (field.clientWidth === width) return;
+      width = field.clientWidth;
+      fit();
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [fit, uri, narrow]);
 
   const copyUri = async () => {
     try {

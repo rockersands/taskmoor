@@ -4057,6 +4057,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.showDiagram': 'Mostrar el diagrama',
   'admin.workflow.hideDiagram': 'Ocultar el diagrama',
   'admin.workflow.globalTab': '{name} (desde cualquier estado)',
+  'admin.workflow.transitionButton': 'Transición: {name}',
   'admin.workflow.initialMark': 'Inicio',
   'admin.workflow.statuses': 'Estados de este flujo de trabajo',
   'admin.workflow.transitions': 'Transiciones',

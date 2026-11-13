@@ -1354,6 +1354,12 @@ test('[WF-002] the workflow editor works on a small phone without sideways scrol
   const diagram = page.getByRole('region', { name: 'Diagram' });
   await expect(diagram).toBeVisible();
   expect(await diagram.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  // Each transition's label on the picture is named as one, and a finger's height.
+  const labels = await diagram.getByRole('button', { name: /^Transition: / }).all();
+  expect(labels.length).toBeGreaterThan(0);
+  for (const label of labels) {
+    expect((await label.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
   expect(await overflow()).toBeLessThanOrEqual(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
 

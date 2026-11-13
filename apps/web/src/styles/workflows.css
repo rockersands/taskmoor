@@ -716,6 +716,16 @@
 }
 
 @media (pointer: coarse) {
+  /* A transition's label on the diagram is a finger's size too; it stays centred on its line. */
+  .workflow-edge-label {
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+    padding-block: 0;
+    /* One line as tall as the target, less the border: the words stay centred and still end in
+       an ellipsis when cut. */
+    line-height: calc(var(--hit-target-touch) - 2px);
+  }
+
   .workflow-pick,
   .workflow-back a,
   .workflow-details summary,

@@ -3954,6 +3954,7 @@ export const messagesEn = {
   'admin.workflow.showDiagram': 'Show the diagram',
   'admin.workflow.hideDiagram': 'Hide the diagram',
   'admin.workflow.globalTab': '{name} (from any status)',
+  'admin.workflow.transitionButton': 'Transition: {name}',
   'admin.workflow.initialMark': 'Start',
   'admin.workflow.statuses': 'Statuses in this workflow',
   'admin.workflow.transitions': 'Transitions',

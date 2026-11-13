@@ -73,11 +73,20 @@ describe('workflow editor (M1-030)', () => {
     const diagram = screen.getByRole('region', { name: 'Diagram' });
     expect(diagram).toHaveAttribute('tabindex', '0');
     expect(within(diagram).getByRole('button', { name: 'Open Start' })).toBeVisible();
-    expect(within(diagram).getByRole('button', { name: 'Reject (from any status)' })).toBeVisible();
-    for (const button of within(diagram).getAllByRole('button')) {
+    // A transition's label says it is one, so it never shares a name with a status (AD-4).
+    expect(
+      within(diagram).getByRole('button', { name: 'Transition: Reject (from any status)' }),
+    ).toBeVisible();
+    const buttons = within(diagram).getAllByRole('button');
+    for (const button of buttons) {
       expect(button).toHaveAccessibleName();
       expect(button).not.toHaveAttribute('tabindex', '-1');
+      // Choosing opens an entry in the editor: not a toggle.
+      expect(button).not.toHaveAttribute('aria-pressed');
     }
+    const named = buttons.map((b) => b.getAttribute('aria-label') ?? b.textContent);
+    expect(new Set(named).size).toBe(named.length);
+    expect(named.filter((n) => n?.startsWith('Transition: ')).length).toBeGreaterThan(0);
     expect(
       within(statusList())
         .getAllByRole('button')
@@ -99,7 +108,7 @@ describe('workflow editor (M1-030)', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('heading', { name: /Active/, level: 2 })).toBeVisible();
     expect(within(diagram).getByRole('button', { name: 'Active' })).toHaveAttribute(
-      'aria-pressed',
+      'aria-current',
       'true',
     );
   });
@@ -334,7 +343,7 @@ describe('workflow editor (M1-030)', () => {
     );
     take.focus();
     await user.keyboard('{Enter}');
-    expect(take).toHaveAttribute('aria-pressed', 'true');
+    expect(take).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('heading', { name: 'Transition: Take' })).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText('Name')).toHaveFocus();

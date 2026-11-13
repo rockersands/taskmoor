@@ -121,7 +121,9 @@ export function WorkflowDiagram({
                 key={node.statusId}
                 type="button"
                 className={classes}
-                aria-pressed={node.statusId === selectedStatus}
+                // Choosing a box opens it in the editor: the one open is the current one, not a
+                // pressed toggle.
+                aria-current={node.statusId === selectedStatus ? 'true' : undefined}
                 style={{ left: node.x, top: node.y, width: NODE_WIDTH, height: NODE_HEIGHT }}
                 onClick={() => onSelect({ kind: 'status', id: node.statusId })}
               >
@@ -137,18 +139,21 @@ export function WorkflowDiagram({
             if (!edge.label) return null;
             const selected = edge.transitionId === selectedTransition;
             const name = names.transition(edge.transitionId);
+            const words = edge.kind === 'global' ? t('admin.workflow.globalTab', { name }) : name;
             return (
               <button
                 key={`${edge.key}-label`}
                 type="button"
-                aria-pressed={selected}
+                // Named as a transition, so it never shares a name with a status's box.
+                aria-label={t('admin.workflow.transitionButton', { name: words })}
+                aria-current={selected ? 'true' : undefined}
                 className={`workflow-edge-label${edge.kind === 'global' ? ' workflow-edge-tab' : ''}${
                   selected ? ' workflow-edge-label-selected' : ''
                 }`}
                 style={{ left: edge.label.x, top: edge.label.y, maxWidth: edge.label.width }}
                 onClick={() => onSelect({ kind: 'transition', id: edge.transitionId })}
               >
-                {edge.kind === 'global' ? t('admin.workflow.globalTab', { name }) : name}
+                {words}
               </button>
             );
           })}

@@ -161,6 +161,21 @@ describe('identity provider administration (M1-080)', () => {
     expect(field).toHaveClass('redirect-uri-value');
   });
 
+  it('[IAM-003] grows the redirect URI field to its whole address, without field-sizing (AD-9)', async () => {
+    // The height the address needs, as a browser without `field-sizing: content` measures it.
+    const scrollHeight = vi
+      .spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get')
+      .mockReturnValue(96);
+    try {
+      setViewportWidth(375);
+      openPage();
+      const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
+      expect((field as HTMLTextAreaElement).style.height).toBe('96px');
+    } finally {
+      scrollHeight.mockRestore();
+    }
+  });
+
   it('[IAM-003] adds a provider with its domains, policy and group mapping', async () => {
     const user = userEvent.setup();
     let providers = [STAFF];
