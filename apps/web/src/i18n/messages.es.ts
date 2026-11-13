@@ -91,6 +91,7 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.create': 'Crear un ticket',
   'popover.done': 'Listo',
   'dialog.close': 'Cerrar',
+  'danger.cancel': 'Cancelar',
   'tracks.title': 'Tracks',
   'tracks.failed': 'No se pudieron cargar los tracks.',
   'tracks.emptyTitle': 'Aún no hay tracks',

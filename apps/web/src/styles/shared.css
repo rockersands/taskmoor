@@ -74,6 +74,7 @@
 
 .button-secondary:disabled,
 .button-quiet:disabled,
+.button-danger-quiet:disabled,
 .button-danger:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -104,6 +105,59 @@
 /* Toward the text colour: darker in the light skin, lighter in the dark one, the text clearer. */
 .button-danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-danger) 86%, var(--color-text));
+}
+
+/*
+ * The first step of an action that removes something or locks someone out (D13, T-220): the shape
+ * of the quiet pill in the danger colours, so it never looks like a harmless action. Pressing it
+ * asks first (shell/DangerAction.tsx); `button-danger` is the answer that does it.
+ */
+.button-danger-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font: inherit;
+  font-size: var(--font-size-200);
+  font-weight: var(--font-weight-strong);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* A heavier edge, at once: motion is for transforms, opacity and colour (motion.test.ts). */
+.button-danger-quiet:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+/* The question in its place: what will happen, the action by name, and Cancel. */
+.danger-confirm {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  max-width: 36rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-2);
+  background: var(--color-danger-soft);
+  color: var(--color-text);
+}
+
+.danger-confirm-outcome {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.danger-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 /*
@@ -212,6 +266,7 @@
 @media (pointer: coarse) {
   .button-secondary,
   .button-quiet,
+  .button-danger-quiet,
   .button-danger {
     min-height: var(--hit-target-touch);
   }

@@ -78,6 +78,7 @@ export const messagesEn = {
   'track.outcomes.create': 'Create a ticket',
   'popover.done': 'Done',
   'dialog.close': 'Close',
+  'danger.cancel': 'Cancel',
   'tracks.title': 'Tracks',
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
