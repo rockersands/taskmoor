@@ -5,7 +5,7 @@ import { ApiError } from '../api/client';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import type { CompleteTarget, Sprint } from '../sprints/client';
-import { setViewportWidth } from '../test/viewport';
+import { setCoarsePointer, setViewportWidth } from '../test/viewport';
 import { announceTicketChange } from '../tickets/view/ticketChanges';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BoardPage, boardFilterName, offeredBoardFilters, sprintCounts } from './BoardPage';
@@ -591,8 +591,14 @@ describe('the board page (M1-043)', () => {
     renderBoard();
     await page();
     expect(screen.getByText(/^Up and Down go from card to card/)).toBeInTheDocument();
+    // A narrow window worked with a keyboard keeps the keys: touch screens only (D6).
     cleanup();
     setViewportWidth(375);
+    renderBoard();
+    await page();
+    expect(screen.getByText(/^Up and Down go from card to card/)).toBeInTheDocument();
+    cleanup();
+    setCoarsePointer(true);
     renderBoard();
     await page();
     expect(
@@ -601,7 +607,6 @@ describe('the board page (M1-043)', () => {
       ),
     ).toBeVisible();
     expect(screen.queryByText(/Alt\+Left/)).toBeNull();
-    setViewportWidth(1440);
   });
 
   it('[AGL-005] shows its filters on a slab of their own (D28)', async () => {

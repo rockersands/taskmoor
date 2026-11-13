@@ -316,17 +316,11 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   opacity: 0;
-  transition: opacity var(--motion-fast) ease;
+  transition: opacity var(--motion-fast) var(--ease-soft);
 }
 
 .wallboard-exits:is(:hover, :focus-within) {
   opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wallboard-exits {
-    transition: none;
-  }
 }
 
 /* A track's summary (M1-064): numbers that open their search, with a bar for their share. */

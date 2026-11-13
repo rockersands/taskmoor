@@ -182,17 +182,11 @@
   border-block-end: 2px solid currentcolor;
   border-inline-end: 2px solid currentcolor;
   transform: rotate(-45deg);
-  transition: transform var(--motion-fast) ease;
+  transition: transform var(--motion-fast) var(--ease-soft);
 }
 
 .chart-table[open] summary::before {
   transform: rotate(45deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chart-table summary::before {
-    transition: none;
-  }
 }
 
 .chart-table :is(th, td) {

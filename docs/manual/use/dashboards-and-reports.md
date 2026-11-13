@@ -101,7 +101,8 @@ A pie chart widget with no title of its own is named by what it counts, such as 
 Status**.
 
 A dashboard that does not exist, or that is not shared with you, shows **Dashboard not found**
-with the way to **Home** and to **Search**.
+with the way to **Home** and to **Search**. One that cannot be read for another reason keeps its
+header, **Dashboard**, and says so under it.
 
 ### Wallboards
 

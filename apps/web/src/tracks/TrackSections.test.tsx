@@ -61,24 +61,42 @@ describe('a track is one place with its sections (ADR-116)', () => {
     );
   });
 
-  it('[CORE-001] brings the current tab into view on a phone and fades the edge with more tabs (TR-4)', async () => {
+  it('[CORE-001] brings the current tab into view on a phone by scrolling the bar alone, and fades the edge with more tabs (TR-4)', async () => {
     setViewportWidth(375);
-    const scrolled: Element[] = [];
-    const scrollIntoView = vi.fn(function (this: Element) {
-      scrolled.push(this);
-    });
+    const scrollIntoView = vi.fn();
+    const scrolled = new WeakMap<Element, number>();
     const width = (element: Element, wide: number, narrow: number) =>
       element.tagName === 'NAV' ? (wide > 0 ? wide : narrow) : 0;
     const restore = [
       stub(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView }),
+      stub(Element.prototype, 'scrollLeft', {
+        get(this: Element) {
+          return scrolled.get(this) ?? 0;
+        },
+        set(this: Element, value: number) {
+          scrolled.set(this, value);
+          this.dispatchEvent(new Event('scroll'));
+        },
+      }),
       stub(HTMLElement.prototype, 'scrollWidth', {
         get(this: Element) {
-          return width(this, 900, 0);
+          return width(this, 1200, 0);
         },
       }),
       stub(HTMLElement.prototype, 'clientWidth', {
         get(this: Element) {
           return width(this, 0, 343);
+        },
+      }),
+      // The bar is 343 pixels wide from 16; the Statistics tab sits far to its right, out of view.
+      stub(Element.prototype, 'getBoundingClientRect', {
+        value(this: Element) {
+          if (this.tagName === 'NAV') return new DOMRect(16, 120, 343, 52);
+          if (this.tagName === 'A' && this.textContent === 'Statistics') {
+            const along = scrolled.get(this.closest('nav') as Element) ?? 0;
+            return new DOMRect(760 - along, 124, 100, 44);
+          }
+          return new DOMRect();
         },
       }),
     ];
@@ -89,13 +107,45 @@ describe('a track is one place with its sections (ADR-116)', () => {
         </TrackLayout>,
       );
       const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
-      const current = within(bar).getByRole('link', { name: 'Statistics' });
-      await waitFor(() => expect(scrolled).toContain(current));
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'center' });
-      // At its start, the bar hides tabs past its right edge, and says so.
-      expect(bar).toHaveAttribute('data-more', 'end');
+      // The tab's middle (810) to the bar's (187.5): the bar scrolls 622.5 pixels; the page does not.
+      await waitFor(() => expect(bar.scrollLeft).toBe(622.5));
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      // Scrolled along, the bar hides tabs past both edges, and says so.
+      await waitFor(() => expect(bar).toHaveAttribute('data-more', 'both'));
     } finally {
       for (const undo of restore) undo();
+    }
+  });
+
+  it("[CORE-001] shows a board its administrator may see without its track's tabs, not as not found (D4)", async () => {
+    const board = vi.spyOn(boardClient, 'board').mockResolvedValue(BOARD);
+    const client = fakeTrackClient();
+    client.sections = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    let starts = 0;
+    function Page() {
+      useEffect(() => {
+        starts += 1;
+      }, []);
+      return <h1>The board</h1>;
+    }
+    try {
+      inEnglish(
+        <BoardInTrack boardId={BOARD.id} section="board" client={client}>
+          <Page />
+        </BoardInTrack>,
+      );
+      expect(await screen.findByRole('heading', { level: 1, name: 'The board' })).toBeVisible();
+      await waitFor(() =>
+        expect(screen.queryByRole('navigation', { name: /^Sections of / })).toBeNull(),
+      );
+      expect(screen.queryByRole('heading', { name: 'Track not found' })).toBeNull();
+      // Losing the tabs does not start the page again.
+      await new Promise((settled) => setTimeout(settled));
+      expect(starts).toBe(1);
+    } finally {
+      board.mockRestore();
     }
   });
 

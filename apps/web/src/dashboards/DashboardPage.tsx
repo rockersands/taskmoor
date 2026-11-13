@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
@@ -63,7 +64,7 @@ export function DashboardPage({
   const { session } = useSession();
   const admin = session.status === 'signed-in' && session.user.isSiteAdmin;
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'missing' | 'failed' | null>(null);
   const [draft, setDraft] = useState<{ name: string; layout: Layout; widgets: Widget[] } | null>(
     null,
   );
@@ -80,7 +81,13 @@ export function DashboardPage({
     let live = true;
     client.get(id).then(
       (d) => live && setDashboard(d),
-      () => live && setFailed(true),
+      (error: unknown) =>
+        live &&
+        setFailed(
+          error instanceof ApiError && (error.status === 404 || error.status === 403)
+            ? 'missing'
+            : 'failed',
+        ),
     );
     return () => {
       live = false;
@@ -106,9 +113,24 @@ export function DashboardPage({
     };
   }, [wallboard, id]);
 
-  if (failed) {
+  if (failed === 'missing') {
     // Not there, or not shared with this person: the shared not-found page, with a way on (D4).
     return <NotFoundPage title={t('notFound.dashboard')}>{t('dashboards.notFound')}</NotFoundPage>;
+  }
+  if (failed) {
+    // Any other failure keeps the page's header, with the alert under it (UI-T22).
+    return (
+      <section className="page dashboard-page" aria-labelledby={titleId}>
+        <PageHeader
+          titleId={titleId}
+          title={t('dashboards.title')}
+          purpose={t('purpose.dashboard')}
+        />
+        <p className="board-problem" role="alert">
+          {t('dashboards.failed')}
+        </p>
+      </section>
+    );
   }
   if (!dashboard) return <p className="report-loading">{t('reports.loading')}</p>;
 

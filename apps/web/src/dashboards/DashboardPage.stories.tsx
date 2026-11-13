@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
 import { DashboardPage } from './DashboardPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
@@ -87,7 +88,7 @@ export const NotFound: Story = {
     client: {
       ...fakeDashboardClient(),
       get: async () => {
-        throw new Error('not found');
+        throw new ApiError(404, { error: 'not_found' });
       },
     },
   },
@@ -97,5 +98,22 @@ export const NotFound: Story = {
       await canvas.findByRole('heading', { level: 1, name: 'Dashboard not found' }),
     ).toBeVisible();
     await expect(canvas.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+  },
+};
+
+/** A dashboard that could not be read for another reason: its header stays, the alert under it. */
+export const Failed: Story = {
+  args: {
+    client: {
+      ...fakeDashboardClient(),
+      get: async () => {
+        throw new ApiError(500, { error: 'internal' });
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+    await expect(canvas.getByRole('alert')).toHaveTextContent('could not be loaded');
   },
 };
