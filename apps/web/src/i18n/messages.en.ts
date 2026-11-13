@@ -331,6 +331,10 @@ export const messagesEn = {
   'about.ticket':
     'The buttons under the title move the ticket through its workflow. Details on the side are its fields: change one and it saves at once. Activity below keeps the comments, the history of every change and the time recorded.',
   // The "what is this for" button beside a title (ADR-114).
+  'about.ticketStacked':
+    'The buttons under the title move the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
+  'about.list':
+    'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
   'help.about': 'What is {name} for?',
   'help.menu': 'Help',
   'help.tutorials': 'Tutorials',
@@ -430,6 +434,7 @@ export const messagesEn = {
     'We won’t offer the tutorial again. Every section stays in Settings, Tutorials if you change your mind.',
   'tutorial.offer.open': 'Open Tutorials',
   'tutorial.offer.failed': 'Your answer could not be saved. Try again.',
+  'tutorial.gettingStarted': 'Getting started',
   // The coach card (ADR-115).
   'tutorial.coach.progress': '{section} · Step {step} of {count}',
   'tutorial.coach.announce': '{progress}: {title}',
@@ -690,7 +695,11 @@ export const messagesEn = {
   'search.countAtLeast': 'More than {count, plural, one {# ticket} other {# tickets}}',
   'search.countAbout': 'About {count, plural, one {# ticket} other {# tickets}}',
   'search.shown': '{count, plural, one {# ticket} other {# tickets}} shown',
-  'search.more': 'More results',
+  'search.more': 'Show more',
+  'search.sorted':
+    'Sorted by {column}, {direction, select, ascending {ascending} other {descending}}',
+  'search.sorted.date':
+    'Sorted by {column}, {direction, select, ascending {oldest first} other {newest first}}',
   'search.table': 'Result table',
   'search.columns': 'Columns',
   'search.columns.keyFirst': 'The key always comes first.',
@@ -761,6 +770,7 @@ export const messagesEn = {
   'saved.starred': '{name} is starred.',
   'saved.unstarred': '{name} is no longer starred.',
   'saved.subscribe': 'Subscribe',
+  'saved.subscribedButton': 'Subscribed',
   'saved.subscribeSave': 'Subscribe by email',
   'saved.schedule': 'How often',
   'saved.schedule.daily': 'Every day',
@@ -2455,7 +2465,6 @@ export const messagesEn = {
   'tickets.create.noTracks': 'There is no track you can create tickets in yet.',
   'tickets.create.requiredLabel': '{label} (required)',
   'tickets.create.moreFields': 'More fields',
-  'tickets.create.later': 'Set on the ticket once it is created.',
   'tickets.create.labelsHint': 'Separate labels with spaces or commas.',
   'tickets.create.none': 'None',
   'tickets.templates.priorityDefault': 'The track’s default',
@@ -3244,6 +3253,7 @@ export const messagesEn = {
   'ticketView.assignedToYou': 'Assigned to you.',
   'ticketView.status': 'Status: {status}. Change it',
   'ticketView.statusVia': '{status} ({name})',
+  'ticketView.statusNow': 'Now: {status}',
   'ticketView.transitionForm': '{name}: what it needs',
   'ticketView.follow': 'Follow ({count, number})',
   'ticketView.vote': 'Vote ({count, number})',
@@ -3423,6 +3433,8 @@ export const messagesEn = {
   'bulk.status.cancelling': 'Cancelling after the tickets in hand.',
   'bulk.status.done': 'Done.',
   'bulk.status.cancelled': 'Cancelled. The tickets not yet changed were skipped.',
+  'bulk.warning':
+    '{action, select, edit {The bulk edit} move {The bulk move} transition {The bulk transition} delete {The bulk delete} clone {The clone} other {The bulk change}} {cancelled, select, yes {was cancelled} other {finished}} with problems: {succeeded, plural, =0 {no ticket was} one {# ticket was} other {# tickets were}} {action, select, clone {copied} delete {deleted} other {changed}}, and {failed, plural, one {# ticket was} other {# tickets were}} not. Each one is listed below with the reason.',
   'bulk.progress': '{done} of {total} tickets finished',
   'bulk.count.succeeded': 'Changed',
   'bulk.count.failed': 'Not changed',
@@ -5056,7 +5068,6 @@ export const messagesEn = {
   'calendar.moreLabel': '{count, number} more: show all tickets on {date}',
   'calendar.fewer': 'Show fewer',
   // A track's list view (M1-049).
-  'list.title': 'List of {name}',
   'list.notFound': 'This track does not exist, or you cannot see it.',
   'list.tickets': 'Tickets',
   'list.groupBy': 'Group by',
@@ -5073,7 +5084,7 @@ export const messagesEn = {
   'list.otherHint': 'Tickets with the rarest values; search for them to see them all.',
   'list.groupsFailed': 'The groups could not be counted. Check the filter.',
   'list.sortBy': 'Sort by',
-  'list.sort.created': 'Newest first',
+  'list.sort.created': 'Newest created first',
   'list.sort.updated': 'Recently updated',
   'list.sort.due': 'Due date',
   'list.sort.priority': 'Priority',
@@ -5084,7 +5095,6 @@ export const messagesEn = {
   'list.failed': 'The tickets could not be loaded.',
   'list.empty': 'No tickets.',
   'list.more': 'Show more',
-  'list.columns': 'Columns',
   'list.rules':
     '{count, plural, =0 {Format rules} one {Format rules (#)} other {Format rules (#)}}',
   'list.rulesHint':
@@ -6159,6 +6169,8 @@ export const messagesEn = {
     'This track has no ticket type for this level, so none can be added here.',
   'ticketTools.subtickets.progress': '{closed} of {total} closed ({percent}%)',
   'ticketTools.subtickets.mini': '{closed}/{total}',
+  'ticketTools.subtickets.miniNamed': '{closed}/{total} subtickets closed',
+  'ticketTools.subtickets.miniLabel': 'Subtickets: {closed} of {total} closed ({percent}%)',
   'ticketTools.subtickets.summary': 'New subticket',
   'ticketTools.children.new': 'New ticket under this',
   'ticketTools.subtickets.add': 'Add',
@@ -6200,10 +6212,10 @@ export const messagesEn = {
   'ticketTools.checklists.added': 'The checklist {name} was added.',
   'ticketTools.checklists.removed': 'The checklist {name} was removed.',
   'ticketTools.checklists.moved': 'The checklist {name} was moved.',
-  'ticketTools.checklists.rename': 'Rename the checklist {name}',
+  'ticketTools.checklists.rename': 'Edit checklist {name}',
   'ticketTools.checklists.remove': 'Remove the checklist {name}',
-  'ticketTools.checklists.moveListUp': 'Move the checklist {name} up',
-  'ticketTools.checklists.moveListDown': 'Move the checklist {name} down',
+  'ticketTools.checklists.moveListUp': 'Move up the checklist {name}',
+  'ticketTools.checklists.moveListDown': 'Move down the checklist {name}',
   'ticketTools.checklists.addItem': 'Add an item to {name}',
   'ticketTools.checklists.itemText': 'Item',
   'ticketTools.checklists.itemAdded': 'Added: {text}',
@@ -6212,8 +6224,8 @@ export const messagesEn = {
   'ticketTools.checklists.itemMoved': 'Moved: {text}',
   'ticketTools.checklists.stateOf': 'State of {text}',
   'ticketTools.checklists.edit': 'Edit {text}',
-  'ticketTools.checklists.moveUp': 'Move {text} up',
-  'ticketTools.checklists.moveDown': 'Move {text} down',
+  'ticketTools.checklists.moveUp': 'Move up {text}',
+  'ticketTools.checklists.moveDown': 'Move down {text}',
   'ticketTools.checklists.removeItem': 'Remove {text}',
   'ticketTools.checklists.tooMany':
     'This has as many as it can hold: 20 checklists on a ticket, 200 items on a checklist.',

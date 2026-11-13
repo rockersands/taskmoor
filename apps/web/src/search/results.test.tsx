@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,8 +9,11 @@ import { SessionProvider } from '../session/SessionProvider';
 import { setViewportWidth } from '../test/viewport';
 import { exportUrl } from './client';
 import { cellChange, DEFAULT_COLUMNS, loadColumns, valueText } from './columns';
-import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
+import { fakeSavedSearchClient, fakeSearchClient, TICKETS } from './fixtures';
 import { SearchPage } from './SearchPage';
+
+/** The stylesheets, read from disk: the web project turns CSS imports off. */
+const STYLES = ['apps/web/src/styles', 'src/styles'].find((d) => existsSync(d)) ?? 'src/styles';
 
 function renderPage(initialQuery = 'track = SHOP') {
   const client = fakeSearchClient();
@@ -169,9 +174,11 @@ describe('search results (M1-042)', () => {
       { id: 41, change: { labels: ['payments', 'refunds'], version: 1 } },
       { id: 41, change: { fields: { 41: 5 }, version: 2 } },
     ]);
-    // A select field is not edited in place.
-    await user.selectOptions(within(panel).getByLabelText('Add a column'), 'Team');
-    await user.click(within(panel).getByRole('button', { name: 'Add' }));
+    // A select field is not edited in place. (The edits outside closed the pop-over.)
+    await user.click(screen.getByRole('button', { name: 'Columns' }));
+    const again = screen.getByRole('group', { name: 'Columns' });
+    await user.selectOptions(within(again).getByLabelText('Add a column'), 'Team');
+    await user.click(within(again).getByRole('button', { name: 'Add' }));
     expect(screen.queryByRole('button', { name: 'Edit Team of SHOP-41' })).toBeNull();
   });
 
@@ -179,7 +186,7 @@ describe('search results (M1-042)', () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('table');
-    await user.click(screen.getByRole('button', { name: 'More results' }));
+    await user.click(screen.getByRole('button', { name: 'Show more' }));
     await screen.findByRole('link', { name: 'OPS-12' });
     await user.click(screen.getByRole('button', { name: 'Edit Summary of OPS-12' }));
     await user.type(screen.getByRole('textbox', { name: 'Edit Summary of OPS-12' }), '!{Enter}');
@@ -222,12 +229,62 @@ describe('search results (M1-042)', () => {
     );
   });
 
-  it('fits a small phone: the table scrolls in its own region', async () => {
+  it('[QRY-014] [NFR-005] fits a small phone: stacked rows of key, summary, then status, assignee and priority (TR-1, PL-1)', async () => {
     setViewportWidth(375);
     renderPage();
-    const region = await screen.findByRole('region', { name: 'Result table' });
-    expect(region).toHaveAttribute('tabindex', '0');
-    expect(within(region).getByRole('table')).toBeVisible();
+    const rows = await screen.findByRole('list', { name: 'Tickets' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const first = within(rows).getAllByRole('listitem')[0] as HTMLElement;
+    const words = [...first.querySelectorAll('p, dd')].map((e) => e.textContent?.trim());
+    const ticket = TICKETS[0] as (typeof TICKETS)[number];
+    expect(words.slice(0, 2)).toEqual([ticket.key, ticket.summary]);
+    expect(words).toContain(ticket.status.name);
+    expect(words).toContain(ticket.assignee?.name ?? 'Unassigned');
+    expect(within(first).getByRole('link', { name: ticket.key })).toHaveAttribute(
+      'href',
+      `#/tickets/${ticket.key}`,
+    );
+    // Labelled for a screen reader, though the labels are not shown.
+    expect(within(first).getByText('Status')).toHaveClass('visually-hidden');
+  });
+
+  it('[QRY-014] gives the summary the width and keeps short values and dates on one line (TR-8, PL-10)', async () => {
+    renderPage();
+    const table = await screen.findByRole('table');
+    const header = (name: string) =>
+      within(table).getByRole('columnheader', { name: new RegExp(`^${name}`) });
+    expect(header('Summary')).toHaveAttribute('data-column', 'summary');
+    expect(header('Summary')).not.toHaveAttribute('data-one-line');
+    for (const name of ['Type', 'Status', 'Priority', 'Updated']) {
+      expect(header(name)).toHaveAttribute('data-one-line');
+    }
+    const updated = within(row('SHOP-41')).getAllByRole('cell').at(-1) as HTMLElement;
+    expect(updated).toHaveAttribute('data-one-line');
+    // The rules themselves: the summary takes the free width; one-line cells never wrap.
+    const css = readFileSync(join(STYLES, 'search.css'), 'utf8');
+    expect(css).toMatch(/\.search-table \[data-column\] \{\s*width: 1%;/);
+    expect(css).toMatch(/\.search-table \[data-one-line\] \{\s*white-space: nowrap;/);
+    expect(css).not.toMatch(/\.search-cell-value \{[^}]*overflow-wrap: anywhere/);
+  });
+
+  it('[QRY-014] says the order the results are in and marks that column (PL-11)', async () => {
+    renderPage();
+    const table = await screen.findByRole('table');
+    // No ORDER BY: newest created first, as the server sorts them.
+    expect(screen.getByText('Sorted by Created, newest first')).toBeVisible();
+    for (const header of within(table).getAllByRole('columnheader')) {
+      expect(header).not.toHaveAttribute('aria-sort');
+    }
+  });
+
+  it('[QRY-014] marks the sorted column of an ordered query with aria-sort (PL-11)', async () => {
+    renderPage('track = SHOP ORDER BY updated ASC');
+    const table = await screen.findByRole('table');
+    expect(within(table).getByRole('columnheader', { name: /^Updated/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    expect(screen.getByText('Sorted by Updated, oldest first')).toBeVisible();
   });
 });
 

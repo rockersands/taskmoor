@@ -49,6 +49,19 @@ test('[QRY-014] [QRY-015] columns, edits in place and a CSV export of the result
   await page.goto(`${BASE}/#/search?q=${encodeURIComponent(`text ~ "${word}"`)}`);
   const results = page.getByRole('region', { name: 'Results' });
   await expect(results.getByRole('link', { name: ticket.key, exact: true })).toBeVisible();
+  if (testInfo.project.name === 'mobile') {
+    // A phone shows stacked rows (D1): key, summary, then status, assignee and priority; the
+    // edits in place are the wide table's.
+    const rows = results.getByRole('list', { name: 'Tickets' });
+    await expect(rows.getByRole('listitem')).toHaveCount(1);
+    await expect(rows.getByText(`Inline ${word}`, { exact: true })).toBeVisible();
+    await expect(results.getByRole('table')).toHaveCount(0);
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    return;
+  }
   const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: ticket.key }) });
   const table = results.getByRole('table');
 

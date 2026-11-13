@@ -352,6 +352,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Cada columna representa uno o varios estados del flujo de trabajo. Mover una tarjeta ejecuta la transición que lleva a esa columna; si hay varias, Taskmoor te pregunta cuál. Los filtros reducen las tarjetas y los recuentos siempre incluyen todas.',
   'about.ticket':
     'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles del lateral son sus campos: cambia uno y se guarda al momento. La actividad de abajo guarda los comentarios, el historial de cada cambio y el tiempo registrado.',
+  'about.ticketStacked':
+    'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles, después de la descripción y las herramientas del ticket, son sus campos: cambia uno y se guarda al momento. La actividad va al final, con los comentarios, el historial de cada cambio y el tiempo registrado.',
+  'about.list':
+    'Cada fila es un ticket de este track, en el orden que fija Ordenar por; el lápiz junto a un valor lo cambia ahí mismo. Agrupar por reparte las filas según un campo y cuenta cada grupo. Columnas elige lo que muestran las filas, y las reglas de formato colorean los tickets que encuentra una condición. Las columnas y las reglas se guardan en este navegador. En un teléfono cada ticket es un bloque: su clave, su resumen y luego su estado, su responsable y su prioridad.',
   'help.about': '¿Para qué sirve {name}?',
   'help.menu': 'Ayuda',
   'help.tutorials': 'Tutoriales',
@@ -451,6 +455,7 @@ export const messagesEs: Record<MessageId, string> = {
     'No volveremos a ofrecerte el tutorial. Todas las secciones siguen en Configuración, Tutoriales por si cambias de idea.',
   'tutorial.offer.open': 'Abrir Tutoriales',
   'tutorial.offer.failed': 'No se pudo guardar tu respuesta. Inténtalo de nuevo.',
+  'tutorial.gettingStarted': 'Primeros pasos',
   'tutorial.coach.progress': '{section} · Paso {step} de {count}',
   'tutorial.coach.announce': '{progress}: {title}',
   'tutorial.coach.waiting':
@@ -711,7 +716,11 @@ export const messagesEs: Record<MessageId, string> = {
   'search.countAtLeast': 'Más de {count, plural, one {# ticket} other {# tickets}}',
   'search.countAbout': 'Unos {count, plural, one {# ticket} other {# tickets}}',
   'search.shown': '{count, plural, one {# ticket mostrado} other {# tickets mostrados}}',
-  'search.more': 'Más resultados',
+  'search.more': 'Mostrar más',
+  'search.sorted':
+    'Ordenado por {column}, {direction, select, ascending {ascendente} other {descendente}}',
+  'search.sorted.date':
+    'Ordenado por {column}, {direction, select, ascending {primero lo más antiguo} other {primero lo más reciente}}',
   'search.table': 'Tabla de resultados',
   'search.columns': 'Columnas',
   'search.columns.keyFirst': 'La clave siempre va primero.',
@@ -782,6 +791,7 @@ export const messagesEs: Record<MessageId, string> = {
   'saved.starred': '{name} está destacada.',
   'saved.unstarred': '{name} ya no está destacada.',
   'saved.subscribe': 'Suscribirse',
+  'saved.subscribedButton': 'Suscrito',
   'saved.subscribeSave': 'Suscribirse por correo',
   'saved.schedule': 'Con qué frecuencia',
   'saved.schedule.daily': 'Cada día',
@@ -2534,7 +2544,6 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.create.noTracks': 'Aún no hay ningún track en el que puedas crear tickets.',
   'tickets.create.requiredLabel': '{label} (obligatorio)',
   'tickets.create.moreFields': 'Más campos',
-  'tickets.create.later': 'Se define en el ticket una vez creado.',
   'tickets.create.labelsHint': 'Separa las etiquetas con espacios o comas.',
   'tickets.create.none': 'Ninguno',
   'tickets.templates.priorityDefault': 'La predeterminada del track',
@@ -3333,6 +3342,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.assignedToYou': 'Asignado a ti.',
   'ticketView.status': 'Estado: {status}. Cambiarlo',
   'ticketView.statusVia': '{status} ({name})',
+  'ticketView.statusNow': 'Ahora: {status}',
   'ticketView.transitionForm': '{name}: lo que necesita',
   'ticketView.follow': 'Seguir ({count, number})',
   'ticketView.vote': 'Votar ({count, number})',
@@ -3517,6 +3527,8 @@ export const messagesEs: Record<MessageId, string> = {
   'bulk.status.cancelling': 'Cancelando después de los tickets en curso.',
   'bulk.status.done': 'Hecho.',
   'bulk.status.cancelled': 'Cancelado. Se omitieron los tickets aún sin cambiar.',
+  'bulk.warning':
+    '{action, select, edit {La edición masiva} move {El traslado masivo} transition {La transición masiva} delete {El borrado masivo} clone {La copia} other {El cambio masivo}} {cancelled, select, yes {se canceló} other {terminó}} con problemas: {succeeded, plural, =0 {no se {action, select, clone {copió} delete {borró} other {cambió}} ningún ticket} one {se {action, select, clone {copió} delete {borró} other {cambió}} # ticket} other {se {action, select, clone {copiaron} delete {borraron} other {cambiaron}} # tickets}} y {failed, plural, one {# ticket no} other {# tickets no}}. Abajo tienes cada uno con el motivo.',
   'bulk.progress': '{done} de {total} tickets terminados',
   'bulk.count.succeeded': 'Cambiados',
   'bulk.count.failed': 'Sin cambiar',
@@ -5182,7 +5194,6 @@ export const messagesEs: Record<MessageId, string> = {
   // The visible "N más" comes first, whole, so speech input finds the button by its text.
   'calendar.moreLabel': '{count, number} más: mostrar los tickets del {date}',
   'calendar.fewer': 'Mostrar menos',
-  'list.title': 'Lista de {name}',
   'list.notFound': 'Este track no existe, o no puedes verlo.',
   'list.tickets': 'Tickets',
   'list.groupBy': 'Agrupar por',
@@ -5199,7 +5210,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.otherHint': 'Tickets con los valores menos frecuentes; búscalos para verlos todos.',
   'list.groupsFailed': 'No se pudieron contar los grupos. Revisa el filtro.',
   'list.sortBy': 'Ordenar por',
-  'list.sort.created': 'Los más nuevos primero',
+  'list.sort.created': 'Primero los creados más recientes',
   'list.sort.updated': 'Actualizados recientemente',
   'list.sort.due': 'Fecha límite',
   'list.sort.priority': 'Prioridad',
@@ -5210,7 +5221,6 @@ export const messagesEs: Record<MessageId, string> = {
   'list.failed': 'No se pudieron cargar los tickets.',
   'list.empty': 'Sin tickets.',
   'list.more': 'Mostrar más',
-  'list.columns': 'Columnas',
   'list.rules':
     '{count, plural, =0 {Reglas de formato} one {Reglas de formato (#)} other {Reglas de formato (#)}}',
   'list.rulesHint':
@@ -6305,6 +6315,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Este track no tiene un tipo de ticket para este nivel, así que aquí no se puede añadir ninguno.',
   'ticketTools.subtickets.progress': '{closed} de {total} cerrados ({percent} %)',
   'ticketTools.subtickets.mini': '{closed}/{total}',
+  'ticketTools.subtickets.miniNamed': '{closed}/{total} subtickets cerrados',
+  'ticketTools.subtickets.miniLabel': 'Subtickets: {closed} de {total} cerrados ({percent} %)',
   'ticketTools.subtickets.summary': 'Nuevo subticket',
   'ticketTools.children.new': 'Nuevo ticket debajo de este',
   'ticketTools.subtickets.add': 'Añadir',
@@ -6346,7 +6358,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.added': 'Se añadió la lista {name}.',
   'ticketTools.checklists.removed': 'Se quitó la lista {name}.',
   'ticketTools.checklists.moved': 'Se movió la lista {name}.',
-  'ticketTools.checklists.rename': 'Cambiar el nombre de la lista {name}',
+  'ticketTools.checklists.rename': 'Editar la lista {name}',
   'ticketTools.checklists.remove': 'Quitar la lista {name}',
   'ticketTools.checklists.moveListUp': 'Subir la lista {name}',
   'ticketTools.checklists.moveListDown': 'Bajar la lista {name}',

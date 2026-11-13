@@ -185,6 +185,7 @@ export function fakeSavedSearchClient(
 ): SavedSearchClient & { saved: SavedSearch[]; subscriptions: SubscriptionInput[] } {
   const saved = start.map((s) => ({ ...s }));
   const subscriptions: SubscriptionInput[] = [];
+  const subscribed = new Set<number>();
   const find = (id: number) => {
     const found = saved.find((s) => s.id === id);
     if (!found) throw new ApiError(404, { error: 'not_found' });
@@ -226,7 +227,9 @@ export function fakeSavedSearchClient(
     subscribe: async (id, input) => {
       find(id);
       subscriptions.push(input);
+      subscribed.add(id);
       return { nextRunAt: '2026-10-30T08:00:00.000Z' };
     },
+    subscribedTo: async (id) => subscribed.has(id),
   };
 }

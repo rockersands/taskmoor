@@ -30,7 +30,9 @@ describe('a track’s list (M1-049)', () => {
   it('[AGL-016] lists the track’s tickets and edits a cell in place', async () => {
     const user = userEvent.setup();
     const { search } = renderList();
-    expect(await screen.findByRole('heading', { name: 'List of Shop' })).toBeVisible();
+    // Titled by its section, under the track's name (D26).
+    expect(await screen.findByRole('heading', { name: 'List', level: 1 })).toBeVisible();
+    expect(screen.getByText('Shop', { selector: '.page-eyebrow' })).toBeVisible();
     expect(await screen.findByRole('link', { name: 'SHOP-41' })).toBeVisible();
     expect(search.queries[0]).toBe('track = SHOP ORDER BY created DESC');
     await user.click(screen.getByRole('button', { name: 'Edit Summary of SHOP-41' }));
@@ -84,6 +86,8 @@ describe('a track’s list (M1-049)', () => {
     const user = userEvent.setup();
     renderList();
     await screen.findByRole('link', { name: 'SHOP-41' });
+    // Format rules open as the shared pop-over (T-216).
+    await user.click(screen.getByRole('button', { name: 'Format rules' }));
     const form = within(screen.getByRole('form', { name: 'Add rule' }));
     await user.type(form.getByRole('textbox', { name: 'Name' }), 'Untouched');
     await user.type(form.getByRole('textbox', { name: 'Condition' }), 'stage = new');
@@ -130,11 +134,36 @@ describe('a track’s list (M1-049)', () => {
     await waitFor(() => expect(client.created).toEqual(['Gift wrapping']));
   });
 
-  it('[AGL-016] fits a phone: the table scrolls inside itself, never the page', async () => {
+  it('[AGL-016] fits a phone: stacked rows, never a squeezed table (TR-1, D1)', async () => {
     setViewportWidth(375);
     renderList();
     await screen.findByRole('link', { name: 'SHOP-41' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+    const rows = screen.getByRole('list', { name: 'Tickets' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const row = screen.getByRole('link', { name: 'SHOP-41' }).closest('li') as HTMLElement;
+    expect(rows.contains(row)).toBe(true);
+    expect(row.querySelector('.result-row-summary')?.textContent).toBeTruthy();
+    expect(row.querySelector('.result-row-facts')).not.toBeNull();
+  });
+
+  it('[AGL-016] has no link that repeats a tab, and explains itself behind its help mark (D7, TR-28)', async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    expect(screen.queryByRole('link', { name: 'Track summary' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'What is List for?' }));
+    expect(screen.getByText(/^Each row is a ticket of this track/)).toBeVisible();
+  });
+
+  it('[AGL-016] marks the column its order follows (PL-11)', async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'updated');
+    const updated = await screen.findByRole('columnheader', { name: /^Updated/ });
+    expect(updated).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.getByRole('columnheader', { name: 'Summary' })).not.toHaveAttribute('aria-sort');
   });
 
   it('[NFR-006] words its filter and groups from the catalogue, in the pseudo-locale too', async () => {
@@ -149,7 +178,7 @@ describe('a track’s list (M1-049)', () => {
     expect(await screen.findByRole('heading', { name: /^\[\[Ĥíğĥ~~\] / })).toBeVisible();
     // Cell values are tickets' data, and so are the names of fields and values someone added.
     for (const cell of page.querySelectorAll('.search-cell-value')) cell.textContent = '';
-    const data = new Set(['SHOP-41', 'SHOP-44', 'OPS-12', 'Customer', 'Team']);
+    const data = new Set(['SHOP-41', 'SHOP-44', 'OPS-12', 'Customer', 'Team', 'Shop']);
     expect(untranslated(visibleTexts(page).filter((text) => !data.has(text)))).toEqual([]);
     expect(within(page).getByRole('heading', { name: /^\[Medium / })).toBeVisible();
   });

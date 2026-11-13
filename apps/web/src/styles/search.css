@@ -42,9 +42,11 @@
   overflow-y: auto;
 }
 
+/* One label style for the form's fields and its groups (PL-33): the size and weight of a field's. */
 .search-choices > legend,
 .search-filter > legend {
   padding: 0;
+  font-size: var(--font-size-200);
   font-weight: var(--font-weight-strong);
 }
 
@@ -153,31 +155,16 @@
   gap: var(--space-2);
 }
 
-.search-export-link,
-.search-columns-toggle {
+.search-export-link {
   min-height: var(--hit-target);
   display: inline-flex;
   align-items: center;
   text-decoration: none;
 }
 
-.search-columns {
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* A well, on the canvas or on a list's panel, with no blur of its own. */
+/* Inside the shared pop-over (T-216), which is its surface. */
 .search-columns-panel {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-3);
-  border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-2);
-  background: var(--glass-surface-sunken);
-  max-width: 28rem;
-}
-
-.search-columns-panel[hidden] {
-  display: none;
+  min-width: 0;
 }
 
 .search-columns-list {
@@ -230,9 +217,30 @@
   font-weight: var(--font-weight-strong);
 }
 
+/*
+ * The summary takes the width the other columns leave (TR-8, PL-10): short values stay on one line
+ * at their own width, so a title wraps only when the table is truly full, and a date never breaks.
+ */
+.search-table [data-column] {
+  width: 1%;
+}
+
+.search-table [data-column="summary"] {
+  width: auto;
+  min-width: 16rem;
+}
+
+.search-table [data-one-line] {
+  white-space: nowrap;
+}
+
 .search-cell {
-  min-width: 8rem;
   max-width: 24rem;
+}
+
+.search-sort-mark {
+  margin-inline-start: var(--space-1);
+  color: var(--color-text);
 }
 
 .search-cell.has-problem {
@@ -246,9 +254,15 @@
   gap: var(--space-2);
 }
 
+/* Words break between words, never inside one (TR-1); a link or code with no spaces still fits. */
 .search-cell-value {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* The pencil keeps a gap from the next column, inside its own cell. */
+.search-cell:has(.search-cell-edit) {
+  padding-inline-end: var(--space-4);
 }
 
 .search-cell-edit {
@@ -299,13 +313,94 @@
 }
 
 @media (pointer: coarse) {
+  /* A short label such as "New" is still a finger wide (PL-13). */
+  .search-choices .form-field-inline label {
+    min-width: var(--hit-target-touch);
+  }
+
   .search-export-link,
-  .search-columns-toggle,
   .search-columns-button,
   .search-cell-button,
   .search-cell-edit {
     min-height: var(--hit-target-touch);
     min-width: var(--hit-target-touch);
+  }
+}
+
+/*
+ * The same tickets on a phone (TR-1, PL-1; D1): stacked rows like the phone backlog's, the key,
+ * then the summary in full, then status, assignee and priority on one wrapping line.
+ */
+.result-rows {
+  margin: 0;
+  padding: 0 var(--space-4);
+  list-style: none;
+}
+
+.result-row {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--glass-edge);
+  min-width: 0;
+}
+
+.result-row:first-child {
+  border-top: 0;
+}
+
+.result-row :is(p, dl, dd) {
+  margin: 0;
+}
+
+.result-row-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-weight: var(--font-weight-strong);
+}
+
+.result-row-key .tool-progress-mini {
+  font-weight: var(--font-weight-normal);
+}
+
+.result-row-summary {
+  overflow-wrap: break-word;
+}
+
+.result-row-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.result-row-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+.result-row-status[data-stage="active"] {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.result-row-status[data-stage="closed"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+@media (pointer: coarse) {
+  .result-row-key > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
   }
 }
 
@@ -336,6 +431,28 @@
   min-width: 0;
   max-width: 100%;
   flex: 1 1 12rem;
+  /* A long name shrinks to an ellipsis before the arrow, never under it (PL-12). */
+  overflow: hidden;
+  padding-inline-end: var(--space-6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Star and Subscribe show where they stand (PL-32): a filled star, a tick and the pressed look. */
+.saved-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.saved-state[data-on] {
+  border-color: var(--color-accent);
+  background: var(--glass-tint-accent);
+  font-weight: var(--font-weight-strong);
+}
+
+.saved-state-mark {
+  color: var(--color-accent);
 }
 
 .saved-panel {

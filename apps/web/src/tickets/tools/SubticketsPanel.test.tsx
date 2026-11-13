@@ -430,7 +430,7 @@ describe('SubticketProgressMini', () => {
 });
 
 describe('the result table (CORE-032)', () => {
-  it('[CORE-032] shows the same small progress under the key of a ticket that has subtickets', async () => {
+  it('[CORE-032] shows the same small progress under the key of a ticket that has subtickets, named (PL-31)', async () => {
     const client = {
       priorities: async () => [],
       subticketProgress: async () => ({ 7: { total: 2, closed: 2 } }),
@@ -455,8 +455,8 @@ describe('the result table (CORE-032)', () => {
         />
       </I18nProvider>,
     );
-    expect(await screen.findByText('2/2')).toBeVisible();
-    expect(screen.getByText('2 of 2 closed (100%)')).toBeInTheDocument();
-    expect(screen.getAllByText(/^[0-9]+.[0-9]+$/)).toHaveLength(1);
+    expect(await screen.findByText('2/2 subtickets closed')).toBeVisible();
+    expect(screen.getByText('Subtickets: 2 of 2 closed (100%)')).toBeInTheDocument();
+    expect(screen.getAllByText(/^[0-9]+.[0-9]+ subtickets closed$/)).toHaveLength(1);
   });
 });
