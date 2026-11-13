@@ -4017,7 +4017,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.cancel': 'Cancelar',
   'admin.workflow.diagram': 'Diagrama',
   'admin.workflow.diagramHint':
-    'Una imagen del flujo de trabajo. Las listas de abajo contienen los mismos estados y transiciones y funcionan con teclado y lectores de pantalla.',
+    'Un dibujo del flujo de trabajo. Elige un estado o una transición, con el ratón o con Tab y Enter, para cambiarlo. Las listas de abajo tienen los mismos estados y transiciones.',
   'admin.workflow.showDiagram': 'Mostrar el diagrama',
   'admin.workflow.hideDiagram': 'Ocultar el diagrama',
   'admin.workflow.globalTab': '{name} (desde cualquier estado)',

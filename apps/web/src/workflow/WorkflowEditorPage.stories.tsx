@@ -102,7 +102,8 @@ export const TransitionSelected: Story = {
   args: { client: fakeWorkflowsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Take' }));
+    const transitions = await canvas.findByRole('list', { name: 'Transitions' });
+    await userEvent.click(within(transitions).getByRole('button', { name: 'Take' }));
     await expect(await canvas.findByRole('heading', { name: 'Transition: Take' })).toHaveFocus();
   },
 };
@@ -111,7 +112,8 @@ export const StatusSelected: Story = {
   args: { client: fakeWorkflowsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Under review' }));
+    const statuses = await canvas.findByRole('list', { name: 'Statuses in this workflow' });
+    await userEvent.click(within(statuses).getByRole('button', { name: 'Under review' }));
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Remove Under review from the workflow' }),
     );

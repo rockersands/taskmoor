@@ -3914,7 +3914,7 @@ export const messagesEn = {
   'admin.workflow.cancel': 'Cancel',
   'admin.workflow.diagram': 'Diagram',
   'admin.workflow.diagramHint':
-    'A picture of the workflow. The lists below hold the same statuses and transitions and work with a keyboard and screen readers.',
+    'A picture of the workflow. Choose a status or a transition, with the mouse or with Tab and Enter, to change it. The lists below hold the same statuses and transitions.',
   'admin.workflow.showDiagram': 'Show the diagram',
   'admin.workflow.hideDiagram': 'Hide the diagram',
   'admin.workflow.globalTab': '{name} (from any status)',

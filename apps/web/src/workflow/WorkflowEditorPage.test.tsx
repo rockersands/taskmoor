@@ -69,10 +69,15 @@ describe('workflow editor (M1-030)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Support' })).toBeVisible();
     expect(screen.getByText('Published version 2')).toBeVisible();
     expect(screen.getByText('Used by 1 track: HELP')).toBeVisible();
-    // The diagram is a picture; the lists are what assistive technology reads.
+    // Each box and label of the diagram is a button named by its words (D34, AD-4).
     const diagram = screen.getByRole('region', { name: 'Diagram' });
     expect(diagram).toHaveAttribute('tabindex', '0');
-    expect(within(diagram).queryAllByRole('button')).toHaveLength(0);
+    expect(within(diagram).getByRole('button', { name: 'Open Start' })).toBeVisible();
+    expect(within(diagram).getByRole('button', { name: 'Reject (from any status)' })).toBeVisible();
+    for (const button of within(diagram).getAllByRole('button')) {
+      expect(button).toHaveAccessibleName();
+      expect(button).not.toHaveAttribute('tabindex', '-1');
+    }
     expect(
       within(statusList())
         .getAllByRole('button')
@@ -84,6 +89,19 @@ describe('workflow editor (M1-030)', () => {
       within(checks()).getByText('No transition leads to Draft: tickets can never get there.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  });
+
+  it('[WF-002] opens a status from the diagram with the keyboard, as a click does (D34, AD-4)', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const diagram = await screen.findByRole('region', { name: 'Diagram' });
+    within(diagram).getByRole('button', { name: 'Active' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('heading', { name: /Active/, level: 2 })).toBeVisible();
+    expect(within(diagram).getByRole('button', { name: 'Active' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('[WF-008] a status added to a workflow that moves freely can be entered at once', async () => {
