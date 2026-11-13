@@ -212,19 +212,17 @@ export const MonthStaysInView: Story = {
   },
 };
 
-/** TR-9: today's line passes under a "No dates" chip, which is opaque over it. */
-export const TodayUnderNoDates: Story = {
+/** TR-9: today's line never runs through a "No dates" chip, which sits just after it. */
+export const TodayClearOfNoDates: Story = {
   play: async ({ canvasElement }) => {
     const chip = await within(canvasElement).findByRole('button', {
       name: 'No dates: schedule LCH-6',
     });
-    const style = getComputedStyle(chip);
-    await expect(Number(style.zIndex)).toBeGreaterThan(0);
-    const probe = document.createElement('canvas').getContext('2d');
-    if (!probe) throw new Error('a canvas to read the colour');
-    probe.fillStyle = style.backgroundColor;
-    probe.fillRect(0, 0, 1, 1);
-    await expect(probe.getImageData(0, 0, 1, 1).data[3]).toBe(255);
+    const line = canvasElement.querySelector('.timeline-today')?.getBoundingClientRect();
+    if (!line) throw new Error('the timeline marks today');
+    const box = chip.getBoundingClientRect();
+    await expect(line.right <= box.left + 0.5 || line.left >= box.right - 0.5).toBe(true);
+    await expect(Number(getComputedStyle(chip).zIndex)).toBeGreaterThan(0);
   },
 };
 

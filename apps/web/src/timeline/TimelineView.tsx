@@ -542,7 +542,8 @@ export function TimelineView({
             <button
               type="button"
               className="timeline-unscheduled"
-              style={{ left: x(today) }}
+              // Past today's line, which runs through the middle of today's column.
+              style={{ left: x(today) + px / 2 + 2 }}
               onClick={() => setSelected(item.id)}
               aria-label={t('timeline.schedule', { key: item.key })}
               aria-describedby={badgeId}

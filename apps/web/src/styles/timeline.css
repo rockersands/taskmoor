@@ -402,7 +402,7 @@ button.timeline-bar:focus-visible {
   background: var(--color-flow-last);
 }
 
-/* Over the lines behind the rows, and opaque, so today's line never runs through its words. */
+/* Just after today's line, never across it, and over the lines behind the rows (TR-9). */
 .timeline-unscheduled {
   position: absolute;
   top: 10px;
@@ -411,7 +411,7 @@ button.timeline-bar:focus-visible {
   padding: 0 var(--space-2);
   border: 1px dashed var(--color-field-border);
   border-radius: var(--radius-mark);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -433,7 +433,7 @@ button.timeline-bar:focus-visible {
   padding: 0 var(--space-2);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-strong);
   color: var(--color-text-muted);
   font: inherit;
   font-size: var(--font-size-200);
@@ -509,7 +509,7 @@ button.timeline-bar:focus-visible {
 
 .timeline-legend-mark.is-none {
   border: 1px dashed var(--color-field-border);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-sunken);
 }
 
 .timeline-legend-mark.is-today,

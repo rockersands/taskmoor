@@ -10,6 +10,7 @@ import {
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
@@ -346,7 +347,7 @@ export function CalendarView({
           {problem}
         </p>
       )}
-      {compact && days.length === 0 && <p className="board-hint">{t('calendar.emptyMonth')}</p>}
+      {compact && days.length === 0 && <EmptyState compact title={t('calendar.emptyMonth')} />}
       <ul
         ref={grid}
         className={compact ? 'glass-card calendar-grid is-agenda' : 'glass-card calendar-grid'}
