@@ -5285,7 +5285,6 @@ export const messagesEn = {
   'schedule.refused.invalid': '{key} could not be rescheduled: those dates are not valid.',
   'schedule.refused.conflict': '{key} could not be rescheduled: it changed meanwhile. Try again.',
   // The releases hub (M1-050): a track's releases and a release's page.
-  'releases.toSummary': 'Track summary',
   'releases.about':
     'Each release gathers the tickets aimed at it. Upcoming releases show how many of their tickets are closed; open one for its warnings, its approvals and the button that ships it.',
   'releases.notFound': 'This track does not exist, or you cannot see it.',

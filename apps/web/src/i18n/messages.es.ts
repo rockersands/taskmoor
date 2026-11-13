@@ -5411,7 +5411,6 @@ export const messagesEs: Record<MessageId, string> = {
   'schedule.refused.invalid': 'No se pudo reprogramar {key}: esas fechas no son válidas.',
   'schedule.refused.conflict':
     'No se pudo reprogramar {key}: cambió mientras tanto. Inténtalo de nuevo.',
-  'releases.toSummary': 'Resumen del track',
   'releases.about':
     'Cada versión reúne los tickets dirigidos a ella. Las próximas muestran cuántos de sus tickets están cerrados; abre una para ver sus avisos, sus aprobaciones y el botón que la entrega.',
   'releases.notFound': 'Este track no existe, o no puedes verlo.',
