@@ -227,7 +227,8 @@ drops, what you type is kept and sent when it is back. People who may only read 
 
 The editor has a **Formatting** toolbar: bold, italic, strikethrough, code, link, headings,
 bulleted and numbered lists, checklists, quotes, code blocks, a divider, tables, mentions, undo
-and redo. Markdown shortcuts work as you type: `## ` for a heading, `- ` for a list, `[] ` for a
+and redo; in the description, undo and redo take back only your own edits. On a phone the toolbar
+shows its first tools and **More tools** for the rest. Markdown shortcuts work as you type: `## ` for a heading, `- ` for a list, `[] ` for a
 checklist, `> ` for a quote. Ctrl B makes text bold and Ctrl K adds a link. Pasted Markdown
 turns into rich text. Press Escape, then Tab, to leave the editor.
 
