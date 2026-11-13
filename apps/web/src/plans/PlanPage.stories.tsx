@@ -264,7 +264,7 @@ export const TenThousandTickets: Story = {
   },
 };
 
-/** A plan that cannot be found still has its page: a title, what the section is for, a way back. */
+/** A plan that cannot be found gets the shared not-found page (D4): Home and Search. */
 export const NotFound: Story = {
   args: {
     client: {
@@ -276,9 +276,13 @@ export const NotFound: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('heading', { level: 1, name: 'Multi-track' })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'All plans' })).toBeVisible();
+    // The shared not-found page (D4): its own title, what happened, and the two ways on.
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'This plan does not exist, or you cannot see it.',
+    );
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Plan not found' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Go to Search' })).toBeVisible();
   },
 };
 
