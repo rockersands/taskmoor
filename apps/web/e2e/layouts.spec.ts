@@ -115,6 +115,7 @@ test('[CORE-008] [CORE-013] a layout set: fields placed by keyboard and by drag,
 
   await page.goto(`${BASE}/#/admin/layouts`);
   await expect(page.getByRole('heading', { level: 1, name: 'Layout sets' })).toBeVisible();
+  await page.getByRole('button', { name: 'New layout set' }).click();
   const add = page.getByRole('form', { name: 'Add a layout set' });
   await add.getByLabel('New set name').fill(name);
   await add.getByRole('button', { name: 'Add a layout set' }).click();

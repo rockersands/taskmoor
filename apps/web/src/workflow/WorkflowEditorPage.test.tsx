@@ -69,10 +69,24 @@ describe('workflow editor (M1-030)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Support' })).toBeVisible();
     expect(screen.getByText('Published version 2')).toBeVisible();
     expect(screen.getByText('Used by 1 track: HELP')).toBeVisible();
-    // The diagram is a picture; the lists are what assistive technology reads.
+    // Each box and label of the diagram is a button named by its words (D34, AD-4).
     const diagram = screen.getByRole('region', { name: 'Diagram' });
     expect(diagram).toHaveAttribute('tabindex', '0');
-    expect(within(diagram).queryAllByRole('button')).toHaveLength(0);
+    expect(within(diagram).getByRole('button', { name: 'Open Start' })).toBeVisible();
+    // A transition's label says it is one, so it never shares a name with a status (AD-4).
+    expect(
+      within(diagram).getByRole('button', { name: 'Transition: Reject (from any status)' }),
+    ).toBeVisible();
+    const buttons = within(diagram).getAllByRole('button');
+    for (const button of buttons) {
+      expect(button).toHaveAccessibleName();
+      expect(button).not.toHaveAttribute('tabindex', '-1');
+      // Choosing opens an entry in the editor: not a toggle.
+      expect(button).not.toHaveAttribute('aria-pressed');
+    }
+    const named = buttons.map((b) => b.getAttribute('aria-label') ?? b.textContent);
+    expect(new Set(named).size).toBe(named.length);
+    expect(named.filter((n) => n?.startsWith('Transition: ')).length).toBeGreaterThan(0);
     expect(
       within(statusList())
         .getAllByRole('button')
@@ -84,6 +98,19 @@ describe('workflow editor (M1-030)', () => {
       within(checks()).getByText('No transition leads to Draft: tickets can never get there.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  });
+
+  it('[WF-002] opens a status from the diagram with the keyboard, as a click does (D34, AD-4)', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const diagram = await screen.findByRole('region', { name: 'Diagram' });
+    within(diagram).getByRole('button', { name: 'Active' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('heading', { name: /Active/, level: 2 })).toBeVisible();
+    expect(within(diagram).getByRole('button', { name: 'Active' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
   });
 
   it('[WF-008] a status added to a workflow that moves freely can be entered at once', async () => {
@@ -316,7 +343,7 @@ describe('workflow editor (M1-030)', () => {
     );
     take.focus();
     await user.keyboard('{Enter}');
-    expect(take).toHaveAttribute('aria-pressed', 'true');
+    expect(take).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('heading', { name: 'Transition: Take' })).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText('Name')).toHaveFocus();

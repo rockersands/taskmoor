@@ -361,7 +361,7 @@ function WorkflowItem({
           {deletable && (
             <button
               type="button"
-              className="button-secondary"
+              className="button-secondary button-danger-quiet"
               aria-label={t('admin.workflows.deleteNamed', { name })}
               onClick={() => setConfirming(true)}
             >

@@ -377,12 +377,13 @@ describe('directory administration (M1-082)', () => {
     // The new-directory form, an editor and a history, so every string is on screen.
     await user.click(
       buttons.find(
-        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+        (b) =>
+          b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header, .admin-nav'),
       ) as HTMLElement,
     );
     const editors = within(main)
       .getAllByRole('button')
-      .filter((b) => b.getAttribute('aria-controls'));
+      .filter((b) => b.getAttribute('aria-controls') && !b.closest('.admin-nav'));
     for (const button of editors.slice(0, 2)) await user.click(button);
     await waitFor(() => expect(within(main).getAllByRole('form').length).toBeGreaterThan(0));
     const data = [

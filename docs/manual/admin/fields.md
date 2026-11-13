@@ -2,7 +2,7 @@
 title: "Fields, ticket types and layouts"
 audience: admins
 sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts
-accessed: 2026-11-06
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Fields, ticket types and layouts
@@ -89,7 +89,7 @@ area values; set them through the API, a CSV import or bulk changes.
 
 ### Adding and managing fields
 
-On **Administration**, **Fields**, **Add a field** asks for a **Field name**, a **Type** and, for types
+On **Administration**, **Fields**, **New field** opens the form; **Add a field** asks for a **Field name**, a **Type** and, for types
 that allow it, **Holds several values**. **Manage** on a field offers:
 
 - **Rename**.
@@ -207,11 +207,12 @@ A type set lists the ticket types a track offers, in order, with one preselected
 | Business type set | Outcome, To-do, Subticket | To-do | business and service tracks |
 | Discovery type set | Idea | Idea | discovery tracks |
 
-On **Administration**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
-name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
+On **Administration**, **Configuration sets**, **Type sets**: **New type set** opens the form;
+**Add a type set** with a **Type set name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
 **Delete set** (not for a default set, nor one a track uses). The preselected type, the order and
 which track types a set is the default for are set through `/api/v1/type-sets`
-(`defaultTypeId`, `ticketTypeIds`, `defaultFor`).
+(`defaultTypeId`, `ticketTypeIds`, `defaultFor`). A default set says what it is the default for,
+such as **Default for software tracks**.
 
 Dropping a type that tickets in the set's tracks still have is refused (`type_in_use`). Through
 the API, give `ticketTypeMapping` from each dropped type's id to a type the set keeps at the
@@ -221,8 +222,8 @@ same level, and the tickets change type with the set.
 
 A field rule set says, per field, whether it is required or hidden and what help text it shows.
 
-On **Administration**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
-**Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
+On **Administration**, **Configuration sets**, **Field rule sets**: **New field rule set** opens
+the form; **Add a field rule set**, then **Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
 **Save the set** saves them; rules for single ticket types are kept as they are.
 
 - A rule for the ticket's type wins over the rule for every type. A field without a rule is
@@ -254,7 +255,8 @@ field that applies, in one tab.
 **Administration** > **Layout sets** (`#/admin/layouts`), for site and configuration
 administrators:
 
-1. Pick the **Layout set**, or type a **New set name** and press **Add a layout set**. While a
+1. Pick the **Layout set**, or choose **New layout set**, type a **New set name** and press
+   **Add a layout set**. While a
    set has unsaved changes the list and adding a set are locked: save or discard first.
 2. Under **Form**, choose the **Ticket type** (or **Every ticket type**) and the operation:
    **Create**, **Edit** or **View**. A line says which layout that form uses now. A type with a
@@ -421,7 +423,7 @@ the track: under **Its own configuration** are two links.
 
 - **Layout sets** (`#/manage/tracks/<id>/layouts`) is the layout sets page for that track alone.
   The track's name is above the title, and the list holds only the sets it owns; the set it uses
-  opens first. **Add a layout set** makes a set of the track's own. The fields to place are those
+  opens first. **New layout set** makes a set of the track's own. The fields to place are those
   that reach the track, its own and the shared ones it has, and **Ticket type** offers the types
   its type set holds. The **Preview** uses that track's fields and rules, and says so: there is no
   choice of track. A set the track does not use yet has **Use this set for** the track; from then

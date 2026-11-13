@@ -1,8 +1,8 @@
 ---
 title: "Monitoring and logs"
 audience: admins
-sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts
-accessed: 2026-11-03
+sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/words.ts, apps/web/src/admin/TableScroller.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Monitoring and logs
@@ -37,10 +37,13 @@ Site administrators open **Administration**, **System status** to see whether th
 |---|---|
 | **Instance** | **Version**, **Roles**, **Started**, **Uptime** |
 | **Updates** | **Running**, **Newest version**, **Last looked**, the command when a newer version exists, and the switch (see [The new-version notice](upgrades.md#the-new-version-notice)) |
-| **Database** | **Connection** (**Connected** or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
+| **Database** | **Connection** (**Connected**, a green badge, or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
 | **Storage** | **Data directory**, **Free space**, **Last backup** (with a warning once it is older than a day) |
 | **Scheduled backups** | **Schedule**, **Next backup**, **Last success**, **Last failure**, **Restore drill** |
 | **Runtime** | **Node.js**, **Platform**, **Memory** |
+
+Times on the page are in your time zone and name it, such as "Nov 9, 2026, 8:30 PM CST"; the
+backup schedule is in UTC and says so.
 
 The page reads `GET /api/v1/admin/system` from the process that answers it, and never shows
 settings or secrets. Without `TASKMOOR_DATA` the data directory shows as not configured and disk
@@ -157,7 +160,14 @@ Edits to tickets are not in the audit log: each ticket's history holds them.
 
 Site administrators open **Administration**, **Audit log**. It lists records newest first, 50 at a
 time (**Show older records** reads further back), with filters for a first and last day and an
-action (`user.` finds every user event). **Download as CSV** and **Download as JSON Lines** save
+action. The action is picked in words: **Action about** names what it concerns, such as
+**Person** for every event about people, and then **What happened** narrows it to one kind, such
+as **Signed in**. Each action in the list reads as words too, such as **Ticket template created**
+for `ticket_template.created`, and what it is about by its kind and number, such as **Track 4**;
+an action the page does not know yet shows as its code. Times stay on one line. A table wider
+than the screen scrolls sideways inside its card, which the keyboard reaches with Tab. On a phone
+each record is one block: when, who and what, then what it is about and the address it came
+from. Through the API, `action=user.` finds every event about people. **Download as CSV** and **Download as JSON Lines** save
 every record the filter finds, oldest first; each download is itself recorded. **Check the
 chain** verifies the whole log and says where it breaks, if it does.
 

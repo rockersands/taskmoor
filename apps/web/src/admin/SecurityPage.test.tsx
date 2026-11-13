@@ -7,6 +7,7 @@ import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { ALERT_DEFAULTS, RECENT_ALERTS } from './alertsFixtures';
 import { ADMIN, MEMBER } from './fixtures';
+import { inUnits, toMinutes } from './SessionPolicyForm';
 
 const GROUPS = [
   { id: 3, name: 'Finance', description: '', memberCount: 4, childCount: 0 },
@@ -36,6 +37,8 @@ describe('security settings: two-factor policy', () => {
       'PUT /security/two-factor': (body) => jsonResponse(200, body),
     });
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeVisible();
+    // The help mark beside the title, as on the other Administration pages (AD-20).
+    expect(await screen.findByRole('button', { name: 'What is Security for?' })).toBeVisible();
     const form = await screen.findByRole('form', { name: 'Two-factor authentication' });
     const requiredFor = within(form).getByRole('group', { name: 'Required for' });
     expect(
@@ -190,29 +193,55 @@ describe('security settings: sign-in sessions', () => {
     });
     const form = await screen.findByRole('form', { name: 'Sign-in sessions' });
     expect(within(form).getByText(/lasts 14 days and ends after 3 days unused/)).toBeVisible();
-    const lifetime = within(form).getByLabelText('A sign-in lasts (hours)');
-    const idle = within(form).getByLabelText('Sign out after this many minutes unused');
-    expect(lifetime).toHaveValue(336);
-    expect(idle).toHaveValue(4320);
+    // Each length is a number with a unit, in the unit that holds it whole (D22, AD-39).
+    const lifetime = within(form).getByLabelText('A sign-in lasts');
+    const idle = within(form).getByLabelText('Sign out after it goes unused for');
+    const lifetimeUnit = within(form).getByRole('combobox', { name: 'Unit of “A sign-in lasts”' });
+    const idleUnit = within(form).getByRole('combobox', {
+      name: 'Unit of “Sign out after it goes unused for”',
+    });
+    expect(lifetime).toHaveValue(14);
+    expect(lifetimeUnit).toHaveValue('days');
+    expect(idle).toHaveValue(3);
+    expect(idleUnit).toHaveValue('days');
     await user.clear(lifetime);
     await user.type(lifetime, '12');
+    await user.selectOptions(lifetimeUnit, 'hours');
     await user.clear(idle);
     await user.type(idle, '30');
+    await user.selectOptions(idleUnit, 'minutes');
     await user.click(within(form).getByRole('button', { name: 'Save session settings' }));
     expect(await within(form).findByText('Session settings saved.')).toBeVisible();
     expect(saved).toEqual([{ lifetimeMinutes: 720, idleMinutes: 30 }]);
+  });
+
+  it('[IAM-001] shows a length in the largest unit that holds it whole (D22)', () => {
+    expect(inUnits(14 * 24 * 60)).toEqual({ amount: '14', unit: 'days' });
+    expect(inUnits(720)).toEqual({ amount: '12', unit: 'hours' });
+    expect(inUnits(90)).toEqual({ amount: '90', unit: 'minutes' });
+    expect(toMinutes({ amount: '2', unit: 'days' })).toBe(2880);
+    expect(toMinutes({ amount: '1.5', unit: 'hours' })).toBeNull();
+    expect(toMinutes({ amount: ' ', unit: 'hours' })).toBeNull();
   });
 
   it('[IAM-001] refuses an idle time longer than the sign-in, before asking the server', async () => {
     const user = userEvent.setup();
     const calls = openSecurity();
     const form = await screen.findByRole('form', { name: 'Sign-in sessions' });
-    const lifetime = within(form).getByLabelText('A sign-in lasts (hours)');
-    const idle = within(form).getByLabelText('Sign out after this many minutes unused');
+    const lifetime = within(form).getByLabelText('A sign-in lasts');
+    const idle = within(form).getByLabelText('Sign out after it goes unused for');
     await user.clear(lifetime);
     await user.type(lifetime, '1');
+    await user.selectOptions(
+      within(form).getByRole('combobox', { name: 'Unit of “A sign-in lasts”' }),
+      'hours',
+    );
     await user.clear(idle);
     await user.type(idle, '90');
+    await user.selectOptions(
+      within(form).getByRole('combobox', { name: 'Unit of “Sign out after it goes unused for”' }),
+      'minutes',
+    );
     await user.click(within(form).getByRole('button', { name: 'Save session settings' }));
     expect(await within(form).findByRole('alert')).toHaveTextContent(
       'The idle time cannot be longer than the sign-in itself.',

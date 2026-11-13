@@ -75,7 +75,7 @@ export function McpPage({
 
   if (failed) {
     return (
-      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+      <section className="page admin-page mcp-page" aria-labelledby={`${id}-title`}>
         {header}
         <p role="alert" className="form-error">
           {t('mcp.failed')}
@@ -85,7 +85,7 @@ export function McpPage({
   }
   if (!settings) {
     return (
-      <section className="page admin-page" aria-labelledby={`${id}-title`}>
+      <section className="page admin-page mcp-page" aria-labelledby={`${id}-title`}>
         {header}
         <p className="page-note">{t('reports.loading')}</p>
       </section>
@@ -112,7 +112,7 @@ export function McpPage({
   };
 
   return (
-    <section className="page admin-page" aria-labelledby={`${id}-title`}>
+    <section className="page admin-page mcp-page" aria-labelledby={`${id}-title`}>
       {header}
       <form
         className="glass-card people-card people-form"

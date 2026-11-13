@@ -125,11 +125,19 @@ describe('service accounts page', () => {
   it('[IAM-007] creates a service account and opens its tokens', async () => {
     const user = userEvent.setup();
     const { calls } = await openPage();
-    const form = within(screen.getByRole('region', { name: 'New service account' }));
+    // The accounts come first; "New service account" opens the form (D11, AD-18).
+    expect(screen.queryByRole('form', { name: 'Create service account' })).toBeNull();
+    const opener = screen.getByRole('button', { name: 'New service account' });
+    expect(opener).toHaveClass('button-primary');
+    await user.click(opener);
+    const form = within(screen.getByRole('form', { name: 'Create service account' }));
     await user.type(form.getByLabelText('Name'), 'CI deploy');
     await user.type(form.getByLabelText('What it is for'), 'Deploys main');
     await user.click(form.getByRole('button', { name: 'Create service account' }));
-    expect(await form.findByText('Created CI deploy.')).toHaveAttribute('role', 'status');
+    expect(await screen.findByText('Created CI deploy.')).toHaveAttribute('role', 'status');
+    // Created, the form closes and the focus goes back to the New button.
+    expect(screen.queryByRole('form', { name: 'Create service account' })).toBeNull();
+    expect(opener).toHaveFocus();
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
       name: 'CI deploy',
       description: 'Deploys main',
@@ -267,6 +275,6 @@ describe('service accounts page', () => {
     setViewportWidth(375);
     const { list } = await openPage();
     expect(list.getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Create service account' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'New service account' })).toBeVisible();
   });
 });

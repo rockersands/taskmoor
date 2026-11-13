@@ -87,7 +87,7 @@ export function StructureLists({
                 <button
                   type="button"
                   className={`workflow-pick stage-${stage ?? 'unknown'}`}
-                  aria-pressed={selected}
+                  aria-current={selected ? 'true' : undefined}
                   aria-describedby={`${id}-s-${index}`}
                   onClick={() => onSelect({ kind: 'status', id: statusId })}
                 >
@@ -174,7 +174,7 @@ export function StructureLists({
                   <button
                     type="button"
                     className="workflow-pick"
-                    aria-pressed={selected}
+                    aria-current={selected ? 'true' : undefined}
                     aria-describedby={`${id}-t-${index}`}
                     onClick={() => onSelect({ kind: 'transition', id: x.id })}
                   >

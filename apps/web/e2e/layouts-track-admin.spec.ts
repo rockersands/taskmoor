@@ -145,6 +145,7 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
 
   // A set of the track's own: the only one on the page.
   const name = `Ours ${stamp}`;
+  await page.getByRole('button', { name: 'New layout set' }).click();
   const add = page.getByRole('form', { name: 'Add a layout set' });
   await add.getByLabel('New set name').fill(name);
   await add.getByRole('button', { name: 'Add a layout set' }).click();
@@ -209,6 +210,7 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
   await expect(page.getByRole('heading', { level: 1, name: 'Configuration sets' })).toBeVisible();
   await expect(page.getByRole('form', { name: 'Add a type set' })).toHaveCount(0);
   const rules = `Rules ${stamp}`;
+  await page.getByRole('button', { name: 'New field rule set' }).click();
   const addRules = page.getByRole('form', { name: 'Add a field rule set' });
   await addRules.getByLabel('Rule set name').fill(rules);
   await addRules.getByRole('button', { name: 'Add a field rule set' }).click();

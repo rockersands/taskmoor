@@ -167,6 +167,9 @@ agent**.
 
 ### Over stdio
 
+The MCP server page shows this command; on a phone it breaks between its words, never inside
+the address.
+
 Clients that start a command and talk to it on standard input and output use the bridge in
 Taskmoor's operator CLI. It reads each JSON-RPC message from stdin, sends it to the server's
 HTTP endpoint with the token, and writes the answer to stdout; logs go to stderr. It needs no

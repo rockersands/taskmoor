@@ -112,7 +112,9 @@ export const EmptyExplains: Story = {
   ...Empty,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('No token matches.')).toBeVisible();
-    await expect(canvas.getByText(/^Try a wider filter/)).toBeVisible();
+    await expect(await canvas.findByText('No API tokens yet')).toBeVisible();
+    await expect(canvas.getByText(/^Tokens show here once/)).toBeVisible();
+    // Nothing to revoke in bulk while there is no token at all (AD-31).
+    await expect(canvas.queryByRole('heading', { name: 'Revoke in bulk' })).toBeNull();
   },
 };

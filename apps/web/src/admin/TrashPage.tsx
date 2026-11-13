@@ -237,6 +237,7 @@ export function TrashPage({ client = trashClient }: TrashPageProps) {
               ? t('admin.trash.intro')
               : t('admin.trash.introDays', { days: state.retention })
         }
+        about={t('admin.trash.about')}
       />
       {state.status === 'loading' && (
         <p role="status" className="page-note">

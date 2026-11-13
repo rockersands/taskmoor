@@ -1,8 +1,8 @@
 ---
 title: "API tokens and service accounts"
 audience: admins
-sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md
-accessed: 2026-11-03
+sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, apps/web/src/admin/TableScroller.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/admin/DangerConfirm.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # API tokens and service accounts
@@ -82,8 +82,9 @@ A service account is an account for a program, owned by the instance rather than
 Only site administrators manage service accounts. Open **Administration**, then **Service
 accounts**:
 
-1. Under **New service account**, fill in **Name** and **What it is for**, then select
-   **Create service account**.
+1. The list of accounts comes first. Select **New service account**, fill in **Name** and **What
+   it is for**, then select **Create service account**. The form closes and the new account's
+   tokens open.
 2. In the list, select **Tokens** next to the account. The **New token** form is the same as
    on the Account page, with **Administration** and **SCIM provisioning** on offer.
 3. Copy the new token when it is shown.
@@ -131,11 +132,14 @@ Site administrators see every token of the instance on **Administration**, then 
 - **Show** filters the list: **All tokens**, **Active**, **Due for rotation**, **Expired** or
   **Revoked**. A token is due for rotation when it is active, not yet replaced, and expires
   within the reminder window.
-- **Revoke** next to a token stops it at once.
+- **Revoke** next to a token, in the danger colour, first says what will happen: programs
+  using it stop working at once, and a revoked token cannot be used again. **Confirm
+  revocation** stops it.
 - **Revoke in bulk** handles a leak or a departure. Under **Which tokens**, choose **Every
-  token of one owner**, **Tokens created before a day** or **Every token**, then **Revoke
+  token of one owner**, **Tokens created before a date** or **Every token**, then **Revoke
   tokens**. Taskmoor first counts the active tokens that match; **Confirm revocation** revokes
-  them. Expired tokens are left as they are.
+  them. Expired tokens are left as they are. While there is no token at all, the list says so
+  and **Revoke in bulk** is not shown.
 - **Token policy** sets the **Longest lifetime (days)** a new token may have (1 to 3,650,
   default 365) and the **Rotation reminder (days before expiry)** (1 to 90, default 14).
   Select **Save policy**. Lowering the lifetime does not shorten tokens that already exist.
@@ -214,7 +218,9 @@ Site administrators change these under **Administration**, **API usage and limit
 `PUT /api/v1/admin/rate-limits`; the change is in the audit log. The same page lists the 20
 clients with the most requests in the last hour or day, with their errors and refused
 requests: a token by its name and owner, a person by name, an address as itself
-(`GET /api/v1/admin/api-usage?window=hour`). Each server process counts on its own, so with
+(`GET /api/v1/admin/api-usage?window=hour`). On a phone each client is one block with its
+figures beneath its name; on a wider screen a table that does not fit scrolls sideways, and the
+keyboard can reach it with Tab. Each server process counts on its own, so with
 several API processes a client may reach its limit once per process.
 
 ## What the audit log keeps

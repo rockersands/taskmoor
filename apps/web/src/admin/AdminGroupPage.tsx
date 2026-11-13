@@ -31,7 +31,7 @@ export function AdminGroupPage({ group }: { group: AdminGroup }) {
       <PageHeader
         titleId={titleId}
         title={t(group.labelId)}
-        {...(allowed ? { purpose: t(group.purposeId) } : {})}
+        {...(allowed ? { purpose: t(group.purposeId), about: t('admin.group.about') } : {})}
       />
       {access && !allowed && <p className="page-note">{t('admin.forbidden')}</p>}
       {allowed && (

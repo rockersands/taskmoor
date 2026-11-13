@@ -561,11 +561,13 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
   await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Service accounts' }).click();
   await expect(heading(page)).toHaveText('Service accounts');
-  const create = page.getByRole('region', { name: 'New service account' });
+  // The list comes first; New service account opens the form (D11).
+  await page.getByRole('button', { name: 'New service account' }).click();
+  const create = page.getByRole('form', { name: 'Create service account' });
   await create.getByLabel('Name').fill('E2E robot');
   await create.getByLabel('What it is for').fill('Publishes release notes');
   await create.getByRole('button', { name: 'Create service account' }).click();
-  await expect(create.getByText('Created E2E robot.')).toBeVisible();
+  await expect(page.getByText('Created E2E robot.')).toBeVisible();
 
   const panel = page.getByRole('region', { name: 'Tokens of E2E robot' });
   await panel.getByLabel('Token name').fill('Release key');
@@ -1387,6 +1389,12 @@ test('[WF-002] the workflow editor works on a small phone without sideways scrol
   const diagram = page.getByRole('region', { name: 'Diagram' });
   await expect(diagram).toBeVisible();
   expect(await diagram.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  // Each transition's label on the picture is named as one, and a finger's height.
+  const labels = await diagram.getByRole('button', { name: /^Transition: / }).all();
+  expect(labels.length).toBeGreaterThan(0);
+  for (const label of labels) {
+    expect((await label.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
   expect(await overflow()).toBeLessThanOrEqual(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
 

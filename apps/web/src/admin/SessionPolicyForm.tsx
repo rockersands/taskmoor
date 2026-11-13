@@ -18,9 +18,26 @@ export const sessionPolicyClient: SessionPolicyClient = {
   save: (policy) => api<SessionPolicy>('/security/sessions', { method: 'PUT', body: policy }),
 };
 
-/** The limits the server keeps (`session-policy.ts`), in the units the form asks for. */
-const LIFETIME_HOURS = { min: 1, max: 90 * 24 };
-const IDLE_MINUTES = { min: 5, max: 90 * 24 * 60 };
+/** The limits the server keeps (`session-policy.ts`), in minutes. */
+const LIFETIME = { min: 60, max: 90 * 24 * 60 };
+const IDLE = { min: 5, max: 90 * 24 * 60 };
+
+/** The units a length is entered in (D22), with their minutes. */
+const UNITS = { minutes: 1, hours: 60, days: 24 * 60 } as const;
+type Unit = keyof typeof UNITS;
+
+/** A number and a unit for a length in minutes: the largest unit that holds it whole. */
+export function inUnits(minutes: number): { amount: string; unit: Unit } {
+  const unit: Unit =
+    minutes % UNITS.days === 0 ? 'days' : minutes % UNITS.hours === 0 ? 'hours' : 'minutes';
+  return { amount: String(minutes / UNITS[unit]), unit };
+}
+
+/** The minutes of a number and a unit, or null when the number is not a whole one. */
+export function toMinutes(length: { amount: string; unit: Unit }): number | null {
+  const n = Number(length.amount);
+  return length.amount.trim() !== '' && Number.isInteger(n) ? n * UNITS[length.unit] : null;
+}
 
 type State =
   | { status: 'loading' }
@@ -29,8 +46,8 @@ type State =
 
 /**
  * The session part of the Security page (the user's decision of 2026-11-01): how long a
- * sign-in lasts and how long it may go unused. The lifetime is asked in hours, the idle timeout
- * in minutes; the defaults are 14 days and 3 days, and ASVS level 2 asks for 12 hours and 30
+ * sign-in lasts and how long it may go unused, each a number with a unit picker (minutes, hours
+ * or days, D22); the defaults are 14 days and 3 days, and ASVS level 2 asks for 12 hours and 30
  * minutes, which the hint names.
  */
 export function SessionPolicyForm({
@@ -41,8 +58,11 @@ export function SessionPolicyForm({
   const t = useT();
   const id = useId();
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [hours, setHours] = useState('');
-  const [idle, setIdle] = useState('');
+  const [lifetime, setLifetime] = useState<{ amount: string; unit: Unit }>({
+    amount: '',
+    unit: 'days',
+  });
+  const [idle, setIdle] = useState<{ amount: string; unit: Unit }>({ amount: '', unit: 'days' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState('');
@@ -52,8 +72,8 @@ export function SessionPolicyForm({
     client.load().then(
       (policy) => {
         if (cancelled) return;
-        setHours(String(Math.round(policy.lifetimeMinutes / 60)));
-        setIdle(String(policy.idleMinutes));
+        setLifetime(inUnits(policy.lifetimeMinutes));
+        setIdle(inUnits(policy.idleMinutes));
         setState({ status: 'loaded', defaults: policy.defaults });
       },
       () => !cancelled && setState({ status: 'failed' }),
@@ -67,29 +87,28 @@ export function SessionPolicyForm({
     event.preventDefault();
     setError(null);
     setSaved('');
-    const lifetime = Number(hours);
-    const idleMinutes = Number(idle);
-    const whole = (n: number) => Number.isInteger(n);
+    const lifetimeMinutes = toMinutes(lifetime);
+    const idleMinutes = toMinutes(idle);
     if (
-      !whole(lifetime) ||
-      lifetime < LIFETIME_HOURS.min ||
-      lifetime > LIFETIME_HOURS.max ||
-      !whole(idleMinutes) ||
-      idleMinutes < IDLE_MINUTES.min ||
-      idleMinutes > IDLE_MINUTES.max
+      lifetimeMinutes === null ||
+      lifetimeMinutes < LIFETIME.min ||
+      lifetimeMinutes > LIFETIME.max ||
+      idleMinutes === null ||
+      idleMinutes < IDLE.min ||
+      idleMinutes > IDLE.max
     ) {
       setError(t('admin.sessions.outOfRange'));
       return;
     }
-    if (idleMinutes > lifetime * 60) {
+    if (idleMinutes > lifetimeMinutes) {
       setError(t('admin.sessions.idleTooLong'));
       return;
     }
     setBusy(true);
     try {
-      const policy = await client.save({ lifetimeMinutes: lifetime * 60, idleMinutes });
-      setHours(String(Math.round(policy.lifetimeMinutes / 60)));
-      setIdle(String(policy.idleMinutes));
+      const policy = await client.save({ lifetimeMinutes, idleMinutes });
+      setLifetime(inUnits(policy.lifetimeMinutes));
+      setIdle(inUnits(policy.idleMinutes));
       setSaved(t('admin.sessions.saved'));
     } catch (e) {
       setError(
@@ -125,34 +144,20 @@ export function SessionPolicyForm({
           idleDays: Math.round(state.defaults.idleMinutes / 60 / 24),
         })}
       </p>
-      <div className="form-field">
-        <label htmlFor={`${id}-lifetime`}>{t('admin.sessions.lifetime')}</label>
-        <input
-          id={`${id}-lifetime`}
-          type="number"
-          inputMode="numeric"
-          min={LIFETIME_HOURS.min}
-          max={LIFETIME_HOURS.max}
-          step={1}
-          value={hours}
-          aria-describedby={`${id}-hint`}
-          onChange={(event) => setHours(event.target.value)}
-        />
-      </div>
-      <div className="form-field">
-        <label htmlFor={`${id}-idle`}>{t('admin.sessions.idle')}</label>
-        <input
-          id={`${id}-idle`}
-          type="number"
-          inputMode="numeric"
-          min={IDLE_MINUTES.min}
-          max={IDLE_MINUTES.max}
-          step={1}
-          value={idle}
-          aria-describedby={`${id}-hint`}
-          onChange={(event) => setIdle(event.target.value)}
-        />
-      </div>
+      <LengthField
+        id={`${id}-lifetime`}
+        label={t('admin.sessions.lifetime')}
+        hintId={`${id}-hint`}
+        value={lifetime}
+        onChange={setLifetime}
+      />
+      <LengthField
+        id={`${id}-idle`}
+        label={t('admin.sessions.idle')}
+        hintId={`${id}-hint`}
+        value={idle}
+        onChange={setIdle}
+      />
       <p id={`${id}-hint`} className="form-hint">
         {t('admin.sessions.hint')}
       </p>
@@ -170,5 +175,50 @@ export function SessionPolicyForm({
         {saved}
       </p>
     </form>
+  );
+}
+
+/** A length as a number and its unit, side by side (D22). */
+function LengthField({
+  id,
+  label,
+  hintId,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hintId: string;
+  value: { amount: string; unit: Unit };
+  onChange: (value: { amount: string; unit: Unit }) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="form-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="length-field">
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={value.amount}
+          aria-describedby={hintId}
+          onChange={(event) => onChange({ ...value, amount: event.target.value })}
+        />
+        <select
+          aria-label={t('admin.sessions.unitOf', { field: label })}
+          value={value.unit}
+          onChange={(event) => onChange({ ...value, unit: event.target.value as Unit })}
+        >
+          {(Object.keys(UNITS) as Unit[]).map((unit) => (
+            <option key={unit} value={unit}>
+              {t(`admin.sessions.unit.${unit}`)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   );
 }

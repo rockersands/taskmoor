@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -65,6 +66,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const creating = useNewForm();
 
   const load = useCallback(async () => {
     try {
@@ -114,7 +116,18 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
         title={t('admin.visibility.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('admin.visibility.purpose'), about: t('admin.visibility.about') })}
+          : {
+              purpose: t('admin.visibility.purpose'),
+              about: t('admin.visibility.about'),
+              actions: (
+                <NewButton
+                  label={t('admin.visibility.newPolicy')}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.visibility.forbidden')}</p>
@@ -138,7 +151,17 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
           )}
           {state.status === 'loaded' && (
             <>
-              <AddPolicy client={client} said={said} failed={failed} />
+              {creating.open && (
+                <AddPolicy
+                  client={client}
+                  said={(text) => {
+                    creating.close();
+                    said(text);
+                  }}
+                  failed={failed}
+                  onCancel={creating.close}
+                />
+              )}
               {state.policies.length === 0 ? (
                 <EmptyState title={t('admin.visibility.emptyTitle')}>
                   {t('admin.visibility.empty')}
@@ -164,7 +187,12 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   );
 }
 
-function AddPolicy({ client, said, failed }: Feedback & { client: VisibilityClient }) {
+function AddPolicy({
+  client,
+  said,
+  failed,
+  onCancel,
+}: Feedback & { client: VisibilityClient; onCancel: () => void }) {
   const t = useT();
   const id = useId();
   const [name, setName] = useState('');
@@ -178,16 +206,25 @@ function AddPolicy({ client, said, failed }: Feedback & { client: VisibilityClie
     }, failed);
   };
   return (
-    <form className="people-inline" aria-label={t('admin.visibility.addPolicy')} onSubmit={submit}>
+    <form
+      className="glass-card people-card people-inline"
+      aria-label={t('admin.visibility.addPolicy')}
+      onSubmit={submit}
+    >
       <div className="form-field">
         <label htmlFor={`${id}-name`} className="form-label">
           {t('admin.visibility.policyName')}
         </label>
         <input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} />
       </div>
-      <button type="submit" className="button-primary">
-        {t('admin.visibility.addPolicy')}
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="button-primary">
+          {t('admin.visibility.addPolicy')}
+        </button>
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t('admin.visibility.cancelNew')}
+        </button>
+      </div>
     </form>
   );
 }

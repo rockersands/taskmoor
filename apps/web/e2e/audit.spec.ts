@@ -26,10 +26,14 @@ test('[IAM-013] finds a refused sign-in on the audit page and downloads it', asy
   expect((await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
   await page.goto(`${BASE}/#/admin/audit`);
   await expect(page.getByRole('heading', { level: 1, name: 'Audit log' })).toBeVisible();
-  await page.getByLabel('Action').fill('session.sign_in_failed');
+  // The action is picked in words, and sent as its code (AD-2).
+  await page.getByLabel('Action about').selectOption({ label: 'Session' });
+  await page.getByLabel('What happened').selectOption({ label: 'Sign-in failed' });
   await page.getByRole('button', { name: 'Show', exact: true }).click();
-  const table = page.getByRole('table', { name: 'Audit records, newest first' });
-  await expect(table.getByRole('row').nth(1)).toContainText('session.sign_in_failed');
+  // A table on a wide screen, one block per record on a phone; the action reads as words (D19).
+  const name = 'Audit records, newest first';
+  const records = page.getByRole('table', { name }).or(page.getByRole('list', { name }));
+  await expect(records.getByText('Session sign-in failed').first()).toBeVisible();
 
   const [csv] = await Promise.all([
     page.waitForEvent('download'),

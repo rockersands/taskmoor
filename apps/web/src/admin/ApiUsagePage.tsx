@@ -6,6 +6,8 @@ import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
+import { TableScroller } from './TableScroller';
 
 /** One client's requests over the window, as `GET /api/v1/admin/api-usage` answers (M1-066). */
 export interface UsageRow {
@@ -100,7 +102,7 @@ export function ApiUsagePage({ client = apiUsageClient }: { client?: ApiUsageCli
       <PageHeader
         titleId={titleId}
         title={t('admin.apiUsage.title')}
-        {...(forbidden ? {} : { purpose: t('purpose.apiUsage') })}
+        {...(forbidden ? {} : { purpose: t('purpose.apiUsage'), about: t('admin.apiUsage.about') })}
       />
       {forbidden ? (
         <p className="page-note">{t('admin.apiUsage.forbidden')}</p>
@@ -133,6 +135,8 @@ function Usage({
   const t = useT();
   const intl = useIntl();
   const titleId = useId();
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const caption = t(window === 'hour' ? 'admin.apiUsage.tableHour' : 'admin.apiUsage.tableDay');
   const who = (row: UsageRow) => {
     if (row.client.kind === 'token') {
       return row.client.owner
@@ -183,12 +187,34 @@ function Usage({
       {usage.status === 'loaded' && usage.value.length === 0 && (
         <EmptyState title={t('admin.apiUsage.none')}>{t('empty.apiUsage.body')}</EmptyState>
       )}
-      {usage.status === 'loaded' && usage.value.length > 0 && (
-        <div className="api-usage-table-wrap">
+      {usage.status === 'loaded' && usage.value.length > 0 && compact && (
+        // On a phone one block per client, its figures beneath its name (D19).
+        <ul className="api-usage-entries" aria-label={caption}>
+          {usage.value.map((row) => (
+            <li key={`${row.client.kind}:${row.client.id}`} className="api-usage-entry">
+              <p className="api-usage-entry-who">{who(row)}</p>
+              <dl className="api-usage-entry-figures">
+                <div>
+                  <dt>{t('admin.apiUsage.column.requests')}</dt>
+                  <dd>{intl.formatNumber(row.requests)}</dd>
+                </div>
+                <div>
+                  <dt>{t('admin.apiUsage.column.errors')}</dt>
+                  <dd>{intl.formatNumber(row.errors)}</dd>
+                </div>
+                <div data-throttled={row.throttled > 0 || undefined}>
+                  <dt>{t('admin.apiUsage.column.throttled')}</dt>
+                  <dd>{intl.formatNumber(row.throttled)}</dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+      )}
+      {usage.status === 'loaded' && usage.value.length > 0 && !compact && (
+        <TableScroller label={caption}>
           <table className="data-table api-usage-table">
-            <caption className="visually-hidden">
-              {t(window === 'hour' ? 'admin.apiUsage.tableHour' : 'admin.apiUsage.tableDay')}
-            </caption>
+            <caption className="visually-hidden">{caption}</caption>
             <thead>
               <tr>
                 <th scope="col">{t('admin.apiUsage.column.client')}</th>
@@ -210,7 +236,7 @@ function Usage({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroller>
       )}
     </section>
   );

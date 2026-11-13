@@ -2,7 +2,7 @@ import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { workflowArb } from '../test/workflow';
 import type { Transition, WorkflowDefinition } from './definition';
-import { layersOf, layoutDiagram, NODE_HEIGHT, NODE_WIDTH } from './diagram';
+import { layersOf, layoutDiagram, NODE_HEIGHT, NODE_WIDTH, TAB_WIDTH } from './diagram';
 import { S, STEPPED_DEFINITION } from './fixtures';
 
 const t = (id: number, from: Transition['from'], to: number): Transition => ({
@@ -36,6 +36,24 @@ describe('workflow diagram layout (M1-030)', () => {
     expect(byTransition(3).map((e) => e.kind)).toEqual(['global']);
     expect(byTransition(4).map((e) => e.kind)).toEqual(['self']);
     expect(byTransition(5).map((e) => e.kind)).toEqual(['back']);
+  });
+
+  it('[WF-002] gives a lone global tab the free room around its box, so its name is not cut (AD-5)', () => {
+    const definition: WorkflowDefinition = {
+      initialStatusId: 1,
+      statuses: [{ statusId: 1 }, { statusId: 2 }, { statusId: 3 }],
+      transitions: [t(1, [1], 2), t(2, 'any', 2), t(3, 'any', 1), t(4, 'any', 3), t(5, 'any', 3)],
+    };
+    const diagram = layoutDiagram(definition);
+    const tab = (id: number) => diagram.edges.find((e) => e.transitionId === id)?.label;
+    const node = (id: number) => diagram.nodes.find((n) => n.statusId === id);
+    // Alone on its status: wider than a shared tab, centred over the box.
+    expect(tab(2)?.width).toBeGreaterThan(TAB_WIDTH);
+    expect(tab(2)?.x).toBe((node(2)?.x ?? 0) + NODE_WIDTH / 2);
+    // In the first column it stops at the drawing's left edge.
+    expect((tab(3)?.x ?? 0) - (tab(3)?.width ?? 0) / 2).toBeGreaterThanOrEqual(0);
+    // Two tabs on one status keep their shared width side by side.
+    expect([tab(4)?.width, tab(5)?.width]).toEqual([TAB_WIDTH, TAB_WIDTH]);
   });
 
   it('[WF-012] marks statuses no path reaches', () => {

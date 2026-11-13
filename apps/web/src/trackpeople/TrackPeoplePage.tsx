@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -60,6 +61,10 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   const [said, setSaid] = useState<Answer | null>(null);
   const [problem, setProblem] = useState<Answer | null>(null);
   const [inviting, setInviting] = useState(false);
+  // The breadcrumb ends at the track, not at the list of tracks (AD-15).
+  useAdminTrail(
+    state.status === 'loaded' ? [{ label: t('common.value', { value: state.track.key }) }] : null,
+  );
   const [freshLink, setFreshLink] = useState<{ email: string; url: string } | null>(null);
   const [role, setRole] = useState('');
   const [createTracks, setCreateTracks] = useState(true);
@@ -156,7 +161,9 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           ? t('trackPeople.title', { key: state.track.key, name: state.track.name })
           : t('trackPeople.titleLoading')
       }
-      {...(state.status === 'loaded' ? { purpose: t('purpose.trackPeople') } : {})}
+      {...(state.status === 'loaded'
+        ? { purpose: t('purpose.trackPeople'), about: t('trackPeople.about') }
+        : {})}
     />
   );
   if (state.status !== 'loaded') {

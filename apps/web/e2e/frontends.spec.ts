@@ -56,11 +56,14 @@ test('[OPS-017] (3) single-server mode: the backend serves the app and names its
   expect(await position).toContain('position');
 
   await page.goto(`${SINGLE}/#/admin`);
+  // On a phone the list of Administration pages is a closed bar at the top (D21).
+  const bar = page.getByText('Administration pages', { exact: true });
+  if (await bar.isVisible()) await bar.click();
   await page.getByRole('link', { name: 'Frontends' }).click();
   await expect(page.getByRole('heading', { name: 'Frontends', level: 1 })).toBeVisible();
   const self = page.getByRole('region', { name: 'This server' });
   await expect(self).toContainText(SINGLE);
-  await expect(self).toContainText(`Serves the app itself, version ${version}.`);
+  await expect(self).toContainText(`Serves the app itself, at the server’s version, ${version}.`);
   await expect(page.getByText('No frontend is registered yet.')).toBeVisible();
   // No sideways scrolling on a phone either.
   const overflow = await page.evaluate(

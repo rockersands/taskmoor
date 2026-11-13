@@ -2,7 +2,7 @@
 title: "Permissions and access"
 audience: admins
 sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md
-accessed: 2026-11-03
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Permissions and access
@@ -87,8 +87,11 @@ A role that holds **Run the track** in a track's policy runs that track. Giving 
 **Give the role that runs the track**, which goes with **Run the track** by default and which a
 policy can take away; see [Inviting people and running a track](invitations.md).
 
-Under **Roles**, **Add a role** asks for a **Role name** and **What the role does**. **Change**
-renames, **Delete** removes a role no policy uses.
+Under **Roles**, the list comes first: **New role** opens a form that asks for a **Role name**;
+**Add a role** adds it and **Cancel** closes the form. **Change** renames a role and says **What
+the role does**; **Delete** removes a role no policy uses. **Delete**, in the danger colour, first says
+what will happen: a role an access policy still gives is kept, and a deleted role cannot be
+brought back. Deleting an access policy asks the same way.
 
 To put people in a role, open **Administration** > **Tracks**, **Manage** the track, choose the
 **Role**, then **Give the role to a person** or **Give the role to a group**. Anyone with
@@ -121,8 +124,8 @@ the whole track.
 
 To work with policies under **Access policies**:
 
-1. **Add an access policy**: give a **Policy name** and **Start from** another policy's
-   grants, or **No grants**.
+1. **New access policy** opens the form: give a **Policy name** and **Start from** another
+   policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
 3. **Give a permission**: choose the **Permission** and who it goes **To**, then **Give**.
    **Remove** takes a grant away.
@@ -178,7 +181,8 @@ The ticket view shows **Visibility level** ("Everyone" when there is none).
 
 Site administrators open **Administration** > **Visibility policies**:
 
-1. **Add a visibility policy** with a **Policy name**.
+1. **New visibility policy**, at the top of the page, opens the form: give a **Policy name** and
+   choose **Add a visibility policy**.
 2. In the policy's panel, **Add a level** with a **Level name**. **Change** names it and says what it
    is for; **Up** and **Down** set the order people choose from.
 3. **New tickets take** chooses the default level, or **No level**. A ticket moved into the track takes
@@ -284,7 +288,9 @@ like. There is no limit on how many. Everyone else gets `403 ip_not_allowed`, si
 included. Members of the groups under **Allowed from anywhere** get in from any address once
 signed in, for people who travel. The health probes `/health` and `/ready` always answer.
 
-The page shows the address you are connecting from and whether the list lets it in. Saving a
+The page shows the address you are connecting from and whether the list lets it in; it warns
+only while the list is on and leaves that address out, and while the list is off it says that
+every address gets in. Saving a
 list that would not let you in asks you to confirm with **Save and lock me out**, so a typo
 cannot lock out the person making the change; the API answers `409 would_lock_you_out` unless
 the request says `"confirmLockout": true`. Each change is in the audit log, with what was

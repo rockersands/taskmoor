@@ -152,6 +152,30 @@ describe('identity provider administration (M1-080)', () => {
     expect((field as HTMLInputElement).selectionEnd).toBe(REDIRECT_URI.length);
   });
 
+  it('[IAM-003] shows the whole redirect URI on a phone, wrapping instead of cut at the edge (AD-9)', async () => {
+    setViewportWidth(375);
+    openPage();
+    const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
+    expect(field.tagName).toBe('TEXTAREA');
+    expect(field).toHaveAttribute('rows', '2');
+    expect(field).toHaveClass('redirect-uri-value');
+  });
+
+  it('[IAM-003] grows the redirect URI field to its whole address, without field-sizing (AD-9)', async () => {
+    // The height the address needs, as a browser without `field-sizing: content` measures it.
+    const scrollHeight = vi
+      .spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get')
+      .mockReturnValue(96);
+    try {
+      setViewportWidth(375);
+      openPage();
+      const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
+      expect((field as HTMLTextAreaElement).style.height).toBe('96px');
+    } finally {
+      scrollHeight.mockRestore();
+    }
+  });
+
   it('[IAM-003] adds a provider with its domains, policy and group mapping', async () => {
     const user = userEvent.setup();
     let providers = [STAFF];
@@ -608,7 +632,8 @@ describe('identity provider administration (M1-080)', () => {
     const add = within(main)
       .getAllByRole('button')
       .find(
-        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+        (b) =>
+          b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header, .admin-nav'),
       ) as HTMLElement;
     await user.click(add);
     await user.click(within(main).getAllByRole('radio')[1] as HTMLElement);
@@ -773,7 +798,7 @@ describe('identity provider administration (M1-080)', () => {
       const add = await waitFor(() => {
         const found = within(main)
           .getAllByRole('button', { expanded: false })
-          .find((button) => !button.closest('.page-header'));
+          .find((button) => !button.closest('.page-header, .admin-nav'));
         expect(found).toBeDefined();
         return found as HTMLElement;
       });
@@ -807,7 +832,8 @@ describe('identity provider administration (M1-080)', () => {
     const buttons = within(main).getAllByRole('button');
     await user.click(
       buttons.find(
-        (b) => b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header'),
+        (b) =>
+          b.getAttribute('aria-expanded') === 'false' && !b.closest('.page-header, .admin-nav'),
       ) as HTMLElement,
     );
     await user.click(

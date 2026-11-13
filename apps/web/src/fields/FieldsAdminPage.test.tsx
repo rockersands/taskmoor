@@ -29,6 +29,16 @@ describe('field administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     await screen.findByText('Customer');
+    const opener = screen.getByRole('button', { name: 'New field' });
+    await user.click(opener);
+    // Cancel closes the form and gives the focus back to New field (D11).
+    await user.click(
+      within(screen.getByRole('form', { name: 'Add a field' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(opener).toHaveFocus();
+    await user.click(opener);
     const form = screen.getByRole('form', { name: 'Add a field' });
     await user.type(within(form).getByLabelText('Field name'), 'Region');
     await user.selectOptions(within(form).getByLabelText('Type'), 'select');

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -41,6 +42,7 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
   const [message, setMessage] = useState('');
   /** The board the last template made, to open from here (M1-054). */
   const [board, setBoard] = useState<{ id: number; key: string } | null>(null);
@@ -73,28 +75,47 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
         title={t('admin.tracks.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('settings.tracksHint'), about: t('admin.tracks.intro') })}
+          : {
+              purpose: t('settings.tracksHint'),
+              about: t('admin.tracks.intro'),
+              actions: (
+                <NewButton
+                  label={t('admin.tracks.new')}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.tracks.forbidden')}</p>
       ) : (
         <>
-          <NewTrackForm
-            card
-            client={client}
-            tracks={state.status === 'loaded' ? state.tracks : []}
-            label={t('admin.tracks.add')}
-            onAdded={(track, board) => {
-              said(
-                t(board ? 'admin.tracks.addedWithBoard' : 'admin.tracks.added', {
-                  key: track.key,
-                }),
-              );
-              setBoard(board ? { id: board.id, key: track.key } : null);
-              setOpen(track.id);
-            }}
-            onProblem={(error) => setProblem(refusal(error))}
-          />
+          {creating.open && (
+            <NewTrackForm
+              card
+              client={client}
+              tracks={state.status === 'loaded' ? state.tracks : []}
+              label={t('admin.tracks.add')}
+              actions={
+                <button type="button" className="button-secondary" onClick={creating.close}>
+                  {t('admin.tracks.cancelNew')}
+                </button>
+              }
+              onAdded={(track, board) => {
+                said(
+                  t(board ? 'admin.tracks.addedWithBoard' : 'admin.tracks.added', {
+                    key: track.key,
+                  }),
+                );
+                setBoard(board ? { id: board.id, key: track.key } : null);
+                setOpen(track.id);
+                creating.close();
+              }}
+              onProblem={(error) => setProblem(refusal(error))}
+            />
+          )}
           <p role="status" className="form-status">
             {message}
           </p>

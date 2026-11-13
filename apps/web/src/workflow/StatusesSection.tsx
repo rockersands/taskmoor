@@ -225,7 +225,7 @@ export function StatusesSection({
                   )}
                   <button
                     type="button"
-                    className="button-secondary"
+                    className="button-secondary button-danger-quiet"
                     aria-label={t('admin.statuses.deleteNamed', { name: value(status.name) })}
                     onClick={() => setConfirming(status.id)}
                   >

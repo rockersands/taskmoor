@@ -1,4 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
+import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -23,6 +25,7 @@ import {
   type ScopeTrack,
   TrackScopeLine,
   useSetScope,
+  useTrackPageTrail,
 } from './trackScope';
 
 /** The layout editor: where fields appear, the other half of how a form comes out. */
@@ -57,6 +60,7 @@ export function ConfigurationSetsPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('admin.sets.title'));
   /** The purpose shows only to someone who may be here; only the sets themselves can tell. */
   const header = (allowed: boolean) => (
     <PageHeader
@@ -64,7 +68,7 @@ export function ConfigurationSetsPage({
       title={t('admin.sets.title')}
       {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
       {...(allowed ? { purpose: t('settings.setsHint') } : {})}
-      {...(allowed && !track ? { about: t('admin.sets.intro') } : {})}
+      {...(allowed ? { about: t(track ? 'admin.sets.trackAbout' : 'admin.sets.intro') } : {})}
     />
   );
   return (
@@ -273,57 +277,85 @@ function TypeSetsSection({
   failed,
 }: Feedback & { client: SetsClient; track: ScopeTrack | null; types: Named[]; sets: TypeSet[] }) {
   const t = useT();
+  const intl = useIntl();
   const headingId = useId();
   const nameId = useId();
   const [name, setName] = useState('');
   const [chosen, setChosen] = useState<number[]>([]);
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
+  const heading = (
+    <h2 id={headingId} className="facts-title">
+      {t('admin.sets.typeSets')}
+    </h2>
+  );
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.sets.typeSets')}
-      </h2>
       {/* A local-mode track keeps the one type set it was made with: no other is added for it. */}
+      {track ? (
+        heading
+      ) : (
+        <CardHead
+          action={
+            <NewButton
+              label={t('admin.sets.newTypeSet')}
+              open={creating.open}
+              onToggle={creating.toggle}
+              ref={creating.button}
+            />
+          }
+        >
+          {heading}
+        </CardHead>
+      )}
       {track ? (
         <p className="page-note">{t('admin.sets.trackTypeSet')}</p>
       ) : (
-        <form
-          className="people-inline"
-          aria-label={t('admin.sets.addTypeSet')}
-          onSubmit={(event) => {
-            event.preventDefault();
-            const wanted = name.trim();
-            if (!wanted || chosen.length === 0) return;
-            client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
-              setName('');
-              setChosen([]);
-              setOpen(made.id);
-              said(t('admin.sets.added', { name: made.name }));
-            }, failed);
-          }}
-        >
-          <div className="form-field">
-            <label htmlFor={nameId} className="form-label">
-              {t('admin.sets.typeSetName')}
-            </label>
-            <input
-              id={nameId}
-              type="text"
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
+        creating.open && (
+          <form
+            className="people-inline"
+            aria-label={t('admin.sets.addTypeSet')}
+            onSubmit={(event) => {
+              event.preventDefault();
+              const wanted = name.trim();
+              if (!wanted || chosen.length === 0) return;
+              client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
+                setName('');
+                setChosen([]);
+                setOpen(made.id);
+                creating.close();
+                said(t('admin.sets.added', { name: made.name }));
+              }, failed);
+            }}
+          >
+            <div className="form-field">
+              <label htmlFor={nameId} className="form-label">
+                {t('admin.sets.typeSetName')}
+              </label>
+              <input
+                id={nameId}
+                type="text"
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <TypePicker
+              legend={t('admin.sets.typesIn')}
+              types={types}
+              chosen={chosen}
+              onChange={setChosen}
             />
-          </div>
-          <TypePicker
-            legend={t('admin.sets.typesIn')}
-            types={types}
-            chosen={chosen}
-            onChange={setChosen}
-          />
-          <button type="submit" className="button-secondary" disabled={chosen.length === 0}>
-            {t('admin.sets.addTypeSet')}
-          </button>
-        </form>
+            <div className="form-actions">
+              <button type="submit" className="button-primary" disabled={chosen.length === 0}>
+                {t('admin.sets.addTypeSet')}
+              </button>
+              <button type="button" className="button-secondary" onClick={creating.close}>
+                {t('admin.sets.cancelNew')}
+              </button>
+            </div>
+          </form>
+        )
       )}
       <ul className="people-list">
         {sets.map((set) => (
@@ -331,8 +363,15 @@ function TypeSetsSection({
             <div className="people-main">
               <p className="people-name">
                 {set.name}
+                {/* Say what the set is the default for (AD-25). */}
                 {set.defaultFor.length > 0 && (
-                  <span className="people-badge">{t('admin.sets.default')}</span>
+                  <span className="people-badge">
+                    {t('admin.sets.defaultFor', {
+                      kinds: intl.formatList(
+                        set.defaultFor.map((kind) => t(`admin.sets.kind.${kind}` as MessageId)),
+                      ),
+                    })}
+                  </span>
                 )}
               </p>
               <p className="people-meta">
@@ -500,11 +539,23 @@ function RuleSetsSection({
   const nameId = useId();
   const [name, setName] = useState('');
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.sets.ruleSets')}
-      </h2>
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.sets.newRuleSet')}
+            open={creating.open}
+            onToggle={creating.toggle}
+            ref={creating.button}
+          />
+        }
+      >
+        <h2 id={headingId} className="facts-title">
+          {t('admin.sets.ruleSets')}
+        </h2>
+      </CardHead>
       <p className="page-note">
         {t('admin.sets.rulesAndLayouts')}{' '}
         {track ? (
@@ -518,38 +569,46 @@ function RuleSetsSection({
       {track && sets.length === 0 && (
         <p className="page-note">{t('admin.sets.trackNoRuleSets', { key: track.key })}</p>
       )}
-      <form
-        className="people-inline"
-        aria-label={t('admin.sets.addRuleSet')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted) return;
-          client
-            .createRuleSet({ name: wanted, ...(track ? { trackId: track.id } : {}) })
-            .then((made) => {
-              setName('');
-              setOpen(made.id);
-              said(t('admin.sets.added', { name: made.name }));
-            }, failed);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={nameId} className="form-label">
-            {t('admin.sets.ruleSetName')}
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-        <button type="submit" className="button-secondary">
-          {t('admin.sets.addRuleSet')}
-        </button>
-      </form>
+      {creating.open && (
+        <form
+          className="people-inline"
+          aria-label={t('admin.sets.addRuleSet')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted) return;
+            client
+              .createRuleSet({ name: wanted, ...(track ? { trackId: track.id } : {}) })
+              .then((made) => {
+                setName('');
+                setOpen(made.id);
+                creating.close();
+                said(t('admin.sets.added', { name: made.name }));
+              }, failed);
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.sets.ruleSetName')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button-primary">
+              {t('admin.sets.addRuleSet')}
+            </button>
+            <button type="button" className="button-secondary" onClick={creating.close}>
+              {t('admin.sets.cancelNew')}
+            </button>
+          </div>
+        </form>
+      )}
       <ul className="people-list">
         {sets.map((set) => (
           <li key={set.id} className="people-item people-group">

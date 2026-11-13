@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -12,6 +13,7 @@ import {
   type ScopeTrack,
   TrackScopeLine,
   useSetScope,
+  useTrackPageTrail,
 } from '../sets/trackScope';
 import { PageHeader } from '../shell/PageHeader';
 import { DraftDialog } from '../tickets/view/drafts';
@@ -79,6 +81,7 @@ export function LayoutEditorPage({
   const titleId = useId();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('layouts.title'));
   const [refused, setRefused] = useState(false);
   return (
     <section aria-labelledby={titleId} className="page page-full admin-page layout-editor-page">
@@ -147,6 +150,7 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
   // The set the track uses opens first; it changes when the person makes the track use another.
   const inUse = useRef(track?.layoutSetId ?? null);
   const [newName, setNewName] = useState('');
+  const creating = useNewForm();
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const owner = track?.id ?? null;
@@ -197,6 +201,7 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
     client.createLayoutSet({ name, ...(owner === null ? {} : { trackId: owner }) }).then(
       (made) => {
         setNewName('');
+        creating.close();
         setMessage(t('layouts.added', { name: made.name }));
         // A draft begun while the set was being made stays open; the new set is in the list.
         void load(unsaved.current ? undefined : made.id);
@@ -278,6 +283,14 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
                 )}
               </div>
             )}
+            <NewButton
+              label={t('layouts.new')}
+              open={creating.open}
+              onToggle={creating.toggle}
+              ref={creating.button}
+            />
+          </div>
+          {creating.open && (
             <form className="layout-set-add" aria-label={t('layouts.add')} onSubmit={add}>
               <div className="form-field">
                 <label htmlFor={`${id}-new`} className="form-label">
@@ -294,16 +307,21 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
                   onChange={(event) => setNewName(event.target.value)}
                 />
               </div>
-              <button
-                type="submit"
-                className="button-secondary"
-                disabled={dirty}
-                aria-describedby={dirty ? `${id}-set-hint` : undefined}
-              >
-                {t('layouts.add')}
-              </button>
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className="button-primary"
+                  disabled={dirty}
+                  aria-describedby={dirty ? `${id}-set-hint` : undefined}
+                >
+                  {t('layouts.add')}
+                </button>
+                <button type="button" className="button-secondary" onClick={creating.close}>
+                  {t('layouts.cancelNew')}
+                </button>
+              </div>
             </form>
-          </div>
+          )}
           {set && (
             <SetLoader
               key={set.id}

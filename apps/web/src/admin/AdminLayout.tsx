@@ -1,12 +1,44 @@
-import { type ReactNode, useId } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+} from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useMediaQuery } from '../shell/useMediaQuery';
 import { useAdminAccess } from './access';
-import { ADMIN_HOME, adminGroupHref, adminPlace, groupsFor } from './sections';
+import { ADMIN_HOME, type AdminGroup, adminGroupHref, adminPlace, groupsFor } from './sections';
 
 /** Below this width the section's navigation folds away above the page. */
 const NARROW = '(max-width: 1023px)';
+
+/** A step a page adds after its own name in the breadcrumb: a track, a workflow, a sub-page. */
+export interface AdminCrumb {
+  label: string;
+  /** Where the step leads; the last step is the page itself and has none. */
+  href?: string;
+}
+
+const TrailContext = createContext<((trail: readonly AdminCrumb[] | null) => void) | null>(null);
+
+/**
+ * Lets a page that sits below an Administration page say where it is: a track's own Layout sets
+ * end the breadcrumb at "SWEEPL › Layout sets", a workflow at its name (AD-15, AD-28). Outside
+ * Administration it does nothing.
+ */
+export function useAdminTrail(trail: readonly AdminCrumb[] | null) {
+  const set = useContext(TrailContext);
+  const key = trail ? JSON.stringify(trail) : '';
+  useEffect(() => {
+    if (!set) return;
+    set(key ? (JSON.parse(key) as AdminCrumb[]) : null);
+    return () => set(null);
+  }, [set, key]);
+}
 
 /**
  * Administration's own navigation and each page's breadcrumb back to its group (ADR-114). The
@@ -17,47 +49,55 @@ export function AdminLayout({ hash, children }: { hash: string; children: ReactN
   const t = useT();
   const access = useAdminAccess();
   const narrow = useMediaQuery(NARROW);
+  const [trail, setTrailState] = useState<readonly AdminCrumb[] | null>(null);
+  const setTrail = useCallback((next: readonly AdminCrumb[] | null) => setTrailState(next), []);
   if (!access || access === 'none') return <>{children}</>;
   const overview = hash === ADMIN_HOME || hash.startsWith(`${ADMIN_HOME}?`);
-  const nav = <AdminNav hash={hash} overview={overview} />;
+  // Which groups are open starts again on each group: what a person opened by hand stays open
+  // while they stay within the group.
+  const nav = (
+    <AdminNav key={adminPlace(hash)?.group.id ?? 'overview'} hash={hash} overview={overview} />
+  );
+  // On a phone the list of pages is one bar at the top of every page, the overview too, with a
+  // chevron saying it opens (D21). On a wide screen it stays beside the page while it scrolls.
   const side = narrow ? (
-    // On a page it folds away above the content. On the overview, the list of pages is the way in,
-    // so it stays open, under the panels so that they are not pushed off the first screen.
-    <details key={hash} className="admin-nav-fold glass-card" open={overview}>
-      <summary>{t('admin.nav.menu')}</summary>
+    <details key={hash} className="admin-nav-fold glass-card">
+      <summary className="admin-disclosure">{t('admin.nav.menu')}</summary>
       {nav}
     </details>
   ) : (
     <aside className="admin-nav-side glass-card">{nav}</aside>
   );
-  const main = (
-    <div className="admin-section-main">
-      {!overview && <AdminBreadcrumb hash={hash} />}
-      {children}
-    </div>
-  );
   return (
-    <div className="admin-section">
-      {narrow && overview ? (
-        <>
-          {main}
-          {side}
-        </>
-      ) : (
-        <>
-          {side}
-          {main}
-        </>
-      )}
-    </div>
+    <TrailContext.Provider value={setTrail}>
+      <div className="admin-section">
+        {side}
+        <div className="admin-section-main">
+          {!overview && <AdminBreadcrumb hash={hash} trail={trail} />}
+          {children}
+        </div>
+      </div>
+    </TrailContext.Provider>
   );
 }
 
 function AdminNav({ hash, overview }: { hash: string; overview: boolean }) {
   const t = useT();
-  const baseId = useId();
   const access = useAdminAccess();
-  const current = adminPlace(hash)?.page?.id;
+  const place = adminPlace(hash);
+  const groups = groupsFor(access ?? 'none');
+  const currentGroup = place?.group.id ?? null;
+  // A page shows only its own group's pages, so the list stays short (D18); any other group
+  // opens from its heading. The overview, where Administration is entered, shows them all.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(
+    () => new Set(currentGroup ? [currentGroup] : groups.map((g) => g.id)),
+  );
+  const toggle = (id: string) =>
+    setOpened((was) => {
+      const next = new Set(was);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   return (
     <nav aria-label={t('admin.nav.label')} className="admin-nav">
       <ul className="admin-nav-list">
@@ -71,52 +111,109 @@ function AdminNav({ hash, overview }: { hash: string; overview: boolean }) {
           </a>
         </li>
       </ul>
-      {groupsFor(access ?? 'none').map((group) => {
-        const headingId = `${baseId}-${group.id}`;
-        return (
-          <div key={group.id} className="admin-nav-group">
-            <p id={headingId} className="nav-group-title">
-              {t(group.labelId)}
-            </p>
-            <ul className="admin-nav-list" aria-labelledby={headingId}>
-              {group.pages.map((page) => (
-                <li key={page.id}>
-                  <a
-                    className="admin-nav-link"
-                    href={routeHref(page.href)}
-                    aria-current={page.id === current ? 'page' : undefined}
-                  >
-                    {t(page.labelId)}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
+      {groups.map((group) => (
+        <AdminNavGroup
+          key={group.id}
+          group={group}
+          open={opened.has(group.id)}
+          onToggle={() => toggle(group.id)}
+          groupCurrent={place !== null && place.page === null && place.group.id === group.id}
+          currentPage={place?.page?.id ?? null}
+        />
+      ))}
     </nav>
   );
 }
 
-/** Administration, then the page's group, then the page itself. */
-export function AdminBreadcrumb({ hash }: { hash: string }) {
+function AdminNavGroup({
+  group,
+  open,
+  onToggle,
+  groupCurrent,
+  currentPage,
+}: {
+  group: AdminGroup;
+  open: boolean;
+  onToggle: () => void;
+  groupCurrent: boolean;
+  currentPage: string | null;
+}) {
   const t = useT();
+  const baseId = useId();
+  const headingId = `${baseId}-heading`;
+  const listId = `${baseId}-pages`;
+  return (
+    <div className="admin-nav-group">
+      <button
+        type="button"
+        id={headingId}
+        className="admin-nav-group-title admin-disclosure"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-current={groupCurrent ? 'page' : undefined}
+        onClick={onToggle}
+      >
+        {t(group.labelId)}
+      </button>
+      <ul id={listId} className="admin-nav-list" aria-labelledby={headingId} hidden={!open}>
+        {group.pages.map((page) => (
+          <li key={page.id}>
+            <a
+              className="admin-nav-link"
+              href={routeHref(page.href)}
+              aria-current={page.id === currentPage ? 'page' : undefined}
+            >
+              {t(page.labelId)}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Administration, then the page's group, then the page itself, then whatever the page adds (a
+ * track and its sub-page, a workflow). A group the person may not open is named without a link
+ * (T-227). Each separator travels with the step before it, so a wrapped line never starts with
+ * one (AD-14).
+ */
+export function AdminBreadcrumb({
+  hash,
+  trail = null,
+}: {
+  hash: string;
+  trail?: readonly AdminCrumb[] | null;
+}) {
+  const t = useT();
+  const access = useAdminAccess();
   const place = adminPlace(hash);
+  const groupAllowed =
+    place !== null && groupsFor(access ?? 'none').some((g) => g.id === place.group.id);
+  const steps: AdminCrumb[] = [{ label: t('nav.administration'), href: ADMIN_HOME }];
+  if (place) {
+    steps.push({
+      label: t(place.group.labelId),
+      ...(groupAllowed && place.page ? { href: adminGroupHref(place.group) } : {}),
+    });
+    if (place.page) {
+      const more = trail && trail.length > 0;
+      steps.push({ label: t(place.page.labelId), ...(more ? { href: place.page.href } : {}) });
+      if (more) steps.push(...trail);
+    }
+  }
   return (
     <nav aria-label={t('admin.breadcrumb')} className="admin-breadcrumb">
       <ol>
-        <li>
-          <a href={routeHref(ADMIN_HOME)}>{t('nav.administration')}</a>
-        </li>
-        {place && place.page === null && <li aria-current="page">{t(place.group.labelId)}</li>}
-        {place?.page && (
-          <>
-            <li>
-              <a href={routeHref(adminGroupHref(place.group))}>{t(place.group.labelId)}</a>
+        {steps.map((step, i) => {
+          const last = i === steps.length - 1;
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the steps are a fixed path, in order
+            <li key={i} {...(last ? { 'aria-current': 'page' as const } : {})}>
+              {step.href && !last ? <a href={routeHref(step.href)}>{step.label}</a> : step.label}
             </li>
-            <li aria-current="page">{t(place.page.labelId)}</li>
-          </>
-        )}
+          );
+        })}
       </ol>
     </nav>
   );

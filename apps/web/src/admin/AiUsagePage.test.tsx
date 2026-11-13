@@ -120,6 +120,9 @@ describe('AI usage page (M1-077)', () => {
     await screen.findByRole('table', { name: 'By person' });
     for (const wrap of container.querySelectorAll('.api-usage-table-wrap')) {
       expect(wrap.querySelector('table')).not.toBeNull();
+      // Each sideways scroller is reachable by keyboard and named (AD-3).
+      expect(wrap).toHaveAttribute('tabindex', '0');
+      expect(wrap).toHaveAccessibleName();
     }
   });
 

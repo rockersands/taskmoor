@@ -320,13 +320,28 @@ export function ImportWizard({
               )}
               {files?.folder && (
                 <div className="form-field">
-                  <label htmlFor={`${id}-upload`}>{t('admin.imports.upload.label')}</label>
-                  <input
-                    id={`${id}-upload`}
-                    type="file"
-                    accept=".zip,.csv"
-                    onChange={(e) => setUpload(e.target.files?.[0] ?? null)}
-                  />
+                  <span id={`${id}-upload-label`} className="form-label">
+                    {t('admin.imports.upload.label')}
+                  </span>
+                  {/* The app's file button, as the attachment panel has, not the browser's (AD-34). */}
+                  <div className="import-file-row">
+                    <label className="button-secondary import-file-choose">
+                      {t('admin.imports.upload.choose')}
+                      <input
+                        id={`${id}-upload`}
+                        className="visually-hidden"
+                        type="file"
+                        accept=".zip,.csv"
+                        aria-labelledby={`${id}-upload-label`}
+                        onChange={(e) => setUpload(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    <span className="page-note">
+                      {upload
+                        ? t('common.value', { value: upload.name })
+                        : t('admin.imports.upload.noFile')}
+                    </span>
+                  </div>
                   <p className="form-hint">
                     {t('admin.imports.upload.hint', {
                       max: intl.formatNumber(maxUpload / 1024 ** 3, { maximumFractionDigits: 1 }),

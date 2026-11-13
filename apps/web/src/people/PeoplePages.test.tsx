@@ -73,9 +73,29 @@ describe('people (M1-053, IAM-008)', () => {
 
   it('[IAM-008] deactivates and reactivates someone, and makes a site administrator', async () => {
     const user = userEvent.setup();
-    renderPage('users');
+    const client = renderPage('users');
     await list();
-    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
+    const trigger = screen.getByRole('button', { name: 'Deactivate Bo Rivera' });
+    // A destructive action looks it, and asks first, saying what will happen (D13, AD-16).
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    expect(client.calls.some((c) => c.action === 'deactivate')).toBe(false);
+    const confirm = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
+    // The way back has the focus, and Escape takes it.
+    expect(within(confirm).getByRole('button', { name: 'Keep active' })).toHaveFocus();
+    expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveClass(
+      'button-danger',
+    );
+    // Escape takes the way back, and the focus goes back to the button that asked.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBeNull();
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    // Cancel does the same.
+    await user.click(screen.getByRole('button', { name: 'Keep active' }));
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Deactivate' }));
     expect(
       await screen.findByText('Bo Rivera was deactivated and signed out everywhere.'),
     ).toBeInTheDocument();
@@ -104,10 +124,18 @@ describe('people (M1-053, IAM-008)', () => {
     const user = userEvent.setup();
     const client = renderPage('groups');
     await list();
+    // The list comes first; "New group" opens the form (D11, AD-18).
+    expect(screen.queryByRole('form', { name: 'Add a group' })).toBeNull();
+    const opener = screen.getByRole('button', { name: 'New group' });
+    expect(opener).toHaveClass('button-primary');
+    await user.click(opener);
+    expect(opener).toHaveAttribute('aria-expanded', 'true');
     const form = screen.getByRole('form', { name: 'Add a group' });
     await user.type(within(form).getByLabelText('Group name'), 'Payments');
     await user.click(within(form).getByRole('button', { name: 'Add a group' }));
     expect(await screen.findByText('Payments was added.')).toBeInTheDocument();
+    // The form closes and the focus goes back to New group, not to the page.
+    expect(opener).toHaveFocus();
     // The new group opens: add Grace, put Support inside.
     expect(await screen.findByText('Members of Payments')).toBeVisible();
     await user.type(screen.getByRole('searchbox', { name: 'Add a person' }), 'gra');
@@ -244,6 +272,17 @@ describe('teams (M1-123, CORE-027)', () => {
     const user = userEvent.setup();
     const client = renderTeams();
     await list();
+    const opener = screen.getByRole('button', { name: 'New team' });
+    await user.click(opener);
+    // Cancel closes the form and gives the focus back to New team.
+    await user.click(
+      within(screen.getByRole('form', { name: 'Add a team' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(screen.queryByRole('form', { name: 'Add a team' })).toBeNull();
+    expect(opener).toHaveFocus();
+    await user.click(opener);
     const form = screen.getByRole('form', { name: 'Add a team' });
     await user.type(within(form).getByLabelText('Team name'), 'Payments');
     await user.type(within(form).getByLabelText('Description (optional)'), 'Money in and out');
@@ -272,6 +311,7 @@ describe('teams (M1-123, CORE-027)', () => {
     const user = userEvent.setup();
     renderTeams();
     await list();
+    await user.click(screen.getByRole('button', { name: 'New team' }));
     const form = screen.getByRole('form', { name: 'Add a team' });
     await user.type(within(form).getByLabelText('Team name'), 'platform');
     await user.click(within(form).getByRole('button', { name: 'Add a team' }));

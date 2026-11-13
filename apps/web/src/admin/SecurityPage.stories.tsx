@@ -118,12 +118,20 @@ export const SessionSettings: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const form = await canvas.findByRole('form', { name: 'Sign-in sessions' });
-    const lifetime = within(form).getByLabelText('A sign-in lasts (hours)');
+    const lifetime = within(form).getByLabelText('A sign-in lasts');
     await userEvent.clear(lifetime);
     await userEvent.type(lifetime, '12');
-    const idle = within(form).getByLabelText('Sign out after this many minutes unused');
+    await userEvent.selectOptions(
+      within(form).getByRole('combobox', { name: 'Unit of “A sign-in lasts”' }),
+      'hours',
+    );
+    const idle = within(form).getByLabelText('Sign out after it goes unused for');
     await userEvent.clear(idle);
     await userEvent.type(idle, '30');
+    await userEvent.selectOptions(
+      within(form).getByRole('combobox', { name: 'Unit of “Sign out after it goes unused for”' }),
+      'minutes',
+    );
     await userEvent.click(within(form).getByRole('button', { name: 'Save session settings' }));
     await expect(await within(form).findByText('Session settings saved.')).toBeVisible();
   },

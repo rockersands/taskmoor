@@ -143,7 +143,7 @@ page offers it too.
 The form opens in a dialog over a dimmed page. **Close** at its title, **Cancel**, Escape or a
 click on the page around it leaves without making a track.
 
-Administrators can also use **Administration**, **Tracks**, with the same form under **Add a track**.
+Administrators can also use **Administration**, **Tracks**, where **New track** opens the same form, **Add a track**.
 There, when the template makes a board, the page shows a link, **Open the board of** and the key.
 
 ### Keys
@@ -416,7 +416,9 @@ free again. See also [backups and restore](backups.md).
 
 Guardrails limit how much configuration one track, field, policy, map, set or workflow may hold.
 Site administrators see and change them on **Administration**, **Guardrails**: each shows where it is
-used most, marks usage **Above the limit**, and takes a new **Limit** with **Save the limit**.
+used most (a permission by its name, a bulk change by its kind), marks usage **Above the limit**,
+and has its own **Limit** field, which takes a whole number with or without separators. One
+**Save the limits** at the end saves every limit you changed.
 
 | Guardrail | Default |
 |---|---|

@@ -1,8 +1,8 @@
 ---
 title: "Administration"
 audience: admins
-sources: docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx
-accessed: 2026-11-04
+sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/admin/DangerConfirm.tsx, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Administration
@@ -11,8 +11,18 @@ attestation: own-words
 sidebar, and separate from **Settings**, which is personal: your account, your appearance and your
 tutorials. The sidebar shows **Administration** only to those allowed to use it.
 
-Every page here opens with its name and a line on what it is for; where there is more to say, a
-small round button beside the name explains it. A list with nothing in it says what would be there
+A list page shows its list first: a **New …** button at the top, such as **New group** or **New
+field**, opens the form above the list, and the form closes once the thing is added or you choose
+**Cancel**; the focus then goes back to the **New …** button. A page with several lists, such as
+**Permissions** (roles and access policies) or **Configuration sets** (type sets and field rule
+sets), has a **New …** button at the head of each list's card. **Visibility policies**, **Layout
+sets** and **Service accounts** work the same way. Every add button has the same filled look.
+Taking the way back from a confirmation, with its button or with Escape, puts the focus back on
+the button that asked.
+
+Every page here opens with its name and a line on what it is for, and a small round button
+beside the name explains more, the group pages too. Pages of forms and lists keep a reading
+width; the audit log and the usage tables take the page's full width. A list with nothing in it says what would be there
 and how it gets there. Someone who may not use a page is told so, without the rest.
 
 ## Who sees what
@@ -49,10 +59,20 @@ A configuration administrator sees the list of setup pages instead.
 
 ## Finding a page
 
-The section has its own list of pages: beside the page on a wide screen, and on a narrow one under
-**Administration pages**, folded above each page and open below the overview. Each page shows where it sits with a breadcrumb,
-**Administration**, then its group, then the page. The group's own page says what each of its pages
-is for. Addresses of pages did not change, so links you saved keep working.
+The section has its own list of pages. On a wide screen it sits beside the page and stays in view
+while the page scrolls. On the overview every group shows its pages. On any other page only the
+group of the page you are on does; the heading of any group opens or closes it, and a group you
+opened stays open while you stay within the group. On a group's own page its heading is marked as
+the page you are on. On a narrow screen the list is a bar
+named **Administration pages** at the top of every page, the overview too, with a chevron: it opens
+the same list.
+
+Each page shows where it sits with a breadcrumb: **Administration**, then its group, then the page.
+A page inside another one goes further: a workflow ends at its name, under **Workflows**, and a
+track's own pages go through **Tracks you run** and the track, as in **Tracks you run › OPS ›
+Layout sets**. A group you may not open, such as **Tracks and setup** for someone who only runs
+tracks, is named without a link. The group's own page says what each of its pages is for. Addresses
+of pages did not change, so links you saved keep working.
 
 ## The groups
 
@@ -63,3 +83,11 @@ is for. Addresses of pages did not change, so links you saved keep working.
 | **Sign-in and security** | **Security**, **Single sign-on**, **LDAP and Active Directory**, **Network access**, **Audit log** |
 | **Integrations and AI** | **API tokens**, **Service accounts**, **MCP server**, **Frontends**, **Webhooks**, **AI**, **AI usage**, **AI limits and prices** |
 | **System** | **System status**, which also shows backups, **API usage and limits**, **Imports**, **Trash**, **Guardrails** |
+
+## Guardrails
+
+**Guardrails** lists every limit with its default and where it is used most, in one form with one
+**Save the limits**. Type a limit as a whole number, with or without the thousands separator of
+your language (20,000 in English, 20.000 in Spanish); a decimal is refused. The limits are saved
+one by one: if one cannot be saved, the page names the limits that were saved and those that were
+not, and the form keeps what you typed, so **Save the limits** again sends only what is left.

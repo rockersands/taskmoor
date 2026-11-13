@@ -114,10 +114,20 @@ describe('admin token inventory', () => {
     const user = userEvent.setup();
     const { calls, tokens } = await openPage();
     await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
+    // Revoking asks first and says what happens (D13, AD-16).
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    // The way back gives the focus to the token's Revoke button again, not to the page.
+    await user.keyboard('{Escape}');
+    expect(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' })).toHaveFocus();
+    await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
+    const confirm = tokens.getByRole('group', { name: /Revoke Sync job of River Stone\?/ });
+    await user.click(within(confirm).getByRole('button', { name: 'Confirm revocation' }));
     expect(await tokens.findByText('Revoked Sync job of River Stone.')).toHaveAttribute(
       'role',
       'status',
     );
+    // The revoked token's button is gone: the list's heading keeps the focus.
+    expect(tokens.getByRole('heading', { name: 'Tokens' })).toHaveFocus();
     await waitFor(() =>
       expect(tokens.queryByRole('button', { name: 'Revoke Sync job of River Stone' })).toBeNull(),
     );
@@ -171,7 +181,7 @@ describe('admin token inventory', () => {
       String(before.getMonth() + 1).padStart(2, '0'),
       String(before.getDate()).padStart(2, '0'),
     ].join('-');
-    await user.click(bulk.getByRole('radio', { name: 'Tokens created before a day' }));
+    await user.click(bulk.getByRole('radio', { name: 'Tokens created before a date' }));
     await user.type(bulk.getByLabelText('Created before'), day);
     await user.click(bulk.getByRole('button', { name: 'Revoke tokens' }));
     await bulk.findByRole('button', { name: 'Confirm revocation' });

@@ -25,6 +25,8 @@ const MARGIN_X = 24;
 const MARGIN_TOP = 64;
 export const LABEL_WIDTH = 116;
 export const TAB_WIDTH = 140;
+/** A lone tab's room: its box and half of the gap on each side, less a margin. */
+export const LONE_TAB_WIDTH = NODE_WIDTH + COLUMN_GAP - 24;
 const TAB_HEIGHT = 28;
 const PARALLEL = 14;
 
@@ -149,26 +151,38 @@ export function layoutDiagram(definition: WorkflowDefinition): Diagram {
   let bottom = 0;
   let right = 0;
 
+  // A status with one global transition gives its tab the room above the box and half of each
+  // gap beside it, so "Done (from any status)" is not cut while space is free (AD-5).
+  const tabsOn = new Map<number, number>();
+  for (const t of definition.transitions) {
+    if (t.from === 'any') tabsOn.set(t.to, (tabsOn.get(t.to) ?? 0) + 1);
+  }
+
   for (const t of definition.transitions) {
     const target = at.get(t.to);
     if (!target) continue;
     if (t.from === 'any') {
       const index = tabs.get(t.to) ?? 0;
       tabs.set(t.to, index + 1);
+      const alone = tabsOn.get(t.to) === 1;
+      // Never past the drawing's left edge in the first column.
+      const width = alone
+        ? Math.min(LONE_TAB_WIDTH, 2 * (target.x + NODE_WIDTH / 2) - 8)
+        : TAB_WIDTH;
       const tab = {
-        x: target.x + index * (TAB_WIDTH + 8),
+        x: alone ? target.x + NODE_WIDTH / 2 - width / 2 : target.x + index * (TAB_WIDTH + 8),
         y: target.y - TAB_HEIGHT - 18,
       };
-      const centre = { x: tab.x + TAB_WIDTH / 2, y: tab.y + TAB_HEIGHT / 2 };
+      const centre = { x: tab.x + width / 2, y: tab.y + TAB_HEIGHT / 2 };
       const into = Math.min(centre.x, target.x + NODE_WIDTH - 16);
       edges.push({
         key: `${t.id}:any`,
         transitionId: t.id,
         kind: 'global',
         path: `M${r(centre.x)},${r(tab.y + TAB_HEIGHT)} L${r(into)},${r(target.y)}`,
-        label: { x: r(centre.x), y: r(centre.y), width: TAB_WIDTH },
+        label: { x: r(centre.x), y: r(centre.y), width },
       });
-      right = Math.max(right, tab.x + TAB_WIDTH);
+      right = Math.max(right, tab.x + width);
       continue;
     }
     let labelled = false;

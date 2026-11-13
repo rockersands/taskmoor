@@ -7,6 +7,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import { TableScroller } from './TableScroller';
 
 /** Sums over a set of AI calls, as `GET /api/v1/admin/ai/usage` answers (M1-077). */
 export interface UsageTotals {
@@ -290,7 +291,7 @@ function Breakdown({
   const intl = useIntl();
   const money = useMoney();
   return (
-    <div className="api-usage-table-wrap">
+    <TableScroller label={caption}>
       <table className="data-table api-usage-table">
         <caption className="ai-usage-caption">{caption}</caption>
         <thead>
@@ -312,7 +313,7 @@ function Breakdown({
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroller>
   );
 }
 
@@ -394,7 +395,7 @@ function Limits({ limits }: { limits: Load<AiLimit[]> }) {
         <EmptyState compact title={t('admin.aiUsage.noLimits')} />
       )}
       {limits.status === 'loaded' && limits.value.length > 0 && (
-        <div className="api-usage-table-wrap">
+        <TableScroller label={t('admin.aiUsage.limits')}>
           <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.limits')}</caption>
             <thead>
@@ -429,7 +430,7 @@ function Limits({ limits }: { limits: Load<AiLimit[]> }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroller>
       )}
     </section>
   );
@@ -450,7 +451,7 @@ function Calls({ calls }: { calls: AiCall[] }) {
       {calls.length === 0 ? (
         <EmptyState compact title={t('admin.aiUsage.none')} />
       ) : (
-        <div className="api-usage-table-wrap">
+        <TableScroller label={t('admin.aiUsage.calls')}>
           <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.calls')}</caption>
             <thead>
@@ -478,7 +479,7 @@ function Calls({ calls }: { calls: AiCall[] }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroller>
       )}
     </section>
   );

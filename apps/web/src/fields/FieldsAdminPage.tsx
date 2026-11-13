@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -44,6 +45,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
   const [name, setName] = useState('');
   const [type, setType] = useState<FieldType>('text');
   const [multiple, setMultiple] = useState(false);
@@ -100,81 +102,98 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
         title={t('admin.fields.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('settings.fieldsHint'), about: t('admin.fields.intro') })}
+          : {
+              purpose: t('settings.fieldsHint'),
+              about: t('admin.fields.intro'),
+              actions: (
+                <NewButton
+                  label={t('admin.fields.new')}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.fields.forbidden')}</p>
       ) : (
         <>
-          <form
-            className="glass-card people-card people-form"
-            aria-label={t('admin.fields.add')}
-            onSubmit={(event) => {
-              event.preventDefault();
-              const wanted = name.trim();
-              if (!wanted) return;
-              client
-                .createField({
-                  name: wanted,
-                  type,
-                  ...(MULTIPLE_TYPES.has(type) ? { multiple } : {}),
-                })
-                .then(
-                  (made) => {
-                    setName('');
-                    setMultiple(false);
-                    said(t('admin.fields.added', { name: made.name }));
-                    setOpen(made.id);
-                  },
-                  (error) => setProblem(refusal(error)),
-                );
-            }}
-          >
-            <div className="form-field">
-              <label htmlFor={nameId} className="form-label">
-                {t('admin.fields.name')}
-              </label>
-              <input
-                id={nameId}
-                type="text"
-                required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor={typeId} className="form-label">
-                {t('admin.fields.typeLabel')}
-              </label>
-              <select
-                id={typeId}
-                value={type}
-                onChange={(event) => setType(event.target.value as FieldType)}
-              >
-                {FIELD_TYPES.map((of) => (
-                  <option key={of} value={of}>
-                    {typeName(of)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {MULTIPLE_TYPES.has(type) && (
-              <div className="form-field form-field-inline">
+          {creating.open && (
+            <form
+              className="glass-card people-card people-form"
+              aria-label={t('admin.fields.add')}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const wanted = name.trim();
+                if (!wanted) return;
+                client
+                  .createField({
+                    name: wanted,
+                    type,
+                    ...(MULTIPLE_TYPES.has(type) ? { multiple } : {}),
+                  })
+                  .then(
+                    (made) => {
+                      setName('');
+                      setMultiple(false);
+                      creating.close();
+                      said(t('admin.fields.added', { name: made.name }));
+                      setOpen(made.id);
+                    },
+                    (error) => setProblem(refusal(error)),
+                  );
+              }}
+            >
+              <div className="form-field">
+                <label htmlFor={nameId} className="form-label">
+                  {t('admin.fields.name')}
+                </label>
                 <input
-                  id={multipleId}
-                  type="checkbox"
-                  checked={multiple}
-                  onChange={(event) => setMultiple(event.target.checked)}
+                  id={nameId}
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
                 />
-                <label htmlFor={multipleId}>{t('admin.fields.multiple')}</label>
               </div>
-            )}
-            <div className="form-actions">
-              <button type="submit" className="button-primary">
-                {t('admin.fields.add')}
-              </button>
-            </div>
-          </form>
+              <div className="form-field">
+                <label htmlFor={typeId} className="form-label">
+                  {t('admin.fields.typeLabel')}
+                </label>
+                <select
+                  id={typeId}
+                  value={type}
+                  onChange={(event) => setType(event.target.value as FieldType)}
+                >
+                  {FIELD_TYPES.map((of) => (
+                    <option key={of} value={of}>
+                      {typeName(of)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {MULTIPLE_TYPES.has(type) && (
+                <div className="form-field form-field-inline">
+                  <input
+                    id={multipleId}
+                    type="checkbox"
+                    checked={multiple}
+                    onChange={(event) => setMultiple(event.target.checked)}
+                  />
+                  <label htmlFor={multipleId}>{t('admin.fields.multiple')}</label>
+                </div>
+              )}
+              <div className="form-actions">
+                <button type="submit" className="button-primary">
+                  {t('admin.fields.add')}
+                </button>
+                <button type="button" className="button-secondary" onClick={creating.close}>
+                  {t('admin.fields.cancelNew')}
+                </button>
+              </div>
+            </form>
+          )}
           <p role="status" className="form-status">
             {message}
           </p>

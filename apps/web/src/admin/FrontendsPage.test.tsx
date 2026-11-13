@@ -40,7 +40,11 @@ describe('the frontends page (M1-108)', () => {
     expect(within(intranet).getByText(/cookie only/)).toBeVisible();
     expect(within(intranet).getByText('May not open live updates.')).toBeVisible();
     // This server, serving the app itself, and the environment's list.
-    expect(screen.getByText('Serves the app itself, version 1.4.2.')).toBeVisible();
+    // The same version for the app and the server is said once (AD-36).
+    expect(
+      screen.getByText('Serves the app itself, at the server’s version, 1.4.2.'),
+    ).toBeVisible();
+    expect(screen.queryByText('Server version 1.4.2.')).toBeNull();
     expect(screen.getByRole('heading', { name: 'https://tracker.example.com' })).toBeVisible();
   });
 

@@ -396,6 +396,7 @@ describe('the layout editor (UI-T15)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     await editor();
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
     const add = screen.getByRole('form', { name: 'Add a layout set' });
     await user.type(within(add).getByLabelText('New set name'), 'Release layouts');
     await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
@@ -529,6 +530,7 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     expect(screen.getByText(/Used by OPS\./)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
 
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
     const add = screen.getByRole('form', { name: 'Add a layout set' });
     await user.type(within(add).getByLabelText('New set name'), 'Ops intake');
     await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
@@ -776,6 +778,7 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
     const user = userEvent.setup();
     const client = renderWithNav();
     await editor();
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
     const add = screen.getByRole('form', { name: 'Add a layout set' });
     const newName = within(add).getByLabelText('New set name');
     await user.type(newName, 'Release layouts');
@@ -806,6 +809,7 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
       new Promise((resolve, reject) => {
         made = () => create(body).then(resolve, reject);
       });
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
     const add = screen.getByRole('form', { name: 'Add a layout set' });
     await user.type(within(add).getByLabelText('New set name'), 'Release layouts');
     await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
@@ -834,6 +838,7 @@ describe('unsaved layouts are never lost in silence (UI-T15)', () => {
         });
       return made;
     })(client.createLayoutSet);
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
     const add = screen.getByRole('form', { name: 'Add a layout set' });
     await user.type(within(add).getByLabelText('New set name'), 'Release layouts');
     await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));

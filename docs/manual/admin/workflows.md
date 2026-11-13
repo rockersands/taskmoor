@@ -1,15 +1,16 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts
-accessed: 2026-11-06
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Workflows
 
 A workflow is a set of statuses and the transitions that move tickets between them. This page
 covers statuses and stages, what a transition can do, the workflow editor, publishing a change,
-workflow maps, and how tickets move when their workflow changes.
+workflow maps, and how tickets move when their workflow changes. Each map in the list names its
+workflow for the types without one of their own ("Workflow for every other type: …").
 
 Site and configuration administrators manage shared workflows. In the web app they are under
 **Administration**, **Workflows** and **Administration**, **Workflow maps**; everything is also in the
@@ -32,7 +33,8 @@ Active, In Review and Under review (active); Approved, Rejected, Cancelled, Publ
 (closed).
 
 The **Statuses** section of **Administration**, **Workflows** manages them: **Add a status** (with
-**Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**.
+**Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**. **Delete**
+is in the danger colour and asks first. On a phone a status's buttons share one line.
 
 - A status keeps its stage while tickets are in it.
 - Changing a status's stage takes the free moves into it along: on every workflow whose global
@@ -212,8 +214,14 @@ names cannot be deleted.
 **Save draft** starts a draft. Unsaved changes stay in the page.
 
 - **Diagram** mode draws the workflow and lists its statuses and transitions; choose one in the
-  picture or the lists to change it in the details panel. On phones the picture waits behind
-  **Show the diagram**.
+  picture or the lists to change it in the details panel. Every box and label in the picture is a
+  button named by its words, so Tab and Enter choose it as a click does; a label is named as a
+  transition, such as "Transition: Approve", so it is never taken for a status, and the one open
+  is marked as the current one. On a touch screen each label is at least a finger's height. A transition from any
+  status sits in a tab above its status; when it is the only one there, the tab takes the free
+  room beside the box so its name shows whole. On phones the picture waits behind **Show the
+  diagram**. The page's breadcrumb ends at the workflow's name, under **Workflows**, and **Name
+  and description** opens with a chevron.
 - **Text** mode shows the definition as JSON, with a key from status ids to names. Switching
   modes keeps every change.
 - **Add a status** puts one of the site's statuses into the workflow. On a workflow that moves
@@ -317,7 +325,8 @@ where every type uses the default workflow; tracks without a map of their own us
 
 On **Administration**, **Workflow maps**:
 
-- **Add a workflow map** with a **Map name** and a **Default workflow**.
+- **New workflow map** opens the form: **Add a workflow map** with a **Map name** and a
+  **Default workflow**.
 - **Manage** a map to change the **Workflow for every other type**, to **Give a type its own
   workflow**, to change what a type follows or **Remove** it, then **Save the map**.
 - **Delete map** removes a map no track uses. The default map cannot be deleted.

@@ -18,10 +18,10 @@ export interface WorkflowDiagramProps {
 
 /**
  * The workflow as a picture (WF-002 diagram mode, M1-030): statuses coloured by stage,
- * transitions as arrows, global ones as tabs above their target. Pointer users click a box or
- * a label to edit it. The picture is hidden from assistive technology and its parts are out of
- * the tab order: the lists beside it hold the same statuses and transitions and are what the
- * keyboard and screen readers use. The frame itself takes focus so it scrolls with the keys.
+ * transitions as arrows, global ones as tabs above their target. Each box and label is a button
+ * named by its visible words: a click, or Tab and Enter, opens it to edit (D34, AD-4). The lines
+ * stay hidden from assistive technology; the lists beside the picture hold the same statuses and
+ * transitions. The frame itself takes focus so it scrolls with the keys.
  */
 export function WorkflowDiagram({
   definition,
@@ -51,7 +51,6 @@ export function WorkflowDiagram({
         <div
           className="workflow-diagram-canvas"
           style={{ width: diagram.width, height: diagram.height }}
-          aria-hidden="true"
         >
           <svg
             className="workflow-diagram-lines"
@@ -121,12 +120,15 @@ export function WorkflowDiagram({
               <button
                 key={node.statusId}
                 type="button"
-                tabIndex={-1}
                 className={classes}
+                // Choosing a box opens it in the editor: the one open is the current one, not a
+                // pressed toggle.
+                aria-current={node.statusId === selectedStatus ? 'true' : undefined}
                 style={{ left: node.x, top: node.y, width: NODE_WIDTH, height: NODE_HEIGHT }}
                 onClick={() => onSelect({ kind: 'status', id: node.statusId })}
               >
                 <span className="workflow-node-name">{names.status(node.statusId)}</span>
+                {node.initial && ' '}
                 {node.initial && (
                   <span className="workflow-node-mark">{t('admin.workflow.initialMark')}</span>
                 )}
@@ -137,18 +139,21 @@ export function WorkflowDiagram({
             if (!edge.label) return null;
             const selected = edge.transitionId === selectedTransition;
             const name = names.transition(edge.transitionId);
+            const words = edge.kind === 'global' ? t('admin.workflow.globalTab', { name }) : name;
             return (
               <button
                 key={`${edge.key}-label`}
                 type="button"
-                tabIndex={-1}
+                // Named as a transition, so it never shares a name with a status's box.
+                aria-label={t('admin.workflow.transitionButton', { name: words })}
+                aria-current={selected ? 'true' : undefined}
                 className={`workflow-edge-label${edge.kind === 'global' ? ' workflow-edge-tab' : ''}${
                   selected ? ' workflow-edge-label-selected' : ''
                 }`}
                 style={{ left: edge.label.x, top: edge.label.y, maxWidth: edge.label.width }}
                 onClick={() => onSelect({ kind: 'transition', id: edge.transitionId })}
               >
-                {edge.kind === 'global' ? t('admin.workflow.globalTab', { name }) : name}
+                {words}
               </button>
             );
           })}

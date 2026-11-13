@@ -107,6 +107,7 @@ export function SystemPage({
           ? {}
           : {
               purpose: t('purpose.system'),
+              about: t('admin.system.about'),
               actions: (
                 <button
                   type="button"
@@ -149,7 +150,16 @@ function Details({ info, updates }: { info: SystemInfo; updates: UpdateCheckClie
     const [size, id] = units.find(([u]) => n >= u) ?? [1, 'admin.system.bytes.b' as MessageId];
     return t(id, { value: intl.formatNumber(n / size, { maximumFractionDigits: 1 }) });
   };
-  const when = (iso: string) => intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
+  // Local times say their zone, beside the schedule's UTC (AD-33).
+  const when = (iso: string) =>
+    intl.formatDate(iso, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
   const duration = (seconds: number) =>
     t('admin.system.uptimeValue', {
       days: Math.floor(seconds / DAY),
@@ -170,7 +180,8 @@ function Details({ info, updates }: { info: SystemInfo; updates: UpdateCheckClie
       <UpdateCheckSection client={updates} />
       <Facts title={t('admin.system.database')}>
         <Fact label={t('admin.system.connection')}>
-          <span className={db.reachable ? 'status-ok' : 'status-bad'}>
+          {/* Healthy reads as success, not in the accent that marks links and warnings (AD-33). */}
+          <span className={db.reachable ? 'badge badge-success' : 'status-bad'}>
             {t(db.reachable ? 'admin.system.connected' : 'admin.system.unreachable')}
           </span>
         </Fact>

@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { DangerConfirm, useReturnFocus } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -115,12 +116,15 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
           onChanged={load}
           refuse={refuse}
         />
-        <BulkSection
-          client={client}
-          owners={inventory.status === 'loaded' ? inventory.owners : []}
-          onRevoked={() => setVersion((v) => v + 1)}
-          refuse={refuse}
-        />
+        {/* Nothing to revoke in bulk while there are no tokens at all (AD-31). */}
+        {!(inventory.status === 'loaded' && filter === 'all' && inventory.total === 0) && (
+          <BulkSection
+            client={client}
+            owners={inventory.status === 'loaded' ? inventory.owners : []}
+            onRevoked={() => setVersion((v) => v + 1)}
+            refuse={refuse}
+          />
+        )}
         {policy && (
           <PolicySection
             client={client}
@@ -160,6 +164,10 @@ function InventorySection({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** The token whose revocation waits for a yes (D13). */
+  const [confirming, setConfirming] = useState<number | null>(null);
+  // Cancel brings the focus back to the token's Revoke; a revocation takes it to the list's heading.
+  const back = useReturnFocus<number>();
 
   const revoke = async (token: ApiToken) => {
     setBusy(true);
@@ -210,7 +218,12 @@ function InventorySection({
       {inventory.status === 'loaded' && (
         <>
           <p className="page-note">{t('admin.tokens.count', { count: inventory.total })}</p>
-          {inventory.tokens.length === 0 ? (
+          {inventory.tokens.length === 0 && filter === 'all' ? (
+            // Nothing at all yet: a wider filter would not help (AD-31).
+            <EmptyState title={t('admin.tokens.noneYet')}>
+              {t('admin.tokens.noneYetBody')}
+            </EmptyState>
+          ) : inventory.tokens.length === 0 ? (
             <EmptyState title={t('admin.tokens.empty')}>{t('empty.adminTokens.body')}</EmptyState>
           ) : (
             <ul className="token-list" aria-label={t('admin.tokens.list')}>
@@ -222,20 +235,39 @@ function InventorySection({
                   timeZone={timeZone}
                   showOwner
                   actions={
-                    token.status === 'active' ? (
+                    token.status !== 'active' ? undefined : confirming === token.id ? (
+                      <DangerConfirm
+                        message={t('admin.tokens.revokeConfirm', {
+                          name: token.name,
+                          owner: token.owner.name,
+                        })}
+                        confirmLabel={t('admin.tokens.confirm')}
+                        cancelLabel={t('admin.tokens.cancel')}
+                        busy={busy}
+                        onCancel={() => {
+                          back.returnTo(token.id);
+                          setConfirming(null);
+                        }}
+                        onConfirm={() => {
+                          setConfirming(null);
+                          void revoke(token);
+                        }}
+                      />
+                    ) : (
                       <button
+                        ref={back.ref(token.id)}
                         type="button"
-                        className="button-secondary"
+                        className="button-secondary button-danger-quiet"
                         aria-label={t('admin.tokens.revokeNamed', {
                           name: token.name,
                           owner: token.owner.name,
                         })}
                         disabled={busy}
-                        onClick={() => void revoke(token)}
+                        onClick={() => setConfirming(token.id)}
                       >
                         {t('tokens.revoke')}
                       </button>
-                    ) : undefined
+                    )
                   }
                 />
               ))}
@@ -404,7 +436,7 @@ function BulkSection({
         )}
         {!pending && (
           <div>
-            <button type="submit" className="button-secondary" disabled={busy}>
+            <button type="submit" className="button-secondary button-danger-quiet" disabled={busy}>
               {t('admin.tokens.bulkRevoke')}
             </button>
           </div>

@@ -41,6 +41,7 @@ export function ManagedTracksPage({ client = trackPeopleClient }: ManagedTracksP
         titleId={titleId}
         title={t('trackPeople.listTitle')}
         purpose={t('trackPeople.listIntro')}
+        about={t('trackPeople.listAbout')}
       />
       {state.status === 'loading' && (
         <p role="status" className="page-note">

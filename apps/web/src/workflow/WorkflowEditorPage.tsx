@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -219,6 +220,9 @@ export function WorkflowEditorPage({
   useEffect(() => {
     if (panel === 'discard') discardConfirm.current?.focus();
   }, [panel]);
+
+  // The breadcrumb ends at the workflow's name, under Workflows (AD-28).
+  useAdminTrail(workflow ? [{ label: t('common.value', { value: workflow.name }) }] : null);
 
   if (load.status !== 'loaded' || !workflow || !working) {
     const notes = {
@@ -557,13 +561,12 @@ export function WorkflowEditorPage({
 
   return (
     <section className="page page-full workflow-editor" aria-labelledby={`${id}-title`}>
-      <p className="workflow-back">
-        <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
-      </p>
       <PageHeader
         titleId={`${id}-title`}
         title={t('common.value', { value: workflow.name })}
+        titleText={workflow.name}
         purpose={t('purpose.workflowEditor')}
+        about={t('admin.workflow.about')}
       />
       <p className="token-meta">
         <span>{t('admin.workflow.published', { version: workflow.published.version })}</span>
@@ -846,7 +849,7 @@ function WorkflowDetails({
 
   return (
     <details className="workflow-details" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>{t('admin.workflow.details')}</summary>
+      <summary className="admin-disclosure">{t('admin.workflow.details')}</summary>
       {open && (
         <form className="form" onSubmit={submit} aria-labelledby={`${id}-summary`} noValidate>
           <span id={`${id}-summary`} hidden>

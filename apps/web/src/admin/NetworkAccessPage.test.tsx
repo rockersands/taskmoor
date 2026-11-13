@@ -32,7 +32,10 @@ describe('network access page (M1-085)', () => {
   it('[IAM-015] turns the allowlist on with the office range and an exempt group', async () => {
     const { client } = renderPage();
     const entries = await screen.findByLabelText('Addresses and ranges');
-    expect(screen.getByText(/which the list does not let in/)).toBeVisible();
+    // While the list is off nothing is locked out, so there is no warning (AD-8).
+    const where = screen.getByText(/While the list is off, every address gets in/);
+    expect(where).not.toHaveClass('status-warn');
+    expect(screen.queryByText(/which the list does not let in/)).toBeNull();
     await userEvent.type(entries, '203.0.113.0/24 # Office');
     await userEvent.click(screen.getByRole('checkbox', { name: 'Only allow these addresses' }));
     await userEvent.click(screen.getByRole('checkbox', { name: 'Travelling staff' }));
@@ -58,6 +61,11 @@ describe('network access page (M1-085)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save and lock me out' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Allowlist saved.');
     expect(client.saved[0]).toMatchObject({ confirmLockout: true });
+  });
+
+  it('[IAM-015] warns only while the list is on and leaves this address out (AD-8)', async () => {
+    renderPage(fakeNetworkClient({ enabled: true, entries: parseEntries('192.0.2.0/24') }));
+    expect(await screen.findByText(/which the list does not let in/)).toHaveClass('status-warn');
   });
 
   it('[IAM-015] names the lines that are not addresses', async () => {

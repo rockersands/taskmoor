@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md
-accessed: 2026-11-04
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/admin/DangerConfirm.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # People, groups and teams
@@ -110,7 +110,9 @@ node cli.mjs password-link admin@example.com
 ## Deactivating and reactivating
 
 **Deactivate** stops a person from using Taskmoor. Their account stays, and everything they
-did stays attributed to them.
+did stays attributed to them. The button is in the danger colour, as is **Erase…**, and it asks
+first, saying what will happen; **Deactivate** in that question does it, **Keep active** leaves
+the person as they are. Every person's actions sit on a line of their own under their name.
 
 - All their sessions end at once and their unused password links stop working.
 - They hold no permissions while deactivated, and their API tokens are refused.
@@ -215,8 +217,10 @@ accounts are never external. Select **Save policy**.
 ## Sessions
 
 By default a session lasts 14 days, and ends earlier after 3 days without use. On **Administration** >
-**Security**, under **Sign-in sessions**, set **A sign-in lasts (hours)** and **Sign out after this
-many minutes unused**, then select **Save session settings**. The security checklist (ASVS level
+**Security**, under **Sign-in sessions**, set **A sign-in lasts** and **Sign out after it goes
+unused for**, each a whole number with its unit (minutes, hours or days; the page shows a length
+in the largest unit that holds it whole), then select **Save session settings**. A sign-in lasts
+1 hour to 90 days, and the idle time is 5 minutes or more and no longer than the sign-in. The security checklist (ASVS level
 2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
 idler than the new limits; it applies to frontends on another site too. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
 only a hash of it.
@@ -272,7 +276,8 @@ administrators the same way.
 Groups gather people so you can give them permissions, require two-factor authentication,
 restrict who sees tickets, or share dashboards and saved searches with them.
 
-- **Add a group** asks for a **Group name** and a **Description (optional)**. Names are unique.
+- **New group** opens the form above the list: **Add a group** asks for a **Group name** and a
+  **Description (optional)**. Names are unique.
 - Each group in the list shows how many members and groups inside it has. **Manage** opens it.
 - Under **Members of** a group, **Add a person**: type two letters or more of a name or email,
   then select **Add**. **Remove** takes a person out.
@@ -323,7 +328,8 @@ must use the new one).
 
 On **Administration** > **Teams**:
 
-- **Add a team** asks for a **Team name** and a **Description (optional)**. Names are unique,
+- **New team** opens the form above the list: **Add a team** asks for a **Team name** and a
+  **Description (optional)**. Names are unique,
   ignoring case: "There is a team with that name already."
 - Each team in the list shows how many members it has, who leads it and its description.
   **Manage** opens it.
