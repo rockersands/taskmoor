@@ -167,7 +167,9 @@ become **translucent glass**:
 - **Shared filter controls** (the user, 2026-11-03, after testing the demo): `filter-chip` (a tick
   and a heavier label when on, never colour alone), `Popover` (`shell/Popover.tsx`: over the content,
   closed by Escape or a click outside with focus back on its button, docked at the bottom of the
-  screen below 768 px), `glass-check` and `thin-scroll`, for any page to reuse.
+  screen below 768 px) and `thin-scroll`, for any page to reuse. A check box in them is the one
+  check box of `forms.css` (TR-24, 2026-11-13: the own `glass-check` look gave Account two looks
+  and is gone; `design.test.ts` holds that no page draws its own).
 - **Fields** (the user, 2026-11-03: no more flat beige) are one rule in `forms.css` on the token
   `--field-surface`: clear glass, opaque where glass falls back, with `--color-field-border` at 3:1
   beside the canvas, any glass and any opaque surface. `contrast.test.ts` holds it.

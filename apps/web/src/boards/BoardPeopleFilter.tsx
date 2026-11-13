@@ -109,7 +109,6 @@ export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilte
                   <label className="check-row">
                     <input
                       type="checkbox"
-                      className="glass-check"
                       checked={chosen.includes(String(person.id))}
                       onChange={(event) => toggle(String(person.id), event.target.checked)}
                     />

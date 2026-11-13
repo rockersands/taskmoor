@@ -614,51 +614,6 @@
   }
 }
 
-/* A check box on glass: a tick on the accent when on, so it is never colour alone. */
-.glass-check {
-  -webkit-appearance: none;
-  appearance: none;
-  display: inline-grid;
-  flex: none;
-  place-content: center;
-  box-sizing: border-box;
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  border: 1.5px solid var(--color-field-border);
-  border-radius: var(--radius-mark);
-  background: var(--glass-surface-sunken);
-  box-shadow: var(--shadow-inset);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-soft),
-    border-color var(--motion-fast) var(--ease-soft);
-}
-
-.glass-check::before {
-  content: "";
-  display: block;
-  width: 14px;
-  height: 14px;
-  background: var(--color-on-accent);
-  -webkit-mask: var(--check-mark) center / contain no-repeat;
-  mask: var(--check-mark) center / contain no-repeat;
-  opacity: 0;
-}
-
-.glass-check:hover {
-  border-color: var(--color-accent);
-}
-
-.glass-check:checked {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-}
-
-.glass-check:checked::before {
-  opacity: 1;
-}
-
 /* A list inside a popover: it scrolls by itself, so the popover keeps its place. */
 .popover-list {
   margin: 0;
@@ -714,7 +669,11 @@
     min-height: var(--hit-target-touch);
   }
 
-  .glass-check {
+  /*
+   * The box in a row a finger reaches: the forms.css check box, a little larger. No specificity,
+   * so a page's own touch size (Account's 28 px, AC-12) still wins.
+   */
+  :where(.check-row input:is([type="checkbox"], [type="radio"])) {
     width: 24px;
     height: 24px;
   }
@@ -731,16 +690,6 @@
   .filter-chip[data-on="true"]::before {
     background: CanvasText;
     forced-color-adjust: none;
-  }
-
-  /* The system's own check box: masks and fills do not survive forced colours. */
-  .glass-check {
-    -webkit-appearance: auto;
-    appearance: auto;
-  }
-
-  .glass-check::before {
-    display: none;
   }
 }
 

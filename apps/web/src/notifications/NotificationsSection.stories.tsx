@@ -62,11 +62,42 @@ export const TurnsAnEmailOff: Story = {
   },
 };
 
-/** A tap anywhere in a cell of the matrix reaches its check box (ADR-033). */
+/** The look of a check box drawn by forms.css, read from a bare one put beside the section. */
+function drawnAsTheAppsCheckBox(box: Element, beside: Element): string[] {
+  const probe = document.createElement('input');
+  probe.type = 'checkbox';
+  probe.checked = (box as HTMLInputElement).checked;
+  beside.append(probe);
+  try {
+    const want = getComputedStyle(probe);
+    const got = getComputedStyle(box);
+    return (['appearance', 'backgroundColor', 'borderColor', 'boxShadow'] as const)
+      .filter((property) => got[property] !== want[property])
+      .map((property) => `${box.getAttribute('aria-label') ?? box.id}: ${property}`);
+  } finally {
+    probe.remove();
+  }
+}
+
+/** Every check box here is the app's one check box, as on the rest of Account (TR-24, AC-11). */
+export const OneCheckBoxLook: Story = {
+  args: DigestWithQuietHours.args,
+  play: async ({ canvasElement }) => {
+    const boxes = await within(canvasElement).findAllByRole('checkbox');
+    await expect(boxes.flatMap((box) => drawnAsTheAppsCheckBox(box, canvasElement))).toEqual([]);
+  },
+};
+
+/** A tap anywhere in a cell of the matrix reaches its check box, drawn at 28 px (ADR-033, AC-12). */
 export const OnATouchScreen: Story = {
   beforeEach: asOnATouchScreen,
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findAllByRole('checkbox');
+    const boxes = await within(canvasElement).findAllByRole('checkbox');
     await expect(tooSmallForAFinger(canvasElement, ['.notification-cell'])).toEqual([]);
+    const sizes = boxes.map((box) => {
+      const { width, height } = box.getBoundingClientRect();
+      return `${Math.round(width)} x ${Math.round(height)}`;
+    });
+    await expect(new Set(sizes)).toEqual(new Set(['28 x 28']));
   },
 };

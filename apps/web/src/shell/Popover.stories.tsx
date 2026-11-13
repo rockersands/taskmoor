@@ -30,7 +30,6 @@ function Controls() {
                 <label className="check-row">
                   <input
                     type="checkbox"
-                    className="glass-check"
                     checked={on.includes(name)}
                     onChange={(event) =>
                       setOn(event.target.checked ? [...on, name] : on.filter((n) => n !== name))

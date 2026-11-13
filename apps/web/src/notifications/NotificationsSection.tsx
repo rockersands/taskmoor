@@ -139,7 +139,6 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
         <label className="notification-choice">
           <input
             type="checkbox"
-            className="glass-check"
             checked={quiet !== null}
             onChange={(e) => save({ quietHours: e.target.checked ? { start: 22, end: 7 } : null })}
           />
@@ -172,7 +171,6 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
       <label className="notification-choice">
         <input
           type="checkbox"
-          className="glass-check"
           checked={prefs.ownChanges}
           onChange={(e) => save({ ownChanges: e.target.checked })}
         />
@@ -193,7 +191,6 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
                       <label key={channel} className="check-row">
                         <input
                           type="checkbox"
-                          className="glass-check"
                           aria-label={t('notifications.toggle', { channel: name, event: label })}
                           checked={prefs.events[event]?.[channel] ?? true}
                           onChange={(e) => choose(event, channel, e.target.checked)}
@@ -231,7 +228,6 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
                       <label className="notification-cell">
                         <input
                           type="checkbox"
-                          className="glass-check"
                           aria-label={t('notifications.toggle', {
                             channel: t(`notifications.channel.${channel}` as MessageId),
                             event: label,

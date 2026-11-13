@@ -23,10 +23,11 @@ function renderSection(client = fakeNotificationsClient(), locale: 'en' | 'es' =
 }
 
 describe('notification settings (M1-057)', () => {
-  it('[NTF-004] uses the app’s own check boxes and radios, not the browser’s (AC-11)', async () => {
+  it('[NTF-004] uses the app’s one check box and its radios, not the browser’s (AC-11, TR-24)', async () => {
     const section = renderSection();
     await section.findByRole('table');
-    for (const box of section.getAllByRole('checkbox')) expect(box).toHaveClass('glass-check');
+    // The one look forms.css gives every check box, with no class of its own to draw another.
+    for (const box of section.getAllByRole('checkbox')) expect(box.className).toBe('');
     for (const radio of section.getAllByRole('radio')) {
       expect(radio.closest('label')).toHaveClass('notification-choice');
     }
@@ -42,9 +43,7 @@ describe('notification settings (M1-057)', () => {
     expect(blocks).toHaveLength(18);
     const first = blocks[0] as HTMLElement;
     expect(within(first).getAllByRole('checkbox')).toHaveLength(2);
-    for (const box of within(events).getAllByRole('checkbox')) {
-      expect(box).toHaveClass('glass-check');
-    }
+    for (const box of within(events).getAllByRole('checkbox')) expect(box.className).toBe('');
     // Each switch keeps its full name: the channel, then the event.
     expect(within(first).getAllByRole('checkbox')[0]).toHaveAccessibleName(/^Correo electrónico: /);
   });

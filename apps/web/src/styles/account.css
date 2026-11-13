@@ -400,8 +400,8 @@
 
   /*
    * The app's boxes and radios at the touch size (AC-12). A phone capture showed the native
-   * boxes at 13 px despite this rule (cause not established); the app's own boxes are drawn by
-   * these sizes, and outrank the 24 px of `.glass-check` here.
+   * boxes at 13 px despite this rule (cause not established); the forms.css check box (TR-24,
+   * AC-11) is drawn at these sizes, which outrank its own 20 px.
    */
   .notification-choice input,
   .notification-events input,

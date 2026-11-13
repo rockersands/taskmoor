@@ -14,7 +14,8 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
  * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
  * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
- * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card.
+ * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card;
+ * no check box or radio drawn otherwise than forms.css draws them all.
  *
  * `design-offenders.ts` holds two lists. OFFENDERS is what is still to fix, counted per file; the
  * count must match in both directions, so it only shrinks, and when it is empty the sweep is
@@ -473,6 +474,49 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
   return facts;
 }
 
+/** What draws a check box: its kind, its fill, its edge, its shadow, a mark over it. */
+const DRAWS_A_BOX = /^((-webkit-)?(appearance|mask)|background(-color)?|border(-color)?|box-shadow)$/;
+
+/**
+ * Check boxes and radios that a page draws its own way (TR-24, AC-11): a class written on an
+ * `<input type="checkbox">` or `"radio"` that a stylesheet gives a look of its own, where forms.css
+ * draws every one alike. Sizes and placement are a page's own and stay out of it.
+ */
+export function ownCheckBoxes(
+  scripts: readonly (readonly [string, string])[],
+  sheets: readonly (readonly [string, string])[],
+): string[] {
+  const classes = new Set<string>();
+  for (const [file, source] of scripts) {
+    const visit = (node: ts.Node) => {
+      if (
+        (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+        tagName(node) === 'input'
+      ) {
+        const type = attribute(node, 'type')?.initializer;
+        if (type && ts.isStringLiteral(type) && /^(checkbox|radio)$/.test(type.text)) {
+          for (const name of classesOf(node)) classes.add(name);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parse(file, source));
+  }
+  return sheets.flatMap(([file, source]) =>
+    cssDeclarations(source)
+      .filter((d) => DRAWS_A_BOX.test(d.property))
+      .filter((d) =>
+        selectorsOf(d.selector).some((part) => {
+          // The element the rule draws, less its pseudo-element and what it says it is not.
+          const last = part.split(/[\s>+~]+/).at(-1) ?? '';
+          const subject = (last.split('::')[0] ?? '').replace(/:not\([^)]*\)/g, '');
+          return [...classes].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(subject));
+        }),
+      )
+      .map((d) => `${file}: ${d.selector} { ${d.property} }`),
+  );
+}
+
 /** Where each component a file imports from another of our files comes from. */
 function importsOf(file: string, source: string): Map<string, string> {
   const found = new Map<string, string>();
@@ -744,6 +788,23 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     ).toHaveLength(1);
   });
 
+  it('[NFR-005] finds a check box drawn its own way (TR-24)', () => {
+    const page: [string, string] = [
+      'a.tsx',
+      'export const A = () => <input type="checkbox" className="mine" />;',
+    ];
+    const own = '.mine { appearance: none; background: var(--glass-surface-sunken); }';
+    expect(ownCheckBoxes([page], [['a.css', own]])).toHaveLength(2);
+    expect(ownCheckBoxes([page], [['a.css', '.mine::before { mask: none; }']])).toHaveLength(1);
+    expect(ownCheckBoxes([page], [['a.css', 'input:not(.mine) { appearance: none; }']])).toEqual(
+      [],
+    );
+    // Its size and place are the page's own; a class on another element is not a check box.
+    expect(ownCheckBoxes([page], [['a.css', '.mine { width: 28px; margin: 0; }']])).toEqual([]);
+    const text: [string, string] = ['b.tsx', 'export const B = () => <input className="mine" />;'];
+    expect(ownCheckBoxes([text], [['a.css', own]])).toEqual([]);
+  });
+
   it('[NFR-005] finds a size that is not a token', () => {
     const on = (rule: string) => cssProblems(rule);
     expect(on('a { border-radius: 6px; }').radii).toHaveLength(1);
@@ -859,6 +920,12 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
       .sort(([a], [b]) => rank(a) - rank(b))
       .map(([file, source]) => [name(file), source] as const);
     expect(overlayProblems(sheets)).toEqual([]);
+  });
+
+  it('[NFR-005] draws every check box and radio one way, from forms.css (TR-24, AC-11)', () => {
+    const pages = scripts.map((file) => [file, readFileSync(file, 'utf8')] as const);
+    const sheets = cssSources.map(([file, source]) => [name(file), source] as const);
+    expect(ownCheckBoxes(pages, sheets)).toEqual([]);
   });
 
   it('[NFR-005] draws links in the accent, in both skins (ADR-036)', () => {

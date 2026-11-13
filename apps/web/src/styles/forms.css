@@ -43,9 +43,9 @@
  * Every check box and radio is one control (TR-24): a clear well with a 3:1 edge when off, the
  * accent with a tick or a dot when on, in both skins. The browser's own box was a flat grey square
  * in the dark skin, and blue wherever no rule gave it the accent. No specificity, so a page's own
- * size and placement still win; `.glass-check` draws itself.
+ * size and placement still win; no page draws a check box of its own (design.test.ts).
  */
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)) {
+:where(input:is([type="checkbox"], [type="radio"])) {
   -webkit-appearance: none;
   appearance: none;
   display: inline-grid;
@@ -64,11 +64,11 @@
     border-color var(--motion-fast) var(--ease-soft);
 }
 
-:where(input[type="radio"]:not(.glass-check)) {
+:where(input[type="radio"]) {
   border-radius: 50%;
 }
 
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check))::before {
+:where(input:is([type="checkbox"], [type="radio"]))::before {
   content: "";
   width: 72%;
   height: 72%;
@@ -78,7 +78,7 @@
   opacity: 0;
 }
 
-:where(input[type="radio"]:not(.glass-check))::before {
+:where(input[type="radio"])::before {
   width: 44%;
   height: 44%;
   border-radius: 50%;
@@ -86,22 +86,22 @@
   mask: none;
 }
 
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)):hover {
+:where(input:is([type="checkbox"], [type="radio"])):hover {
   border-color: var(--color-accent);
 }
 
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)):checked,
-:where(input[type="checkbox"]:not(.glass-check)):indeterminate {
+:where(input:is([type="checkbox"], [type="radio"])):checked,
+:where(input[type="checkbox"]):indeterminate {
   border-color: var(--color-accent);
   background: var(--color-accent);
 }
 
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)):checked::before {
+:where(input:is([type="checkbox"], [type="radio"])):checked::before {
   opacity: 1;
 }
 
 /* Some but not all: a bar, not a tick. */
-:where(input[type="checkbox"]:not(.glass-check)):indeterminate::before {
+:where(input[type="checkbox"]):indeterminate::before {
   height: 2px;
   border-radius: var(--radius-mark);
   -webkit-mask: none;
@@ -109,19 +109,19 @@
   opacity: 1;
 }
 
-:where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)):disabled {
+:where(input:is([type="checkbox"], [type="radio"])):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* The system's own controls: masks and fills do not survive forced colours. */
 @media (forced-colors: active) {
-  :where(input:is([type="checkbox"], [type="radio"]):not(.glass-check)) {
+  :where(input:is([type="checkbox"], [type="radio"])) {
     -webkit-appearance: auto;
     appearance: auto;
   }
 
-  :where(input:is([type="checkbox"], [type="radio"]):not(.glass-check))::before {
+  :where(input:is([type="checkbox"], [type="radio"]))::before {
     display: none;
   }
 }
