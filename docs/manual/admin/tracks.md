@@ -336,7 +336,9 @@ Ticket templates start a new ticket with a summary, an outline, default values a
 They are not the track templates under [Templates](#templates), which start a track.
 
 - **A track's templates** are on the page **Ticket templates**, linked from the track's summary
-  (the address ends in `/tracks/KEY/templates`). Anyone who can browse the track reads them. The
+  (the address ends in `/tracks/KEY/templates`). It sits under the track's tab bar, titled
+  **Ticket templates** under the track's name, and its line says it lists the templates offered in
+  this track, those for every track included. Anyone who can browse the track reads them. The
   track's administrators ("Administer track") and configuration administrators change them.
 - **Templates for every track** are under **Settings**, **Ticket templates** for site
   administrators; configuration administrators open them by address (it ends in

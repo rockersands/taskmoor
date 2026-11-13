@@ -1,8 +1,8 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-03
+sources: apps/web/src/App.tsx, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Dashboards and reports
@@ -97,16 +97,28 @@ everywhere. **Workload** and **Time tracking** add up time in hours, and say so 
 tracking is turned off on the site. Sprint widgets need a Scrum board you can see; when the
 board has no active sprint, the widget says so.
 
+A pie chart widget with no title of its own is named by what it counts, such as **Tickets by
+Status**.
+
+A dashboard that does not exist, or that is not shared with you, shows **Dashboard not found**
+with the way to **Home** and to **Search**.
+
 ### Wallboards
 
-A wallboard shows a dashboard filling the window, without the navigation, and reads its widgets
-again every five minutes. **Full screen** takes the whole screen and **Leave the wallboard**
-goes back. To show several dashboards in turn, tick them on the dashboards list (**Show … on the
-wallboard**), set **Seconds per dashboard**, and press **Start the wallboard**.
+A wallboard is a dashboard laid out for a TV or a wall screen, read from across a room: it fills
+the window without the navigation, in large type, and reads its widgets again every five minutes.
+It shows no controls: charts have no **Show the numbers**, and **Full screen** and **Leave the
+wallboard** stay hidden until you point at them or reach them with the keyboard. To show several
+dashboards in turn, tick **On the wallboard** beside each on the dashboards list, set **Seconds
+per dashboard** under **Wallboard**, and press **Start the wallboard**, which appears once one is
+ticked.
 
 ## A track's statistics
 
-**Statistics**, in a track's tab bar, holds every report of that track, in five groups:
+**Statistics**, in a track's tab bar, holds every report of that track, titled **Statistics**
+under the track's name. On a wide screen the reports are links in five groups, each group's label
+in a column of its own; on a phone they are one **Report** picker, so the report itself shows on
+the first screen:
 
 | Group | Reports |
 |---|---|
@@ -116,8 +128,7 @@ wallboard**), set **Seconds per dashboard**, and press **Start the wallboard**.
 | **Tickets** | **Created vs closed**, **Recently created**, **Average age**, **Time to close**, **Tickets by date**, **Pie chart**, **Ticket statistics**, **Two-dimensional statistics**, **Grouped tickets** |
 | **Time and workload** | **Time tracking**, **Workload by person**, **Release workload**, **Workload pie chart** |
 
-The **Reports** link on a board opens this section, and moving between reports stays inside the
-track's tabs. Each report counts only the tickets you can see in the track, so two people may read
+Moving between reports stays inside the track's tabs. Each report counts only the tickets you can see in the track, so two people may read
 different numbers. A report with nothing to chart says so and what to try, such as a longer period.
 
 Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
@@ -167,8 +178,8 @@ dashboard, where you can write a query.
 
 Under **Statistics**, **Sprint report** opens the running sprint, or the latest one, and **Sprint**
 chooses another that has started. A Scrum board's backlog also links each active sprint's
-report. **Velocity** has its own tab too. A sprint report shows three charts, each with **Show the
-numbers** for a table:
+report. **Velocity** has its own tab too. The track's **Backlog** tab leads back to the backlog. A
+sprint report shows three charts, each with **Show the numbers** for a table:
 
 - **Burndown**: the work **Remaining** each day, against a **Guideline** that reaches zero on
   the sprint's planned last day.
@@ -176,10 +187,17 @@ numbers** for a table:
 - **Velocity**: work **Committed** and **Completed** in the board's last completed sprints (up
   to seven), with the average completed. It appears once the board has completed a sprint.
 
-Below the charts are the totals (**Committed at the start**, **Added after the start**,
-**Removed**, **Completed** and, with time tracking on, **Remaining estimate**) and the lists of
-**Completed tickets**, **Tickets not completed** and **Tickets removed from the sprint**. Tickets
-added after the start are marked, and estimates that changed show their old and new value.
+Below the charts are the totals, on a card of their own (**Committed at the start**, **Added after
+the start**, **Removed**, **Completed** and, with time tracking on, **Remaining estimate**), and the
+tables of **Completed tickets**, **Tickets not completed** and **Tickets removed from the sprint**,
+with a column each for **Key**, **Summary**, **Status** and **Estimate**. On a phone each row
+takes two lines: the key and summary, then the status and the estimate. Tickets added after the
+start are marked, and estimates that changed show their old and new value.
+
+When the board estimates in time or with a number field and none of the sprint's tickets has an
+estimate, the charts and the totals would only show zeros: the report says **No estimates to add
+up** instead, and still lists the tickets. Velocity says the same when the completed sprints had
+no estimates.
 
 Work is counted by the board's estimation setting: tickets, the original estimate or a number
 field (see [Sprint settings](boards.md#sprint-settings)). With time tracking on and the original
@@ -188,8 +206,8 @@ completed when it reaches the board's rightmost column. Days end at midnight in 
 
 ## Board reports
 
-Every board has a **Reports** link, which opens its track's [Statistics](#a-tracks-statistics).
-A board that an upgrade left outside a track keeps a page of its own with just these reports:
+A track's board reports are in its [Statistics](#a-tracks-statistics). A board that an upgrade left
+outside a track has a **Reports** link and keeps a page of its own with just these reports:
 
 | Report | What it shows |
 |---|---|
@@ -206,6 +224,12 @@ The controls above the chart:
   past the last chosen column; its cycle time adds up only the time spent in chosen columns.
 - **Rolling average**: **Over neighbouring tickets** or **Over days**, and how many.
 
+Time in status shows its numbers in its table, with no second **Show the numbers** above it. A
+report's table that is wider than the card scrolls sideways inside it, never cutting a word or a
+number: its first column keeps room for a name, the edge past which more columns wait fades, and
+the keyboard reaches the table to scroll it. **Show the numbers** has a chevron that turns once the
+numbers show.
+
 The control chart and cycle time show **Tickets**, **Average**, **Median**, **85th percentile**
 and **95th percentile**. Reports read the status history, so a past period always shows the
 same numbers. Tickets in statuses no column shows are counted apart and named under the chart.
@@ -215,16 +239,19 @@ same numbers. Tickets in statuses no column shows are counted apart and named un
 These follow a Scrum board's sprints, counted by the board's estimation setting:
 
 - **Release burndown**: choose a **Release** of the board's track.
-- **Outcome burndown**: enter an outcome's key under **Outcome** and press **Show**.
+- **Outcome burndown**: choose one of the track's outcomes under **Outcome**; the first is
+  chosen to start with. A board outside any track asks for an outcome's key instead, with
+  **Show**.
 
 Both show the **Remaining work** at the start of each sprint and now, the **Work per sprint**
 (**Completed**, **Added** and **Removed**), and a forecast of how many more sprints the work
 needs at the board's velocity (the average of its last three completed sprints).
 
 - **Release report**: **Release progress**, the scope and the completed work day by day from
-  the release's start, its planned or shipped date, and the day the work would be done at the
-  pace of the last 14 days.
-- **Outcome report**: enter an outcome's key and press **Show**. The same chart for the tickets
+  the release's start, its planned date and the day the work would be done at the pace of the last
+  14 days. Once the release has shipped it says the day it shipped on, as its page does, and no
+  forecast.
+- **Outcome report**: choose an outcome as for its burndown. The same chart for the tickets
   under the outcome, from the day the first one joined it, with how many are **Done**, **Still
   open** and **Open without an estimate**, and the list of its tickets.
 
