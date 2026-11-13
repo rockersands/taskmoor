@@ -55,8 +55,10 @@ filter the plan to see the rest.
   above their children, and a parent without dates shows the span of all its children you may see,
   even those outside the plan. Lines join a ticket to the ones it blocks, across tracks too: see
   [Dependencies](#dependencies).
-- **List**: the plan's tickets as a search, in your columns, sorted by newest, recently updated,
-  due date or priority. You edit cells in place, as in search results. It stops at 10,000 rows.
+- **List**: the plan's tickets as a search, in your columns (**Columns** opens a panel over the
+  page, as on search), sorted newest created first, by recent update, due date or priority. You
+  edit cells in place, as in search results; on a phone each ticket is a stacked row of its key,
+  summary, status, assignee and priority. It stops at 10,000 rows.
 - **Calendar**: a month of the tickets on their due and start days. A day shows six tickets and a
   button for the rest.
 

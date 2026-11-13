@@ -2,8 +2,8 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts
-accessed: 2026-11-04
+sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Search and the query language
@@ -22,7 +22,8 @@ Press **Basic** at the top of the page and choose:
 - **Tracks**: one or more tracks, or none for all of them;
 - **Stage**: **New**, **Active**, **Closed**, or none for all.
 
-Press **Search**. The results are ordered by the latest change. **Clear all** empties the form.
+Press **Search**. The results come newest created first. **Clear all** empties the form. On a
+touch screen every **Stage** label is at least a finger wide.
 
 ### More filters
 
@@ -312,18 +313,20 @@ project = PAY AND issuetype = Bug AND fixVersion IN unreleasedVersions() AND rep
 The **Saved searches** bar on the search page keeps queries for later. With none yet, it says so
 and how to make the first.
 
-- **Choose a saved search** lists those you can see (others' with their owner's name);
-  **Open** shows its query, its columns and its results.
+- **Saved searches you can see** lists those you can see (others' with their owner's name);
+  **Open** shows its query, its columns and its results. With one open, the list shows its name;
+  a long name ends in "…".
 - **Save search** stores the query and the columns under a **Name** of your choice. With one of
   your own open, **Save** writes the current query into it and **Save as new** makes a copy.
 - **Share** sets **Who sees this saved search**: **Only me**, **Everyone signed in** or
   **Anyone, also without signing in**, then **Save sharing**. Sharing needs the **Share saved
   searches** permission. Sharing with particular people, groups or tracks is done through the
   [REST API](../admin/rest-api.md); saving here replaces such shares.
-- **Star** marks a saved search.
+- **Star** marks a saved search. A starred one shows a filled star and the button looks pressed.
 - **Subscribe** emails you its results: **How often** (**Every day**, **Every week** on a chosen
   day, or **Every month** on a day from 1 to 28), **At** an hour, and **Only when something
-  matches**. Press **Subscribe by email**; the page says when the first email goes out.
+  matches**. Press **Subscribe by email**; the page says when the first email goes out. Once
+  you get a saved search by email, its button reads **Subscribed**, with a tick.
 
 A track's board can stand on a saved search. Its query then has to stay inside that track, so
 **Save** refuses a query that would leave it and names the board and the track. Start the query with
@@ -341,11 +344,15 @@ by your administrator.
 
 ## Search results
 
-Results show as a table, fifty tickets at a time; **More results** adds the next fifty. The
-count above says how many tickets match. Beyond 10,000 it is an estimate, "About 120,000 tickets",
+Results show as a table, fifty tickets at a time; **Show more** adds the next fifty. The
+count above says how many tickets match, and a line beside it says their order, for example
+**Sorted by Created, newest first**; the column they follow carries an arrow in its heading. The
+summary takes the width the other columns leave, and short values and dates stay on one line.
+On a phone the table becomes stacked rows: each ticket's key, its summary, and then its status,
+assignee and priority. Beyond 10,000 it is an estimate, "About 120,000 tickets",
 or "More than 10,000 tickets" when an estimate would not be close enough.
 
-- **Columns** chooses the columns: move them up or down, remove them, **Add a column** (system
+- **Columns** opens a panel over the page to choose the columns: move them up or down, remove them, **Add a column** (system
   fields and custom fields) and **Default columns** to start again. The key always comes first.
   Your columns are kept in this browser; a saved search keeps its own.
 - Cells of the summary, assignee, priority, labels, dates and simple custom fields have an edit

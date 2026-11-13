@@ -1,8 +1,8 @@
 ---
 title: "Tutorials"
 audience: users
-sources: apps/web/src/tutorial/sections.ts, apps/web/src/tutorial/steps.ts, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/tutorial/CoachCard.tsx, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/client.ts, apps/web/src/api/changes.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/styles/surfaces.css, apps/web/src/shell/ModalDialog.tsx, apps/server/src/routes/tutorial.ts, packages/db/src/migrations/0084_tutorial_progress.ts, docs/adr/0115-guided-tutorial.md, docs/specs/01b-core-work-tracking.md
-accessed: 2026-11-04
+sources: apps/web/src/tutorial/sections.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/steps.ts, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/tutorial/CoachCard.tsx, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/TutorialPicker.tsx, apps/web/src/tutorial/client.ts, apps/web/src/api/changes.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/styles/surfaces.css, apps/web/src/shell/ModalDialog.tsx, apps/server/src/routes/tutorial.ts, packages/db/src/migrations/0084_tutorial_progress.ts, docs/adr/0115-guided-tutorial.md, docs/specs/01b-core-work-tracking.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Tutorials
@@ -41,8 +41,10 @@ The panel sits in the page, so the rest of Home works as usual around it.
 | **Not now** | Closes the offer |
 | **Don't offer again** | Closes the offer and records that you do not want it |
 
-Whichever you choose, the offer does not come back on its own, and every section stays in
-**Settings, Tutorials**. The offer is also left out if you already started a section there.
+The panel shows in full only the first time you see Home. Once seen, whether you chose anything
+or not, and once you started a section in **Settings, Tutorials**, it is one small **Getting
+started** link at the top of Home that leads to **Settings, Tutorials**, so your own work comes
+first. Every section stays there. On every card, the section's state sits on a line of its own.
 
 ## Settings, Tutorials
 

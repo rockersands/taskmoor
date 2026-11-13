@@ -1,8 +1,8 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx
-accessed: 2026-11-04
+sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Working with tickets
@@ -22,9 +22,10 @@ explains more and closes again with Escape.
 
 **Home** is the first entry in the navigation. Signed in, it greets you. **Your tracks** comes
 first, then four ways to start: a new ticket, a board, a search, and the tutorials (**Take the
-tour**, see [Tutorials](tutorials.md)). The first time you sign in, a welcome panel above Your
-tracks offers the tutorial's sections; once you answer it, it does not come back. Under the ways
-to start are three lists:
+tour**, see [Tutorials](tutorials.md)). The first time you see Home, a welcome panel above Your
+tracks offers the tutorial's sections. From your next visit on, and as soon as you answer it, it
+is one small **Getting started** link to Settings, Tutorials, so your own work comes first. Under
+the ways to start are three lists:
 
 | List | What it holds |
 |---|---|
@@ -32,6 +33,7 @@ to start are three lists:
 | **Opened lately** | Tickets you opened lately, newest first, whichever browser you used |
 | **You follow** | Tickets you follow |
 
+On a wide screen the lists sit side by side, and one left alone on its row takes the whole row.
 An empty list says how it fills and offers a next step. Each list loads on its own, so if one
 cannot be read the others still show. A ticket appears in
 these lists only while you may see it: following or having opened a ticket gives no access.
@@ -50,6 +52,7 @@ one of your groups look, or because you are an administrator, is not one of your
 listed here. The **Tracks** page lists every track you can see.
 
 Home shows six of your tracks as cards, the ones you opened most lately first, then by name.
+Each card's badge shows the track's whole key.
 However many tracks you belong to, hundreds included, the ones you opened lately still come first
 while you belong to them. Which ones you opened lately is remembered **per browser**: another
 browser or device starts with your tracks by name until you open some there. With more than six, **All tracks** leads to the
@@ -82,8 +85,9 @@ it. The same form also has its own page at the address ending in `create`.
    in [Descriptions and rich text](#descriptions-and-rich-text). Separate labels with spaces or commas.
 3. Press **Create**. The dialog says **PAY-42 was created.** and offers **Open PAY-42**.
 
-Some fields cannot be set in this form yet, such as people, releases and areas. The form says
-**Set on the ticket once it is created.** next to them.
+Some fields cannot be set in this form yet, such as people, releases and areas, and **Close
+reason** never is: the form leaves them out. Set them on the ticket once it is created. In the
+dialog, **Create** stays in view at its foot while the form scrolls.
 
 To start from an existing ticket, enter its key under **Start from a ticket (its key)** and
 press **Copy its fields**. The form takes that ticket's track, type, summary, description,
@@ -119,8 +123,10 @@ Boards' backlogs and a track's list can also make a ticket from a summary alone:
 ## The ticket view
 
 Each ticket has its own page, at an address ending in `tickets/PAY-42`. Its title is the key
-and the summary; above it are the track and the ticket type. On a wide screen the details sit
-in a column on the right; on a phone everything is in one column.
+and the summary; above it are the track and the ticket type. The help mark beside the title
+explains the page; its text opens under the title. On a wide screen the details sit in a column
+on the right, with the activity under the description; on a phone everything is in one column,
+with **Details** before **Activity**.
 
 Clicking a ticket on a board, in a list, a backlog, the calendar, search results, the inbox or
 anywhere else opens it in a pop-up over the page, with everything the ticket's page has. The page
@@ -189,8 +195,8 @@ it, hand it on or move it to another status, the controls follow at once.
 Each change saves at once and the page says **Saved.** If someone changed the ticket since you
 opened it, the page says so: read it again and retry.
 
-Number fields on the ticket's edit form, such as **Points**, show in the details too: type a value
-and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
+Number fields on the ticket's edit form, such as **Points**, show in the details too, reading
+**None** while empty: type a value and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
 saved. Someone who may not change it reads the value. The ticket view does not yet show other
 custom fields; they can be shown as columns in [search results](search.md#search-results).
 
@@ -376,10 +382,17 @@ The **History** tab lists every change, newest first: who, when and what, such a
 Priority from Normal to High". **Show older changes** reads further back. The **All** tab mixes
 comments, changes and time entries in one stream.
 
+### Printing a ticket
+
+Printing a ticket's page (Ctrl P or Cmd P) prints only the ticket: its title, its details, its
+description and its comments, in one column. The top bar, the navigation, the toolbars, the
+comment box and the buttons are left out.
+
 ## Moving a ticket through its workflow
 
 The status in the ticket's header is one control. Open it, with a click or by pressing **T**, and
-it lists the statuses the ticket can go to, in the same words as the board's columns. Pick one and
+it shows where the ticket is now (**Now: Active**, say) and lists the statuses the ticket can go
+to, in the same words as the board's columns. Pick one and
 the ticket moves at once. On the workflow a site starts with, nothing is asked: any ticket goes to
 any status, and entering **Closed** sets the close reason **Completed**. If you want to say why,
 write a comment.
@@ -443,8 +456,10 @@ administrators change as **Tickets per bulk change** on the guardrails page. A c
 result for every ticket stay readable for 14 days after it finishes. The web app shows its progress at an address
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
-changed with the reason. Only the person who asked and site administrators see it. The web app
-does not yet have a screen to start a bulk change.
+changed with the reason. When some tickets were not changed, the page ends in a warning that
+names the change and says how many tickets were changed and how many were not, instead of
+**Done.** Only the person who asked and site administrators see it. The web app does not yet
+have a screen to start a bulk change.
 
 ## Keyboard shortcuts
 

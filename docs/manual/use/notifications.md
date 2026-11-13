@@ -80,7 +80,7 @@ second or so, without reloading.
 | **Snoozed** | Items you put aside, until their time comes |
 
 **Unread only** hides what you have read. **Type** narrows the list to one kind of event and
-**Track** to one track. The page says how many items are unread.
+**Track** to one track; on a phone both take the whole width, their names above them. The page says how many items are unread.
 
 Each item says who did what ("Ana mentioned you in a comment", "Ana assigned it to you"), links
 the ticket, and quotes the comment when there is one you may read. A quote, here and in email, is
