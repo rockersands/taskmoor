@@ -18,9 +18,32 @@
   scroll-margin-top: calc(var(--shell-topbar-reach, 0px) + var(--space-3));
 }
 
-/* The sections, as a row of tabs that scrolls inside itself on a phone. */
+/*
+ * The sections, as a row of tabs that scrolls inside itself on a phone (five need about 450 px):
+ * the current one is brought into view, and an edge with more beyond it fades, as on a track's
+ * tab bar. Not while a tab there has keyboard focus, so its ring is never faded out.
+ */
 .account-tabs {
   overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.account-tabs[data-more="end"]:not(:has(:focus-visible)) {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.account-tabs[data-more="start"]:not(:has(:focus-visible)) {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.account-tabs[data-more="both"]:not(:has(:focus-visible)) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
 }
 
 .account-tabs ul {

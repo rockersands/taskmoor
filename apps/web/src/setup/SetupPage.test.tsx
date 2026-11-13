@@ -48,6 +48,9 @@ describe('setup page', () => {
     // No intro that says to create an account here (AC-7).
     expect(screen.queryByText(/This runs once/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
+    // No account exists yet, so the frame offers no way to sign in.
+    expect(screen.getAllByRole('banner')[0]).toHaveTextContent('Taskmoor');
+    expect(screen.queryByRole('link', { name: 'Go to sign in' })).toBeNull();
   });
 
   it('[OPS-003] says a site that is set up is set up, also without a link (AC-5)', async () => {

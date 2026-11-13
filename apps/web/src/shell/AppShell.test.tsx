@@ -5,6 +5,7 @@ import { App, NAV_ITEMS } from '../App';
 import { KALO, SIGNED_IN } from '../account/fixtures';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
+import { trackSectionsChanged } from '../tracks/trackSections';
 
 describe('desktop layout', () => {
   it('shows every navigation item in the sidebar and marks the current page', () => {
@@ -92,6 +93,34 @@ describe('desktop layout', () => {
     expect(screen.queryByRole('navigation', { name: 'Sections of NOPE' })).toBeNull();
     const nav = screen.getByRole('navigation', { name: 'Main' });
     await waitFor(() => expect(within(nav).queryByRole('link', { current: 'page' })).toBeNull());
+  });
+
+  it('[NFR-005] marks Tracks again once a track that was not there is back at the same address (D4)', async () => {
+    window.location.hash = '#/tracks/BACK/files';
+    let restored = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        restored && String(url).endsWith('/tracks/BACK')
+          ? jsonResponse(200, { track: { sections: { backlog: false, sprints: false } } })
+          : jsonResponse(404, { error: 'not_found' }),
+      ),
+    );
+    render(<App session={SIGNED_IN} />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Track not found' })).toBeVisible();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await waitFor(() => expect(within(nav).queryByRole('link', { current: 'page' })).toBeNull());
+    // Restored from the trash: the open page reads the track again, at the same address.
+    restored = true;
+    act(() => trackSectionsChanged('BACK'));
+    expect(await screen.findByRole('navigation', { name: 'Sections of BACK' })).toBeVisible();
+    expect(window.location.hash).toBe('#/tracks/BACK/files');
+    await waitFor(() =>
+      expect(within(nav).getByRole('link', { name: 'Tracks' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      ),
+    );
   });
 
   it('[CORE-001] Tracks is not current outside a track', () => {
@@ -266,10 +295,20 @@ describe('signed out: the reduced frame (D8)', () => {
     );
     window.location.hash = '#/settings';
     render(<App />);
+    // The deep link opens in the reduced frame: the product name, the sign-in form, no app.
     await user.type(await screen.findByLabelText('Email'), 'kalo@example.com');
+    expect(screen.getAllByRole('banner')[0]).toHaveTextContent('Taskmoor');
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).toBeNull();
     await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    // Signed in, the same address shows its page inside the whole frame.
     expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
     expect(window.location.hash).toBe('#/settings');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Settings' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 });

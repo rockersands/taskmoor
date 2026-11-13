@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { type NotificationsClient, notificationsClient } from '../notifications/client';
 import { NotificationsSection } from '../notifications/NotificationsSection';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { useMoreSides } from '../shell/moreSides';
 import { PageHeader } from '../shell/PageHeader';
 import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
 import { TokensSection } from '../tokens/TokensSection';
@@ -87,14 +88,25 @@ export function AccountPage({
   const { session } = useSession();
   // A password change signs other sessions out; a new key re-reads the list.
   const [sessionsVersion, setSessionsVersion] = useState(0);
+  const shown = ACCOUNT_SECTIONS.find((s) => s.id === section) ?? ACCOUNT_SECTIONS[0];
+  // On a phone the row of sections scrolls inside itself: the current one is brought into view
+  // and a fade at either end says more sections are there.
+  const bar = useRef<HTMLElement>(null);
+  const more = useMoreSides(bar, `${shown.id}/${session.status}`);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the bar appears once signed in
+  useLayoutEffect(() => {
+    const current = bar.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    // Only the bar moves: 'nearest' keeps the page where it is, 'center' shows a neighbour each side.
+    current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }, [shown.id, session.status]);
   if (session.status !== 'signed-in') return null;
   const { user } = session;
-  const shown = ACCOUNT_SECTIONS.find((s) => s.id === section) ?? ACCOUNT_SECTIONS[0];
 
   return (
     <div className="page account-page">
       <PageHeader title={t('account.title')} purpose={t(shown.introId)} />
-      <nav className="account-tabs" aria-label={t('account.sections')}>
+      {/* The row stays across sections, so the link chosen keeps focus; the content changes. */}
+      <nav ref={bar} className="account-tabs" data-more={more} aria-label={t('account.sections')}>
         <ul>
           {ACCOUNT_SECTIONS.map((s) => (
             <li key={s.id}>
@@ -108,7 +120,7 @@ export function AccountPage({
           ))}
         </ul>
       </nav>
-      <div className="account-sections">
+      <div key={shown.id} className="account-sections">
         {shown.id === 'profile' && (
           <>
             <ProfileSection user={user} client={client} />

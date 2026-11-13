@@ -96,10 +96,11 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     }
   };
 
-  // The intro describes the form, so a page without one leaves it out (AC-7).
+  // The intro describes the form, so a page without one leaves it out (AC-7). Only a site that is
+  // set up has an account to sign in with, so only there does the frame offer the way out.
   if (status === 'no-token' || status === 'already-set-up' || (status === 'checking' && !token)) {
     return (
-      <StandaloneFrame>
+      <StandaloneFrame wayOut={status === 'already-set-up'}>
         <main className="setup">
           <PageHeader
             title={t('setup.title')}
