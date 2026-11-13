@@ -252,3 +252,91 @@ export const ThinBarOnATouchScreen: Story = {
     }
   },
 };
+
+/** A narrow chart, about ten days of lanes: from the range's start every bar lies after them. */
+const narrow = (Story: () => ReactElement) => (
+  <div style={{ width: 640 }}>
+    <Story />
+  </div>
+);
+
+/** Scrolls the chart to its start or its end and waits for that edge's markers. */
+const scrolledTo = async (canvasElement: HTMLElement, end: 'start' | 'end') => {
+  await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+  const chart = canvasElement.querySelector<HTMLElement>('.timeline-scroll');
+  if (!chart) throw new Error('the timeline draws its chart');
+  chart.scrollLeft = end === 'start' ? 0 : chart.scrollWidth;
+  const name = end === 'start' ? /^Later: / : /^Earlier: /;
+  const markers = await waitFor(async () => {
+    const found = within(canvasElement).getAllByRole('button', { name });
+    await expect(found.length).toBeGreaterThan(0);
+    return found;
+  });
+  return { chart, markers };
+};
+
+/** PL-6: the Earlier markers sit beside the ticket column, the Later ones at the card's right. */
+export const EdgeMarkersAtTheEdges: Story = {
+  decorators: [narrow],
+  play: async ({ canvasElement }) => {
+    const { chart, markers: earlier } = await scrolledTo(canvasElement, 'end');
+    const corner = canvasElement.querySelector('.timeline-corner')?.getBoundingClientRect();
+    if (!corner) throw new Error('the timeline draws its ticket column');
+    for (const marker of earlier) {
+      const box = marker.getBoundingClientRect();
+      await expect(box.left).toBeGreaterThanOrEqual(corner.right);
+      await expect(box.left).toBeLessThan(corner.right + 12);
+    }
+    const { markers: later } = await scrolledTo(canvasElement, 'start');
+    const card = chart.getBoundingClientRect();
+    const right = card.left + chart.clientLeft + chart.clientWidth;
+    for (const marker of later) {
+      const box = marker.getBoundingClientRect();
+      await expect(box.right).toBeLessThanOrEqual(right + 0.5);
+      await expect(box.right).toBeGreaterThan(right - 12);
+    }
+  },
+};
+
+/** ADR-033: on a touch screen the Earlier and Later markers take a finger. */
+export const EdgeMarkersOnATouchScreen: Story = {
+  decorators: [narrow],
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    await scrolledTo(canvasElement, 'end');
+    await expect(tooSmallForAFinger(canvasElement, ['.timeline-edge'])).toEqual([]);
+    await scrolledTo(canvasElement, 'start');
+    await expect(tooSmallForAFinger(canvasElement, ['.timeline-edge'])).toEqual([]);
+  },
+};
+
+/**
+ * PLN-012: rows waiting below fade out at the foot of the rows in view, not over the card's own
+ * scrollbar: the card is not masked, and the fade stays inside its scrollport, scrolled sideways too.
+ */
+export const FadeLeavesTheScrollbar: Story = {
+  args: { client: fakeTimelineClient({ data: manyItems(60) }) },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    const chart = canvasElement.querySelector<HTMLElement>('.timeline-scroll');
+    if (!chart) throw new Error('the timeline draws its chart');
+    chart.scrollLeft = 300;
+    const fade = await waitFor(() => {
+      const found = chart.querySelector<HTMLElement>('.timeline-fade');
+      if (!found) throw new Error('rows wait below, so the chart fades');
+      return found;
+    });
+    await waitFor(() => expect(chart.scrollLeft).toBe(300));
+    const style = getComputedStyle(chart);
+    await expect(style.maskImage === '' || style.maskImage === 'none').toBe(true);
+    const card = chart.getBoundingClientRect();
+    const port = {
+      left: card.left + chart.clientLeft,
+      bottom: card.top + chart.clientTop + chart.clientHeight,
+    };
+    const box = fade.getBoundingClientRect();
+    await expect(Math.abs(box.bottom - port.bottom)).toBeLessThan(1);
+    await expect(Math.abs(box.left - port.left)).toBeLessThan(1);
+    await expect(box.right).toBeLessThanOrEqual(port.left + chart.clientWidth + 0.5);
+  },
+};

@@ -61,10 +61,20 @@
   outline-offset: 2px;
 }
 
-/* Rows wait under the card's lower edge: the last ones fade out, so the cut never looks final. */
-.timeline-scroll.has-more-below {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
+/*
+ * Rows wait under the card's lower edge: the last ones in view fade out, so the cut never looks
+ * final. An overlay held at the foot of the rows in view, above the card's own scrollbar: a mask
+ * on the card would fade that scrollbar too. It takes no height and lets every press through.
+ */
+.timeline-fade {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  height: 2.5rem;
+  margin-top: -2.5rem;
+  background: linear-gradient(to bottom, transparent, var(--color-surface-raised));
+  pointer-events: none;
 }
 
 .timeline-head {
@@ -352,7 +362,9 @@
 
 .timeline-lane {
   position: relative;
+  display: flex;
   flex: none;
+  align-items: center;
 }
 
 .timeline-bar {
@@ -419,17 +431,21 @@ button.timeline-bar:focus-visible {
 
 /*
  * A bar wholly before or after the days in view (PL-6): a marker at that edge of the lanes says
- * which way it lies, and scrolls to it. Its arrow is drawn, so the name is only its words.
+ * which way it lies, and scrolls to it. Its arrow is drawn, so the name is only its words. It sits
+ * in its lane's flow, at the lane's start or end, and sticks to that edge of the lanes in view
+ * (beside the ticket column, or at the card's right), so scrolling never has to place it.
  */
 .timeline-edge {
-  position: absolute;
-  top: 10px;
+  position: sticky;
+  left: calc(var(--timeline-label) + var(--space-1));
   z-index: 1;
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--space-1);
+  box-sizing: border-box;
   height: 24px;
-  margin-inline: var(--space-1);
+  margin: 0;
   padding: 0 var(--space-2);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
@@ -442,8 +458,10 @@ button.timeline-bar:focus-visible {
 }
 
 .timeline-edge.is-after {
+  right: var(--space-1);
+  left: auto;
   flex-direction: row-reverse;
-  transform: translateX(calc(-100% - 2 * var(--space-1)));
+  margin-inline-start: auto;
 }
 
 .timeline-edge::before {
@@ -665,6 +683,12 @@ button.timeline-bar:focus-visible {
   .timeline-bar,
   .timeline-unscheduled {
     top: 0;
+    height: var(--hit-target-touch);
+  }
+
+  /* The Earlier and Later markers take a finger: as tall as the row, at least as wide. */
+  .timeline-edge {
+    min-width: var(--hit-target-touch);
     height: var(--hit-target-touch);
   }
 

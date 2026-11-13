@@ -5234,6 +5234,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Arrastra un ticket a otro día para moverlo, con el ratón desde cualquier parte o por su asa; su inicio se mueve con él. Su asa también abre un menú de movimientos. Con el teclado, Alt y la flecha izquierda o derecha lo mueven un día, arriba o abajo una semana; Intro abre el ticket.',
   'calendar.hintTouch':
     'Arrastra un ticket por su asa a otro día, o toca el asa para ver un menú de movimientos. Su inicio se mueve con él.',
+  'calendar.hintList':
+    'Arrastra un ticket por su asa a uno de los días de la lista, o toca el asa para ver un menú que lo mueve un día o una semana cada vez, hasta cualquier día. Su inicio se mueve con él.',
   'calendar.about':
     'Cada ticket aparece en su día de vencimiento, y también en su día de inicio cuando es otro. Los sprints son franjas a lo largo de sus días y las versiones están en el suyo. Mueve un ticket a otro día para cambiar sus fechas; su inicio se mueve con él y conserva su duración.',
   'calendar.emptyMonth': 'Este mes no vence ni empieza nada.',

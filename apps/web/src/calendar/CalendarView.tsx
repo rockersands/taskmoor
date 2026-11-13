@@ -333,7 +333,8 @@ export function CalendarView({
         {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
-        {t(touch ? 'calendar.hintTouch' : 'calendar.hint')}
+        {/* A phone lists only some days (D9): its hint says the grip's menu reaches the others. */}
+        {t(compact ? 'calendar.hintList' : touch ? 'calendar.hintTouch' : 'calendar.hint')}
       </p>
       <p className="board-hint" role="status">
         {notice}

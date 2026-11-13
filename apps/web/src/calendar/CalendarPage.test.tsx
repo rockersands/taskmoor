@@ -242,7 +242,12 @@ describe('a track’s calendar (M1-049)', () => {
     renderCalendar();
     expect(await screen.findByText(/^Drag a ticket to another day/)).toBeVisible();
     act(() => setViewportWidth(375));
-    expect(await screen.findByText(/^Drag a ticket by its grip to another day/)).toBeVisible();
+    // The phone lists only some days (D9): a drag reaches those, the grip's menu any day.
+    expect(
+      await screen.findByText(
+        'Drag a ticket by its grip to one of the days listed, or tap the grip for a menu that moves it a day or a week at a time, to any day. Its start moves along.',
+      ),
+    ).toBeVisible();
     expect(screen.queryByText(/Alt and the left or right arrow/)).toBeNull();
   });
 

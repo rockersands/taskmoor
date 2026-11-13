@@ -5106,6 +5106,9 @@ export const messagesEn = {
   // A calendar entry's grip and its drag by pointer events (T-162b).
   'calendar.hintTouch':
     'Drag a ticket by its grip to another day, or tap the grip for a menu of moves. Its start moves along.',
+  // A phone's list of days (D9): a drag reaches only the days listed, the grip's menu any day.
+  'calendar.hintList':
+    'Drag a ticket by its grip to one of the days listed, or tap the grip for a menu that moves it a day or a week at a time, to any day. Its start moves along.',
   'calendar.about':
     'Each ticket shows on its due day, and on its start day too when that is another day. Sprints run as bands across their days and releases sit on theirs. Move a ticket to another day to change its dates; its start moves along, keeping its length.',
   'calendar.emptyMonth': 'Nothing is due or starts this month.',
