@@ -8,6 +8,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { openOverlay } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
+import printSheet from '../../styles/print.css?raw';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketDetails } from './client';
 import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
@@ -107,5 +108,44 @@ export const OnAPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async () => {
     await expect(await within(document.body).findByRole('dialog', { name: NAME })).toBeVisible();
+  },
+};
+
+/** The print rules of print.css put in force by hand: the stories' browser draws for a screen. */
+function asPrinted(): () => void {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(printSheet);
+  const style = document.createElement('style');
+  style.textContent = Array.from(sheet.cssRules)
+    .filter(
+      (rule): rule is CSSMediaRule =>
+        rule instanceof CSSMediaRule && rule.media.mediaText.includes('print'),
+    )
+    .flatMap((rule) => Array.from(rule.cssRules, (inner) => inner.cssText))
+    .join('\n');
+  document.head.append(style);
+  return () => style.remove();
+}
+
+/**
+ * Printed with the pop-up open (PL-27, D37): only the ticket, as on its full page. The page
+ * beneath and its frame stay off the paper although the pop-up is drawn outside them.
+ */
+export const Printed: Story = {
+  beforeEach: asPrinted,
+  play: async () => {
+    const canvas = within(document.body);
+    const dialog = await canvas.findByRole('dialog', { name: NAME });
+    const ticket = within(dialog);
+    await expect(await ticket.findByRole('heading', { level: 1 })).toBeVisible();
+    await expect(getComputedStyle(dialog).position).toBe('static');
+    // The page beneath is not printed, nor the pop-up's bar or the ticket's buttons.
+    await expect(
+      canvas.getByRole('heading', { name: 'The page beneath', hidden: true }),
+    ).not.toBeVisible();
+    await expect(
+      ticket.getByRole('link', { name: 'Open full page', hidden: true }),
+    ).not.toBeVisible();
+    await expect(dialog.querySelector('.ticket-toolbar')).not.toBeVisible();
   },
 };

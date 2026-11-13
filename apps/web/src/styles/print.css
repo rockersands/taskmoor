@@ -1,7 +1,8 @@
 /*
  * Printing a ticket (PL-27, D37): only the ticket, as a document. Its title, its fields, its
  * description and its comments; no top bar, sidebar, toolbars, comment box or buttons, and no glass.
- * It holds on the ticket page alone (`:has(.ticket-page)`), so other pages print as they are.
+ * It holds on the ticket page alone (`:has(.ticket-page)`), so other pages print as they are, and
+ * on a ticket open in its pop-up over any page (below).
  */
 @media print {
   .shell:has(.ticket-page)
@@ -57,5 +58,44 @@
     background: none;
     box-shadow: none;
     appearance: none;
+  }
+}
+
+/*
+ * A ticket open in its pop-up prints the same, alone. The pop-up is drawn at the end of the body
+ * (OverlayLayer), outside the frame, so the frame's rule above never sees it: everything else in the
+ * body goes (the page beneath with its frame, the veil), and the pop-up prints as the page, without
+ * its bar. A dialog asking inside the pop-up is part of it.
+ */
+@media print {
+  body:has(> .ticket-popup) > :not(.ticket-popup) {
+    display: none;
+  }
+
+  body > .create-dialog.ticket-popup {
+    position: static;
+    width: auto;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    animation: none;
+  }
+
+  body > .create-dialog.ticket-popup::before {
+    content: none;
+  }
+
+  .ticket-popup .ticket-popup-bar {
+    display: none;
+  }
+
+  .ticket-popup .ticket-popup-body {
+    padding: 0;
   }
 }
