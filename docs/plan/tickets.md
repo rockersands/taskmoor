@@ -30,7 +30,7 @@ reported, and the coordinator checked that it was pushed.
 | T-002 | Old copies of the repository cleared from other drives | You | In the Recycle Bin; the user empties it |
 | T-003 | Repository renamed to `Rockersands/taskmoor` | Done | Remote and docs updated |
 | T-004 | The user's Gmail address and local paths removed from tracked files | Done | M1 branch; new commits use the no-reply address |
-| T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed |
+| T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed; also drop the `Claude-Session:` links from commit messages (T-032a) |
 | T-006 | Tests run on native Windows | Done | M1-144, on `main` |
 | T-007 | Job queue uses the database's clock | Done | On `main` |
 | T-009 | A leftover test process (vitest, PIDs 40468 and 30628) that a sub chat could not stop | Done | Closed with the user's permission |
@@ -65,7 +65,7 @@ reported, and the coordinator checked that it was pushed.
 | T-030 | Stay fully open source under AGPL-3.0-only | Done | Decision recorded |
 | T-031 | Make the repository public for 1.0 | You | The user confirms the switch itself |
 | T-032 | Scan the whole git history for secrets first | Done | On `main` (2026-11-05): no real secret in 816 commits, pull request refs included; `pnpm secrets` (gitleaks, `.gitleaks.toml`) stays clean and fails on anything new; `docs/security/secret-scan.md` |
-| T-032a | 221 commit messages carry a `Claude-Session:` link, public with the history: keep them, or drop them in the T-005 rewrite? | You | Not secrets; the links lead to sessions only you can open. Before T-031 |
+| T-032a | 221 commit messages carry a `Claude-Session:` link, public with the history: keep them, or drop them in the T-005 rewrite? | Done | The user decided on 2026-11-13: drop the session links in the T-005 rewrite (confirmed with the user before it runs and before the force-push) |
 | T-033 | Trademark search for the name | You | No domain needed, but a clash could force a rename |
 | T-034 | Counsel review deferred to the first public release | You | Includes the clean room and AGPL questions |
 | T-035 | Turn on and test private vulnerability reporting | To do | `SECURITY.md` already points to it; no email needed |
@@ -308,7 +308,7 @@ reported, and the coordinator checked that it was pushed.
 | T-245 | Tutorial progress is lost when someone presses Finish and leaves at once | To do | T-013a: the save is sent without waiting; `keepalive: true` on it would keep the Done state |
 | T-246 | Old workflows' free moves: a one-time repair command, or a migration before 1.0? | To do | The user decided on 2026-11-13: an automatic migration before 1.0 reusing the repair code (no manual step); publishing or importing a workflow with no moves gives it the default free moves |
 | T-247 | The image's dependency install can stall for a long time on a slow link | To do | T-236 follow-up: 51 minutes in one run, with 16-18 minute quiet stretches; pnpm's fetch timeout and retries for that step, or a limit on the step |
-| T-248 | Checklist notices and the track people page: two choices | You | (1) An older change due while a checklist run still collects: send it on time and the run later (built, two emails), or hold it for one email up to one window later? (2) Answers on the track people page show at the foot of each card: enough, or beside the row pressed? |
+| T-248 | Checklist notices and the track people page: two choices | To do | The user decided on 2026-11-13: (1) hold the older change so one email carries both, at most one window later; (2) show the result beside the row pressed |
 | T-249 | Small follow-ups from wave 10 | To do | Two syncs on different boards taking each other's statuses by name could still deadlock (lock every candidate status in one id-ordered pass); the column-path route picks its workflow before its transaction; two jsdom phone tests in `TrackPeople.test.tsx` read a scrollWidth that is always 0; `freeMoveEffects(true, null)` still allowed by its types |
 | T-250 | Opening a ticket may change it | Done | On `main` (ADR-014): the collaborative editor added an empty line after a description ending in a code block as soon as it loaded, and saved it as an edit; now only the person's own edit adds it. "Also editing" no longer counts the person's own other pages |
 | T-251 | Five statistics pages fail to read the track's fields | Done | On `main`: the five reports called a per-type route without a type; they now read the track's fields by its id and offer the custom fields they can group by |
