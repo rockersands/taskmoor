@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -18,10 +20,33 @@ const rowOf = (key: string) => screen.getByRole('link', { name: key }).closest('
 const item = (client: ReturnType<typeof fakeTimelineClient>, key: string) =>
   client.data().items.find((i) => i.key === key);
 
+/** The web project turns CSS imports off, so the stylesheet is read from disk (as motion.test.ts). */
+const SRC =
+  ['apps/web/src', 'src'].find((d) => existsSync(join(d, 'styles/timeline.css'))) ?? 'src';
+
+/** Every style rule of the timeline's stylesheet, with the media it sits under. */
+function styleRules(): (CSSStyleRule & { media: string })[] {
+  const style = document.createElement('style');
+  style.textContent = readFileSync(join(SRC, 'styles/timeline.css'), 'utf8');
+  document.head.append(style);
+  const out: (CSSStyleRule & { media: string })[] = [];
+  const walk = (list: CSSRuleList, media: string) => {
+    for (const rule of Array.from(list)) {
+      if ('selectorText' in rule) out.push(Object.assign(rule as CSSStyleRule, { media }));
+      else if ('media' in rule) {
+        walk((rule as CSSMediaRule).cssRules, `${media} ${(rule as CSSMediaRule).media.mediaText}`);
+      }
+    }
+  };
+  walk((style.sheet as CSSStyleSheet).cssRules, '');
+  style.remove();
+  return out;
+}
+
 describe('the timeline (M1-048)', () => {
   it('[AGL-015] nests children under parents and rolls a parent up from its children', async () => {
     renderTimeline();
-    expect(await screen.findByRole('heading', { name: 'Timeline of Launch' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible();
     expect(
       screen
         .getAllByRole('link')
@@ -137,7 +162,7 @@ describe('the timeline (M1-048)', () => {
   it('[AGL-015] zooms by months and quarters', async () => {
     const user = userEvent.setup();
     renderTimeline();
-    await screen.findByRole('heading', { name: 'Timeline of Launch' });
+    await screen.findByRole('heading', { name: 'Timeline', level: 1 });
     const months = screen.getByRole('button', { name: 'Months' });
     await user.click(months);
     expect(months).toHaveAttribute('aria-pressed', 'true');
@@ -145,10 +170,48 @@ describe('the timeline (M1-048)', () => {
     expect(screen.getByText('Q4 2026')).toBeInTheDocument();
   });
 
+  it('[AGL-015] is titled by its section with the track above, and needs no summary pill', async () => {
+    renderTimeline();
+    expect(await screen.findByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible();
+    expect(screen.getByText('Launch')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Track summary' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'What is Timeline for?' })).toBeVisible();
+  });
+
+  it('[AGL-015] speaks of fingers on a phone and of keys on a desktop (D6)', async () => {
+    renderTimeline();
+    expect(await screen.findByText(/^Drag a bar to move it, or its ends/)).toBeVisible();
+    act(() => setViewportWidth(375));
+    expect(
+      await screen.findByText('Drag a bar to move it, or tap it to set its dates.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/With the keyboard, Alt/)).toBeNull();
+  });
+
+  it('[AGL-015] never cuts a key, and keeps the summary on a phone (TR-9)', () => {
+    const rules = styleRules();
+    const key = rules.filter((r) =>
+      r.selectorText.split(',').some((x) => x.trim() === '.timeline-key'),
+    );
+    // The key keeps its width: no shrinking, no ellipsis, wherever the rule applies.
+    for (const rule of key) {
+      expect(rule.style.getPropertyValue('text-overflow')).toBe('');
+      expect(
+        rule.style.getPropertyValue('flex-shrink') || rule.style.getPropertyValue('flex'),
+      ).not.toMatch(/^(0 )?1/);
+    }
+    // On a phone the summary still shows, under the key.
+    const phone = rules.filter(
+      (r) => r.media.includes('max-width: 767px') && r.selectorText.includes('.timeline-summary'),
+    );
+    expect(phone.length).toBeGreaterThan(0);
+    for (const rule of phone) expect(rule.style.getPropertyValue('display')).not.toBe('none');
+  });
+
   it('[AGL-015] fits a phone: the timeline scrolls inside itself, never the page', async () => {
     setViewportWidth(375);
     renderTimeline();
-    await screen.findByRole('heading', { name: 'Timeline of Launch' });
+    await screen.findByRole('heading', { name: 'Timeline', level: 1 });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

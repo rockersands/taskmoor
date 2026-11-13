@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 import { expectWithinBudget } from '../test/budget';
 import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
-import { fakeTimelineClient, manyItems } from './fixtures';
+import { fakeTimelineClient, manyItems, timelineFixture } from './fixtures';
 import { TimelinePage } from './TimelinePage';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
@@ -41,7 +41,7 @@ type Story = StoryObj<typeof meta>;
 export const Timeline: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Timeline of Launch' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible();
     await expect(canvas.getByText('1 of 3 closed')).toBeVisible();
   },
 };
@@ -97,7 +97,7 @@ export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Timeline of Launch' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },
 };
@@ -152,6 +152,105 @@ export const HeadInRows: Story = {
     if (!scale) throw new Error('the timeline draws its scale');
     for (const box of boxes(rows.at(-1) as string)) {
       await expect(box.bottom).toBeLessThanOrEqual(scale.bottom);
+    }
+  },
+};
+
+/** The fixture with long summaries and a one-day ticket: what cut keys and thin bars came from. */
+const crowded = (() => {
+  const data = timelineFixture();
+  return {
+    ...data,
+    items: [
+      ...data.items.map((i) => ({
+        ...i,
+        summary: `${i.summary}: add keyboard shortcuts to every list, board and dialog of the app`,
+      })),
+      {
+        ...(data.items[3] as (typeof data.items)[number]),
+        id: 7,
+        key: 'LCH-7',
+        parentId: null,
+        summary: 'A one-day task',
+        start: '2026-11-05',
+        due: '2026-11-05',
+      },
+    ],
+  };
+})();
+
+/** TR-9: a long summary is cut, never the key, which reads whole in its column. */
+export const KeysNeverCut: Story = {
+  args: { client: fakeTimelineClient({ data: crowded }) },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    for (const key of canvasElement.querySelectorAll<HTMLElement>('.timeline-key')) {
+      await expect(key.scrollWidth).toBeLessThanOrEqual(key.clientWidth);
+    }
+    const summary = canvasElement.querySelector<HTMLElement>('.timeline-summary');
+    await expect(summary?.scrollWidth).toBeGreaterThan(summary?.clientWidth ?? 0);
+  },
+};
+
+/** TR-9: scrolled sideways, the month's name stays whole beside the ticket column. */
+export const MonthStaysInView: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    const chart = canvasElement.querySelector<HTMLElement>('.timeline-scroll');
+    const corner = canvasElement.querySelector<HTMLElement>('.timeline-corner');
+    if (!chart || !corner) throw new Error('the timeline draws its chart');
+    // Into the first month's days, past where its name started.
+    chart.scrollLeft = 300;
+    await waitFor(() => expect(chart.scrollLeft).toBe(300));
+    const edge = corner.getBoundingClientRect().right;
+    const shown = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>('.timeline-month-name'),
+      (m) => m.getBoundingClientRect(),
+    ).filter((r) => r.right > edge);
+    await expect(shown.length).toBeGreaterThan(0);
+    for (const r of shown) await expect(r.left).toBeGreaterThanOrEqual(edge - 0.5);
+  },
+};
+
+/** TR-9: today's line passes under a "No dates" chip, which is opaque over it. */
+export const TodayUnderNoDates: Story = {
+  play: async ({ canvasElement }) => {
+    const chip = await within(canvasElement).findByRole('button', {
+      name: 'No dates: schedule LCH-6',
+    });
+    const style = getComputedStyle(chip);
+    await expect(Number(style.zIndex)).toBeGreaterThan(0);
+    const probe = document.createElement('canvas').getContext('2d');
+    if (!probe) throw new Error('a canvas to read the colour');
+    probe.fillStyle = style.backgroundColor;
+    probe.fillRect(0, 0, 1, 1);
+    await expect(probe.getImageData(0, 0, 1, 1).data[3]).toBe(255);
+  },
+};
+
+/** TR-10: with no side panel open, the chart's card reaches the page's right edge. */
+export const ReachesTheEdge: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    const body = canvasElement.querySelector('.timeline-body')?.getBoundingClientRect();
+    const card = canvasElement.querySelector('.timeline-scroll')?.getBoundingClientRect();
+    if (!body || !card) throw new Error('the timeline draws its card');
+    await expect(Math.abs(card.right - body.right)).toBeLessThan(1);
+  },
+};
+
+/** TR-21: on a touch screen a one-day bar still takes a finger, past its own ends. */
+export const ThinBarOnATouchScreen: Story = {
+  args: { client: fakeTimelineClient({ data: crowded }) },
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const bar = await within(canvasElement).findByRole('button', { name: /^LCH-7: / });
+    bar.scrollIntoView({ block: 'center', inline: 'center' });
+    const box = bar.getBoundingClientRect();
+    await expect(box.width).toBeLessThan(44);
+    const y = box.top + box.height / 2;
+    for (const x of [box.left - 6, box.right + 6]) {
+      await expect(document.elementFromPoint(x, y)?.closest('.timeline-bar')).toBe(bar);
     }
   },
 };

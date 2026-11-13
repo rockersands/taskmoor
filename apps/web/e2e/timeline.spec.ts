@@ -75,7 +75,7 @@ test('[AGL-015] a bar dragged a week later moves the ticket’s dates', async ({
 
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Timeline', exact: true }).click();
-  const timeline = page.getByRole('region', { name: `Timeline of Launch ${key}` });
+  const timeline = page.getByRole('region', { name: 'Timeline', exact: true });
   await expect(
     timeline.getByRole('img', {
       name: `${goal}: Nov 2, 2026 to Nov 12, 2026, rolled up from its children`,

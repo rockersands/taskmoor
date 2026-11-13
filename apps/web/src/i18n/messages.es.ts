@@ -4938,6 +4938,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.notice.archived': 'El track {name} está archivado, así que sus tickets no se muestran.',
   'plans.filters': 'Filtros',
   'plans.filters.clear': 'Quitar filtros',
+  'plans.filters.button': '{count, plural, =0 {Filtros} other {Filtros ({count, number})}}',
   'plans.filter.any': 'Cualquiera',
   'plans.filter.track': 'Track',
   'plans.filter.trackOption': '{key} · {name}',
@@ -4979,13 +4980,14 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.sources.noSavedSearches': 'Ninguna búsqueda guardada coincide.',
   'plans.sources.failed': 'No se pudieron cargar los tracks y las búsquedas guardadas.',
   'plans.visibility': 'Quién lo ve',
-  'plans.visibility.private': 'Solo tú',
+  'plans.visibility.private': 'Solo yo',
   'plans.visibility.any_user': 'Todas las personas con sesión iniciada',
   'plans.visibility.custom': 'Personas y grupos elegidos',
   'plans.settings.save': 'Guardar',
   'plans.settings.saved': 'Guardado.',
   'plans.settings.delete': 'Eliminar plan',
-  'plans.settings.confirmDelete': '¿Eliminar el plan «{name}»? Sus tickets quedan como están.',
+  'plans.settings.confirmDelete':
+    '¿Eliminar el plan «{name}» para todas las personas que lo ven? Sus vistas y su capacidad se eliminan con él; sus tickets quedan como están.',
   'plans.settings.conflict':
     'Alguien cambió este plan mientras tanto. Recarga la página e inténtalo de nuevo.',
   'plans.settings.mayNotShare':
@@ -5017,6 +5019,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.capacity.inactive': '{name} (desactivada)',
   'plans.capacity.unassigned': 'Sin asignar',
   'plans.capacity.others': 'Personas de ninguno de estos equipos',
+  'plans.capacity.assigned': 'Con persona asignada',
   'plans.capacity.points': '{value, plural, one {# punto} other {# puntos}}',
   'plans.capacity.hours': '{value, plural, one {# hora} other {# horas}}',
   'plans.capacity.loadOf': '{load} de {capacity}',
@@ -5080,6 +5083,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.settings.period.weeks': '{count, plural, one {Cada semana} other {Cada # semanas}}',
   'plans.settings.period.month': 'Cada mes del calendario',
   'plans.settings.anchor': 'Un periodo empieza el',
+  'plans.settings.anchorDay': 'Es el {date}.',
   'plans.settings.capacityHint':
     'Si cambias la unidad, se borra toda la capacidad definida en este plan. Si cambias los periodos, se borra la capacidad definida para periodos sueltos.',
   'plans.settings.confirmUnit':
@@ -5152,13 +5156,17 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.axis.foundInRelease': 'Encontrado en la versión',
   'statistics.axis.area': 'Área',
   'summary.title': '{name} ({key})',
-  'calendar.title': 'Calendario de {name}',
   'calendar.notFound': 'Este track no existe, o no puedes verlo.',
   'calendar.previous': 'Mes anterior',
   'calendar.next': 'Mes siguiente',
   'calendar.thisMonth': 'Este mes',
   'calendar.hint':
     'Arrastra un ticket a otro día para moverlo, con el ratón desde cualquier parte o por su asa; su inicio se mueve con él. Su asa también abre un menú de movimientos. Con el teclado, Alt y la flecha izquierda o derecha lo mueven un día, arriba o abajo una semana; Intro abre el ticket.',
+  'calendar.hintTouch':
+    'Arrastra un ticket por su asa a otro día, o toca el asa para ver un menú de movimientos. Su inicio se mueve con él.',
+  'calendar.about':
+    'Cada ticket aparece en su día de vencimiento, y también en su día de inicio cuando es otro. Los sprints son franjas a lo largo de sus días y las versiones están en el suyo. Mueve un ticket a otro día para cambiar sus fechas; su inicio se mueve con él y conserva su duración.',
+  'calendar.emptyMonth': 'Este mes no vence ni empieza nada.',
   'calendar.grip.due': 'Mover el vencimiento de {key}',
   'calendar.grip.start': 'Mover el inicio de {key}',
   'calendar.grip.dayEarlier': 'Un día antes',
@@ -5170,9 +5178,9 @@ export const messagesEs: Record<MessageId, string> = {
   'calendar.days': 'Días',
   'calendar.day': '{date}, {count, plural, =0 {sin tickets} one {# ticket} other {# tickets}}',
   'calendar.release': '◆ {name}',
-  'calendar.starts': 'Empiezan:',
+  'calendar.starts': 'Empieza:',
   'calendar.chipDue': '{key} {summary}, vence este día',
-  'calendar.chipStart': '{key} {summary}, empieza este día',
+  'calendar.chipStart': 'Empieza: {key} {summary}',
   'calendar.movedDue': '{key} vence ahora el {date}.',
   'calendar.movedStart': '{key} empieza ahora el {date}.',
   'calendar.moveFailed':
@@ -5232,7 +5240,6 @@ export const messagesEs: Record<MessageId, string> = {
   'list.ruleRemove': 'Quitar la regla {name}',
   'list.remove': 'Quitar',
   'list.addLabel': 'Resumen de un ticket nuevo en {name}',
-  'timeline.title': 'Cronograma de {name}',
   'timeline.notFound': 'Este track no existe, o no puedes verlo.',
   'timeline.zoom': 'Zoom',
   'timeline.zoom.weeks': 'Semanas',
@@ -5241,6 +5248,26 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.today': 'Hoy',
   'timeline.hint':
     'Arrastra una barra para moverla, o sus extremos para cambiar su día de inicio o su fecha límite. Con el teclado, Alt y la flecha izquierda o derecha mueven una barra un día (con Mayús, una semana), e Intro abre sus días.',
+  'timeline.hintTouch': 'Arrastra una barra para moverla, o tócala para fijar sus fechas.',
+  'timeline.about':
+    'Cada fila es un ticket, con su barra desde el día de inicio hasta el de vencimiento; los padres van encima de sus hijos, y un padre sin fechas propias muestra el tramo de sus hijos. Los sprints son franjas y las versiones, líneas. Cambia los días de un ticket arrastrando su barra o en el panel que abre su barra.',
+  'timeline.chart': 'Tickets por fecha',
+  'timeline.edge.before': 'Antes',
+  'timeline.edge.after': 'Después',
+  'timeline.edge.beforeLabel':
+    'Antes: {key} termina el {date}, antes de los días mostrados. Muéstralo',
+  'timeline.edge.afterLabel':
+    'Después: {key} empieza el {date}, después de los días mostrados. Muéstralo',
+  'timeline.legend': 'Qué significan las barras',
+  'timeline.legend.own': 'Fechas propias del ticket',
+  'timeline.legend.sprint': 'Fechas de su sprint',
+  'timeline.legend.rollup': 'Calculado a partir de sus hijos',
+  'timeline.legend.closed': 'Parte de los hijos cerrada',
+  'timeline.legend.none': 'Aún sin fechas',
+  'timeline.legend.today': 'Hoy',
+  'timeline.legend.release': 'Versión',
+  'timeline.legend.link': 'Bloquea el ticket al que lleva',
+  'timeline.legend.late': 'Con retraso: el bloqueador termina demasiado tarde',
   'timeline.ticket': 'Ticket',
   'timeline.quarter': 'T{quarter} {year}',
   'timeline.dependencies': 'Dependencias',

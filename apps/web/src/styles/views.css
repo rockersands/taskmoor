@@ -325,7 +325,15 @@
   inset-inline: 0 auto;
 }
 
+/*
+ * On a phone the month is a list of only the days with something on them (D9), each named by its
+ * weekday and date; the month's name takes a line of its own over its buttons (PL-38).
+ */
 @media (max-width: 767px) {
+  .calendar-tools h2 {
+    flex-basis: 100%;
+  }
+
   .calendar-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -338,6 +346,26 @@
   .calendar-day {
     min-height: 0;
     border-inline-end: 0;
+  }
+
+  .calendar-grid.is-agenda > * {
+    border-bottom: 1px solid var(--glass-edge);
+    border-radius: 0;
+  }
+
+  .calendar-grid.is-agenda > :last-child {
+    border-bottom: 0;
+    border-end-start-radius: inherit;
+    border-end-end-radius: inherit;
+  }
+
+  .calendar-grid.is-agenda > :first-child {
+    border-start-start-radius: inherit;
+    border-start-end-radius: inherit;
+  }
+
+  .calendar-grid.is-agenda .calendar-date {
+    font-weight: var(--font-weight-strong);
   }
 }
 

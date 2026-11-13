@@ -123,10 +123,18 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   });
   expect(made.status(), await made.text()).toBe(201);
   const ticket = (await made.json()).ticket.key as string;
+  if (isMobile) {
+    // A phone lists only the days with something on them (D9): the 18th, where a finger drops
+    // the ticket below, holds another.
+    const other = await page.request.post(`${BASE}/api/v1/tickets`, {
+      data: { track: key, summary: 'Thank-you notes', dueDate: day(18) },
+    });
+    expect(other.status(), await other.text()).toBe(201);
+  }
 
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Calendar', exact: true }).click();
-  const calendar = page.getByRole('region', { name: `Calendar of Calendar ${key}` });
+  const calendar = page.getByRole('region', { name: 'Calendar', exact: true });
   const chip = calendar.getByRole('link', { name: `${ticket} Launch party, due this day` });
   await expect(chip).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);

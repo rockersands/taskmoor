@@ -4816,6 +4816,7 @@ export const messagesEn = {
   'plans.notice.archived': 'The track {name} is archived, so its tickets are not shown.',
   'plans.filters': 'Filters',
   'plans.filters.clear': 'Clear filters',
+  'plans.filters.button': '{count, plural, =0 {Filters} other {Filters ({count, number})}}',
   'plans.filter.any': 'Any',
   'plans.filter.track': 'Track',
   'plans.filter.trackOption': '{key} · {name}',
@@ -4857,13 +4858,14 @@ export const messagesEn = {
   'plans.sources.noSavedSearches': 'No saved searches match.',
   'plans.sources.failed': 'The tracks and saved searches could not be loaded.',
   'plans.visibility': 'Who sees it',
-  'plans.visibility.private': 'Only you',
+  'plans.visibility.private': 'Only me',
   'plans.visibility.any_user': 'Everyone signed in',
   'plans.visibility.custom': 'Chosen people and groups',
   'plans.settings.save': 'Save',
   'plans.settings.saved': 'Saved.',
   'plans.settings.delete': 'Delete plan',
-  'plans.settings.confirmDelete': 'Delete the plan “{name}”? Its tickets stay as they are.',
+  'plans.settings.confirmDelete':
+    'Delete the plan “{name}” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
   'plans.settings.conflict': 'Someone changed this plan meanwhile. Reload the page and try again.',
   'plans.settings.mayNotShare':
     'You may not share plans: that needs the permission to share dashboards and saved searches.',
@@ -4894,6 +4896,7 @@ export const messagesEn = {
   'plans.capacity.inactive': '{name} (deactivated)',
   'plans.capacity.unassigned': 'Unassigned',
   'plans.capacity.others': 'People in none of these teams',
+  'plans.capacity.assigned': 'Assigned to someone',
   'plans.capacity.points': '{value, plural, one {# point} other {# points}}',
   'plans.capacity.hours': '{value, plural, one {# hour} other {# hours}}',
   'plans.capacity.loadOf': '{load} of {capacity}',
@@ -4957,6 +4960,7 @@ export const messagesEn = {
   'plans.settings.period.weeks': '{count, plural, one {Every week} other {Every # weeks}}',
   'plans.settings.period.month': 'Every calendar month',
   'plans.settings.anchor': 'A period starts on',
+  'plans.settings.anchorDay': 'That is {date}.',
   'plans.settings.capacityHint':
     'Changing the unit clears every capacity set in this plan. Changing the periods clears the capacity set for single periods.',
   'plans.settings.confirmUnit': 'Change the unit? Every capacity set in this plan will be cleared.',
@@ -5024,7 +5028,6 @@ export const messagesEn = {
   'statistics.axis.foundInRelease': 'Found in release',
   'statistics.axis.area': 'Area',
   // A track's calendar (M1-049).
-  'calendar.title': 'Calendar of {name}',
   'calendar.notFound': 'This track does not exist, or you cannot see it.',
   'calendar.previous': 'Previous month',
   'calendar.next': 'Next month',
@@ -5032,6 +5035,11 @@ export const messagesEn = {
   'calendar.hint':
     'Drag a ticket to another day to move it, with a mouse from anywhere on it or by its grip; its start moves along. Its grip also opens a menu of moves. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens the ticket.',
   // A calendar entry's grip and its drag by pointer events (T-162b).
+  'calendar.hintTouch':
+    'Drag a ticket by its grip to another day, or tap the grip for a menu of moves. Its start moves along.',
+  'calendar.about':
+    'Each ticket shows on its due day, and on its start day too when that is another day. Sprints run as bands across their days and releases sit on theirs. Move a ticket to another day to change its dates; its start moves along, keeping its length.',
+  'calendar.emptyMonth': 'Nothing is due or starts this month.',
   'calendar.grip.due': 'Move the due day of {key}',
   'calendar.grip.start': 'Move the start of {key}',
   'calendar.grip.dayEarlier': 'One day earlier',
@@ -5045,7 +5053,7 @@ export const messagesEn = {
   'calendar.release': '◆ {name}',
   'calendar.starts': 'Starts:',
   'calendar.chipDue': '{key} {summary}, due this day',
-  'calendar.chipStart': '{key} {summary}, starts this day',
+  'calendar.chipStart': 'Starts: {key} {summary}',
   'calendar.movedDue': '{key} is now due on {date}.',
   'calendar.movedStart': '{key} now starts on {date}.',
   'calendar.moveFailed':
@@ -5107,7 +5115,6 @@ export const messagesEn = {
   'list.remove': 'Remove',
   'list.addLabel': 'Summary of a new ticket in {name}',
   // A track's timeline (M1-048).
-  'timeline.title': 'Timeline of {name}',
   'timeline.notFound': 'This track does not exist, or you cannot see it.',
   'timeline.zoom': 'Zoom',
   'timeline.zoom.weeks': 'Weeks',
@@ -5116,6 +5123,24 @@ export const messagesEn = {
   'timeline.today': 'Today',
   'timeline.hint':
     'Drag a bar to move it, or its ends to change its start or due day. With the keyboard, Alt and the left or right arrow move a bar by a day (with Shift, a week), and Enter opens its days.',
+  'timeline.hintTouch': 'Drag a bar to move it, or tap it to set its dates.',
+  'timeline.about':
+    'Each row is a ticket, its bar running from its start to its due day; parents sit above their children, and a parent without dates of its own shows its children’s span. Sprints are bands and releases lines. Change a ticket’s days by dragging its bar or in the panel its bar opens.',
+  'timeline.chart': 'Tickets by date',
+  'timeline.edge.before': 'Earlier',
+  'timeline.edge.after': 'Later',
+  'timeline.edge.beforeLabel': 'Earlier: {key} ends {date}, before the days shown. Show it',
+  'timeline.edge.afterLabel': 'Later: {key} starts {date}, after the days shown. Show it',
+  'timeline.legend': 'What the bars mean',
+  'timeline.legend.own': 'A ticket’s own dates',
+  'timeline.legend.sprint': 'Dates from its sprint',
+  'timeline.legend.rollup': 'Rolled up from its children',
+  'timeline.legend.closed': 'Share of children closed',
+  'timeline.legend.none': 'No dates yet',
+  'timeline.legend.today': 'Today',
+  'timeline.legend.release': 'Release',
+  'timeline.legend.link': 'Blocks the ticket it leads to',
+  'timeline.legend.late': 'Late: the blocker ends too late',
   'timeline.ticket': 'Ticket',
   'timeline.quarter': 'Q{quarter} {year}',
   'timeline.dependencies': 'Dependencies',
