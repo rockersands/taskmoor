@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -275,6 +276,7 @@ function TypeSetsSection({
   failed,
 }: Feedback & { client: SetsClient; track: ScopeTrack | null; types: Named[]; sets: TypeSet[] }) {
   const t = useT();
+  const intl = useIntl();
   const headingId = useId();
   const nameId = useId();
   const [name, setName] = useState('');
@@ -333,8 +335,15 @@ function TypeSetsSection({
             <div className="people-main">
               <p className="people-name">
                 {set.name}
+                {/* Say what the set is the default for (AD-25). */}
                 {set.defaultFor.length > 0 && (
-                  <span className="people-badge">{t('admin.sets.default')}</span>
+                  <span className="people-badge">
+                    {t('admin.sets.defaultFor', {
+                      kinds: intl.formatList(
+                        set.defaultFor.map((kind) => t(`admin.sets.kind.${kind}` as MessageId)),
+                      ),
+                    })}
+                  </span>
                 )}
               </p>
               <p className="people-meta">

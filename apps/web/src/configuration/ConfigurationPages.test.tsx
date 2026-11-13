@@ -249,6 +249,8 @@ describe('track and workflow map administration (M1-053)', () => {
     const user = userEvent.setup();
     const client = renderPage('maps');
     await screen.findByText('Default workflow map');
+    // The map's workflow is labelled, so its name never reads as a doubled word (AD-26).
+    expect(screen.getAllByText(/^Workflow for every other type: /).length).toBeGreaterThan(0);
     const form = screen.getByRole('form', { name: 'Add a workflow map' });
     await user.type(within(form).getByLabelText('Map name'), 'Tasks apart');
     await user.click(within(form).getByRole('button', { name: 'Add a workflow map' }));

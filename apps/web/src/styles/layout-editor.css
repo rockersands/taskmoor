@@ -521,3 +521,23 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* The app's radio, not the browser's blue (AD-21). */
+.layout-operation input[type="radio"] {
+  accent-color: var(--color-accent);
+}
+
+/* The two choices of the preview sit side by side with their selects on one line; a long label
+   wraps above its select (AD-37). */
+.layout-preview-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  align-items: end;
+}
+
+/* A preview field is a well, as a real field is, so it shows in the light skin too (AD-37). */
+.layout-preview-input {
+  border-color: var(--color-field-border);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--shadow-inset);
+}

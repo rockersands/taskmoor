@@ -865,3 +865,22 @@ details[open] > summary.admin-disclosure::after,
 .mcp-page > :is(.people-form, .account-section) {
   max-width: none;
 }
+
+/* Imports: the app's file button and the chosen file's name beside it (AD-34). */
+.import-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.import-file-row > .page-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.import-file-choose:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

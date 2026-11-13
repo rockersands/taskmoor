@@ -260,3 +260,11 @@
 .storage-quotas .form-hint {
   flex: 1 1 100%;
 }
+
+/* A short type name ("Bug") still gives a finger a 44 px target: the label is the target too
+   (AD-23). */
+@media (pointer: coarse) {
+  .sets-choices .form-field-inline label {
+    min-width: var(--hit-target-touch);
+  }
+}

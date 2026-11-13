@@ -92,6 +92,11 @@ describe('configuration set administration (M1-053)', () => {
     expect(screen.queryByRole('button', { name: 'Delete set Software types' })).toBeNull();
   });
 
+  it('[CORE-008] says what kind of track a default type set is for (AD-25)', async () => {
+    renderPage();
+    expect(await screen.findByText('Default for software tracks')).toBeVisible();
+  });
+
   it('[CORE-008] says how field rules and layouts combine, and links to the layout sets (UI-T15)', async () => {
     renderPage();
     const rules = await screen.findByRole('heading', { name: 'Field rule sets' });

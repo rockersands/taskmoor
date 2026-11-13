@@ -83,7 +83,11 @@ describe('the imports page (M1-097)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     const input = await screen.findByLabelText('Upload a file into the folder');
+    // The app's own file button, with the chosen file named beside it (AD-34).
+    expect(input.closest('label')).toHaveClass('button-secondary');
+    expect(screen.getByText('No file chosen yet.')).toBeVisible();
     await user.upload(input, new File(['PK'], 'later-backup.zip', { type: 'application/zip' }));
+    expect(screen.getByText('later-backup.zip')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Upload' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'later-backup.zip is in the imports folder.',

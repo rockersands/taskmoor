@@ -9,7 +9,8 @@ attestation: own-words
 
 A workflow is a set of statuses and the transitions that move tickets between them. This page
 covers statuses and stages, what a transition can do, the workflow editor, publishing a change,
-workflow maps, and how tickets move when their workflow changes.
+workflow maps, and how tickets move when their workflow changes. Each map in the list names its
+workflow for the types without one of their own ("Workflow for every other type: …").
 
 Site and configuration administrators manage shared workflows. In the web app they are under
 **Administration**, **Workflows** and **Administration**, **Workflow maps**; everything is also in the
