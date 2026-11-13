@@ -3534,6 +3534,7 @@ export const messagesEn = {
   'richtext.taskItemEmpty': 'Empty checklist item',
   'richtext.undo': 'Undo',
   'richtext.redo': 'Redo',
+  'richtext.moreTools': 'More tools',
   'richtext.hint':
     'Markdown shortcuts work: ## for a heading, - for a list, [] for a checklist. Type @ to mention someone and / for more blocks. Press Escape, then Tab, to leave the text.',
   'richtext.link.label': 'Link address',

@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { DEFAULT_COLUMNS } from './columns';
 import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { DEFAULT_COLUMNS } from './columns';
 import { fakeSearchClient, TICKETS } from './fixtures';
 import { ResultRows, ResultTable } from './ResultTable';
 

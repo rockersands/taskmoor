@@ -84,6 +84,9 @@ test('[QRY-014] [QRY-015] columns, edits in place and a CSV export of the result
     'Updated',
   ]);
   expect(await seriousAxeViolations(page)).toEqual([]);
+  // Columns is the shared pop-over (T-216): Escape closes it and gives the page back.
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
 
   // The summary, edited in place: saved through the ticket route, the row shows it.
   await row.getByRole('button', { name: `Edit Summary of ${ticket.key}` }).click();

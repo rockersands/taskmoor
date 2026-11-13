@@ -24,6 +24,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { useMediaQuery } from '../shell/useMediaQuery';
 import { BlockPrompt } from './BlockPrompt';
 import { showAttachment, useEditorTools } from './EditorTools';
 import { ExpandCaret, expandNodeView } from './expandView';
@@ -240,6 +241,10 @@ const HISTORY_TOOLS: Tool[] = [
   },
 ];
 
+/** Below this width the toolbar shows its first tools and a More button for the rest. */
+const NARROW_TOOLBAR = '(max-width: 599px)';
+const FIRST_TOOLS = 6;
+
 /** A link target as typed: a bare host gets https; unsafe schemes are refused. */
 export function linkTarget(typed: string): string | null {
   const value = typed.trim();
@@ -292,6 +297,9 @@ export function RichTextEditor({
   translate.current = t;
   const openLinkRef = useRef<() => void>(() => {});
   const [focusIndex, setFocusIndex] = useState(0);
+  // On a phone the toolbar keeps one row: the first tools and More, which shows the rest (PL-42).
+  const narrow = useMediaQuery(NARROW_TOOLBAR);
+  const [allTools, setAllTools] = useState(false);
 
   const labels = {
     unknownBlock: t('richtext.unknownBlock'),
@@ -782,7 +790,11 @@ export function RichTextEditor({
         ]
       : []),
   ];
-  const tabStop = Math.min(focusIndex, Math.max(0, buttons.length - 1));
+  const folded = narrow && buttons.length > FIRST_TOOLS + 1;
+  const shown = folded && !allTools ? buttons.slice(0, FIRST_TOOLS) : buttons;
+  // The More button, when there is one, is the last stop of the arrow keys.
+  const stops = shown.length + (folded ? 1 : 0);
+  const tabStop = Math.min(focusIndex, Math.max(0, stops - 1));
 
   const rove = (event: KeyboardEvent<HTMLDivElement>) => {
     const all = Array.from(toolbarRef.current?.querySelectorAll('button') ?? []);
@@ -898,7 +910,7 @@ export function RichTextEditor({
             className="rt-toolbar"
             onKeyDown={rove}
           >
-            {buttons.map((b, i) => (
+            {shown.map((b, i) => (
               <button
                 key={b.id}
                 type="button"
@@ -918,6 +930,21 @@ export function RichTextEditor({
                 <Icon name={b.tool.icon} />
               </button>
             ))}
+            {folded && (
+              <button
+                type="button"
+                className="rt-tool rt-tool-more"
+                tabIndex={shown.length === tabStop ? 0 : -1}
+                aria-label={t('richtext.moreTools')}
+                title={t('richtext.moreTools')}
+                aria-expanded={allTools}
+                onFocus={() => setFocusIndex(shown.length)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setAllTools((open) => !open)}
+              >
+                <Icon name="more" />
+              </button>
+            )}
           </div>
           {status}
         </div>

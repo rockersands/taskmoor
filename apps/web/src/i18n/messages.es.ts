@@ -3629,6 +3629,7 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.taskItemEmpty': 'Elemento de la lista vacío',
   'richtext.undo': 'Deshacer',
   'richtext.redo': 'Rehacer',
+  'richtext.moreTools': 'Más herramientas',
   'richtext.hint':
     'Los atajos de Markdown funcionan: ## para un encabezado, - para una lista, [] para una lista de comprobación. Escribe @ para mencionar a alguien y / para más bloques. Pulsa Escape y luego Tab para salir del texto.',
   'richtext.link.label': 'Dirección del enlace',
