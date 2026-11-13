@@ -884,3 +884,10 @@ details[open] > summary.admin-disclosure::after,
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+
+/* A length: its number and its unit side by side (D22). */
+.length-field {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) minmax(0, 10rem);
+  gap: var(--space-2);
+}

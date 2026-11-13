@@ -2251,8 +2251,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sessions.title': 'Sesiones',
   'admin.sessions.intro':
     'Cuánto tiempo sigue iniciada la sesión. Por defecto dura {days} días y termina tras {idleDays} días sin uso.',
-  'admin.sessions.lifetime': 'La sesión dura (horas)',
-  'admin.sessions.idle': 'Cerrar la sesión tras estos minutos sin uso',
+  'admin.sessions.lifetime': 'La sesión dura',
+  'admin.sessions.idle': 'Cerrar la sesión tras estar sin uso',
+  'admin.sessions.unitOf': 'Unidad de «{field}»',
+  'admin.sessions.unit.minutes': 'minutos',
+  'admin.sessions.unit.hours': 'horas',
+  'admin.sessions.unit.days': 'días',
   'admin.sessions.hint':
     'Más corto es más seguro: la lista de seguridad (ASVS nivel 2) pide 12 horas y 30 minutos. Un cambio también termina las sesiones más antiguas que los nuevos límites.',
   'admin.sessions.save': 'Guardar los ajustes de sesión',
@@ -2260,7 +2264,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sessions.saveFailed': 'No se pudieron guardar los ajustes de sesión. Inténtalo de nuevo.',
   'admin.sessions.failed': 'No se pudieron cargar los ajustes de sesión.',
   'admin.sessions.outOfRange':
-    'Elige una sesión de 1 a 2.160 horas y un tiempo sin uso de 5 minutos o más.',
+    'Elige una sesión de 1 hora a 90 días y un tiempo sin uso de 5 minutos o más, en números enteros.',
   'admin.sessions.idleTooLong': 'El tiempo sin uso no puede ser mayor que la propia sesión.',
   'admin.alerts.title': 'Alertas de seguridad',
   'admin.alerts.intro':

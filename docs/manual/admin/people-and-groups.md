@@ -217,8 +217,10 @@ accounts are never external. Select **Save policy**.
 ## Sessions
 
 By default a session lasts 14 days, and ends earlier after 3 days without use. On **Administration** >
-**Security**, under **Sign-in sessions**, set **A sign-in lasts (hours)** and **Sign out after this
-many minutes unused**, then select **Save session settings**. The security checklist (ASVS level
+**Security**, under **Sign-in sessions**, set **A sign-in lasts** and **Sign out after it goes
+unused for**, each a whole number with its unit (minutes, hours or days; the page shows a length
+in the largest unit that holds it whole), then select **Save session settings**. A sign-in lasts
+1 hour to 90 days, and the idle time is 5 minutes or more and no longer than the sign-in. The security checklist (ASVS level
 2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
 idler than the new limits; it applies to frontends on another site too. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
 only a hash of it.

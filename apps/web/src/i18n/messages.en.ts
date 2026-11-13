@@ -2189,8 +2189,12 @@ export const messagesEn = {
   'admin.sessions.title': 'Sign-in sessions',
   'admin.sessions.intro':
     'How long people stay signed in. By default a sign-in lasts {days} days and ends after {idleDays} days unused.',
-  'admin.sessions.lifetime': 'A sign-in lasts (hours)',
-  'admin.sessions.idle': 'Sign out after this many minutes unused',
+  'admin.sessions.lifetime': 'A sign-in lasts',
+  'admin.sessions.idle': 'Sign out after it goes unused for',
+  'admin.sessions.unitOf': 'Unit of “{field}”',
+  'admin.sessions.unit.minutes': 'minutes',
+  'admin.sessions.unit.hours': 'hours',
+  'admin.sessions.unit.days': 'days',
   'admin.sessions.hint':
     'Shorter is safer: the security checklist (ASVS level 2) asks for 12 hours and 30 minutes. A change also ends sign-ins older than the new limits.',
   'admin.sessions.save': 'Save session settings',
@@ -2198,7 +2202,7 @@ export const messagesEn = {
   'admin.sessions.saveFailed': 'The session settings could not be saved. Try again.',
   'admin.sessions.failed': 'The session settings could not be loaded.',
   'admin.sessions.outOfRange':
-    'Choose a sign-in of 1 to 2,160 hours and an idle time of 5 minutes or more.',
+    'Choose a sign-in of 1 hour to 90 days and an idle time of 5 minutes or more, in whole numbers.',
   'admin.sessions.idleTooLong': 'The idle time cannot be longer than the sign-in itself.',
   'admin.alerts.title': 'Security alerts',
   'admin.alerts.intro':
