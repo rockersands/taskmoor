@@ -1,3 +1,4 @@
+import { parseWithDiagnostics, SYSTEM_FIELDS } from '@taskmoor/query';
 import type { SearchTicket } from './client';
 
 /**
@@ -82,6 +83,65 @@ export function saveColumns(userId: number, columns: readonly string[]): void {
     // Not remembered in this browser; the list still shows the choice until reload.
   }
 }
+
+/**
+ * The order a table's rows are in (PL-11): the column it follows, `key` for the key, and which
+ * way. A table marks that column's header with `aria-sort`, and a page can say it in words.
+ */
+export interface TableSort {
+  column: string;
+  direction: 'ascending' | 'descending';
+}
+
+/** The query language's sortable fields, by their own name, as the table's columns. */
+const ORDER_COLUMNS: Record<string, string> = {
+  key: 'key',
+  track: 'track',
+  type: 'ticketType',
+  status: 'status',
+  priority: 'priority',
+  summary: 'summary',
+  assignee: 'assignee',
+  requester: 'requester',
+  creator: 'creator',
+  parent: 'parent',
+  votes: 'voteCount',
+  created: 'createdAt',
+  updated: 'updatedAt',
+  due: 'dueDate',
+  start: 'startDate',
+  closed: 'closedAt',
+};
+
+/**
+ * The order a query's results come in (QRY-014): its first `ORDER BY` key, or newest created
+ * first when it names none, as the server sorts them. Null when that is no column (relevance,
+ * a field with no column) or the query does not parse.
+ */
+export function sortOfQuery(query: string): TableSort | null {
+  const { query: parsed, errors } = parseWithDiagnostics(query);
+  if (errors.length > 0) return null;
+  const first = parsed.orderBy[0];
+  if (!first) return { column: 'createdAt', direction: 'descending' };
+  const direction = first.direction === 'desc' ? 'descending' : 'ascending';
+  if (first.field.custom !== undefined)
+    return { column: customColumn(first.field.custom), direction };
+  const wanted = first.field.name.toLowerCase();
+  const field = SYSTEM_FIELDS.find(
+    (f) => f.name.toLowerCase() === wanted || f.aliases.some((a) => a.toLowerCase() === wanted),
+  );
+  const column = field ? ORDER_COLUMNS[field.name] : undefined;
+  return column ? { column, direction } : null;
+}
+
+/** Columns that hold a date, or a date and time, and never break across lines. */
+export const DATE_COLUMNS: ReadonlySet<string> = new Set([
+  'startDate',
+  'dueDate',
+  'createdAt',
+  'updatedAt',
+  'closedAt',
+]);
 
 /** How a cell is edited in place (QRY-014 (2)), or null for a read-only column. */
 export type CellEditor =

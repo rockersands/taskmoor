@@ -71,6 +71,27 @@ describe('bulk operation progress (M1-021)', () => {
     expect(screen.queryByRole('button', { name: 'Cancel the rest' })).toBeNull();
   });
 
+  it('[CORE-024] ends a bulk change with failures in a warning, not Done (PL-23, D14)', async () => {
+    const client = fakeBulkClient(
+      { ...RUNNING, succeeded: 1197, pending: 2, failed: 1 },
+      { step: 300 },
+    );
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    const warning = await screen.findByRole('alert');
+    expect(warning).toHaveTextContent(
+      'The bulk edit finished with problems: 1,199 tickets were changed, and 1 ticket was not. Each one is listed below with the reason.',
+    );
+    expect(warning).toHaveClass('bulk-warning');
+    expect(screen.queryByText('Done.')).toBeNull();
+    // Each failed ticket, with its reason.
+    const failures = screen.getByRole('region', { name: 'Tickets that were not changed' });
+    expect(within(failures).getAllByRole('listitem').length).toBeGreaterThan(0);
+  });
+
   it('[CORE-024] says so when the bulk change is not there', async () => {
     stubBackend({ 'GET /bulk-operations/8': () => jsonResponse(404, { error: 'not_found' }) });
     window.location.hash = '#/bulk/8';

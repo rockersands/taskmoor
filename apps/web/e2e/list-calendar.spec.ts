@@ -64,19 +64,30 @@ test('[AGL-016] fifty rows edited in place, grouped, and coloured by a rule', as
 
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'List', exact: true }).click();
-  const list = page.getByRole('region', { name: `List of List ${key}` });
+  // Titled by its section, under the track's name (D26).
+  const list = page.getByRole('region', { name: 'List', exact: true });
   await expect(list.getByRole('link', { name: keys[0] as string, exact: true })).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
+  if (isMobile) {
+    // A phone shows stacked rows (D1), never a squeezed table; the edits in place are the
+    // wide table's.
+    await expect(list.getByRole('table')).toHaveCount(0);
+    await expect(list.getByRole('list', { name: 'Tickets' }).getByRole('listitem')).toHaveCount(50);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    return;
+  }
 
   // Each row's summary edited in place, without leaving the list.
-  for (const ticket of isMobile ? keys.slice(0, 5) : keys) {
+  for (const ticket of keys) {
     await list.getByRole('button', { name: `Edit Summary of ${ticket}`, exact: true }).click();
     const input = list.getByRole('textbox', { name: `Edit Summary of ${ticket}`, exact: true });
     await input.fill(`Edited ${ticket}`);
     await input.press('Enter');
     await expect(list.getByText(`Edited ${ticket}`, { exact: true })).toBeVisible();
   }
-  const last = isMobile ? (keys[4] as string) : (keys[49] as string);
+  const last = keys[49] as string;
   const saved = await (await page.request.get(`${BASE}/api/v1/tickets/${last}`)).json();
   expect(saved.ticket.summary).toBe(`Edited ${last}`);
 
@@ -84,8 +95,9 @@ test('[AGL-016] fifty rows edited in place, grouped, and coloured by a rule', as
   await list.getByRole('combobox', { name: 'Group by' }).selectOption({ label: 'Priority' });
   await expect(list.getByRole('heading', { name: /\(50 tickets\)$/ })).toBeVisible();
 
-  // A rule for new tickets colours their rows and names itself beside the key.
-  await list.getByText(/^Format rules/).click();
+  // A rule for new tickets colours their rows and names itself beside the key. Format rules
+  // open as the shared pop-over (T-216).
+  await list.getByRole('button', { name: /^Format rules/ }).click();
   const form = list.getByRole('form', { name: 'Add rule' });
   await form.getByRole('textbox', { name: 'Name' }).fill('Untouched');
   await form.getByRole('textbox', { name: 'Condition' }).fill('stage = new');

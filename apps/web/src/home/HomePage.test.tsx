@@ -7,6 +7,7 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { applyStylesheet } from '../test/stylesheets';
 import { setViewportWidth } from '../test/viewport';
 import { rememberTrack } from '../tracks/recentTracks';
 import { HOME_TRACKS_PATH, homeTracks, recentHomeTracksPath } from './client';
@@ -226,6 +227,33 @@ describe('the home page (M1-052)', () => {
     expect(await within(recent).findAllByRole('link')).toHaveLength(2);
   });
 
+  it('[AGL-019] shows a track’s whole key in its badge, never its first letters (PL-29)', async () => {
+    renderPage();
+    const tracks = await screen.findByRole('region', { name: 'Your tracks' });
+    await within(tracks).findAllByRole('link');
+    const badges = [...tracks.querySelectorAll('.track-tile-badge')];
+    expect(badges.map((b) => b.textContent)).toEqual(
+      expect.arrayContaining(TRACKS.map((track) => track.key)),
+    );
+    const long = badges.find((b) => (b.textContent ?? '').length > 3);
+    if (long) expect(long).toHaveAttribute('data-long');
+  });
+
+  it('[AGL-019] lets the last of its lists take a row of its own whole (PL-28)', async () => {
+    const gone = applyStylesheet('tickets.css');
+    try {
+      renderPage();
+      const followed = await screen.findByRole('region', { name: 'You follow' });
+      const row = followed.parentElement as HTMLElement;
+      expect(row).toHaveClass('home-lists');
+      // Wrapping cards that grow into the room left, instead of a grid with an empty cell.
+      expect(getComputedStyle(row).display).toBe('flex');
+      expect(getComputedStyle(row).flexWrap).toBe('wrap');
+    } finally {
+      gone();
+    }
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage();
@@ -248,6 +276,9 @@ describe('the home page (M1-052)', () => {
       'Closed',
       'Shop',
       'Operations',
+      // A track's key is its data, shown whole in its badge (PL-29).
+      'SHOP',
+      'OPS',
       'SHO',
       'OPS',
     ]);

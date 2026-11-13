@@ -201,21 +201,7 @@
   inset-inline: auto 0;
 }
 
-@media (max-width: 40rem) {
-  .ticket-child {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .ticket-child-status,
-  .ticket-child-status-menu {
-    grid-column: 2;
-    justify-self: start;
-  }
-
-  .ticket-child-status-menu .status-menu-popup {
-    inset-inline: 0 auto;
-  }
-}
+/* On a phone too the status keeps its column at the row's end (PL-45); the summary wraps. */
 
 .ticket-child-form {
   display: flex;
@@ -383,6 +369,14 @@
   /* Every field in the tools is a 44px target, as the forms' fields are (forms.css). */
   .ticket-tool input:not([type="checkbox"]),
   .ticket-tool select {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* A child's key is a finger's target, however short (PL-26). */
+  .ticket-child > a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
   }
 

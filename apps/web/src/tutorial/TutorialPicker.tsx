@@ -85,6 +85,9 @@ export function TutorialPicker({
                 <span>{t('tutorial.minutes', { minutes: section.minutes })}</span>
                 {section.who === 'site' && <span>{t('tutorial.adminOnly')}</span>}
                 {section.who === 'setup' && <span>{t('tutorial.setupOnly')}</span>}
+              </p>
+              {/* On its own row on every card, so the cards share one layout (PL-28). */}
+              <p className="tutorial-card-state">
                 <span className="tutorial-card-status" data-status={state}>
                   {t(STATUS[state])}
                 </span>

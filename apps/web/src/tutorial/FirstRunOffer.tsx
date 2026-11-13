@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { TourIcon } from '../shell/icons';
 import { type TutorialClient, tutorialClient } from './client';
 import { audienceOf, SUGGESTED, sectionsFor, type TutorialSectionId } from './sections';
 import { TutorialPicker } from './TutorialPicker';
@@ -16,13 +17,16 @@ type Shown =
   | { status: 'waiting' }
   | { status: 'offering' }
   | { status: 'answered'; note: 'later' | 'never' | null }
+  /** Seen on an earlier visit, or answered: a small "Getting started" link instead (D10). */
+  | { status: 'collapsed' }
   | { status: 'hidden' };
 
 /**
- * The tutorial's first-run offer (ADR-115), at the top of Home for someone who has never answered
- * it: the sections as cards to tick, the suggested ones ticked, then Start, Not now or Don't offer
- * again. Any answer is saved with the account and the offer does not come back; every section stays
- * in Settings, Tutorials. It sits in the page rather than over it, so nothing waits behind it.
+ * The tutorial's first-run offer (ADR-115), at the top of Home the first time someone sees it: the
+ * sections as cards to tick, the suggested ones ticked, then Start, Not now or Don't offer again.
+ * Being shown counts as seen, and is saved with the account at once (PL-9, D10): from the next
+ * visit on, and after any answer, it is a small "Getting started" link to Settings, Tutorials, so
+ * the person's own work comes first. It sits in the page rather than over it.
  */
 export function FirstRunOffer({ client = tutorialClient }: FirstRunOfferProps) {
   const t = useT();
@@ -44,9 +48,11 @@ export function FirstRunOffer({ client = tutorialClient }: FirstRunOfferProps) {
     client.progress().then(
       (progress) => {
         if (!live) return;
-        // Offered until answered, and only to someone who has not started a section anyway.
+        // Offered in full once, to someone who has not started a section anyway; seen, it is
+        // saved as shown, quietly (a failure only means it is offered once more).
         const fresh = progress.offer === null && progress.sections.length === 0;
-        setShown(fresh ? { status: 'offering' } : { status: 'hidden' });
+        setShown(fresh ? { status: 'offering' } : { status: 'collapsed' });
+        if (fresh) client.answerOffer('shown').catch(() => {});
       },
       () => live && setShown({ status: 'hidden' }),
     );
@@ -60,6 +66,16 @@ export function FirstRunOffer({ client = tutorialClient }: FirstRunOfferProps) {
   }, [shown]);
 
   if (!user || shown.status === 'waiting' || shown.status === 'hidden') return null;
+  if (shown.status === 'collapsed') {
+    return (
+      <p className="tutorial-getting-started">
+        <a href={routeHref('#/settings/tutorials')}>
+          <TourIcon aria-hidden="true" />
+          {t('tutorial.gettingStarted')}
+        </a>
+      </p>
+    );
+  }
   if (shown.status === 'answered') {
     if (!shown.note) return null;
     return (

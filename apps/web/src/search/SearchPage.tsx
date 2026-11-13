@@ -39,11 +39,12 @@ import {
   type SearchTrack,
   searchClient,
 } from './client';
-import { loadColumns, saveColumns } from './columns';
+import { DATE_COLUMNS, loadColumns, saveColumns, sortOfQuery } from './columns';
 import { ResultTable } from './ResultTable';
 import { SavedSearchBar } from './SavedSearchBar';
 import { type SavedSearch, type SavedSearchClient, savedSearchClient } from './savedClient';
 import { type Suggestions, suggest } from './suggest';
+import { useColumnName } from './useColumnName';
 
 export interface SearchPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -621,7 +622,9 @@ function ResultList({
 }) {
   const t = useT();
   const headingId = useId();
+  const nameOf = useColumnName(fields);
   if (results.status === 'idle') return null;
+  const sort = results.status === 'loaded' ? sortOfQuery(results.query) : null;
   return (
     <section aria-labelledby={headingId} className="search-results">
       <h2 id={headingId} className="facts-title">
@@ -652,6 +655,14 @@ function ResultList({
                   )
                 : t('search.shown', { count: results.page.tickets.length })}
             </p>
+            {sort && (
+              <p className="page-note search-sorted">
+                {t(DATE_COLUMNS.has(sort.column) ? 'search.sorted.date' : 'search.sorted', {
+                  column: sort.column === 'key' ? t('search.column.key') : nameOf(sort.column),
+                  direction: sort.direction,
+                })}
+              </p>
+            )}
             <ColumnPicker columns={columns} fields={fields} onChange={onColumns} />
             {results.page.tickets.length > 0 && (
               <nav className="search-export" aria-label={t('search.export')}>
@@ -681,6 +692,7 @@ function ResultList({
               columns={columns}
               fields={fields}
               client={client}
+              sort={sort}
               onSaved={onSaved}
             />
           )}

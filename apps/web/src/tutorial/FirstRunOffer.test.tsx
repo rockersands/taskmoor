@@ -98,12 +98,31 @@ describe('the first-run offer (ADR-115)', () => {
     expect(screen.queryByRole('region', { name: /Welcome/ })).toBeNull();
     unmount();
 
-    // The next visit: answered, so nothing shows.
+    // The next visit: answered, so only the small link shows (D10).
     const answered = fakeClient({ offer: 'shown', sections: [] });
     renderOffer(answered);
-    await waitFor(() => expect(answered.progress).toHaveBeenCalled());
+    expect(await screen.findByRole('link', { name: 'Getting started' })).toHaveAttribute(
+      'href',
+      '#/settings/tutorials',
+    );
     expect(screen.queryByRole('region', { name: /Welcome/ })).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('[AGL-025] counts as seen once shown, and the next visit puts own work first (PL-9, D10)', async () => {
+    const first = fakeClient();
+    const { unmount } = renderOffer(first);
+    await offer();
+    // Seen: saved at once, with no answer from the person.
+    await waitFor(() => expect(first.answerOffer).toHaveBeenCalledWith('shown'));
+    unmount();
+
+    const next = fakeClient({ offer: 'shown', sections: [] });
+    renderOffer(next);
+    expect(await screen.findByRole('link', { name: 'Getting started' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: /Welcome/ })).toBeNull();
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(next.answerOffer).not.toHaveBeenCalled();
   });
 
   it('[AGL-025] Don’t offer again records that, and every section stays in Settings', async () => {
@@ -120,7 +139,8 @@ describe('the first-run offer (ADR-115)', () => {
   it('[AGL-025] says when the answer could not be saved, and lets the person try again', async () => {
     const user = userEvent.setup();
     const client = fakeClient();
-    client.answerOffer.mockRejectedValueOnce(new Error('offline'));
+    // The first save is the quiet "seen"; the person's own answer is the one that fails.
+    client.answerOffer.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('offline'));
     renderOffer(client);
     const shown = await offer();
     await user.click(within(shown).getByRole('button', { name: 'Not now' }));
@@ -131,19 +151,20 @@ describe('the first-run offer (ADR-115)', () => {
     expect(await screen.findByRole('status')).toBeVisible();
   });
 
-  it('[AGL-025] stays away once a section was started, or when progress cannot be read', async () => {
+  it('[AGL-025] is only the small link once a section was started, and nothing when progress cannot be read', async () => {
     const started = fakeClient({
       offer: null,
       sections: [{ section: 'boards', state: 'active', step: 2 }],
     });
     const { unmount } = renderOffer(started);
-    await waitFor(() => expect(started.progress).toHaveBeenCalled());
+    expect(await screen.findByRole('link', { name: 'Getting started' })).toBeVisible();
     expect(screen.queryByRole('region', { name: /Welcome/ })).toBeNull();
     unmount();
     const failing = fakeClient(new Error('offline'));
     renderOffer(failing);
     await waitFor(() => expect(failing.progress).toHaveBeenCalled());
     expect(screen.queryByRole('region', { name: /Welcome/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Getting started' })).toBeNull();
   });
 
   it('[AGL-025] [NFR-005] works on a phone', async () => {

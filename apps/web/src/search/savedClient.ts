@@ -48,6 +48,8 @@ export interface SavedSearchClient {
   ) => Promise<SavedSearch>;
   star: (id: number, on: boolean) => Promise<void>;
   subscribe: (id: number, input: SubscriptionInput) => Promise<{ nextRunAt: string }>;
+  /** Whether this person gets the saved search by email (PL-32); unknown without it. */
+  subscribedTo?: (id: number, userId: number) => Promise<boolean>;
 }
 
 /** A share as the API takes it back: without the names it shows. */
@@ -87,6 +89,12 @@ export const savedSearchClient: SavedSearchClient = {
         body: input,
       })
     ).subscription,
+  subscribedTo: async (id, userId) =>
+    (
+      await api<{ subscriptions: { recipient: { userId?: number } }[] }>(
+        `/saved-searches/${id}/subscriptions`,
+      )
+    ).subscriptions.some((s) => s.recipient.userId === userId),
 };
 
 /** The saved search in the address, `#/search?savedSearch=12`, or null. */

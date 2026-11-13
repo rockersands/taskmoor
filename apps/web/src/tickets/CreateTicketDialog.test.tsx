@@ -5,6 +5,7 @@ import { App } from '../App';
 import { MEMBER } from '../admin/fixtures';
 import { type Handler, stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { applyStylesheet } from '../test/stylesheets';
 import { setViewportWidth } from '../test/viewport';
 import { templateOf } from './CreateTicketPage';
 import { BUG_FORM, CHORE_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
@@ -138,6 +139,24 @@ describe('the create dialog (M1-052)', () => {
       },
       docs: { description: { type: 'doc', content: [] } },
     });
+  });
+
+  it('[CORE-013] keeps Create in view at the foot of the dialog while the form scrolls (PL-21)', async () => {
+    const user = userEvent.setup();
+    const gone = applyStylesheet('tickets.css');
+    try {
+      renderApp();
+      await user.click(await screen.findByRole('button', { name: 'New ticket' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
+      const create = await within(dialog).findByRole('button', { name: 'Create' });
+      const bar = create.closest('.form-actions') as HTMLElement;
+      expect(getComputedStyle(bar).position).toBe('sticky');
+      expect(getComputedStyle(bar).bottom).toBe('calc(-1 * var(--space-4))');
+      // Fields set only after creation take no room: none says so any more (D30).
+      expect(within(dialog).queryByText(/once it is created/)).toBeNull();
+    } finally {
+      gone();
+    }
   });
 
   it('fills a small phone without sideways scrolling', async () => {

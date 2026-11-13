@@ -102,5 +102,51 @@ describe('touch targets in the ticket tools (ADR-033)', () => {
       const label = box.labels?.[0];
       expect(label && isTouchTarget(label, rules)).toBe(true);
     }
+
+    // A child's key, however short its words (PL-26).
+    const keys = [...container.querySelectorAll('.ticket-child > a')];
+    expect(keys.length).toBeGreaterThan(1);
+    expect(keys.filter((key) => !isTouchTarget(key, rules)).map((k) => k.textContent)).toEqual([]);
+  });
+});
+
+describe('the ticket tools after the page review (T-220)', () => {
+  it('[CORE-032] keeps a child’s status at the end of its row on a phone too (PL-45)', async () => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync(join(SRC, 'styles/ticket-tools.css'), 'utf8');
+    document.head.append(style);
+    const sheet = style.sheet as CSSStyleSheet;
+    // No narrow-screen rule moves the status under the summary.
+    const narrow = [...sheet.cssRules]
+      .filter((rule): rule is CSSMediaRule => 'media' in rule)
+      .filter((rule) => /max-width/.test(rule.media.mediaText))
+      .flatMap((rule) => [...rule.cssRules] as CSSStyleRule[])
+      .filter((rule) => /ticket-child/.test(rule.selectorText ?? ''));
+    style.remove();
+    expect(narrow.map((rule) => rule.cssText)).toEqual([]);
+  });
+
+  it('[CORE-032] [CORE-033] gives a new checklist item and a new subticket the same Add (PL-44)', async () => {
+    const client = fakeToolsClient();
+    render(
+      <I18nProvider locale="en">
+        <SubticketsPanel
+          ticket={{
+            id: 41,
+            key: 'SHOP-41',
+            track: { key: 'SHOP' },
+            ticketType: { level: { rank: 0 } },
+          }}
+          client={client}
+          revision={0}
+        />
+        <ChecklistsPanel ticket={{ id: 41 }} client={client} revision={0} />
+      </I18nProvider>,
+    );
+    await screen.findAllByRole('checkbox');
+    await screen.findByRole('textbox', { name: 'New subticket' });
+    const adds = screen.getAllByRole('button', { name: 'Add' });
+    expect(adds.length).toBeGreaterThan(1);
+    expect(new Set(adds.map((button) => button.className))).toEqual(new Set(['button-primary']));
   });
 });

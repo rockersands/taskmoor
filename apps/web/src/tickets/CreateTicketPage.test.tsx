@@ -57,8 +57,9 @@ describe('the create form (M1-012)', () => {
     expect(within(report).getByText('What happened, step by step')).toBeVisible();
     // A cascade offers its second level once the first is chosen.
     expect(within(report).getByLabelText('Component')).toBeVisible();
-    // Fields this form cannot edit yet say where they are set.
-    expect(within(report).getByText('Set on the ticket once it is created.')).toBeVisible();
+    // Fields set only once the ticket exists are left out (PL-20, D30): Assignee here.
+    expect(within(report).queryByLabelText('Assignee')).toBeNull();
+    expect(within(report).queryByText(/once it is created/)).toBeNull();
     // The required field the layout left out has a section of its own.
     const more = screen.getByRole('region', { name: 'More fields' });
     expect(within(more).getByLabelText('Due date (required)')).toBeVisible();

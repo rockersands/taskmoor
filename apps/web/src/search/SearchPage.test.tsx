@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
+import { applyStylesheet } from '../test/stylesheets';
 import { setViewportWidth } from '../test/viewport';
 import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { queryFromHash, SearchPage } from './SearchPage';
@@ -285,7 +286,7 @@ describe('the search page (M1-041)', () => {
     const table = await within(results).findByRole('table');
     // A heading row and a row per ticket.
     expect(within(table).getAllByRole('row')).toHaveLength(3);
-    await user.click(within(results).getByRole('button', { name: 'More results' }));
+    await user.click(within(results).getByRole('button', { name: 'Show more' }));
     await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(4));
     expect(within(table).getByRole('link', { name: 'OPS-12' })).toBeVisible();
     expect(queryFromHash('#/search?q=track%20%3D%20SHOP')).toBe('track = SHOP');
@@ -325,5 +326,32 @@ describe('the search page (M1-041)', () => {
     ]);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('the search form after the page review (T-220)', () => {
+  it('[QRY-014] labels its groups as it labels its fields (PL-33)', async () => {
+    const gone = applyStylesheet('search.css');
+    try {
+      renderPage();
+      const tracks = await screen.findByRole('group', { name: 'Tracks' });
+      const legend = tracks.querySelector('legend') as HTMLElement;
+      expect(getComputedStyle(legend).fontSize).toBe('var(--font-size-200)');
+    } finally {
+      gone();
+    }
+  });
+
+  it('[QRY-014] [NFR-005] makes a short stage label a finger wide on touch (PL-13)', async () => {
+    const gone = applyStylesheet('search.css', 'pointer: coarse');
+    try {
+      renderPage();
+      const stage = await screen.findByRole('group', { name: 'Stage' });
+      for (const label of stage.querySelectorAll('label')) {
+        expect(getComputedStyle(label).minWidth).toBe('var(--hit-target-touch)');
+      }
+    } finally {
+      gone();
+    }
   });
 });

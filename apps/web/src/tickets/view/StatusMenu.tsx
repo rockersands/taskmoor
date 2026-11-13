@@ -15,7 +15,8 @@ interface StatusMenuProps {
 /**
  * A ticket's status as one control (the user's decision, ADR-116): the same words as the board's
  * columns, in the colour of its stage. Opening it lists where the ticket can go, and picking one
- * moves it at once. A ticket with nowhere to go shows its status as plain text.
+ * moves it at once; the current status heads the menu, marked, outside its items. A ticket with
+ * nowhere to go shows its status as plain text.
  */
 export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuProps) {
   const t = useT();
@@ -54,6 +55,11 @@ export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuPro
       </button>
       {open && (
         <div ref={leaveMotion} className="user-menu-popup status-menu-popup">
+          {/* Where the ticket is now, marked as such above the places it can go, so the focus on
+              the first of them is never read as the current status (PL-47). */}
+          <p className="status-menu-current" data-stage={status.stage}>
+            {t('ticketView.statusNow', { status: status.name })}
+          </p>
           <div
             ref={menu}
             id={menuId}

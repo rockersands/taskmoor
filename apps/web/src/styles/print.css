@@ -1,0 +1,61 @@
+/*
+ * Printing a ticket (PL-27, D37): only the ticket, as a document. Its title, its fields, its
+ * description and its comments; no top bar, sidebar, toolbars, comment box or buttons, and no glass.
+ * It holds on the ticket page alone (`:has(.ticket-page)`), so other pages print as they are.
+ */
+@media print {
+  .shell:has(.ticket-page)
+    :is(.skip-link, .shell-topbar, .shell-sidebar, .shell-drawer, .shell-backdrop) {
+    display: none;
+  }
+
+  .shell:has(.ticket-page) .shell-main {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* What is for working on the ticket, not for reading it. */
+  .ticket-page
+  :is(
+    .ticket-back,
+    .ticket-toolbar,
+    .ticket-title-row > .ticket-action,
+    .help-tip,
+    .ticket-header .form-status,
+    .rt-toolbar,
+    .ticket-tool,
+    .ai-panel,
+    .attachment-panel,
+    .ticket-info,
+    .ticket-tabs,
+    .comment-composer,
+    .ticket-tabpanel button,
+    .comment-panel button,
+    .ticket-details button
+  ) {
+    display: none;
+  }
+
+  /* One column on paper: the fields after the description, and the activity last. */
+  .ticket-page .ticket-columns {
+    display: block;
+  }
+
+  .ticket-page :is(.ticket-text, .ticket-details, .ticket-activity, .comment-panel) {
+    margin-block-end: var(--space-4);
+    border: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    break-inside: avoid-page;
+  }
+
+  /* A field edited in place prints as its value. */
+  .ticket-page .ticket-details :is(input, select) {
+    border: 0;
+    background: none;
+    box-shadow: none;
+    appearance: none;
+  }
+}

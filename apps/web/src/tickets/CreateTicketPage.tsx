@@ -526,6 +526,8 @@ export function CreateTicketPage({
       ? EDITABLE_CUSTOM.has(custom.type) && !(custom.type === 'select' && custom.multiple)
       : EDITABLE_SYSTEM.has(field.key);
     const multiple = custom?.type === 'select' && custom.multiple;
+    // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30).
+    if (!editable && !multiple) return null;
     return (
       <div key={field.key} className="form-field create-field">
         {multiple ? (
@@ -559,7 +561,7 @@ export function CreateTicketPage({
           </fieldset>
         ) : (
           <>
-            {RICH_TYPES.has(custom?.type ?? field.key) && editable ? (
+            {RICH_TYPES.has(custom?.type ?? field.key) ? (
               // A rich text editor is no form control: it names itself by this text's id.
               <span id={`${id}-label`} className="form-label rt-label">
                 {label}
@@ -569,13 +571,7 @@ export function CreateTicketPage({
                 {label}
               </label>
             )}
-            {editable ? (
-              control(field, custom, id, described, lock !== null)
-            ) : (
-              <p id={id} className="page-note">
-                {t('tickets.create.later')}
-              </p>
-            )}
+            {control(field, custom, id, described, lock !== null)}
           </>
         )}
         {(help || hint) && (
@@ -750,6 +746,14 @@ export function CreateTicketPage({
             form.value.layout.tabs.map((tab, i) => {
               const headingId = `${prefix}-tab-${i}`;
               const only = form.value.layout.tabs.length === 1;
+              // Fields set only after creation are left out; a section or tab left empty goes too.
+              const sections = tab.sections
+                .map((section) => ({
+                  section,
+                  rows: section.fields.map((field) => fieldRow(field, form.value)).filter(Boolean),
+                }))
+                .filter((part) => part.rows.length > 0);
+              if (sections.length === 0) return null;
               const name = tab.name ?? (only ? null : t('tickets.create.moreFields'));
               return (
                 <section
@@ -765,13 +769,13 @@ export function CreateTicketPage({
                     </h2>
                   )}
                   <div className="create-sections">
-                    {tab.sections.map((section, j) => (
+                    {sections.map(({ section, rows }, j) => (
                       <div
                         // biome-ignore lint/suspicious/noArrayIndexKey: sections have no id
                         key={j}
                         className={section.kind === 'context' ? 'create-context' : 'create-main'}
                       >
-                        {section.fields.map((field) => fieldRow(field, form.value))}
+                        {rows}
                       </div>
                     ))}
                   </div>

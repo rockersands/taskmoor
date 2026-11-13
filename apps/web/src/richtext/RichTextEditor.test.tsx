@@ -41,6 +41,38 @@ function paste(target: HTMLElement, text: string) {
 }
 
 describe('the rich text editor (M1-017)', () => {
+  it('[NTF-006] [NFR-005] keeps the toolbar to one row on a phone, the rest behind More tools (PL-42)', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    renderEditor({ initial: doc(p('Hello')) });
+    const toolbar = screen.getByRole('toolbar', { name: 'Formatting' });
+    const names = () =>
+      within(toolbar)
+        .getAllByRole('button')
+        .map((b) => b.getAttribute('aria-label'));
+    expect(names()).toEqual([
+      'Bold',
+      'Italic',
+      'Strikethrough',
+      'Code',
+      'Link',
+      'Heading 2',
+      'More tools',
+    ]);
+    const more = within(toolbar).getByRole('button', { name: 'More tools' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await user.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(names()).toContain('Undo');
+    expect(names().at(-1)).toBe('More tools');
+    // Still one tab stop, and the arrows reach More.
+    expect(
+      within(toolbar)
+        .getAllByRole('button')
+        .filter((b) => b.tabIndex === 0),
+    ).toHaveLength(1);
+  });
+
   it('[NTF-006] is a named multi-line text box with a formatting toolbar of one tab stop', async () => {
     const user = userEvent.setup();
     const { textbox } = renderEditor({ initial: doc(p('Hello')) });

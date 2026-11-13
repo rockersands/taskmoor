@@ -101,13 +101,13 @@ export const NotFound: Story = {
   },
 };
 
-/** A finger reaches each ticket's key and each fold-out's heading (ADR-033). */
+/** A finger reaches each ticket's key and the buttons of Columns and Format rules (ADR-033). */
 export const OnATouchScreen: Story = {
   beforeEach: asOnATouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'SHOP-41' });
     await expect(
-      tooSmallForAFinger(canvasElement, ['.search-key a', '.list-panel summary']),
+      tooSmallForAFinger(canvasElement, ['.search-key a', '.list-panels .filter-chip']),
     ).toEqual([]);
   },
 };

@@ -8,6 +8,7 @@ import { useSession } from '../session/SessionProvider';
 import { IconSelect } from '../shell/IconSelect';
 import { priorityName } from '../shell/priorityName';
 import { PriorityGlyph, PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import type { SubticketProgress } from '../tickets/tools/client';
 import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { SearchClient, SearchTicket } from './client';
@@ -17,7 +18,9 @@ import {
   cellChange,
   cellEditor,
   cellValue,
+  DATE_COLUMNS,
   editorStart,
+  type TableSort,
   valueText,
 } from './columns';
 import { useColumnName } from './useColumnName';
@@ -41,24 +44,104 @@ export interface ResultTableProps {
   onSaved: (ticket: SearchTicket) => void;
   /** Format rules' marks for a ticket (list views, M1-049); none by default. */
   format?: (ticket: SearchTicket) => RowFormat | null;
+  /** The order the rows are in, marked on that column's header (PL-11). */
+  sort?: TableSort | null;
 }
 
 const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
+/** Short values that read best on one line; the summary takes the width they leave (TR-8). */
+const ONE_LINE = new Set([...DATE_COLUMNS, 'ticketType', 'status', 'priority', 'voteCount']);
 
 /**
  * The results as a table in the person's columns (M1-042; QRY-014): the key links the ticket,
  * and editable cells (summary, assignee, priority, labels, dates, simple custom fields) change
  * in place through the ticket route, which checks permissions, locks and values as it does
- * everywhere; a refusal is shown on the cell. Wide tables scroll inside their own region.
+ * everywhere; a refusal is shown on the cell. Wide tables scroll inside their own region; the
+ * summary takes the width the short columns leave. On a phone the same tickets are stacked rows
+ * (TR-1, PL-1): key, summary, then status, assignee and priority, as the phone backlog shows
+ * them. A track's list, search results and a plan's list all show their tickets through here.
  */
-export function ResultTable({
-  tickets,
-  columns,
-  fields,
-  client,
-  onSaved,
-  format,
-}: ResultTableProps) {
+export function ResultTable(props: ResultTableProps) {
+  const compact = useMediaQuery(COMPACT_QUERY);
+  return compact ? <ResultRows {...props} /> : <WideTable {...props} />;
+}
+
+/** The key's cell: the link, subticket progress and the names of the format rules that apply. */
+function KeyCell({
+  ticket,
+  progress,
+  marks,
+}: {
+  ticket: SearchTicket;
+  progress: SubticketProgress | undefined;
+  marks: RowFormat | null;
+}) {
+  return (
+    <>
+      <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>{ticket.key}</a>
+      {progress && <SubticketProgressMini progress={progress} named />}
+      {marks && marks.names.length > 0 && (
+        <span className="format-marks">
+          {marks.names.map((name) => (
+            <span key={name} className="format-mark">
+              {name}
+            </span>
+          ))}
+        </span>
+      )}
+    </>
+  );
+}
+
+/**
+ * A phone's stacked rows (D1): one block per ticket, read top to bottom, never sideways. Exported
+ * for the stories, whose browser is not a phone; pages use `ResultTable`.
+ */
+export function ResultRows({ tickets, fields, client, format }: ResultTableProps) {
+  const t = useT();
+  const nameOf = useColumnName(fields);
+  const progress = useSubticketProgress(tickets, client.subticketProgress);
+  return (
+    <ul className="glass-card result-rows" aria-label={t('list.tickets')}>
+      {tickets.map((ticket) => {
+        const marks = format?.(ticket) ?? null;
+        const priority = (ticket.priority ?? null) as { name: string; level?: number } | null;
+        return (
+          <li key={ticket.id} className="result-row" data-tone={marks?.row ?? undefined}>
+            <p className="result-row-key">
+              <KeyCell ticket={ticket} progress={progress[ticket.id]} marks={marks} />
+            </p>
+            <p className="result-row-summary" data-tone={marks?.cells.summary ?? undefined}>
+              {ticket.summary}
+            </p>
+            <dl className="result-row-facts">
+              <div data-tone={marks?.cells.status ?? undefined}>
+                <dt className="visually-hidden">{nameOf('status')}</dt>
+                <dd className="result-row-status" data-stage={ticket.status.stage}>
+                  {ticket.status.name}
+                </dd>
+              </div>
+              <div data-tone={marks?.cells.assignee ?? undefined}>
+                <dt className="visually-hidden">{nameOf('assignee')}</dt>
+                <dd>{ticket.assignee?.name ?? t('search.edit.unassigned')}</dd>
+              </div>
+              {priority && (
+                <div data-tone={marks?.cells.priority ?? undefined}>
+                  <dt className="visually-hidden">{nameOf('priority')}</dt>
+                  <dd>
+                    <PriorityIcon name={priority.name} level={priority.level} />
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function WideTable({ tickets, columns, fields, client, onSaved, format, sort }: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
   const progress = useSubticketProgress(tickets, client.subticketProgress);
@@ -88,10 +171,20 @@ export function ResultTable({
       <table className="data-table search-table">
         <thead>
           <tr>
-            <th scope="col">{t('search.column.key')}</th>
+            <th scope="col" aria-sort={sortOf('key', sort)}>
+              {t('search.column.key')}
+              <SortMark column="key" sort={sort} />
+            </th>
             {columns.map((column) => (
-              <th key={column} scope="col">
+              <th
+                key={column}
+                scope="col"
+                data-column={column}
+                data-one-line={ONE_LINE.has(column) || undefined}
+                aria-sort={sortOf(column, sort)}
+              >
                 {nameOf(column)}
+                <SortMark column={column} sort={sort} />
               </th>
             ))}
           </tr>
@@ -102,21 +195,7 @@ export function ResultTable({
             return (
               <tr key={ticket.id} data-tone={marks?.row ?? undefined}>
                 <th scope="row" className="search-key">
-                  <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>
-                    {ticket.key}
-                  </a>
-                  {progress[ticket.id] && (
-                    <SubticketProgressMini progress={progress[ticket.id] as SubticketProgress} />
-                  )}
-                  {marks && marks.names.length > 0 && (
-                    <span className="format-marks">
-                      {marks.names.map((name) => (
-                        <span key={name} className="format-mark">
-                          {name}
-                        </span>
-                      ))}
-                    </span>
-                  )}
+                  <KeyCell ticket={ticket} progress={progress[ticket.id]} marks={marks} />
                 </th>
                 {columns.map((column) => (
                   <Cell
@@ -137,6 +216,21 @@ export function ResultTable({
         </tbody>
       </table>
     </section>
+  );
+}
+
+/** A header's `aria-sort`: only on the column the rows follow. */
+function sortOf(column: string, sort: TableSort | null | undefined) {
+  return sort?.column === column ? sort.direction : undefined;
+}
+
+/** The arrow beside the sorted column's name; `aria-sort` says the same to a screen reader. */
+function SortMark({ column, sort }: { column: string; sort: TableSort | null | undefined }) {
+  if (sort?.column !== column) return null;
+  return (
+    <span className="search-sort-mark" aria-hidden="true">
+      {sort.direction === 'ascending' ? '\u2191' : '\u2193'}
+    </span>
   );
 }
 
@@ -225,6 +319,8 @@ function Cell({
   return (
     <td
       className={problem ? 'search-cell has-problem' : 'search-cell'}
+      data-column={column}
+      data-one-line={ONE_LINE.has(column) || undefined}
       data-tone={tone ?? undefined}
     >
       {editing && editor ? (

@@ -28,6 +28,8 @@ describe('the tutorial in the app (ADR-115)', () => {
     const card = await screen.findByRole('dialog', { name: 'Tracks and tickets' });
     expect(card).toHaveFocus();
     expect(calls.filter((c) => c.method === 'PUT').map((c) => [c.path, c.body])).toEqual([
+      // Seen once shown (D10), then the answer.
+      ['/account/tutorial/offer', { state: 'shown' }],
       ['/account/tutorial/offer', { state: 'shown' }],
       ['/account/tutorial/tracks', { state: 'active', step: 0 }],
     ]);

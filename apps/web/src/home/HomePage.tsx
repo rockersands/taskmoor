@@ -308,8 +308,13 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
                 className="track-tile glass-card"
                 href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}
               >
-                <span className="track-tile-badge" aria-hidden="true">
-                  {track.key.slice(0, 3)}
+                {/* The whole key, never its first letters (PL-29); a long one in smaller type. */}
+                <span
+                  className="track-tile-badge"
+                  data-long={track.key.length > 3 || undefined}
+                  aria-hidden="true"
+                >
+                  {track.key}
                 </span>
                 <span className="track-tile-name">{track.name}</span>
                 <span className="track-tile-key">{t('home.trackKey', { key: track.key })}</span>

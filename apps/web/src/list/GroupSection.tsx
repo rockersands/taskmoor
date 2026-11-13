@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { SearchClient, SearchField, SearchTicket } from '../search/client';
+import { sortOfQuery } from '../search/columns';
 import { ResultTable, type RowFormat } from '../search/ResultTable';
 import { EmptyState } from '../shell/EmptyState';
 import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
@@ -104,6 +105,7 @@ export function GroupSection({
           columns={columns}
           fields={fields}
           client={search}
+          sort={sortOfQuery(query)}
           {...(format ? { format } : {})}
           onSaved={(saved) =>
             setTickets((current) => current.map((x) => (x.id === saved.id ? saved : x)))

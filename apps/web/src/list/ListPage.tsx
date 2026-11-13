@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
-import { routeHref } from '../routing/router';
 import { ColumnPicker } from '../search/ColumnPicker';
 import {
   type SearchClient,
@@ -14,6 +13,7 @@ import type { RowFormat, Tone } from '../search/ResultTable';
 import { useColumnName } from '../search/useColumnName';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import { Popover } from '../shell/Popover';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import {
@@ -74,12 +74,13 @@ const TONES: { id: Tone; label: MessageId }[] = [
 ];
 
 /**
- * A track's list (M1-049; AGL-016): its tickets as a table in the person's columns, filtered by
- * a condition, sorted, and grouped by a field with each group's count; cells edit in place
+ * A track's list (M1-049; AGL-016): its tickets as a table in the person's columns (stacked rows
+ * on a phone), filtered by a condition, sorted, and grouped by a field with each group's count; cells edit in place
  * through the ticket route (as in search results), and tickets are made at the bottom.
  * Format rules colour rows or cells: each is a condition the server checks against the tickets
  * shown, as the person, and the rule's name stands beside the key so colour is never the only
- * sign. Columns and rules are kept per person and track in this browser.
+ * sign. Columns and rules are kept per person and track in this browser; both open as the shared
+ * pop-over (T-216). Titled "List" under the track's name (D26), with no link that repeats a tab (D7).
  */
 export function ListPage({ trackKey, client = listClient, search = searchClient }: ListPageProps) {
   const t = useT();
@@ -236,13 +237,10 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
     <section className="page list-page" aria-labelledby={`${id}-title`}>
       <PageHeader
         titleId={`${id}-title`}
-        title={t('list.title', { name: track.name })}
+        title={t('track.section.list')}
+        eyebrow={track.name}
         purpose={t('purpose.list')}
-        actions={
-          <a className="button-quiet" href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
-            {t('releases.toSummary')}
-          </a>
-        }
+        about={t('about.list')}
       />
       <div className="list-tools">
         <label className="form-field">
@@ -293,20 +291,22 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
           </button>
         </form>
       </div>
-      <details className="glass-card list-panel">
-        <summary>{t('list.columns')}</summary>
+      <div className="list-panels">
         <ColumnPicker columns={columns} fields={fields} onChange={changeColumns} />
-      </details>
-      <details className="glass-card list-panel" open={rules.length > 0 || undefined}>
-        <summary>{t('list.rules', { count: rules.length })}</summary>
-        <RulesPanel
-          rules={rules}
-          columns={columns}
-          nameOf={nameOf}
-          errors={matched.errors}
-          onChange={changeRules}
-        />
-      </details>
+        <Popover
+          label={t('list.rules', { count: rules.length })}
+          title={t('list.rules', { count: rules.length })}
+          on={rules.length > 0}
+        >
+          <RulesPanel
+            rules={rules}
+            columns={columns}
+            nameOf={nameOf}
+            errors={matched.errors}
+            onChange={changeRules}
+          />
+        </Popover>
+      </div>
       {group === 'none' ? (
         section('all', null, null, null)
       ) : groupsFailed ? (
@@ -366,7 +366,8 @@ function RulesPanel({
   const [tone, setTone] = useState<Tone>('red');
   const toneName = (x: Tone) => t(TONES.find((o) => o.id === x)?.label ?? 'list.tone.red');
   return (
-    <div className="list-rules">
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a click that removes its own rule is still inside, so it must not reach the page and close the pop-over; the keys are the controls' own
+    <div className="list-rules" onClick={(event) => event.stopPropagation()}>
       <p className="board-hint">{t('list.rulesHint')}</p>
       {rules.length > 0 && (
         <ul className="list-rule-items">

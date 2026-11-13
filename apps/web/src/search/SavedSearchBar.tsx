@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
 import type { SavedSearch, SavedSearchClient, SavedSearchShare } from './savedClient';
 
@@ -61,6 +62,29 @@ export function SavedSearchBar({
   const [onlyIfResults, setOnlyIfResults] = useState(false);
   const [message, setMessage] = useState<Message>(null);
   const [busy, setBusy] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const { session } = useSession();
+  const me = session.status === 'signed-in' ? session.user.id : null;
+
+  // The picker shows the saved search that is open, not "Choose" (PL-12).
+  useEffect(() => {
+    if (opened) setChosen(String(opened.id));
+  }, [opened]);
+
+  // Whether this person already gets it by email, so Subscribe can say so (PL-32).
+  const openedId = opened?.id ?? null;
+  useEffect(() => {
+    setSubscribed(false);
+    if (openedId === null || me === null || !client.subscribedTo) return;
+    let live = true;
+    client.subscribedTo(openedId, me).then(
+      (yes) => live && setSubscribed(yes),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, openedId, me]);
 
   const reload = () =>
     client.list().then(
@@ -162,6 +186,7 @@ export function SavedSearchBar({
         ...(schedule === 'monthly' ? { dayOfMonth: day } : {}),
         onlyIfResults,
       });
+      setSubscribed(true);
       return t('saved.subscribed', {
         name: opened.name,
         when: new Date(sub.nextRunAt).toLocaleString(),
@@ -222,21 +247,30 @@ export function SavedSearchBar({
         {opened && (
           <button
             type="button"
-            className="button-secondary"
+            className="button-secondary saved-state"
+            data-on={subscribed || undefined}
             aria-expanded={panel === 'subscribe'}
             onClick={() => toggle('subscribe')}
           >
-            {t('saved.subscribe')}
+            {subscribed && (
+              <span className="saved-state-mark" aria-hidden="true">
+                {'\u2713'}
+              </span>
+            )}
+            {t(subscribed ? 'saved.subscribedButton' : 'saved.subscribe')}
           </button>
         )}
         {opened && (
           <button
             type="button"
-            className="button-secondary"
+            className="button-secondary saved-state"
             aria-pressed={opened.starred}
             disabled={busy}
             onClick={star}
           >
+            <span className="saved-state-mark" aria-hidden="true">
+              {opened.starred ? '\u2605' : '\u2606'}
+            </span>
             {t('saved.star')}
           </button>
         )}

@@ -24,10 +24,17 @@ export function ProgressBar({ percent, label }: { percent: number; label: string
 }
 
 /** Subtickets' progress on a board card or a list's row: the numbers in text, and a small bar. */
-export function SubticketProgressMini({ progress }: { progress: SubticketProgress }) {
+export function SubticketProgressMini({
+  progress,
+  named = false,
+}: {
+  progress: SubticketProgress;
+  /** Says what the numbers count, where nothing around them does: a table's key cell (PL-31). */
+  named?: boolean;
+}) {
   const t = useT();
   const percent = percentOf(progress.closed, progress.total);
-  const label = t('ticketTools.subtickets.progress', {
+  const label = t(named ? 'ticketTools.subtickets.miniLabel' : 'ticketTools.subtickets.progress', {
     closed: progress.closed,
     total: progress.total,
     percent,
@@ -36,7 +43,10 @@ export function SubticketProgressMini({ progress }: { progress: SubticketProgres
     <span className="tool-progress-mini" title={label}>
       <span className="visually-hidden">{label}</span>
       <span aria-hidden="true">
-        {t('ticketTools.subtickets.mini', { closed: progress.closed, total: progress.total })}
+        {t(named ? 'ticketTools.subtickets.miniNamed' : 'ticketTools.subtickets.mini', {
+          closed: progress.closed,
+          total: progress.total,
+        })}
       </span>
       <span className="tool-progress-bar tool-progress-bar-small" aria-hidden="true">
         <span style={{ inlineSize: `${percent}%` }} />

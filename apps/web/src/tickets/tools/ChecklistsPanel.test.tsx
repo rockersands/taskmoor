@@ -25,6 +25,22 @@ function renderPanel(client = fakeToolsClient(), locale: Locale = 'en') {
 const stateOf = (text: string) => screen.getByRole('combobox', { name: `State of ${text}` });
 
 describe('ChecklistsPanel', () => {
+  it('[CORE-033] names every button starting with the word it shows, in English and Spanish (PL-24)', async () => {
+    for (const locale of ['en', 'es'] as const) {
+      const { container } = renderPanel(fakeToolsClient(), locale);
+      await screen.findAllByRole('checkbox');
+      const buttons = [...container.querySelectorAll('button[aria-label]')];
+      expect(buttons.length).toBeGreaterThan(0);
+      const mismatched = buttons.flatMap((button) => {
+        const shown = (button.textContent ?? '').trim().toLowerCase();
+        const name = (button.getAttribute('aria-label') ?? '').toLowerCase();
+        return shown && !name.startsWith(shown) ? [`${shown} / ${name}`] : [];
+      });
+      expect(mismatched).toEqual([]);
+      container.remove();
+    }
+  });
+
   it('[CORE-033] (1) shows 75% for 3 done, 1 open and 1 rejected', async () => {
     renderPanel();
     const panel = await screen.findByRole('region', { name: 'Checklists' });
@@ -93,7 +109,7 @@ describe('ChecklistsPanel', () => {
   it('[CORE-033] reorders by keyboard, with the focus on the button that moved', async () => {
     const user = userEvent.setup();
     const { client } = renderPanel();
-    const down = await screen.findByRole('button', { name: 'Move Write the notes down' });
+    const down = await screen.findByRole('button', { name: 'Move down Write the notes' });
     down.focus();
     await user.keyboard('{Enter}');
     await waitFor(() =>
@@ -112,24 +128,24 @@ describe('ChecklistsPanel', () => {
     ]);
     await waitFor(() => expect(down).toHaveFocus());
     // The first and last cannot go further.
-    expect(screen.queryByRole('button', { name: 'Move Tag the build up' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Move Print it down' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Move up Tag the build' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Move down Print it' })).toBeNull();
   });
 
   it('[CORE-033] keeps the focus with an item moved to the first or the last place', async () => {
     const user = userEvent.setup();
     renderPanel();
-    (await screen.findByRole('button', { name: 'Move Tag the build up' })).focus();
+    (await screen.findByRole('button', { name: 'Move up Tag the build' })).focus();
     await user.keyboard('{Enter}');
     // First now: it can only go back down, and that is where the focus is.
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Move Tag the build down' })).toHaveFocus(),
+      expect(screen.getByRole('button', { name: 'Move down Tag the build' })).toHaveFocus(),
     );
-    expect(screen.queryByRole('button', { name: 'Move Tag the build up' })).toBeNull();
-    screen.getByRole('button', { name: 'Move Tell the people down' }).focus();
+    expect(screen.queryByRole('button', { name: 'Move up Tag the build' })).toBeNull();
+    screen.getByRole('button', { name: 'Move down Tell the people' }).focus();
     await user.keyboard('{Enter}');
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Move Tell the people up' })).toHaveFocus(),
+      expect(screen.getByRole('button', { name: 'Move up Tell the people' })).toHaveFocus(),
     );
     const boxes = screen.getAllByRole('checkbox');
     expect(boxes.map((b) => (b as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
@@ -151,19 +167,19 @@ describe('ChecklistsPanel', () => {
     };
     renderPanel(fakeToolsClient({ checklists: [...STARTING_CHECKLISTS, afterwards] }));
     const titles = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    (await screen.findByRole('button', { name: 'Move the checklist Before release down' })).focus();
+    (await screen.findByRole('button', { name: 'Move down the checklist Before release' })).focus();
     await user.keyboard('{Enter}');
     await waitFor(() => expect(titles()).toEqual(['Afterwards', 'Before release']));
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Move the checklist Before release up' }),
+        screen.getByRole('button', { name: 'Move up the checklist Before release' }),
       ).toHaveFocus(),
     );
     await user.keyboard('{Enter}');
     await waitFor(() => expect(titles()).toEqual(['Before release', 'Afterwards']));
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Move the checklist Before release down' }),
+        screen.getByRole('button', { name: 'Move down the checklist Before release' }),
       ).toHaveFocus(),
     );
   });
@@ -172,18 +188,14 @@ describe('ChecklistsPanel', () => {
     const user = userEvent.setup();
     renderPanel();
     // Renaming a checklist.
-    await user.click(
-      await screen.findByRole('button', { name: 'Rename the checklist Before release' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Edit checklist Before release' }));
     await user.keyboard('{Escape}');
-    expect(
-      screen.getByRole('button', { name: 'Rename the checklist Before release' }),
-    ).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Rename the checklist Before release' }));
+    expect(screen.getByRole('button', { name: 'Edit checklist Before release' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Edit checklist Before release' }));
     await user.clear(screen.getByRole('textbox', { name: 'Checklist name' }));
     await user.keyboard('Shipping{Enter}');
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Rename the checklist Shipping' })).toHaveFocus(),
+      expect(screen.getByRole('button', { name: 'Edit checklist Shipping' })).toHaveFocus(),
     );
     // Editing an item.
     await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
@@ -274,7 +286,7 @@ describe('ChecklistsPanel', () => {
     await user.paste('x'.repeat(250));
     expect(name).toHaveValue('x'.repeat(200));
     await user.keyboard('{Escape}');
-    await user.click(screen.getByRole('button', { name: 'Rename the checklist Before release' }));
+    await user.click(screen.getByRole('button', { name: 'Edit checklist Before release' }));
     expect(screen.getByRole('textbox', { name: 'Checklist name' })).toHaveAttribute(
       'maxlength',
       '200',
@@ -344,7 +356,7 @@ describe('ChecklistsPanel', () => {
     );
     expect(await screen.findByText('All checklists')).toBeVisible();
     expect(await screen.findByText('3 of 5 done (60%)')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Move the checklist Afterwards up' }));
+    await user.click(screen.getByRole('button', { name: 'Move up the checklist Afterwards' }));
     await waitFor(() =>
       expect(client.calls.some((c) => c.action === 'orderChecklists')).toBe(true),
     );
@@ -508,7 +520,7 @@ describe('dragging a checklist item with a pointer (CORE-033; ADR-120, TT-5)', (
     expect(handle).toHaveAttribute('aria-hidden', 'true');
     expect(handle).not.toHaveAttribute('tabindex');
     expect(
-      within(row('Tag the build')).getByRole('button', { name: 'Move Tag the build up' }),
+      within(row('Tag the build')).getByRole('button', { name: 'Move up Tag the build' }),
     ).toBeVisible();
   });
 

@@ -144,9 +144,6 @@ export function PlanListPage({
           ]}
           notes={[t('plans.download.everyTicket')]}
         />
-      </div>
-      <details className="glass-card list-panel">
-        <summary>{t('list.columns')}</summary>
         <ColumnPicker
           columns={columns}
           fields={fields}
@@ -155,7 +152,7 @@ export function PlanListPage({
             saveListColumns(store, next);
           }}
         />
-      </details>
+      </div>
       {!group ? (
         section('all', null, null, null)
       ) : groupsFailed ? (

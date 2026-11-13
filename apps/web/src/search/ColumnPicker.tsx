@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { Popover } from '../shell/Popover';
 import { type ColumnField, customColumn, DEFAULT_COLUMNS, SYSTEM_COLUMNS } from './columns';
 import { useColumnName } from './useColumnName';
 
@@ -19,7 +20,6 @@ export function ColumnPicker({ columns, fields, onChange }: ColumnPickerProps) {
   const t = useT();
   const id = useId();
   const nameOf = useColumnName(fields);
-  const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState('');
   const [said, setSaid] = useState('');
   const focusNext = useRef<string | null>(null);
@@ -70,18 +70,9 @@ export function ColumnPicker({ columns, fields, onChange }: ColumnPickerProps) {
   };
 
   return (
-    <div className="search-columns">
-      <button
-        type="button"
-        className="button-secondary search-columns-toggle"
-        aria-expanded={open}
-        aria-controls={`${id}-panel`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {t('search.columns')}
-      </button>
-      <fieldset id={`${id}-panel`} className="search-columns-panel" hidden={!open}>
-        <legend className="visually-hidden">{t('search.columns')}</legend>
+    <Popover label={t('search.columns')} title={t('search.columns')}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a click that removes its own row is still inside, so it must not reach the page and close the pop-over; the keys are the buttons' own */}
+      <div className="search-columns-panel" onClick={(event) => event.stopPropagation()}>
         <p className="form-hint">{t('search.columns.keyFirst')}</p>
         <ol className="search-columns-list">
           {columns.map((column, index) => (
@@ -161,8 +152,8 @@ export function ColumnPicker({ columns, fields, onChange }: ColumnPickerProps) {
         <p role="status" className="visually-hidden">
           {said}
         </p>
-      </fieldset>
-    </div>
+      </div>
+    </Popover>
   );
 }
 

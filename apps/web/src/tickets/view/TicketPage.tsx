@@ -40,6 +40,7 @@ import { usePaletteCommands } from '../../shell/paletteCommands';
 import { priorityName } from '../../shell/priorityName';
 import { fieldName, typeName } from '../../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
+import { useMediaQuery } from '../../shell/useMediaQuery';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
@@ -216,6 +217,12 @@ export function TicketPage(props: TicketPageProps) {
 }
 
 /**
+ * Where the ticket's columns go side by side: the `.ticket-columns` rule of ticket-view.css, at
+ * 64rem, written in pixels at the browser's default text size.
+ */
+const SIDE_BY_SIDE = '(min-width: 1024px)';
+
+/**
  * The ticket view (M1-051; CORE-022, AGL-018): the ticket's summary and description, its details
  * with the common fields editable in place, the transitions it offers, follow and vote, its links
  * and attachments, and its activity (comments, history, time entries, or all). Keyboard
@@ -241,6 +248,9 @@ export function TicketView({
   const titleId = useId();
   const descriptionId = useId();
   const detailsId = useId();
+  // The width at which Details stand beside the main column (ticket-view.css); below it they
+  // come after the ticket's tools and before Activity, and the help says so (PL-48).
+  const sideBySide = useMediaQuery(SIDE_BY_SIDE);
   const engine = useSyncEngine();
   // The page's own client reads a ticket's links; stories and tests pass one or both.
   const toolsClient = useMemo(
@@ -734,10 +744,16 @@ export function TicketView({
           />
         ) : (
           <div className="ticket-title-row">
-            <h1 id={titleId} className="page-title">
-              {t('ticketPage.title', { key: shown.key, summary: shown.summary })}
-            </h1>
-            <HelpTip name={shown.key}>{t('about.ticket')}</HelpTip>
+            {/* The help mark stays beside the title on a phone too (PL-44), and its explanation
+                opens in the flow, pushing the buttons down rather than covering them (PL-48). */}
+            <div className="ticket-title-line">
+              <h1 id={titleId} className="page-title">
+                {t('ticketPage.title', { key: shown.key, summary: shown.summary })}
+              </h1>
+              <HelpTip name={shown.key}>
+                {t(sideBySide ? 'about.ticket' : 'about.ticketStacked')}
+              </HelpTip>
+            </div>
             {loaded && mayChange(loaded, 'summary') && (
               <button
                 type="button"
@@ -887,16 +903,9 @@ export function TicketView({
                 {...(attachments ? { client: attachments } : {})}
               />
             </FileDropProvider>
-            <ActivityPanel
-              ticket={{ id: shown.id, key: shown.key }}
-              client={client}
-              comments={comments}
-              mentions={findPeople}
-              tab={tab}
-              onTab={setTab}
-              revision={revision}
-            />
           </div>
+          {/* Details come before Activity in the page's order, so a phone shows them first (D33);
+              on a wide screen they stand at the side and Activity sits under the main column. */}
           {loaded && (
             <div className="ticket-side">
               <section aria-labelledby={detailsId} className="ticket-details">
@@ -915,6 +924,17 @@ export function TicketView({
               <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
             </div>
           )}
+          <div className="ticket-activity-area">
+            <ActivityPanel
+              ticket={{ id: shown.id, key: shown.key }}
+              client={client}
+              comments={comments}
+              mentions={findPeople}
+              tab={tab}
+              onTab={setTab}
+              revision={revision}
+            />
+          </div>
         </div>
       </EditorToolsProvider>
       {cloning && loaded && (
@@ -1366,6 +1386,8 @@ function NumberFact({
             id={id}
             type="number"
             step="any"
+            // Empty reads as the other empty fields do (PL-44).
+            placeholder={t('ticketView.none')}
             value={draft ?? saved}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={save}

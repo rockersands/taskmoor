@@ -87,6 +87,22 @@
   outline: none;
 }
 
+/*
+ * In the dialog Create stays in view at its foot while the form scrolls (PL-21): a bar of the
+ * dialog's own glass whose edge and shadow show that the form goes on under it.
+ */
+.create-dialog .create-form > .form-actions {
+  position: sticky;
+  bottom: calc(-1 * var(--space-4));
+  z-index: 1;
+  margin-inline: calc(-1 * var(--space-5));
+  margin-block-end: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--glass-edge);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--shadow-1);
+}
+
 .create-dialog-head {
   display: flex;
   flex-wrap: wrap;
@@ -146,6 +162,13 @@
     border-radius: 0;
     padding: var(--space-3);
   }
+
+  .create-dialog .create-form > .form-actions {
+    bottom: calc(-1 * var(--space-3));
+    margin-inline: calc(-1 * var(--space-3));
+    margin-block-end: calc(-1 * var(--space-3));
+    padding-inline: var(--space-3);
+  }
 }
 
 @media (pointer: coarse) {
@@ -156,11 +179,17 @@
 }
 
 /* Home (M1-052): three lists side by side on wide screens, stacked on phones. */
+/* Wrapping cards that share each row: a last card alone on its row takes the whole row (PL-28). */
 .home-lists {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
-  align-items: start;
+  align-items: flex-start;
+}
+
+.home-lists > * {
+  flex: 1 1 20rem;
+  min-width: min(100%, 20rem);
 }
 
 .home-tickets {
