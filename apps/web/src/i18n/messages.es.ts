@@ -5454,6 +5454,20 @@ export const messagesEs: Record<MessageId, string> = {
   'home.signedOut':
     'Inicia sesión para ver tu trabajo, los tickets que sigues y lo que abriste hace poco.',
   'page.underConstruction': 'Esta área está en construcción.',
+  'notFound.title': 'Página no encontrada',
+  'notFound.page':
+    'No hay nada en esta dirección. Puede que el enlace esté mal escrito o ya no sirva.',
+  'notFound.waysOn': 'Cómo seguir',
+  'notFound.home': 'Ir a Inicio',
+  'notFound.search': 'Ir a Buscar',
+  'notFound.track': 'Track no encontrado',
+  'notFound.board': 'Tablero no encontrado',
+  'notFound.plan': 'Plan no encontrado',
+  'notFound.ticket': 'Ticket no encontrado',
+  'notFound.release': 'Versión no encontrada',
+  'notFound.dashboard': 'Panel no encontrado',
+  'notFound.bulk': 'Cambio en bloque no encontrado',
+  'notFound.workflow': 'Flujo de trabajo no encontrado',
   'page.itemCount': '{count, plural, =0 {Ningún elemento} one {# elemento} other {# elementos}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':
