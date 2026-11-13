@@ -2128,6 +2128,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tokens.loading': 'Leyendo los tokens…',
   'admin.tokens.failed': 'No se pudieron leer los tokens. Inténtalo de nuevo en un momento.',
   'admin.tokens.empty': 'Ningún token coincide.',
+  'admin.tokens.noneYet': 'Todavía no hay tokens de API',
+  'admin.tokens.noneYetBody':
+    'Los tokens aparecen aquí cuando una persona o una cuenta de servicio crea uno.',
   'admin.tokens.count': '{count, plural, one {# token} other {# tokens}}',
   'admin.tokens.revokeNamed': 'Revocar {name} de {owner}',
   'admin.tokens.revoked': 'Se revocó {name} de {owner}.',
@@ -2136,7 +2139,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los tokens revocados dejan de funcionar al instante; sus propietarios crean otros nuevos. Los tokens caducados se dejan como están.',
   'admin.tokens.bulkWhich': 'Qué tokens',
   'admin.tokens.bulkOwner': 'Todos los tokens de un propietario',
-  'admin.tokens.bulkBefore': 'Tokens creados antes de un día',
+  'admin.tokens.bulkBefore': 'Tokens creados antes de una fecha',
   'admin.tokens.bulkAll': 'Todos los tokens',
   'admin.tokens.owner': 'Propietario',
   'admin.tokens.chooseOwner': 'Elige un propietario',
@@ -2147,6 +2150,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tokens.bulkConfirm':
     '{count, plural, =0 {Ningún token activo coincide.} one {Esto revoca # token activo. Los programas que lo usan dejan de funcionar al instante.} other {Esto revoca # tokens activos. Los programas que los usan dejan de funcionar al instante.}}',
   'admin.tokens.confirm': 'Confirmar la revocación',
+  'admin.tokens.revokeConfirm':
+    '¿Revocar {name} de {owner}? Los programas que lo usan dejan de funcionar al momento, y un token revocado no se puede volver a usar.',
   'admin.tokens.cancel': 'Cancelar',
   'admin.tokens.bulkDone':
     '{count, plural, =0 {No se revocó ningún token.} one {Se revocó # token.} other {Se revocaron # tokens.}}',
@@ -2819,6 +2824,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.linkDone': 'Hecho',
   'admin.users.deactivate': 'Desactivar',
   'admin.users.deactivateOf': 'Desactivar a {name}',
+  'admin.users.deactivateConfirm':
+    'Se cierra la sesión de {name} en todas partes y ya no puede iniciar sesión. Sus tickets y su historial se quedan, y puedes reactivarle más tarde.',
+  'admin.users.deactivateCancel': 'Mantener activo',
   'admin.users.reactivate': 'Reactivar',
   'admin.users.reactivateOf': 'Reactivar a {name}',
   'admin.users.deactivatedSaid': 'Se desactivó a {name} y se cerró su sesión en todos los lugares.',
@@ -3342,7 +3350,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.cancel': 'Cancelar',
   'admin.permissions.deleteRole': 'Eliminar',
   'admin.permissions.deleteRoleOf': 'Eliminar el rol {name}',
-  'admin.permissions.confirmDeleteRole': '¿Eliminar el rol {name}?',
+  'admin.permissions.confirmDeleteRole':
+    '¿Eliminar el rol {name}? Mientras una política de acceso lo dé, se mantiene. Una vez eliminado no se puede recuperar.',
   'admin.permissions.confirmYes': 'Sí, eliminar',
   'admin.permissions.confirmNo': 'Conservarlo',
   'admin.permissions.policies': 'Políticas de acceso',
@@ -3361,7 +3370,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.noGrants': 'Aún nadie puede hacer nada aquí.',
   'admin.permissions.deletePolicy': 'Eliminar la política',
   'admin.permissions.deletePolicyOf': 'Eliminar la política {name}',
-  'admin.permissions.confirmDeletePolicy': '¿Eliminar {name}?',
+  'admin.permissions.confirmDeletePolicy':
+    '¿Eliminar la política de acceso {name}? Mientras un track la use, se mantiene. Una vez eliminada no se puede recuperar.',
   'admin.permissions.addGrant': 'Dar un permiso',
   'admin.permissions.addGrantTo': 'Dar un permiso en {name}',
   'admin.permissions.permission': 'Permiso',

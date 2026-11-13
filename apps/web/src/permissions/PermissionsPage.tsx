@@ -302,7 +302,7 @@ function RoleRow({
             </button>
             <button
               type="button"
-              className="button-secondary people-action"
+              className="button-secondary button-danger-outline people-action"
               aria-label={t('admin.permissions.deleteRoleOf', { name: role.name })}
               onClick={() => setConfirming(true)}
             >
@@ -587,7 +587,7 @@ function PolicyPanel({
           ) : (
             <button
               type="button"
-              className="button-secondary"
+              className="button-secondary button-danger-outline"
               aria-label={t('admin.permissions.deletePolicyOf', { name })}
               onClick={() => setConfirming(true)}
             >

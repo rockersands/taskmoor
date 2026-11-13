@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { PersonalDataSection } from '../account/PersonalDataSection';
+import { DangerConfirm } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -44,7 +45,10 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState<{ name: string; url: string } | null>(null);
   /** The person whose data panel or erase form is open. */
-  const [open, setOpen] = useState<{ user: User; panel: 'data' | 'erase' } | null>(null);
+  const [open, setOpen] = useState<{
+    user: User;
+    panel: 'data' | 'erase' | 'deactivate';
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -181,7 +185,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
             ) : (
               <>
                 <p className="page-note">{t('admin.users.count', { count: state.total })}</p>
-                <ul className="people-list">
+                <ul className="people-list people-list-users">
                   {state.users.map((u) => (
                     <li key={u.id} className="people-item">
                       <div className="people-main">
@@ -249,14 +253,15 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             (u.active ? (
                               <button
                                 type="button"
-                                className="button-secondary people-action"
+                                className="button-secondary button-danger-outline people-action"
                                 aria-label={t('admin.users.deactivateOf', { name: u.name })}
-                                onClick={() =>
-                                  void act(
-                                    () => client.deactivate(u.id),
-                                    t('admin.users.deactivatedSaid', { name: u.name }),
-                                  )
+                                aria-expanded={
+                                  open?.user.id === u.id && open.panel === 'deactivate'
                                 }
+                                onClick={() => {
+                                  setProblem(null);
+                                  setOpen({ user: u, panel: 'deactivate' });
+                                }}
                               >
                                 {t('admin.users.deactivate')}
                               </button>
@@ -293,7 +298,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                           {u.id !== me && (
                             <button
                               type="button"
-                              className="button-secondary people-action"
+                              className="button-secondary button-danger-outline people-action"
                               aria-label={t('admin.users.eraseOf', { name: u.name })}
                               onClick={() => {
                                 setProblem(null);
@@ -321,6 +326,21 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             </button>
                           </div>
                         </div>
+                      )}
+                      {open?.user.id === u.id && open.panel === 'deactivate' && (
+                        <DangerConfirm
+                          message={t('admin.users.deactivateConfirm', { name: u.name })}
+                          confirmLabel={t('admin.users.deactivate')}
+                          cancelLabel={t('admin.users.deactivateCancel')}
+                          onCancel={() => setOpen(null)}
+                          onConfirm={() => {
+                            setOpen(null);
+                            void act(
+                              () => client.deactivate(u.id),
+                              t('admin.users.deactivatedSaid', { name: u.name }),
+                            );
+                          }}
+                        />
                       )}
                       {open?.user.id === u.id && open.panel === 'erase' && (
                         <div className="people-panel">

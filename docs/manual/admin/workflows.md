@@ -2,7 +2,7 @@
 title: "Workflows"
 audience: admins
 sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts
-accessed: 2026-11-06
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Workflows
@@ -32,7 +32,8 @@ Active, In Review and Under review (active); Approved, Rejected, Cancelled, Publ
 (closed).
 
 The **Statuses** section of **Administration**, **Workflows** manages them: **Add a status** (with
-**Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**.
+**Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**. **Delete**
+is in the danger colour and asks first. On a phone a status's buttons share one line.
 
 - A status keeps its stage while tickets are in it.
 - Changing a status's stage takes the free moves into it along: on every workflow whose global

@@ -2076,6 +2076,8 @@ export const messagesEn = {
   'admin.tokens.loading': 'Reading the tokens…',
   'admin.tokens.failed': 'The tokens could not be read. Try again in a moment.',
   'admin.tokens.empty': 'No token matches.',
+  'admin.tokens.noneYet': 'No API tokens yet',
+  'admin.tokens.noneYetBody': 'Tokens show here once a person or a service account creates one.',
   'admin.tokens.count': '{count, plural, one {# token} other {# tokens}}',
   'admin.tokens.revokeNamed': 'Revoke {name} of {owner}',
   'admin.tokens.revoked': 'Revoked {name} of {owner}.',
@@ -2084,7 +2086,7 @@ export const messagesEn = {
     'Revoked tokens stop working at once; their owners create new ones. Expired tokens are left as they are.',
   'admin.tokens.bulkWhich': 'Which tokens',
   'admin.tokens.bulkOwner': 'Every token of one owner',
-  'admin.tokens.bulkBefore': 'Tokens created before a day',
+  'admin.tokens.bulkBefore': 'Tokens created before a date',
   'admin.tokens.bulkAll': 'Every token',
   'admin.tokens.owner': 'Owner',
   'admin.tokens.chooseOwner': 'Choose an owner',
@@ -2095,6 +2097,8 @@ export const messagesEn = {
   'admin.tokens.bulkConfirm':
     '{count, plural, =0 {No active token matches.} one {This revokes # active token. Programs using it stop working at once.} other {This revokes # active tokens. Programs using them stop working at once.}}',
   'admin.tokens.confirm': 'Confirm revocation',
+  'admin.tokens.revokeConfirm':
+    'Revoke {name} of {owner}? Programs using it stop working at once, and a revoked token cannot be used again.',
   'admin.tokens.cancel': 'Cancel',
   'admin.tokens.bulkDone':
     '{count, plural, =0 {No token was revoked.} one {Revoked # token.} other {Revoked # tokens.}}',
@@ -2743,6 +2747,9 @@ export const messagesEn = {
   'admin.users.linkDone': 'Done',
   'admin.users.deactivate': 'Deactivate',
   'admin.users.deactivateOf': 'Deactivate {name}',
+  'admin.users.deactivateConfirm':
+    '{name} is signed out everywhere at once and can no longer sign in. Their tickets and history stay, and you can reactivate them later.',
+  'admin.users.deactivateCancel': 'Keep active',
   'admin.users.reactivate': 'Reactivate',
   'admin.users.reactivateOf': 'Reactivate {name}',
   'admin.users.deactivatedSaid': '{name} was deactivated and signed out everywhere.',
@@ -3256,7 +3263,8 @@ export const messagesEn = {
   'admin.permissions.cancel': 'Cancel',
   'admin.permissions.deleteRole': 'Delete',
   'admin.permissions.deleteRoleOf': 'Delete role {name}',
-  'admin.permissions.confirmDeleteRole': 'Delete role {name}?',
+  'admin.permissions.confirmDeleteRole':
+    'Delete the role {name}? While an access policy still gives it, it is kept. Once deleted it cannot be brought back.',
   'admin.permissions.confirmYes': 'Yes, delete',
   'admin.permissions.confirmNo': 'Keep it',
   'admin.permissions.policies': 'Access policies',
@@ -3275,7 +3283,8 @@ export const messagesEn = {
   'admin.permissions.noGrants': 'Nobody may do anything here yet.',
   'admin.permissions.deletePolicy': 'Delete policy',
   'admin.permissions.deletePolicyOf': 'Delete policy {name}',
-  'admin.permissions.confirmDeletePolicy': 'Delete {name}?',
+  'admin.permissions.confirmDeletePolicy':
+    'Delete the access policy {name}? While a track uses it, it is kept. Once deleted it cannot be brought back.',
   'admin.permissions.addGrant': 'Give a permission',
   'admin.permissions.addGrantTo': 'Give a permission in {name}',
   'admin.permissions.permission': 'Permission',

@@ -755,3 +755,15 @@
 .workflow-details summary.admin-disclosure::after {
   margin-inline-start: 0;
 }
+
+/* On a phone a status's buttons share one line evenly, never leaving one alone (AD-29). */
+@media (max-width: 30rem) {
+  .status-item .token-actions {
+    flex: 1 1 100%;
+  }
+
+  .status-item .token-actions > button {
+    flex: 1 1 auto;
+    padding-inline: var(--space-2);
+  }
+}

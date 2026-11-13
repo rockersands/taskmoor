@@ -73,9 +73,19 @@ describe('people (M1-053, IAM-008)', () => {
 
   it('[IAM-008] deactivates and reactivates someone, and makes a site administrator', async () => {
     const user = userEvent.setup();
-    renderPage('users');
+    const client = renderPage('users');
     await list();
-    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
+    const trigger = screen.getByRole('button', { name: 'Deactivate Bo Rivera' });
+    // A destructive action looks it, and asks first, saying what will happen (D13, AD-16).
+    expect(trigger).toHaveClass('button-danger-outline');
+    await user.click(trigger);
+    expect(client.calls.some((c) => c.action === 'deactivate')).toBe(false);
+    const confirm = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
+    expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveFocus();
+    expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveClass(
+      'button-danger',
+    );
+    await user.click(within(confirm).getByRole('button', { name: 'Deactivate' }));
     expect(
       await screen.findByText('Bo Rivera was deactivated and signed out everywhere.'),
     ).toBeInTheDocument();
