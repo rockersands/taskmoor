@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
-import { useT } from '../i18n/I18nProvider';
-import type { MessageId } from '../i18n/messages.en';
+import { type Translate, useT } from '../i18n/I18nProvider';
+import { type MessageId, messagesEn } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { PageHeader } from '../shell/PageHeader';
@@ -18,7 +19,7 @@ export interface GuardrailsPageProps {
 
 /**
  * Configuration guardrails (M1-055; CORE-026), for site administrators: every limit with its
- * default and where it is used most, and a form to change it. A raise takes effect at once and
+ * default and where it is used most, all changed in one form with one Save (D20). A raise takes effect at once and
  * comes with guidance; a lowered limit leaves what exists and refuses further additions.
  * Attachment storage against its quotas follows (M1-118; ASVS 12.1.3).
  */
@@ -52,16 +53,30 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
     if (!notAdmin) void load();
   }, [load, notAdmin]);
 
-  const save = async (guardrail: Guardrail, limit: number) => {
+  /** Every changed limit, saved together with the page's one Save (D20). */
+  const saveAll = async (changes: { guardrail: Guardrail; limit: number }[]) => {
+    setProblem(null);
+    if (changes.length === 0) {
+      setMessage(t('guardrails.nothingChanged'));
+      setRaised(false);
+      return;
+    }
     try {
-      await client.set(guardrail.name, limit);
-      const name = t(`guardrails.name.${guardrail.name}` as MessageId);
-      setMessage(t('guardrails.saved', { name, limit }));
-      setRaised(limit > guardrail.limit);
-      setProblem(null);
+      for (const { guardrail, limit } of changes) await client.set(guardrail.name, limit);
+      const [only] = changes;
+      setMessage(
+        changes.length === 1 && only
+          ? t('guardrails.saved', {
+              name: t(`guardrails.name.${only.guardrail.name}` as MessageId),
+              limit: only.limit,
+            })
+          : t('guardrails.savedMany', { count: changes.length }),
+      );
+      setRaised(changes.some(({ guardrail, limit }) => limit > guardrail.limit));
       await load();
     } catch {
       setProblem(t('guardrails.failed'));
+      await load();
     }
   };
 
@@ -94,16 +109,12 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
             </p>
           )}
           {state.status === 'loaded' && (
-            <ul className="people-list">
-              {state.guardrails.map((g) => (
-                <GuardrailRow
-                  key={g.name}
-                  guardrail={g}
-                  ceiling={state.ceiling}
-                  onSave={(limit) => void save(g, limit)}
-                />
-              ))}
-            </ul>
+            <LimitsForm
+              key={state.guardrails.map((g) => `${g.name}:${g.limit}`).join()}
+              guardrails={state.guardrails}
+              ceiling={state.ceiling}
+              onSave={saveAll}
+            />
           )}
           {!notAdmin && <StorageQuotas {...(storage ? { client: storage } : {})} />}
         </>
@@ -112,18 +123,128 @@ export function GuardrailsPage({ client = guardrailsClient, storage }: Guardrail
   );
 }
 
-function GuardrailRow({
-  guardrail,
+/** A number typed with or without separators ("20,000", "20 000"), or null when it is not one. */
+export function parseLimit(text: string): number | null {
+  const digits = text.replace(/[\s,.  ']/g, '');
+  return /^\d+$/.test(digits) ? Number(digits) : null;
+}
+
+/** Every limit in one form with one Save (D20, AD-32). */
+function LimitsForm({
+  guardrails,
   ceiling,
   onSave,
 }: {
-  guardrail: Guardrail;
+  guardrails: Guardrail[];
   ceiling: number;
-  onSave: (limit: number) => void;
+  onSave: (changes: { guardrail: Guardrail; limit: number }[]) => Promise<void>;
 }) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
-  const [value, setValue] = useState(String(guardrail.limit));
+  // Each limit as written, with the separators the text beside it uses.
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(guardrails.map((g) => [g.name, intl.formatNumber(g.limit)])),
+  );
+  const [invalid, setInvalid] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const wrong = guardrails
+      .filter((g) => {
+        const limit = parseLimit(values[g.name] ?? '');
+        return limit === null || limit < 1 || limit > ceiling;
+      })
+      .map((g) => g.name);
+    setInvalid(wrong);
+    if (wrong.length > 0) return;
+    const changes = guardrails
+      .map((guardrail) => ({ guardrail, limit: parseLimit(values[guardrail.name] ?? '') ?? 0 }))
+      .filter(({ guardrail, limit }) => limit !== guardrail.limit);
+    setBusy(true);
+    try {
+      await onSave(changes);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form
+      className="guardrails-limits"
+      aria-label={t('guardrails.formLabel')}
+      onSubmit={(event) => void submit(event)}
+      noValidate
+    >
+      <ul className="people-list">
+        {guardrails.map((g) => (
+          <GuardrailRow
+            key={g.name}
+            id={`${id}-${g.name}`}
+            guardrail={g}
+            value={values[g.name] ?? ''}
+            invalid={invalid.includes(g.name)}
+            onChange={(value) => setValues((was) => ({ ...was, [g.name]: value }))}
+          />
+        ))}
+      </ul>
+      {invalid.length > 0 && (
+        <p role="alert" className="form-error">
+          {t('guardrails.invalid', { ceiling })}
+        </p>
+      )}
+      <div className="form-actions">
+        <button type="submit" className="button-primary" disabled={busy}>
+          {t('guardrails.saveAll')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Where a limit is used most, in words: a permission by its label, a bulk change by its kind. */
+function usageText(t: Translate, guardrail: Guardrail): string {
+  const { value, where } = guardrail.usage;
+  const { limit } = guardrail;
+  if (!where) return t('guardrails.unused', { limit });
+  if (where.kind === 'access_policy') {
+    // The server names it "<policy>: <permission key>"; the key reads as its label (AD-32).
+    const cut = where.name.lastIndexOf(': ');
+    const key = cut < 0 ? '' : where.name.slice(cut + 2);
+    if (`permission.${key}` in messagesEn) {
+      return t('guardrails.usagePermission', {
+        value,
+        limit,
+        policy: where.name.slice(0, cut),
+        permission: t(`permission.${key}` as MessageId),
+      });
+    }
+  }
+  if (where.kind === 'bulk_operation' && BULK_ACTIONS.includes(where.name)) {
+    return t('guardrails.usageBulk', {
+      value,
+      limit,
+      action: t(`guardrails.bulk.${where.name}` as MessageId),
+    });
+  }
+  return t('guardrails.usage', { value, limit, where: where.name });
+}
+
+const BULK_ACTIONS: readonly string[] = ['edit', 'move', 'transition', 'delete', 'clone'];
+
+function GuardrailRow({
+  id,
+  guardrail,
+  value,
+  invalid,
+  onChange,
+}: {
+  id: string;
+  guardrail: Guardrail;
+  value: string;
+  invalid: boolean;
+  onChange: (value: string) => void;
+}) {
+  const t = useT();
   const name = t(`guardrails.name.${guardrail.name}` as MessageId);
   const over = guardrail.usage.value > guardrail.limit;
   const share = Math.min(100, Math.round((guardrail.usage.value / guardrail.limit) * 100));
@@ -134,15 +255,7 @@ function GuardrailRow({
           {name}
           {over && <span className="people-badge">{t('guardrails.over')}</span>}
         </p>
-        <p className="people-meta">
-          {guardrail.usage.where
-            ? t('guardrails.usage', {
-                value: guardrail.usage.value,
-                limit: guardrail.limit,
-                where: guardrail.usage.where.name,
-              })
-            : t('guardrails.unused', { limit: guardrail.limit })}
-        </p>
+        <p className="people-meta">{usageText(t, guardrail)}</p>
         <meter
           className="guardrails-meter"
           min={0}
@@ -154,35 +267,24 @@ function GuardrailRow({
           aria-label={t('guardrails.share', { name, share })}
         />
       </div>
-      <form
-        className="people-inline guardrails-form"
-        aria-label={t('guardrails.changeOf', { name })}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const limit = Number(value);
-          if (Number.isInteger(limit) && limit >= 1 && limit <= ceiling) onSave(limit);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={`${id}-limit`} className="form-label">
-            {t('guardrails.limit')}
-          </label>
-          <input
-            id={`${id}-limit`}
-            type="number"
-            min={1}
-            max={ceiling}
-            step={1}
-            inputMode="numeric"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-          <p className="form-hint">{t('guardrails.default', { value: guardrail.default })}</p>
-        </div>
-        <button type="submit" className="button-secondary">
-          {t('guardrails.save')}
-        </button>
-      </form>
+      <div className="form-field guardrails-form">
+        <label htmlFor={id} className="form-label">
+          {t('guardrails.limitOf', { name })}
+        </label>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={value}
+          aria-invalid={invalid || undefined}
+          aria-describedby={`${id}-default`}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <p id={`${id}-default`} className="form-hint">
+          {t('guardrails.default', { value: guardrail.default })}
+        </p>
+      </div>
     </li>
   );
 }

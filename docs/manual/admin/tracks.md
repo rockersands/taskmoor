@@ -2,7 +2,7 @@
 title: "Tracks"
 audience: admins
 sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts
-accessed: 2026-11-04
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Tracks
@@ -411,7 +411,9 @@ free again. See also [backups and restore](backups.md).
 
 Guardrails limit how much configuration one track, field, policy, map, set or workflow may hold.
 Site administrators see and change them on **Administration**, **Guardrails**: each shows where it is
-used most, marks usage **Above the limit**, and takes a new **Limit** with **Save the limit**.
+used most (a permission by its name, a bulk change by its kind), marks usage **Above the limit**,
+and has its own **Limit** field, which takes a whole number with or without separators. One
+**Save the limits** at the end saves every limit you changed.
 
 | Guardrail | Default |
 |---|---|

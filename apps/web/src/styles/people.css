@@ -240,10 +240,14 @@
 }
 
 .guardrails-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.guardrails-limits {
+  display: grid;
+  gap: var(--space-3);
 }
 
 .guardrails-form input {
