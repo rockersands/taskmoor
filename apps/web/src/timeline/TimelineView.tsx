@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type KeyboardEvent,
+  memo,
   type PointerEvent,
   type ReactNode,
   useCallback,
@@ -82,14 +83,21 @@ interface Drag {
 }
 
 /**
- * The part of the lanes in view, in the lanes' own pixels: from `left`, `width` wide (0 before
- * the first measure, and in a test without layout); `below` while rows wait under the card's edge.
+ * What the lanes in view leave out: the tickets whose bars lie wholly before them or after them
+ * (none before the first measure, and in a test without layout), and `below` while rows wait under
+ * the card's edge. It changes only when a bar crosses an edge, never on every scrolled pixel, so
+ * scrolling sideways draws the timeline again only then.
  */
 interface Seen {
-  left: number;
-  width: number;
+  before: ReadonlySet<number>;
+  after: ReadonlySet<number>;
   below: boolean;
 }
+
+const NONE: ReadonlySet<number> = new Set();
+/** Whether a set holds exactly these ids. */
+const holdsExactly = (set: ReadonlySet<number>, ids: readonly number[]) =>
+  set.size === ids.length && ids.every((i) => set.has(i));
 
 /**
  * The drawing of a timeline (M1-048; AGL-015; PLN-012): tickets as bars over the calendar,
@@ -139,7 +147,7 @@ export function TimelineView({
   /** On a phone or a touch screen the hint speaks of fingers, not keys (D6). */
   const touch = useTouchWording();
   /** The lanes in view, in their own coordinates, and whether rows wait below the card's edge. */
-  const [seen, setSeen] = useState<Seen>({ left: 0, width: 0, below: false });
+  const [seen, setSeen] = useState<Seen>({ before: NONE, after: NONE, below: false });
   /** Set when a drag ends, so the click that follows does not open the panel. */
   const justDragged = useRef(false);
 
@@ -212,20 +220,38 @@ export function TimelineView({
       el.removeEventListener('scroll', onScroll);
     };
   }, [windowed]);
+  /** Each dated bar's days, to tell which lie outside the days in view. */
+  const spans = useMemo(
+    () =>
+      data.items.flatMap((item) => {
+        const bar = barOf(item);
+        return bar ? [{ id: item.id, start: bar.start, due: bar.due }] : [];
+      }),
+    [data],
+  );
   // What is in view, for the markers of bars outside it and the cue that rows wait below (PL-6, PL-7).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: measured again when the drawing changes size
+  // The scroll offset itself stays out of state: only the bars past each edge, and the cue, are kept.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: measured again when the rows change too
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
     const measure = () => {
       const label = el.querySelector<HTMLElement>('.timeline-corner')?.offsetWidth ?? 0;
-      const next: Seen = {
-        left: Math.round(el.scrollLeft),
-        width: Math.max(0, el.clientWidth - label),
-        below: el.scrollTop + el.clientHeight < el.scrollHeight - 1,
-      };
+      const left = Math.round(el.scrollLeft);
+      const shown = Math.max(0, el.clientWidth - label);
+      const before: number[] = [];
+      const after: number[] = [];
+      if (shown > 0) {
+        for (const span of spans) {
+          if ((span.due + 1 - range.from) * px <= left) before.push(span.id);
+          else if ((span.start - range.from) * px >= left + shown) after.push(span.id);
+        }
+      }
+      const below = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
       setSeen((was) =>
-        was.left === next.left && was.width === next.width && was.below === next.below ? was : next,
+        holdsExactly(was.before, before) && holdsExactly(was.after, after) && was.below === below
+          ? was
+          : { before: new Set(before), after: new Set(after), below },
       );
     };
     measure();
@@ -236,12 +262,16 @@ export function TimelineView({
     };
     el.addEventListener('scroll', later, { passive: true });
     window.addEventListener('resize', later);
+    // The card narrows without the window: a side panel opens beside it, or the page's column moves.
+    const resized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later);
+    resized?.observe(el);
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener('scroll', later);
       window.removeEventListener('resize', later);
+      resized?.disconnect();
     };
-  }, [rows.length, zoom, range.days]);
+  }, [spans, range.from, px, rows.length]);
   const viewHeight = Math.max(scroller.current?.clientHeight ?? 0, ROW * 20);
   const top = Math.max(0, step * STEP * ROW - (head.current?.offsetHeight ?? 0));
   const firstRow = windowed ? Math.max(0, Math.floor(top / ROW) - OVERSCAN) : 0;
@@ -434,11 +464,11 @@ export function TimelineView({
       : '';
     // A bar wholly outside the days in view gets a marker at that edge, so no row looks empty.
     const edge =
-      !days || live || seen.width === 0
+      !days || live
         ? null
-        : x(days.due + 1) <= seen.left
+        : seen.before.has(item.id)
           ? 'before'
-          : x(days.start) >= seen.left + seen.width
+          : seen.after.has(item.id)
             ? 'after'
             : null;
     return (
@@ -552,10 +582,10 @@ export function TimelineView({
             </button>
           )}
           {edge && days && (
+            // Held at that edge of the lanes in view by sticky CSS, not by the scroll offset.
             <button
               type="button"
               className={`timeline-edge is-${edge}`}
-              style={{ left: edge === 'before' ? seen.left : seen.left + seen.width }}
               aria-label={t(
                 edge === 'before' ? 'timeline.edge.beforeLabel' : 'timeline.edge.afterLabel',
                 {
@@ -563,7 +593,16 @@ export function TimelineView({
                   date: dayText(edge === 'before' ? days.due : days.start),
                 },
               )}
-              onClick={() => scrollToDay(days.start)}
+              onClick={(event) => {
+                const row = event.currentTarget.closest('li');
+                scrollToDay(days.start);
+                // The marker goes once its bar is in view: the bar takes the focus, or the key
+                // where the bar is rolled up and cannot, so the keyboard never drops to the page.
+                const next =
+                  row?.querySelector<HTMLElement>('button.timeline-bar') ??
+                  row?.querySelector<HTMLElement>('.timeline-key');
+                next?.focus({ preventScroll: true });
+              }}
             >
               {t(edge === 'before' ? 'timeline.edge.before' : 'timeline.edge.after')}
             </button>
@@ -796,6 +835,8 @@ export function TimelineView({
               )}
             </ul>
           </div>
+          {/* Over the rows in view, not on the card: a mask there would fade its scrollbar too. */}
+          {seen.below && <div className="timeline-fade" aria-hidden="true" />}
         </section>
         {chosen && (
           <SchedulePanel
@@ -822,10 +863,26 @@ export function TimelineView({
 /**
  * What the bar styles mean (D29), only those the timeline draws: a ticket's own days, days from
  * its sprint (hatched), a span rolled up from its children (outlined, the closed share filled),
- * a ticket with no dates, today, releases and late dependencies.
+ * a ticket with no dates, today, releases and late dependencies. Worked out again only when the
+ * timeline's data changes, not each time the timeline is drawn.
  */
-function TimelineLegend({ data }: { data: TimelineData }) {
+const TimelineLegend = memo(function TimelineLegend({ data }: { data: TimelineData }) {
   const t = useT();
+  const entries = useMemo(() => legendEntries(data), [data]);
+  return (
+    <ul className="timeline-legend" aria-label={t('timeline.legend')}>
+      {entries.map((e) => (
+        <li key={e.key}>
+          <span className={`timeline-legend-mark is-${e.key}`} aria-hidden="true" />
+          {t(e.label)}
+        </li>
+      ))}
+    </ul>
+  );
+});
+
+/** The legend's entries: the bar styles a timeline's data draws. */
+function legendEntries(data: TimelineData): { key: string; label: MessageId }[] {
   const bars = data.items.map((i) => ({ item: i, bar: barOf(i) }));
   const byId = new Map(data.items.map((i) => [i.id, i]));
   const late = data.links.some((l) => {
@@ -852,17 +909,7 @@ function TimelineLegend({ data }: { data: TimelineData }) {
     [data.links.length > 0, 'link', 'timeline.legend.link'],
     [late, 'late', 'timeline.legend.late'],
   ];
-  const entries = shown.flatMap(([on, key, label]) => (on ? [{ key, label }] : []));
-  return (
-    <ul className="timeline-legend" aria-label={t('timeline.legend')}>
-      {entries.map((e) => (
-        <li key={e.key}>
-          <span className={`timeline-legend-mark is-${e.key}`} aria-hidden="true" />
-          {t(e.label)}
-        </li>
-      ))}
-    </ul>
-  );
+  return shown.flatMap(([on, key, label]) => (on ? [{ key, label }] : []));
 }
 
 /** A ticket's days in a side panel: the keyboard's and the phone's way to reschedule. */

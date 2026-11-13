@@ -139,9 +139,10 @@ is archived, the ticket is gone, the dates are not valid, or the ticket changed 
 On a phone, the month's name has a line of its own above **Previous month** and **Next month**,
 and the calendar becomes a list of only the days that have something on them (a ticket, a
 release, or the first day of a sprint), each named by its weekday and date, such as "Thu, Nov 5".
-A month with nothing on it says so. To move a ticket to a day the list does not show, use its
-grip's menu. On a phone or a touch screen, the hint under the month speaks of fingers and grips
-instead of the keyboard.
+A month with nothing on it says so. A drag reaches only the days in the list; to move a ticket to
+a day the list does not show, use its grip's menu, which moves it a day or a week at a time. On a
+phone or a touch screen, the hint under the month speaks of fingers and grips instead of the
+keyboard, and on a phone it says that a drag reaches the days listed and the grip's menu any day.
 
 ## The timeline
 

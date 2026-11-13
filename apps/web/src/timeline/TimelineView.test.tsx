@@ -7,14 +7,14 @@ import { TimelineView } from './TimelineView';
 
 const ROW = 44;
 
-function view(data: Timeline) {
+function view(data: Timeline, now = () => new Date('2026-11-04T09:00:00Z')) {
   return (
     <I18nProvider locale="en">
       <TimelineView
         data={data}
         reschedule={async () => ({ ok: true })}
         reload={() => {}}
-        now={() => new Date('2026-11-04T09:00:00Z')}
+        now={now}
         truncatedText="cut"
       />
     </I18nProvider>
@@ -98,8 +98,9 @@ describe('what the chart shows and where (PLN-012)', () => {
       name: 'Earlier: LCH-2 ends Nov 10, 2026, before the days shown. Show it',
     });
     expect(earlier).toHaveTextContent(/^Earlier$/);
-    // It sits at the left edge of the lanes in view.
-    expect(earlier.style.left).toBe('2000px');
+    // In LCH-2's row, at the left edge of the lanes in view (sticky CSS holds it there).
+    expect(earlier.closest('li')).toHaveAttribute('data-row', 'i:2');
+    expect(earlier).toHaveClass('is-before');
     // Back at the start of the range, a bar after the days in view is marked "Later".
     chart.scrollLeft = 0;
     act(() => {
@@ -112,6 +113,80 @@ describe('what the chart shows and where (PLN-012)', () => {
     expect(chart.scrollLeft).toBeGreaterThan(0);
   });
 
+  it('[PLN-012] draws the timeline again only when a bar crosses an edge, not on every scroll', () => {
+    // `now` is read once each time the timeline is drawn.
+    const now = vi.fn(() => new Date('2026-11-04T09:00:00Z'));
+    render(view(fakeTimelineClient().data(), now));
+    const chart = screen.getByRole('region', { name: 'Tickets by date' });
+    layOut(chart, { width: 600, height: 400, content: 400 });
+    chart.scrollLeft = 2000;
+    act(() => {
+      fireEvent.scroll(chart);
+    });
+    expect(screen.getByRole('button', { name: /^Earlier: LCH-2 / })).toBeInTheDocument();
+    const drawn = now.mock.calls.length;
+    // Further along, with every bar still before the days in view: nothing to draw again.
+    for (const left of [2010, 2040, 2100]) {
+      chart.scrollLeft = left;
+      act(() => {
+        fireEvent.scroll(chart);
+      });
+    }
+    expect(now.mock.calls.length).toBe(drawn);
+  });
+
+  it('[PLN-012] gives the focus to the bar a marker shows, not to the page', () => {
+    render(view(fakeTimelineClient().data()));
+    const chart = screen.getByRole('region', { name: 'Tickets by date' });
+    layOut(chart, { width: 600, height: 400, content: 400 });
+    chart.scrollLeft = 0;
+    act(() => {
+      fireEvent.scroll(chart);
+    });
+    const later = screen.getByRole('button', { name: /^Later: LCH-4 / });
+    act(() => later.focus());
+    act(() => later.click());
+    // The scroll lands, the bar is in view and its marker goes.
+    act(() => {
+      fireEvent.scroll(chart);
+    });
+    expect(screen.queryByRole('button', { name: /^Later: LCH-4 / })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^LCH-4: / }));
+  });
+
+  it('[PLN-012] measures the chart again when it narrows without the window, as a panel opens', () => {
+    const observed: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        callback: () => void;
+        constructor(callback: () => void) {
+          this.callback = callback;
+        }
+        observe() {
+          observed.push(this.callback);
+        }
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    render(view(fakeTimelineClient().data()));
+    const chart = screen.getByRole('region', { name: 'Tickets by date' });
+    // From the range's start, wide enough for every bar.
+    layOut(chart, { width: 5000, height: 400, content: 400 });
+    chart.scrollLeft = 0;
+    act(() => {
+      fireEvent.scroll(chart);
+    });
+    expect(screen.queryByRole('button', { name: /^Later: / })).toBeNull();
+    // Narrowed, with no scroll and no window resize: only the card's own size says so.
+    layOut(chart, { width: 600, height: 400, content: 400 });
+    act(() => {
+      for (const callback of observed) callback();
+    });
+    expect(screen.getByRole('button', { name: /^Later: LCH-4 / })).toBeInTheDocument();
+  });
+
   it('[PLN-012] fades the card’s lower edge while rows wait below, and is reached by keyboard', () => {
     render(view(fakeTimelineClient().data()));
     const chart = screen.getByRole('region', { name: 'Tickets by date' });
@@ -121,11 +196,13 @@ describe('what the chart shows and where (PLN-012)', () => {
       fireEvent.scroll(chart);
     });
     expect(chart).toHaveClass('has-more-below');
+    expect(chart.querySelector('.timeline-fade')).not.toBeNull();
     Object.defineProperty(chart, 'scrollTop', { configurable: true, value: 400 });
     act(() => {
       fireEvent.scroll(chart);
     });
     expect(chart).not.toHaveClass('has-more-below');
+    expect(chart.querySelector('.timeline-fade')).toBeNull();
   });
 
   it('[PLN-012] explains its bar styles in a legend, only those it draws (D29)', () => {
