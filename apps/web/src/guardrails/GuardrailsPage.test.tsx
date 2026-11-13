@@ -106,7 +106,7 @@ describe('guardrails (M1-055)', () => {
     // The second of three failed: the first and third are saved and named, the second is named
     // as not saved, and every field keeps what was typed.
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Not saved: Releases per track (archived ones aside). Try again in a moment',
+      'This limit was not saved: Releases per track (archived ones aside). Try again in a moment',
     );
     expect(
       screen.getByText('Saved: Custom fields per track and Options per field.'),

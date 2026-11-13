@@ -28,12 +28,30 @@ describe('permission administration (M1-053)', () => {
   it('[IAM-009] adds a role, changes it, and refuses to delete one a policy uses', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const form = await screen.findByRole('form', { name: 'Add a role' });
+    // The roles come first; "New role" opens the form, and Cancel closes it (D11, AD-18).
+    const roles = await screen.findByRole('region', { name: 'Roles' });
+    expect(within(roles).getByText('Members')).toBeVisible();
+    expect(screen.queryByRole('form', { name: 'Add a role' })).toBeNull();
+    const opener = within(roles).getByRole('button', { name: 'New role' });
+    expect(opener).toHaveClass('button-primary');
+    await user.click(opener);
+    expect(opener).toHaveAttribute('aria-expanded', 'true');
+    await user.click(
+      within(screen.getByRole('form', { name: 'Add a role' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(screen.queryByRole('form', { name: 'Add a role' })).toBeNull();
+    // The focus goes back to the New button, not to the page.
+    expect(opener).toHaveFocus();
+    await user.click(opener);
+    const form = screen.getByRole('form', { name: 'Add a role' });
     await user.type(within(form).getByLabelText('Role name'), 'Reviewers');
-    // Every add action has the one filled style (D11, AD-19).
-    expect(within(form).getByRole('button', { name: 'Add a role' })).toHaveClass('button-primary');
     await user.click(within(form).getByRole('button', { name: 'Add a role' }));
     expect(await screen.findByText('Role Reviewers was added.')).toBeInTheDocument();
+    // Added, the form closes and the focus is back on New role.
+    expect(screen.queryByRole('form', { name: 'Add a role' })).toBeNull();
+    expect(opener).toHaveFocus();
     await user.click(await screen.findByRole('button', { name: 'Change role Reviewers' }));
     const edit = screen.getByRole('form', { name: 'Change role Reviewers' });
     await user.type(within(edit).getByLabelText('What the role does'), 'Read and approve');
@@ -60,7 +78,10 @@ describe('permission administration (M1-053)', () => {
   it('[IAM-010] copies a policy, gives a role and a person a permission, takes one back', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const form = await screen.findByRole('form', { name: 'Add an access policy' });
+    const policies = await screen.findByRole('region', { name: 'Access policies' });
+    expect(screen.queryByRole('form', { name: 'Add an access policy' })).toBeNull();
+    await user.click(within(policies).getByRole('button', { name: 'New access policy' }));
+    const form = screen.getByRole('form', { name: 'Add an access policy' });
     await user.type(within(form).getByLabelText('Policy name'), 'Partners');
     await user.selectOptions(within(form).getByLabelText('Start from'), '1');
     await user.click(within(form).getByRole('button', { name: 'Add an access policy' }));

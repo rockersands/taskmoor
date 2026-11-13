@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { NewButton } from '../admin/NewButton';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -37,7 +37,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
+  const creating = useNewForm();
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -86,8 +86,9 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
               actions: (
                 <NewButton
                   label={t('admin.groups.new')}
-                  open={creating}
-                  onToggle={() => setCreating(!creating)}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
                   data-tutorial="admin-group-new"
                 />
               ),
@@ -97,15 +98,15 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
         <p className="page-note">{t('admin.groups.forbidden')}</p>
       ) : (
         <>
-          {creating && (
+          {creating.open && (
             <AddGroup
               client={client}
               onAdded={(name, id) => {
-                setCreating(false);
+                creating.close();
                 said(t('admin.groups.added', { name }));
                 setOpen(id);
               }}
-              onCancel={() => setCreating(false)}
+              onCancel={creating.close}
               onProblem={(error) => setProblem(refusal(error))}
             />
           )}

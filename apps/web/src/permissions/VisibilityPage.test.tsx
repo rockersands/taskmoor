@@ -53,7 +53,13 @@ describe('visibility policies (UI-T17)', () => {
   it('[IAM-011] adds a policy, then a level, and refuses a name in use', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const add = await screen.findByRole('form', { name: 'Add a visibility policy' });
+    // The policies come first; "New visibility policy" opens the form (D11, AD-18).
+    await screen.findByRole('region', { name: 'Spare' });
+    expect(screen.queryByRole('form', { name: 'Add a visibility policy' })).toBeNull();
+    const opener = screen.getByRole('button', { name: 'New visibility policy' });
+    expect(opener).toHaveClass('button-primary');
+    await user.click(opener);
+    const add = screen.getByRole('form', { name: 'Add a visibility policy' });
     await user.type(within(add).getByLabelText('Policy name'), 'Spare');
     await user.click(within(add).getByRole('button', { name: 'Add a visibility policy' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Another policy or level');
@@ -61,6 +67,9 @@ describe('visibility policies (UI-T17)', () => {
     await user.type(within(add).getByLabelText('Policy name'), 'Legal');
     await user.click(within(add).getByRole('button', { name: 'Add a visibility policy' }));
     const legal = await screen.findByRole('region', { name: 'Legal' });
+    // Added, the form closes and the focus goes back to the New button.
+    expect(screen.queryByRole('form', { name: 'Add a visibility policy' })).toBeNull();
+    expect(opener).toHaveFocus();
     const level = within(legal).getByRole('form', { name: 'Add a level to Legal' });
     await user.type(within(level).getByLabelText('Level name'), 'Counsel');
     await user.click(within(level).getByRole('button', { name: 'Add a level' }));

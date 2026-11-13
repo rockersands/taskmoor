@@ -82,8 +82,9 @@ A service account is an account for a program, owned by the instance rather than
 Only site administrators manage service accounts. Open **Administration**, then **Service
 accounts**:
 
-1. Under **New service account**, fill in **Name** and **What it is for**, then select
-   **Create service account**.
+1. The list of accounts comes first. Select **New service account**, fill in **Name** and **What
+   it is for**, then select **Create service account**. The form closes and the new account's
+   tokens open.
 2. In the list, select **Tokens** next to the account. The **New token** form is the same as
    on the Account page, with **Administration** and **SCIM provisioning** on offer.
 3. Copy the new token when it is shown.

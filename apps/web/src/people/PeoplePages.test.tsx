@@ -86,7 +86,16 @@ describe('people (M1-053, IAM-008)', () => {
     expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveClass(
       'button-danger',
     );
-    await user.click(within(confirm).getByRole('button', { name: 'Deactivate' }));
+    // Escape takes the way back, and the focus goes back to the button that asked.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBeNull();
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    // Cancel does the same.
+    await user.click(screen.getByRole('button', { name: 'Keep active' }));
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Deactivate' }));
     expect(
       await screen.findByText('Bo Rivera was deactivated and signed out everywhere.'),
     ).toBeInTheDocument();
@@ -125,6 +134,8 @@ describe('people (M1-053, IAM-008)', () => {
     await user.type(within(form).getByLabelText('Group name'), 'Payments');
     await user.click(within(form).getByRole('button', { name: 'Add a group' }));
     expect(await screen.findByText('Payments was added.')).toBeInTheDocument();
+    // The form closes and the focus goes back to New group, not to the page.
+    expect(opener).toHaveFocus();
     // The new group opens: add Grace, put Support inside.
     expect(await screen.findByText('Members of Payments')).toBeVisible();
     await user.type(screen.getByRole('searchbox', { name: 'Add a person' }), 'gra');
@@ -261,7 +272,17 @@ describe('teams (M1-123, CORE-027)', () => {
     const user = userEvent.setup();
     const client = renderTeams();
     await list();
-    await user.click(screen.getByRole('button', { name: 'New team' }));
+    const opener = screen.getByRole('button', { name: 'New team' });
+    await user.click(opener);
+    // Cancel closes the form and gives the focus back to New team.
+    await user.click(
+      within(screen.getByRole('form', { name: 'Add a team' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(screen.queryByRole('form', { name: 'Add a team' })).toBeNull();
+    expect(opener).toHaveFocus();
+    await user.click(opener);
     const form = screen.getByRole('form', { name: 'Add a team' });
     await user.type(within(form).getByLabelText('Team name'), 'Payments');
     await user.type(within(form).getByLabelText('Description (optional)'), 'Money in and out');

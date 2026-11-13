@@ -87,8 +87,9 @@ A role that holds **Run the track** in a track's policy runs that track. Giving 
 **Give the role that runs the track**, which goes with **Run the track** by default and which a
 policy can take away; see [Inviting people and running a track](invitations.md).
 
-Under **Roles**, **Add a role** asks for a **Role name** and **What the role does**. **Change**
-renames, **Delete** removes a role no policy uses. **Delete**, in the danger colour, first says
+Under **Roles**, the list comes first: **New role** opens a form that asks for a **Role name**;
+**Add a role** adds it and **Cancel** closes the form. **Change** renames a role and says **What
+the role does**; **Delete** removes a role no policy uses. **Delete**, in the danger colour, first says
 what will happen: a role an access policy still gives is kept, and a deleted role cannot be
 brought back. Deleting an access policy asks the same way.
 
@@ -123,8 +124,8 @@ the whole track.
 
 To work with policies under **Access policies**:
 
-1. **Add an access policy**: give a **Policy name** and **Start from** another policy's
-   grants, or **No grants**.
+1. **New access policy** opens the form: give a **Policy name** and **Start from** another
+   policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
 3. **Give a permission**: choose the **Permission** and who it goes **To**, then **Give**.
    **Remove** takes a grant away.
@@ -180,7 +181,8 @@ The ticket view shows **Visibility level** ("Everyone" when there is none).
 
 Site administrators open **Administration** > **Visibility policies**:
 
-1. **Add a visibility policy** with a **Policy name**.
+1. **New visibility policy**, at the top of the page, opens the form: give a **Policy name** and
+   choose **Add a visibility policy**.
 2. In the policy's panel, **Add a level** with a **Level name**. **Change** names it and says what it
    is for; **Up** and **Down** set the order people choose from.
 3. **New tickets take** chooses the default level, or **No level**. A ticket moved into the track takes

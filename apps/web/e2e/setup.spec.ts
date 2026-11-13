@@ -526,11 +526,13 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
   await page.goto('./#/admin');
   await page.getByRole('link', { name: 'Service accounts' }).click();
   await expect(heading(page)).toHaveText('Service accounts');
-  const create = page.getByRole('region', { name: 'New service account' });
+  // The list comes first; New service account opens the form (D11).
+  await page.getByRole('button', { name: 'New service account' }).click();
+  const create = page.getByRole('form', { name: 'Create service account' });
   await create.getByLabel('Name').fill('E2E robot');
   await create.getByLabel('What it is for').fill('Publishes release notes');
   await create.getByRole('button', { name: 'Create service account' }).click();
-  await expect(create.getByText('Created E2E robot.')).toBeVisible();
+  await expect(page.getByText('Created E2E robot.')).toBeVisible();
 
   const panel = page.getByRole('region', { name: 'Tokens of E2E robot' });
   await panel.getByLabel('Token name').fill('Release key');

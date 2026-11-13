@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { PersonalDataSection } from '../account/PersonalDataSection';
-import { DangerConfirm } from '../admin/DangerConfirm';
+import { DangerConfirm, useReturnFocus } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -49,6 +49,8 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     user: User;
     panel: 'data' | 'erase' | 'deactivate';
   } | null>(null);
+  // The way back from a deactivation gives the focus back to its button.
+  const back = useReturnFocus<number>();
 
   const load = useCallback(async () => {
     try {
@@ -254,6 +256,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                               <button
                                 type="button"
                                 className="button-secondary button-danger-quiet people-action"
+                                ref={back.ref(u.id)}
                                 aria-label={t('admin.users.deactivateOf', { name: u.name })}
                                 aria-expanded={
                                   open?.user.id === u.id && open.panel === 'deactivate'
@@ -332,7 +335,10 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                           message={t('admin.users.deactivateConfirm', { name: u.name })}
                           confirmLabel={t('admin.users.deactivate')}
                           cancelLabel={t('admin.users.deactivateCancel')}
-                          onCancel={() => setOpen(null)}
+                          onCancel={() => {
+                            back.returnTo(u.id);
+                            setOpen(null);
+                          }}
                           onConfirm={() => {
                             setOpen(null);
                             void act(

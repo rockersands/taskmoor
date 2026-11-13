@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 
 /**
  * The step between a destructive action and its effect (D13): one sentence saying what will
@@ -48,4 +48,22 @@ export function DangerConfirm({
       </div>
     </fieldset>
   );
+}
+
+/**
+ * Gives the focus back to the button that asked for a confirmation once the way back is taken
+ * (Cancel or Escape), so it does not fall to the page. `returnTo(key)` before closing; `ref(key)`
+ * on each trigger, which takes the focus when it is next in the page.
+ */
+export function useReturnFocus<K>() {
+  const pending = useRef<K | null>(null);
+  const returnTo = useCallback((key: K) => {
+    pending.current = key;
+  }, []);
+  const ref = (key: K) => (element: HTMLElement | null) => {
+    if (!element || pending.current !== key) return;
+    pending.current = null;
+    element.focus();
+  };
+  return { returnTo, ref };
 }

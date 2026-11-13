@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -199,40 +200,60 @@ function RolesSection({
   const headingId = useId();
   const nameId = useId();
   const [name, setName] = useState('');
+  const creating = useNewForm();
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.permissions.roles')}
-      </h2>
-      <form
-        className="people-inline"
-        aria-label={t('admin.permissions.addRole')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted) return;
-          client.createRole({ name: wanted }).then((made) => {
-            setName('');
-            said(t('admin.permissions.roleAdded', { name: made.name }));
-          }, failed);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={nameId} className="form-label">
-            {t('admin.permissions.roleName')}
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.permissions.newRole')}
+            open={creating.open}
+            onToggle={creating.toggle}
+            ref={creating.button}
           />
-        </div>
-        <button type="submit" className="button-primary">
-          {t('admin.permissions.addRole')}
-        </button>
-      </form>
+        }
+      >
+        <h2 id={headingId} className="facts-title">
+          {t('admin.permissions.roles')}
+        </h2>
+      </CardHead>
+      {creating.open && (
+        <form
+          className="people-inline"
+          aria-label={t('admin.permissions.addRole')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted) return;
+            client.createRole({ name: wanted }).then((made) => {
+              setName('');
+              creating.close();
+              said(t('admin.permissions.roleAdded', { name: made.name }));
+            }, failed);
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.permissions.roleName')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button-primary">
+              {t('admin.permissions.addRole')}
+            </button>
+            <button type="button" className="button-secondary" onClick={creating.close}>
+              {t('admin.permissions.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
       <ul className="people-list">
         {roles.map((role) => (
           <RoleRow key={role.id} role={role} client={client} said={said} failed={failed} />
@@ -382,63 +403,83 @@ function PoliciesSection({
   const [name, setName] = useState('');
   const [copyFrom, setCopyFrom] = useState('');
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
   // Only shared policies are managed here; a local-mode track's own goes with the track.
   const shared = policies.filter((p) => p.ownerTrackId === null);
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.permissions.policies')}
-      </h2>
-      <form
-        className="people-inline"
-        aria-label={t('admin.permissions.addPolicy')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted) return;
-          client
-            .createPolicy({ name: wanted, ...(copyFrom ? { copyFrom: Number(copyFrom) } : {}) })
-            .then((made) => {
-              setName('');
-              setCopyFrom('');
-              setOpen(made.id);
-              said(t('admin.permissions.policyAdded', { name: made.name }));
-            }, failed);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={nameId} className="form-label">
-            {t('admin.permissions.policyName')}
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.permissions.newPolicy')}
+            open={creating.open}
+            onToggle={creating.toggle}
+            ref={creating.button}
           />
-        </div>
-        <div className="form-field">
-          <label htmlFor={copyId} className="form-label">
-            {t('admin.permissions.copyFrom')}
-          </label>
-          <select
-            id={copyId}
-            value={copyFrom}
-            onChange={(event) => setCopyFrom(event.target.value)}
-          >
-            <option value="">{t('admin.permissions.copyNothing')}</option>
-            {shared.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="button-primary">
-          {t('admin.permissions.addPolicy')}
-        </button>
-      </form>
+        }
+      >
+        <h2 id={headingId} className="facts-title">
+          {t('admin.permissions.policies')}
+        </h2>
+      </CardHead>
+      {creating.open && (
+        <form
+          className="people-inline"
+          aria-label={t('admin.permissions.addPolicy')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted) return;
+            client
+              .createPolicy({ name: wanted, ...(copyFrom ? { copyFrom: Number(copyFrom) } : {}) })
+              .then((made) => {
+                setName('');
+                setCopyFrom('');
+                setOpen(made.id);
+                creating.close();
+                said(t('admin.permissions.policyAdded', { name: made.name }));
+              }, failed);
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.permissions.policyName')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor={copyId} className="form-label">
+              {t('admin.permissions.copyFrom')}
+            </label>
+            <select
+              id={copyId}
+              value={copyFrom}
+              onChange={(event) => setCopyFrom(event.target.value)}
+            >
+              <option value="">{t('admin.permissions.copyNothing')}</option>
+              {shared.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button-primary">
+              {t('admin.permissions.addPolicy')}
+            </button>
+            <button type="button" className="button-secondary" onClick={creating.close}>
+              {t('admin.permissions.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
       <ul className="people-list">
         {shared.map((p) => (
           <li key={p.id} className="people-item people-group">

@@ -189,11 +189,14 @@ test('[IAM-010] the administrator adds a role and a policy, grants, and deletes 
   const policy = `Partners ${suffix}`;
   await page.goto(`${BASE}/#/admin/permissions`);
   await expect(page.getByRole('heading', { level: 1, name: 'Permissions' })).toBeVisible();
+  // Each list comes first; its New button opens the form (D11).
+  await page.getByRole('button', { name: 'New role' }).click();
   const addRole = page.getByRole('form', { name: 'Add a role' });
   await addRole.getByLabel('Role name').fill(role);
   await addRole.getByRole('button', { name: 'Add a role' }).click();
   await expect(page.getByText(`Role ${role} was added.`)).toBeVisible();
 
+  await page.getByRole('button', { name: 'New access policy' }).click();
   const addPolicy = page.getByRole('form', { name: 'Add an access policy' });
   await addPolicy.getByLabel('Policy name').fill(policy);
   await addPolicy.getByLabel('Start from').selectOption({ label: 'Default access policy' });
@@ -255,6 +258,8 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   await page.goto(`${BASE}/#/admin/configuration-sets`);
   await expect(page.getByRole('heading', { level: 1, name: 'Configuration sets' })).toBeVisible();
 
+  // Each list comes first; its New button opens the form (D11).
+  await page.getByRole('button', { name: 'New type set' }).click();
   const addTypes = page.getByRole('form', { name: 'Add a type set' });
   await addTypes.getByLabel('Type set name').fill(types);
   const boxes = addTypes.getByRole('checkbox');
@@ -270,6 +275,7 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   await page.getByRole('button', { name: 'Yes, delete' }).click();
   await expect(page.getByText(`${types} was deleted.`)).toBeVisible();
 
+  await page.getByRole('button', { name: 'New field rule set' }).click();
   const addRules = page.getByRole('form', { name: 'Add a field rule set' });
   await addRules.getByLabel('Rule set name').fill(rules);
   await addRules.getByRole('button', { name: 'Add a field rule set' }).click();

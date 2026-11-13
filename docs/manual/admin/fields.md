@@ -207,8 +207,8 @@ A type set lists the ticket types a track offers, in order, with one preselected
 | Business type set | Outcome, To-do, Subticket | To-do | business and service tracks |
 | Discovery type set | Idea | Idea | discovery tracks |
 
-On **Administration**, **Configuration sets**, **Type sets**: **Add a type set** with a **Type set
-name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
+On **Administration**, **Configuration sets**, **Type sets**: **New type set** opens the form;
+**Add a type set** with a **Type set name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
 **Delete set** (not for a default set, nor one a track uses). The preselected type, the order and
 which track types a set is the default for are set through `/api/v1/type-sets`
 (`defaultTypeId`, `ticketTypeIds`, `defaultFor`). A default set says what it is the default for,
@@ -222,8 +222,8 @@ same level, and the tickets change type with the set.
 
 A field rule set says, per field, whether it is required or hidden and what help text it shows.
 
-On **Administration**, **Configuration sets**, **Field rule sets**: **Add a field rule set**, then
-**Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
+On **Administration**, **Configuration sets**, **Field rule sets**: **New field rule set** opens
+the form; **Add a field rule set**, then **Manage** it. Each field has **Required**, **Hidden** and **Help text**, for every ticket type.
 **Save the set** saves them; rules for single ticket types are kept as they are.
 
 - A rule for the ticket's type wins over the rule for every type. A field without a rule is
@@ -255,7 +255,8 @@ field that applies, in one tab.
 **Administration** > **Layout sets** (`#/admin/layouts`), for site and configuration
 administrators:
 
-1. Pick the **Layout set**, or type a **New set name** and press **Add a layout set**. While a
+1. Pick the **Layout set**, or choose **New layout set**, type a **New set name** and press
+   **Add a layout set**. While a
    set has unsaved changes the list and adding a set are locked: save or discard first.
 2. Under **Form**, choose the **Ticket type** (or **Every ticket type**) and the operation:
    **Create**, **Edit** or **View**. A line says which layout that form uses now. A type with a
@@ -422,7 +423,7 @@ the track: under **Its own configuration** are two links.
 
 - **Layout sets** (`#/manage/tracks/<id>/layouts`) is the layout sets page for that track alone.
   The track's name is above the title, and the list holds only the sets it owns; the set it uses
-  opens first. **Add a layout set** makes a set of the track's own. The fields to place are those
+  opens first. **New layout set** makes a set of the track's own. The fields to place are those
   that reach the track, its own and the shared ones it has, and **Ticket type** offers the types
   its type set holds. The **Preview** uses that track's fields and rules, and says so: there is no
   choice of track. A set the track does not use yet has **Use this set for** the track; from then

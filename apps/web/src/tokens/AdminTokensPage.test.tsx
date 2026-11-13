@@ -116,12 +116,18 @@ describe('admin token inventory', () => {
     await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
     // Revoking asks first and says what happens (D13, AD-16).
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    // The way back gives the focus to the token's Revoke button again, not to the page.
+    await user.keyboard('{Escape}');
+    expect(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' })).toHaveFocus();
+    await user.click(tokens.getByRole('button', { name: 'Revoke Sync job of River Stone' }));
     const confirm = tokens.getByRole('group', { name: /Revoke Sync job of River Stone\?/ });
     await user.click(within(confirm).getByRole('button', { name: 'Confirm revocation' }));
     expect(await tokens.findByText('Revoked Sync job of River Stone.')).toHaveAttribute(
       'role',
       'status',
     );
+    // The revoked token's button is gone: the list's heading keeps the focus.
+    expect(tokens.getByRole('heading', { name: 'Tokens' })).toHaveFocus();
     await waitFor(() =>
       expect(tokens.queryByRole('button', { name: 'Revoke Sync job of River Stone' })).toBeNull(),
     );

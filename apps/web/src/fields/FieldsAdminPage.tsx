@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
-import { NewButton } from '../admin/NewButton';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -45,7 +45,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
+  const creating = useNewForm();
   const [name, setName] = useState('');
   const [type, setType] = useState<FieldType>('text');
   const [multiple, setMultiple] = useState(false);
@@ -108,8 +108,9 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
               actions: (
                 <NewButton
                   label={t('admin.fields.new')}
-                  open={creating}
-                  onToggle={() => setCreating(!creating)}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
                 />
               ),
             })}
@@ -118,7 +119,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
         <p className="page-note">{t('admin.fields.forbidden')}</p>
       ) : (
         <>
-          {creating && (
+          {creating.open && (
             <form
               className="glass-card people-card people-form"
               aria-label={t('admin.fields.add')}
@@ -136,7 +137,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                     (made) => {
                       setName('');
                       setMultiple(false);
-                      setCreating(false);
+                      creating.close();
                       said(t('admin.fields.added', { name: made.name }));
                       setOpen(made.id);
                     },
@@ -187,11 +188,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                 <button type="submit" className="button-primary">
                   {t('admin.fields.add')}
                 </button>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => setCreating(false)}
-                >
+                <button type="button" className="button-secondary" onClick={creating.close}>
                   {t('admin.fields.cancelNew')}
                 </button>
               </div>

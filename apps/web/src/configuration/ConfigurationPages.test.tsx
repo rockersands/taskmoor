@@ -97,13 +97,20 @@ describe('track and workflow map administration (M1-053)', () => {
     await user.click(form.getByRole('button', { name: 'Add a track' }));
     expect(await screen.findByText('Track WEB was added.')).toBeInTheDocument();
     expect(client.calls.at(-1)?.args[0]).toMatchObject({ key: 'WEB', copyFrom: 3 });
-    // The form closes once the track is added; New track opens it again (D11).
+    // The form closes once the track is added, the focus back on New track, which opens it
+    // again (D11).
     expect(screen.queryByRole('form', { name: 'Add a track' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'New track' }));
+    const opener = screen.getByRole('button', { name: 'New track' });
+    expect(opener).toHaveFocus();
+    await user.click(opener);
     const again = within(screen.getByRole('form', { name: 'Add a track' }));
     // A local-mode track cannot copy: only templates are offered.
     await user.selectOptions(again.getByRole('combobox', { name: 'Configuration' }), 'local');
     expect(again.queryByRole('option', { name: 'Shop (SHOP)' })).toBeNull();
+    // Cancel closes it and the focus goes back to New track.
+    await user.click(again.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form', { name: 'Add a track' })).toBeNull();
+    expect(opener).toHaveFocus();
   });
 
   it('[IAM-002] gives a role to a person and a group, and takes it back', async () => {
@@ -263,6 +270,7 @@ describe('track and workflow map administration (M1-053)', () => {
     await user.type(within(form).getByLabelText('Map name'), 'Tasks apart');
     await user.click(within(form).getByRole('button', { name: 'Add a workflow map' }));
     expect(await screen.findByText('Tasks apart was added.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New workflow map' })).toHaveFocus();
     const map = await screen.findByRole('form', { name: 'Workflows in Tasks apart' });
     await user.selectOptions(
       within(map).getByRole('combobox', { name: 'Give a type its own workflow' }),

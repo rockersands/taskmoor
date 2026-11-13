@@ -28,12 +28,19 @@ describe('configuration set administration (M1-053)', () => {
   it('[CORE-008] adds a type set, drops a type from it and deletes it', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const form = await screen.findByRole('form', { name: 'Add a type set' });
+    // The sets come first; "New type set" opens the form (D11, AD-18).
+    const typeSets = await screen.findByRole('region', { name: 'Type sets' });
+    expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
+    const opener = await within(typeSets).findByRole('button', { name: 'New type set' });
+    await user.click(opener);
+    const form = screen.getByRole('form', { name: 'Add a type set' });
     await user.type(within(form).getByLabelText('Type set name'), 'Support types');
     await user.click(within(form).getByLabelText('Bug'));
     await user.click(within(form).getByLabelText('Task'));
     await user.click(within(form).getByRole('button', { name: 'Add a type set' }));
     expect(await screen.findByText('Support types was added.')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
+    expect(opener).toHaveFocus();
     const panel = await screen.findByRole('form', { name: 'Settings of Support types' });
     await user.click(within(panel).getByLabelText('Bug'));
     await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
@@ -100,7 +107,8 @@ describe('configuration set administration (M1-053)', () => {
   it('[CORE-008] says how field rules and layouts combine, and links to the layout sets (UI-T15)', async () => {
     renderPage();
     const rules = await screen.findByRole('heading', { name: 'Field rule sets' });
-    const note = rules.nextElementSibling as HTMLElement;
+    // The heading shares its row with the New button; the note follows the row.
+    const note = rules.parentElement?.nextElementSibling as HTMLElement;
     expect(note).toHaveTextContent(
       'a hidden field never appears, even where a layout places it, and a required field always does.',
     );
@@ -153,6 +161,7 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     // Neither the shared type sets nor another track's.
     expect(manageButtons()).toEqual(['Manage Operations types', 'Manage Ops rules']);
     expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New type set' })).toBeNull();
     expect(
       screen.getByText(
         'A track with its own configuration keeps one type set of its own: choose its ticket types here.',
@@ -183,6 +192,7 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     expect(await screen.findByText('Used by OPS.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
 
+    await user.click(screen.getByRole('button', { name: 'New field rule set' }));
     const add = screen.getByRole('form', { name: 'Add a field rule set' });
     await user.type(within(add).getByLabelText('Rule set name'), 'Ops intake rules');
     await user.click(within(add).getByRole('button', { name: 'Add a field rule set' }));

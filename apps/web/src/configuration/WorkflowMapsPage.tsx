@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
-import { NewButton } from '../admin/NewButton';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -41,7 +41,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
   const [workflows, setWorkflows] = useState<Named[]>([]);
   const [types, setTypes] = useState<Named[]>([]);
   const [open, setOpen] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
+  const creating = useNewForm();
   const [name, setName] = useState('');
   const [defaultWorkflow, setDefaultWorkflow] = useState('');
   const [message, setMessage] = useState('');
@@ -102,8 +102,9 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
               actions: (
                 <NewButton
                   label={t('admin.maps.new')}
-                  open={creating}
-                  onToggle={() => setCreating(!creating)}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
                   data-tutorial="workflow-map-new"
                 />
               ),
@@ -113,7 +114,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
         <p className="page-note">{t('admin.maps.forbidden')}</p>
       ) : (
         <>
-          {creating && (
+          {creating.open && (
             <form
               className="glass-card people-card people-form"
               aria-label={t('admin.maps.add')}
@@ -126,7 +127,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
                   .then(
                     (made) => {
                       setName('');
-                      setCreating(false);
+                      creating.close();
                       said(t('admin.maps.added', { name: made.name }));
                       setOpen(made.id);
                     },
@@ -167,11 +168,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
                 <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
                   {t('admin.maps.add')}
                 </button>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => setCreating(false)}
-                >
+                <button type="button" className="button-secondary" onClick={creating.close}>
                   {t('admin.maps.cancelNew')}
                 </button>
               </div>

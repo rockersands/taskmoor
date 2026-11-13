@@ -524,7 +524,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige Publicar. Hasta entonces el borrador no cambia nada; una vez publicado, es la versión que siguen los tickets.',
   'tutorial.step.workflows.map.title': 'Ponlo en un mapa de flujos',
   'tutorial.step.workflows.map.body':
-    'En Mapas de flujos, elige Añadir un mapa de flujos con tu flujo de trabajo. Un mapa dice qué flujo sigue cada tipo de ticket.',
+    'En Mapas de flujos, elige Nuevo mapa de flujos de trabajo y dale tu flujo de trabajo. Un mapa dice qué flujo sigue cada tipo de ticket.',
   'tutorial.step.workflows.trackMap.title': 'Dale el mapa a un track',
   'tutorial.step.workflows.trackMap.body':
     'En Tracks de Administración, abre un track y elige tu mapa como su mapa de flujos. Sus tickets seguirán entonces tu flujo de trabajo.',
@@ -616,7 +616,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tutorial.step.admin.newUser.body':
     'En Personas de Administración, elige Añadir una persona y escribe un nombre y un correo.',
   'tutorial.step.admin.newGroup.title': 'Crea un grupo',
-  'tutorial.step.admin.newGroup.body': 'En Grupos, añade un grupo, como Diseño.',
+  'tutorial.step.admin.newGroup.body': 'En Grupos, elige Nuevo grupo y añade uno, como Diseño.',
   'tutorial.step.admin.member.title': 'Pon a la persona en el grupo',
   'tutorial.step.admin.member.body':
     'Abre tu grupo y añade a la persona que acabas de añadir. Es más fácil dar acceso a un grupo que a muchas personas.',
@@ -838,7 +838,7 @@ export const messagesEs: Record<MessageId, string> = {
   'guardrails.loadFailed':
     'No se pudieron leer las salvaguardas. Inténtalo de nuevo en un momento.',
   'guardrails.failedSome':
-    '{count, plural, one {No se guardó: {names}. Inténtalo de nuevo en un momento; lo que escribiste sigue en el formulario.} other {No se guardaron: {names}. Inténtalo de nuevo en un momento; lo que escribiste sigue en el formulario.}}',
+    '{count, plural, one {Este límite no se guardó: {names}.} other {Estos límites no se guardaron: {names}.}} Inténtalo de nuevo en un momento; lo que escribiste sigue en el formulario.',
   'guardrails.savedSome': 'Guardado: {names}.',
   'guardrails.saved': '{name} está limitado ahora a {limit, number}.',
   'guardrails.guidance':
@@ -2208,6 +2208,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.serviceAccounts.name': 'Nombre',
   'admin.serviceAccounts.description': 'Para qué sirve',
   'admin.serviceAccounts.create': 'Crear la cuenta de servicio',
+  'admin.serviceAccounts.cancelNew': 'Cancelar',
   'admin.serviceAccounts.created': 'Se creó {name}.',
   'admin.serviceAccounts.createFailed':
     'No se pudo crear la cuenta de servicio. Inténtalo de nuevo en un momento.',
@@ -3130,6 +3131,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.failed': 'No se pudieron leer los tracks. Inténtalo de nuevo en un momento.',
   'admin.tracks.new': 'Nuevo track',
   'admin.tracks.add': 'Añadir un track',
+  'admin.tracks.cancelNew': 'Cancelar',
   'admin.tracks.key': 'Clave',
   'admin.tracks.keyHint':
     'De dos a diez letras mayúsculas o dígitos, empezando por una letra. Las claves de los tickets empiezan por ella.',
@@ -3274,12 +3276,15 @@ export const messagesEs: Record<MessageId, string> = {
     'No se pudieron leer los conjuntos de configuración. Inténtalo de nuevo en un momento.',
   'admin.sets.typeSets': 'Conjuntos de tipos',
   'admin.sets.addTypeSet': 'Añadir un conjunto de tipos',
+  'admin.sets.newTypeSet': 'Nuevo conjunto de tipos',
   'admin.sets.typeSetName': 'Nombre del conjunto de tipos',
   'admin.sets.typesIn': 'Tipos de ticket del conjunto',
   'admin.sets.typeSetSummary':
     '{types}; {tracks, plural, =0 {ningún track} one {# track} other {# tracks}}',
   'admin.sets.ruleSets': 'Conjuntos de reglas de campos',
   'admin.sets.addRuleSet': 'Añadir un conjunto de reglas de campos',
+  'admin.sets.newRuleSet': 'Nuevo conjunto de reglas de campos',
+  'admin.sets.cancelNew': 'Cancelar',
   'admin.sets.ruleSetName': 'Nombre del conjunto de reglas',
   'admin.sets.required': 'Obligatorio',
   'admin.sets.hidden': 'Oculto',
@@ -3393,6 +3398,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.failed': 'No se pudieron leer los permisos. Inténtalo de nuevo en un momento.',
   'admin.permissions.roles': 'Roles',
   'admin.permissions.addRole': 'Añadir un rol',
+  'admin.permissions.newRole': 'Nuevo rol',
   'admin.permissions.roleName': 'Nombre del rol',
   'admin.permissions.roleDescription': 'Qué hace el rol',
   'admin.permissions.roleAdded': 'Se añadió el rol {name}.',
@@ -3410,6 +3416,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.confirmNo': 'Conservarlo',
   'admin.permissions.policies': 'Políticas de acceso',
   'admin.permissions.addPolicy': 'Añadir una política de acceso',
+  'admin.permissions.newPolicy': 'Nueva política de acceso',
   'admin.permissions.policyName': 'Nombre de la política',
   'admin.permissions.copyFrom': 'Empezar desde',
   'admin.permissions.copyNothing': 'Sin concesiones',
@@ -6140,6 +6147,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.empty':
     'Sin una, cada ticket lo ve todo el que ve su track. Añade una política, dale niveles y luego elígela para un track.',
   'admin.visibility.addPolicy': 'Añadir una política de visibilidad',
+  'admin.visibility.newPolicy': 'Nueva política de visibilidad',
+  'admin.visibility.cancelNew': 'Cancelar',
   'admin.visibility.policyName': 'Nombre de la política',
   'admin.visibility.policyAdded': 'Se añadió la política {name}.',
   'admin.visibility.policyDeleted': 'Se eliminó la política {name}.',
@@ -6721,6 +6730,8 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.ownSet': '{name} (propio de un track)',
   'layouts.setLocked': 'Guarda o descarta tus cambios para elegir o añadir otro conjunto.',
   'layouts.add': 'Añadir un conjunto de diseños',
+  'layouts.new': 'Nuevo conjunto de diseños',
+  'layouts.cancelNew': 'Cancelar',
   'layouts.newSetName': 'Nombre del nuevo conjunto',
   'layouts.added': 'Se añadió {name}.',
   'layouts.saved': 'Se guardó {name}.',

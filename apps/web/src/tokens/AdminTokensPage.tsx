@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { DangerConfirm } from '../admin/DangerConfirm';
+import { DangerConfirm, useReturnFocus } from '../admin/DangerConfirm';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -166,6 +166,8 @@ function InventorySection({
   const [error, setError] = useState<string | null>(null);
   /** The token whose revocation waits for a yes (D13). */
   const [confirming, setConfirming] = useState<number | null>(null);
+  // Cancel brings the focus back to the token's Revoke; a revocation takes it to the list's heading.
+  const back = useReturnFocus<number>();
 
   const revoke = async (token: ApiToken) => {
     setBusy(true);
@@ -242,7 +244,10 @@ function InventorySection({
                         confirmLabel={t('admin.tokens.confirm')}
                         cancelLabel={t('admin.tokens.cancel')}
                         busy={busy}
-                        onCancel={() => setConfirming(null)}
+                        onCancel={() => {
+                          back.returnTo(token.id);
+                          setConfirming(null);
+                        }}
                         onConfirm={() => {
                           setConfirming(null);
                           void revoke(token);
@@ -250,6 +255,7 @@ function InventorySection({
                       />
                     ) : (
                       <button
+                        ref={back.ref(token.id)}
                         type="button"
                         className="button-secondary button-danger-quiet"
                         aria-label={t('admin.tokens.revokeNamed', {

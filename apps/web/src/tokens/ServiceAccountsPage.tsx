@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -48,6 +49,8 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
     notAdmin ? { status: 'forbidden' } : { status: 'loading' },
   );
   const [open, setOpen] = useState<number | null>(null);
+  const creating = useNewForm();
+  const [done, setDone] = useState('');
 
   const refuse = useCallback(
     (error: unknown): boolean => {
@@ -84,21 +87,40 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
           : {
               purpose: t('settings.serviceAccountsHint'),
               about: t('admin.serviceAccounts.intro'),
+              actions: (
+                <NewButton
+                  label={t('admin.serviceAccounts.new')}
+                  open={creating.open}
+                  onToggle={() => {
+                    setDone('');
+                    creating.toggle();
+                  }}
+                  ref={creating.button}
+                />
+              ),
             })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.serviceAccounts.forbidden')}</p>
       ) : (
         <>
+          <p role="status" className="form-status">
+            {done}
+          </p>
           <div className="tokens-page-sections">
-            <CreateSection
-              client={client}
-              refuse={refuse}
-              onCreated={async (account) => {
-                await load();
-                setOpen(account.id);
-              }}
-            />
+            {creating.open && (
+              <CreateForm
+                client={client}
+                refuse={refuse}
+                onCancel={creating.close}
+                onCreated={async (account) => {
+                  setDone(t('admin.serviceAccounts.created', { name: account.name }));
+                  creating.close();
+                  await load();
+                  setOpen(account.id);
+                }}
+              />
+            )}
             <section aria-labelledby={`${titleId}-list`} className="glass-card account-section">
               <h2 id={`${titleId}-list`} className="facts-title">
                 {t('admin.serviceAccounts.list')}
@@ -141,83 +163,79 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
   );
 }
 
-function CreateSection({
+/** The new service account's form, opened by "New service account" above the list (D11). */
+function CreateForm({
   client,
   refuse,
   onCreated,
+  onCancel,
 }: {
   client: ServiceAccountsClient;
   refuse: (error: unknown) => boolean;
   onCreated: (account: ServiceAccount) => Promise<void>;
+  onCancel: () => void;
 }) {
   const t = useT();
   const id = useId();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
-    setDone('');
     setError(null);
     try {
       const account = await client.create({ name: name.trim(), description: description.trim() });
-      setName('');
-      setDescription('');
-      setDone(t('admin.serviceAccounts.created', { name: account.name }));
       await onCreated(account);
     } catch (e) {
       if (!refuse(e)) setError(t('admin.serviceAccounts.createFailed'));
-    } finally {
       setBusy(false);
     }
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="glass-card account-section">
-      <h2 id={`${id}-title`} className="facts-title">
-        {t('admin.serviceAccounts.new')}
-      </h2>
-      <form className="form" onSubmit={submit}>
-        <div className="form-field">
-          <label htmlFor={`${id}-name`}>{t('admin.serviceAccounts.name')}</label>
-          <input
-            id={`${id}-name`}
-            required
-            maxLength={200}
-            autoComplete="off"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor={`${id}-description`}>{t('admin.serviceAccounts.description')}</label>
-          <input
-            id={`${id}-description`}
-            maxLength={2000}
-            autoComplete="off"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        {error && (
-          <p role="alert" className="form-error">
-            {error}
-          </p>
-        )}
-        <div>
-          <button type="submit" className="button-primary" disabled={busy}>
-            {t('admin.serviceAccounts.create')}
-          </button>
-        </div>
-        <p role="status" className="form-status">
-          {done}
+    <form
+      className="glass-card account-section form"
+      aria-label={t('admin.serviceAccounts.create')}
+      onSubmit={submit}
+    >
+      <div className="form-field">
+        <label htmlFor={`${id}-name`}>{t('admin.serviceAccounts.name')}</label>
+        <input
+          id={`${id}-name`}
+          required
+          maxLength={200}
+          autoComplete="off"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${id}-description`}>{t('admin.serviceAccounts.description')}</label>
+        <input
+          id={`${id}-description`}
+          maxLength={2000}
+          autoComplete="off"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
         </p>
-      </form>
-    </section>
+      )}
+      <div className="form-actions">
+        <button type="submit" className="button-primary" disabled={busy}>
+          {t('admin.serviceAccounts.create')}
+        </button>
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t('admin.serviceAccounts.cancelNew')}
+        </button>
+      </div>
+    </form>
   );
 }
 

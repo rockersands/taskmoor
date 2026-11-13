@@ -505,7 +505,7 @@ export const messagesEn = {
     'Choose Publish. Until then the draft changes nothing; once published, it is the version tickets follow.',
   'tutorial.step.workflows.map.title': 'Put it in a workflow map',
   'tutorial.step.workflows.map.body':
-    'On Workflow maps, choose Add a workflow map with your workflow. A map says which workflow each ticket type follows.',
+    'On Workflow maps, choose New workflow map and give it your workflow. A map says which workflow each ticket type follows.',
   'tutorial.step.workflows.trackMap.title': 'Give the map to a track',
   'tutorial.step.workflows.trackMap.body':
     'On Tracks in Administration, open a track and choose your map as its workflow map. Its tickets then follow your workflow.',
@@ -597,7 +597,8 @@ export const messagesEn = {
   'tutorial.step.admin.newUser.body':
     'On People in Administration, choose Add a person and give a name and an email.',
   'tutorial.step.admin.newGroup.title': 'Make a group',
-  'tutorial.step.admin.newGroup.body': 'On Groups, add a group, such as Designers.',
+  'tutorial.step.admin.newGroup.body':
+    'On Groups, choose New group and add one, such as Designers.',
   'tutorial.step.admin.member.title': 'Put the person in the group',
   'tutorial.step.admin.member.body':
     'Open your group and add the person you just added. A group is easier to give access to than many people.',
@@ -816,7 +817,7 @@ export const messagesEn = {
   'guardrails.loading': 'Reading the guardrails…',
   'guardrails.loadFailed': 'The guardrails could not be read. Try again in a moment.',
   'guardrails.failedSome':
-    'Not saved: {names}. Try again in a moment; what you typed is still in the form.',
+    '{count, plural, one {This limit was not saved: {names}.} other {These limits were not saved: {names}.}} Try again in a moment; what you typed is still in the form.',
   'guardrails.savedSome': 'Saved: {names}.',
   'guardrails.saved': '{name} is limited to {limit, number} now.',
   'guardrails.guidance':
@@ -2150,6 +2151,7 @@ export const messagesEn = {
   'admin.serviceAccounts.name': 'Name',
   'admin.serviceAccounts.description': 'What it is for',
   'admin.serviceAccounts.create': 'Create service account',
+  'admin.serviceAccounts.cancelNew': 'Cancel',
   'admin.serviceAccounts.created': 'Created {name}.',
   'admin.serviceAccounts.createFailed':
     'The service account could not be created. Try again in a moment.',
@@ -3042,6 +3044,7 @@ export const messagesEn = {
   'admin.tracks.failed': 'The tracks could not be read. Try again in a moment.',
   'admin.tracks.new': 'New track',
   'admin.tracks.add': 'Add a track',
+  'admin.tracks.cancelNew': 'Cancel',
   'admin.tracks.key': 'Key',
   'admin.tracks.keyHint':
     'Two to ten capital letters or digits, starting with a letter. Ticket keys begin with it.',
@@ -3185,12 +3188,15 @@ export const messagesEn = {
   'admin.sets.failed': 'The configuration sets could not be read. Try again in a moment.',
   'admin.sets.typeSets': 'Type sets',
   'admin.sets.addTypeSet': 'Add a type set',
+  'admin.sets.newTypeSet': 'New type set',
   'admin.sets.typeSetName': 'Type set name',
   'admin.sets.typesIn': 'Ticket types in the set',
   'admin.sets.typeSetSummary':
     '{types}; {tracks, plural, =0 {no track} one {# track} other {# tracks}}',
   'admin.sets.ruleSets': 'Field rule sets',
   'admin.sets.addRuleSet': 'Add a field rule set',
+  'admin.sets.newRuleSet': 'New field rule set',
+  'admin.sets.cancelNew': 'Cancel',
   'admin.sets.ruleSetName': 'Rule set name',
   'admin.sets.required': 'Required',
   'admin.sets.hidden': 'Hidden',
@@ -3304,6 +3310,7 @@ export const messagesEn = {
   'admin.permissions.failed': 'The permissions could not be read. Try again in a moment.',
   'admin.permissions.roles': 'Roles',
   'admin.permissions.addRole': 'Add a role',
+  'admin.permissions.newRole': 'New role',
   'admin.permissions.roleName': 'Role name',
   'admin.permissions.roleDescription': 'What the role does',
   'admin.permissions.roleAdded': 'Role {name} was added.',
@@ -3321,6 +3328,7 @@ export const messagesEn = {
   'admin.permissions.confirmNo': 'Keep it',
   'admin.permissions.policies': 'Access policies',
   'admin.permissions.addPolicy': 'Add an access policy',
+  'admin.permissions.newPolicy': 'New access policy',
   'admin.permissions.policyName': 'Policy name',
   'admin.permissions.copyFrom': 'Start from',
   'admin.permissions.copyNothing': 'No grants',
@@ -6002,6 +6010,8 @@ export const messagesEn = {
   'admin.visibility.empty':
     'Without one, every ticket is seen by everyone who sees its track. Add a policy, give it levels, then choose it for a track.',
   'admin.visibility.addPolicy': 'Add a visibility policy',
+  'admin.visibility.newPolicy': 'New visibility policy',
+  'admin.visibility.cancelNew': 'Cancel',
   'admin.visibility.policyName': 'Policy name',
   'admin.visibility.policyAdded': 'Policy {name} was added.',
   'admin.visibility.policyDeleted': 'Policy {name} was deleted.',
@@ -6569,6 +6579,8 @@ export const messagesEn = {
   'layouts.ownSet': '{name} (a track’s own)',
   'layouts.setLocked': 'Save or discard your changes to choose or add another set.',
   'layouts.add': 'Add a layout set',
+  'layouts.new': 'New layout set',
+  'layouts.cancelNew': 'Cancel',
   'layouts.newSetName': 'New set name',
   'layouts.added': '{name} was added.',
   'layouts.saved': '{name} was saved.',

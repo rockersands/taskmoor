@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { NewButton } from '../admin/NewButton';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -32,7 +32,7 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
+  const creating = useNewForm();
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -77,8 +77,9 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
               actions: (
                 <NewButton
                   label={t('admin.teams.new')}
-                  open={creating}
-                  onToggle={() => setCreating(!creating)}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
                 />
               ),
             })}
@@ -87,15 +88,15 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
         <p className="page-note">{t('admin.teams.forbidden')}</p>
       ) : (
         <>
-          {creating && (
+          {creating.open && (
             <AddTeam
               client={client}
               onAdded={(made) => {
-                setCreating(false);
+                creating.close();
                 said(t('admin.teams.added', { name: made.name }));
                 setOpen(made.id);
               }}
-              onCancel={() => setCreating(false)}
+              onCancel={creating.close}
               onProblem={(error) => setProblem(refusal(error))}
             />
           )}
