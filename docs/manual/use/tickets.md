@@ -87,8 +87,11 @@ it. The same form also has its own page at the address ending in `create`.
 3. Press **Create**. The dialog says **PAY-42 was created.** and offers **Open PAY-42**.
 
 Some fields cannot be set in this form yet, such as people, releases and areas, and **Close
-reason** never is: the form leaves them out. Set them on the ticket once it is created. In the
-dialog, **Create** stays in view at its foot while the form scrolls.
+reason** never is. One that is not required is left out: set it on the ticket once it is
+created. One required at create stays on the form, with its name, and says that this form cannot
+set it yet: the ticket is created only if a default or the workflow fills it in, and if not, an
+administrator can make the field optional on the create form. In the dialog, **Create** stays in
+view at its foot while the form scrolls.
 
 To start from an existing ticket, enter its key under **Start from a ticket (its key)** and
 press **Copy its fields**. The form takes that ticket's track, type, summary, description,
@@ -388,7 +391,8 @@ comments, changes and time entries in one stream.
 
 Printing a ticket's page (Ctrl P or Cmd P) prints only the ticket: its title, its details, its
 description and its comments, in one column. The top bar, the navigation, the toolbars, the
-comment box and the buttons are left out.
+comment box and the buttons are left out. With a ticket open in its pop-up, printing gives that
+ticket the same way, without the page beneath it or the pop-up's bar.
 
 ## Moving a ticket through its workflow
 
@@ -458,9 +462,10 @@ administrators change as **Tickets per bulk change** on the guardrails page. A c
 result for every ticket stay readable for 14 days after it finishes. The web app shows its progress at an address
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
-changed with the reason. When some tickets were not changed, the page ends in a warning that
-names the change and says how many tickets were changed and how many were not, instead of
-**Done.** Only the person who asked and site administrators see it. The web app does not yet
+changed with the reason. When some tickets were not changed, a warning takes the place of
+**Done.** at the top: it names the change, says whether it finished or was cancelled, and counts
+the tickets changed, the tickets not changed and the tickets skipped; the list below it gives the
+reasons. Only the person who asked and site administrators see it. The web app does not yet
 have a screen to start a bulk change.
 
 ## Keyboard shortcuts
