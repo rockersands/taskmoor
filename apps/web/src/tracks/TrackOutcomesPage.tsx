@@ -67,7 +67,10 @@ export function TrackOutcomesPage({ trackKey, client = trackClient }: TrackOutco
       <PageHeader
         titleId={`${id}-title`}
         title={t('track.outcomes.title')}
+        // The track named above the section's title, as on its other pages (D26).
+        eyebrow={read?.track.name ?? trackKey}
         purpose={t('track.outcomes.purpose')}
+        about={t('track.outcomes.about')}
       />
       {failed && (
         <p className="form-error" role="alert">
@@ -131,6 +134,7 @@ function OutcomeRow({ outcome, day }: { outcome: TrackOutcome; day: (date: strin
     <li className="track-outcome" data-stage={outcome.status.stage}>
       <div className="track-outcome-head">
         <TypeIcon name={outcome.type} />
+        {/* The key never breaks, and the summary wraps beside the icon, never under it (TR-16). */}
         <a href={routeHref(`#/tickets/${encodeURIComponent(outcome.key)}`)}>
           <span className="track-outcome-key">{outcome.key}</span> {outcome.summary}
         </a>

@@ -40,6 +40,28 @@ function open(
   return { client, errors, container: view.container };
 }
 
+/** The statistics of the Scrum track with a report client the test may change and look into. */
+function openWithReports(
+  report: TrackReport,
+  change: (client: ReturnType<typeof fakeReportClient>) => void = () => {},
+) {
+  const reportClient = fakeReportClient(SCRUM);
+  change(reportClient);
+  render(
+    <I18nProvider locale="en">
+      <TrackStatisticsPage
+        trackKey="SHOP"
+        board={SCRUM}
+        report={report}
+        reports={reportClient}
+        sprints={fakeSprintClient()}
+        client={fakeTrackClient()}
+      />
+    </I18nProvider>,
+  );
+  return { reportClient };
+}
+
 describe('a track’s statistics (ADR-116)', () => {
   it('[CORE-002] lists nothing that follows sprints on a Kanban track', async () => {
     open('cumulative-flow', KANBAN);
@@ -336,16 +358,56 @@ describe('a track’s statistics (ADR-116)', () => {
   });
 
   it('[RPT-001] the outcome report lists the outcome’s tickets, done and open', async () => {
-    const user = userEvent.setup();
     open('outcome-report', SCRUM);
-    expect(await screen.findByText('Enter an outcome’s key to see its report.')).toBeVisible();
-    await user.type(screen.getByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
-    await user.click(screen.getByRole('button', { name: 'Show' }));
     expect(await screen.findByRole('figure', { name: 'Release progress' })).toBeVisible();
     const tickets = screen.getByRole('region', { name: 'Tickets under the outcome' });
     expect(within(tickets).getAllByRole('cell', { name: 'Closed (done)' })).toHaveLength(2);
     expect(within(tickets).getByRole('cell', { name: 'No estimate' })).toBeVisible();
     expect(screen.getByText('Open without an estimate')).toBeVisible();
+  });
+
+  it('[RPT-001] picks an outcome from the track’s outcomes, the first chosen, instead of a typed key (D25)', async () => {
+    const user = userEvent.setup();
+    const { reportClient } = openWithReports('outcome-burndown');
+    const picker = await screen.findByRole('combobox', { name: 'Outcome' });
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'SHOP-50 Card payments in every market',
+      'SHOP-51 A faster checkout',
+      'SHOP-52 Gift cards',
+      'SHOP-47 Saved addresses',
+    ]);
+    expect(screen.queryByRole('textbox', { name: 'Outcome' })).toBeNull();
+    await waitFor(() =>
+      expect(reportClient.calls.at(-1)).toEqual({
+        report: 'outcome-burndown',
+        params: { outcome: 'SHOP-50' },
+      }),
+    );
+    await user.selectOptions(picker, 'SHOP-52');
+    expect(await screen.findByRole('link', { name: 'SHOP-52' })).toBeVisible();
+  });
+
+  it('[RPT-001] says a shipped release shipped on its own day, with no forecast (TR-15)', async () => {
+    const { reportClient } = openWithReports('release-report', (client) => {
+      const read = client.releaseReport;
+      client.releaseReport = async (board, release) => {
+        const report = await read(board, release);
+        return {
+          ...report,
+          release: {
+            ...report.release,
+            releaseDate: '2026-08-18',
+            shippedAt: '2026-11-05T21:00:00Z',
+          },
+        };
+      };
+    });
+    expect(await screen.findByText('Shipped on Aug 18.')).toBeVisible();
+    expect(screen.queryByText(/At the pace of the last/)).toBeNull();
   });
 
   it('[RPT-001] offers one Report picker on a phone instead of the grouped links (D5, TR-5)', async () => {

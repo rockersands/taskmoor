@@ -52,6 +52,8 @@ export const messagesEn = {
   'track.files.title': 'Files and links',
   'track.files.purpose':
     "Everything attached or linked to this track's tickets, newest first. Each row leads to its ticket.",
+  'track.files.about':
+    'Files live on tickets: this page gathers them, and the web links added to tickets, so a track’s documents are in one place. Only what is on tickets you may see is listed.',
   'track.files.failed': 'The files and links could not be loaded.',
   'track.files.attachments': 'Files',
   'track.files.links': 'Web links',
@@ -61,6 +63,8 @@ export const messagesEn = {
   'track.outcomes.title': 'Outcomes',
   'track.outcomes.purpose':
     "Each of this track's outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.",
+  'track.outcomes.about':
+    'An outcome is a larger result the track works towards, with tickets under it. Its bar fills as those tickets close, and its dates come from the outcome itself.',
   'track.outcomes.failed': 'The outcomes could not be loaded.',
   'track.outcomes.progress': '{closed} of {total} closed ({percent}%)',
   'track.outcomes.count': '{closed} of {total}',
@@ -79,6 +83,8 @@ export const messagesEn = {
   'track.outcomes.create': 'Create a ticket',
   'popover.done': 'Done',
   'tracks.title': 'Tracks',
+  'tracks.about':
+    'A track is one stream of work with its own tickets, board, backlog, releases and reports. Open a track for all of them; group your tracks to keep the ones you work on together.',
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
   'tracks.empty':
@@ -4462,7 +4468,6 @@ export const messagesEn = {
   'sprints.report.link': 'Sprint report',
   'sprints.report.title': 'Sprint report: {name}',
   'sprints.report.toBacklog': 'Back to the backlog',
-  'sprints.report.totals': 'Totals',
   'sprints.report.column.key': 'Key',
   'sprints.report.column.summary': 'Summary',
   'sprints.report.column.status': 'Status',
@@ -4568,6 +4573,10 @@ export const messagesEn = {
   'reports.scope.noReleases': 'The board’s track has no releases.',
   'reports.scope.outcome': 'Outcome',
   'reports.scope.outcomeHint': 'A ticket key',
+  'reports.scope.outcomeOption': '{key} {summary}',
+  'reports.scope.noOutcomes': 'This track has no outcomes yet',
+  'reports.scope.noOutcomesHint':
+    'An outcome is a ticket of an outcome type with tickets under it. Once the track has one, its burndown and report show here.',
   'reports.scope.show': 'Show',
   'reports.scope.notFound': 'No outcome with that key is visible to you.',
   'reports.scope.pick': 'Enter an outcome’s key to see its burndown.',
@@ -4985,7 +4994,9 @@ export const messagesEn = {
   'dashboards.startWallboard':
     'Start the wallboard with {count, plural, one {# dashboard} other {# dashboards}}',
   'dashboards.chooseHint': 'Choose dashboards to show them in turn on a wallboard.',
-  'summary.title': '{name} ({key})',
+  'dashboards.onWallboard': 'On the wallboard',
+  'dashboards.wallboardTitle': 'Wallboard',
+  'dashboards.title.byField': 'Tickets by {field}',
   'summary.purpose':
     'Where this track stands, at a glance: every number opens the search behind it.',
   'summary.about':

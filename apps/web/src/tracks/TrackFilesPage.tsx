@@ -5,6 +5,7 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type TrackClient, type TrackFiles, trackClient } from './client';
+import { useTrackSections } from './trackSections';
 
 export interface TrackFilesPageProps {
   trackKey: string;
@@ -21,6 +22,7 @@ export function TrackFilesPage({ trackKey, client = trackClient }: TrackFilesPag
   const id = useId();
   const [files, setFiles] = useState<TrackFiles | null>(null);
   const [failed, setFailed] = useState(false);
+  const trackName = useTrackSections()?.name ?? trackKey;
 
   useEffect(() => {
     let live = true;
@@ -49,7 +51,10 @@ export function TrackFilesPage({ trackKey, client = trackClient }: TrackFilesPag
       <PageHeader
         titleId={`${id}-title`}
         title={t('track.files.title')}
+        // The track named above the section's title, as on its other pages (D26).
+        eyebrow={trackName}
         purpose={t('track.files.purpose')}
+        about={t('track.files.about')}
       />
       {failed && (
         <p className="form-error" role="alert">

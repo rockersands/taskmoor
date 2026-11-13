@@ -140,8 +140,10 @@ export const OutcomeReport: Story = {
   args: { report: 'outcome-report', board: SCRUM, reports: fakeReportClient(SCRUM) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
-    await userEvent.click(canvas.getByRole('button', { name: 'Show' }));
+    await userEvent.selectOptions(
+      await canvas.findByRole('combobox', { name: 'Outcome' }),
+      'SHOP-51',
+    );
     await expect(
       await canvas.findByRole('region', { name: 'Tickets under the outcome' }),
     ).toBeVisible();

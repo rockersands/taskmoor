@@ -16,6 +16,7 @@ import {
   reportClient,
   type TimeInStatus,
 } from './client';
+import { ReportTable } from './ReportTable';
 import { ScatterChart } from './ScatterChart';
 import { SCOPE_REPORTS, ScopeReport, type ScopeReportKind } from './ScopeReports';
 import { StackedAreaChart } from './StackedAreaChart';
@@ -379,11 +380,10 @@ export function FlowReportBody({
           ]}
           format={format}
           unit={unit}
-          tableLabel={t('reports.table')}
+          // The table below holds these numbers and more: no second way to them (TR-32).
           categoryHeader={t('reports.time.status')}
         />
-        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard */}
-        <section className="report-table" aria-label={t('reports.time.table')} tabIndex={0}>
+        <ReportTable label={t('reports.time.table')}>
           <table className="data-table">
             <thead>
               <tr>
@@ -408,7 +408,7 @@ export function FlowReportBody({
               ))}
             </tbody>
           </table>
-        </section>
+        </ReportTable>
       </>
     );
   };

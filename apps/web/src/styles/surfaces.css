@@ -278,16 +278,19 @@
   gap: var(--space-1) var(--space-4);
   align-items: center;
   padding-block: var(--space-3);
-  border-top: 1px solid var(--color-field-border);
+  /* The same hairline as the Releases list (TR-16). */
+  border-top: 1px solid var(--glass-edge);
 }
 
 .track-outcome:first-child {
   border-top: 0;
 }
 
+/* The type icon, the link and the status each keep a column: on a phone the summary wraps beside
+   the icon, never leaving it alone on a line (TR-16). */
 .track-outcome-head {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-1) var(--space-2);
   min-width: 0;
@@ -299,6 +302,8 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
   font-weight: var(--font-weight-strong);
+  /* A key is one word: 'MOB-49', never 'MOB-' over '49'. */
+  white-space: nowrap;
 }
 
 .track-outcome-progress {
@@ -308,6 +313,19 @@
   align-items: center;
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
+}
+
+/* The Releases list's bar: pale, a hairline edge, the flow reports' dark blue (TR-16). */
+.track-outcome-progress .tool-progress-bar {
+  block-size: 6px;
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+
+.track-outcome-progress .tool-progress-bar > span {
+  border-radius: var(--radius-mark);
+  background: var(--color-flow-last);
 }
 
 .track-outcome-dates {

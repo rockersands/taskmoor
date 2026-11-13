@@ -607,7 +607,12 @@ export function TrackStatisticsPage({
       ) : has<FlowReport>(FLOW_REPORTS, report) ? (
         <FlowReportBody boardId={board.id} board={board} report={report} client={reports} />
       ) : isScope ? (
-        <ScopeReport board={board} kind={report as ScopeReportKind} client={reports} />
+        <ScopeReport
+          board={board}
+          kind={report as ScopeReportKind}
+          client={reports}
+          outcomes={client.outcomes}
+        />
       ) : report === 'sprint-report' ? (
         <SprintReports trackKey={trackKey} board={board} sprintId={sprintId} client={sprints} />
       ) : report === 'velocity' ? (

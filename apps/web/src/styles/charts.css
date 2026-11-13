@@ -168,9 +168,31 @@
 .chart-table summary {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-1);
   min-height: var(--hit-target);
   color: var(--color-accent);
   cursor: pointer;
+}
+
+/* A disclosure reads as one (TR-32): a chevron that turns down once the numbers show. */
+.chart-table summary::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-block-end: 2px solid currentcolor;
+  border-inline-end: 2px solid currentcolor;
+  transform: rotate(-45deg);
+  transition: transform var(--motion-fast) ease;
+}
+
+.chart-table[open] summary::before {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-table summary::before {
+    transition: none;
+  }
 }
 
 .chart-table :is(th, td) {
@@ -427,6 +449,43 @@
 
 .report-table :is(th, td):is(:first-child, :nth-child(2)) {
   text-align: start;
+}
+
+/* No word or number breaks in the middle (TR-12): values and headings stay whole, the first
+   column keeps room for a name and wraps only between words, and past the card's edge the table
+   scrolls with a fade on the side that has more. */
+.report-table :is(th, td) {
+  white-space: nowrap;
+}
+
+.report-table :is(th, td):first-child {
+  min-width: 8rem;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+.report-table[data-more="end"]:not(:focus-visible) {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.report-table[data-more="start"]:not(:focus-visible) {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.report-table[data-more="both"]:not(:focus-visible) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
+}
+
+/* A number field shows the value in use as its placeholder: readable in both skins (TR-33). */
+.reports-controls input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
 }
 
 @media (pointer: coarse) {

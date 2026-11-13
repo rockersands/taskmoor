@@ -64,6 +64,8 @@ export const messagesEs: Record<MessageId, string> = {
   'track.files.title': 'Archivos y enlaces',
   'track.files.purpose':
     'Todo lo adjuntado o enlazado a los tickets de este track, lo más reciente primero. Cada fila lleva a su ticket.',
+  'track.files.about':
+    'Los archivos viven en los tickets: esta página los reúne, junto con los enlaces web añadidos a los tickets, para que los documentos de un track estén en un solo lugar. Solo aparece lo que está en tickets que puedes ver.',
   'track.files.failed': 'No se pudieron cargar los archivos y enlaces.',
   'track.files.attachments': 'Archivos',
   'track.files.links': 'Enlaces web',
@@ -74,6 +76,8 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.title': 'Objetivos',
   'track.outcomes.purpose':
     'Cada objetivo de este track, con cuántos de los tickets que tiene debajo están cerrados. Primero van los abiertos, en el orden planificado, y después los cerrados.',
+  'track.outcomes.about':
+    'Un objetivo es un resultado mayor hacia el que avanza el track, con tickets debajo. Su barra se llena a medida que esos tickets se cierran, y sus fechas son las del propio objetivo.',
   'track.outcomes.failed': 'No se pudieron cargar los objetivos.',
   'track.outcomes.progress': '{closed} de {total} cerrados ({percent} %)',
   'track.outcomes.count': '{closed} de {total}',
@@ -92,6 +96,8 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.create': 'Crear un ticket',
   'popover.done': 'Listo',
   'tracks.title': 'Tracks',
+  'tracks.about':
+    'Un track es una línea de trabajo con sus propios tickets, tablero, backlog, versiones e informes. Abre un track para verlos todos; agrupa tus tracks para tener juntos aquellos en los que trabajas.',
   'tracks.failed': 'No se pudieron cargar los tracks.',
   'tracks.emptyTitle': 'Aún no hay tracks',
   'tracks.empty':
@@ -4577,7 +4583,6 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.report.link': 'Informe del sprint',
   'sprints.report.title': 'Informe del sprint: {name}',
   'sprints.report.toBacklog': 'Volver al backlog',
-  'sprints.report.totals': 'Totales',
   'sprints.report.column.key': 'Clave',
   'sprints.report.column.summary': 'Resumen',
   'sprints.report.column.status': 'Estado',
@@ -4684,6 +4689,10 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.scope.noReleases': 'El track del tablero no tiene versiones.',
   'reports.scope.outcome': 'Objetivo',
   'reports.scope.outcomeHint': 'Una clave de ticket',
+  'reports.scope.outcomeOption': '{key} {summary}',
+  'reports.scope.noOutcomes': 'Este track aún no tiene objetivos',
+  'reports.scope.noOutcomesHint':
+    'Un objetivo es un ticket de un tipo de objetivo con tickets debajo. Cuando el track tenga uno, aquí aparecerán su burndown y su informe.',
   'reports.scope.show': 'Mostrar',
   'reports.scope.notFound': 'No ves ningún objetivo con esa clave.',
   'reports.scope.pick': 'Introduce la clave de un objetivo para ver su burndown.',
@@ -5109,6 +5118,9 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.startWallboard':
     'Empezar la pantalla mural con {count, plural, one {# panel} other {# paneles}}',
   'dashboards.chooseHint': 'Elige paneles para mostrarlos por turnos en una pantalla mural.',
+  'dashboards.onWallboard': 'En la pantalla mural',
+  'dashboards.wallboardTitle': 'Pantalla mural',
+  'dashboards.title.byField': 'Tickets por {field}',
   'summary.purpose':
     'Cómo va este track, de un vistazo: cada número abre la búsqueda que hay detrás.',
   'summary.about':
@@ -5167,7 +5179,6 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.axis.targetRelease': 'Versión objetivo',
   'statistics.axis.foundInRelease': 'Encontrado en la versión',
   'statistics.axis.area': 'Área',
-  'summary.title': '{name} ({key})',
   'calendar.title': 'Calendario de {name}',
   'calendar.notFound': 'Este track no existe, o no puedes verlo.',
   'calendar.previous': 'Mes anterior',

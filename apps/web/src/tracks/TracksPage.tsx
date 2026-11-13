@@ -115,6 +115,7 @@ export function TracksPage({
         titleId={`${id}-title`}
         title={t('tracks.title')}
         purpose={t('purpose.tracks')}
+        about={t('tracks.about')}
         {...(modes.length > 0 ? { actions: newTrackButton } : {})}
       />
       <p role="status" className="visually-hidden">
