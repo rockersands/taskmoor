@@ -6,7 +6,7 @@ import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
 import type { PlanSection } from './address';
 import { type FakePlanOptions, fakePlanClient, manyPlanItems } from './fixtures';
-import { PlanPage } from './PlanPage';
+import { PlanPage, showCurrentTab } from './PlanPage';
 
 function renderPlan(section: PlanSection, hash: string, options: FakePlanOptions = {}) {
   window.location.hash = hash;
@@ -263,9 +263,66 @@ describe('a Multi-track plan (PLN-001, PLN-012)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Someone changed this plan meanwhile',
     );
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await user.click(screen.getByRole('button', { name: 'Delete plan' }));
+    // Deleting is a danger, and it asks first, saying what happens (D13).
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const remove = screen.getByRole('button', { name: 'Delete plan' });
+    expect(remove).toHaveClass('button-danger');
+    await user.click(remove);
+    expect(confirm).toHaveBeenCalledWith(
+      'Delete the plan “Spring” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
+    );
     await waitFor(() => expect(client.removed).toEqual([12]));
+  });
+
+  it('[PLN-001] [PLN-005] settings read as the rest of the app: “Only me”, shared boxes, a written date (PL-41)', async () => {
+    renderPlan('settings', '#/plans/12/settings');
+    const who = await screen.findByLabelText('Who sees it');
+    expect(within(who).getByRole('option', { name: 'Only me' })).toBeInTheDocument();
+    // Every box is the app's shared one, a row with its label, as Search's are.
+    const boxes = await screen.findAllByRole('checkbox');
+    for (const box of boxes) expect(box.parentElement).toHaveClass('form-field-inline');
+    // The teams are a plain group inside "Teams and capacity", not a box in a box.
+    expect(screen.getByRole('group', { name: 'Teams' })).toHaveClass('plan-team-group');
+    // The period's first day, written as the app writes dates.
+    expect(screen.getByLabelText('A period starts on')).toHaveAccessibleDescription(
+      'That is Monday, November 2, 2026.',
+    );
+  });
+
+  it('[PLN-012] keeps its filters behind one Filters button on a phone (D33)', async () => {
+    const user = userEvent.setup();
+    setViewportWidth(375);
+    renderPlan('summary', '#/plans/12?assignee=me');
+    const toggle = await screen.findByRole('button', { name: 'Filters (1)' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    // The plan's work shows first; the filters wait.
+    expect(screen.queryByRole('form', { name: 'Filters' })).toBeNull();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const form = screen.getByRole('form', { name: 'Filters' });
+    expect(within(form).getByLabelText('Assignee')).toHaveValue('me');
+    // A desktop shows them as they are, with no button.
+    setViewportWidth(1280);
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Filters/ })).toBeNull());
+    expect(screen.getByRole('form', { name: 'Filters' })).toBeVisible();
+  });
+
+  it('[PLN-012] scrolls its tab bar so the open tab shows whole (PL-17)', async () => {
+    renderPlan('capacity', '#/plans/12/capacity');
+    const bar = await screen.findByRole('navigation', { name: 'Sections of Spring launch' });
+    const current = within(bar).getByRole('link', { name: 'Capacity' });
+    // A phone's bar, 375px wide, with Capacity past its right edge.
+    const box = (left: number, right: number) => ({ left, right }) as DOMRect;
+    bar.getBoundingClientRect = () => box(0, 375);
+    current.getBoundingClientRect = () => box(380, 460);
+    bar.scrollLeft = 0;
+    showCurrentTab(bar);
+    expect(bar.scrollLeft).toBe(460 - 375 + 24);
+    // One already in view stays put.
+    current.getBoundingClientRect = () => box(100, 180);
+    bar.scrollLeft = 10;
+    showCurrentTab(bar);
+    expect(bar.scrollLeft).toBe(10);
   });
 
   it('[PLN-012] fits a phone: no sideways scroll, filters stacked', async () => {

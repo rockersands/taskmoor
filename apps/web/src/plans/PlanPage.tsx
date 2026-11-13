@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -9,6 +9,7 @@ import { useMotionOnChange } from '../shell/motion';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
   GROUP_LABELS,
   PLAN_GROUPS,
@@ -41,6 +42,21 @@ export interface PlanPageProps {
   now?: () => Date;
 }
 
+/**
+ * Scrolls a tab bar sideways so its current tab shows whole (PL-17): on a phone the later tabs
+ * start off-screen, and the one open must not be among them.
+ */
+export function showCurrentTab(nav: HTMLElement | null): void {
+  const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+  if (!nav || !current) return;
+  const bar = nav.getBoundingClientRect();
+  const tab = current.getBoundingClientRect();
+  // A little of the next tab shows too, so the bar reads as one that goes on.
+  const room = 24;
+  if (tab.right > bar.right) nav.scrollLeft += tab.right - bar.right + room;
+  else if (tab.left < bar.left) nav.scrollLeft -= bar.left - tab.left + room;
+}
+
 const STAGES = [
   { id: 'new', label: 'search.stage.new' },
   { id: 'active', label: 'search.stage.active' },
@@ -50,8 +66,8 @@ const STAGES = [
 /**
  * One Multi-track plan (T-088; PLN-001, PLN-012; ADR-122): its name and owner, a tab bar of its
  * Summary, Timeline, List, Calendar, Capacity (PLN-005, PLN-009) and Releases (PLN-007), and Settings for those who
- * may change it, and the
- * filters every view shares, one value each, with the grouping of the Timeline and the List. The
+ * may change it, the current tab scrolled into view, and the
+ * filters every view shares (behind one Filters button on a phone), one value each, with the grouping of the Timeline and the List. The
  * filters and the grouping live in the page's address, so a link opens the same view and the
  * browser's back button undoes a change. Where a view stands (zoom, month, first day, order) is in
  * the address too, replacing its entry, so a link holds it and back still undoes filters, not every
@@ -77,6 +93,10 @@ export function PlanPage({
   const [choices, setChoices] = useState<PlanChoices | null>(null);
   const [version, setVersion] = useState(0);
   const body = useMotionOnChange<HTMLDivElement>('motion-rise', `${id}/${section}`);
+  const tabBar = useRef<HTMLElement>(null);
+  const loaded = plan !== null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on each section, once the bar is drawn
+  useLayoutEffect(() => showCurrentTab(tabBar.current), [section, loaded]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the view in the address changes
   useEffect(() => {
@@ -162,7 +182,11 @@ export function PlanPage({
         actions={<PlanShareActions plan={plan} client={client} />}
       />
       {plan.description && <p className="plan-description">{plan.description}</p>}
-      <nav className="track-tabs" aria-label={t('plans.sections', { name: plan.name })}>
+      <nav
+        ref={tabBar}
+        className="track-tabs"
+        aria-label={t('plans.sections', { name: plan.name })}
+      >
         <ul>
           {tabs.map((s) => (
             <li key={s.id}>
@@ -262,125 +286,144 @@ function PlanFilterBar({
 }) {
   const t = useT();
   const id = useId();
+  // On a phone the filters wait behind one button, so the plan's work shows first (D33).
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const [open, setOpen] = useState(false);
   const { filters } = view;
   const set = (key: keyof typeof filters, value: string) =>
     onChange({ ...view, filters: { ...filters, [key]: value || undefined } });
-  const any = Object.values(filters).some(Boolean);
+  const active = Object.values(filters).filter(Boolean).length;
+  const any = active > 0;
   // A value from the address that the choices do not list still shows as chosen.
   const tracks = choices?.tracks ?? [];
   const types = choices?.types ?? [];
   const people = choices?.assignees ?? [];
   return (
-    <form
-      className="plan-filters"
-      aria-label={t('plans.filters')}
-      onSubmit={(event) => event.preventDefault()}
-    >
-      <label className="form-field" htmlFor={`${id}-track`}>
-        <span className="form-label">{t('plans.filter.track')}</span>
-        <select
-          id={`${id}-track`}
-          value={filters.track ?? ''}
-          onChange={(e) => set('track', e.target.value)}
+    <>
+      {compact && (
+        <button
+          type="button"
+          className="button-secondary plan-filters-toggle"
+          aria-expanded={open}
+          aria-controls={`${id}-filters`}
+          onClick={() => setOpen((was) => !was)}
         >
-          <option value="">{t('plans.filter.any')}</option>
-          {filters.track && !tracks.some((x) => x.key === filters.track) && (
-            <option value={filters.track}>{filters.track}</option>
-          )}
-          {tracks.map((x) => (
-            <option key={x.id} value={x.key}>
-              {x.name === null
-                ? x.key
-                : t('plans.filter.trackOption', { key: x.key, name: x.name })}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="form-field" htmlFor={`${id}-assignee`}>
-        <span className="form-label">{t('plans.filter.assignee')}</span>
-        <select
-          id={`${id}-assignee`}
-          value={filters.assignee ?? ''}
-          onChange={(e) => set('assignee', e.target.value)}
-        >
-          <option value="">{t('plans.filter.any')}</option>
-          <option value="me">{t('plans.filter.me')}</option>
-          <option value="none">{t('plans.filter.nobody')}</option>
-          {filters.assignee &&
-            !['me', 'none'].includes(filters.assignee) &&
-            !people.some((p) => String(p.id) === filters.assignee) && (
-              <option value={filters.assignee}>{t('plans.filter.person')}</option>
-            )}
-          {people.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="form-field" htmlFor={`${id}-type`}>
-        <span className="form-label">{t('plans.filter.type')}</span>
-        <select
-          id={`${id}-type`}
-          value={filters.type ?? ''}
-          onChange={(e) => set('type', e.target.value)}
-        >
-          <option value="">{t('plans.filter.any')}</option>
-          {filters.type && !types.some((x) => x.name === filters.type) && (
-            <option value={filters.type}>{typeName(t, filters.type)}</option>
-          )}
-          {types.map((x) => (
-            <option key={x.name} value={x.name}>
-              {typeName(t, x.name)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="form-field" htmlFor={`${id}-stage`}>
-        <span className="form-label">{t('plans.filter.stage')}</span>
-        <select
-          id={`${id}-stage`}
-          value={filters.stage ?? ''}
-          onChange={(e) => set('stage', e.target.value)}
-        >
-          <option value="">{t('plans.filter.any')}</option>
-          {STAGES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {t(s.label)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {grouped && (
-        <label className="form-field" htmlFor={`${id}-group`}>
-          <span className="form-label">{t('plans.groupBy')}</span>
+          {t('plans.filters.button', { count: active })}
+        </button>
+      )}
+      <form
+        id={`${id}-filters`}
+        className="plan-filters"
+        aria-label={t('plans.filters')}
+        hidden={compact && !open}
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label className="form-field" htmlFor={`${id}-track`}>
+          <span className="form-label">{t('plans.filter.track')}</span>
           <select
-            id={`${id}-group`}
-            value={view.group ?? 'none'}
-            onChange={(e) =>
-              onChange({
-                ...view,
-                group: e.target.value === 'none' ? null : (e.target.value as PlanGroup),
-              })
-            }
+            id={`${id}-track`}
+            value={filters.track ?? ''}
+            onChange={(e) => set('track', e.target.value)}
           >
-            {(['none', ...PLAN_GROUPS] as const).map((g) => (
-              <option key={g} value={g}>
-                {t(GROUP_LABELS[g])}
+            <option value="">{t('plans.filter.any')}</option>
+            {filters.track && !tracks.some((x) => x.key === filters.track) && (
+              <option value={filters.track}>{filters.track}</option>
+            )}
+            {tracks.map((x) => (
+              <option key={x.id} value={x.key}>
+                {x.name === null
+                  ? x.key
+                  : t('plans.filter.trackOption', { key: x.key, name: x.name })}
               </option>
             ))}
           </select>
         </label>
-      )}
-      {any && (
-        <button
-          type="button"
-          className="button-secondary"
-          onClick={() => onChange({ ...view, filters: {} })}
-        >
-          {t('plans.filters.clear')}
-        </button>
-      )}
-    </form>
+        <label className="form-field" htmlFor={`${id}-assignee`}>
+          <span className="form-label">{t('plans.filter.assignee')}</span>
+          <select
+            id={`${id}-assignee`}
+            value={filters.assignee ?? ''}
+            onChange={(e) => set('assignee', e.target.value)}
+          >
+            <option value="">{t('plans.filter.any')}</option>
+            <option value="me">{t('plans.filter.me')}</option>
+            <option value="none">{t('plans.filter.nobody')}</option>
+            {filters.assignee &&
+              !['me', 'none'].includes(filters.assignee) &&
+              !people.some((p) => String(p.id) === filters.assignee) && (
+                <option value={filters.assignee}>{t('plans.filter.person')}</option>
+              )}
+            {people.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="form-field" htmlFor={`${id}-type`}>
+          <span className="form-label">{t('plans.filter.type')}</span>
+          <select
+            id={`${id}-type`}
+            value={filters.type ?? ''}
+            onChange={(e) => set('type', e.target.value)}
+          >
+            <option value="">{t('plans.filter.any')}</option>
+            {filters.type && !types.some((x) => x.name === filters.type) && (
+              <option value={filters.type}>{typeName(t, filters.type)}</option>
+            )}
+            {types.map((x) => (
+              <option key={x.name} value={x.name}>
+                {typeName(t, x.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="form-field" htmlFor={`${id}-stage`}>
+          <span className="form-label">{t('plans.filter.stage')}</span>
+          <select
+            id={`${id}-stage`}
+            value={filters.stage ?? ''}
+            onChange={(e) => set('stage', e.target.value)}
+          >
+            <option value="">{t('plans.filter.any')}</option>
+            {STAGES.map((s) => (
+              <option key={s.id} value={s.id}>
+                {t(s.label)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {grouped && (
+          <label className="form-field" htmlFor={`${id}-group`}>
+            <span className="form-label">{t('plans.groupBy')}</span>
+            <select
+              id={`${id}-group`}
+              value={view.group ?? 'none'}
+              onChange={(e) =>
+                onChange({
+                  ...view,
+                  group: e.target.value === 'none' ? null : (e.target.value as PlanGroup),
+                })
+              }
+            >
+              {(['none', ...PLAN_GROUPS] as const).map((g) => (
+                <option key={g} value={g}>
+                  {t(GROUP_LABELS[g])}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {any && (
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => onChange({ ...view, filters: {} })}
+          >
+            {t('plans.filters.clear')}
+          </button>
+        )}
+      </form>
+    </>
   );
 }

@@ -1,9 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
-import { CalendarPage } from './CalendarPage';
+import { CalendarPage, withoutTrackName } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
 function renderCalendar(client = fakeCalendarClient()) {
@@ -45,14 +45,16 @@ function pointerDrag(
 describe('a track’s calendar (M1-049)', () => {
   it('[AGL-017] shows tickets on their due and start days, with sprints and releases', async () => {
     renderCalendar();
-    expect(await screen.findByRole('heading', { name: 'Calendar of Launch' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'November 2026' })).toBeVisible();
     const tenth = within(day(/^Nov 10, 2026, 1 ticket/));
     expect(tenth.getByRole('link', { name: 'CAL-1 Build the site, due this day' })).toBeVisible();
-    expect(within(day(/^Nov 9, 2026/)).getByText('Launch Sprint 1')).toBeVisible();
+    // Inside the track its sprint is named without the track's name (TR-18).
+    expect(within(day(/^Nov 9, 2026/)).getByText('Sprint 1')).toBeVisible();
+    expect(screen.queryByText('Launch Sprint 1')).toBeNull();
     expect(
       within(day(/^Nov 4, 2026/)).getByRole('link', {
-        name: 'CAL-1 Build the site, starts this day',
+        name: 'Starts: CAL-1 Build the site',
       }),
     ).toBeVisible();
     expect(within(day(/^Nov 21, 2026/)).getByText('◆ Launch')).toBeVisible();
@@ -117,20 +119,20 @@ describe('a track’s calendar (M1-049)', () => {
   });
 
   it('[AGL-017] a finger drags an entry by its grip, not by its link; a tap opens its menu', async () => {
-    // On a phone, where a finger is the pointer and the days stack.
+    // On a phone, where a finger is the pointer and only the days with something on them show.
     setViewportWidth(375);
     const user = userEvent.setup();
     const client = renderCalendar();
     const chip = await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
     // A finger on the link scrolls the page: nothing moves.
-    pointerDrag(chip, day(/^Nov 14, 2026/), { pointerType: 'touch' });
+    pointerDrag(chip, day(/^Nov 10, 2026/), { pointerType: 'touch' });
     expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-12');
     // By its grip, it drags.
     const grip = screen.getByRole('button', { name: 'Move the due day of CAL-2' });
-    pointerDrag(grip, day(/^Nov 14, 2026/), { pointerType: 'touch' });
-    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-14'));
+    pointerDrag(grip, day(/^Nov 10, 2026/), { pointerType: 'touch' });
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-10'));
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'CAL-2 is now due on Nov 14, 2026.',
+      'CAL-2 is now due on Nov 10, 2026.',
     );
     // A tap is the grip's own: a menu of the moves the keys make, one at a time.
     await user.click(screen.getByRole('button', { name: 'Move the due day of CAL-2' }));
@@ -141,11 +143,11 @@ describe('a track’s calendar (M1-049)', () => {
       'One week later',
     ]);
     await user.click(screen.getByRole('menuitem', { name: 'One week later' }));
-    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-21'));
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-17'));
     // The keyboard stays with the entry on its new day.
     await waitFor(() =>
       expect(
-        within(day(/^Nov 21, 2026/)).getByRole('button', { name: 'Move the due day of CAL-2' }),
+        within(day(/^Nov 17, 2026/)).getByRole('button', { name: 'Move the due day of CAL-2' }),
       ).toHaveFocus(),
     );
     // A start entry has its own grip, which moves the start.
@@ -199,10 +201,81 @@ describe('a track’s calendar (M1-049)', () => {
     expect(await screen.findByRole('heading', { name: 'November 2026' })).toBeVisible();
   });
 
+  it('[AGL-017] on a phone lists only the days with something on them, each with its weekday', async () => {
+    setViewportWidth(375);
+    renderCalendar();
+    await screen.findByRole('heading', { name: 'Calendar', level: 1 });
+    const days = within(screen.getByRole('list', { name: 'Days' })).getAllByRole('listitem');
+    // The 3rd, 4th, 9th (the sprint begins), 10th, 12th and 21st (the release): no empty days.
+    expect(days.map((d) => d.getAttribute('aria-label')?.split(',').slice(0, 2).join(','))).toEqual(
+      ['Nov 3, 2026', 'Nov 4, 2026', 'Nov 9, 2026', 'Nov 10, 2026', 'Nov 12, 2026', 'Nov 21, 2026'],
+    );
+    // Each says its weekday and date, not a bare number (D9).
+    expect(days.map((d) => d.querySelector('.calendar-date')?.textContent)).toEqual([
+      'Tue, Nov 3',
+      'Wed, Nov 4',
+      'Mon, Nov 9',
+      'Tue, Nov 10',
+      'Thu, Nov 12',
+      'Sat, Nov 21',
+    ]);
+    // A desktop keeps the whole month of weeks.
+    setViewportWidth(1280);
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('list', { name: 'Days' })).getAllByRole('listitem').length,
+      ).toBeGreaterThan(28),
+    );
+  });
+
+  it('[AGL-017] on a phone puts the month on its own line, before its buttons', async () => {
+    setViewportWidth(375);
+    renderCalendar();
+    const month = await screen.findByRole('heading', { name: 'November 2026' });
+    const previous = screen.getByRole('button', { name: 'Previous month' });
+    // The month comes first, so Previous and Next sit together after it.
+    expect(month.compareDocumentPosition(previous) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(previous.nextElementSibling).toBe(screen.getByRole('button', { name: 'Next month' }));
+  });
+
+  it('[AGL-017] speaks of fingers on a phone and of keys on a desktop', async () => {
+    renderCalendar();
+    expect(await screen.findByText(/^Drag a ticket to another day/)).toBeVisible();
+    act(() => setViewportWidth(375));
+    expect(await screen.findByText(/^Drag a ticket by its grip to another day/)).toBeVisible();
+    expect(screen.queryByText(/Alt and the left or right arrow/)).toBeNull();
+  });
+
+  it('[AGL-017] [NFR-005] names a start entry beginning with the words it shows', async () => {
+    renderCalendar();
+    const start = await screen.findByRole('link', { name: /^Starts: CAL-1/ });
+    const shown = (start.textContent ?? '').replace(/\s+/g, ' ').trim();
+    // Label in Name (WCAG 2.5.3): the name begins with "Starts:" as the chip does.
+    expect(start.getAttribute('aria-label')?.startsWith(shown)).toBe(true);
+  });
+
+  it('[AGL-017] keeps no pill to the track summary: the tab bar leads there', async () => {
+    renderCalendar();
+    await screen.findByRole('heading', { name: 'Calendar', level: 1 });
+    expect(screen.getByText('Launch')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Track summary' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'What is Calendar for?' })).toBeVisible();
+  });
+
   it('[AGL-017] fits a phone: the days stack, nothing scrolls sideways', async () => {
     setViewportWidth(375);
     renderCalendar();
-    await screen.findByRole('heading', { name: 'Calendar of Launch' });
+    await screen.findByRole('heading', { name: 'Calendar', level: 1 });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+describe('sprint names inside a track (TR-18)', () => {
+  it('[AGL-017] drops the track’s name in front, and only a whole one', () => {
+    expect(withoutTrackName('Mobile apps Sprint 1', 'Mobile apps')).toBe('Sprint 1');
+    expect(withoutTrackName('Launch: week 2', 'Launch')).toBe('week 2');
+    expect(withoutTrackName('Launchpad 3', 'Launch')).toBe('Launchpad 3');
+    expect(withoutTrackName('Launch', 'Launch')).toBe('Launch');
+    expect(withoutTrackName('Sprint 4', 'Launch')).toBe('Sprint 4');
   });
 });

@@ -55,13 +55,14 @@ export function SourcePicker({ options, value, onChange }: SourcePickerProps) {
             {tracks.map((x) => {
               const source: PlanSourceInput = { kind: 'track', trackId: x.id };
               return (
-                <li key={x.id}>
-                  <label className="reports-check">
-                    <input
-                      type="checkbox"
-                      checked={chosen.has(keyOf(source))}
-                      onChange={(event) => toggle(source, event.target.checked)}
-                    />
+                <li key={x.id} className="form-field form-field-inline">
+                  <input
+                    id={`${id}-track-${x.id}`}
+                    type="checkbox"
+                    checked={chosen.has(keyOf(source))}
+                    onChange={(event) => toggle(source, event.target.checked)}
+                  />
+                  <label htmlFor={`${id}-track-${x.id}`}>
                     {t('plans.filter.trackOption', { key: x.key, name: x.name })}
                   </label>
                 </li>
@@ -79,15 +80,14 @@ export function SourcePicker({ options, value, onChange }: SourcePickerProps) {
             {searches.map((x) => {
               const source: PlanSourceInput = { kind: 'savedSearch', savedSearchId: x.id };
               return (
-                <li key={x.id}>
-                  <label className="reports-check">
-                    <input
-                      type="checkbox"
-                      checked={chosen.has(keyOf(source))}
-                      onChange={(event) => toggle(source, event.target.checked)}
-                    />
-                    {x.name}
-                  </label>
+                <li key={x.id} className="form-field form-field-inline">
+                  <input
+                    id={`${id}-search-${x.id}`}
+                    type="checkbox"
+                    checked={chosen.has(keyOf(source))}
+                    onChange={(event) => toggle(source, event.target.checked)}
+                  />
+                  <label htmlFor={`${id}-search-${x.id}`}>{x.name}</label>
                 </li>
               );
             })}

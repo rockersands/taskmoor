@@ -14,10 +14,25 @@ import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { releasesCsv } from './planExport';
 
+/** Releases by their date, earliest first; those without one last, in the order they came. */
+export function byDate(releases: readonly PlanRelease[]): PlanRelease[] {
+  return [...releases].sort((a, b) =>
+    a.releaseDate === b.releaseDate
+      ? 0
+      : a.releaseDate === null
+        ? 1
+        : b.releaseDate === null
+          ? -1
+          : a.releaseDate < b.releaseDate
+            ? -1
+            : 1,
+  );
+}
+
 /**
  * A plan's Releases tab (T-089c; PLN-007; ADR-122 stage 4): the releases of the plan's tracks the
  * viewer browses, those of a release across tracks gathered under it first, then the rest by
- * track, upcoming first. A release across tracks shows its own whole numbers, not the plan's share,
+ * track, each group in date order (no date last); a shipped release says when it shipped (PL-40). A release across tracks shows its own whole numbers, not the plan's share,
  * and what is hidden from the viewer only as a count. Only the track filter applies, and the page
  * says so; a ticket-level grant adds no row. On a phone each group is a card with a list inside.
  */
@@ -61,7 +76,7 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
   const share = (p: Progress) => t('releases.progress', { closed: p.closed, count: p.tickets });
   const rows = (releases: PlanRelease[]) => (
     <ul className="release-list">
-      {releases.map((r) => (
+      {byDate(releases).map((r) => (
         <li key={r.id} className="release-row">
           <div className="release-row-head">
             <a href={routeHref(`#/releases/${r.id}`)} className="release-name">
@@ -73,7 +88,9 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
           </div>
           <span className="board-meta">
             {r.releaseDate
-              ? t('releases.dueOn', { date: dayText(intl, r.releaseDate) })
+              ? t(r.shipped ? 'releases.shippedOn' : 'releases.dueOn', {
+                  date: dayText(intl, r.releaseDate),
+                })
               : t('releases.noDate')}
             {r.outOfStep && (
               <>

@@ -55,6 +55,18 @@ export const Summary: Story = {
   },
 };
 
+/** PL-37: room between the numbers and the cards, and each card only as tall as its list. */
+export const SummaryKeepsItsParts: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: '5 tickets in this plan' });
+    const stats = canvasElement.querySelector('.report-stats')?.getBoundingClientRect();
+    const cards = canvasElement.querySelector<HTMLElement>('.summary-sections');
+    if (!stats || !cards) throw new Error('the Summary draws its numbers and cards');
+    await expect(cards.getBoundingClientRect().top - stats.bottom).toBeGreaterThanOrEqual(8);
+    await expect(getComputedStyle(cards).alignItems).toBe('start');
+  },
+};
+
 /** The Summary at a phone's width: the header, tabs, numbers and sections stay inside. */
 export const SummaryAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
@@ -137,6 +149,10 @@ export const Capacity: Story = {
     await expect(canvas.getByText('Over capacity by 8 points')).toBeVisible();
     // Web's and Ana's: counted, never named.
     await expect(canvas.getAllByText('+13 points in 1 ticket elsewhere')).toHaveLength(2);
+    // PL-2: the "Open, no due date" column shows whole inside the card (D32).
+    const card = canvas.getByRole('region', { name: 'Capacity by period' }).getBoundingClientRect();
+    const open = canvas.getByRole('columnheader', { name: 'Open, no due date' });
+    await expect(open.getBoundingClientRect().right).toBeLessThanOrEqual(card.right + 0.5);
   },
 };
 

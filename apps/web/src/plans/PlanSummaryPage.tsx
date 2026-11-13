@@ -106,8 +106,9 @@ export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionP
     );
   };
 
+  // One column with room between its parts; each card as tall as its own list (PL-37).
   return (
-    <>
+    <div className="plan-summary">
       <div className="plan-view-tools">
         <DownloadMenu
           items={[
@@ -155,6 +156,6 @@ export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionP
           (i) => i.name ?? t('summary.unassigned'),
         )}
       </div>
-    </>
+    </div>
   );
 }

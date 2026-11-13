@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
-import { routeHref } from '../routing/router';
 import { PageHeader } from '../shell/PageHeader';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { type Timeline, type TimelineClient, timelineClient } from './client';
@@ -48,6 +47,7 @@ export function TimelinePage({
           titleId={`${id}-title`}
           title={t('track.section.timeline')}
           purpose={t('purpose.timeline')}
+          about={t('timeline.about')}
         />
         <p className="board-problem" role="alert">
           {t('timeline.notFound')}
@@ -59,18 +59,13 @@ export function TimelinePage({
 
   return (
     <section className="page page-full timeline-page" aria-labelledby={`${id}-title`}>
+      {/* Titled by its section, the track named above it (D26); the tab bar leads to the rest (D7). */}
       <PageHeader
         titleId={`${id}-title`}
-        title={t('timeline.title', { name: data.track.name })}
+        title={t('track.section.timeline')}
+        eyebrow={data.track.name}
         purpose={t('purpose.timeline')}
-        actions={
-          <a
-            className="button-quiet"
-            href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}
-          >
-            {t('releases.toSummary')}
-          </a>
-        }
+        about={t('timeline.about')}
       />
       <TimelineView
         data={data}

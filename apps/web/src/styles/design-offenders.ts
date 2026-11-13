@@ -56,6 +56,8 @@ export const ALLOWED = {
     '.capacity-table thead th': STICKY,
     '.capacity-table tbody th': STICKY,
     '.capacity-row.is-team th': STICKY,
+    '.capacity-table tbody td:last-child': STICKY,
+    '.capacity-row.is-team td:last-child': STICKY,
     '.skin-preview-bar': SKIN_PREVIEW,
     '.skin-preview-card': SKIN_PREVIEW,
   },

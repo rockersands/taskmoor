@@ -10,11 +10,14 @@ import {
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { dayNumber, isoDay } from '../timeline/client';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
+import { useTouchWording } from '../timeline/touch';
 import type { CalendarData, CalendarTicket, Moved } from './client';
 
 /** What a calendar draws: a track's, or a Multi-track plan's (ADR-065, ADR-122). */
@@ -101,6 +104,9 @@ export interface CalendarViewProps {
  * on it, and a finger or a mouse by its grip, whose press opens a menu of the same moves as the
  * keys; elsewhere a finger scrolls. The day it would land on is outlined, a label follows the
  * pointer, the page says what is in hand, Escape cancels, and near an edge the page scrolls.
+ *
+ * On a phone (D9) the month is a list of only the days that have something on them, each named
+ * by its weekday and date, and the hint speaks of fingers rather than keys (D6).
  */
 export function CalendarView({
   data,
@@ -116,6 +122,8 @@ export function CalendarView({
   const intl = useIntl();
   const id = useId();
   const today = dayNumber(now().toISOString().slice(0, 10));
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const touch = useTouchWording();
   const [dragging, setDragging] = useState<Entry | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const [notice, setNotice] = useState('');
@@ -272,20 +280,32 @@ export function CalendarView({
   const weekdays = Array.from({ length: 7 }, (_, i) =>
     intl.formatDate(new Date((first + i) * 86_400_000), { weekday: 'short', timeZone: 'UTC' }),
   );
-  const days = Array.from({ length: last - first + 1 }, (_, i) => first + i);
   const drawn = drawnReleases(data.releases);
   const thisMonth = new Date(month * 86_400_000).getUTCMonth();
+  const inMonth = (day: number) => new Date(day * 86_400_000).getUTCMonth() === thisMonth;
+  const everyDay = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+  // A phone lists the month's days that hold an entry, a release or a sprint's first day.
+  const days = compact
+    ? everyDay.filter(
+        (day) =>
+          inMonth(day) &&
+          (entries.has(day) ||
+            drawn.some((r) => dayNumber(r.date) === day) ||
+            data.sprints.some((s) => dayNumber(s.start) === day)),
+      )
+    : everyDay;
+  const dayName = (day: number) =>
+    intl.formatDate(new Date(day * 86_400_000), {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    });
 
   return (
     <>
+      {/* The month first, then its buttons together: on a phone it has a line of its own (PL-38). */}
       <div className="calendar-tools">
-        <button
-          type="button"
-          className="button-secondary"
-          onClick={() => onMonth(addMonths(month, -1))}
-        >
-          {t('calendar.previous')}
-        </button>
         <h2 aria-live="polite">
           {intl.formatDate(new Date(month * 86_400_000), {
             month: 'long',
@@ -293,6 +313,13 @@ export function CalendarView({
             timeZone: 'UTC',
           })}
         </h2>
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => onMonth(addMonths(month, -1))}
+        >
+          {t('calendar.previous')}
+        </button>
         <button
           type="button"
           className="button-secondary"
@@ -306,7 +333,7 @@ export function CalendarView({
         {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
-        {t('calendar.hint')}
+        {t(touch ? 'calendar.hintTouch' : 'calendar.hint')}
       </p>
       <p className="board-hint" role="status">
         {notice}
@@ -320,12 +347,19 @@ export function CalendarView({
           {problem}
         </p>
       )}
-      <ul ref={grid} className="glass-card calendar-grid" aria-label={t('calendar.days')}>
-        {weekdays.map((w) => (
-          <li key={w} className="calendar-weekday" aria-hidden="true">
-            {w}
-          </li>
-        ))}
+      {compact && days.length === 0 && <EmptyState compact title={t('calendar.emptyMonth')} />}
+      <ul
+        ref={grid}
+        className={compact ? 'glass-card calendar-grid is-agenda' : 'glass-card calendar-grid'}
+        aria-label={t('calendar.days')}
+        hidden={compact && days.length === 0}
+      >
+        {!compact &&
+          weekdays.map((w) => (
+            <li key={w} className="calendar-weekday" aria-hidden="true">
+              {w}
+            </li>
+          ))}
         {days.map((day) => {
           const list = entries.get(day) ?? [];
           const shown = opened.has(day) ? list : list.slice(0, PER_DAY);
@@ -346,11 +380,12 @@ export function CalendarView({
               data-drop-day={day}
             >
               <span className="calendar-date" aria-hidden="true">
-                {date.getUTCDate()}
+                {compact ? dayName(day) : date.getUTCDate()}
               </span>
               {sprints.map((s) =>
-                // A band on every day of the sprint, named on its first day and on Mondays.
-                day === dayNumber(s.start) || day === first || date.getUTCDay() === 1 ? (
+                // A band on every day of the sprint, named on its first day and on Mondays; in a
+                // phone's list of days, named on each.
+                compact || day === dayNumber(s.start) || day === first || date.getUTCDay() === 1 ? (
                   <span key={`s${s.id}`} className="calendar-sprint" title={s.name}>
                     {s.name}
                   </span>
@@ -386,6 +421,7 @@ export function CalendarView({
                       className={`calendar-chip${entry.kind === 'start' ? ' is-start' : ''}`}
                       data-stage={entry.ticket.stage}
                       aria-describedby={`${id}-hint`}
+                      // The name begins with the words shown, "Starts:" included (TR-19).
                       aria-label={t(
                         entry.kind === 'due' ? 'calendar.chipDue' : 'calendar.chipStart',
                         { key: entry.ticket.key, summary: entry.ticket.summary },

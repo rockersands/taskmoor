@@ -32,7 +32,8 @@ export function TeamPicker({ options, value, onChange }: TeamPickerProps) {
   const toggle = (team: number, on: boolean) =>
     onChange(on ? [...value, team] : value.filter((x) => x !== team));
   return (
-    <fieldset className="plan-source-group">
+    // Inside the settings' "Teams and capacity" box it is a plain group, not a box in a box (PL-41).
+    <fieldset className="plan-source-group plan-team-group">
       <legend>{t('plans.settings.teams')}</legend>
       <p className="board-hint">{t('plans.settings.teamsHint')}</p>
       {options.length === 0 ? (
@@ -55,13 +56,14 @@ export function TeamPicker({ options, value, onChange }: TeamPickerProps) {
           </p>
           <ul>
             {shown.map((x) => (
-              <li key={x.id}>
-                <label className="reports-check">
-                  <input
-                    type="checkbox"
-                    checked={chosen.has(x.id)}
-                    onChange={(event) => toggle(x.id, event.target.checked)}
-                  />
+              <li key={x.id} className="form-field form-field-inline">
+                <input
+                  id={`${id}-team-${x.id}`}
+                  type="checkbox"
+                  checked={chosen.has(x.id)}
+                  onChange={(event) => toggle(x.id, event.target.checked)}
+                />
+                <label htmlFor={`${id}-team-${x.id}`}>
                   {x.memberCount === null
                     ? x.name
                     : t('plans.settings.teamOption', { name: x.name, count: x.memberCount })}
