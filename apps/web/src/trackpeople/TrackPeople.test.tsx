@@ -616,6 +616,37 @@ describe('the page an invitation leads to (IAM-027, IAM-029)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('[IAM-027] leaves out the role when the invitation names none (AD-7)', async () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <InvitationPage client={fakeInvitationClient({ roleName: '' })} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('Kalo Reyes invited you, at nia@example.com.')).toBeVisible();
+    expect(screen.queryByText(/as ,/)).toBeNull();
+  });
+
+  it('[IAM-027] a link with no invitation says so, without the intro, with the frame’s way out (D24)', () => {
+    window.location.hash = '#/invite';
+    window.sessionStorage.clear();
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <InvitationPage client={fakeInvitationClient()} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(screen.getByText(/This address has no invitation in it/)).toBeVisible();
+    expect(screen.getByText(/ask a site administrator for a new one/)).toBeVisible();
+    expect(screen.queryByText(/You were invited to a track/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
+  });
+
   it('[IAM-027] a new person chooses a name and a password, goes through sign-in and lands in the track', async () => {
     const user = userEvent.setup();
     const calls = stubBackend({

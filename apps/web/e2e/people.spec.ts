@@ -117,7 +117,7 @@ test('[IAM-008] ASVS 8.3.2: a person downloads their own data, and the administr
 }, testInfo) => {
   await signIn(page);
   // The administrator's own data: asked for on the account page, made by the worker.
-  await page.goto(`${BASE}/#/account`);
+  await page.goto(`${BASE}/#/account/data`);
   const data = page.getByRole('region', { name: 'Your data' });
   await data.getByRole('button', { name: 'Prepare a download' }).click();
   await expect(data.getByRole('status')).toHaveText(/being prepared/);

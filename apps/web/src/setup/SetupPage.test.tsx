@@ -36,11 +36,36 @@ describe('setup page', () => {
   });
 
   it('[OPS-003] explains that the installer link is needed without a token', async () => {
+    stubApi(({ url }) =>
+      url.endsWith('/setup')
+        ? jsonResponse(200, { needed: true })
+        : jsonResponse(401, { error: 'not_signed_in' }),
+    );
     window.location.hash = '#/setup';
     render(<App />);
     expect(await screen.findByRole('heading', { level: 1, name: 'Set up Taskmoor' })).toBeVisible();
-    expect(screen.getByText(/needs the setup link/)).toBeVisible();
+    expect(await screen.findByText(/needs the whole setup link/)).toBeVisible();
+    // No intro that says to create an account here (AC-7).
+    expect(screen.queryByText(/This runs once/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
+  });
+
+  it('[OPS-003] says a site that is set up is set up, also without a link (AC-5)', async () => {
+    stubApi(({ url }) =>
+      url.endsWith('/setup')
+        ? jsonResponse(200, { needed: false })
+        : jsonResponse(401, { error: 'not_signed_in' }),
+    );
+    window.location.hash = '#/setup';
+    render(<App />);
+    expect(
+      await screen.findByText('This site is already set up. Sign in with your account.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/needs the whole setup link/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
   });
 
   it('[OPS-003] creates the administrator, signs in and leaves for the home page', async () => {
@@ -97,7 +122,10 @@ describe('setup page', () => {
     status = 409;
     await user.click(screen.getByRole('button', { name: 'Finish setup' }));
     expect(await screen.findByText(/already set up/)).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '#/settings');
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
   });
 
   it('[IAM-001] explains each password problem in the reader’s language', async () => {

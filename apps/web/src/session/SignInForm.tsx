@@ -59,11 +59,15 @@ export function SignInForm({
   const [step, setStep] = useState<Step>({ kind: 'password' });
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
-  // A failed single sign-on comes back as #/sign-in?sso_error=<code>.
-  const [error, setError] = useState<string | null>(() => {
+  // A failed single sign-on comes back as #/sign-in?sso_error=<code>. It is not about the
+  // password, so it shows above the form as its own alert (AC-10).
+  const [ssoError, setSsoError] = useState<string | null>(() => {
     const code = hashParam(currentRoute(), 'sso_error');
     return code ? ssoErrorMessage(t, code) : null;
   });
+  const [error, setError] = useState<string | null>(null);
+  /** The email and password did not match: both fields say so (AC-14). */
+  const [mismatch, setMismatch] = useState(false);
   const [busy, setBusy] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
   const [returned, setReturned] = useState(0);
@@ -160,6 +164,8 @@ export function SignInForm({
     }
     setBusy(true);
     setError(null);
+    setSsoError(null);
+    setMismatch(false);
     try {
       // Email first, also when the form is sent straight away: a domain that signs in with its
       // provider gets the provider, and the password is not sent.
@@ -186,12 +192,10 @@ export function SignInForm({
         return;
       }
       // A locked email or address answers 429 with the wait (IAM-001 lockout).
-      setError(
-        tooManyAttemptsMessage(t, e) ??
-          (e instanceof ApiError && e.status === 401
-            ? t('auth.invalidCredentials')
-            : t('auth.failed')),
-      );
+      const throttled = tooManyAttemptsMessage(t, e);
+      const wrong = !throttled && e instanceof ApiError && e.status === 401;
+      setMismatch(wrong);
+      setError(throttled ?? (wrong ? t('auth.invalidCredentials') : t('auth.failed')));
     } finally {
       setBusy(false);
     }
@@ -232,8 +236,16 @@ export function SignInForm({
     );
   }
 
+  const errorId = `${id}-error`;
+  const forgotId = `${id}-forgot`;
+  const marked = mismatch && error ? errorId : null;
   return (
     <div className="sign-in-methods">
+      {ssoError && (
+        <p className="form-error" role="alert">
+          {ssoError}
+        </p>
+      )}
       <form className="form" onSubmit={submit} aria-label={t('auth.signIn')}>
         <div className="sign-in-email">
           <div className="form-field">
@@ -244,7 +256,8 @@ export function SignInForm({
               autoComplete="username"
               required
               value={email}
-              aria-describedby={`${id}-organisation`}
+              aria-describedby={[`${id}-organisation`, marked].filter(Boolean).join(' ')}
+              {...(marked ? { 'aria-invalid': true } : {})}
               onChange={(e) => setEmail(e.target.value)}
               // The field's own value: a password manager or a fast typist can leave before
               // the last change has rendered.
@@ -271,11 +284,19 @@ export function SignInForm({
             value={password}
             onChange={setPassword}
             inputRef={passwordInput}
+            invalid={Boolean(marked)}
+            describedBy={[marked, forgotId].filter(Boolean).join(' ')}
           />
         )}
         {error && (
-          <p className="form-error" role="alert">
+          <p id={errorId} className="form-error" role="alert">
             {error}
+          </p>
+        )}
+        {/* No self-service reset (D15): who gives a new password link, always and after a miss. */}
+        {!enforced && (
+          <p id={forgotId} className="form-hint">
+            {t('auth.forgotPassword')}
           </p>
         )}
         {/* One button: when the domain enforces single sign-on it leads there, so focus stays. */}

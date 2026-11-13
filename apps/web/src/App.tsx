@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { AccountPage } from './account/AccountPage';
+import { AccountPage, accountSectionOf } from './account/AccountPage';
 import { accountClient } from './account/client';
 import { AdminGroupPage } from './admin/AdminGroupPage';
 import { AdminLayout } from './admin/AdminLayout';
@@ -32,7 +32,6 @@ import { DirectoriesPage } from './directories/DirectoriesPage';
 import { FieldsAdminPage } from './fields/FieldsAdminPage';
 import { GuardrailsPage } from './guardrails/GuardrailsPage';
 import { HomePage } from './home/HomePage';
-import { HomeSignedOut, PageNotReady } from './home/HomeSignedOut';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import {
   catalogueFor,
@@ -88,7 +87,9 @@ import {
   TracksIcon,
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
+import { NotFoundContext, NotFoundPage } from './shell/NotFoundPage';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
+import { StandaloneFrame } from './shell/StandaloneFrame';
 import { ThemeToggle } from './shell/ThemeToggle';
 import { type Appearance, applyAppearance } from './skins/skins';
 import { SprintReportPage } from './sprints/SprintReportPage';
@@ -178,10 +179,14 @@ const ADMIN_NAV_ITEM: NavItem & { requiresSession: true } = {
   group: 'manage',
 };
 
-/** Current page id from the hash (#/tracks -> "tracks"). */
-function routeFromHash(hash: string, fallback: string): string {
+/**
+ * Current page id from the hash (#/tracks -> "tracks"); the start page for an empty route, and
+ * null for an address that matches no page (D4).
+ */
+function routeFromHash(hash: string): string | null {
   const id = hash.replace(/^#\/?/, '').split(/[/?]/)[0];
-  return NAV_ITEMS.some((item) => item.id === id) && id ? id : fallback;
+  if (!id) return 'home';
+  return NAV_ITEMS.some((item) => item.id === id) ? id : null;
 }
 
 /** True when the hash is this route, with or without a query or a sub-path. */
@@ -285,6 +290,14 @@ const goHome = () => {
   navigate(HOME);
 };
 
+const noop = () => {};
+
+/** The sign-in address once signed in: goes on as signing in there would. */
+function SignedInAlready() {
+  useEffect(() => afterSignIn(), []);
+  return null;
+}
+
 /**
  * After signing in on this backend's page: back to the frontend on another site that sent the
  * person here (its authorization, M1-107), or the start page.
@@ -306,6 +319,8 @@ function Pages() {
     navigate(SIGN_IN);
   }, []);
   const registered = useRegisteredCommands();
+  // A page that says what it shows is not found marks no section of the navigation (D4).
+  const [notFoundAt, setNotFoundAt] = useState<string | null>(null);
   // The instance's name from the runtime configuration (M1-105) leads the page title.
   useEffect(() => {
     const instance = runtimeConfig.instanceName;
@@ -639,6 +654,29 @@ function Pages() {
   if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
   if (isRoute(hash, OAUTH_CONSENT)) return <ConsentPage />;
 
+  // Signed out, a visitor sees the reduced frame with the sign-in page only (D8): no app
+  // navigation, no page that would answer as if there were nothing to see. While the session is
+  // being checked the frame waits with a neutral note (T-214). Signing in on another page's
+  // address shows that page; on the sign-in page itself it goes on as before.
+  if (session.status !== 'signed-in') {
+    const signInPage = isRoute(hash, SIGN_IN);
+    return (
+      <StandaloneFrame wayOut={false}>
+        {session.status === 'loading' ? (
+          <main id="main" className="setup" tabIndex={-1}>
+            <p className="page-note" role="status">
+              {t('auth.checking')}
+            </p>
+          </main>
+        ) : (
+          <SignInPage
+            {...(signInPage ? { onSignedIn: afterSignIn } : { onSignedIn: noop, required: true })}
+          />
+        )}
+      </StandaloneFrame>
+    );
+  }
+
   // Which navigation entry is highlighted, what the main area shows, and whether it needs a
   // session. Account is personal settings, so Settings stays highlighted there.
   let active = 'settings';
@@ -740,7 +778,8 @@ function Pages() {
   } else if (isRoute(hash, ADMIN_TICKET_TEMPLATES)) {
     content = <TicketTemplatesPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
-    active = 'tracks';
+    // Not a page of any track, so no section is marked (PL-43).
+    active = '';
     content = <CreateTicketPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOWS)) {
     const workflowId = /^#\/admin\/workflows\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
@@ -750,7 +789,13 @@ function Pages() {
       <WorkflowsPage />
     );
   } else if (isRoute(hash, ACCOUNT)) {
-    content = <AccountPage />;
+    // Each section at its own address (D17); one that names no section is not found.
+    const section = accountSectionOf(hash);
+    content = section ? (
+      <AccountPage key={section} section={section} />
+    ) : (
+      <NotFoundPage title={t('notFound.title')} />
+    );
   } else if (isRoute(hash, TUTORIALS)) {
     content = <TutorialsPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
@@ -804,7 +849,7 @@ function Pages() {
       inner
     );
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
-    active = 'tracks';
+    active = '';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
   } else if (TRACK_CALENDAR.test(hash)) {
@@ -957,35 +1002,30 @@ function Pages() {
       />
     );
   } else if (isRoute(hash, SIGN_IN)) {
+    // Signed in at the sign-in address: on to where signing in leads.
     active = '';
     guarded = false;
-    content = <SignInPage onSignedIn={afterSignIn} />;
+    content = <SignedInAlready />;
   } else {
-    active = routeFromHash(hash, 'home');
-    const page = NAV_ITEMS.find((item) => item.id === active);
-    guarded = page?.requiresSession ?? false;
+    const page = routeFromHash(hash);
+    active = page ?? '';
+    guarded = false;
     content =
-      active === 'settings' ? (
+      page === 'settings' ? (
         <SettingsPage />
-      ) : active === 'inbox' ? (
+      ) : page === 'inbox' ? (
         <InboxPage />
-      ) : active === 'home' && signedIn ? (
+      ) : page === 'home' ? (
         <HomePage intro={<FirstRunOffer />} />
-      ) : active === 'home' && session.status === 'anonymous' ? (
-        // Signed out, as on a fresh install's first visit: say where to start (M1-113). Not
-        // while the session is still being checked, or a signed-in person would see it flash.
-        <HomeSignedOut />
-      ) : active === 'search' && signedIn ? (
+      ) : page === 'search' ? (
         <SearchPage
           key={queryFromHash(hash) || String(savedSearchFromHash(hash) ?? '')}
           initialQuery={queryFromHash(hash)}
           initialSavedSearch={savedSearchFromHash(hash)}
         />
       ) : (
-        <PageNotReady
-          title={page ? t(page.labelId) : ''}
-          purpose={t(active === 'search' ? 'purpose.search' : 'purpose.home')}
-        />
+        // An address that matches no page says so, rather than showing Home (D4).
+        <NotFoundPage title={t('notFound.title')} />
       );
   }
 
@@ -1008,7 +1048,7 @@ function Pages() {
   return (
     <AppShell
       items={access === 'none' ? NAV_ITEMS : [...NAV_ITEMS, ADMIN_NAV_ITEM]}
-      activeId={active}
+      activeId={notFoundAt === hash ? '' : active}
       topbarEnd={
         <>
           {signedIn && (
@@ -1033,7 +1073,9 @@ function Pages() {
         </>
       }
     >
-      {guarded ? <RequireSession>{content}</RequireSession> : content}
+      <NotFoundContext.Provider value={setNotFoundAt}>
+        {guarded ? <RequireSession>{content}</RequireSession> : content}
+      </NotFoundContext.Provider>
       {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
       <TicketPopup />
       <TutorialCoach />

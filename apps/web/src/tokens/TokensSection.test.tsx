@@ -23,7 +23,7 @@ async function openTokens(handlers: Record<string, Handler> = {}, session: Sessi
     'GET /account/tokens': tokensAnswer(),
     ...handlers,
   });
-  window.location.hash = '#/account';
+  window.location.hash = '#/account/tokens';
   render(<App session={session} />);
   const section = await screen.findByRole('region', { name: 'API tokens' });
   return { calls, section: within(section) };
@@ -164,6 +164,8 @@ describe('API tokens on the Account page', () => {
       'GET /account/tokens': tokensAnswer([], { maxLifetimeDays: 730, reminderDays: 14 }),
     });
     await section.findByText('You have no API tokens.');
+    // The empty state does not repeat the intro above it (AC-20).
+    expect(section.queryByText(/A token lets a program/)).toBeNull();
     const select = section.getByLabelText('Expires after');
     expect(
       within(select)

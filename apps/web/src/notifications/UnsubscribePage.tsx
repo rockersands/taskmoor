@@ -4,6 +4,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { currentRoute, routeHref } from '../routing/router';
 import { passwordTokenFromHash } from '../session/PasswordLinkPage';
 import { PageHeader } from '../shell/PageHeader';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { type UnsubscribeClient, type UnsubscribeLink, unsubscribeClient } from './client';
 
 export interface UnsubscribePageProps {
@@ -65,6 +66,8 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
   let body: ReactNode;
   switch (state.status) {
     case 'no-token':
+      body = <p className="page-note">{t('unsubscribe.noToken')}</p>;
+      break;
     case 'invalid':
       body = <p className="page-note">{t('unsubscribe.invalid')}</p>;
       break;
@@ -111,10 +114,17 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
       );
     }
   }
+  // The intro is for a link that works; with a problem it would contradict it (AC-7).
+  const problem = state.status === 'no-token' || state.status === 'invalid';
   return (
-    <main className="setup">
-      <PageHeader title={t('unsubscribe.title')} purpose={t('purpose.unsubscribe')} />
-      <div className="glass-card account-section">{body}</div>
-    </main>
+    <StandaloneFrame>
+      <main className="setup">
+        <PageHeader
+          title={t('unsubscribe.title')}
+          {...(problem ? {} : { purpose: t('purpose.unsubscribe') })}
+        />
+        <div className="glass-card account-section">{body}</div>
+      </main>
+    </StandaloneFrame>
   );
 }

@@ -1,11 +1,12 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
-import { currentRoute, routeHref } from '../routing/router';
+import { currentRoute } from '../routing/router';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages } from '../session/errors';
 import { PasswordField } from '../session/PasswordField';
 import { useSession } from '../session/SessionProvider';
 import { PageHeader } from '../shell/PageHeader';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 
 type Status = 'checking' | 'ready' | 'done' | 'submitting' | 'already-set-up' | 'no-token';
 
@@ -19,14 +20,15 @@ export function setupTokenFromHash(hash: string): string | null {
 /**
  * First-run setup (OPS-003, M0-027): one form creates the site administrator, names the
  * instance and, optionally, records mail settings. The one-time token in the link authorises
- * it; a second visit lands on "already set up" with a link to sign in.
+ * it. Whether the site is set up is asked first, with or without a token (AC-5): a site that is
+ * set up says so, and the frame's way out leads to sign in (D24).
  */
 export function SetupPage({ onDone }: { onDone: () => void }) {
   const t = useT();
   const { refresh } = useSession();
   const id = useId();
   const token = setupTokenFromHash(currentRoute());
-  const [status, setStatus] = useState<Status>(token ? 'checking' : 'no-token');
+  const [status, setStatus] = useState<Status>('checking');
   const [error, setError] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [instanceName, setInstanceName] = useState('');
@@ -42,10 +44,10 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
   const [smtpFrom, setSmtpFrom] = useState('');
 
   useEffect(() => {
-    if (!token) return;
+    const open = token ? 'ready' : 'no-token';
     api<{ needed: boolean }>('/setup')
-      .then(({ needed }) => setStatus(needed ? 'ready' : 'already-set-up'))
-      .catch(() => setStatus('ready'));
+      .then(({ needed }) => setStatus(needed ? open : 'already-set-up'))
+      .catch(() => setStatus(open));
   }, [token]);
 
   const submit = async (event: FormEvent) => {
@@ -94,166 +96,174 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     }
   };
 
-  if (status === 'no-token' || status === 'already-set-up') {
+  // The intro describes the form, so a page without one leaves it out (AC-7).
+  if (status === 'no-token' || status === 'already-set-up' || (status === 'checking' && !token)) {
     return (
-      <main className="setup">
-        <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
-        <div className="glass-card account-section">
-          <p className="page-note">
-            {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
-          </p>
-          {status === 'already-set-up' && (
-            <a className="button-primary setup-link" href={routeHref('#/settings')}>
-              {t('auth.signIn')}
-            </a>
-          )}
-        </div>
-      </main>
+      <StandaloneFrame>
+        <main className="setup">
+          <PageHeader
+            title={t('setup.title')}
+            {...(status === 'checking' ? { purpose: t('setup.intro') } : {})}
+          />
+          <div className="glass-card account-section">
+            <p className="page-note" role={status === 'checking' ? 'status' : undefined}>
+              {status === 'checking'
+                ? t('setup.checking')
+                : status === 'no-token'
+                  ? t('setup.noToken')
+                  : t('setup.alreadySetUp')}
+            </p>
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
 
   const field = (key: string) => `${id}-${key}`;
   return (
-    <main className="setup">
-      <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
-      <form className="form" onSubmit={submit} aria-label={t('setup.title')}>
-        <fieldset>
-          <legend>{t('setup.instance')}</legend>
-          <div className="form-field">
-            <label htmlFor={field('instance')}>{t('setup.instanceName')}</label>
-            <input
-              id={field('instance')}
-              required
-              maxLength={100}
-              value={instanceName}
-              onChange={(e) => setInstanceName(e.target.value)}
+    // No account exists yet, so there is nowhere to sign in.
+    <StandaloneFrame wayOut={false}>
+      <main className="setup">
+        <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
+        <form className="form" onSubmit={submit} aria-label={t('setup.title')}>
+          <fieldset>
+            <legend>{t('setup.instance')}</legend>
+            <div className="form-field">
+              <label htmlFor={field('instance')}>{t('setup.instanceName')}</label>
+              <input
+                id={field('instance')}
+                required
+                maxLength={100}
+                value={instanceName}
+                onChange={(e) => setInstanceName(e.target.value)}
+              />
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>{t('setup.admin')}</legend>
+            <div className="form-field">
+              <label htmlFor={field('name')}>{t('setup.adminName')}</label>
+              <input
+                id={field('name')}
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor={field('email')}>{t('auth.email')}</label>
+              <input
+                id={field('email')}
+                type="email"
+                required
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <PasswordField
+              label={t('auth.password')}
+              autoComplete="new-password"
+              hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
+              value={password}
+              onChange={setPassword}
             />
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>{t('setup.admin')}</legend>
-          <div className="form-field">
-            <label htmlFor={field('name')}>{t('setup.adminName')}</label>
-            <input
-              id={field('name')}
-              required
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+            <PasswordField
+              label={t('setup.confirmPassword')}
+              toggleLabel={t('password.showConfirm')}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={setConfirm}
             />
-          </div>
-          <div className="form-field">
-            <label htmlFor={field('email')}>{t('auth.email')}</label>
-            <input
-              id={field('email')}
-              type="email"
-              required
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <PasswordField
-            label={t('auth.password')}
-            autoComplete="new-password"
-            hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
-            value={password}
-            onChange={setPassword}
-          />
-          <PasswordField
-            label={t('setup.confirmPassword')}
-            toggleLabel={t('password.showConfirm')}
-            autoComplete="new-password"
-            value={confirm}
-            onChange={setConfirm}
-          />
-        </fieldset>
-        <fieldset>
-          <legend>{t('setup.mail')}</legend>
-          <div className="form-field form-field-inline">
-            <input
-              id={field('with-smtp')}
-              type="checkbox"
-              checked={withSmtp}
-              onChange={(e) => setWithSmtp(e.target.checked)}
-            />
-            <label htmlFor={field('with-smtp')}>{t('setup.configureMail')}</label>
-          </div>
-          {withSmtp && (
-            <>
-              <div className="form-field">
-                <label htmlFor={field('smtp-host')}>{t('setup.smtpHost')}</label>
-                <input
-                  id={field('smtp-host')}
-                  required
-                  value={smtpHost}
-                  onChange={(e) => setSmtpHost(e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor={field('smtp-port')}>{t('setup.smtpPort')}</label>
-                <input
-                  id={field('smtp-port')}
-                  type="number"
-                  min={1}
-                  max={65535}
-                  required
-                  value={smtpPort}
-                  onChange={(e) => setSmtpPort(e.target.value)}
-                />
-              </div>
-              <div className="form-field form-field-inline">
-                <input
-                  id={field('smtp-secure')}
-                  type="checkbox"
-                  checked={smtpSecure}
-                  onChange={(e) => setSmtpSecure(e.target.checked)}
-                />
-                <label htmlFor={field('smtp-secure')}>{t('setup.smtpSecure')}</label>
-              </div>
-              <div className="form-field">
-                <label htmlFor={field('smtp-user')}>{t('setup.smtpUser')}</label>
-                <input
-                  id={field('smtp-user')}
-                  autoComplete="off"
-                  value={smtpUser}
-                  onChange={(e) => setSmtpUser(e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor={field('smtp-from')}>{t('setup.smtpFrom')}</label>
-                <input
-                  id={field('smtp-from')}
-                  type="email"
-                  required
-                  value={smtpFrom}
-                  onChange={(e) => setSmtpFrom(e.target.value)}
-                />
-              </div>
-              <p className="form-hint">{t('setup.smtpPasswordHint')}</p>
-            </>
-          )}
-        </fieldset>
-        {error && (
-          <div className="form-error" role="alert">
-            <p>{error}</p>
-            {problems.length > 0 && (
-              <ul>
-                {problems.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
+          </fieldset>
+          <fieldset>
+            <legend>{t('setup.mail')}</legend>
+            <div className="form-field form-field-inline">
+              <input
+                id={field('with-smtp')}
+                type="checkbox"
+                checked={withSmtp}
+                onChange={(e) => setWithSmtp(e.target.checked)}
+              />
+              <label htmlFor={field('with-smtp')}>{t('setup.configureMail')}</label>
+            </div>
+            {withSmtp && (
+              <>
+                <div className="form-field">
+                  <label htmlFor={field('smtp-host')}>{t('setup.smtpHost')}</label>
+                  <input
+                    id={field('smtp-host')}
+                    required
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor={field('smtp-port')}>{t('setup.smtpPort')}</label>
+                  <input
+                    id={field('smtp-port')}
+                    type="number"
+                    min={1}
+                    max={65535}
+                    required
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                  />
+                </div>
+                <div className="form-field form-field-inline">
+                  <input
+                    id={field('smtp-secure')}
+                    type="checkbox"
+                    checked={smtpSecure}
+                    onChange={(e) => setSmtpSecure(e.target.checked)}
+                  />
+                  <label htmlFor={field('smtp-secure')}>{t('setup.smtpSecure')}</label>
+                </div>
+                <div className="form-field">
+                  <label htmlFor={field('smtp-user')}>{t('setup.smtpUser')}</label>
+                  <input
+                    id={field('smtp-user')}
+                    autoComplete="off"
+                    value={smtpUser}
+                    onChange={(e) => setSmtpUser(e.target.value)}
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor={field('smtp-from')}>{t('setup.smtpFrom')}</label>
+                  <input
+                    id={field('smtp-from')}
+                    type="email"
+                    required
+                    value={smtpFrom}
+                    onChange={(e) => setSmtpFrom(e.target.value)}
+                  />
+                </div>
+                <p className="form-hint">{t('setup.smtpPasswordHint')}</p>
+              </>
             )}
-          </div>
-        )}
-        <button
-          type="submit"
-          className="button-primary"
-          disabled={status === 'submitting' || status === 'checking'}
-        >
-          {t('setup.submit')}
-        </button>
-      </form>
-    </main>
+          </fieldset>
+          {error && (
+            <div className="form-error" role="alert">
+              <p>{error}</p>
+              {problems.length > 0 && (
+                <ul>
+                  {problems.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <button
+            type="submit"
+            className="button-primary"
+            disabled={status === 'submitting' || status === 'checking'}
+          >
+            {t('setup.submit')}
+          </button>
+        </form>
+      </main>
+    </StandaloneFrame>
   );
 }

@@ -4,22 +4,51 @@ import { describe, expect, it } from 'vitest';
 import { SIGNED_IN } from '../account/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
+import { setViewportWidth } from '../test/viewport';
 import type { PreferenceChanges } from './client';
 import { fakeNotificationsClient } from './fixtures';
 import { NotificationsSection } from './NotificationsSection';
 
-function renderSection(client = fakeNotificationsClient()) {
+function renderSection(client = fakeNotificationsClient(), locale: 'en' | 'es' = 'en') {
   render(
-    <I18nProvider locale="en">
+    <I18nProvider locale={locale}>
       <SessionProvider session={SIGNED_IN}>
         <NotificationsSection client={client} />
       </SessionProvider>
     </I18nProvider>,
   );
-  return within(screen.getByRole('region', { name: 'Notifications' }));
+  return within(
+    screen.getByRole('region', { name: locale === 'es' ? 'Notificaciones' : 'Notifications' }),
+  );
 }
 
 describe('notification settings (M1-057)', () => {
+  it('[NTF-004] uses the app’s own check boxes and radios, not the browser’s (AC-11)', async () => {
+    const section = renderSection();
+    await section.findByRole('table');
+    for (const box of section.getAllByRole('checkbox')) expect(box).toHaveClass('glass-check');
+    for (const radio of section.getAllByRole('radio')) {
+      expect(radio.closest('label')).toHaveClass('notification-choice');
+    }
+  });
+
+  it('[NTF-004] on a phone, one block per event with its channels beneath, in Spanish too (D23, AC-1)', async () => {
+    setViewportWidth(375);
+    const section = renderSection(fakeNotificationsClient(), 'es');
+    const events = await section.findByRole('group', { name: 'De qué te enteras, y dónde' });
+    expect(section.queryByRole('table')).toBeNull();
+    const blocks = within(events).getAllByRole('group');
+    // Mentions, shared track groups, checklist changes and the 15 policy events.
+    expect(blocks).toHaveLength(18);
+    const first = blocks[0] as HTMLElement;
+    expect(within(first).getAllByRole('checkbox')).toHaveLength(2);
+    for (const box of within(events).getAllByRole('checkbox')) {
+      expect(box).toHaveClass('glass-check');
+    }
+    // Each switch keeps its full name: the channel, then the event.
+    expect(within(first).getAllByRole('checkbox')[0]).toHaveAccessibleName(/^Correo electrónico: /);
+  });
+
   it('[NTF-004] shows email delivery, quiet hours, own changes and every event by channel', async () => {
     const section = renderSection();
     expect(await section.findByRole('radio', { name: /At once/ })).toBeChecked();

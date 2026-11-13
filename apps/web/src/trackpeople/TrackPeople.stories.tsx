@@ -290,8 +290,10 @@ export const InvitationLinkGone: StoryObj<typeof InvitationPage> = {
       />,
     ),
   play: async ({ canvasElement }) => {
-    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign-in' });
-    await expect(link.closest('.glass-card')).not.toBeNull();
+    // The frame's one way out, at the top (D24); the problem on its card.
+    const link = await within(canvasElement).findByRole('link', { name: 'Go to sign in' });
+    await expect(link.closest('.standalone-bar')).not.toBeNull();
+    await expect(canvasElement.querySelector('.glass-card .page-note')).not.toBeNull();
   },
 };
 

@@ -16,6 +16,7 @@ import type { MessageId } from './messages.en';
 export const messagesEs: Record<MessageId, string> = {
   'app.name': 'Taskmoor',
   'app.instanceTitle': '{instance} · Taskmoor',
+  'standalone.goToSignIn': 'Ir al inicio de sesión',
   'update.availableTitle': 'Hay una versión más reciente.',
   'update.available':
     'Esta aplicación es la versión {version} y el servidor ejecuta la {server}. Recarga la página para actualizarla.',
@@ -334,6 +335,8 @@ export const messagesEs: Record<MessageId, string> = {
   'empty.tokens.body':
     'Un token permite que un programa o script llame a la API en tu nombre. Crea uno cuando lo necesites.',
   'empty.personalData.body':
+    'Prepara una descarga para obtener todo lo que Taskmoor guarda sobre ti.',
+  'empty.personalData.bodyOf':
     'Prepara una descarga para obtener todo lo que Taskmoor guarda sobre esta persona.',
   'empty.trackPeople.body':
     'Un track aparece aquí cuando lo diriges: cuando alguien te da el rol o cuando creas el track.',
@@ -904,7 +907,7 @@ export const messagesEs: Record<MessageId, string> = {
   'palette.ticket.copyLink': 'Copiar el enlace a {key}',
   'palette.ticket.shortcuts': 'Atajos de teclado de la vista de ticket',
   'auth.signInRequired': 'Inicia sesión para continuar',
-  'auth.signInExplanation': 'Esta área solo está disponible para usuarios con sesión iniciada.',
+  'auth.signInExplanation': 'Tienes que iniciar sesión para ver esta página.',
   'auth.signIn': 'Iniciar sesión',
   'auth.checking': 'Comprobando tu sesión…',
   'auth.oauth.explanation': 'Inicias sesión en {host}, donde este gestor guarda tu cuenta.',
@@ -914,6 +917,8 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.email': 'Correo electrónico',
   'auth.password': 'Contraseña',
   'auth.invalidCredentials': 'Ese correo y esa contraseña no coinciden.',
+  'auth.forgotPassword':
+    '¿Olvidaste tu contraseña? Pide a un administrador del sitio un enlace nuevo para elegirla.',
   'auth.failed': 'No se pudo iniciar sesión. Inténtalo de nuevo en un momento.',
   'auth.tooManyAttemptsSeconds':
     '{seconds, plural, one {Demasiados intentos. Inténtalo de nuevo en # segundo.} other {Demasiados intentos. Inténtalo de nuevo en # segundos.}}',
@@ -1006,9 +1011,10 @@ export const messagesEs: Record<MessageId, string> = {
   'setup.smtpPasswordHint':
     'La contraseña SMTP no se introduce aquí: define TASKMOOR_SMTP_PASSWORD en el entorno del backend.',
   'setup.submit': 'Terminar la configuración',
+  'setup.checking': 'Comprobando si este sitio ya está configurado…',
   'setup.noToken':
-    'Esta página necesita el enlace de configuración que imprimió el instalador; contiene un token de un solo uso.',
-  'setup.alreadySetUp': 'Esta instancia ya está configurada. Inicia sesión para continuar.',
+    'Esta página necesita el enlace de configuración completo que imprimió el instalador, con su token de un solo uso.',
+  'setup.alreadySetUp': 'Este sitio ya está configurado. Inicia sesión con tu cuenta.',
   'setup.invalidToken':
     'El token de configuración no es válido o ha caducado. Reinicia el backend para obtener un enlace nuevo.',
   'setup.invalid': 'Algunos valores no se aceptaron:',
@@ -1086,12 +1092,25 @@ export const messagesEs: Record<MessageId, string> = {
   'settings.workflowsHint':
     'Estados, y las transiciones entre ellos con sus condiciones, comprobaciones y efectos.',
   'account.title': 'Cuenta',
-  'account.intro':
-    'Tu perfil, tu contraseña, la verificación en dos pasos y los dispositivos donde tienes la sesión iniciada.',
+  'account.sections': 'Secciones de la cuenta',
+  'account.section.profile': 'Perfil',
+  'account.section.notifications': 'Notificaciones',
+  'account.section.security': 'Seguridad',
+  'account.section.tokens': 'Tokens de API',
+  'account.section.data': 'Tus datos',
+  'account.intro.profile':
+    'Tu nombre, tu correo, tu zona horaria y tu idioma, y cómo se ve Taskmoor para ti.',
+  'account.intro.notifications':
+    'Cuándo te avisa Taskmoor de los cambios, y si es por correo, en tu bandeja de entrada o en ambos.',
+  'account.intro.security':
+    'Tu contraseña, la verificación en dos pasos y los dispositivos donde tienes la sesión iniciada.',
+  'account.intro.tokens':
+    'Los tokens que usan tus programas y scripts para llamar a la API en tu nombre.',
+  'account.intro.data': 'Una descarga de todo lo que Taskmoor guarda sobre ti.',
   'account.profile': 'Perfil',
   'account.appearance': 'Apariencia',
   'account.appearance.intro':
-    'Cómo se ve Taskmoor para ti, en cada dispositivo donde inicias sesión.',
+    'Cómo se ve Taskmoor para ti, en cada dispositivo donde inicias sesión. Lo que elijas se guarda al momento.',
   'account.appearance.system': 'Sistema',
   'account.appearance.systemHint': 'Claro u oscuro, según la configuración de tu dispositivo.',
   'account.appearance.saved': 'La apariencia se guardó en tu cuenta.',
@@ -1145,8 +1164,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Cambia una lista de comprobación de un ticket que sigues',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
+  'unsubscribe.noToken':
+    'Esta dirección no contiene ningún enlace para darte de baja. Abre el enlace completo del correo o cambia tu configuración de notificaciones después de iniciar sesión.',
   'unsubscribe.invalid':
-    'Este enlace para darse de baja no es válido. Cambia tu configuración de notificaciones después de iniciar sesión.',
+    'Este enlace para darte de baja ya no es válido. Cambia tu configuración de notificaciones después de iniciar sesión.',
   'unsubscribe.question': '¿Dejar de enviar {what} a {email}?',
   'unsubscribe.allEmail': 'todos los correos de notificación',
   'unsubscribe.oneEvent': 'los correos sobre «{event}»',
@@ -1158,6 +1179,8 @@ export const messagesEs: Record<MessageId, string> = {
   'consent.titlePlain': 'Conectar una aplicación',
   'consent.title': '¿Permitir que {name} use Taskmoor?',
   'consent.loading': 'Leyendo la solicitud…',
+  'consent.noRequest':
+    'Esta dirección no nombra ninguna solicitud de una aplicación. Vuelve a iniciar la conexión desde la aplicación.',
   'consent.intro': '{name} pide actuar en tu nombre a través del servidor MCP. Si lo permites:',
   'consent.reads': 'Verá lo que tú puedes ver: tickets, tracks, tableros y sprints.',
   'consent.writes': 'Podrá crear y cambiar tickets, comentar y enlazar, en tu nombre.',
@@ -1171,7 +1194,6 @@ export const messagesEs: Record<MessageId, string> = {
   'consent.deny': 'No permitir',
   'consent.leaving': 'Volviendo a la aplicación…',
   'consent.signedOut': 'Inicia sesión para responder a esta solicitud.',
-  'consent.signIn': 'Iniciar sesión',
   'consent.gone':
     'Esta solicitud ha caducado o ya se respondió. Vuelve a iniciar la conexión desde la aplicación.',
   'consent.failed': 'No ha funcionado. Inténtalo de nuevo en un momento.',
@@ -1216,6 +1238,8 @@ export const messagesEs: Record<MessageId, string> = {
   'personalData.title': 'Tus datos',
   'personalData.titleOf': 'Datos de {name}',
   'personalData.intro':
+    'Descarga todo lo que Taskmoor guarda sobre ti: tu perfil, tus ajustes, los tickets que informaste o tienes asignados, comentarios, tiempo, archivos subidos y los registros de auditoría sobre ti. La descarga se prepara en segundo plano y se guarda una semana.',
+  'personalData.introOf':
     'Descarga todo lo que Taskmoor guarda de esta persona: perfil, ajustes, los tickets que informó o tiene asignados, comentarios, tiempo, archivos subidos y los registros de auditoría sobre ella. La descarga se prepara en segundo plano y se guarda una semana.',
   'personalData.request': 'Preparar una descarga',
   'personalData.requested': 'Se está preparando la descarga. Aparecerá abajo cuando esté lista.',
@@ -1370,13 +1394,12 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige una contraseña nueva para {email}. Se cierran todas las demás sesiones de esta cuenta; iniciarás sesión aquí justo después.',
   'passwordLink.checking': 'Comprobando el enlace…',
   'passwordLink.noToken':
-    'Esta página necesita el enlace de contraseña que te dieron; contiene un código de un solo uso.',
+    'Esta dirección no contiene ningún enlace de contraseña. Abre el enlace completo que te dieron o pide uno nuevo a un administrador del sitio.',
   'passwordLink.invalid':
     'Este enlace no es válido, ha caducado o ya se usó. Pide uno nuevo a un administrador del sitio.',
   'passwordLink.failed': 'No se pudo comprobar el enlace. Inténtalo de nuevo en un momento.',
   'passwordLink.submit': 'Guardar la contraseña e iniciar sesión',
   'passwordLink.saveFailed': 'No se pudo guardar la contraseña. Inténtalo de nuevo en un momento.',
-  'passwordLink.goToSignIn': 'Ir al inicio de sesión',
   'admin.apiUsage.title': 'Uso de la API y límites',
   'admin.apiUsage.forbidden':
     'Solo los administradores del sitio ven el uso de la API y cambian los límites.',
@@ -2877,14 +2900,15 @@ export const messagesEs: Record<MessageId, string> = {
   'invite.title': 'Tu invitación',
   'invite.titleFor': 'Tu invitación a {key} · {name}',
   'invite.intro': 'Te han invitado como {role}, en {email}.',
+  'invite.introNoRole': 'Te han invitado, en {email}.',
   'invite.introBy': '{who} te invitó como {role}, en {email}.',
+  'invite.introByNoRole': '{who} te invitó, en {email}.',
   'invite.checking': 'Comprobando el enlace…',
   'invite.noToken':
-    'Esta dirección no contiene ninguna invitación. Usa el enlace completo que recibiste.',
+    'Esta dirección no contiene ninguna invitación. Abre el enlace completo que te dieron o pide uno nuevo a un administrador del sitio.',
   'invite.invalid':
-    'Esta invitación ya no se puede usar: se usó, se retiró o caducó. Pide una nueva a quien te invitó.',
+    'Esta invitación ya no se puede usar: se usó, se retiró o caducó. Pide una nueva a un administrador del sitio.',
   'invite.failed': 'No funcionó. Inténtalo de nuevo en un momento.',
-  'invite.goToSignIn': 'Ir al inicio de sesión',
   'invite.secondFactorNote':
     'Este sitio pide autenticación en dos pasos para esta dirección: la configurarás al iniciar sesión, con una aplicación de autenticación.',
   'invite.howIn': '¿Cómo quieres entrar?',
@@ -5455,9 +5479,20 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.timeZoneHint':
     'Los días se cuentan con este reloj, así que un sprint que termina a las 09:00 lo sigue haciendo tras un cambio de horario de verano.',
   'sprints.settings.unknownTimeZone': 'El servidor no conoce esta zona horaria. Elige otra.',
-  'home.signedOut':
-    'Inicia sesión para ver tu trabajo, los tickets que sigues y lo que abriste hace poco.',
-  'page.underConstruction': 'Esta área está en construcción.',
+  'notFound.title': 'Página no encontrada',
+  'notFound.page':
+    'No hay nada en esta dirección. Puede que el enlace esté mal escrito o ya no sirva.',
+  'notFound.waysOn': 'Cómo seguir',
+  'notFound.home': 'Ir a Inicio',
+  'notFound.search': 'Ir a Buscar',
+  'notFound.track': 'Track no encontrado',
+  'notFound.board': 'Tablero no encontrado',
+  'notFound.plan': 'Plan no encontrado',
+  'notFound.ticket': 'Ticket no encontrado',
+  'notFound.release': 'Versión no encontrada',
+  'notFound.dashboard': 'Panel no encontrado',
+  'notFound.bulk': 'Cambio en bloque no encontrado',
+  'notFound.workflow': 'Flujo de trabajo no encontrado',
   'page.itemCount': '{count, plural, =0 {Ningún elemento} one {# elemento} other {# elementos}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':

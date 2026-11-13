@@ -121,10 +121,17 @@ describe('password link page', () => {
     expect(await screen.findByText(/invalid, has expired or was already used/)).toBeVisible();
   });
 
-  it('[IAM-001] needs the token from the link', () => {
+  it('[IAM-001] needs the token from the link, and says so without the intro (AC-7, AC-15)', () => {
     window.location.hash = '#/password';
     render(<App />);
-    expect(screen.getByText(/needs the password link you were given/)).toBeVisible();
+    expect(screen.getByText(/This address has no password link in it/)).toBeVisible();
+    expect(screen.queryByText(/This link works once/)).toBeNull();
+    // The frame's one way out (D24).
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
+    expect(screen.getAllByRole('banner')[0]).toHaveTextContent('Taskmoor');
   });
 
   it('[IAM-001] shows a translated message per password problem', async () => {

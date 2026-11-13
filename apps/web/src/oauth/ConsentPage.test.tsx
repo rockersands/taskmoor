@@ -64,15 +64,34 @@ describe('the OAuth consent page (M1-072)', () => {
     expect(screen.queryByText(/It can create and change tickets/)).toBeNull();
   });
 
-  it('says when the request is gone, and offers sign-in when signed out', async () => {
+  it('[API-002] says when the request is gone, also signed out (D35), with no intro above it', async () => {
     renderPage(fakeConsentClient({ load: failingLoad(404) }));
     expect(await screen.findByText(/This request has expired/)).toBeVisible();
-    document.body.innerHTML = '';
+    // The intro would ask to read and answer a request that is not there (AC-7).
+    expect(screen.queryByText(/Read what it wants/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
+      'href',
+      '#/sign-in',
+    );
+  });
+
+  it('[API-002] leads someone signed out to sign in and back to the request (D24)', async () => {
     renderPage(fakeConsentClient({ load: failingLoad(401) }));
-    const link = await screen.findByRole('link', { name: 'Sign in' });
-    expect(link.getAttribute('href')).toContain(
+    expect(await screen.findByText('Sign in to answer this request.')).toBeVisible();
+    // One way out, at the top: it comes back to the request.
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveTextContent('Go to sign in');
+    expect(links[0]?.getAttribute('href')).toContain(
       encodeURIComponent('/api/v1/oauth/authorize?request=test-request-0123456789abcdef'),
     );
+  });
+
+  it('[API-002] says an address with no request names none', () => {
+    window.location.hash = '#/oauth/consent';
+    renderPage();
+    expect(screen.getByText(/This address names no request from an app/)).toBeVisible();
+    expect(screen.queryByText(/expired or was already answered/)).toBeNull();
   });
 
   it('fits a phone', async () => {

@@ -11,14 +11,21 @@ export interface SignInPageProps {
   onSignedIn: () => void;
   /** Stories and tests pass their own single sign-on endpoints. */
   ssoClient?: SignInSsoClient;
+  /**
+   * Shown at another page's address to someone signed out (D8): it says the page needs signing
+   * in, and with a backend on another site it goes there at once.
+   */
+  required?: boolean;
 }
 
 /**
- * The sign-in page (#/sign-in): where "Sign in" in the top bar leads, where signing out lands
- * and where a failed single sign-on returns. Once someone is signed in it hands over to
- * `onSignedIn`. With a backend on another site, it leads to that backend's sign-in (M1-107).
+ * The sign-in page (#/sign-in): where signing out lands and where a failed single sign-on
+ * returns, in the reduced frame with the product name only (D8). A signed-out visitor sees it at
+ * every other address too, and signing in there shows that page. Once someone is signed in it
+ * hands over to `onSignedIn`. With a backend on another site, it leads to that backend's sign-in
+ * (M1-107).
  */
-export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
+export function SignInPage({ onSignedIn, ssoClient, required = false }: SignInPageProps) {
   const t = useT();
   const { session } = useSession();
   const titleId = useId();
@@ -36,12 +43,12 @@ export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
   }, []);
 
   return (
-    <section className="page sign-in-prompt" aria-labelledby={titleId}>
+    <main id="main" className="setup sign-in-prompt" aria-labelledby={titleId} tabIndex={-1}>
       <PageHeader
         titleId={titleId}
         titleRef={heading}
-        title={t('auth.signIn')}
-        purpose={t('purpose.signIn')}
+        title={t(required ? 'auth.signInRequired' : 'auth.signIn')}
+        purpose={t(required ? 'auth.signInExplanation' : 'purpose.signIn')}
       />
       {session.status === 'loading' ? (
         <p className="page-note" aria-live="polite">
@@ -49,9 +56,13 @@ export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
         </p>
       ) : (
         <div className="glass-card account-section sign-in-card">
-          {oauthClient ? <OAuthSignIn /> : <SignInForm {...(ssoClient ? { ssoClient } : {})} />}
+          {oauthClient ? (
+            <OAuthSignIn auto={required} />
+          ) : (
+            <SignInForm {...(ssoClient ? { ssoClient } : {})} />
+          )}
         </div>
       )}
-    </section>
+    </main>
   );
 }

@@ -1,21 +1,48 @@
 ---
 title: "Your account"
 audience: users
-sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/styles/forms.css, apps/web/src/styles/surfaces.css
+sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/styles/forms.css, apps/web/src/styles/surfaces.css, apps/web/src/session/SignInPage.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv
 accessed: 2026-11-13
 attestation: own-words
 ---
 # Your account
 
-Your account page holds your own settings: your profile, how Taskmoor looks, your
-notifications, your password, two-factor authentication, the devices where you are signed in
-and your API tokens.
+Your account holds your own settings, in five sections, each at its own address:
+
+| Section | Address | What it holds |
+|---|---|---|
+| **Profile** | `#/account` | Your name, email, time zone and language, and [how Taskmoor looks](#appearance) |
+| **Notifications** | `#/account/notifications` | When Taskmoor tells you about changes, and how |
+| **Security** | `#/account/security` | Your password, two-factor authentication and your sessions |
+| **API tokens** | `#/account/tokens` | The tokens your programs and scripts use |
+| **Your data** | `#/account/data` | A download of everything Taskmoor keeps about you |
 
 ## Opening your account
 
 Open the menu with your name at the right of the top bar. It says **Signed in as** your email
 and offers **Account** and **Sign out**. You also reach the page from **Settings**
-and from the command palette (**Account**).
+and from the command palette (**Account**). It opens at **Profile**; the row of sections under
+the title leads to the others, and the line under the title says what the section holds.
+Notification emails link straight to **Notifications**.
+
+## Signing in
+
+Until you sign in, Taskmoor shows only its name and the sign-in page, whatever address you open:
+no navigation, and no page that could seem empty because you cannot see it yet. Opening a link
+to a page signed out asks you to sign in there (**Sign in to continue**), and signing in shows
+that page.
+
+Under the password, the sign-in page says to ask a site administrator for a new password link if
+you forgot yours: Taskmoor has no self-service reset. When the email and password do not match,
+both fields are marked and say so. When a single sign-on comes back without signing you in, its
+reason shows above the form.
+
+## Pages that are not there
+
+An address that matches no page shows **Page not found**, with **Go to Home** and **Go to
+Search**. So does a track, board, plan, ticket, release, dashboard or bulk change that does not
+exist or that you may not see, with its own title, such as **Track not found**. The navigation
+marks no section then.
 
 ## Profile
 
@@ -75,6 +102,9 @@ address always wins. Taskmoor never picks the draft from your browser's language
 
 The **Notifications** section sets how email reaches you and which events reach your inbox. See
 [Notifications and your inbox](notifications.md#your-notification-settings).
+
+The **Password**, **Two-factor authentication** and **Sessions** below are in the **Security**
+section.
 
 ## Password
 
@@ -171,7 +201,7 @@ service accounts](../admin/api-tokens.md).
 
 ## Your data
 
-**Your data**, at the end of the page, downloads everything Taskmoor keeps about you: your
+The **Your data** section downloads everything Taskmoor keeps about you: your
 profile and settings, your sessions and the names of your API tokens, your groups of tracks
 and the groups shared with you, the tickets you reported, created or are assigned, your comments
 and time entries, the files you uploaded, and the audit records about you. **Prepare a download** makes it in the background; it shows **Ready** in the

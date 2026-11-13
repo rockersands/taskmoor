@@ -36,6 +36,11 @@
 }
 
 @media (pointer: coarse) {
+  /* The two choices sit together, each row its own touch target (AD-43). */
+  .invite-delivery {
+    gap: 0;
+  }
+
   .invite-delivery label {
     min-height: var(--hit-target-touch);
   }

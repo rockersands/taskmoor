@@ -51,7 +51,7 @@ async function openAccount(
     'GET /account/two-factor': () => jsonResponse(200, state.factors),
     ...handlers(state),
   });
-  window.location.hash = '#/account';
+  window.location.hash = '#/account/security';
   render(<App session={SIGNED_IN} />);
   await within(await screen.findByRole('region', { name: 'Two-factor authentication' })).findByText(
     /Two-factor authentication is (on|off)\./,
@@ -341,7 +341,7 @@ describe('account page: two-factor authentication', () => {
       'GET /sessions': () => jsonResponse(200, { sessions: sampleSessions() }),
       'GET /account/two-factor': () => jsonResponse(500, { error: 'boom' }),
     });
-    window.location.hash = '#/account';
+    window.location.hash = '#/account/security';
     render(<App session={SIGNED_IN} />);
     expect(await within(section()).findByRole('alert')).toHaveTextContent(
       'Your two-factor settings could not be read. Try again in a moment.',

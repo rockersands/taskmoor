@@ -327,9 +327,10 @@ describe('OAuth for MCP clients (M1-072)', () => {
     expect(elsewhere.json()).toEqual({ error: 'invalid_token', reason: 'wrong_resource' });
     // Nor can it approve another client: that takes the person's browser session.
     const asked = await app.inject({
-      method: 'GET',
+      method: 'POST',
       url: '/api/v1/oauth/requests/abcdefghijklmnopqrstuvwxyz',
       headers: { authorization: `Bearer ${token}` },
+      payload: { approve: true },
     });
     expect(asked.statusCode).toBe(401);
   });
@@ -468,6 +469,15 @@ describe('OAuth for MCP clients (M1-072)', () => {
     expect(location).toContain('/#/sign-in?continue=');
     const resume = decodeURIComponent(location.split('continue=')[1] ?? '');
     expect(resume).toMatch(/^\/api\/v1\/oauth\/authorize\?request=[^&]+$/);
+    // The consent page tells someone signed out at once whether the request is there (D35).
+    const waiting = new URLSearchParams(resume.split('?')[1]).get('request') ?? '';
+    const unseen = await as(null, { method: 'GET', url: `/api/v1/oauth/requests/${waiting}` });
+    expect(unseen.statusCode).toBe(401);
+    const unknown = await as(null, {
+      method: 'GET',
+      url: '/api/v1/oauth/requests/abcdefghijklmnopqrstuvwxyz',
+    });
+    expect(unknown.statusCode).toBe(404);
     const resumed = await as('alice', { method: 'GET', url: resume });
     expect(String(resumed.headers.location)).toContain('/#/oauth/consent?request=');
   });

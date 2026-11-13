@@ -3,6 +3,7 @@ import { I18nProvider } from '../src/i18n/I18nProvider';
 import '../src/styles/tokens.css';
 import '../src/styles/shell.css';
 import '../src/styles/forms.css';
+import '../src/styles/standalone.css';
 import '../src/styles/shared.css';
 import '../src/styles/admin.css';
 import '../src/styles/account.css';

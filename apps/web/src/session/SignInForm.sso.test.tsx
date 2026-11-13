@@ -304,9 +304,15 @@ describe('sign-in with single sign-on (M1-080)', () => {
   it('[IAM-003] a failed single sign-on comes back with the reason, once', async () => {
     const { client } = fakeSso();
     openSignIn(client, { hash: '#/sign-in?sso_error=no_account' });
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
       'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
+    // Above the form, as its own alert, not as a password error (AC-10).
+    const form = screen.getByRole('form', { name: 'Sign in' });
+    expect(form.contains(alert)).toBe(false);
+    expect(alert.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
     // The address loses the reason, so a reload does not show it again.
     expect(window.location.hash).toBe('#/sign-in');
   });

@@ -31,20 +31,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ThreeSessions: Story = {};
+export const ThreeSessions: Story = { args: { section: 'security' } };
 
 export const OnlyThisDevice: Story = {
   args: {
+    section: 'security',
     client: fakeAccountClient({}, { sessions: sampleSessions().filter((s) => s.current) }),
   },
 };
 
 export const SessionsLoading: Story = {
-  args: { client: fakeAccountClient({ listSessions: () => new Promise(() => {}) }) },
+  args: {
+    section: 'security',
+    client: fakeAccountClient({ listSessions: () => new Promise(() => {}) }),
+  },
 };
 
 export const SessionsFailed: Story = {
   args: {
+    section: 'security',
     client: fakeAccountClient({
       listSessions: async () => {
         throw new Error('network');
@@ -53,9 +58,27 @@ export const SessionsFailed: Story = {
   },
 };
 
+/** Profile, the first section. */
+export const Profile: Story = {};
+
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
+
+/** Each section at its own address (D17): the notifications, as emails link to them. */
+export const Notifications: Story = { args: { section: 'notifications' } };
+
+/** On a phone the notifications stack per event, channels beneath (D23). */
+export const NotificationsPhone: Story = {
+  args: { section: 'notifications' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+export const Security: Story = { args: { section: 'security' } };
+
+export const Tokens: Story = { args: { section: 'tokens' } };
+
+export const YourData: Story = { args: { section: 'data' } };
 
 /** The width of a small phone; nothing inside may stick out sideways. */
 const atPhoneWidth = (Story: () => ReactElement) => (
@@ -70,6 +93,7 @@ const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
 
 export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
+  args: { section: 'notifications' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { level: 1, name: 'Account' })).toBeVisible();

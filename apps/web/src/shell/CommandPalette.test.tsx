@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { SIGNED_IN } from '../account/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { CommandPalette } from './CommandPalette';
@@ -64,14 +65,15 @@ describe('command palette', () => {
 
   it('opens with Ctrl+K, filters, and runs the chosen command', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(<App session={SIGNED_IN} />);
     expect(screen.queryByRole('dialog', { name: 'Command palette' })).toBeNull();
 
     await user.keyboard('{Control>}k{/Control}');
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
     const input = within(dialog).getByRole('combobox');
     expect(input).toHaveFocus();
-    expect(within(dialog).getAllByRole('option')).toHaveLength(7);
+    // The seven pages, then making a ticket, the account, three appearances and signing out.
+    expect(within(dialog).getAllByRole('option')).toHaveLength(13);
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
@@ -118,7 +120,7 @@ describe('command palette', () => {
 
   it('moves with the arrow keys and closes with Escape, returning focus to the trigger', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(<App session={SIGNED_IN} />);
     const trigger = screen.getByRole('button', { name: /Search or jump to/ });
     await user.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
@@ -136,7 +138,7 @@ describe('command palette', () => {
 
   it('says when nothing matches', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(<App session={SIGNED_IN} />);
     await user.keyboard('{Control>}k{/Control}');
     await user.keyboard('zzz');
     expect(screen.getByRole('option', { name: 'No matching commands' })).toBeInTheDocument();
@@ -173,9 +175,12 @@ describe('session guard', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
   });
 
-  it('leaves public pages open to everyone', () => {
+  it('[IAM-001] shows no page signed out, not even Tracks (D8)', async () => {
     window.location.hash = '#/tracks';
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Tracks' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sign in to continue' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Tracks' })).toBeNull();
   });
 });

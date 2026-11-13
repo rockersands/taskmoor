@@ -1,0 +1,139 @@
+/*
+ * The stand-alone pages (D24): setup, password links, invitations, unsubscribe, app consent and
+ * the sign-in page a signed-out visitor sees (D8). Outside the app's shell, in one frame with the
+ * product name at the top; the same header and cards in one column. Desktop first.
+ */
+
+/*
+ * The frame fills the window and paints its own canvas on a layer fixed to the window (AC-4,
+ * AD-41): the body's background ends with the content, so a short page showed a hard edge where
+ * it stopped, and a body shorter than the picture repeated it with seams. Its own stacking
+ * context keeps the canvas and the waves above the body's background and below the content.
+ */
+.standalone {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+}
+
+.standalone::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: var(--color-canvas);
+  background-image: var(--canvas-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  pointer-events: none;
+}
+
+/* The product name, and the one way out (D24), above the column. */
+.standalone-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) 0;
+}
+
+.standalone-brand {
+  font-size: var(--font-size-400);
+  font-weight: var(--font-weight-strong);
+}
+
+.standalone-way-out {
+  text-decoration: none;
+}
+
+.setup {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) calc(var(--space-8) * 4);
+}
+
+.setup:focus {
+  outline: none;
+}
+
+.setup > .page-header {
+  margin-bottom: 0;
+}
+
+/* No word left alone on a line of its own (AC-22). */
+.setup :is(.page-purpose, .page-note, .form-hint) {
+  text-wrap: pretty;
+}
+
+/* A grid would stretch a lone button or link across the page. */
+.setup > :is(button, a),
+.setup .account-section > :is(button, a) {
+  justify-self: start;
+}
+
+/*
+ * One card width and one button width in every stand-alone form (D24, AC-16): the cards fill
+ * the column, and so do a form's fields and its primary button.
+ */
+.setup :is(.form, .sign-in-card, .sign-in-methods) {
+  max-width: none;
+}
+
+.setup .form > .button-primary {
+  justify-self: stretch;
+  width: 100%;
+}
+
+.consent-list {
+  margin: 0;
+  padding-left: var(--space-6);
+  line-height: 1.6;
+}
+
+.setup-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/*
+ * Waves (ADR-036): an original shape drawn for Taskmoor, painted in the skin's soft tints
+ * through a mask, along the bottom of the stand-alone pages (setup, sign-in, password links).
+ * Decoration only; text keeps its contrast on these tints.
+ */
+.setup::after,
+.page.sign-in-prompt::after {
+  content: "";
+  position: fixed;
+  inset: auto 0 0;
+  z-index: -1;
+  height: min(28vh, 220px);
+  background: linear-gradient(
+    100deg,
+    var(--color-accent-soft) 0%,
+    var(--color-blush-soft) 45%,
+    var(--color-blue-soft) 100%
+  );
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 220' preserveAspectRatio='none'%3E%3Cpath d='M0 92c120-38 238-52 356-30 132 25 214 86 356 88 150 2 236-71 382-86 132-14 236 22 346 58v98H0z' fill='black' fill-opacity='.55'/%3E%3Cpath d='M0 142c142-30 270-36 404-6 120 27 210 70 352 66 160-5 242-62 392-68 112-4 204 22 292 52v34H0z' fill='black'/%3E%3C/svg%3E")
+    bottom / 100% 100% no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 220' preserveAspectRatio='none'%3E%3Cpath d='M0 92c120-38 238-52 356-30 132 25 214 86 356 88 150 2 236-71 382-86 132-14 236 22 346 58v98H0z' fill='black' fill-opacity='.55'/%3E%3Cpath d='M0 142c142-30 270-36 404-6 120 27 210 70 352 66 160-5 242-62 392-68 112-4 204 22 292 52v34H0z' fill='black'/%3E%3C/svg%3E")
+    bottom / 100% 100% no-repeat;
+  pointer-events: none;
+}

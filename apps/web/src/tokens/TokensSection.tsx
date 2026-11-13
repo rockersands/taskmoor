@@ -113,9 +113,8 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
             />
           )}
           {state.tokens.length === 0 ? (
-            <EmptyState compact title={t('tokens.none')}>
-              {t('empty.tokens.body')}
-            </EmptyState>
+            // The intro above already says what a token is for (AC-20).
+            <EmptyState compact title={t('tokens.none')} />
           ) : (
             <ul className="token-list" aria-label={t('tokens.listLabel')}>
               {state.tokens.map((token) => (

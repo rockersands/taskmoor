@@ -2,7 +2,7 @@
 title: "Notifications and your inbox"
 audience: users
 sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/comments.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, docs/adr/0120-ticket-tools.md
-accessed: 2026-11-06
+accessed: 2026-11-13
 attestation: own-words
 ---
 # Notifications and your inbox
@@ -140,7 +140,8 @@ hours end, in your time zone. **Tell me about changes I make myself** is off unl
 on.
 
 **What you hear about, and where** is a table with one row per event and a box for **Email** and
-one for **Inbox**:
+one for **Inbox**. On a phone each event is a block of its own, with its **Email** and **Inbox**
+boxes beneath it:
 
 | Event | When |
 |---|---|
@@ -176,8 +177,9 @@ starts later comes in an email of its own.
 
 Every notification email has an unsubscribe link. It opens a page that asks whether to stop all
 notification emails, or only emails about one event, to your address. Press **Unsubscribe** to
-confirm; **Notification settings** takes you to the full settings. Notification emails are in
-English for now.
+confirm; **Notification settings** takes you to the full settings. A link that is cut short says
+so, and one that no longer works says to change your settings after signing in; **Go to sign in**
+at the top leads there. Notification emails are in English for now.
 
 Emails of saved-search subscriptions are set up on the search page: see [Saved
 searches](search.md#saved-searches).

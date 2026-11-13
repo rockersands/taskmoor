@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
-import { currentRoute, routeHref } from '../routing/router';
+import { currentRoute } from '../routing/router';
 import { PageHeader } from '../shell/PageHeader';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages, tooManyAttemptsMessage } from './errors';
 import { PasswordField } from './PasswordField';
 import { type SessionUser, useSession } from './SessionProvider';
@@ -143,20 +144,21 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
           : state.status === 'invalid'
             ? t('passwordLink.invalid')
             : (tooManyAttemptsMessage(t, state.error) ?? t('passwordLink.failed'));
+    // The intro is for a link that works; with a problem it would contradict it (AC-7).
     return (
-      <main className="setup">
-        <PageHeader title={t('passwordLink.title')} purpose={t('purpose.passwordLink')} />
-        <div className="glass-card account-section">
-          <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-            {note}
-          </p>
-          {state.status !== 'checking' && (
-            <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
-              {t('passwordLink.goToSignIn')}
-            </a>
-          )}
-        </div>
-      </main>
+      <StandaloneFrame>
+        <main className="setup">
+          <PageHeader
+            title={t('passwordLink.title')}
+            {...(state.status === 'checking' ? { purpose: t('purpose.passwordLink') } : {})}
+          />
+          <div className="glass-card account-section">
+            <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
+              {note}
+            </p>
+          </div>
+        </main>
+      </StandaloneFrame>
     );
   }
 
@@ -168,51 +170,53 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
   const flagged = (field: Failure['field']) => failure !== null && failure.field === field;
 
   return (
-    <main className="setup">
-      <PageHeader
-        title={title}
-        purpose={t(activate ? 'passwordLink.activateIntro' : 'passwordLink.resetIntro', {
-          email: link.email,
-        })}
-      />
-      <form className="form glass-card account-section" onSubmit={submit} aria-label={title}>
-        {/* Lets password managers file the new password under the right account. */}
-        <input type="email" autoComplete="username" value={link.email} readOnly hidden />
-        <PasswordField
-          label={t('password.new')}
-          toggleLabel={t('password.showNew')}
-          autoComplete="new-password"
-          hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
-          value={password}
-          onChange={setPassword}
-          invalid={flagged('new')}
-          describedBy={flagged('new') ? errorId : undefined}
+    <StandaloneFrame>
+      <main className="setup">
+        <PageHeader
+          title={title}
+          purpose={t(activate ? 'passwordLink.activateIntro' : 'passwordLink.resetIntro', {
+            email: link.email,
+          })}
         />
-        <PasswordField
-          label={t('password.confirmNew')}
-          toggleLabel={t('password.showConfirm')}
-          autoComplete="new-password"
-          value={confirm}
-          onChange={setConfirm}
-          invalid={flagged('confirm')}
-          describedBy={flagged('confirm') ? errorId : undefined}
-        />
-        {failure && (
-          <div id={errorId} className="form-error" role="alert">
-            <p>{failure.message}</p>
-            {failure.problems.length > 0 && (
-              <ul>
-                {failure.problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        <button type="submit" className="button-primary" disabled={busy}>
-          {t('passwordLink.submit')}
-        </button>
-      </form>
-    </main>
+        <form className="form glass-card account-section" onSubmit={submit} aria-label={title}>
+          {/* Lets password managers file the new password under the right account. */}
+          <input type="email" autoComplete="username" value={link.email} readOnly hidden />
+          <PasswordField
+            label={t('password.new')}
+            toggleLabel={t('password.showNew')}
+            autoComplete="new-password"
+            hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
+            value={password}
+            onChange={setPassword}
+            invalid={flagged('new')}
+            describedBy={flagged('new') ? errorId : undefined}
+          />
+          <PasswordField
+            label={t('password.confirmNew')}
+            toggleLabel={t('password.showConfirm')}
+            autoComplete="new-password"
+            value={confirm}
+            onChange={setConfirm}
+            invalid={flagged('confirm')}
+            describedBy={flagged('confirm') ? errorId : undefined}
+          />
+          {failure && (
+            <div id={errorId} className="form-error" role="alert">
+              <p>{failure.message}</p>
+              {failure.problems.length > 0 && (
+                <ul>
+                  {failure.problems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <button type="submit" className="button-primary" disabled={busy}>
+            {t('passwordLink.submit')}
+          </button>
+        </form>
+      </main>
+    </StandaloneFrame>
   );
 }

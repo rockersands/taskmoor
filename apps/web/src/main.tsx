@@ -6,6 +6,7 @@ import { oauthClient } from './session/oauth';
 import './styles/tokens.css';
 import './styles/shell.css';
 import './styles/forms.css';
+import './styles/standalone.css';
 import './styles/shared.css';
 import './styles/admin.css';
 import './styles/account.css';

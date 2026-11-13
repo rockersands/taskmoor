@@ -1,8 +1,8 @@
 ---
 title: "First-run setup"
 audience: admins
-sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
-accessed: 2026-11-01
+sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/web/src/shell/StandaloneFrame.tsx
+accessed: 2026-11-13
 attestation: own-words
 ---
 # First-run setup
@@ -71,8 +71,8 @@ with `TASKMOOR_SMTP_URL` ([mail settings](configuration.md#mail)), that one wins
 | Message | What to do |
 |---|---|
 | The setup token is invalid or has expired | Restart the backend and use the new link from the log |
-| This instance is already set up | Setup is done: **Sign in** with the administrator's account |
-| This page needs the setup link the installer printed | You opened `/#/setup` without a token: use the whole link |
+| This site is already set up | Setup is done: **Go to sign in** at the top, and sign in with the administrator's account. The page checks this first, also without a link |
+| This page needs the whole setup link the installer printed | You opened `/#/setup` without a token on a site that is not set up yet: use the whole link |
 | Choose a different password | The password broke one of the rules above |
 
 ### Setting up without the browser

@@ -238,12 +238,13 @@ export async function registerOAuthRoutes(
   // The consent page's request and the person's answer (M1-072).
   app.get('/api/v1/oauth/requests/:id', async (request, reply) => {
     noStore(reply);
-    if (!cookieSession(request)) return reply.code(401).send({ error: 'not_signed_in' });
     const params = requestParams.safeParse(request.params);
     const pending = params.success
       ? await pendingRequest(db, request.workspaceId, params.data.id)
       : null;
+    // Unknown or expired says so before signing in (D35): the id is random and says nothing else.
     if (!pending) return reply.code(404).send({ error: 'not_found' });
+    if (!cookieSession(request)) return reply.code(401).send({ error: 'not_signed_in' });
     return {
       request: {
         client: {

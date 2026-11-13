@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { runtimeConfig } from '../runtime/config';
 import { WEB_VERSION } from '../runtime/version';
 import { PageHeader } from '../shell/PageHeader';
+import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { httpMetaClient, type MetaClient } from './client';
 
 /**
@@ -110,26 +111,32 @@ const reload = () => window.location.reload();
 function WrongInstance() {
   const t = useT();
   return (
-    <main id="main" className="update-required" tabIndex={-1}>
-      <PageHeader title={t('instance.wrongTitle')} purpose={t('instance.wrong')} />
-      <p className="page-note">{t('instance.wrongAdmin')}</p>
-    </main>
+    <StandaloneFrame wayOut={false}>
+      <main id="main" className="setup" tabIndex={-1}>
+        <PageHeader title={t('instance.wrongTitle')} purpose={t('instance.wrong')} />
+        <p className="page-note">{t('instance.wrongAdmin')}</p>
+      </main>
+    </StandaloneFrame>
   );
 }
 
 function UpdateRequired({ version, server }: { version: string; server: string }) {
   const t = useT();
   return (
-    <main id="main" className="update-required" tabIndex={-1}>
-      <PageHeader
-        title={t('update.requiredTitle')}
-        purpose={t('update.required', { version, server })}
-      />
-      <p className="page-note">{t('update.askAdmin')}</p>
-      <button type="button" className="button-primary" onClick={reload}>
-        {t('update.reload')}
-      </button>
-    </main>
+    // The stand-alone frame (D24), whose canvas covers the window without seams (AD-41). Equal
+    // versions never land here: a backend's window never asks more than its own version (AD-42).
+    <StandaloneFrame wayOut={false}>
+      <main id="main" className="setup" tabIndex={-1}>
+        <PageHeader
+          title={t('update.requiredTitle')}
+          purpose={t('update.required', { version, server })}
+        />
+        <p className="page-note">{t('update.askAdmin')}</p>
+        <button type="button" className="button-primary" onClick={reload}>
+          {t('update.reload')}
+        </button>
+      </main>
+    </StandaloneFrame>
   );
 }
 
