@@ -6,6 +6,7 @@ import { type ListClient, listClient } from '../list/client';
 import { navigate, redirectRoute, routeHref, useRoute } from '../routing/router';
 import { type SearchClient, searchClient } from '../search/client';
 import { useMotionOnChange } from '../shell/motion';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import {
@@ -114,23 +115,7 @@ export function PlanPage({
   }, [client, id, version]);
 
   if (problem === 'missing') {
-    return (
-      <section className="page plan-page" aria-labelledby={titleId}>
-        <PageHeader
-          titleId={titleId}
-          title={t('nav.plans')}
-          purpose={t('purpose.plans')}
-          actions={
-            <a className="button-quiet" href={routeHref('#/plans')}>
-              {t('plans.backToList')}
-            </a>
-          }
-        />
-        <p className="board-problem" role="alert">
-          {t('plans.notFound')}
-        </p>
-      </section>
-    );
+    return <NotFoundPage title={t('notFound.plan')}>{t('plans.notFound')}</NotFoundPage>;
   }
   if (problem === 'filter') return <FilterProblem id={id} section={section} />;
   if (!plan && problem === 'failed') {

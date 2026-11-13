@@ -35,6 +35,7 @@ import type { Command } from '../../shell/CommandPalette';
 import { HelpTip } from '../../shell/HelpTip';
 import { IconSelect } from '../../shell/IconSelect';
 import { leaveMotion } from '../../shell/motion';
+import { NotFoundPage } from '../../shell/NotFoundPage';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { priorityName } from '../../shell/priorityName';
 import { fieldName, typeName } from '../../shell/seededNames';
@@ -682,10 +683,13 @@ export function TicketView({
     );
   }
   if (state.status === 'missing') {
-    return (
+    // Over a page the pop-up says it in place; the full page is a not-found page (D4).
+    return popup ? (
       <p role="alert" className="form-error">
         {t('ticketPage.notFound')}
       </p>
+    ) : (
+      <NotFoundPage title={t('notFound.ticket')}>{t('ticketPage.notFound')}</NotFoundPage>
     );
   }
   const shown = state.ticket;

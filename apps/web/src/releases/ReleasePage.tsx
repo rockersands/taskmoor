@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import {
   notesFileHref,
@@ -86,18 +87,7 @@ export function ReleasePage({
   useEffect(load, [load]);
 
   if (failed) {
-    return (
-      <section className="page release-page" aria-labelledby={`${id}-title`}>
-        <PageHeader
-          titleId={`${id}-title`}
-          title={t('track.section.releases')}
-          purpose={t('purpose.release')}
-        />
-        <p className="board-problem" role="alert">
-          {t('release.notFound')}
-        </p>
-      </section>
-    );
+    return <NotFoundPage title={t('notFound.release')}>{t('release.notFound')}</NotFoundPage>;
   }
   if (!release || !overview || !notes) {
     return <p className="report-loading">{t('reports.loading')}</p>;

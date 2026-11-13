@@ -4,6 +4,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { type LockAction, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import {
   type BulkClient,
@@ -178,14 +179,7 @@ export function BulkOperationPage({
     );
   }
   if (state === 'missing' || !op) {
-    return (
-      <section aria-labelledby={titleId} className="page bulk-page">
-        <PageHeader titleId={titleId} title={t('bulk.title.missing')} purpose={t('purpose.bulk')} />
-        <p role="alert" className="form-error">
-          {t('bulk.notFound')}
-        </p>
-      </section>
-    );
+    return <NotFoundPage title={t('notFound.bulk')}>{t('bulk.notFound')}</NotFoundPage>;
   }
   const done = op.total - op.pending;
   const number = (n: number) => intl.formatNumber(n);

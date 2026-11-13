@@ -1,8 +1,10 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { ApiError } from '../api/client';
 import { type Board, boardClient } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
 import { redirectRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { BacklogPage } from '../sprints/BacklogPage';
 import { TrackLayout, type TrackSection, trackHref } from './TrackLayout';
 import { useTrackSections } from './trackSections';
@@ -29,7 +31,11 @@ export function BoardInTrack({
   const t = useT();
   // The page waits for the answer: wrapping it in the tabs afterwards would make it start again,
   // losing whatever the person had done in it by then.
-  const [known, setKnown] = useState<{ boardId: number; key: string | null } | null>(null);
+  const [known, setKnown] = useState<{
+    boardId: number;
+    key: string | null;
+    missing?: boolean;
+  } | null>(null);
   useEffect(() => {
     let live = true;
     boardClient.board(boardId).then(
@@ -37,9 +43,10 @@ export function BoardInTrack({
         const key = board.location.type === 'track' ? board.location.track.key : null;
         if (live) setKnown({ boardId, key });
       },
-      // The page itself says so.
-      () => {
-        if (live) setKnown({ boardId, key: null });
+      // A board that is not there gets the not-found page (D4); other failures, the page's own.
+      (error: unknown) => {
+        const missing = error instanceof ApiError && error.status === 404;
+        if (live) setKnown({ boardId, key: null, missing });
       },
     );
     return () => {
@@ -47,6 +54,8 @@ export function BoardInTrack({
     };
   }, [boardId]);
   if (known?.boardId !== boardId) return <p className="page-note">{t('boards.loading')}</p>;
+  if (known.missing)
+    return <NotFoundPage title={t('notFound.board')}>{t('boards.failed')}</NotFoundPage>;
   return known.key ? (
     <TrackLayout trackKey={known.key} section={section}>
       {children}

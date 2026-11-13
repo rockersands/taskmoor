@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useMotionOnChange } from '../shell/motion';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { type TrackClient, trackClient } from './client';
 import { rememberTrack } from './recentTracks';
 import { TrackSectionsContext, useLoadedTrackSections } from './trackSections';
@@ -45,10 +46,16 @@ export function TrackLayout({
   client = trackClient,
 }: TrackLayoutProps) {
   const t = useT();
-  const sections = useLoadedTrackSections(trackKey, client, section);
+  const loaded = useLoadedTrackSections(trackKey, client, section);
+  const missing = loaded === 'missing';
+  const sections = missing ? null : loaded;
   useEffect(() => rememberTrack(trackKey), [trackKey]);
   const tabs = TRACK_SECTIONS.filter((s) => s.id !== 'backlog' || sections?.backlog === true);
   const body = useMotionOnChange<HTMLDivElement>('motion-rise', `${trackKey}/${section}`);
+  // No tabs to more pages of a track that is not there (D4).
+  if (missing) {
+    return <NotFoundPage title={t('notFound.track')}>{t('summary.notFound')}</NotFoundPage>;
+  }
   return (
     <TrackSectionsContext.Provider value={sections}>
       <nav className="track-tabs" aria-label={t('track.sections', { key: trackKey })}>

@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import {
   type Dashboard,
@@ -106,14 +107,7 @@ export function DashboardPage({
   }, [wallboard, id]);
 
   if (failed) {
-    return (
-      <section className="page dashboard-page">
-        <PageHeader title={t('nav.dashboards')} purpose={t('purpose.dashboards')} />
-        <p className="board-problem" role="alert">
-          {t('dashboards.notFound')}
-        </p>
-      </section>
-    );
+    return <NotFoundPage title={t('notFound.dashboard')}>{t('dashboards.notFound')}</NotFoundPage>;
   }
   if (!dashboard) return <p className="report-loading">{t('reports.loading')}</p>;
 
