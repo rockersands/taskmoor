@@ -185,6 +185,22 @@ describe('New track on the directory (CORE-001)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('[CORE-001] has a Close at its title, as the create dialog has, over a veil (AD-10)', async () => {
+    const user = userEvent.setup();
+    open(signedIn({ isSiteAdmin: true }));
+    const button = await newTrack();
+    await user.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'New track' });
+    // Drawn at the end of the page's body, so no glass of the page holds it or its veil.
+    expect(dialog.parentElement).toBe(document.body);
+    expect(screen.getByRole('button', { name: 'Close without making a track' }).parentElement).toBe(
+      document.body,
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
   it('[CORE-001] opens from its address, as the palette leads to it, and leaves it on closing', async () => {
     const user = userEvent.setup();
     window.location.hash = '#/tracks?new';

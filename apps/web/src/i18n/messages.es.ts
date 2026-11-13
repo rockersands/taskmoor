@@ -90,6 +90,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Ninguno de los tipos de ticket de este track está en el nivel de objetivo. Un administrador puede añadir uno en la configuración del track.',
   'track.outcomes.create': 'Crear un ticket',
   'popover.done': 'Listo',
+  'dialog.close': 'Cerrar',
+  'danger.cancel': 'Cancelar',
   'tracks.title': 'Tracks',
   'tracks.failed': 'No se pudieron cargar los tracks.',
   'tracks.emptyTitle': 'Aún no hay tracks',
@@ -636,9 +638,11 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.emptyBody':
     'El tablero muestra los tickets que encuentra su consulta. Crea un ticket en uno de sus tracks o cambia la consulta en la configuración del tablero.',
   'shell.openCommandPalette': 'Buscar o ir a…',
+  'shell.openCommandPaletteShort': 'Buscar',
   'palette.title': 'Paleta de comandos',
   'palette.placeholder':
     'Escribe un comando o el nombre de una página (Ctrl K abre esto desde cualquier lugar)',
+  'palette.placeholderShort': 'Escribe un comando o una página',
   'palette.results': 'Comandos',
   'palette.noResults': 'Ningún comando coincide',
   'palette.close': 'Cerrar la paleta de comandos',

@@ -35,6 +35,8 @@ export const Shortcuts: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Help' }));
     await userEvent.click(canvas.getByRole('menuitem', { name: 'Keyboard shortcuts' }));
-    await expect(canvas.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+    // Drawn at the end of the page's body, out of the top bar (OverlayLayer).
+    const body = within(document.body);
+    await expect(body.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
   },
 };

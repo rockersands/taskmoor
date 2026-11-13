@@ -9,7 +9,8 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * tell. Read from disk, as motion.test.ts does: the web project turns CSS imports off.
  *
  * What it holds: no raw colour outside tokens.css; no opaque surface token on anything but a field
- * or a place with a named reason; links in the accent; a finger's height wherever a mouse's is set;
+ * or a place with a named reason; menus, pop-overs, the command palette and dialogs on the one
+ * opaque overlay fill with no blur (D3); links in the accent; a finger's height wherever a mouse's is set;
  * radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
  * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
  * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
@@ -164,6 +165,77 @@ export function cssProblems(source: string): Record<Kind, string[]> {
     if (property === 'font-size' && fontSizeProblem(value)) problems.fontSizes.push(text);
     if (property === 'font' && fontShorthandProblem(value)) problems.fontSizes.push(text);
     if (property === 'font-weight' && fontWeightProblem(value)) problems.fontWeights.push(text);
+  }
+  return problems;
+}
+
+/**
+ * Menus, pop-overs, the command palette and dialogs (D3, T-220): opaque, so nothing on the page
+ * shows through them, and with no blur, which would hold a fixed surface opened inside them.
+ * surfaces.css draws them all in one rule.
+ */
+export const OVERLAYS = [
+  '.shell-drawer',
+  '.help-tip-body',
+  '.user-menu-popup',
+  '.icon-select-list',
+  '.rt-mentions',
+  '.popover',
+  '.palette',
+  '.create-dialog',
+  '.ticket-dialog',
+] as const;
+
+const OVERLAY_FILL = 'var(--overlay-fill)';
+const isFill = (property: string) => /^background(-color)?$/.test(property);
+const isBlur = (property: string) => /^(-webkit-)?backdrop-filter$/.test(property);
+
+/**
+ * What leaves an overlay see-through, read across stylesheets in the order the app loads them:
+ * an overlay whose last plain rule is not the opaque fill with no blur, a rule that names one more
+ * closely (a variant, a media query) and gives it glass back, and the opaque fill on anything else.
+ */
+export function overlayProblems(
+  sheets: readonly (readonly [string, string])[],
+  overlays: readonly string[] = OVERLAYS,
+): string[] {
+  const problems: string[] = [];
+  const last = new Map<string, string>();
+  // The overlay itself in another guise; its rim, a pseudo-element, is glass on purpose.
+  const names = (part: string, overlay: string) => {
+    const subject = part.split(/[\s>+~]+/).at(-1) ?? '';
+    return (
+      !subject.includes('::') &&
+      new RegExp(`${overlay.replace('.', '\\.')}(?![\\w-])`).test(subject)
+    );
+  };
+  for (const [file, source] of sheets) {
+    for (const { selector, property, value, atRules } of cssDeclarations(source)) {
+      const parts = selectorsOf(selector);
+      const text = `${file}: ${selector} { ${property}: ${value.replace(/\s+/g, ' ')} }`;
+      if (value.includes('--overlay-fill') && !parts.every((part) => overlays.includes(part))) {
+        problems.push(`the overlay fill on something else: ${text}`);
+      }
+      if (!isFill(property) && !isBlur(property)) continue;
+      for (const part of parts) {
+        if (overlays.includes(part) && atRules.length === 0) {
+          last.set(`${part} ${isFill(property) ? 'background' : property}`, value);
+        } else if (
+          overlays.some((overlay) => names(part, overlay)) &&
+          (isFill(property) ? value.includes('--glass-') : value.includes('blur('))
+        ) {
+          problems.push(`glass again on an overlay: ${text}`);
+        }
+      }
+    }
+  }
+  for (const overlay of overlays) {
+    const fill = last.get(`${overlay} background`);
+    if (fill !== OVERLAY_FILL) problems.push(`${overlay} ends on ${fill ?? 'no fill'}`);
+    for (const property of ['backdrop-filter', '-webkit-backdrop-filter']) {
+      const blur = last.get(`${overlay} ${property}`);
+      if (blur !== 'none') problems.push(`${overlay} ends on ${property}: ${blur ?? 'unset'}`);
+    }
   }
   return problems;
 }
@@ -608,6 +680,70 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(on('.panel { background: var(--glass-surface-sunken); }')).toEqual([]);
   });
 
+  it('[NFR-005] finds a menu or a dialog left see-through (D3)', () => {
+    const opaque =
+      '.menu { background: var(--overlay-fill); backdrop-filter: none; -webkit-backdrop-filter: none; }';
+    const glass = '.menu { background: var(--glass-fill-strong); backdrop-filter: blur(4px); }';
+    expect(
+      overlayProblems(
+        [
+          ['a.css', glass],
+          ['b.css', opaque],
+        ],
+        ['.menu'],
+      ),
+    ).toEqual([]);
+    expect(
+      overlayProblems(
+        [
+          ['b.css', opaque],
+          ['a.css', glass],
+        ],
+        ['.menu'],
+      ),
+    ).toHaveLength(2);
+    const variant = '.menu.wide { background: var(--glass-fill-strong); }';
+    expect(
+      overlayProblems(
+        [
+          ['b.css', opaque],
+          ['c.css', variant],
+        ],
+        ['.menu'],
+      ),
+    ).toHaveLength(1);
+    const narrow = '@media (max-width: 1px) { .menu { backdrop-filter: blur(2px); } }';
+    expect(
+      overlayProblems(
+        [
+          ['b.css', opaque],
+          ['c.css', narrow],
+        ],
+        ['.menu'],
+      ),
+    ).toHaveLength(1);
+    const head = '.menu-head { background: var(--glass-fill-strong); }';
+    expect(
+      overlayProblems(
+        [
+          ['b.css', opaque],
+          ['c.css', head],
+        ],
+        ['.menu'],
+      ),
+    ).toEqual([]);
+    const card = '.card { background: var(--overlay-fill); }';
+    expect(
+      overlayProblems(
+        [
+          ['b.css', opaque],
+          ['c.css', card],
+        ],
+        ['.menu'],
+      ),
+    ).toHaveLength(1);
+  });
+
   it('[NFR-005] finds a size that is not a token', () => {
     const on = (rule: string) => cssProblems(rule);
     expect(on('a { border-radius: 6px; }').radii).toHaveLength(1);
@@ -709,6 +845,20 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   it('[NFR-005] keeps opaque surface tokens to fields and named reasons', () => {
     const found = both('opaqueSurfaces', (f) => f.opaqueSurfaces);
     expect(ratchet(found, OFFENDERS.opaqueSurfaces)).toEqual([]);
+  });
+
+  it('[NFR-005] draws menus, the command palette and dialogs opaque (D3, T-220)', () => {
+    const main = readFileSync(join(SRC, 'main.tsx'), 'utf8');
+    const order = [...main.matchAll(/import '\.\/(styles\/[\w-]+\.css)'/g)].map((m) => m[1]);
+    expect(order.length).toBeGreaterThan(20);
+    const rank = (file: string) => {
+      const at = order.indexOf(name(file));
+      return at < 0 ? order.length : at;
+    };
+    const sheets = [...cssSources]
+      .sort(([a], [b]) => rank(a) - rank(b))
+      .map(([file, source]) => [name(file), source] as const);
+    expect(overlayProblems(sheets)).toEqual([]);
   });
 
   it('[NFR-005] draws links in the accent, in both skins (ADR-036)', () => {

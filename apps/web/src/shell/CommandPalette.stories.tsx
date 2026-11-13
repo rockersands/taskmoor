@@ -31,7 +31,9 @@ export const Open: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Search or jump to/ }));
-    await expect(canvas.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
+    // Drawn at the end of the page's body, out of the top bar (OverlayLayer).
+    const body = within(document.body);
+    await expect(body.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
   },
 };
 
@@ -40,6 +42,6 @@ export const Filtered: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Search or jump to/ }));
     await userEvent.keyboard('trac');
-    await expect(canvas.getAllByRole('option')).toHaveLength(1);
+    await expect(within(document.body).getAllByRole('option')).toHaveLength(1);
   },
 };

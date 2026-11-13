@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
 import { TICKET_SHORTCUTS } from '../tickets/view/shortcuts';
 import { leaveMotion } from './motion';
+import { OverlayLayer } from './OverlayLayer';
 import { useMenuButton } from './useMenuButton';
 
 /**
@@ -105,60 +106,63 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
     ['C', 'help.shortcuts.create'],
   ] as const;
 
+  // At the end of the page's body: inside the top bar, the bar's blur would hold its veil.
   return (
-    <div className="ticket-dialog-backdrop">
-      <div
-        ref={leaveMotion}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="ticket-dialog help-shortcuts"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            event.stopPropagation();
-            onClose();
-          }
-          // The close button is the only thing to reach, so Tab stays on it.
-          if (event.key === 'Tab') {
-            event.preventDefault();
-            closeButton.current?.focus();
-          }
-        }}
-      >
-        <h2 id={titleId} className="ticket-section-title">
-          {t('help.shortcuts')}
-        </h2>
-        <h3 className="help-shortcuts-group">{t('help.shortcuts.anywhere')}</h3>
-        <dl className="ticket-shortcuts">
-          {everywhere.map(([key, label]) => (
-            <div key={key}>
-              <dt>
-                <kbd>{key}</kbd>
-              </dt>
-              <dd>{t(label)}</dd>
-            </div>
-          ))}
-        </dl>
-        <h3 className="help-shortcuts-group">{t('help.shortcuts.ticket')}</h3>
-        <dl className="ticket-shortcuts">
-          {TICKET_SHORTCUTS.map(([key, label]) => (
-            <div key={key}>
-              <dt>
-                <kbd>{key.toUpperCase()}</kbd>
-              </dt>
-              <dd>{t(label)}</dd>
-            </div>
-          ))}
-        </dl>
-        <h3 className="help-shortcuts-group">{t('help.shortcuts.board')}</h3>
-        <p className="page-note">{t('boards.keyboardHint')}</p>
-        <div className="form-actions">
-          <button ref={closeButton} type="button" className="button-primary" onClick={onClose}>
-            {t('ticketView.close')}
-          </button>
+    <OverlayLayer>
+      <div className="ticket-dialog-backdrop">
+        <div
+          ref={leaveMotion}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="ticket-dialog help-shortcuts"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              onClose();
+            }
+            // The close button is the only thing to reach, so Tab stays on it.
+            if (event.key === 'Tab') {
+              event.preventDefault();
+              closeButton.current?.focus();
+            }
+          }}
+        >
+          <h2 id={titleId} className="ticket-section-title">
+            {t('help.shortcuts')}
+          </h2>
+          <h3 className="help-shortcuts-group">{t('help.shortcuts.anywhere')}</h3>
+          <dl className="ticket-shortcuts">
+            {everywhere.map(([key, label]) => (
+              <div key={key}>
+                <dt>
+                  <kbd>{key}</kbd>
+                </dt>
+                <dd>{t(label)}</dd>
+              </div>
+            ))}
+          </dl>
+          <h3 className="help-shortcuts-group">{t('help.shortcuts.ticket')}</h3>
+          <dl className="ticket-shortcuts">
+            {TICKET_SHORTCUTS.map(([key, label]) => (
+              <div key={key}>
+                <dt>
+                  <kbd>{key.toUpperCase()}</kbd>
+                </dt>
+                <dd>{t(label)}</dd>
+              </div>
+            ))}
+          </dl>
+          <h3 className="help-shortcuts-group">{t('help.shortcuts.board')}</h3>
+          <p className="page-note">{t('boards.keyboardHint')}</p>
+          <div className="form-actions">
+            <button ref={closeButton} type="button" className="button-primary" onClick={onClose}>
+              {t('ticketView.close')}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </OverlayLayer>
   );
 }

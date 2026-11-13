@@ -365,8 +365,9 @@ export const CompleteSprint: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Complete sprint' }));
+    // The dialog is drawn at the end of the page's body (shell/OverlayLayer.tsx).
     const dialog = within(
-      await canvas.findByRole('dialog', { name: 'Complete Checkout Sprint 1?' }),
+      await within(document.body).findByRole('dialog', { name: 'Complete Checkout Sprint 1?' }),
     );
     await expect(dialog.getByText('4 tickets are done and 4 are open.')).toBeVisible();
     await expect(dialog.getByRole('combobox', { name: 'Open tickets go to' })).toBeVisible();

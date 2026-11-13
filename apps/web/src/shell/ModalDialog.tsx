@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
+import { useT } from '../i18n/I18nProvider';
 import { leaveMotion, useLeaveMotion } from './motion';
+import { OverlayLayer } from './OverlayLayer';
 
 export interface ModalDialogProps {
   onClose: () => void;
@@ -23,7 +25,8 @@ const FOCUSABLE =
 
 /**
  * A modal dialog over the page, full width on phones and scrolling inside itself. Escape and the
- * backdrop close it, Tab stays inside, and focus goes back to where it was.
+ * backdrop close it, Tab stays inside, and focus goes back to where it was. It is drawn at the end
+ * of the page's body (OverlayLayer), so its veil covers the whole window wherever it opens from.
  */
 export function ModalDialog({
   onClose,
@@ -97,7 +100,7 @@ export function ModalDialog({
   };
 
   return (
-    <>
+    <OverlayLayer>
       <button
         ref={leaveMotion}
         type="button"
@@ -117,6 +120,31 @@ export function ModalDialog({
       >
         {children}
       </div>
-    </>
+    </OverlayLayer>
+  );
+}
+
+export interface DialogHeadProps {
+  /** The id ModalDialog's `labelledBy` names. */
+  titleId: string;
+  title: ReactNode;
+  onClose: () => void;
+}
+
+/**
+ * A dialog's title with a Close button at its end, as the create dialog has (AD-10): a way out a
+ * person sees at once, beside the veil, Escape and the dialog's own Cancel.
+ */
+export function DialogHead({ titleId, title, onClose }: DialogHeadProps) {
+  const t = useT();
+  return (
+    <div className="create-dialog-head">
+      <h2 id={titleId} className="section-title">
+        {title}
+      </h2>
+      <button type="button" className="button-secondary" onClick={onClose}>
+        {t('dialog.close')}
+      </button>
+    </div>
   );
 }

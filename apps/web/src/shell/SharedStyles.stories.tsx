@@ -126,7 +126,7 @@ function SharedStyles() {
 
       <section className="ticket-dialog" aria-label="A dialog's surface">
         <h2 className="section-title">A dialog's surface</h2>
-        <p className="page-note">Floating glass, with the strongest blur.</p>
+        <p className="page-note">Opaque, with the rim and depth of glass.</p>
       </section>
     </main>
   );
@@ -183,8 +183,10 @@ export const Everything: Story = {
       style(canvas.getByText('An error from a form.')).backgroundColor,
     );
 
-    // A dialog is floating glass.
+    // A dialog is opaque (D3): the page never shows through it, and it has no blur to hold a
+    // dialog opened inside it.
     const dialog = canvas.getByRole('region', { name: "A dialog's surface" });
-    expect(style(dialog).backdropFilter).toContain('blur');
+    expect(style(dialog).backdropFilter).toBe('none');
+    expect(style(dialog).backgroundColor).toMatch(/^rgb\(/);
   },
 };

@@ -298,9 +298,7 @@ a {
   min-width: 14rem;
   max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
   padding: var(--space-2);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   box-shadow: var(--glass-highlight), var(--shadow-3);
@@ -371,10 +369,15 @@ a {
   cursor: pointer;
 }
 
-.palette-trigger-label {
+.palette-trigger-label,
+.palette-trigger-short {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.palette-trigger-short {
+  display: none;
 }
 
 .palette {
@@ -384,9 +387,7 @@ a {
   margin-inline: auto;
   z-index: 90;
   width: min(92vw, 560px);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
   box-shadow: var(--shadow-3);
@@ -515,9 +516,7 @@ a {
   z-index: 50;
   width: min(84vw, 320px);
   padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-3);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
   border-radius: 0;
   border-start-end-radius: var(--radius-3);
   border-end-end-radius: var(--radius-3);
@@ -554,6 +553,15 @@ a {
   .palette-trigger {
     flex: 1 1 0;
     padding-inline: var(--space-2);
+  }
+
+  /* A finger's controls leave the field about 100 px: one word, never cut (TR-3). */
+  .palette-trigger-label {
+    display: none;
+  }
+
+  .palette-trigger-short {
+    display: inline;
   }
 }
 

@@ -59,3 +59,31 @@ export const Empty: Story = {
     </>
   ),
 };
+
+/**
+ * TR-28: on a phone a long title wraps, and the help mark stays at the end of its last line
+ * rather than drifting to the far edge of the header.
+ */
+export const LongTitleOnAPhone: Story = {
+  args: { title: 'Configuration sets of the platform team', eyebrow: undefined },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 300 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const title = canvas.getByRole('heading', { level: 1 });
+    const help = canvas.getByRole('button', { name: /What is .* for\?/ });
+    const range = document.createRange();
+    range.selectNodeContents(title);
+    const lines = [...range.getClientRects()];
+    await expect(new Set(lines.map((line) => Math.round(line.top))).size).toBeGreaterThan(1);
+    const lastLine = lines.reduce((a, b) => (b.bottom > a.bottom ? b : a));
+    const mark = help.getBoundingClientRect();
+    await expect(mark.left - lastLine.right).toBeLessThan(24);
+    await expect(mark.top).toBeLessThan(lastLine.bottom);
+  },
+};

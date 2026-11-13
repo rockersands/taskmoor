@@ -2,6 +2,8 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { leaveMotion } from './motion';
+import { OverlayLayer } from './OverlayLayer';
+import { COMPACT_QUERY, TOUCH_QUERY, useMediaQuery } from './useMediaQuery';
 
 export interface Command {
   id: string;
@@ -24,7 +26,8 @@ export function isPaletteShortcut(event: KeyboardEvent | React.KeyboardEvent): b
 
 /**
  * The command palette: a dialog with a combobox that filters commands as you type. Arrow keys
- * move, Enter runs, Escape closes and focus returns to where it was.
+ * move, Enter runs, Escape closes and focus returns to where it was. It and its veil are drawn at
+ * the end of the page's body (OverlayLayer): inside the top bar, the bar's blur held them both.
  */
 export function CommandPalette({ commands }: CommandPaletteProps) {
   const t = useT();
@@ -34,6 +37,10 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
   const trigger = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
+  // A phone's palette is narrow and has no keyboard to press Ctrl K on (PL-49).
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const touch = useMediaQuery(TOUCH_QUERY);
+  const short = compact || touch;
 
   // Labels that start with what was typed come first, then labels that contain it, then
   // commands found by a keyword only; each group keeps the commands' order.
@@ -122,15 +129,20 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
         ref={trigger}
         type="button"
         className="palette-trigger"
+        aria-label={t('shell.openCommandPalette')}
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
+        {/* A small phone shows the first word only; the name stays whole (TR-3). */}
         <span className="palette-trigger-label">{t('shell.openCommandPalette')}</span>
+        <span className="palette-trigger-short" aria-hidden="true">
+          {t('shell.openCommandPaletteShort')}
+        </span>
       </button>
 
       {open && (
-        <>
+        <OverlayLayer>
           <button
             ref={leaveMotion}
             type="button"
@@ -155,7 +167,7 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
               aria-controls={listId}
               aria-autocomplete="list"
               {...(activeId ? { 'aria-activedescendant': activeId } : {})}
-              placeholder={t('palette.placeholder')}
+              placeholder={t(short ? 'palette.placeholderShort' : 'palette.placeholder')}
               aria-label={t('palette.title')}
               value={query}
               onChange={(event) => {
@@ -201,7 +213,7 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
               ))}
             </div>
           </div>
-        </>
+        </OverlayLayer>
       )}
     </>
   );

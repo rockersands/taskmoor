@@ -101,6 +101,9 @@
   --color-surface: #fcfaf7;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f3efea;
+  /* Menus, the command palette and dialogs (D3, T-220): opaque, so nothing on the page shows
+     through them. Not glass, so they hold no fixed surface opened inside them either. */
+  --overlay-fill: var(--color-surface-raised);
   --color-border: #e6e0e8;
   /* Edges of fields and other controls: 3:1 against the surfaces. */
   --color-field-border: #7c7387;
@@ -219,6 +222,7 @@
   --color-surface: #26222e;
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
+  --overlay-fill: var(--color-surface-raised);
   --color-border: #3d3747;
   --color-field-border: #9c92a8;
   --color-text: #f2edf5;
