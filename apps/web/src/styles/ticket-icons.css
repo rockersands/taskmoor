@@ -96,9 +96,7 @@
   overflow-y: auto;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
   box-shadow: var(--glass-highlight), var(--shadow-3);
   list-style: none;
 }

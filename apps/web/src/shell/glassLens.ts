@@ -5,21 +5,13 @@
  *
  * Only Chromium draws such a filter on a backdrop. Everywhere else, and when a person asked for
  * less transparency or forced colours, nothing here runs and `--glass-lens` stays unset, so the
- * surfaces keep their blur and sheen. Board cards are never in the list: a board can hold
- * thousands of them. Nor is the sidebar or a panel: nothing but the smooth canvas lies behind
- * them, so a filter there would cost time and show nothing. A surface inside another blurred
- * surface is left out too (see `insideGlass`).
+ * surfaces keep their blur and sheen. Menus, the command palette and dialogs are opaque (D3,
+ * T-220): nothing behind them shows, so there is nothing to bend. Board cards are never in the
+ * list: a board can hold thousands of them. Nor is the sidebar or a panel: nothing but the smooth
+ * canvas lies behind them, so a filter there would cost time and show nothing. A surface inside
+ * another blurred surface is left out too (see `insideGlass`).
  */
-const LENS_SURFACES = [
-  '.shell-topbar',
-  '.shell-drawer',
-  '.help-tip-body',
-  '.user-menu-popup',
-  '.popover',
-  '.palette',
-  '.create-dialog',
-  '.ticket-dialog',
-].join(',');
+const LENS_SURFACES = '.shell-topbar';
 
 /** Past this many surfaces on one page the rest keep their plain blur. */
 const MAX_SURFACES = 48;

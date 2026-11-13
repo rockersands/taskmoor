@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { ConfigurationClient, Track } from '../configuration/client';
 import { NewTrackForm, type TrackMode, trackRefusal } from '../configuration/NewTrackForm';
 import { useT } from '../i18n/I18nProvider';
-import { ModalDialog } from '../shell/ModalDialog';
+import { DialogHead, ModalDialog } from '../shell/ModalDialog';
 
 export interface NewTrackDialogProps {
   client: ConfigurationClient;
@@ -42,9 +42,7 @@ export function NewTrackDialog({ client, modes, onClose, onAdded }: NewTrackDial
       closeLabel={t('tracks.new.close')}
       focusFirstField
     >
-      <h2 id={titleId} className="section-title">
-        {t('tracks.new')}
-      </h2>
+      <DialogHead titleId={titleId} title={t('tracks.new')} onClose={onClose} />
       <p className="page-note">{t('tracks.new.intro')}</p>
       {problem && (
         <p role="alert" className="form-error">

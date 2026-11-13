@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { setViewportWidth } from '../test/viewport';
 import { CommandPalette } from './CommandPalette';
 
 describe('command palette', () => {
@@ -27,6 +28,38 @@ describe('command palette', () => {
     await user.keyboard('system');
     const options = screen.getAllByRole('option').map((o) => o.textContent);
     expect(options).toEqual(['System status', 'Follow the device for light or dark']);
+  });
+
+  it('[AGL-018] opens over the whole page, out of the top bar, with a phone-sized prompt (PL-3, PL-49)', async () => {
+    const user = userEvent.setup();
+    const palette = (
+      <I18nProvider locale="en">
+        <header className="shell-topbar">
+          <CommandPalette commands={[{ id: 'go-home', labelId: 'nav.home', run: () => {} }]} />
+        </header>
+      </I18nProvider>
+    );
+    const { unmount } = render(palette);
+    await user.keyboard('{Control>}k{/Control}');
+    const dialog = screen.getByRole('dialog', { name: 'Command palette' });
+    expect(dialog.parentElement).toBe(document.body);
+    expect(screen.getByRole('button', { name: 'Close the command palette' }).parentElement).toBe(
+      document.body,
+    );
+    expect(within(dialog).getByRole('combobox')).toHaveAttribute(
+      'placeholder',
+      'Type a command or a page name (Ctrl K opens this anywhere)',
+    );
+    unmount();
+
+    // A phone: the prompt fits, and names no key the phone does not have.
+    setViewportWidth(375);
+    render(palette);
+    await user.keyboard('{Control>}k{/Control}');
+    expect(screen.getByRole('combobox', { name: 'Command palette' })).toHaveAttribute(
+      'placeholder',
+      'Type a command or a page',
+    );
   });
 
   it('opens with Ctrl+K, filters, and runs the chosen command', async () => {

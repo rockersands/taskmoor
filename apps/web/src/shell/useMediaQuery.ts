@@ -3,6 +3,9 @@ import { useSyncExternalStore } from 'react';
 /** Below this width the sidebar turns into a drawer. Desktop is the primary layout. */
 export const COMPACT_QUERY = '(max-width: 767px)';
 
+/** A touch screen: no keyboard shortcut to offer, and larger targets (ADR-033). */
+export const TOUCH_QUERY = '(pointer: coarse)';
+
 /** Tracks a CSS media query and re-renders when it starts or stops matching. */
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(

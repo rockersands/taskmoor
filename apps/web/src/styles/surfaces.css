@@ -131,9 +131,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
   box-shadow: var(--glass-highlight), var(--shadow-3);
   color: var(--color-text);
   font-size: var(--font-size-200);
@@ -519,7 +517,7 @@
   padding: var(--space-3);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--glass-fill-strong);
+  background: var(--overlay-fill);
   box-shadow: var(--glass-highlight), var(--shadow-3);
   color: var(--color-text);
   isolation: isolate;
@@ -1309,8 +1307,7 @@
 }
 
 .shell-topbar,
-.shell-sidebar,
-.shell-drawer {
+.shell-sidebar {
   background: var(--glass-fill-chrome);
 }
 
@@ -1338,15 +1335,25 @@
   backdrop-filter: blur(var(--glass-blur-chrome)) var(--glass-lens,) saturate(var(--glass-saturate));
 }
 
+/*
+ * Menus, pop-overs, the command palette and dialogs are opaque (D3, T-220): the page under them
+ * never shows through their text. They keep the rim and the depth of glass, with no blur: a blur
+ * would also hold any fixed surface opened inside them (a dialog over the ticket pop-up) to their
+ * box. Last word on these surfaces, so a page's own rule for one cannot make it see-through again;
+ * design.test.ts holds the list.
+ */
 .shell-drawer,
 .help-tip-body,
 .user-menu-popup,
+.icon-select-list,
+.rt-mentions,
 .popover,
 .palette,
 .create-dialog,
 .ticket-dialog {
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-strong)) var(--glass-lens,) saturate(var(--glass-saturate));
+  background: var(--overlay-fill);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* A board's cards stay cheap: no blur, no glow, only flat edges and one shadow. */
