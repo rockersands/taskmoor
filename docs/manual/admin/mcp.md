@@ -117,7 +117,8 @@ What an app signed in this way can and cannot do:
   cannot manage tokens, passwords or sessions.
 - Its tokens work at the MCP endpoint only. Other API calls with them are refused.
 - The grant lasts 30 days, even when the person signs out of the browser where they allowed
-  it. Then the app asks again. The person can end it sooner under **Account**, **Sessions**.
+  it. Then the app asks again. The person can end it sooner under **Account**, **Security**,
+  **Sessions**.
 - The apps that registered themselves are listed at `GET /api/v1/admin/oauth-clients`, with
   when each was last used and how many grants it holds. `DELETE /api/v1/admin/oauth-clients/<id>`
   removes an app and ends every grant it holds. Both need a site administrator. Apps that

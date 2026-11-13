@@ -5,9 +5,10 @@ import { PageHeader } from './PageHeader';
 
 /**
  * Tells the frame that the page at this address is a not-found page, so the navigation marks no
- * section (D4): a track, plan or ticket that does not exist is not inside any of them.
+ * section (D4): a track, plan or ticket that does not exist is not inside any of them. Null when
+ * the not-found page leaves, so a track restored at the same address is marked again.
  */
-export const NotFoundContext = createContext<((route: string) => void) | null>(null);
+export const NotFoundContext = createContext<((route: string | null) => void) | null>(null);
 
 export interface NotFoundPageProps {
   /** What was not found, such as "Track not found"; the page's only level-one heading. */
@@ -26,7 +27,10 @@ export function NotFoundPage({ title, children }: NotFoundPageProps) {
   const titleId = useId();
   const route = useRoute();
   const notFound = useContext(NotFoundContext);
-  useEffect(() => notFound?.(route), [notFound, route]);
+  useEffect(() => {
+    notFound?.(route);
+    return () => notFound?.(null);
+  }, [notFound, route]);
   return (
     <section className="page not-found-page" aria-labelledby={titleId}>
       {/* What happened is the page's purpose line, said as an alert. */}

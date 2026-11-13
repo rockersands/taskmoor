@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { fakeNotificationsClient } from '../notifications/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakePersonalTokensClient } from '../tokens/fixtures';
@@ -98,6 +98,36 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
     await canvas.findByRole('table');
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** The width of a phone, 375 px: five sections need about 450. */
+const atPhone375 = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 375 }}>
+    <Story />
+  </div>
+);
+
+/**
+ * On a phone the row of sections scrolls inside itself (D17): the current section, the last here,
+ * is brought into view, and the edge with more sections beyond it fades.
+ */
+export const SectionsAtPhoneWidth: Story = {
+  decorators: [atPhone375],
+  args: { section: 'data' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole('navigation', { name: 'Account sections' });
+    await expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
+    const current = within(bar).getByRole('link', { name: 'Your data' });
+    await waitFor(() => expect(bar.scrollLeft).toBeGreaterThan(0));
+    const shown = bar.getBoundingClientRect();
+    const tab = current.getBoundingClientRect();
+    await expect(tab.left).toBeGreaterThanOrEqual(shown.left);
+    await expect(tab.right).toBeLessThanOrEqual(shown.right + 1);
+    // More sections wait past the left edge, none past the right.
+    await waitFor(() => expect(bar).toHaveAttribute('data-more', 'start'));
     await fitsPhoneWidth(canvas);
   },
 };

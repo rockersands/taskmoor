@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { defaultPreferences } from '../notifications/fixtures';
 import { type Handler, noContent, stubBackend as stubAny } from '../test/backend';
@@ -30,6 +30,16 @@ const tokensAnswer = () =>
   });
 
 const region = (name: string) => screen.getByRole('region', { name });
+
+/** Replaces a property for one test; returns the undo. */
+function stub(target: object, name: string, descriptor: PropertyDescriptor): () => void {
+  const before = Object.getOwnPropertyDescriptor(target, name);
+  Object.defineProperty(target, name, { configurable: true, ...descriptor });
+  return () => {
+    if (before) Object.defineProperty(target, name, before);
+    else delete (target as Record<string, unknown>)[name];
+  };
+}
 
 async function openAccount(handlers: Record<string, Handler> = {}, route = '#/account') {
   const calls = stubBackend({
@@ -84,6 +94,53 @@ describe('account page: profile', () => {
       screen.getByText('Your name, email, time zone and language, and how Taskmoor looks for you.'),
     ).toBeVisible();
     expect(screen.getByText(/A choice saves at once\./)).toBeVisible();
+  });
+
+  it('[IAM-008] keeps focus on the section chosen from the keyboard (D17)', async () => {
+    const user = userEvent.setup();
+    await openAccount();
+    const tabs = () => screen.getByRole('navigation', { name: 'Account sections' });
+    within(tabs()).getByRole('link', { name: 'Security' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('region', { name: 'Password' })).toBeVisible();
+    expect(window.location.hash).toBe('#/account/security');
+    const security = within(tabs()).getByRole('link', { name: 'Security' });
+    expect(security).toHaveAttribute('aria-current', 'page');
+    expect(security).toHaveFocus();
+  });
+
+  it('[IAM-008] brings the current section into view on a phone and fades the edge with more (D17)', async () => {
+    setViewportWidth(375);
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    // Five sections need about 450 px; the row has 343.
+    const size = (element: Element, value: number) => (element.tagName === 'NAV' ? value : 0);
+    const restore = [
+      stub(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView }),
+      stub(HTMLElement.prototype, 'scrollWidth', {
+        get(this: Element) {
+          return size(this, 450);
+        },
+      }),
+      stub(HTMLElement.prototype, 'clientWidth', {
+        get(this: Element) {
+          return size(this, 343);
+        },
+      }),
+    ];
+    try {
+      await openAccount({}, '#/account/tokens');
+      const bar = screen.getByRole('navigation', { name: 'Account sections' });
+      const current = within(bar).getByRole('link', { name: 'API tokens' });
+      await waitFor(() => expect(scrolled).toContain(current));
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'center' });
+      // At its start, the row hides sections past its right edge, and says so.
+      expect(bar).toHaveAttribute('data-more', 'end');
+    } finally {
+      for (const undo of restore) undo();
+    }
   });
 
   it('[IAM-008] says an address under Account that names no section is not found', () => {

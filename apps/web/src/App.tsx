@@ -789,10 +789,11 @@ function Pages() {
       <WorkflowsPage />
     );
   } else if (isRoute(hash, ACCOUNT)) {
-    // Each section at its own address (D17); one that names no section is not found.
+    // Each section at its own address (D17); one that names no section is not found. The page
+    // stays mounted across sections, so the link that changed it keeps focus.
     const section = accountSectionOf(hash);
     content = section ? (
-      <AccountPage key={section} section={section} />
+      <AccountPage section={section} />
     ) : (
       <NotFoundPage title={t('notFound.title')} />
     );
