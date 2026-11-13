@@ -5,6 +5,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { estimateText } from '../sprints/client';
+import { noEstimates } from '../sprints/SprintReportPage';
 import type { TrackClient } from '../tracks/client';
 import { ColumnChart } from './ColumnChart';
 import type { OutcomeReport, ReleaseReport, ReportClient, ScopeBurndown } from './client';
@@ -219,6 +220,22 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
     if (b.sprints.length === 0) {
       return (
         <EmptyState title={t('reports.scope.noSprints')}>{t('empty.reports.noSprints')}</EmptyState>
+      );
+    }
+    // Nothing estimated: empty charts and '0 remaining of 0' would contradict the tickets in
+    // the release, so it says why instead (TR-13), as the sprint report does.
+    if (
+      noEstimates(b.statistic.statistic, [
+        b.now.scope,
+        b.now.completed,
+        b.now.remaining,
+        ...b.sprints.flatMap((s) => [s.start, s.completed, s.added, s.removed, s.end]),
+      ])
+    ) {
+      return (
+        <EmptyState title={t('sprints.charts.noEstimates.title')}>
+          {t('reports.scope.noEstimates')}
+        </EmptyState>
       );
     }
     const first = b.sprints[0];

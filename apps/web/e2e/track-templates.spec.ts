@@ -65,7 +65,8 @@ test('[CORE-002] each template makes a working track', async ({ page }, testInfo
       await expect(status).toHaveText(`Track ${key} was added.`);
       await expect(page.getByRole('link', { name: `Open the board of ${key}` })).toHaveCount(0);
       await page.goto(`${BASE}/#/tracks/${key}`);
-      await expect(page.getByRole('heading', { level: 1 })).toContainText(`(${key})`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Summary');
+      await expect(page.getByRole('navigation', { name: `Sections of ${key}` })).toBeVisible();
       continue;
     }
     await expect(status).toHaveText(`Track ${key} was added, with its board.`);

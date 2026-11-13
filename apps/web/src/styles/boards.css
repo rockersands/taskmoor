@@ -72,20 +72,20 @@
 
 /* Columns past an edge (D2, TR-23): ADR-114's 16 rem columns stay, the board scrolls sideways,
    and the edge with more beyond it fades, so a cut card reads as "more this way". Its scroll bar
-   stays drawn too. In focus the whole region shows, outline included. */
+   stays drawn too. While anything in it has focus (a card, its menu) the whole region shows. */
 .board-scroll:is([data-more="end"], [data-more="start"], [data-more="both"]) {
   scrollbar-width: thin;
 }
 
-.board-scroll[data-more="end"]:not(:focus-visible) {
+.board-scroll[data-more="end"]:not(:focus-within) {
   mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8) * 2), transparent);
 }
 
-.board-scroll[data-more="start"]:not(:focus-visible) {
+.board-scroll[data-more="start"]:not(:focus-within) {
   mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8) * 2), transparent);
 }
 
-.board-scroll[data-more="both"]:not(:focus-visible) {
+.board-scroll[data-more="both"]:not(:focus-within) {
   mask-image: linear-gradient(
     to right,
     transparent,
@@ -95,9 +95,15 @@
   );
 }
 
-/* The board's filters: a slab of their own, clear in both skins (D28). */
+/* The board's filters: a slab of their own, clear in both skins (D28). Strong fill and no blur of
+   its own: a backdrop filter would hold the People pop-over, which docks at the screen's foot on a
+   phone, inside the slab. */
 .board-filters {
   padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
 }
 
 .board-grid {

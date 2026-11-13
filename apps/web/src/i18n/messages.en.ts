@@ -4575,6 +4575,8 @@ export const messagesEn = {
   'reports.scope.outcomeHint': 'A ticket key',
   'reports.scope.outcomeOption': '{key} {summary}',
   'reports.scope.noOutcomes': 'This track has no outcomes yet',
+  'reports.scope.noEstimates':
+    'This burndown adds up the estimates of the tickets in it, and none of them has one yet. Give the tickets an estimate, or count tickets instead in the board’s settings under Sprints.',
   'reports.scope.noOutcomesHint':
     'An outcome is a ticket of an outcome type with tickets under it. Once the track has one, its burndown and report show here.',
   'reports.scope.show': 'Show',

@@ -391,6 +391,24 @@ describe('a track’s statistics (ADR-116)', () => {
     expect(await screen.findByRole('link', { name: 'SHOP-52' })).toBeVisible();
   });
 
+  it('[RPT-001] explains a release burndown with no estimates instead of charting zeros (TR-13)', async () => {
+    openWithReports('release-burndown', (client) => {
+      const read = client.releaseBurndown;
+      client.releaseBurndown = async (board, release) => {
+        const report = await read(board, release);
+        const zero = { start: 0, completed: 0, added: 0, removed: 0, end: 0 };
+        return {
+          ...report,
+          statistic: { statistic: 'field', fieldId: 31 },
+          sprints: report.sprints.map((s) => ({ ...s, ...zero })),
+          now: { scope: 0, completed: 0, remaining: 0 },
+        };
+      };
+    });
+    expect(await screen.findByText('No estimates to add up')).toBeVisible();
+    expect(screen.queryByRole('figure', { name: 'Remaining work' })).toBeNull();
+  });
+
   it('[RPT-001] says a shipped release shipped on its own day, with no forecast (TR-15)', async () => {
     const { reportClient } = openWithReports('release-report', (client) => {
       const read = client.releaseReport;

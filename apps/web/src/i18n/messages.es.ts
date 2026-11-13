@@ -4691,6 +4691,8 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.scope.outcomeHint': 'Una clave de ticket',
   'reports.scope.outcomeOption': '{key} {summary}',
   'reports.scope.noOutcomes': 'Este track aún no tiene objetivos',
+  'reports.scope.noEstimates':
+    'Este burndown suma las estimaciones de sus tickets, y ninguno tiene una todavía. Dales una estimación, o cuenta tickets en su lugar en la configuración del tablero, en Sprints.',
   'reports.scope.noOutcomesHint':
     'Un objetivo es un ticket de un tipo de objetivo con tickets debajo. Cuando el track tenga uno, aquí aparecerán su burndown y su informe.',
   'reports.scope.show': 'Mostrar',

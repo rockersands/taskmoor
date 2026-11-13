@@ -34,6 +34,13 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
   });
 }
 
+/** A report of a track's Statistics: its link on a wide screen, the one Report picker on a phone (D5). */
+async function openReport(page: Page, name: string): Promise<void> {
+  const picker = page.getByRole('combobox', { name: 'Report' });
+  if (await picker.isVisible()) await picker.selectOption({ label: name });
+  else await page.getByRole('navigation', { name: 'Reports' }).getByRole('link', { name }).click();
+}
+
 test('[RPT-001] a board’s cumulative flow, control chart and time in status', async ({
   page,
 }, testInfo) => {
@@ -94,7 +101,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   // Nothing finished yet; the period and a board filter change what the chart reads.
-  await reports.getByRole('link', { name: 'Control chart' }).click();
+  await openReport(page, 'Control chart');
   await expect(
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
@@ -107,7 +114,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // The choices stay from report to report: none of the tickets is Ada's.
-  await reports.getByRole('link', { name: 'Time in status' }).click();
+  await openReport(page, 'Time in status');
   await expect(
     reports.getByText('No ticket of this board was in a status in this period.'),
   ).toBeVisible();

@@ -213,7 +213,8 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
   // The board shows the next state at once: no sprint running, focus on the way to the backlog.
   await expect(board.getByText('No sprint is running')).toBeVisible();
   await expect(button).toHaveCount(0);
-  await expect(board.getByRole('link', { name: 'Backlog', exact: true })).toBeFocused();
+  // No Backlog pill on a track's board (D7): focus goes to the columns.
+  await expect(board.getByRole('region', { name: 'Columns' })).toBeFocused();
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // The open tickets went to the planned sprint; the closed one stayed with the completed sprint.
@@ -221,7 +222,10 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
   expect(
     (sprints.sprints as { id: number; state: string }[]).find((s) => s.id === running)?.state,
   ).toBe('closed');
-  await board.getByRole('link', { name: 'Backlog', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: `Sections of ${key}` })
+    .getByRole('link', { name: 'Backlog', exact: true })
+    .click();
   const backlog = page.getByRole('region', { name: 'Backlog and sprints' });
   const planned = backlog.getByRole('region', { name: nextName, exact: true });
   await expect(planned.getByRole('link', { name: second })).toBeVisible();

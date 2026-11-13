@@ -245,7 +245,8 @@ These follow a Scrum board's sprints, counted by the board's estimation setting:
 
 Both show the **Remaining work** at the start of each sprint and now, the **Work per sprint**
 (**Completed**, **Added** and **Removed**), and a forecast of how many more sprints the work
-needs at the board's velocity (the average of its last three completed sprints).
+needs at the board's velocity (the average of its last three completed sprints). When none of the
+tickets has an estimate, the burndown says **No estimates to add up** instead of charting zeros.
 
 - **Release report**: **Release progress**, the scope and the completed work day by day from
   the release's start, its planned date and the day the work would be done at the pace of the last

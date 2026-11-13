@@ -608,7 +608,7 @@ describe('the board page (M1-043)', () => {
     renderBoard();
     await page();
     const filters = screen.getByRole('group', { name: 'Board filters' });
-    expect(filters.closest('.board-filters')).toHaveClass('glass-card');
+    expect(filters.closest('.filter-row')).toHaveClass('board-filters');
   });
 
   it('[AGL-001] says a board that is not there is not found, with a way on (D4, AC-8)', async () => {

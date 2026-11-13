@@ -973,7 +973,7 @@ export function BoardPage({
         }
       />
       {/* The filters are a slab of their own, clear in both skins (D28). */}
-      <div className="filter-row board-filters glass-card">
+      <div className="filter-row board-filters">
         {offered.length > 0 &&
           (board.boardFilterDisplay === 'dropdown' ? (
             <Popover
