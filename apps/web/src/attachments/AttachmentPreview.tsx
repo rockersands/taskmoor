@@ -2,6 +2,7 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { useLeaveMotion } from '../shell/motion';
+import { OverlayLayer } from '../shell/OverlayLayer';
 import type { Attachment, AttachmentClient, ZipListing } from './client';
 import { formatSize } from './format';
 import { useMediaUrl } from './media';
@@ -28,7 +29,8 @@ export function previewable(a: Attachment): boolean {
  * The preview of one attachment, in a modal dialog (CORE-021): images, PDF and video from the
  * file itself, the start of a text file, a ZIP file's entries with a download for each.
  * Escape and the close button close it; focus stays inside while it is open and returns to
- * where it was.
+ * where it was. It is drawn at the end of the page's body (OverlayLayer): the attachment panel is
+ * glass, and its blur would hold the veil to the panel's box (D3, PL-46).
  */
 export function AttachmentPreview({ attachment: a, client, onClose }: AttachmentPreviewProps) {
   const t = useT();
@@ -185,33 +187,39 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
   }
 
   return (
-    <div className="attachment-preview-backdrop">
-      <div
-        ref={dialogRef}
-        className="ticket-dialog attachment-preview"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onKeyDown={onKeyDown}
-      >
-        <div className="attachment-preview-header">
-          <h2 id={titleId} className="attachment-preview-title">
-            {a.name}
-          </h2>
-          <a className="button-secondary attachment-action" href={client.urls.content(a)} download>
-            {t('attachments.download', { name: a.name })}
-          </a>
-          <button
-            ref={close}
-            type="button"
-            className="button-secondary attachment-action"
-            onClick={onClose}
-          >
-            {t('attachments.close')}
-          </button>
+    <OverlayLayer>
+      <div className="attachment-preview-backdrop">
+        <div
+          ref={dialogRef}
+          className="ticket-dialog attachment-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          onKeyDown={onKeyDown}
+        >
+          <div className="attachment-preview-header">
+            <h2 id={titleId} className="attachment-preview-title">
+              {a.name}
+            </h2>
+            <a
+              className="button-secondary attachment-action"
+              href={client.urls.content(a)}
+              download
+            >
+              {t('attachments.download', { name: a.name })}
+            </a>
+            <button
+              ref={close}
+              type="button"
+              className="button-secondary attachment-action"
+              onClick={onClose}
+            >
+              {t('attachments.close')}
+            </button>
+          </div>
+          <div className="attachment-preview-body">{body}</div>
         </div>
-        <div className="attachment-preview-body">{body}</div>
       </div>
-    </div>
+    </OverlayLayer>
   );
 }

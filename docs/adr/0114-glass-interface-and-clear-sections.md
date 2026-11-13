@@ -232,12 +232,18 @@ become **translucent glass**:
     dialog opened inside one (over the ticket pop-up) is placed by the window.
   - `ModalDialog`, the palette and the keyboard shortcuts dialog render at the end of the page's body
     through `shell/OverlayLayer.tsx` (a React portal), so nothing they are opened from holds them.
-    Other dialogs on `.ticket-dialog-backdrop` should move onto it as their pages are next touched.
+    So does the attachment preview, opened from the attachment panel, which is glass. Other
+    dialogs on `.ticket-dialog-backdrop` (clone, break down, the ticket's shortcuts) and the
+    board's floating choices sit outside any glass and stay where they are; they should move onto
+    it as their pages are next touched.
   - `DialogHead` gives a `ModalDialog` the create dialog's title row with **Close**.
 - **Destructive actions** (D13): `button-danger-quiet` is the first step of Deactivate, Erase,
   Delete and Revoke tokens, the quiet pill's shape in the danger colours; `shell/DangerAction.tsx`
   opens a question in its place that says what will happen, with the action by name as
-  `.button-danger` beside Cancel, focus on Cancel.
+  `.button-danger` beside Cancel, focus on Cancel. While the action runs both answers are dimmed
+  (`aria-disabled`, so the one pressed keeps focus), Escape does nothing and a second press sends
+  nothing; a refusal leaves the question open. Afterwards focus goes back to the first button,
+  which stays focusable while it is unavailable until focus moves on.
 - **Check boxes and radios** are one control, drawn by `forms.css` with no specificity: a clear well
   with the 3:1 field edge when off, the accent with a tick or a dot when on, 20 px; the system's own
   under forced colours. The browser's box was flat grey in the dark skin.

@@ -19,6 +19,11 @@ export interface DangerActionProps {
  * Revoke. Its button has the danger look, and pressing it does nothing yet: a confirmation opens
  * in its place, says what will happen, and offers the action by name beside Cancel. Focus goes to
  * Cancel, the safe choice; Escape and Cancel put the button back and focus it.
+ *
+ * While the action runs, the question waits: both answers are dimmed and do nothing, Escape does
+ * nothing, and a second press sends nothing more. A refusal leaves the question open to try again
+ * or cancel; saying why is the caller's. A dimmed answer stays focusable (`aria-disabled`), and the
+ * button gets focus back even while it is unavailable, so focus never falls to the page.
  */
 export function DangerAction({
   label,
@@ -31,9 +36,16 @@ export function DangerAction({
   const t = useT();
   const outcomeId = useId();
   const [asking, setAsking] = useState(false);
+  const [pending, setPending] = useState(false);
+  // Set at the first press, before React draws the dimmed answers: a double-click sends one.
+  const running = useRef(false);
+  // The button holds focus given back to it while it is unavailable, until focus moves on.
+  const [holding, setHolding] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef(false);
+  const waiting = busy || pending;
+  const unavailable = disabled || busy;
 
   useEffect(() => {
     if (asking) {
@@ -45,28 +57,44 @@ export function DangerAction({
   }, [asking]);
 
   const stop = () => {
+    if (waiting) return;
     returnFocus.current = true;
+    setHolding(true);
     setAsking(false);
   };
 
   const confirm = async () => {
+    if (waiting || running.current) return;
+    running.current = true;
+    setPending(true);
     try {
       await onConfirm();
+    } catch {
+      // Refused: the question stays, to try again or cancel. The caller says why, if it does.
+      return;
     } finally {
-      // Whatever it said, the question is answered; focus comes back if the button is still here.
-      returnFocus.current = true;
-      setAsking(false);
+      running.current = false;
+      setPending(false);
     }
+    // Done: the question is answered, and focus goes back to the button.
+    returnFocus.current = true;
+    setHolding(true);
+    setAsking(false);
   };
 
   if (!asking) {
+    const held = unavailable && holding;
     return (
       <button
         ref={trigger}
         type="button"
         className="button-danger-quiet"
-        disabled={disabled || busy}
-        onClick={() => setAsking(true)}
+        disabled={unavailable && !held}
+        aria-disabled={held || undefined}
+        onBlur={() => setHolding(false)}
+        onClick={() => {
+          if (!unavailable) setAsking(true);
+        }}
       >
         {label}
       </button>
@@ -79,6 +107,7 @@ export function DangerAction({
       className="danger-confirm"
       role="group"
       aria-labelledby={outcomeId}
+      aria-busy={waiting || undefined}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
@@ -93,12 +122,18 @@ export function DangerAction({
         <button
           type="button"
           className="button-danger"
-          disabled={busy}
+          aria-disabled={waiting || undefined}
           onClick={() => void confirm()}
         >
           {confirmLabel}
         </button>
-        <button ref={cancel} type="button" className="button-secondary" onClick={stop}>
+        <button
+          ref={cancel}
+          type="button"
+          className="button-secondary"
+          aria-disabled={waiting || undefined}
+          onClick={stop}
+        >
           {t('danger.cancel')}
         </button>
       </div>

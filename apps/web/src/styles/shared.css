@@ -59,8 +59,8 @@
     transform var(--motion-fast) var(--ease-settle);
 }
 
-.button-secondary:hover:not(:disabled),
-.button-quiet:hover:not(:disabled) {
+.button-secondary:hover:not(:disabled, [aria-disabled="true"]),
+.button-quiet:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--glass-tint-accent);
 }
 
@@ -75,7 +75,9 @@
 .button-secondary:disabled,
 .button-quiet:disabled,
 .button-danger-quiet:disabled,
-.button-danger:disabled {
+.button-danger:disabled,
+.danger-confirm [aria-disabled="true"],
+.button-danger-quiet[aria-disabled="true"] {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -103,7 +105,7 @@
 }
 
 /* Toward the text colour: darker in the light skin, lighter in the dark one, the text clearer. */
-.button-danger:hover:not(:disabled) {
+.button-danger:hover:not(:disabled, [aria-disabled="true"]) {
   background: color-mix(in srgb, var(--color-danger) 86%, var(--color-text));
 }
 
@@ -132,7 +134,7 @@
 }
 
 /* A heavier edge, at once: motion is for transforms, opacity and colour (motion.test.ts). */
-.button-danger-quiet:hover:not(:disabled) {
+.button-danger-quiet:hover:not(:disabled, [aria-disabled="true"]) {
   box-shadow: inset 0 0 0 1px var(--color-danger);
 }
 
