@@ -35,15 +35,23 @@
   font-weight: var(--font-weight-medium);
 }
 
+/*
+ * The help mark follows the title's last word (TR-28). In a flex row a title that wraps takes the
+ * whole width, which pushed the mark to the far edge; as text in a line it stays beside the words.
+ */
 .page-header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: block;
 }
 
 .page-header .page-title {
+  display: inline;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.page-header-title > .help-tip {
+  margin-inline-start: var(--space-2);
+  vertical-align: middle;
 }
 
 .page-purpose {
