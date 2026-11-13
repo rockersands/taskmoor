@@ -263,6 +263,12 @@ test('[IAM-001] [IAM-004] a person manages sessions and changes the password on 
   await page.getByRole('button', { name: RIVER.name, exact: true }).click();
   await page.getByRole('menuitem', { name: 'Account' }).click();
   await expect(heading(page)).toHaveText('Account');
+  // Sessions and the password are in the Security section, at its own address (D17).
+  await page
+    .getByRole('navigation', { name: 'Account sections' })
+    .getByRole('link', { name: 'Security' })
+    .click();
+  await expect(page).toHaveURL(/#\/account\/security$/);
 
   const sessions = page.getByRole('region', { name: 'Sessions' });
   await expect(sessions.getByRole('listitem')).toHaveCount(3);
@@ -381,7 +387,9 @@ test('[IAM-008] the account page and the user menu work on a small phone', async
     page.getByRole('button', { name: 'Save profile' }),
     page.getByLabel('Time zone'),
     page.getByLabel('Language and region'),
-    page.getByRole('link', { name: 'Security' }),
+    page
+      .getByRole('navigation', { name: 'Account sections' })
+      .getByRole('link', { name: 'Security' }),
   ]);
 
   await page.goto('./#/account/security');
