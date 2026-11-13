@@ -1,5 +1,5 @@
 /* Dashboards (M1-064; ADR-060): widgets as cards in the layout's columns, one column on
-   phones; a wallboard shows them without the shell and a little larger. */
+   phones; a wallboard shows them without the shell, in a layout of its own. */
 .dashboards-page > .glass-card,
 .dashboard-editor {
   padding: var(--space-4);
@@ -251,22 +251,129 @@
   gap: var(--space-1) var(--space-3);
 }
 
+/* The box that puts a dashboard on the wallboard, with its words, at the row's end (PL-14). */
+.dashboard-wallboard-pick {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.dashboard-wallboard > h2 {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+/*
+ * The wallboard (D31; PL-15): its own full-screen layout for a TV or a wall, read from across a
+ * room. Every size steps up, the widgets fill the screen, and nothing asks to be used: no
+ * "Show the numbers", and the way out and full screen stay hidden until a pointer or the keyboard
+ * reaches them. A legend's value sits by its label, not at the far edge.
+ */
+.wallboard-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: var(--space-6);
+  background: var(--color-canvas);
+}
+
+.dashboard-page.is-wallboard {
+  --font-size-100: 1rem;
+  --font-size-200: 1.25rem;
+  --font-size-300: 1.5rem;
+  --font-size-400: 1.875rem;
+  --font-size-600: 2.75rem;
+  min-height: calc(100vh - 2 * var(--space-6));
+  max-width: none;
+  grid-template-rows: auto minmax(0, 1fr);
+  font-size: var(--font-size-300);
+}
+
+.is-wallboard .dashboard-grid {
+  align-items: stretch;
+}
+
+.is-wallboard .dashboard-column {
+  align-content: stretch;
+}
+
 .is-wallboard .dashboard-widget-title {
   font-size: var(--font-size-400);
 }
 
-.wallboard-shell {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: var(--space-4);
-  background: var(--color-canvas);
+.is-wallboard .chart-table {
+  display: none;
+}
+
+.is-wallboard .chart-legend-list li {
+  grid-template-columns: auto auto auto;
+  justify-content: start;
+  gap: var(--space-3);
+}
+
+.wallboard-exits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--motion-fast) ease;
+}
+
+.wallboard-exits:is(:hover, :focus-within) {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallboard-exits {
+    transition: none;
+  }
 }
 
 /* A track's summary (M1-064): numbers that open their search, with a bar for their share. */
+/* A track's numbers (TR-30): rows that fill. The four sections go one or two to a row, never
+   three and a lone fourth; the five tiles one row when there is room, else two to a row with the
+   last across; a tile's number sits on its last line, so a wrapped label never lowers it. */
+.track-numbers {
+  display: grid;
+  gap: var(--space-4);
+  container: track-numbers / inline-size;
+}
+
 .summary-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--space-4);
+}
+
+.track-numbers .summary-sections {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container track-numbers (min-width: 36rem) {
+  .track-numbers .summary-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.track-numbers .report-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.track-numbers .report-stats > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+@container track-numbers (max-width: 40rem) {
+  .track-numbers .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .track-numbers .report-stats > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* A `glass-card`, and in a widget, which is glass already, a well with no blur of its own. */

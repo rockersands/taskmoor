@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { EmptyState } from '../shell/EmptyState';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import {
   type Dashboard,
@@ -106,14 +107,8 @@ export function DashboardPage({
   }, [wallboard, id]);
 
   if (failed) {
-    return (
-      <section className="page dashboard-page">
-        <PageHeader title={t('nav.dashboards')} purpose={t('purpose.dashboards')} />
-        <p className="board-problem" role="alert">
-          {t('dashboards.notFound')}
-        </p>
-      </section>
-    );
+    // Not there, or not shared with this person: the shared not-found page, with a way on (D4).
+    return <NotFoundPage title={t('notFound.dashboard')}>{t('dashboards.notFound')}</NotFoundPage>;
   }
   if (!dashboard) return <p className="report-loading">{t('reports.loading')}</p>;
 
@@ -211,7 +206,9 @@ export function DashboardPage({
         }
         actions={
           wallboard ? (
-            <>
+            // Read from across a room, the wallboard shows no controls (D31): the way out and full
+            // screen stay hidden until a pointer or the keyboard reaches them.
+            <div className="wallboard-exits">
               <button
                 type="button"
                 className="button-secondary"
@@ -222,7 +219,7 @@ export function DashboardPage({
               <a className="button-quiet" href={routeHref(`#/dashboards/${dashboard.id}`)}>
                 {t('dashboards.leaveWallboard')}
               </a>
-            </>
+            </div>
           ) : editing ? undefined : (
             <>
               {dashboard.editable && (

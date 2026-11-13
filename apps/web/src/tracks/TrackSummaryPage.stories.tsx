@@ -30,6 +30,61 @@ export const Summary: Story = {
   },
 };
 
+/** Where each of a grid's boxes starts, row by row: the left edges of each row, top to bottom. */
+const rows = (boxes: Element[]) => {
+  const byTop = new Map<number, number[]>();
+  for (const box of boxes) {
+    const { top, left } = box.getBoundingClientRect();
+    byTop.set(Math.round(top), [...(byTop.get(Math.round(top)) ?? []), Math.round(left)]);
+  }
+  return [...byTop.values()];
+};
+
+/**
+ * The numbers line up (TR-30): every tile's number on one line, however its label wraps, and the
+ * sections fill their rows, never three and a lone fourth, at a laptop's width and a phone's.
+ */
+export const RowsThatFill: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Open by assignee' });
+    const numbers = Array.from(canvasElement.querySelectorAll('.report-stats dd'));
+    await expect(
+      new Set(numbers.map((n) => Math.round(n.getBoundingClientRect().bottom))).size,
+    ).toBe(1);
+    const sections = rows(Array.from(canvasElement.querySelectorAll('.summary-section')));
+    await expect(sections.map((row) => row.length)).toEqual([2, 2]);
+  },
+};
+
+/** On a phone the tiles go two to a row and the fifth spans the last row, never alone in half. */
+export const RowsThatFillOnAPhone: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 340 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Open by assignee' });
+    const tiles = Array.from(canvasElement.querySelectorAll('.report-stats > div'));
+    await expect(rows(tiles).map((row) => row.length)).toEqual([2, 2, 1]);
+    const [first, , , , last] = tiles.map((tile) => tile.getBoundingClientRect());
+    await expect(Math.round(last?.width ?? 0)).toBeGreaterThan(
+      Math.round((first?.width ?? 0) * 1.5),
+    );
+  },
+};
+
 export const NotFound: Story = { args: { client: fakeTrackClient(null) } };
 
 /** The widgets chosen for the track, as anyone who may only read it sees them. */

@@ -105,8 +105,9 @@ describe('a dashboard (M1-064)', () => {
         .getByRole('img')
         .getAttribute('aria-label'),
     ).toBe('Created vs closed: 21 created and 13 closed in the period.');
-    // The pie: values and shares beside each swatch, most tickets first.
-    const pie = await screen.findByRole('figure', { name: 'Pie chart' });
+    // The pie: values and shares beside each swatch, most tickets first. Untitled, it names what
+    // it counts rather than its shape (PL-35).
+    const pie = await screen.findByRole('figure', { name: 'Tickets by Priority' });
     expect(
       within(pie)
         .getAllByRole('listitem')
@@ -261,7 +262,11 @@ describe('a dashboard (M1-064)', () => {
       open({ wallboard: { rotation: [5, 6], seconds: 30 } });
       await screen.findByRole('heading', { level: 1, name: 'Checkout team' });
       expect(screen.queryByRole('button', { name: 'Edit dashboard' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Full screen' })).toBeVisible();
+      // Its own layout, no controls in sight: the way out waits for a pointer or a key (D31).
+      expect(
+        screen.getByRole('button', { name: 'Full screen' }).closest('.wallboard-exits'),
+      ).not.toBeNull();
+      expect(document.querySelector('.is-wallboard')).not.toBeNull();
       vi.advanceTimersByTime(30_000);
       expect(window.location.hash).toBe('#/dashboards/6/wallboard?rotate=5,6&seconds=30');
     } finally {
@@ -272,7 +277,7 @@ describe('a dashboard (M1-064)', () => {
   it('[RPT-004] fits a phone without sideways scrolling', async () => {
     setViewportWidth(375);
     open();
-    await screen.findByRole('figure', { name: 'Pie chart' });
+    await screen.findByRole('figure', { name: 'Tickets by Priority' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 
@@ -351,6 +356,34 @@ describe('the dashboards list (M1-064)', () => {
     await user.click(screen.getByRole('button', { name: 'Create dashboard' }));
     await waitFor(() => expect(window.location.hash).toBe('#/dashboards/101'));
     expect(client.dashboards.at(-1)?.name).toBe('Release week');
+  });
+
+  it('[RPT-004] labels each box in words and shows the start once one is ticked (PL-14)', async () => {
+    const user = userEvent.setup();
+    list();
+    const box = await screen.findByRole('checkbox', {
+      name: 'Show Checkout team on the wallboard',
+    });
+    expect(box.closest('label')).toHaveTextContent('On the wallboard');
+    const wallboard = screen.getByRole('region', { name: 'Wallboard' });
+    expect(within(wallboard).getByText(/^Choose dashboards to show them/)).toBeVisible();
+    expect(within(wallboard).queryByRole('link')).toBeNull();
+    await user.click(box);
+    expect(
+      within(wallboard).getByRole('link', { name: 'Start the wallboard with 1 dashboard' }),
+    ).toBeVisible();
+  });
+
+  it('[RPT-005] says a dashboard that is not there is not found, with a way on (D4)', async () => {
+    const client = fakeDashboardClient();
+    client.get = async () => {
+      throw new Error('not_found');
+    };
+    open({ client });
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Dashboard not found' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
   });
 
   it('[RPT-004] starts a wallboard with the chosen dashboards', async () => {
