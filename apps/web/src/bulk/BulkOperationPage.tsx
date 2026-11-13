@@ -197,9 +197,21 @@ export function BulkOperationPage({
         title={t(TITLES[op.action], { count: op.total })}
         purpose={t('purpose.bulk')}
       />
-      <p role="status" className="form-status">
-        {statusText(t, op)}
-      </p>
+      {finished(op) && op.failed > 0 ? (
+        // Some tickets failed: a warning, never a green "Done." (PL-23, D14).
+        <p role="alert" className="bulk-warning">
+          {t('bulk.warning', {
+            action: op.action,
+            cancelled: op.status === 'cancelled' ? 'yes' : 'no',
+            succeeded: op.succeeded,
+            failed: op.failed,
+          })}
+        </p>
+      ) : (
+        <p role="status" className="form-status">
+          {statusText(t, op)}
+        </p>
+      )}
       <div className="bulk-progress">
         <label id={progressId} htmlFor={`${progressId}-bar`} className="form-label">
           {t('bulk.progress', { done: number(done), total: number(op.total) })}

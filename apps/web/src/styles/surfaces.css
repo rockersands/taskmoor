@@ -766,14 +766,26 @@
   grid-row: span 2;
   display: inline-grid;
   place-items: center;
-  width: 44px;
+  box-sizing: border-box;
+  min-width: 44px;
   height: 44px;
+  padding-inline: var(--space-1);
   border-radius: var(--radius-2);
   background: var(--color-blue-soft);
   color: var(--color-blue);
   font-size: var(--font-size-100);
   font-weight: var(--font-weight-title);
   letter-spacing: 0.02em;
+}
+
+/* A key longer than three letters is shown whole (PL-29): tighter, and the badge grows to fit. */
+.track-tile-badge[data-long] {
+  max-width: 6.5rem;
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.1;
 }
 
 .home-tracks {
@@ -994,7 +1006,13 @@
   font-size: var(--font-size-100);
 }
 
+.tutorial-card-state {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-100);
+}
+
 .tutorial-card-status {
+  display: inline-block;
   padding: 0 var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--glass-surface-sunken);
@@ -1047,6 +1065,30 @@
 
 .tutorial-offer-note:focus {
   outline: none;
+}
+
+/* Once seen, the offer is one small link (D10), so the person's own work comes first. */
+.tutorial-getting-started {
+  margin: 0;
+  font-size: var(--font-size-200);
+}
+
+.tutorial-getting-started a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+}
+
+.tutorial-getting-started svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (pointer: coarse) {
+  .tutorial-getting-started a {
+    min-height: var(--hit-target-touch);
+  }
 }
 
 /*

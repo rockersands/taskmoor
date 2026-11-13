@@ -48,9 +48,23 @@ export const Running: Story = {
 export const Done: Story = {
   args: {
     client: fakeBulkClient(
-      { ...RUNNING, status: 'done', succeeded: 1197, pending: 0 },
+      { ...RUNNING, status: 'done', succeeded: 1200, failed: 0, pending: 0 },
       { failures: [] },
     ),
+  },
+};
+
+/** Done, but some tickets failed: a warning naming the change and listing each one (PL-23, D14). */
+export const DoneWithFailures: Story = {
+  args: {
+    client: fakeBulkClient({ ...RUNNING, status: 'done', succeeded: 1197, pending: 0 }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      /^The bulk edit finished with problems: 1,197 tickets were changed, and 3 tickets were not\./,
+    );
+    await expect(canvas.queryByText('Done.')).toBeNull();
   },
 };
 

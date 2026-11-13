@@ -64,4 +64,24 @@ describe('the tutorial picker (ADR-115)', () => {
     expect(screen.getAllByRole('checkbox')).toHaveLength(8);
     expect(screen.getAllByText('For site administrators')).toHaveLength(2);
   });
+
+  it('[AGL-025] gives every card one layout: its state always on a row of its own (PL-28)', () => {
+    render(
+      <I18nProvider locale="en">
+        <TutorialPicker
+          sections={sectionsFor(audienceOf({ isSiteAdmin: true }))}
+          status={{ tracks: 'done' }}
+          selected={[]}
+          onSelect={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+    const cards = screen.getAllByRole('listitem');
+    expect(cards.length).toBeGreaterThan(4);
+    for (const card of cards) {
+      const state = card.querySelector('.tutorial-card-status') as HTMLElement;
+      expect(state.parentElement).toHaveClass('tutorial-card-state');
+      expect(card.querySelector('.tutorial-card-meta')?.contains(state)).toBe(false);
+    }
+  });
 });

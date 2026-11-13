@@ -14,6 +14,7 @@ import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { applyStylesheet } from '../test/stylesheets';
 import { setViewportWidth } from '../test/viewport';
 import { listPath, snoozeTimes } from './client';
 import { ALERT_ITEM, CHECKLIST_ITEM, fakeInboxClient, GROUP_ITEM, ITEMS, NOW } from './fixtures';
@@ -31,6 +32,28 @@ const cards = async (page: BoundFunctions<typeof queries>) =>
   (await page.findAllByRole('listitem')).filter((li) => li.classList.contains('inbox-item'));
 
 describe('the inbox page (M1-058)', () => {
+  it('[NTF-003] lays out Type and Track by one rule, on a wide screen and on a phone (PL-30)', async () => {
+    const wide = applyStylesheet('inbox.css');
+    const { page } = renderInbox();
+    const type = page.getByRole('combobox', { name: 'Type' });
+    const track = page.getByRole('combobox', { name: 'Track' });
+    const label = (select: HTMLElement) => select.closest('label') as HTMLElement;
+    for (const select of [type, track]) {
+      expect(getComputedStyle(select).width).toBe('14rem');
+      expect(getComputedStyle(label(select)).flexWrap).toBe('nowrap');
+    }
+    const phone = applyStylesheet('inbox.css', 'max-width: 599px');
+    try {
+      for (const select of [type, track]) {
+        expect(getComputedStyle(label(select)).display).toBe('grid');
+        expect(getComputedStyle(select).width).toBe('100%');
+      }
+    } finally {
+      phone();
+      wide();
+    }
+  });
+
   it('[IAM-018] ASVS 11.1.8: a security alert names the rule and whom it is about, and leads to the audit log', async () => {
     const user = userEvent.setup();
     const { page, client } = renderInbox(fakeInboxClient([ALERT_ITEM, ...ITEMS]));

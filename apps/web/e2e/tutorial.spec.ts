@@ -90,8 +90,9 @@ test('[AGL-025] the first-run offer shows once, and every section stays in Setti
   await expect(note).toBeVisible();
   await expect(offer).toHaveCount(0);
 
-  // Answered: the next visit shows no offer.
+  // Answered: the next visit shows only the small Getting started link (D10).
   await openHome(page);
+  await expect(page.getByRole('link', { name: 'Getting started' })).toBeVisible();
   await expect(page.getByRole('region', { name: /^Welcome to Taskmoor/ })).toHaveCount(0);
 
   await page.goto(`${BASE}/#/settings/tutorials`);
