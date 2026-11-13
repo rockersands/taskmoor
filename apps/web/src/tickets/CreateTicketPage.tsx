@@ -564,7 +564,7 @@ export function CreateTicketPage({
         <fieldset
           key={field.key}
           aria-describedby={[noteId, helpId, errorId].filter(Boolean).join(' ')}
-          className="form-field create-field create-unset"
+          className="form-field create-unset"
         >
           <legend className="form-label">{label}</legend>
           <p id={noteId} className="form-hint">
