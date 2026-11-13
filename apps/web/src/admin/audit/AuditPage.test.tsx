@@ -27,11 +27,18 @@ describe('audit log page (M1-085)', () => {
     const { client } = renderPage();
     const table = await screen.findByRole('table', { name: 'Audit records, newest first' });
     const rows = within(table).getAllByRole('row').slice(1);
+    // Action codes read as words at every width (D19, AD-2), subjects by their kind's name.
     expect(rows.map((r) => within(r).getAllByRole('cell')[2]?.textContent)).toEqual([
-      'token.created',
-      'user.signed_in',
-      'backup.completed',
+      'API token created',
+      'Person signed in',
+      'Backup completed',
     ]);
+    expect(rows.map((r) => within(r).getAllByRole('cell')[3]?.textContent)).toEqual([
+      'API token 7',
+      'Person 1',
+      '',
+    ]);
+    expect(within(rows[0] as HTMLElement).getAllByRole('cell')[0]).toHaveClass('audit-when');
     expect(within(rows[2] as HTMLElement).getByText('Taskmoor')).toBeVisible();
     await userEvent.type(screen.getByLabelText('Action'), 'user.');
     await userEvent.click(screen.getByRole('button', { name: 'Show' }));
@@ -95,14 +102,13 @@ describe('audit log page (M1-085)', () => {
   it('passes every string through the pseudo-locale', async () => {
     const { container, errors } = renderPage(fakeAuditClient(), 'en-XA');
     await screen.findByRole('table');
+    // Names and addresses, and the code behind each action's words as the filter takes it.
     const data = [
       'Ada Lovelace',
       '203.0.113.5',
       'token.created',
       'user.signed_in',
       'backup.completed',
-      'api_token 7',
-      'user 1',
     ];
     const texts = visibleTexts(container).filter(
       (t) => !/\d{4}|\d:\d\d/.test(t) && !data.includes(t),
@@ -111,9 +117,51 @@ describe('audit log page (M1-085)', () => {
     expect(errors).toEqual([]);
   });
 
-  it('fits a small phone', async () => {
+  it('[IAM-013] shows one block per record on a phone: when, who, what, then about and from (D19, AD-1)', async () => {
     setViewportWidth(360);
     renderPage();
-    expect(await screen.findByRole('table')).toBeVisible();
+    const list = await screen.findByRole('list', { name: 'Audit records, newest first' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const [first, , last] = within(list).getAllByRole('listitem');
+    expect(within(first as HTMLElement).getByText('Ada Lovelace')).toBeVisible();
+    expect(within(first as HTMLElement).getByText('API token created')).toBeVisible();
+    expect(within(first as HTMLElement).getByText('About: API token 7')).toBeVisible();
+    expect(within(first as HTMLElement).getByText('From 203.0.113.5')).toBeVisible();
+    expect(within(last as HTMLElement).getByText('Taskmoor')).toBeVisible();
+    expect(within(last as HTMLElement).queryByText(/About:/)).toBeNull();
+  });
+
+  it('[IAM-013] words every action it knows, in Spanish too, and shows an unknown code as it is', async () => {
+    const records = [
+      {
+        ...RECORDS[0],
+        seq: 2,
+        action: 'ticket_template.created',
+        subject: { type: 'layout_set', id: '2' },
+      },
+      {
+        ...RECORDS[0],
+        seq: 1,
+        action: 'brand_new.thing_done',
+        subject: { type: 'gadget', id: '3' },
+      },
+    ] as typeof RECORDS;
+    render(
+      <I18nProvider locale="es">
+        <SessionProvider session={ADMIN}>
+          <AuditPage client={fakeAuditClient({ records })} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const table = await screen.findByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows.map((r) => within(r).getAllByRole('cell')[2]?.textContent)).toEqual([
+      'Plantilla de ticket: creación',
+      'brand_new.thing_done',
+    ]);
+    expect(rows.map((r) => within(r).getAllByRole('cell')[3]?.textContent)).toEqual([
+      'Conjunto de diseños 2',
+      'gadget 3',
+    ]);
   });
 });

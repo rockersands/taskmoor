@@ -455,6 +455,59 @@ details[open] > summary.admin-disclosure::after,
   overflow-x: auto;
 }
 
+.api-usage-table-wrap:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* On a phone: one block per client, its figures beneath its name (D19). */
+.api-usage-entries {
+  display: grid;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.api-usage-entry {
+  padding: var(--space-3) 0;
+  overflow-wrap: break-word;
+}
+
+.api-usage-entry + .api-usage-entry {
+  border-top: 1px solid var(--glass-edge);
+}
+
+.api-usage-entry-who {
+  margin: 0 0 var(--space-1);
+  font-weight: var(--font-weight-strong);
+}
+
+.api-usage-entry-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-200);
+}
+
+.api-usage-entry-figures div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.api-usage-entry-figures dt {
+  color: var(--color-text-muted);
+}
+
+.api-usage-entry-figures dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.api-usage-entry-figures [data-throttled] dd {
+  font-weight: var(--font-weight-strong);
+}
+
 /* On `data-table`: figures that line up, the first column as plain as the rest. */
 .api-usage-table :is(th, td) {
   overflow-wrap: anywhere;
@@ -525,8 +578,41 @@ details[open] > summary.admin-disclosure::after,
   gap: var(--space-2);
 }
 
+/* Words break only between words, and a time stays on one line (AD-2). */
 .audit-table :is(th, td) {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+.audit-table .audit-when {
+  white-space: nowrap;
+}
+
+/* On a phone: one block per record (D19). */
+.audit-entries {
+  display: grid;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  list-style: none;
+}
+
+.audit-entry {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  overflow-wrap: break-word;
+}
+
+.audit-entry + .audit-entry {
+  border-top: 1px solid var(--glass-edge);
+}
+
+.audit-entry p {
+  margin: 0;
+}
+
+.audit-entry-when {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
 }
 
 .audit-syslog {

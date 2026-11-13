@@ -5,6 +5,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { useSession } from '../../session/SessionProvider';
 import { EmptyState } from '../../shell/EmptyState';
 import { PageHeader } from '../../shell/PageHeader';
+import { COMPACT_QUERY, useMediaQuery } from '../../shell/useMediaQuery';
 import { AuditSettings } from './AuditSettings';
 import {
   type AuditClient,
@@ -13,6 +14,7 @@ import {
   auditClient,
   type ChainStatus,
 } from './client';
+import { auditActionWords, auditSubjectText } from './words';
 
 type Log =
   | { status: 'loading' }
@@ -30,6 +32,7 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   const { session } = useSession();
   const titleId = useId();
   const formId = useId();
+  const compact = useMediaQuery(COMPACT_QUERY);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [forbidden, setForbidden] = useState(notAdmin);
   const [draft, setDraft] = useState<AuditFilter>({});
@@ -78,6 +81,10 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   };
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'medium' });
+  const who = (r: AuditRecord) =>
+    r.actor
+      ? t('common.value', { value: r.actor.name ?? r.actor.email ?? `#${r.actor.id}` })
+      : t('admin.audit.system');
 
   const header = (
     <PageHeader
@@ -178,7 +185,31 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
       {log.status === 'loaded' && log.records.length === 0 && (
         <EmptyState title={t('admin.audit.none')}>{t('empty.audit.body')}</EmptyState>
       )}
-      {log.status === 'loaded' && log.records.length > 0 && (
+      {log.status === 'loaded' && log.records.length > 0 && compact && (
+        // On a phone one block per record: when, who and what, then what about and from where (D19).
+        <ul className="glass-card audit-entries" aria-label={t('admin.audit.table')}>
+          {log.records.map((r) => (
+            <li key={r.seq} className="audit-entry">
+              <p className="audit-entry-when">{when(r.occurredAt)}</p>
+              <p className="audit-entry-what">
+                <strong>{who(r)}</strong> <span>{auditActionWords(t, r.action)}</span>
+              </p>
+              {(r.subject || r.ip) && (
+                <p className="page-note">
+                  {r.subject && (
+                    <span>
+                      {t('admin.audit.entryAbout', { subject: auditSubjectText(t, r.subject) })}
+                    </span>
+                  )}
+                  {r.subject && r.ip && ' · '}
+                  {r.ip && <span>{t('admin.audit.entryFrom', { address: r.ip })}</span>}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {log.status === 'loaded' && log.records.length > 0 && !compact && (
         <div className="glass-card glass-scroller">
           <table className="data-table audit-table">
             <caption className="visually-hidden">{t('admin.audit.table')}</caption>
@@ -194,26 +225,10 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
             <tbody>
               {log.records.map((r) => (
                 <tr key={r.seq}>
-                  <td>{when(r.occurredAt)}</td>
-                  <td>
-                    {r.actor
-                      ? t('common.value', {
-                          value: r.actor.name ?? r.actor.email ?? `#${r.actor.id}`,
-                        })
-                      : t('admin.audit.system')}
-                  </td>
-                  <td>
-                    <code>{t('common.value', { value: r.action })}</code>
-                  </td>
-                  <td>
-                    {r.subject
-                      ? t('common.value', {
-                          value: r.subject.id
-                            ? `${r.subject.type} ${r.subject.id}`
-                            : r.subject.type,
-                        })
-                      : ''}
-                  </td>
+                  <td className="audit-when">{when(r.occurredAt)}</td>
+                  <td>{who(r)}</td>
+                  <td title={r.action}>{auditActionWords(t, r.action)}</td>
+                  <td>{r.subject ? auditSubjectText(t, r.subject) : ''}</td>
                   <td>{r.ip ? t('common.value', { value: r.ip }) : ''}</td>
                 </tr>
               ))}

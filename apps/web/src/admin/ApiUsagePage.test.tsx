@@ -81,9 +81,24 @@ describe('API usage page (M1-066)', () => {
     expect(errors).toEqual([]);
   });
 
-  it('fits a small phone', async () => {
+  it('[API-010] shows one block per client on a phone, its figures beneath its name (D19, AD-3)', async () => {
     setViewportWidth(360);
-    renderPage();
-    expect(await screen.findByRole('table')).toBeVisible();
+    renderPage(fakeApiUsageClient({ hour: BUSY_HOUR, day: [] }));
+    const list = await screen.findByRole('list', { name: 'Busiest clients in the last hour' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const [first] = within(list).getAllByRole('listitem');
+    expect(
+      within(first as HTMLElement).getByText('Nightly sync (token of Grace Hopper)'),
+    ).toBeVisible();
+    expect(within(first as HTMLElement).getByText('Refused by the limits')).toBeVisible();
+    expect(within(first as HTMLElement).getByText('18,240')).toBeVisible();
+  });
+
+  it('[API-010] lets the keyboard reach the table when it scrolls sideways (AD-3)', async () => {
+    renderPage(fakeApiUsageClient({ hour: BUSY_HOUR, day: [] }));
+    const table = await screen.findByRole('table', { name: 'Busiest clients in the last hour' });
+    const scroller = screen.getByRole('region', { name: 'Busiest clients in the last hour' });
+    expect(scroller).toContainElement(table);
+    expect(scroller).toHaveAttribute('tabindex', '0');
   });
 });

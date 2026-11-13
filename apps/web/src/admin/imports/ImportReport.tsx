@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../../i18n/I18nProvider';
 import { EmptyState } from '../../shell/EmptyState';
+import { TableScroller } from '../TableScroller';
 import type { FidelityReport, KindProgress, RecordOutcome } from './client';
 import { kindLabel, outcomeLabel, warningExplanation } from './labels';
 
@@ -13,7 +14,7 @@ export function KindTable({ rows, caption }: { rows: KindProgress[]; caption: st
   const intl = useIntl();
   const n = (value: number) => intl.formatNumber(value);
   return (
-    <div className="api-usage-table-wrap">
+    <TableScroller label={caption}>
       <table className="data-table api-usage-table import-kinds">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
@@ -39,7 +40,7 @@ export function KindTable({ rows, caption }: { rows: KindProgress[]; caption: st
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroller>
   );
 }
 
