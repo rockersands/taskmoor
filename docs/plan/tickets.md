@@ -113,7 +113,7 @@ reported, and the coordinator checked that it was pushed.
 | T-073 | No board outside a track | Done | ADR-116 |
 | T-074 | Decide about the leftover demo board `rrg` | Done | Gone with the new demo |
 | T-075 | Summary is a dashboard the track owner can customize | Done | On `main` (ADR-116): the owner customizes it with every widget kind, members read it |
-| T-075a | Should members also filter a track's Summary (RPT-006 says "view and filter")? | You | Only the owner's customizing is built, as the user decided |
+| T-075a | Should members also filter a track's Summary (RPT-006 says "view and filter")? | To do | The user decided on 2026-11-13: members filter a track's Summary for themselves; only the owner customises it for everyone |
 | T-076 | Statistics holds every report for the track | Done | On `main` (ADR-116, RPT-001, RPT-002): time since, grouped tickets, time tracking, workload by person, by release and as a pie, and the outcome report; each number equals its search |
 | T-077 | Files and links section | Done | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
@@ -125,10 +125,10 @@ reported, and the coordinator checked that it was pushed.
 | T-084 | Personal track groups: drag tracks together, name the group | Done | On `main` (ADR-121, CORE-034, migration 0100): by mouse, touch and keyboard; private to their owner |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | Done | On `main` |
 | T-086 | Share a whole group, or set it on another person | Done | On `main` (IAM-034) |
-| T-086a | "Set it on another person": is it right that they get their own copy of the group? | You | Built as an own copy (name and tracks) with the role given outright; only the copy route changes if the user means something else (ADR-121) |
+| T-086a | "Set it on another person": is it right that they get their own copy of the group? | Done | The user decided on 2026-11-13: keep as built (their own copy, with the role outright) |
 | T-087 | Sharing a group gives access to its tracks | Done | On `main`: the sharer picks a role and gives it only where they could give it track by track; taking back removes only what the share gave |
 | T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | Done | On `main` (migration 0097, IAM-033, ADR-118): new sites let only site administrators create tracks until granted; only site administrators and holders may tick the box |
-| T-087b | When someone loses the manager role, should their permission to create tracks go too? | You | Today it stays until a site administrator removes it, and the people admin page shows who holds it |
+| T-087b | When someone loses the manager role, should their permission to create tracks go too? | To do | The user decided on 2026-11-13: losing the manager role takes away the permission to create tracks |
 | T-087d | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | Done | On `main` (ADR-122, PLN-001, PLN-012, migration 0101): sources each viewer may see, filters and grouping in the address, rescheduling, the first 10,000 per view; `docs/plan/multi-track-tasks.md` holds the next stages |
@@ -321,7 +321,7 @@ reported, and the coordinator checked that it was pushed.
 | T-203 | A checklist item rewritten by someone else shows its new words in the writer's own data download | To do | Only on tickets the person still sees; needs an `updated_by` column |
 | T-204 | A person cannot leave a group someone shared with them | Done | On `main` (ADR-121): leaving takes back only what that share gave, with an event and the audit log |
 | T-205 | Track groups are not in a person's data download or erasure | Done | On `main` (ADR-111, ADR-121): owned groups, shares given and received in the download; erasure deletes own groups and takes shares back by the same rules, refusing to leave a track with nobody to run it |
-| T-205a | Erasing a person whose share gave the role to run a track to its only other runner: refuse, as built, or let the role stay? | You | Built as a refusal (409 last_track_admin), reading "taken back by the same rules" |
+| T-205a | Erasing a person whose share gave the role to run a track to its only other runner: refuse, as built, or let the role stay? | To do | The user decided on 2026-11-13: the erasure goes through and the runner keeps the role; no 409 last_track_admin |
 | T-206 | Nobody is told when a group is shared with them | Done | On `main`: an inbox notification and email by their preferences, naming the group and who shared it, never tracks they cannot see |
 
 ## Flutter app (stopped)
