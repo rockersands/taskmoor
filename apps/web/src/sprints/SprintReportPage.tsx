@@ -23,8 +23,24 @@ export interface SprintReportPageProps {
   client?: SprintClient;
   /** Inside a page that has its own title: the report's title is a level lower. */
   embedded?: boolean;
-  /** Where the link to the backlog goes; the board's own backlog otherwise. */
-  backlogHref?: string;
+}
+
+/**
+ * Nothing to add up: the board estimates with time or a number field and every value is zero.
+ * Charts and totals would then draw empty and read as contradictions ('Completed 0' above two
+ * completed tickets), so the report explains instead (TR-13), as the control chart does.
+ */
+export const noEstimates = (statistic: SprintReport['statistic']['statistic'], values: number[]) =>
+  statistic !== 'ticketCount' && values.every((v) => v === 0);
+
+/** The explanation in place of empty charts: why there is nothing, and where estimates are set. */
+export function NoEstimates() {
+  const t = useT();
+  return (
+    <EmptyState title={t('sprints.charts.noEstimates.title')}>
+      {t('sprints.charts.noEstimates')}
+    </EmptyState>
+  );
 }
 
 /** A board's velocity: committed and completed per sprint, and the average (RPT-001 (2)). */
@@ -34,6 +50,14 @@ function VelocityChart({ velocity }: { velocity: Velocity }) {
   const format = (v: number) => estimateText(t, v, s);
   if (velocity.sprints.length === 0) {
     return <EmptyState compact title={t('sprints.charts.velocityNone')} />;
+  }
+  if (
+    noEstimates(
+      s,
+      velocity.sprints.flatMap((x) => [x.committed, x.completed]),
+    )
+  ) {
+    return <NoEstimates />;
   }
   return (
     <div className="chart-group">
@@ -117,7 +141,6 @@ export function SprintReportPage({
   sprintId,
   client = sprintClient,
   embedded = false,
-  backlogHref,
 }: SprintReportPageProps) {
   const t = useT();
   const id = useId();
@@ -147,10 +170,21 @@ export function SprintReportPage({
       timeZone: 'UTC',
     });
 
+  const empty =
+    report !== null &&
+    noEstimates(report.statistic.statistic, [
+      ...Object.values(report.totals).filter((v): v is number => typeof v === 'number'),
+      ...[...report.completed, ...report.notCompleted, ...report.removed].map(
+        (x) => x.estimate ?? 0,
+      ),
+    ]);
+
   const charts = () => {
     if (!burndown && !velocity) return null;
     const out = [];
-    if (burndown) {
+    if (burndown && empty) {
+      out.push(<NoEstimates key="burndown" />);
+    } else if (burndown) {
       const s = burndown.statistic.statistic;
       const time = s === 'originalEstimate' || burndown.burnRemaining;
       const format = chartValue(s, time);
@@ -223,39 +257,64 @@ export function SprintReportPage({
     );
   };
 
+  // A table, so every value has its column and heading, the estimate's included (TR-11); keys
+  // and summaries line up whatever the key's length (TR-22). In a narrow card each row folds
+  // into two lines: key and summary, then status and estimate together (styles/boards.css).
   const group = (title: MessageId, list: ReportTicket[]) => (
-    <section className="glass-card sprint-section" aria-labelledby={`${id}-${title}`}>
+    <section
+      className="glass-card sprint-section sprint-report-group"
+      aria-labelledby={`${id}-${title}`}
+    >
       <h2 id={`${id}-${title}`}>{t(title)}</h2>
       {list.length === 0 ? (
         <EmptyState compact title={t('sprints.section.empty')} />
       ) : (
-        <ul className="sprint-tickets">
-          {list.map((ticket) => (
-            <li key={ticket.id} className="sprint-ticket">
-              <a
-                href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
-                className="sprint-ticket-key"
-              >
-                {ticket.key}
-              </a>
-              <span className="sprint-ticket-summary">
-                {ticket.summary}
-                {ticket.addedAfterStart && (
-                  <span className="sprint-scope-change">{t('sprints.report.addedAfterStart')}</span>
-                )}
-              </span>
-              <span className="sprint-ticket-status">{ticket.status.name}</span>
-              <span className="sprint-ticket-estimate">
-                {ticket.estimateChanged
-                  ? t('sprints.report.estimateChanged', {
-                      from: est(ticket.estimateAtEntry),
-                      to: est(ticket.estimate),
-                    })
-                  : est(ticket.estimate)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <table className="data-table sprint-report-table">
+          <thead>
+            <tr>
+              <th scope="col" className="sprint-report-key">
+                {t('sprints.report.column.key')}
+              </th>
+              <th scope="col" className="sprint-report-summary">
+                {t('sprints.report.column.summary')}
+              </th>
+              <th scope="col" className="sprint-report-status">
+                {t('sprints.report.column.status')}
+              </th>
+              <th scope="col" className="sprint-report-estimate">
+                {t('sprints.report.column.estimate')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((ticket) => (
+              <tr key={ticket.id}>
+                <td className="sprint-report-key">
+                  <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>
+                    {ticket.key}
+                  </a>
+                </td>
+                <td className="sprint-report-summary">
+                  {ticket.summary}
+                  {ticket.addedAfterStart && (
+                    <span className="sprint-scope-change">
+                      {t('sprints.report.addedAfterStart')}
+                    </span>
+                  )}
+                </td>
+                <td className="sprint-report-status">{ticket.status.name}</td>
+                <td className="sprint-report-estimate">
+                  {ticket.estimateChanged
+                    ? t('sprints.report.estimateChanged', {
+                        from: est(ticket.estimateAtEntry),
+                        to: est(ticket.estimate),
+                      })
+                    : est(ticket.estimate)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </section>
   );
@@ -263,8 +322,9 @@ export function SprintReportPage({
   const title = report
     ? t('sprints.report.title', { name: report.sprint.name })
     : t('sprints.report.link');
-  const toBacklog = (
-    <a className="button-quiet" href={backlogHref ?? routeHref(`#/boards/${boardId}/backlog`)}>
+  // Inside a track the Backlog tab is right above: no pill repeats it (D7).
+  const toBacklog = embedded ? null : (
+    <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
       {t('sprints.report.toBacklog')}
     </a>
   );
@@ -301,22 +361,25 @@ export function SprintReportPage({
       {charts()}
       {report && (
         <>
-          <dl className="sprint-report-totals">
-            <dt>{t('sprints.report.committed')}</dt>
-            <dd>{est(report.totals.committed)}</dd>
-            <dt>{t('sprints.report.added')}</dt>
-            <dd>{est(report.totals.added)}</dd>
-            <dt>{t('sprints.report.removedTotal')}</dt>
-            <dd>{est(report.totals.removed)}</dd>
-            <dt>{t('sprints.report.completedTotal')}</dt>
-            <dd>{est(report.totals.completed)}</dd>
-            {report.totals.remaining !== undefined && (
-              <>
-                <dt>{t('sprints.report.remaining')}</dt>
-                <dd>{estimateText(t, report.totals.remaining, 'originalEstimate')}</dd>
-              </>
-            )}
-          </dl>
+          {/* The totals sit on a card of their own, like the rest of the report (TR-14). */}
+          {!empty && (
+            <dl className="glass-card sprint-report-totals" aria-label={t('sprints.report.totals')}>
+              <dt>{t('sprints.report.committed')}</dt>
+              <dd>{est(report.totals.committed)}</dd>
+              <dt>{t('sprints.report.added')}</dt>
+              <dd>{est(report.totals.added)}</dd>
+              <dt>{t('sprints.report.removedTotal')}</dt>
+              <dd>{est(report.totals.removed)}</dd>
+              <dt>{t('sprints.report.completedTotal')}</dt>
+              <dd>{est(report.totals.completed)}</dd>
+              {report.totals.remaining !== undefined && (
+                <>
+                  <dt>{t('sprints.report.remaining')}</dt>
+                  <dd>{estimateText(t, report.totals.remaining, 'originalEstimate')}</dd>
+                </>
+              )}
+            </dl>
+          )}
           {group('sprints.report.completed', report.completed)}
           {group('sprints.report.notCompleted', report.notCompleted)}
           {group('sprints.report.removed', report.removed)}

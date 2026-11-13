@@ -201,6 +201,11 @@
   padding: var(--space-4);
 }
 
+/* The last of an odd number takes the whole row rather than leaving half of it empty (TR-14). */
+.sprint-chart:last-child:nth-child(odd):not(:only-child) {
+  grid-column: 1 / -1;
+}
+
 @media (pointer: coarse) {
   .chart-table summary {
     min-height: var(--hit-target-touch);
@@ -273,31 +278,39 @@
   font-weight: var(--font-weight-strong);
 }
 
-/* A track's reports, in groups (ADR-116); the pills wrap, so a phone never scrolls sideways. */
+/* A track's reports, in groups (ADR-116); the links wrap, so a phone never scrolls sideways. The
+   labels share one column and the links another, so a wrapped row starts under the first link of
+   its group, never under the label (TR-6). On a phone one picker replaces them (D5). */
 .statistics-tabs {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
 }
 
 .statistics-tab-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: start;
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
-.statistics-tab-group legend {
-  float: left;
-  margin-inline-end: var(--space-2);
-  padding: 0;
+.statistics-tab-label {
   color: var(--color-text);
   font-size: var(--font-size-200);
   font-weight: var(--font-weight-strong);
   line-height: var(--hit-target);
+}
+
+.statistics-tab-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.statistics-picker select {
+  width: 100%;
 }
 
 .reports-controls {

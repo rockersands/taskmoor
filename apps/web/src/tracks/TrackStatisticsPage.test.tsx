@@ -43,7 +43,7 @@ function open(
 describe('a track’s statistics (ADR-116)', () => {
   it('[CORE-002] lists nothing that follows sprints on a Kanban track', async () => {
     open('cumulative-flow', KANBAN);
-    await screen.findByRole('heading', { level: 1, name: 'Statistics of Shop' });
+    await screen.findByRole('heading', { level: 1, name: 'Statistics' });
     const nav = screen.getByRole('navigation', { name: 'Reports' });
     expect(
       within(nav)
@@ -75,9 +75,7 @@ describe('a track’s statistics (ADR-116)', () => {
 
   it('[RPT-001] [RPT-002] lists every report of the track, each link inside its tabs', async () => {
     open('cumulative-flow', SCRUM);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Statistics of Shop' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Statistics' })).toBeVisible();
     const nav = screen.getByRole('navigation', { name: 'Reports' });
     const links = within(nav).getAllByRole('link');
     expect(links.map((a) => a.textContent)).toEqual([
@@ -143,10 +141,8 @@ describe('a track’s statistics (ADR-116)', () => {
     const picker = await screen.findByRole('combobox', { name: 'Sprint' });
     expect(picker).toHaveDisplayValue('Checkout Sprint 1');
     expect(await screen.findByRole('figure', { name: 'Burndown' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Back to the backlog' })).toHaveAttribute(
-      'href',
-      '#/tracks/SHOP/backlog',
-    );
+    // The track's Backlog tab is right above: no pill repeats it (D7).
+    expect(screen.queryByRole('link', { name: 'Back to the backlog' })).toBeNull();
     // One level-one heading: the page's.
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
@@ -350,6 +346,36 @@ describe('a track’s statistics (ADR-116)', () => {
     expect(within(tickets).getAllByRole('cell', { name: 'Closed (done)' })).toHaveLength(2);
     expect(within(tickets).getByRole('cell', { name: 'No estimate' })).toBeVisible();
     expect(screen.getByText('Open without an estimate')).toBeVisible();
+  });
+
+  it('[RPT-001] offers one Report picker on a phone instead of the grouped links (D5, TR-5)', async () => {
+    const user = userEvent.setup();
+    setViewportWidth(375);
+    open('velocity', SCRUM);
+    const picker = await screen.findByRole('combobox', { name: 'Report' });
+    expect(picker).toHaveValue('velocity');
+    expect(screen.queryByRole('navigation', { name: 'Reports' })).toBeNull();
+    expect(
+      within(picker)
+        .getAllByRole('group')
+        .map((g) => g.getAttribute('label')),
+    ).toEqual(['Flow', 'Sprints', 'Releases', 'Tickets', 'Time and workload']);
+    await user.selectOptions(picker, 'Release burndown');
+    expect(window.location.hash).toBe('#/tracks/SHOP/statistics/release-burndown');
+  });
+
+  it('[RPT-001] keeps the grouped links on a wide screen, each group named by its label (TR-6)', async () => {
+    open('velocity', SCRUM);
+    const nav = await screen.findByRole('navigation', { name: 'Reports' });
+    expect(screen.queryByRole('combobox', { name: 'Report' })).toBeNull();
+    const sprints = within(nav).getByRole('group', { name: 'Sprints' });
+    expect(within(sprints).getByRole('link', { name: 'Velocity' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(sprints.querySelector('.statistics-tab-links')).toContainElement(
+      within(sprints).getByRole('link', { name: 'Sprint report' }),
+    );
   });
 
   it('[RPT-001] fits a phone without sideways scrolling', async () => {
