@@ -102,7 +102,7 @@ export function ApiUsagePage({ client = apiUsageClient }: { client?: ApiUsageCli
       <PageHeader
         titleId={titleId}
         title={t('admin.apiUsage.title')}
-        {...(forbidden ? {} : { purpose: t('purpose.apiUsage') })}
+        {...(forbidden ? {} : { purpose: t('purpose.apiUsage'), about: t('admin.apiUsage.about') })}
       />
       {forbidden ? (
         <p className="page-note">{t('admin.apiUsage.forbidden')}</p>

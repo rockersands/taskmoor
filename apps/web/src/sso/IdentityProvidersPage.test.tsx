@@ -152,6 +152,15 @@ describe('identity provider administration (M1-080)', () => {
     expect((field as HTMLInputElement).selectionEnd).toBe(REDIRECT_URI.length);
   });
 
+  it('[IAM-003] shows the whole redirect URI on a phone, wrapping instead of cut at the edge (AD-9)', async () => {
+    setViewportWidth(375);
+    openPage();
+    const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
+    expect(field.tagName).toBe('TEXTAREA');
+    expect(field).toHaveAttribute('rows', '2');
+    expect(field).toHaveClass('redirect-uri-value');
+  });
+
   it('[IAM-003] adds a provider with its domains, policy and group mapping', async () => {
     const user = userEvent.setup();
     let providers = [STAFF];

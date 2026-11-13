@@ -1,7 +1,7 @@
 ---
 title: "Administration"
 audience: admins
-sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx
+sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -11,8 +11,9 @@ attestation: own-words
 sidebar, and separate from **Settings**, which is personal: your account, your appearance and your
 tutorials. The sidebar shows **Administration** only to those allowed to use it.
 
-Every page here opens with its name and a line on what it is for; where there is more to say, a
-small round button beside the name explains it. A list with nothing in it says what would be there
+Every page here opens with its name and a line on what it is for, and a small round button
+beside the name explains more, the group pages too. Pages of forms and lists keep a reading
+width; the audit log and the usage tables take the page's full width. A list with nothing in it says what would be there
 and how it gets there. Someone who may not use a page is told so, without the rest.
 
 ## Who sees what

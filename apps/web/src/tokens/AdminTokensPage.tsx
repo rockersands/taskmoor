@@ -251,7 +251,7 @@ function InventorySection({
                     ) : (
                       <button
                         type="button"
-                        className="button-secondary button-danger-outline"
+                        className="button-secondary button-danger-quiet"
                         aria-label={t('admin.tokens.revokeNamed', {
                           name: token.name,
                           owner: token.owner.name,
@@ -430,11 +430,7 @@ function BulkSection({
         )}
         {!pending && (
           <div>
-            <button
-              type="submit"
-              className="button-secondary button-danger-outline"
-              disabled={busy}
-            >
+            <button type="submit" className="button-secondary button-danger-quiet" disabled={busy}>
               {t('admin.tokens.bulkRevoke')}
             </button>
           </div>

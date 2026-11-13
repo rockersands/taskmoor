@@ -36,6 +36,8 @@ describe('security settings: two-factor policy', () => {
       'PUT /security/two-factor': (body) => jsonResponse(200, body),
     });
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeVisible();
+    // The help mark beside the title, as on the other Administration pages (AD-20).
+    expect(await screen.findByRole('button', { name: 'What is Security for?' })).toBeVisible();
     const form = await screen.findByRole('form', { name: 'Two-factor authentication' });
     const requiredFor = within(form).getByRole('group', { name: 'Required for' });
     expect(

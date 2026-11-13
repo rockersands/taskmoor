@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { App, NAV_ITEMS } from '../App';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -10,6 +11,7 @@ import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { fakeTrackPeopleClient } from '../trackpeople/fixtures';
 import { TrackPeoplePage } from '../trackpeople/TrackPeoplePage';
+import { AdminGroupPage } from './AdminGroupPage';
 import { type AdminCrumb, AdminLayout, useAdminTrail } from './AdminLayout';
 import { AdminOverviewPage, healthProblems, type OverviewClient } from './AdminOverviewPage';
 import { RECENT_ALERTS } from './alertsFixtures';
@@ -60,14 +62,17 @@ function Trail({ trail }: { trail: AdminCrumb[] | null }) {
   return <p>Page</p>;
 }
 
-function renderAt(hash: string, session: Session, trail: AdminCrumb[] | null = null) {
+function renderAt(
+  hash: string,
+  session: Session,
+  trail: AdminCrumb[] | null = null,
+  page: ReactNode = <Trail trail={trail} />,
+) {
   render(
     <I18nProvider locale="en">
       <SessionProvider session={session}>
         <main>
-          <AdminLayout hash={hash}>
-            <Trail trail={trail} />
-          </AdminLayout>
+          <AdminLayout hash={hash}>{page}</AdminLayout>
         </main>
       </SessionProvider>
     </I18nProvider>,
@@ -275,10 +280,13 @@ describe('Administration (ADR-114)', () => {
   });
 
   it('[AGL-018] marks the group heading current and open on a group page (D18)', () => {
-    renderAt('#/admin/group/system', ADMIN);
-    const system = within(pagesNav()).getByRole('button', { name: 'System' });
-    expect(system).toHaveAttribute('aria-current', 'page');
-    expect(system).toHaveAttribute('aria-expanded', 'true');
+    const system = ADMIN_GROUPS.find((g) => g.id === 'system') as (typeof ADMIN_GROUPS)[number];
+    renderAt('#/admin/group/system', ADMIN, null, <AdminGroupPage group={system} />);
+    const heading = within(pagesNav()).getByRole('button', { name: 'System' });
+    expect(heading).toHaveAttribute('aria-current', 'page');
+    expect(heading).toHaveAttribute('aria-expanded', 'true');
+    // The group page has the help mark beside its title (AD-20).
+    expect(screen.getByRole('button', { name: 'What is System for?' })).toBeVisible();
     expect(
       within(pagesNav()).getByRole('button', { name: 'People and access' }),
     ).not.toHaveAttribute('aria-current');

@@ -286,7 +286,9 @@ like. There is no limit on how many. Everyone else gets `403 ip_not_allowed`, si
 included. Members of the groups under **Allowed from anywhere** get in from any address once
 signed in, for people who travel. The health probes `/health` and `/ready` always answer.
 
-The page shows the address you are connecting from and whether the list lets it in. Saving a
+The page shows the address you are connecting from and whether the list lets it in; it warns
+only while the list is on and leaves that address out, and while the list is off it says that
+every address gets in. Saving a
 list that would not let you in asks you to confirm with **Save and lock me out**, so a typo
 cannot lock out the person making the change; the API answers `409 would_lock_you_out` unless
 the request says `"confirmLockout": true`. Each change is in the audit log, with what was

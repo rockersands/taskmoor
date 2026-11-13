@@ -43,8 +43,9 @@
   margin-top: var(--space-1);
 }
 
+/* Something healthy: the success colour, never the accent of links and warnings (AD-33). */
 .status-ok {
-  color: var(--color-accent);
+  color: var(--color-success);
   font-weight: var(--font-weight-strong);
 }
 
@@ -263,6 +264,12 @@ details[open] > summary.admin-disclosure::after,
 }
 
 .admin-panel > * + * {
+  margin-top: var(--space-3);
+}
+
+/* A list after a panel's intro keeps the panel's gap; the list's own margin reset came later
+   and pressed it against the text (AD-38). */
+.admin-panel > .people-list:not(:first-child) {
   margin-top: var(--space-3);
 }
 
@@ -805,14 +812,15 @@ details[open] > summary.admin-disclosure::after,
 /*
  * A row's destructive action (D13): the secondary shape in the danger colour, so Deactivate,
  * Erase, Delete and Revoke no longer look like their harmless neighbours. Its confirmation uses
- * the full `.button-danger`. Kept here until shared.css takes it (G6 owns shared.css).
+ * the full `.button-danger`. Named as G6's shared `.button-danger-quiet` in shared.css; this local
+ * rule goes once that lands.
  */
-.button-secondary.button-danger-outline {
+.button-secondary.button-danger-quiet {
   border-color: color-mix(in srgb, var(--color-danger) 60%, transparent);
   color: var(--color-danger);
 }
 
-.button-secondary.button-danger-outline:hover:not(:disabled) {
+.button-secondary.button-danger-quiet:hover:not(:disabled) {
   background: var(--color-danger-soft);
 }
 
@@ -826,4 +834,34 @@ details[open] > summary.admin-disclosure::after,
 /* People: every row lays out the same, its actions on a line of their own (AD-17). */
 .people-list-users .people-actions {
   flex: 1 1 100%;
+}
+
+/* Administration's form and list pages keep a reading width; the audit log and the usage tables
+   keep the page's full 76 rem (T-219). */
+.admin-section-main > .page:not(.page-full, .audit-page, .api-usage-page) {
+  max-width: 60rem;
+}
+
+/* A choice whose label wraps its control is a finger's target on a touch screen (AD-24). */
+@media (pointer: coarse) {
+  .admin-page label.form-field-inline {
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+
+  .people-page .page-note a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+}
+
+/* MCP: the command breaks between its words, not inside the port, and both cards are as wide
+   (AD-35). */
+.mcp-page .mcp-snippet {
+  overflow-wrap: break-word;
+}
+
+.mcp-page > :is(.people-form, .account-section) {
+  max-width: none;
 }

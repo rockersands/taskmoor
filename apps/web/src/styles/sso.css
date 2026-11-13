@@ -307,3 +307,12 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* The redirect address wraps anywhere rather than running past the field's edge (AD-9). */
+.form-field .redirect-uri-value {
+  min-height: var(--hit-target);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  resize: none;
+  field-sizing: content;
+}

@@ -220,14 +220,19 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
             <p className="frontend-origin">
               {t('common.value', { value: view.self.origin ?? '' })}
             </p>
+            {/* One version said once when the app and the server match (AD-36). */}
             <p className="page-note">
-              {view.self.servedVersion
-                ? t('admin.frontends.serves', { version: view.self.servedVersion })
-                : t('admin.frontends.servesNot')}
+              {view.self.servedVersion === view.backend.version
+                ? t('admin.frontends.servesSame', { version: view.backend.version })
+                : view.self.servedVersion
+                  ? t('admin.frontends.serves', { version: view.self.servedVersion })
+                  : t('admin.frontends.servesNot')}
             </p>
-            <p className="page-note">
-              {t('admin.frontends.backendVersion', { version: view.backend.version })}
-            </p>
+            {view.self.servedVersion !== view.backend.version && (
+              <p className="page-note">
+                {t('admin.frontends.backendVersion', { version: view.backend.version })}
+              </p>
+            )}
           </section>
 
           <section aria-labelledby={`${id}-registered`}>

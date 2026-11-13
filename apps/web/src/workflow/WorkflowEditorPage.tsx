@@ -564,7 +564,9 @@ export function WorkflowEditorPage({
       <PageHeader
         titleId={`${id}-title`}
         title={t('common.value', { value: workflow.name })}
+        titleText={workflow.name}
         purpose={t('purpose.workflowEditor')}
+        about={t('admin.workflow.about')}
       />
       <p className="token-meta">
         <span>{t('admin.workflow.published', { version: workflow.published.version })}</span>

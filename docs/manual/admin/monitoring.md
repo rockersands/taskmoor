@@ -37,10 +37,13 @@ Site administrators open **Administration**, **System status** to see whether th
 |---|---|
 | **Instance** | **Version**, **Roles**, **Started**, **Uptime** |
 | **Updates** | **Running**, **Newest version**, **Last looked**, the command when a newer version exists, and the switch (see [The new-version notice](upgrades.md#the-new-version-notice)) |
-| **Database** | **Connection** (**Connected** or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
+| **Database** | **Connection** (**Connected**, a green badge, or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
 | **Storage** | **Data directory**, **Free space**, **Last backup** (with a warning once it is older than a day) |
 | **Scheduled backups** | **Schedule**, **Next backup**, **Last success**, **Last failure**, **Restore drill** |
 | **Runtime** | **Node.js**, **Platform**, **Memory** |
+
+Times on the page are in your time zone and name it, such as "Nov 9, 2026, 8:30 PM CST"; the
+backup schedule is in UTC and says so.
 
 The page reads `GET /api/v1/admin/system` from the process that answers it, and never shows
 settings or secrets. Without `TASKMOOR_DATA` the data directory shows as not configured and disk

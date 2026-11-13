@@ -252,17 +252,29 @@ export const messagesEs: Record<MessageId, string> = {
   'purpose.bulk': 'Cómo va un cambio en muchos tickets y cuáles no pudo cambiar.',
   'purpose.createTicket':
     'Añade una nueva unidad de trabajo a un track: su tipo, un resumen y lo que pide el track.',
+  'trackPeople.about':
+    'Da un rol a una persona o a un grupo, quítaselo e invita a personas por correo o con un enlace. Lo que puede hacer cada rol lo fija la política de acceso del track.',
   'purpose.trackPeople': 'Quién tiene cada rol en este track y a quién se ha invitado a unirse.',
+  'admin.workflow.about':
+    'Los cambios van a un borrador que los tracks aún no usan. Revisa el borrador y luego publícalo: los tracks que usan este flujo de trabajo pasan a la nueva versión, y las versiones quedan en su historial.',
   'purpose.workflowEditor':
     'Los estados de este flujo de trabajo y los movimientos entre ellos. Cambia un borrador, compruébalo y publícalo.',
   'purpose.aiUsage':
     'Para qué se han usado las funciones de IA, quién las ha usado y a qué coste, y lo cerca que están de sus límites.',
+  'admin.apiUsage.about':
+    'Cada cliente de la API tiene un límite: cada token, cada persona con sesión iniciada y cada dirección. Aquí aparecen los clientes más activos con sus errores y peticiones rechazadas; los límites de abajo se aplican a todo el sitio.',
   'purpose.apiUsage':
     'Cuánto se usa la API, qué clientes la usan y lo cerca que están de sus límites.',
+  'admin.security.about':
+    'Quién debe usar un segundo factor, cuánto dura un inicio de sesión y cuándo termina uno inactivo, y qué alertas de seguridad se lanzan y quién las recibe. Los cambios se aplican al siguiente inicio de sesión.',
   'purpose.security':
     'Las reglas que protegen las cuentas: segundos factores y las alertas que recibes.',
+  'admin.system.about':
+    'Consúltalo cuando algo parezca ir mal: si la base de datos responde, cómo van las tareas en segundo plano y las copias de seguridad, y qué versión se ejecuta. Las horas se muestran en tu zona horaria salvo que digan UTC.',
   'purpose.system':
     'Cómo está esta instancia ahora mismo: su base de datos, sus tareas y su versión.',
+  'admin.trash.about':
+    'Un ticket o un track eliminado espera aquí los días que lo guarda la política de la papelera. Restaurarlo lo devuelve tal como estaba; cuando se acaba su tiempo se elimina definitivamente.',
   'purpose.trash':
     'Los tickets y tracks eliminados esperan aquí hasta que se restauran o se acaba su plazo.',
   'purpose.importedLink':
@@ -1655,6 +1667,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.network.loadFailed': 'No se pudo cargar la lista de permitidos.',
   'admin.network.intro':
     'Cuando la lista de permitidos está activa, la aplicación y todas las API responden solo a solicitudes de estas direcciones, salvo a los miembros de los grupos de abajo.',
+  'admin.network.youAreHere':
+    'Te conectas desde {address}. Mientras la lista está desactivada, entra cualquier dirección.',
   'admin.network.youAreIn': 'Te conectas desde {address}, que la lista permite.',
   'admin.network.youAreOut': 'Te conectas desde {address}, que la lista no permite.',
   'admin.network.enabled': 'Permitir solo estas direcciones',
@@ -1944,6 +1958,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Un frontend en otra dirección distinta de la de este servidor debe registrarse aquí, o figurar en el entorno del servidor, antes de poder llamar a la API, iniciar sesiones o abrir actualizaciones en vivo. Un cambio se aplica al momento, sin reiniciar.',
   'admin.frontends.self': 'Este servidor',
   'admin.frontends.serves': 'Sirve la aplicación él mismo, versión {version}.',
+  'admin.frontends.servesSame':
+    'Sirve la aplicación por sí mismo, en la versión del servidor, {version}.',
   'admin.frontends.servesNot': 'No sirve la aplicación él mismo en este proceso.',
   'admin.frontends.backendVersion': 'Versión del servidor {version}.',
   'admin.frontends.registered': 'Frontends registrados',
@@ -2953,6 +2969,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.problem.lastAdmin':
     'Es la última persona que administra el track: da el rol a otra persona primero.',
   'trackPeople.listTitle': 'Tracks que administras',
+  'trackPeople.listAbout':
+    'Diriges estos tracks: das sus roles, invitas a personas y, en un track con configuración propia, cambias sus propios conjuntos. Lo que usa el resto del sitio queda en manos de los administradores del sitio.',
   'trackPeople.listIntro': 'Cada track tiene aquí una página para sus roles e invitaciones.',
   'trackPeople.listEmpty': 'No administras ningún track.',
   'trackPeople.manage': 'Gestionar',
@@ -3202,6 +3220,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.problem.inUse': 'Hay tracks que todavía usan este mapa: dales otro primero.',
   'admin.maps.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'admin.sets.title': 'Conjuntos de configuración',
+  'admin.sets.trackAbout':
+    'Este track tiene configuración propia: su conjunto de tipos dice qué tipos de ticket ofrece, y sus conjuntos de reglas de campos dicen qué campos son obligatorios u ocultos. Los demás tracks no se ven afectados.',
   'admin.sets.intro':
     'Los conjuntos de tipos dicen qué tipos de ticket ofrece un track; los conjuntos de reglas de campos dicen qué campos son obligatorios u ocultos y qué ayuda muestran. Los tracks nombran los conjuntos que usan.',
   'admin.sets.forbidden':
@@ -6142,6 +6162,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Esto supera un límite. La página de Salvaguardas tiene el límite de niveles.',
   'admin.visibility.problem.other': 'No se pudo hacer. Inténtalo de nuevo en un momento.',
   'admin.explain.title': 'Explicador de permisos',
+  'admin.explain.about':
+    'Elige una persona y luego un track o un ticket y un permiso. La respuesta dice sí o no y nombra lo que lo decidió: un rol en el track, un grupo, un permiso global o un nivel de visibilidad. Solo lee; aquí no cambia nada.',
   'admin.explain.purpose':
     'Pregunta si alguien puede hacer algo en un track o un ticket, y mira qué permiso, rol o nivel lo decidió.',
   'admin.explain.forbidden': 'Solo los administradores del sitio usan el explicador de permisos.',

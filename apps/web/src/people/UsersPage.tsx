@@ -253,7 +253,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             (u.active ? (
                               <button
                                 type="button"
-                                className="button-secondary button-danger-outline people-action"
+                                className="button-secondary button-danger-quiet people-action"
                                 aria-label={t('admin.users.deactivateOf', { name: u.name })}
                                 aria-expanded={
                                   open?.user.id === u.id && open.panel === 'deactivate'
@@ -298,7 +298,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                           {u.id !== me && (
                             <button
                               type="button"
-                              className="button-secondary button-danger-outline people-action"
+                              className="button-secondary button-danger-quiet people-action"
                               aria-label={t('admin.users.eraseOf', { name: u.name })}
                               onClick={() => {
                                 setProblem(null);

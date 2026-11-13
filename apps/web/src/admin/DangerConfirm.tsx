@@ -2,8 +2,9 @@ import { type ReactNode, useEffect, useId, useRef } from 'react';
 
 /**
  * The step between a destructive action and its effect (D13): one sentence saying what will
- * happen, the action itself in the danger style, and a way back. The action takes the focus, so
- * the keyboard is where the decision is.
+ * happen, the action itself in the danger style, and a way back. The way back takes the focus,
+ * and Escape takes it, so nothing is lost by a stray key. Local to Administration until the
+ * shared `shell/DangerAction` (G6) lands; it behaves the same, so the switch is one for one.
  */
 export function DangerConfirm({
   message,
@@ -21,24 +22,27 @@ export function DangerConfirm({
   onCancel: () => void;
 }) {
   const id = useId();
-  const confirm = useRef<HTMLButtonElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    confirm.current?.focus();
+    cancel.current?.focus();
   }, []);
   return (
-    <fieldset className="token-confirm danger-confirm" aria-labelledby={id}>
+    <fieldset
+      className="token-confirm danger-confirm"
+      aria-labelledby={id}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          onCancel();
+        }
+      }}
+    >
       <p id={id}>{message}</p>
       <div className="token-confirm-actions">
-        <button
-          ref={confirm}
-          type="button"
-          className="button-danger"
-          disabled={busy}
-          onClick={onConfirm}
-        >
+        <button type="button" className="button-danger" disabled={busy} onClick={onConfirm}>
           {confirmLabel}
         </button>
-        <button type="button" className="button-secondary" onClick={onCancel}>
+        <button ref={cancel} type="button" className="button-secondary" onClick={onCancel}>
           {cancelLabel}
         </button>
       </div>

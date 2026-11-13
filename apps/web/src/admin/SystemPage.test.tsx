@@ -26,7 +26,9 @@ describe('system status page', () => {
     stubSystem(() => jsonResponse(200, HEALTHY));
     render(<App session={ADMIN} />);
     expect(await screen.findByRole('heading', { level: 1, name: 'System status' })).toBeTruthy();
-    await screen.findByText('Connected');
+    // Healthy reads as success, not the accent (AD-33); the help mark is there (AD-20).
+    expect(await screen.findByText('Connected')).toHaveClass('badge-success');
+    expect(screen.getByRole('button', { name: 'What is System status for?' })).toBeVisible();
     expect(fact('Instance', 'Version')).toBe('0.4.0');
     expect(fact('Instance', 'Roles')).toBe('api, worker, realtime, web');
     expect(fact('Instance', 'Uptime')).toBe('2 d 3 h 25 min');

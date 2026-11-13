@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 
 export interface RedirectUriFieldProps {
   /** The backend's callback address, as the provider must know it. */
@@ -13,7 +14,8 @@ export interface RedirectUriFieldProps {
 export function RedirectUriField({ uri }: RedirectUriFieldProps) {
   const t = useT();
   const id = useId();
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const narrow = useMediaQuery(COMPACT_QUERY);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const copyUri = async () => {
@@ -39,11 +41,13 @@ export function RedirectUriField({ uri }: RedirectUriFieldProps) {
       <div className="form-field">
         <label htmlFor={`${id}-value`}>{t('admin.sso.redirectLabel')}</label>
         <div className="token-secret-row">
-          <input
+          {/* A text block that wraps, so the whole address shows on a phone (AD-9). */}
+          <textarea
             ref={input}
             id={`${id}-value`}
-            className="token-secret-value"
+            className="token-secret-value redirect-uri-value"
             readOnly
+            rows={narrow ? 2 : 1}
             value={uri}
             spellCheck={false}
             autoComplete="off"

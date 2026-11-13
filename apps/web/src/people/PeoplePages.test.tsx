@@ -77,11 +77,12 @@ describe('people (M1-053, IAM-008)', () => {
     await list();
     const trigger = screen.getByRole('button', { name: 'Deactivate Bo Rivera' });
     // A destructive action looks it, and asks first, saying what will happen (D13, AD-16).
-    expect(trigger).toHaveClass('button-danger-outline');
+    expect(trigger).toHaveClass('button-danger-quiet');
     await user.click(trigger);
     expect(client.calls.some((c) => c.action === 'deactivate')).toBe(false);
     const confirm = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
-    expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveFocus();
+    // The way back has the focus, and Escape takes it.
+    expect(within(confirm).getByRole('button', { name: 'Keep active' })).toHaveFocus();
     expect(within(confirm).getByRole('button', { name: 'Deactivate' })).toHaveClass(
       'button-danger',
     );

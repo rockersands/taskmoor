@@ -161,7 +161,9 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           ? t('trackPeople.title', { key: state.track.key, name: state.track.name })
           : t('trackPeople.titleLoading')
       }
-      {...(state.status === 'loaded' ? { purpose: t('purpose.trackPeople') } : {})}
+      {...(state.status === 'loaded'
+        ? { purpose: t('purpose.trackPeople'), about: t('trackPeople.about') }
+        : {})}
     />
   );
   if (state.status !== 'loaded') {

@@ -137,6 +137,7 @@ export function NetworkAccessPage({
     event.preventDefault();
     void save(false);
   };
+  const lockedOut = view !== null && view.allowlist.enabled && !view.yourAddressAllowed;
 
   return (
     <section aria-labelledby={titleId} className="page network-page">
@@ -159,10 +160,16 @@ export function NetworkAccessPage({
         </p>
       ) : (
         <form className="form glass-card account-section network-form" onSubmit={submit}>
-          <p className={view.yourAddressAllowed ? 'page-note' : 'page-note status-warn'}>
-            {t(view.yourAddressAllowed ? 'admin.network.youAreIn' : 'admin.network.youAreOut', {
-              address: view.yourAddress,
-            })}
+          {/* The warning only while the list is on and leaves this address out (AD-8). */}
+          <p className={lockedOut ? 'page-note status-warn' : 'page-note'}>
+            {t(
+              !view.allowlist.enabled
+                ? 'admin.network.youAreHere'
+                : view.yourAddressAllowed
+                  ? 'admin.network.youAreIn'
+                  : 'admin.network.youAreOut',
+              { address: view.yourAddress },
+            )}
           </p>
           <div className="form-field form-field-inline">
             <input

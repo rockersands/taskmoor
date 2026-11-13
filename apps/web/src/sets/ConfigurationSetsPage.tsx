@@ -66,7 +66,7 @@ export function ConfigurationSetsPage({
       title={t('admin.sets.title')}
       {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
       {...(allowed ? { purpose: t('settings.setsHint') } : {})}
-      {...(allowed && !track ? { about: t('admin.sets.intro') } : {})}
+      {...(allowed ? { about: t(track ? 'admin.sets.trackAbout' : 'admin.sets.intro') } : {})}
     />
   );
   return (

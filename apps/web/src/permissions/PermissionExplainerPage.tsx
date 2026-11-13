@@ -131,7 +131,9 @@ export function PermissionExplainerPage({ client = explainClient }: { client?: E
       <PageHeader
         titleId={titleId}
         title={t('admin.explain.title')}
-        {...(lists.status === 'forbidden' ? {} : { purpose: t('admin.explain.purpose') })}
+        {...(lists.status === 'forbidden'
+          ? {}
+          : { purpose: t('admin.explain.purpose'), about: t('admin.explain.about') })}
       />
       {lists.status === 'forbidden' && <p className="page-note">{t('admin.explain.forbidden')}</p>}
       {lists.status === 'loading' && <p className="page-note">{t('admin.explain.loading')}</p>}

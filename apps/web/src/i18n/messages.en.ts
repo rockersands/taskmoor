@@ -239,16 +239,28 @@ export const messagesEn = {
   'purpose.bulk': 'How a change to many tickets is going, and which tickets it could not change.',
   'purpose.createTicket':
     'Add a new piece of work to a track: its type, a summary and what the track asks for.',
+  'trackPeople.about':
+    'Give a role to a person or a group, take it away, and invite people by email or with a link. What each role may do is set by the track’s access policy.',
   'purpose.trackPeople': 'Who has which role in this track, and who has been invited to join it.',
+  'admin.workflow.about':
+    'Changes go into a draft that tracks do not use yet. Check the draft, then publish it: tracks using this workflow move to the new version, and the versions stay in its history.',
   'purpose.workflowEditor':
     'The statuses of this workflow and the moves between them. Change a draft, check it, then publish it.',
   'purpose.aiUsage':
     'What AI features have been used for, by whom and at what cost, and how close they are to their limits.',
+  'admin.apiUsage.about':
+    'Every client of the API has a limit: each token, each signed-in person and each address. The busiest clients show here with their errors and refused requests; the limits below apply to the whole site.',
   'purpose.apiUsage':
     'How much the API is being used, by which clients, and how close they are to their limits.',
+  'admin.security.about':
+    'Who must use a second factor, how long a sign-in lasts and when an idle one ends, and which security alerts are raised and who receives them. Changes apply to the next sign-in.',
   'purpose.security':
     'The rules that keep accounts safe: second factors and the alerts you receive.',
+  'admin.system.about':
+    'Read when something seems wrong: whether the database answers, how the background jobs and backups are doing, and which version runs. Times are shown in your time zone unless they say UTC.',
   'purpose.system': 'How this instance is doing right now: its database, its jobs and its version.',
+  'admin.trash.about':
+    'A deleted ticket or track waits here for the days the trash policy keeps it. Restoring brings it back as it was; when its time is up it is deleted for good.',
   'purpose.trash':
     'Deleted tickets and tracks wait here until they are restored or their time is up.',
   'purpose.importedLink':
@@ -1613,6 +1625,8 @@ export const messagesEn = {
   'admin.network.loadFailed': 'The allowlist could not be loaded.',
   'admin.network.intro':
     'When the allowlist is on, the app and every API answer only requests from these addresses, except for members of the groups below.',
+  'admin.network.youAreHere':
+    'You are connecting from {address}. While the list is off, every address gets in.',
   'admin.network.youAreIn': 'You are connecting from {address}, which the list lets in.',
   'admin.network.youAreOut': 'You are connecting from {address}, which the list does not let in.',
   'admin.network.enabled': 'Only allow these addresses',
@@ -1896,6 +1910,7 @@ export const messagesEn = {
     'A frontend on another address than this server’s must be registered here, or listed in the server’s environment, before it may call the API, sign people in or open live updates. A change applies at once, without a restart.',
   'admin.frontends.self': 'This server',
   'admin.frontends.serves': 'Serves the app itself, version {version}.',
+  'admin.frontends.servesSame': 'Serves the app itself, at the server’s version, {version}.',
   'admin.frontends.servesNot': 'Does not serve the app itself in this process.',
   'admin.frontends.backendVersion': 'Server version {version}.',
   'admin.frontends.registered': 'Registered frontends',
@@ -2874,6 +2889,8 @@ export const messagesEn = {
   'admin.tracks.problem.lastAdmin':
     'This is the last person who runs the track: give the role to someone else first.',
   'trackPeople.listTitle': 'Tracks you run',
+  'trackPeople.listAbout':
+    'You run these tracks: you give their roles, invite people, and, for a track with its own configuration, change its own sets. What the rest of the site uses stays with site administrators.',
   'trackPeople.listIntro': 'Each track here has a page for its roles and invitations.',
   'trackPeople.listEmpty': 'You do not run any track.',
   'trackPeople.manage': 'Manage',
@@ -3116,6 +3133,8 @@ export const messagesEn = {
   'admin.maps.problem.inUse': 'Tracks still use this map: give them another first.',
   'admin.maps.problem.other': 'That did not work. Try again in a moment.',
   'admin.sets.title': 'Configuration sets',
+  'admin.sets.trackAbout':
+    'This track has its own configuration: its type set says which ticket types it offers, and its field rule sets say which fields are required or hidden. Other tracks are not affected.',
   'admin.sets.intro':
     'Type sets say which ticket types a track offers; field rule sets say which fields are required or hidden and what help they show. Tracks name the sets they use.',
   'admin.sets.forbidden':
@@ -6006,6 +6025,8 @@ export const messagesEn = {
     'This goes past a limit. The Guardrails page has the limit on levels.',
   'admin.visibility.problem.other': 'That could not be done. Try again in a moment.',
   'admin.explain.title': 'Permission explainer',
+  'admin.explain.about':
+    'Choose a person, then a track or a ticket and a permission. The answer says yes or no and names what decided it: a role in the track, a group, a global permission or a visibility level. It only reads; nothing changes here.',
   'admin.explain.purpose':
     'Ask whether someone can do something in a track or on a ticket, and see which grant, role or level decided it.',
   'admin.explain.forbidden': 'Only site administrators use the permission explainer.',

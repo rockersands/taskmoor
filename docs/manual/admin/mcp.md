@@ -2,7 +2,7 @@
 title: "The MCP server"
 audience: admins
 sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/oauth.ts, apps/server/src/oauth/clients.ts, apps/server/src/oauth/tokens.ts, apps/web/src/oauth/ConsentPage.tsx, docs/adr/0084-oauth-for-mcp-clients.md
-accessed: 2026-11-03
+accessed: 2026-11-13
 attestation: own-words
 ---
 # The MCP server
@@ -164,6 +164,9 @@ The **MCP server** settings page shows this address for your server under **Conn
 agent**.
 
 ### Over stdio
+
+The MCP server page shows this command; on a phone it breaks between its words, never inside
+the address.
 
 Clients that start a command and talk to it on standard input and output use the bridge in
 Taskmoor's operator CLI. It reads each JSON-RPC message from stdin, sends it to the server's

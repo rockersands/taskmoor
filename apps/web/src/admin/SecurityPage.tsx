@@ -151,7 +151,9 @@ export function SecurityPage({ client = securityClient, sessions, alerts }: Secu
       <PageHeader
         titleId={titleId}
         title={t('admin.security.title')}
-        {...(state.status === 'forbidden' ? {} : { purpose: t('purpose.security') })}
+        {...(state.status === 'forbidden'
+          ? {}
+          : { purpose: t('purpose.security'), about: t('admin.security.about') })}
       />
       {state.status === 'loading' && (
         <p role="status" className="page-note">
