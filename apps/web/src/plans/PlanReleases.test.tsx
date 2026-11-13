@@ -88,4 +88,30 @@ describe('a plan’s Releases tab (PLN-007)', () => {
       'Releases',
     ]);
   });
+
+  it('[PLN-007] says when a shipped release shipped, and lists each group by date (PL-40)', async () => {
+    const client = fakePlanClient();
+    const read = client.releases;
+    client.releases = async (id, track) => {
+      const answer = await read(id, track);
+      const ops = answer.tracks[0];
+      const shipped = { shipped: true, archived: false, overdue: false, outOfStep: false };
+      const progress = { tickets: 2, closed: 2, open: 0 };
+      // As the server sends them: upcoming first, then shipped, then one with no date.
+      ops?.releases.push(
+        { id: 24, name: 'Ops 0.9', releaseDate: null, ...shipped, shipped: false, progress },
+        { id: 25, name: 'Ops 1.0', releaseDate: '2026-08-18', ...shipped, progress },
+      );
+      return answer;
+    };
+    renderTab(undefined, {}, client);
+    const operations = await screen.findByRole('region', { name: 'Operations' });
+    expect(
+      within(operations)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Ops 1.0', 'Ops 1.5', 'Ops 0.9']);
+    expect(within(operations).getByText('Shipped on Aug 18, 2026')).toBeVisible();
+    expect(within(operations).getByText('Due on Jan 15, 2027')).toBeVisible();
+  });
 });

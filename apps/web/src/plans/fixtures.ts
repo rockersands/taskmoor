@@ -185,6 +185,8 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   exportReads: () => number;
   /** How many times the plan itself was read. */
   planReads: () => number;
+  /** What each read of the capacity asked for: from which day, and how many periods. */
+  capacityAsked: { from: string; periods: number }[];
 } {
   const capacity = fakeCapacity();
   let teams = options.noTeams ? [] : PLAN_TEAMS;
@@ -197,6 +199,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   const removed: number[] = [];
   const capacitySettings: (CapacitySettings | undefined)[] = [];
   const duplicated: string[] = [];
+  const capacityAsked: { from: string; periods: number }[] = [];
   let exportReads = 0;
   let planReads = 0;
   let version = 1;
@@ -235,6 +238,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   const query = (filters: PlanFilters) => plan(filters).query;
   return {
     items: () => items,
+    capacityAsked,
     saved,
     removed,
     capacitySaved: capacity.saved,
@@ -500,6 +504,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       return { ok: true };
     },
     capacity: async (_id, filters, from, periods) => {
+      capacityAsked.push({ from, periods });
       const answer = capacity.answer(
         shown(filters),
         query(filters),

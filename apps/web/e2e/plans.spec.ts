@@ -148,7 +148,9 @@ test('[PLN-012] a plan over two tracks: its numbers, its timeline and a ticket r
     }),
   ).toBeVisible();
 
-  // One track, by the filter: the address holds it, and a fresh visit opens the same view.
+  // One track, by the filter: the address holds it, and a fresh visit opens the same view. On a
+  // phone the filters wait behind one button (D33).
+  if (isMobile) await page.getByRole('button', { name: 'Filters', exact: true }).click();
   await page.getByRole('combobox', { name: 'Track', exact: true }).selectOption(keys[1] as string);
   await expect(page).toHaveURL(new RegExp(`track=${keys[1]}`));
   await expect(page.getByRole('link', { name: site })).toHaveCount(0);

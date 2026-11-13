@@ -20,8 +20,12 @@ import { fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { capacityCsv } from './planExport';
 
-/** How many periods the view shows at once. */
-const PERIODS = 6;
+/**
+ * How many periods the view shows at once: on a desktop few enough that the table fits the page
+ * with its "Open, no due date" column, the rest a click on Earlier or Later away (D32); on a phone,
+ * where each row is a card that lists them down the page, more.
+ */
+export const PERIODS = { wide: 4, compact: 6 } as const;
 
 /** One row of the view: a team, a member of one, unassigned work or everyone else's. */
 interface Row {
@@ -60,6 +64,7 @@ export function PlanCapacityPage({
   const intl = useIntl();
   const headingId = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
+  const count = compact ? PERIODS.compact : PERIODS.wide;
   const today = now().toISOString().slice(0, 10);
   // Kept in the address on a plan's page, so a link opens the same periods.
   const [fromHere, setFromHere] = useState(today);
@@ -79,7 +84,7 @@ export function PlanCapacityPage({
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
     const asked = ++latest.current;
-    client.capacity(id, filters, from, PERIODS).then(
+    client.capacity(id, filters, from, count).then(
       (d) => {
         if (asked !== latest.current) return;
         setData(d);
@@ -89,7 +94,7 @@ export function PlanCapacityPage({
         if (asked === latest.current) setFailed(true);
       },
     );
-  }, [client, id, filterKey, from]);
+  }, [client, id, filterKey, from, count]);
   useEffect(load, [load]);
   useTicketChanges(load);
 
@@ -122,6 +127,10 @@ export function PlanCapacityPage({
     t(data.unit === 'hours' ? 'plans.capacity.hours' : 'plans.capacity.points', { value });
   const number = (value: number) => intl.formatNumber(value, { maximumFractionDigits: 2 });
   const tableName = t('plans.capacity.table');
+  // The explanation of "Elsewhere" only where the table says it.
+  const elsewhereShown = data.teams.some((team) =>
+    [team, ...team.members].some((row) => row.cells.some((c) => c.elsewhere.count > 0)),
+  );
   const first = data.periods[0];
   const last = data.periods.at(-1);
 
@@ -167,7 +176,8 @@ export function PlanCapacityPage({
     key: 'others',
     kind: 'others',
     id: 0,
-    name: t('plans.capacity.others'),
+    // With no teams, everyone assigned is in none of them: the row is simply the assigned work.
+    name: t(data.teams.length === 0 ? 'plans.capacity.assigned' : 'plans.capacity.others'),
     meta: null,
     clause: data.others.clause,
     capacity: null,
@@ -293,10 +303,8 @@ export function PlanCapacityPage({
 
   return (
     <section className="plan-capacity" aria-labelledby={headingId}>
+      {/* The periods' dates first, then the buttons together: on a phone a line each (PL-38). */}
       <div className="calendar-tools capacity-tools">
-        <button type="button" className="button-secondary" onClick={() => setFrom(data.previous)}>
-          {t('plans.capacity.earlier')}
-        </button>
         <h2 id={headingId} aria-live="polite">
           {first && last
             ? t('plans.capacity.range', {
@@ -305,6 +313,9 @@ export function PlanCapacityPage({
               })
             : null}
         </h2>
+        <button type="button" className="button-secondary" onClick={() => setFrom(data.previous)}>
+          {t('plans.capacity.earlier')}
+        </button>
         <button type="button" className="button-secondary" onClick={() => setFrom(data.next)}>
           {t('plans.capacity.later')}
         </button>
@@ -328,8 +339,8 @@ export function PlanCapacityPage({
       <p className="board-hint">
         {data.unit === 'hours'
           ? t('plans.capacity.hint.hours')
-          : t('plans.capacity.hint.points', { field: data.pointsField?.name ?? '' })}{' '}
-        {t('plans.capacity.hint.elsewhere')}
+          : t('plans.capacity.hint.points', { field: data.pointsField?.name ?? '' })}
+        {elsewhereShown && ` ${t('plans.capacity.hint.elsewhere')}`}
       </p>
       {(data.teams.length === 0 || (data.unit === 'points' && data.pointsField === null)) && (
         <ul className="plan-notices">

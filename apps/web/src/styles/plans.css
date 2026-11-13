@@ -37,6 +37,25 @@
   gap: var(--space-2) var(--space-3);
 }
 
+/* On a phone the filters wait behind one button (D33); `hidden` must win over the flex above. */
+.plan-filters[hidden] {
+  display: none;
+}
+
+.plan-filters-toggle {
+  justify-self: start;
+}
+
+/* A plan's Summary (PL-37): room between the numbers and the cards, each card its own height. */
+.plan-summary {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.plan-summary .summary-sections {
+  align-items: start;
+}
+
 .plan-filters select {
   max-width: 16rem;
 }
@@ -66,6 +85,13 @@
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   background: var(--glass-surface-sunken);
+}
+
+/* The teams inside the settings' "Teams and capacity" box: a plain group, not a box in a box. */
+.plan-capacity-settings .plan-team-group {
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 .plan-source-group ul {
@@ -180,6 +206,25 @@
 
 .capacity-table tbody th > * + * {
   margin-top: var(--space-1);
+}
+
+/*
+ * "Open, no due date" holds what no period counts, often most of the work: it stays in view at the
+ * table's end, opaque as the names are, however narrow the page (PL-2; T-213).
+ */
+.capacity-table :is(th, td):last-child {
+  position: sticky;
+  inset-inline-end: 0;
+  z-index: 1;
+  box-shadow: inset 1px 0 0 var(--glass-edge);
+}
+
+.capacity-table tbody td:last-child {
+  background: var(--color-surface-raised);
+}
+
+.capacity-row.is-team td:last-child {
+  background: var(--color-surface-sunken);
 }
 
 .capacity-card-head {

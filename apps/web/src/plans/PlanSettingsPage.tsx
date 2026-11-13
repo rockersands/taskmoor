@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
 import type {
@@ -57,6 +58,7 @@ export interface PlanSettingsPageProps {
  */
 export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProps) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
   const [name, setName] = useState(plan.name);
   const [description, setDescription] = useState(plan.description);
@@ -270,16 +272,33 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
             </select>
           </label>
           {periodChoice !== 'month' && (
-            <label className="form-field" htmlFor={`${id}-anchor`}>
-              <span className="form-label">{t('plans.settings.anchor')}</span>
+            <div className="form-field">
+              <label className="form-label" htmlFor={`${id}-anchor`}>
+                {t('plans.settings.anchor')}
+              </label>
               <input
                 id={`${id}-anchor`}
                 type="date"
                 required
                 value={anchor}
+                aria-describedby={anchor ? `${id}-anchor-day` : undefined}
                 onChange={(event) => setAnchor(event.target.value)}
               />
-            </label>
+              {/* The browser writes the box's date its own way; the page says it in its own (PL-41). */}
+              {anchor && (
+                <span className="board-hint" id={`${id}-anchor-day`}>
+                  {t('plans.settings.anchorDay', {
+                    date: intl.formatDate(new Date(`${anchor}T00:00:00Z`), {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      timeZone: 'UTC',
+                    }),
+                  })}
+                </span>
+              )}
+            </div>
           )}
         </div>
         <p className="board-hint">{t('plans.settings.capacityHint')}</p>
@@ -296,7 +315,8 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         <button type="submit" className="button-primary" disabled={busy || !name.trim() || !period}>
           {t('plans.settings.save')}
         </button>
-        <button type="button" className="button-secondary" onClick={() => void remove()}>
+        {/* A danger, and it asks first, saying what happens (D13). */}
+        <button type="button" className="button-danger" onClick={() => void remove()}>
           {t('plans.settings.delete')}
         </button>
       </div>

@@ -57,7 +57,7 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     renderCapacity();
     expect(await screen.findByRole('region', { name: 'Capacity by period' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Capacity' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { name: 'Nov 2, 2026 to Jan 24, 2027' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Nov 2, 2026 to Dec 27, 2026' })).toBeVisible();
     // The period holding today says so in words.
     expect(screen.getByRole('columnheader', { name: 'Nov 2 to Nov 15 Now' })).toBeVisible();
     // Web: its members' 5 points here and 13 elsewhere, against its own 20.
@@ -84,7 +84,7 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     expect(within(cellOf('Bo Lindqvist', 1)).getByText('No capacity set')).toBeVisible();
     expect(cellOf('Bo Lindqvist', 1).querySelector('.is-over')).toBeNull();
     // Unassigned work open without a due date, in the last column, linked to its search.
-    const open = within(cellOf('Unassigned', 6)).getByRole('link', {
+    const open = within(cellOf('Unassigned', 4)).getByRole('link', {
       name: '2 tickets for Unassigned, Open, no due date: open the search',
     });
     expect(searched(open)).toBe(
@@ -233,22 +233,22 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     const user = userEvent.setup();
     renderCapacity({ editable: false });
     expect(
-      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Jan 24, 2027' }),
+      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Dec 27, 2026' }),
     ).toBeVisible();
     expect(screen.queryByRole('button', { name: /Set capacity/ })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Later periods' }));
     expect(
-      await screen.findByRole('heading', { name: 'Jan 25, 2027 to Apr 18, 2027' }),
+      await screen.findByRole('heading', { name: 'Dec 28, 2026 to Feb 21, 2027' }),
     ).toBeVisible();
     expect(screen.queryByText('Now')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Earlier periods' }));
     expect(
-      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Jan 24, 2027' }),
+      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Dec 27, 2026' }),
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Later periods' }));
     await user.click(await screen.findByRole('button', { name: 'This period' }));
     expect(
-      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Jan 24, 2027' }),
+      await screen.findByRole('heading', { name: 'Nov 2, 2026 to Dec 27, 2026' }),
     ).toBeVisible();
   });
 
@@ -259,9 +259,34 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
       'href',
       expect.stringContaining('#/plans/12/settings'),
     );
-    // The plan's work still shows: unassigned and everyone else's.
+    // The plan's work still shows: unassigned and assigned. With no teams there is no "none of
+    // these teams", and no "Elsewhere" to explain (PL-39).
     expect(rowOf('Unassigned')).toBeVisible();
-    expect(rowOf('People in none of these teams')).toBeVisible();
+    expect(rowOf('Assigned to someone')).toBeVisible();
+    expect(screen.queryByText('People in none of these teams')).toBeNull();
+    expect(screen.queryByText(/“Elsewhere”/)).toBeNull();
+  });
+
+  it('[PLN-005] shows few enough periods on a desktop that the open column fits, the rest by Earlier and Later (D32)', async () => {
+    const client = renderCapacity();
+    await screen.findByRole('region', { name: 'Capacity by period' });
+    expect(client.capacityAsked.at(-1)?.periods).toBe(4);
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+      'Team or person',
+      'Nov 2 to Nov 15 Now',
+      'Nov 16 to Nov 29',
+      'Nov 30 to Dec 13',
+      'Dec 14 to Dec 27',
+      'Open, no due date',
+    ]);
+  });
+
+  it('[PLN-005] puts the periods’ dates first, Earlier and Later together after them (PL-38)', async () => {
+    renderCapacity();
+    const dates = await screen.findByRole('heading', { name: 'Nov 2, 2026 to Dec 27, 2026' });
+    const earlier = screen.getByRole('button', { name: 'Earlier periods' });
+    expect(dates.compareDocumentPosition(earlier) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(earlier.nextElementSibling).toBe(screen.getByRole('button', { name: 'Later periods' }));
   });
 
   it('[PLN-005] chooses the plan’s teams, unit and periods in Settings, asking before clearing capacity', async () => {
