@@ -1,4 +1,4 @@
-// pnpm demo [--port 8080] [--fresh]
+// pnpm demo [--port 8080] [--fresh] [--tickets [file]]
 //
 // A Taskmoor to look around in, on this machine, in Spanish (the user's review of the Spanish
 // catalogue, M1-116): an embedded PostgreSQL 16 (no Docker), the eval dataset's people, groups,
@@ -10,9 +10,13 @@
 // The tickets stay in the database between runs (.cache/pg-test/demo, or your own server), and
 // the attachments in .cache/demo. --fresh removes only the attachments: it keeps
 // the database. Not for production: no TLS, no backups, no email.
+//
+// --tickets loads docs/plan/tickets.md (or the file given) once the server is up (T-239): the
+// Backend, Front and Flutter tracks with a ticket per row, the sample tracks in the trash. A
+// rerun adds only new rows and moves the others to the state the file gives them now.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest } from '@taskmoor/db';
@@ -22,19 +26,41 @@ import { seedEvalDataset } from '../ai/evals/seed';
 import { createPasswordLink, passwordLinkUrl } from '../directory';
 import { INSTANCE_KEY, readSetting, SETUP_KEY, writeSetting } from '../setup';
 import { buildMessage, frontendBuildNeeded } from './frontend';
+import { fetchRequest, loadDemoTickets } from './load-tickets';
 import { releaseSampleWorkflow } from './sample-workflow';
+import { parseTicketsFile, type TicketRow } from './tickets-file';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const DATA = join(ROOT, '.cache', 'demo');
-const { values } = parseArgs({
+const { values, positionals } = parseArgs({
   options: {
     port: { type: 'string', default: '8080' },
     fresh: { type: 'boolean', default: false },
+    tickets: { type: 'boolean', default: false },
   },
+  allowPositionals: true,
 });
 const port = Number(values.port);
 const publicUrl = `http://localhost:${port}`;
 const say = (line: string) => process.stdout.write(`${line}\n`);
+
+if (positionals.length > (values.tickets ? 1 : 0)) {
+  process.stderr.write('usage: pnpm demo [--port N] [--fresh] [--tickets [file]]\n');
+  process.exit(2);
+}
+// Read before anything starts, so a wrong path stops at once. pnpm runs this from the
+// repository; a relative path is the caller's.
+let tickets: TicketRow[] | null = null;
+if (values.tickets) {
+  const file = positionals[0]
+    ? resolve(process.env.INIT_CWD ?? process.cwd(), positionals[0])
+    : join(ROOT, 'docs', 'plan', 'tickets.md');
+  tickets = parseTicketsFile(readFileSync(file, 'utf8'));
+  if (tickets.length === 0) {
+    process.stderr.write('no ticket rows in that file\n');
+    process.exit(2);
+  }
+}
 
 if (values.fresh) rmSync(DATA, { recursive: true, force: true });
 mkdirSync(DATA, { recursive: true });
@@ -103,7 +129,6 @@ for (const p of people) {
     `  ${p.name} <${p.email}>${p.is_site_admin ? ' (site administrator)' : ''}\n    ${passwordLinkUrl(publicUrl, link.token)}`,
   );
 }
-await db.destroy();
 
 say('Starting Taskmoor...');
 const server = spawn(
@@ -148,6 +173,22 @@ for (let i = 0; i < 120; i++) {
   if (ready) break;
   await new Promise((r) => setTimeout(r, 1000));
 }
+if (tickets) {
+  say(`Loading ${tickets.length} tickets into the Backend, Front and Flutter tracks...`);
+  try {
+    const done = await loadDemoTickets(db, tickets, fetchRequest(publicUrl));
+    say(
+      `Tickets: ${done.ticketsCreated} added (${done.moved} moved to their state), ` +
+        `${done.updated} brought up to date, ${done.unchanged} unchanged; ` +
+        `tracks: ${done.tracksCreated} made, ${done.tracksRestored} back from the trash, ` +
+        `${done.tracksTrashed} sample tracks in the trash.`,
+    );
+    for (const problem of done.problems) say(`  not done: ${problem}`);
+  } catch (error) {
+    say(`Loading the tickets stopped: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+await db.destroy();
 say(`
 Taskmoor is running on ${publicUrl} (in Spanish). Open a link below to set a password, then
 sign in. Each link works once; a new start makes new ones.
