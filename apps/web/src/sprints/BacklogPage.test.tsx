@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setCoarsePointer, setViewportWidth } from '../test/viewport';
+import { announceTicketChange } from '../tickets/view/ticketChanges';
 import type { TrackSections } from '../tracks/client';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
@@ -159,6 +160,43 @@ describe('the backlog with sprint sections (M1-044)', () => {
     renderBacklog();
     await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+
+  it('[AGL-011] keeps the newer backlog and panels when an older answer arrives after them (T-243)', async () => {
+    const client = fakeSprintClient();
+    const backlog = client.backlog;
+    const panels = client.panels;
+    let answerFirst: () => void = () => {};
+    const first = new Promise<void>((done) => {
+      answerFirst = done;
+    });
+    let backlogReads = 0;
+    let panelReads = 0;
+    // The page's first read answers only after the one a ticket change makes.
+    client.backlog = async (boardId) => {
+      const mine = ++backlogReads;
+      const answer = await backlog(boardId);
+      if (mine > 1) return answer;
+      await first;
+      return {
+        ...answer,
+        sprints: answer.sprints.map((s) => ({ ...s, name: `${s.name} as it was` })),
+      };
+    };
+    client.panels = async (boardId) => {
+      const mine = ++panelReads;
+      if (mine > 1) return panels(boardId);
+      await first;
+      throw new Error('an older answer that failed');
+    };
+    renderBacklog(client);
+    act(() => announceTicketChange());
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    await act(async () => answerFirst());
+    await act(async () => {});
+    expect(screen.queryByRole('heading', { name: /as it was$/ })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Checkout Sprint 1' })).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

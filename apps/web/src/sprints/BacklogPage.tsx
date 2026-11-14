@@ -133,20 +133,31 @@ export function BacklogPage({
   const stopDrag = useRef<(() => void) | null>(null);
   useEffect(() => () => stopDrag.current?.(), []);
 
+  // Only the latest read counts: an older answer that arrives after a newer one would show the
+  // backlog as it was, a completed sprint's Complete button too (T-243).
+  const reads = useRef(0);
   const load = useCallback(() => {
+    const mine = ++reads.current;
+    const latest = () => mine === reads.current;
     client.backlog(boardId).then(
       (d) => {
+        if (!latest()) return;
         setData(d);
         setFailed(false);
       },
-      () => setFailed(true),
+      () => {
+        if (latest()) setFailed(true);
+      },
     );
     client.panels(boardId).then(
       (p) => {
+        if (!latest()) return;
         setPanels(p);
         setPanelsFailed(false);
       },
-      () => setPanelsFailed(true),
+      () => {
+        if (latest()) setPanelsFailed(true);
+      },
     );
   }, [client, boardId]);
   useEffect(load, [load]);
