@@ -24,8 +24,8 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 
 ### Latest: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
 
-`main` is at `c10ea330` (T-355 and T-356, the last full gate: 9,257 tests, 266 e2e). The main
-lock is free and no test or gate is running on the Mac.
+The Mac's last push to `main` was `c10ea330` (T-355 and T-356, full gate: 9,257 tests, 266 e2e);
+Windows has pushed since (`91a354b0`). The main lock is free and nothing of the Mac's is running.
 
 - T-358, the third page sweep, is done: `docs/plan/page-review-third-sweep.md` (166 routes, 1,219
   pictures; of the second sweep's open faults 86 fixed, 29 still there or changed; 66 new faults,
