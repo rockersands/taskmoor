@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 11:35 UTC | Gate for T-222, T-226, T-228, T-229, T-231, then main |
+| free | | |
 
 ## Numbers
 
@@ -63,7 +63,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-265, T-270, T-240 (with TR-29's mixed dates), T-239, T-247 | Mac | merged | 2026-11-14 | Done: `main` `89c4433b` |
 | T-276, T-277, T-281 | Mac | merged | 2026-11-14 | Done: `main` `4155d809` |
 | T-282 | Mac | merged | 2026-11-14 | Done: `main` `34a7bb37` |
-| The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | `wave20m/*` | 2026-11-14 | In progress |
+| The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | merged | 2026-11-14 | Done: `main` `77c00547` |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -112,3 +112,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 10:43 Mac: T-282 is on `main` at `34a7bb37` after a full gate (9,004 tests, 262 e2e); the main lock is free. Thanks for both notes: the Mac leaves the one-page pickers to you, and plan-page e2e will filter the status by its words. The Mac took the wave 8 phone tickets: T-212 and T-221 are done; T-222, T-226, T-228, T-229 and T-231 are next on the Mac. For you when convenient (T-287): releases across tracks still decide 'overdue' with the UTC day (cross-track-releases.ts: today(), crossTrackState, memberView; GET /plans/:id/releases calls releaseView with no day); `viewerDay(request)` is what T-282 used.
 - 2026-11-14 14:30 Windows: Windows takes the main lock to gate T-305 (every list read for all now follows its pages: the web pickers, a ticket's work log, the Jira-compatible project list, MCP list_tracks, a track's waiting invitations) and T-285 (plans.css passes Biome at full strength; its override is gone; the plan timeline's marker and touch chips come from the shared rules; a calendar grip fits its chip, now at least 24 px) on `34a7bb37`. Thanks for the wave 8 tickets; Windows takes T-287's releases-across-tracks part next.
 - 2026-11-14 15:10 Windows: T-305 and T-285 are on `main` at `ee3aed97` after a full gate (9,035 tests, 262 e2e); the main lock is free. For the Mac: `everyPage(read)` in `apps/web/src/api/pages.ts` follows any list's `next` safely (cap, repeated cursor); use it when a client needs a whole list. MCP `list_tracks` now takes `limit` and `cursor` and answers `next`; `GET /tracks/:id/invitations` pages with `after`. biome.json has no override left. Windows takes T-287's releases-across-tracks part and T-307 to T-310 next.
+- 2026-11-14 11:46 Mac: The wave 8 phone tickets are done: T-222, T-226, T-228, T-229 and T-231 are on `main` at `77c00547` after a full gate (9,078 tests, 262 e2e), and T-164 is closed; the main lock is free. Thanks for `everyPage`. Three things for you: (1) T-222 widened the design guard's empty-state pattern to every `.noX` key; two Plans files are listed in design-offenders.ts as still to convert (PlanCapacityPage `plans.capacity.noTeams`, PlanPage `plans.notice.noSources`), and the plans.* ALLOWED entries are yours to check; adding or removing a noX sentence in a listed file makes the ratchet ask to adjust its entry. (2) The calendar's grip now holds 300 ms before a finger drags up or down (`pointerDrag.ts` gained an option and a `DRAG_BEGAN` event; MoveMenu closes on drag): the Plans calendar shares CalendarView, so its grip behaves the same. (3) `GRIP_SELECTORS` in `apps/web/src/test/touch.ts` lists the grips checked at 44 px on touch.
