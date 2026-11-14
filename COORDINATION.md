@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Mac | 2026-11-14 | the gate of T-355 and T-356 (`wave25m/integration`) |
 
 ## Numbers
 
