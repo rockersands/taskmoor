@@ -74,6 +74,33 @@ export function appendTo<K, V>(lists: Map<K, V[]>, key: K, value: V): void {
   else lists.set(key, [value]);
 }
 
+/**
+ * The link pairs a links step keeps, ordered by source then target: at most `most` pairs, and
+ * pairs to at most `rows` tickets not already `known` (those of lowest id), so the cut counts
+ * tickets added, not links. `more` says when anything reached was left out.
+ */
+export function cutLinks<P extends { src: number; dst: number }>(
+  pairs: readonly P[],
+  known: ReadonlySet<number>,
+  rows: number,
+  most: number,
+): { pairs: readonly P[]; more: boolean } {
+  let more = false;
+  let list = pairs;
+  if (list.length > most) {
+    more = true;
+    list = list.slice(0, most);
+  }
+  const fresh = new Set<number>();
+  for (const p of list) if (!known.has(p.dst)) fresh.add(p.dst);
+  if (fresh.size > rows) {
+    more = true;
+    const keep = new Set([...fresh].sort((a, b) => a - b).slice(0, rows));
+    list = list.filter((p) => known.has(p.dst) || keep.has(p.dst));
+  }
+  return { pairs: list, more };
+}
+
 /** Where a row came from: 0 inserted, 1 a child, 2 + n the nth links step (from 0). */
 export const VIA_INSERTED = 0;
 export const VIA_CHILD = 1;

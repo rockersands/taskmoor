@@ -291,6 +291,7 @@ describe('plan structures and the Grid (PLN-010)', () => {
       ['GRB', 'Billing'],
       ['GRC', 'Core'],
       ['GRS', 'Slow'],
+      ['GRL', 'Linked'],
     ] as const) {
       tracks[key] = (
         await call(
@@ -947,6 +948,48 @@ describe('plan structures and the Grid (PLN-010)', () => {
         .execute(),
     ).toEqual([]);
   });
+
+  it('[PLN-010] counts the tickets a links step adds against the row limit, not its link pairs', async () => {
+    const linked = await trackPlan('Linked', ['GRL']);
+    const template = await ticket('GRL', 'Linked');
+    const columns = (
+      await sql<{ column_name: string }>`
+        SELECT column_name FROM information_schema.columns
+         WHERE table_name = 'ticket' AND table_schema = 'public'
+           AND column_name NOT IN ('id', 'number', 'rank', 'search_vector')
+           AND is_generated = 'NEVER'`.execute(database.db)
+    ).rows.map((r) => r.column_name);
+    const list = sql.join(columns.map((c) => sql.ref(c)));
+    await sql`
+      INSERT INTO ticket (number, rank, ${list})
+      SELECT 1 + g, rank || lpad(g::text, 8, '0'), ${list}
+        FROM ticket, generate_series(1, 319) g
+       WHERE id = ${template.id}`.execute(database.db);
+    // 320 tickets, each blocking every other: 102,080 link pairs, more than 100,000.
+    await sql`
+      INSERT INTO ticket_link (workspace_id, link_type_id, source_id, target_id)
+      SELECT 1, ${blocks}, a.id, b.id
+        FROM ticket a JOIN ticket b ON b.track_id = a.track_id AND b.id <> a.id
+       WHERE a.track_id = ${tracks.GRL as number}`.execute(database.db);
+    const s = await save(
+      'admin',
+      'Every link',
+      {
+        steps: [
+          { kind: 'insert' },
+          { kind: 'links', linkTypeId: blocks, direction: 'outward', depth: 1 },
+        ],
+        columns: [],
+      },
+      linked,
+    );
+    const read = await rows('admin', s.id, '', linked);
+    expect(read.total).toBe(320);
+    expect(read.more).toBe(false);
+    // Each row's links reach rows already placed: all 319 are counted, every time.
+    expect(new Set(read.rows.elsewhere)).toEqual(new Set([319]));
+    expect(await rows('admin', s.id, '', linked)).toMatchObject({ rows: read.rows });
+  }, 600_000);
 
   it('[PLN-010] refuses a read that runs too long, never with part of an answer', async () => {
     const slow = await trackPlan('Slow', ['GRS']);

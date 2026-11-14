@@ -4,6 +4,7 @@ import {
   appendTo,
   type BuiltStructure,
   buildStructure,
+  cutLinks,
   type ExpandLevel,
   type StructureInput,
   type TreeTicket,
@@ -394,5 +395,23 @@ describe('buildStructure (PLN-010; ADR-122 stage 10)', () => {
     appendTo(lists, 7, -1);
     expect(lists.get(7)).toBe(list);
     expect(list).toHaveLength(100_001);
+  });
+
+  it('[PLN-010] cuts a links step by the tickets it adds, not by its link pairs', () => {
+    const pair = (src: number, dst: number) => ({ src, dst, depth: 1 });
+    // Three known tickets linked to each other: six pairs, no ticket added, nothing cut.
+    const among = [pair(1, 2), pair(1, 3), pair(2, 1), pair(2, 3), pair(3, 1), pair(3, 2)];
+    expect(cutLinks(among, new Set([1, 2, 3]), 2, 100)).toEqual({ pairs: among, more: false });
+    // Three tickets added past a limit of two: the one of highest id goes, with all its pairs.
+    const out = [pair(1, 9), pair(2, 9), pair(1, 7), pair(2, 8), pair(3, 8)];
+    expect(cutLinks(out, new Set([1, 2, 3]), 2, 100)).toEqual({
+      pairs: [pair(1, 7), pair(2, 8), pair(3, 8)],
+      more: true,
+    });
+    // The guard on pairs read says so too.
+    expect(cutLinks(among, new Set([1, 2, 3]), 2, 4)).toEqual({
+      pairs: among.slice(0, 4),
+      more: true,
+    });
   });
 });

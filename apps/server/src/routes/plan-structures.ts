@@ -32,6 +32,7 @@ import {
 import {
   appendTo,
   buildStructure,
+  cutLinks,
   type ExpandLevel,
   type GroupLevel,
   type TreeTicket,
@@ -651,6 +652,12 @@ interface SkeletonInput {
   reads: readonly ReadField[];
 }
 
+/**
+ * Link pairs a links step reads at most: a guard on memory, not a row limit. The rows are limited
+ * by the distinct tickets a step adds (`GRID_ROWS`), however many pairs reach them.
+ */
+const LINK_PAIRS = 4 * GRID_ROWS;
+
 const counts = (rows: { id: number; n: number }[]) => new Map(rows.map((r) => [r.id, r.n]));
 
 /** The skeleton, read in the caller's read-only transaction. */
@@ -734,18 +741,26 @@ async function readSkeleton(trx: Trx, input: SkeletonInput) {
                   JOIN ticket k ON k.id = ${to}
                  WHERE w.depth < ${step.depth}::int AND w.dst NOT IN (SELECT id FROM start)
                    AND ${to} <> ALL(w.path) AND ${seen}
+              ),
+              pairs AS (SELECT src, dst, min(depth)::int AS depth FROM walk GROUP BY src, dst),
+              fresh AS (
+                SELECT DISTINCT dst FROM pairs WHERE dst NOT IN (SELECT id FROM start)
+                 ORDER BY dst LIMIT ${GRID_ROWS + 1}
               )
-              SELECT src, dst, min(depth)::int AS depth FROM walk GROUP BY src, dst
-               LIMIT ${GRID_ROWS + 1}`.execute(trx)
+              SELECT src, dst, depth FROM pairs
+               WHERE dst IN (SELECT id FROM start) OR dst IN (SELECT dst FROM fresh)
+               ORDER BY src, dst
+               LIMIT ${LINK_PAIRS + 1}`.execute(trx)
           ).rows;
-    if (reached.length > GRID_ROWS) more = true;
+    const kept = cutLinks(reached, new Set(start), GRID_ROWS, LINK_PAIRS);
+    if (kept.more) more = true;
     const edges = new Map<number, number[]>();
     const expandable = new Set(start);
-    for (const r of reached.slice(0, GRID_ROWS)) {
+    for (const r of kept.pairs) {
       appendTo(edges, r.src, r.dst);
       if (r.depth < step.depth) expandable.add(r.dst);
+      candidates.add(r.dst);
     }
-    for (const r of reached.slice(0, GRID_ROWS)) candidates.add(r.dst);
     const hidden =
       expandable.size === 0
         ? []
