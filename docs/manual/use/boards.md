@@ -1,8 +1,8 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/styles/boards.css, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-13
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/styles/boards.css, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Boards, sprints and the backlog
@@ -257,7 +257,8 @@ active sprint's **Sprint report** link is large enough for a finger.
   release…** and **Clear selection**. A selection moves as one block and keeps its order.
 
 The **Outcomes** and **Releases** panels list the open outcomes and the unshipped releases of
-the board's track. Drop tickets on one to put them under that outcome or into that release; a
+the board's track, a release with how many of its tickets you see and its date (**4 tickets, due
+Dec 1, 2026**). Drop tickets on one to put them under that outcome or into that release; a
 ticket that is part of the selection takes the whole selection with it.
 Choose one to show only its tickets; **Show all tickets** brings the rest back.
 
@@ -339,7 +340,9 @@ says so under it. When you cancel shipping, focus goes back to **Ship this relea
 shipped, to the release's name, with the notice under it. The page shows:
 
 - **Start date**, **Release date**, **Shipped on** and, when it has one, its **Release across
-  tracks** with its date;
+  tracks** with its date, each read in your language as the list reads it (**Dec 1, 2026**). A
+  release shipped with no release date shipped on the day its shipping fell on your device's
+  clock, the same day the list and its report say;
 - **Progress**: its tickets by stage, each number opening the search that finds them;
 - **Warnings**, such as open tickets past the release date or open tickets nobody is assigned
   to, each with **Show these tickets**. When its date differs from its release across tracks' it
