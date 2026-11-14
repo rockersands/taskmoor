@@ -412,6 +412,27 @@ export const messagesEs: Record<MessageId, string> = {
     'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles, después de la descripción y las herramientas del ticket, son sus campos: cambia uno y se guarda al momento. La actividad va al final, con los comentarios, el historial de cada cambio y el tiempo registrado.',
   'about.list':
     'Cada fila es un ticket de este track, en el orden que fija Ordenar por; el lápiz junto a un valor lo cambia ahí mismo. Agrupar por reparte las filas según un campo y cuenta cada grupo. Columnas elige lo que muestran las filas, y las reglas de formato colorean los tickets que encuentra una condición. Las columnas y las reglas se guardan en este navegador. En un teléfono cada ticket es un bloque: su clave, su resumen y luego su estado, su responsable y su prioridad.',
+  // La marca de ayuda junto al título de las demás páginas (ADR-114 §6, S3-WK-1).
+  'about.inbox':
+    'Todo muestra cada mención tuya y cada cambio en un ticket que sigues. Prioritario guarda lo que te piden directamente: las menciones y los tickets asignados a ti. Pospuesto guarda lo que dejaste para más tarde. Marca los elementos como leídos uno a uno o todos a la vez, y acota la lista por tipo o por track.',
+  'about.search':
+    'Básica arma una búsqueda con filtros; Avanzada usa el lenguaje de consultas, y una consulta que Básica no puede mostrar se abre ahí. Guarda una búsqueda para volver a usarla, compartirla, seguirla por email o destacarla. Columnas elige lo que muestran los resultados, y Exportar los descarga.',
+  'about.createTicket':
+    'El track y el tipo de ticket deciden qué campos pide el formulario, y un campo marcado como obligatorio tiene que estar lleno antes de Crear. Empezar desde un ticket copia los campos de uno que puedes ver, así solo cambias lo que difiere. Los campos menos usados esperan en Más campos.',
+  'about.bulk':
+    'Un cambio en muchos tickets se hace en el sitio, ticket a ticket, y esta página lo sigue: puedes irte y volver. Un ticket solo se cambia donde tú puedes cambiarlo. Los que no se cambiaron aparecen con el motivo, y los que sí enlazan a sus tickets.',
+  'about.dashboards':
+    'Tuyos muestra los paneles que creaste, y Compartidos contigo los que otros comparten contigo. Ponle nombre a uno nuevo y añade los widgets que necesites. Marca paneles para la pantalla mural y se mostrarán por turnos en una pantalla, cada uno los segundos que elijas.',
+  'about.dashboard':
+    'Cada widget resume los tickets que encuentra una búsqueda, y nunca muestra un ticket que tú no podrías encontrar. Su dueño lo edita y elige quién lo ve; Copiar crea uno tuyo para cambiarlo. Pantalla mural lo muestra a pantalla completa, para una pantalla que todos leen desde lejos.',
+  'about.settings':
+    'Configuración guarda lo que es solo tuyo: tu cuenta, cómo se ve Taskmoor para ti y los tutoriales. Lo que vale para todo el sitio está en Administración, que los administradores del sitio ven en la barra lateral.',
+  'about.account':
+    'Cada pestaña guarda una parte de tu cuenta. Perfil: tu nombre, zona horaria, idioma y aspecto. Notificaciones: qué te cuenta Taskmoor, y cómo. Seguridad: tu contraseña, el segundo factor y los dispositivos con sesión iniciada. Tokens de API: lo que usan tus scripts. Tus datos: una descarga de todo lo que se guarda sobre ti.',
+  'about.boardReports':
+    'Cada informe lee los tickets de este tablero en el periodo que elijas. Flujo acumulado muestra dónde se acumula el trabajo, el gráfico de control y el tiempo de ciclo cuánto tardan los tickets, y el tiempo en cada estado dónde esperan. Los gráficos y las tablas solo cuentan los tickets que puedes ver.',
+  'about.sprintReport':
+    'Comprometido cuenta los tickets que tenía el sprint al empezar; Añadido y Quitado, lo que cambió después del inicio. Las listas de abajo nombran los tickets completados, no completados y quitados, con cualquier estimación que cambió por el camino.',
   'help.about': '¿Para qué sirve {name}?',
   'help.menu': 'Ayuda',
   'help.tutorials': 'Tutoriales',
@@ -6912,6 +6933,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.edit': 'Editar {text}',
   'ticketTools.checklists.moveUp': 'Subir {text}',
   'ticketTools.checklists.moveDown': 'Bajar {text}',
+  'ticketTools.checklists.more': 'Más',
+  'ticketTools.checklists.moreOf': 'Más opciones de {text}',
   'ticketTools.checklists.removeItem': 'Quitar {text}',
   'ticketTools.checklists.tooMany':
     'Ya tiene todos los que admite: 20 listas por ticket y 200 elementos por lista.',

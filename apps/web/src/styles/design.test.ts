@@ -1018,6 +1018,8 @@ export interface JsxFacts {
   pageHeaders: number;
   /** PageHeaders with no purpose attribute. */
   noPurpose: number;
+  /** PageHeaders with an `about`, the help mark beside the title (ADR-114 §6), or a spread that may hold one. */
+  helpMarks: number;
   bareButtons: number;
   bareTables: number;
   /** The class of each fieldset that has one. */
@@ -1580,6 +1582,7 @@ export function jsxFacts(
     titles: [],
     pageHeaders: 0,
     noPurpose: 0,
+    helpMarks: 0,
     bareButtons: 0,
     bareTables: 0,
     fieldsetClasses: [],
@@ -1626,6 +1629,7 @@ export function jsxFacts(
       if (tag === 'PageHeader') {
         facts.pageHeaders++;
         if (!attribute(node, 'purpose') && !hasSpread(node)) facts.noPurpose++;
+        if (attribute(node, 'about') || hasSpread(node)) facts.helpMarks++;
         if (parent) facts.headerParents.push(parent);
       }
       if (tag === 'button' && unstyled) {
@@ -2146,6 +2150,18 @@ function drawsHeader(file: string, seen = new Set<string>()): boolean {
   });
 }
 
+/** A page has its help mark if it, or a component of ours it renders, draws a header with one. */
+function drawsHelpMark(file: string, seen = new Set<string>()): boolean {
+  if (seen.has(file) || !facts.has(file)) return false;
+  seen.add(file);
+  if (factsOf(file).helpMarks > 0) return true;
+  const imports = importsOf(file, readFileSync(file, 'utf8'));
+  return [...factsOf(file).rendered].some((tag) => {
+    const target = imports.get(tag);
+    return target !== undefined && drawsHelpMark(target, seen);
+  });
+}
+
 const FUNCTION = (node: ts.Node) => ts.isFunctionLike(node) && !ts.isCallSignatureDeclaration(node);
 
 /** The function a component is declared with, in a file of our source. */
@@ -2421,6 +2437,10 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     const header = see('<PageHeader title="x" />');
     expect([header.pageHeaders, header.noPurpose]).toEqual([1, 1]);
     expect(see('<PageHeader title="x" purpose="y" />').noPurpose).toBe(0);
+    // The help mark (S3-WK-1): an `about`, or a spread that may carry one.
+    expect(header.helpMarks).toBe(0);
+    expect(see('<PageHeader title="x" about="y" />').helpMarks).toBe(1);
+    expect(see('<PageHeader title="x" {...rest} />').helpMarks).toBe(1);
     expect(see('<button type="button">x</button>').bareButtons).toBe(1);
     expect(see('<button className="a">x</button>').bareButtons).toBe(0);
     expect(see('<table><tr /></table>').bareTables).toBe(1);
@@ -3324,6 +3344,15 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
       .filter((component) => !(component in ALLOWED.pagesWithoutHeader))
       .sort();
     expect(missing).toEqual([...OFFENDERS.pagesWithoutHeader].sort());
+  });
+
+  it('[NFR-005] gives every route page a help mark beside its title (ADR-114 §6, S3-WK-1)', () => {
+    const missing = [...routePages()]
+      .filter(([, file]) => drawsHeader(file) && !drawsHelpMark(file))
+      .map(([component]) => component)
+      .filter((component) => !(component in ALLOWED.pagesWithoutHelp))
+      .sort();
+    expect(missing).toEqual([...OFFENDERS.pagesWithoutHelp].sort());
   });
 
   it("[NFR-005] keeps a route page's header when it fails (UI-T22)", () => {

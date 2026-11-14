@@ -253,6 +253,7 @@ export function DashboardPage({
         title={dashboard.name}
         // A wallboard is read from across a room: its title and its widgets, nothing about itself.
         purpose={wallboard ? undefined : t('purpose.dashboard')}
+        about={wallboard ? undefined : t('about.dashboard')}
         eyebrow={
           wallboard
             ? undefined

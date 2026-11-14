@@ -84,6 +84,7 @@ export function BoardReportsPage({
         titleId={`${id}-title`}
         title={board ? t('reports.title', { name: board.name }) : t('reports.titleLoading')}
         purpose={t('purpose.boardReports')}
+        about={t('about.boardReports')}
         actions={
           <a className="button-quiet" href={routeHref(`#/boards/${boardId}`)}>
             {t('reports.back')}

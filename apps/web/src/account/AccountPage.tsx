@@ -104,7 +104,11 @@ export function AccountPage({
 
   return (
     <div className="page account-page">
-      <PageHeader title={t('account.title')} purpose={t(shown.introId)} />
+      <PageHeader
+        title={t('account.title')}
+        purpose={t(shown.introId)}
+        about={t('about.account')}
+      />
       {/* The row stays across sections, so the link chosen keeps focus; the content changes. */}
       <nav ref={bar} className="account-tabs" data-more={more} aria-label={t('account.sections')}>
         <ul>

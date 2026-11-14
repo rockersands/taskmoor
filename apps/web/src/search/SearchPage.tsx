@@ -207,7 +207,12 @@ export function SearchPage({
 
   return (
     <section aria-labelledby={titleId} className="page search-page">
-      <PageHeader titleId={titleId} title={t('search.title')} purpose={t('purpose.search')} />
+      <PageHeader
+        titleId={titleId}
+        title={t('search.title')}
+        purpose={t('purpose.search')}
+        about={t('about.search')}
+      />
       <AskQuery
         {...(ai.client ? { client: ai.client } : {})}
         {...(ai.notice ? { notice: ai.notice } : {})}

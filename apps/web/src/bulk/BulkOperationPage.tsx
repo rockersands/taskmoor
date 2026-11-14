@@ -332,6 +332,7 @@ export function BulkOperationPage({
         titleId={titleId}
         title={t(TITLES[op.action], { count: op.total })}
         purpose={t('purpose.bulk')}
+        about={t('about.bulk')}
       />
       {finished(op) && op.failed > 0 ? (
         // Some tickets failed: a warning, never a green "Done." (PL-23, D14).

@@ -123,6 +123,7 @@ export function CrossTrackReleasePage({
         title={data.name}
         eyebrow={<CrossTrackState state={data.state} />}
         purpose={t('purpose.crossTrack')}
+        about={t('crossTrack.about')}
         actions={
           <>
             {back}

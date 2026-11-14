@@ -1126,6 +1126,7 @@ export function CreateTicketPage({
           titleId={titleId}
           title={t('tickets.create.title')}
           purpose={t('purpose.createTicket')}
+          about={t('about.createTicket')}
         />
       )}
       {client.template && tracks.status === 'loaded' && tracks.value.length > 0 && (
