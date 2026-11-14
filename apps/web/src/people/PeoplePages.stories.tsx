@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, MEMBER } from '../admin/fixtures';
+import { textLines } from '../admin/textLines';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakePeopleClient, fakeTeamsClient, manyPeople } from './fixtures';
 import { GroupsPage } from './GroupsPage';
@@ -208,6 +209,28 @@ export const PeopleAtPhoneWidth: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'New person' }));
     await expect(await canvas.findByText('Grace Hopper')).toBeVisible();
     await expect(canvas.getByText(/^Add people, make site/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * On a phone each person's last sign-in stays on one line, whatever the length of the address
+ * before it: it broke inside the date, 'Nov / 14, 2026' (S3-AC-10).
+ */
+export const LastSignInWholeAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Grace Hopper');
+    const metas = [...canvasElement.querySelectorAll<HTMLElement>('.people-meta')];
+    await expect(metas.length).toBeGreaterThan(1);
+    for (const meta of metas) {
+      const signIn = ((meta.textContent ?? '').split(' · ')[1] ?? '').replace(/\s+/g, ' ');
+      await expect(signIn).toMatch(/^last signed in /);
+      // The phrase, spaces as the layout leaves them, is whole on one of the lines.
+      const lines = textLines(meta).map((line) => line.replace(/\s+/g, ' ').trim());
+      await expect(lines.some((line) => line.endsWith(signIn))).toBe(true);
+    }
     await fitsPhoneWidth(canvas);
   },
 };

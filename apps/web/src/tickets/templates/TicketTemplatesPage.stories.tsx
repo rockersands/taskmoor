@@ -54,7 +54,17 @@ export const ReadOnly: Story = {
   },
 };
 
-export const Empty: Story = { args: { client: fakeTemplateClient([]) } };
+/**
+ * No template yet: the title is worded like its neighbours' ('No webhooks yet', 'No API tokens
+ * yet'), a title and not a sentence with a period (S3-AC-4).
+ */
+export const Empty: Story = {
+  args: { client: fakeTemplateClient([]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No templates yet')).toBeVisible();
+  },
+};
 
 /** The form, open on a template with values, subtickets and a kept value. */
 export const Editing: Story = {

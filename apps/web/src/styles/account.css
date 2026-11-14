@@ -19,42 +19,14 @@
 }
 
 /*
- * The sections, as a row of tabs that scrolls inside itself on a phone (five need about 450 px):
- * the current one is brought into view, and an edge with more beyond it fades, as on a track's
- * tab bar. Not while a tab there has keyboard focus, so its ring is never faded out.
- *
- * The fade is as wide as a tab (D2, D17): a narrow one fell on the last few letters of a tab that
- * ended at the edge, which then looked whole, and nothing said 'Your data' was there. As wide as
- * a tab, whatever sits at the edge visibly thins out, so the row reads as going on.
+ * The sections, as a row of tabs that wraps onto a second line where five do not fit (about
+ * 450 px), so every section shows on a phone. A row that scrolled inside itself hid 'Your data'
+ * past the edge, and a fade there fell on a tab that still looked whole (the third sweep).
  */
-.account-tabs {
-  --tabs-fade: 6rem;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.account-tabs[data-more="end"]:not(:has(:focus-visible)) {
-  mask-image: linear-gradient(to right, #000 calc(100% - var(--tabs-fade)), transparent);
-}
-
-.account-tabs[data-more="start"]:not(:has(:focus-visible)) {
-  mask-image: linear-gradient(to left, #000 calc(100% - var(--tabs-fade)), transparent);
-}
-
-.account-tabs[data-more="both"]:not(:has(:focus-visible)) {
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 var(--tabs-fade),
-    #000 calc(100% - var(--tabs-fade)),
-    transparent
-  );
-}
-
 .account-tabs ul {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
-  width: max-content;
   margin: 0;
   padding: 0 0 var(--space-1);
   list-style: none;
@@ -172,10 +144,17 @@
   min-width: 0;
 }
 
+/* The miniature across the top; under it the radio beside the name and hint, on the card's own
+   fill, so it is drawn the same on every card in both skins (S3: Appearance radios). */
 .appearance-option {
   position: relative;
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "preview preview"
+    "radio text";
+  gap: var(--space-2) var(--space-2);
+  align-items: start;
   padding: var(--space-3);
   border: 2px solid var(--glass-edge);
   border-radius: var(--radius-2);
@@ -195,23 +174,15 @@
 }
 
 .appearance-option input {
-  position: absolute;
-  top: calc(var(--space-3) + 6px);
-  inset-inline-end: calc(var(--space-3) + 6px);
+  grid-area: radio;
   width: 20px;
   height: 20px;
-  margin: 0;
+  margin: 1px 0 0;
   accent-color: var(--color-accent);
-  /* Its own opaque chip: the field's clear glass let each miniature through, so the same radio
-     was a hollow ring on a light preview and a grey disc on a dark one. */
-  box-shadow: 0 0 0 3px var(--color-surface-raised);
-}
-
-.appearance-option input:not(:checked) {
-  background: var(--color-surface-raised);
 }
 
 .appearance-text {
+  grid-area: text;
   display: grid;
   gap: var(--space-half);
 }
@@ -231,6 +202,10 @@
   overflow: hidden;
   border-radius: var(--radius-1);
   box-shadow: var(--shadow-1);
+}
+
+.appearance-option .skin-preview {
+  grid-area: preview;
 }
 
 .skin-preview-split {

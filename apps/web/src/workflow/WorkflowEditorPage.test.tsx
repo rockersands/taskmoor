@@ -292,7 +292,10 @@ describe('workflow editor (M1-030)', () => {
     const client = fakeWorkflowsClient();
     const save = vi.spyOn(client, 'saveDraft');
     renderEditor(client);
-    await user.click(await screen.findByRole('button', { name: 'Add a transition' }));
+    // A filled New button, like every add action in administration (AD-19).
+    const add = await screen.findByRole('button', { name: 'New transition' });
+    expect(add).toHaveClass('button-primary');
+    await user.click(add);
     const name = screen.getByLabelText('Name');
     expect(name).toHaveFocus();
     await user.clear(name);

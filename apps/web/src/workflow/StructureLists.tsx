@@ -200,7 +200,8 @@ export function StructureLists({
           </ol>
         )}
         <div className="rule-actions">
-          <button type="button" className="button-secondary" onClick={onAddTransition}>
+          {/* A filled New button, as every add action in administration is (AD-19). */}
+          <button type="button" className="button-primary" onClick={onAddTransition}>
             {t('admin.workflow.addTransition')}
           </button>
         </div>

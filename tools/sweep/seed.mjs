@@ -236,7 +236,7 @@ export async function seedDemo(request, url) {
     }
   });
 
-  // A workflow with a draft, next to the published default.
+  // A second workflow next to the default, which no track uses (created published, version 1).
   await step('workflow draft', async () => {
     const { workflows } = await get('/workflows');
     ids.workflow = workflows.find((w) => w.isDefault)?.id ?? workflows[0]?.id;
@@ -248,7 +248,7 @@ export async function seedDemo(request, url) {
       draft = (
         await post('/workflows', {
           name: `${STAMP} draft`,
-          description: 'A draft nobody has published.',
+          description: 'A second workflow, which no track uses.',
           definition,
         })
       ).workflow;

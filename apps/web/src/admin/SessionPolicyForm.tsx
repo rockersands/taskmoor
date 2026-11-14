@@ -24,12 +24,19 @@ const IDLE = { min: 5, max: 90 * 24 * 60 };
 
 /** The units a length is entered in (D22), with their minutes. */
 const UNITS = { minutes: 1, hours: 60, days: 24 * 60 } as const;
-type Unit = keyof typeof UNITS;
+export type Unit = keyof typeof UNITS;
+const EVERY_UNIT: readonly Unit[] = ['minutes', 'hours', 'days'];
 
-/** A number and a unit for a length in minutes: the largest unit that holds it whole. */
-export function inUnits(minutes: number): { amount: string; unit: Unit } {
-  const unit: Unit =
-    minutes % UNITS.days === 0 ? 'days' : minutes % UNITS.hours === 0 ? 'hours' : 'minutes';
+/**
+ * A number and a unit for a length in minutes: the largest of `units` that holds it whole
+ * (minutes are always among them).
+ */
+export function inUnits(
+  minutes: number,
+  units: readonly Unit[] = EVERY_UNIT,
+): { amount: string; unit: Unit } {
+  const unit =
+    [...units].reverse().find((u) => minutes % UNITS[u] === 0 && minutes !== 0) ?? 'minutes';
   return { amount: String(minutes / UNITS[unit]), unit };
 }
 
@@ -47,8 +54,8 @@ type State =
 /**
  * The session part of the Security page (the user's decision of 2026-11-01): how long a
  * sign-in lasts and how long it may go unused, each a number with a unit picker (minutes, hours
- * or days, D22); the defaults are 14 days and 3 days, and ASVS level 2 asks for 12 hours and 30
- * minutes, which the hint names.
+ * or days, D22); the defaults are 14 days and 3 days, and ASVS level 2 asks for a sign-in of at
+ * most 12 hours that ends after 30 minutes unused, which the hint names (S3-AC-5).
  */
 export function SessionPolicyForm({
   client = sessionPolicyClient,
@@ -178,19 +185,24 @@ export function SessionPolicyForm({
   );
 }
 
-/** A length as a number and its unit, side by side (D22). */
-function LengthField({
+/**
+ * A length as a number and its unit, side by side (D22): the session lengths here, and the
+ * windows of the security alerts (S3-AC-6), which offer minutes and hours.
+ */
+export function LengthField({
   id,
   label,
   hintId,
   value,
   onChange,
+  units = EVERY_UNIT,
 }: {
   id: string;
   label: string;
   hintId: string;
   value: { amount: string; unit: Unit };
   onChange: (value: { amount: string; unit: Unit }) => void;
+  units?: readonly Unit[];
 }) {
   const t = useT();
   return (
@@ -212,7 +224,7 @@ function LengthField({
           value={value.unit}
           onChange={(event) => onChange({ ...value, unit: event.target.value as Unit })}
         >
-          {(Object.keys(UNITS) as Unit[]).map((unit) => (
+          {units.map((unit) => (
             <option key={unit} value={unit}>
               {t(`admin.sessions.unit.${unit}`)}
             </option>

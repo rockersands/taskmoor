@@ -23,8 +23,8 @@ Open the menu with your name at the right of the top bar. It says **Signed in as
 and offers **Account** and **Sign out**. You also reach the page from **Settings**
 and from the command palette (**Account**). It opens at **Profile**; the row of sections under
 the title leads to the others, and the line under the title says what the section holds. On a
-phone the row scrolls sideways on its own: the section you are in is moved into view, and an edge
-that fades out over about a tab's width says more sections are that way. Notification emails link straight to **Notifications**.
+phone the row wraps onto a second line, so every section shows. Notification emails link straight
+to **Notifications**.
 
 ## Signing in
 
@@ -84,8 +84,7 @@ what they say; a dialog or the palette also dims the whole page behind it.
 
 Check boxes and radio buttons look the same everywhere, in both skins: a clear box with a visible
 edge when off, the accent colour with a tick or a dot when on. On the **Appearance** cards each
-radio sits on a small solid chip of its own, so it looks the same over a light and a dark
-preview.
+radio sits under the preview, beside the choice's name, so it looks the same on every card.
 
 Things move in a quick, watery way: menus and dialogs swell open and settle, and a card you move
 drops into place. If you have asked your system for reduced motion, nothing animates and everything

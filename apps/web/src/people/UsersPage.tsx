@@ -306,8 +306,13 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             )
                           )}
                         </p>
+                        {/* The sign-in date stays whole: it moves to the next line as one piece,
+                            wherever the address ends (S3-AC-10). */}
                         <p className="people-meta">
-                          {u.email} · {t('admin.users.lastSignIn', { date: when(u.lastSignInAt) })}
+                          {u.email} ·{' '}
+                          <span className="people-meta-whole">
+                            {t('admin.users.lastSignIn', { date: when(u.lastSignInAt) })}
+                          </span>
                         </p>
                       </div>
                       {!u.erased && (

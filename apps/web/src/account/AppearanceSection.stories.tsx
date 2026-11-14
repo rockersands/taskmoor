@@ -25,30 +25,26 @@ type Story = StoryObj<typeof meta>;
 
 export const FollowsTheDevice: Story = {};
 
-/** Whether a colour as the browser writes it lets anything through. */
-const opaque = (colour: string) => {
-  // rgb(r, g, b) has three numbers; a fourth, in rgba() or after a slash, is the alpha.
-  const alpha = colour.match(/[\d.]+/g)?.[3];
-  return alpha === undefined || Number(alpha) === 1;
-};
-
 /**
- * An unselected radio looks the same on every card, in either skin: it sits on its own solid chip
- * over the miniature, so a light preview and a dark one no longer show through it as a hollow
- * ring on one card and a grey disc on the other.
+ * An unselected radio looks the same on every card, in either skin: it sits on the card's own
+ * fill beside the name, under the miniature. Drawn over the miniature it showed the preview's
+ * colours around it, a hollow ring on the dark preview and a solid disc on the light one, even
+ * on a chip of its own (the third sweep).
  */
 export const RadiosLookAlikeOnEveryPreview: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const off = ['Light', 'Dark'].map((name) => canvas.getByRole('radio', { name }));
     for (const radio of off) await expect(radio).not.toBeChecked();
-    const drawn = off.map((radio) => {
-      const style = getComputedStyle(radio);
-      return { fill: style.backgroundColor, edge: style.borderTopColor, chip: style.boxShadow };
-    });
-    await expect(drawn[0]).toEqual(drawn[1]);
-    await expect(opaque(drawn[0]?.fill ?? '')).toBe(true);
-    await expect(drawn[0]?.chip).not.toBe('none');
+    for (const radio of [...off, canvas.getByRole('radio', { name: 'System' })]) {
+      const card = radio.closest('.appearance-option') as HTMLElement;
+      const preview = (card.querySelector('.skin-preview') as HTMLElement).getBoundingClientRect();
+      const dot = radio.getBoundingClientRect();
+      // Below the miniature, beside the name.
+      await expect(dot.top).toBeGreaterThanOrEqual(preview.bottom);
+      const name = card.querySelector('.appearance-name') as HTMLElement;
+      await expect(dot.right).toBeLessThanOrEqual(name.getBoundingClientRect().left);
+    }
   },
 };
 

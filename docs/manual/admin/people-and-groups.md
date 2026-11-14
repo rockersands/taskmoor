@@ -238,7 +238,7 @@ By default a session lasts 14 days, and ends earlier after 3 days without use. O
 unused for**, each a whole number with its unit (minutes, hours or days; the page shows a length
 in the largest unit that holds it whole), then select **Save session settings**. A sign-in lasts
 1 hour to 90 days, and the idle time is 5 minutes or more and no longer than the sign-in. The security checklist (ASVS level
-2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
+2) asks for a sign-in of at most 12 hours that ends after 30 minutes unused. A shorter setting also ends the sessions that are older or
 idler than the new limits; it applies to frontends on another site too. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
 only a hash of it.
 
@@ -272,14 +272,16 @@ audit log gets one `access.refused_repeatedly` record when the refusals in the w
 and one more at 100, 1,000 and so on, with the count and the last route.
 
 **Alerts.** On **Administration** > **Security**, under **Security alerts**, each rule has **Alert on
-this**, **Alert after this many** and **Within this many minutes**:
+this**, **Alert after this many** and **Within this time**, a whole number with its unit (minutes
+or hours, from 1 minute to 24 hours; the page shows a window in the largest unit that holds it
+whole):
 
 | Rule | Counts | Default |
 |---|---|---|
-| **Failed sign-ins for one account** | Failed sign-ins and password checks for the account | 10 within 60 minutes |
+| **Failed sign-ins for one account** | Failed sign-ins and password checks for the account | 10 within 1 hour |
 | **Failed sign-ins from one address** | The same, plus refused API tokens, from one IP address | 25 within 15 minutes |
 | **Refused requests of one person or token** | HTTP 403 answers | 50 within 15 minutes |
-| **Bulk exports by one person** | Full exports, audit log exports and search result exports | 5 within 60 minutes |
+| **Bulk exports by one person** | Full exports, audit log exports and search result exports | 5 within 1 hour |
 
 Select **Save alert rules**. Windows are fixed: a 15-minute window starts on the quarter hour.
 A rule raises at most one alert per window for the same account, address, person or token.

@@ -311,7 +311,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.security.about':
     'Quién debe usar un segundo factor, cuánto dura un inicio de sesión y cuándo termina uno inactivo, y qué alertas de seguridad se lanzan y quién las recibe. Los cambios se aplican al siguiente inicio de sesión.',
   'purpose.security':
-    'Las reglas que protegen las cuentas: segundos factores y las alertas que recibes.',
+    'Las reglas que protegen las cuentas: segundos factores, cuánto dura una sesión y las alertas que recibes.',
   'admin.system.about':
     'Consúltalo cuando algo parezca ir mal: si la base de datos responde, cómo van las tareas en segundo plano y las copias de seguridad, y qué versión se ejecuta. Las horas se muestran en tu zona horaria salvo que digan UTC.',
   'purpose.system': 'Cómo está este sitio ahora mismo: su base de datos, sus tareas y su versión.',
@@ -561,7 +561,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Un flujo de trabajo enumera los estados por los que pasan los tickets y los pasos entre ellos. Vas a dibujar uno, publicarlo y dárselo a un track. Es real y se queda en este sitio.',
   'tutorial.step.workflows.newWorkflow.title': 'Empieza un flujo de trabajo nuevo',
   'tutorial.step.workflows.newWorkflow.body':
-    'En la página Flujos de trabajo de Administración, elige Crear un flujo de trabajo.',
+    'En la página Flujos de trabajo de Administración, elige Nuevo flujo de trabajo.',
   'tutorial.step.workflows.workflowForm.title': 'Ponle nombre y créalo',
   'tutorial.step.workflows.workflowForm.body':
     'Dale un nombre y elige cómo empieza: con movimiento libre o como copia de un flujo que ya tengas. Al crearlo se abre el editor.',
@@ -2364,7 +2364,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sessions.unit.hours': 'horas',
   'admin.sessions.unit.days': 'días',
   'admin.sessions.hint':
-    'Más corto es más seguro: la lista de seguridad (ASVS nivel 2) pide 12 horas y 30 minutos. Un cambio también termina las sesiones más antiguas que los nuevos límites.',
+    'Más corto es más seguro: la lista de seguridad (ASVS nivel 2) pide una sesión de 12 horas como máximo que termine tras 30 minutos sin uso. Un cambio también termina las sesiones más antiguas que los nuevos límites.',
   'admin.sessions.save': 'Guardar los ajustes de sesión',
   'admin.sessions.saved': 'Ajustes de sesión guardados.',
   'admin.sessions.saveFailed': 'No se pudieron guardar los ajustes de sesión. Inténtalo de nuevo.',
@@ -2381,14 +2381,16 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.alerts.rule.bulk_exports': 'Exportaciones masivas de una persona',
   'admin.alerts.enabled': 'Avisar de esto',
   'admin.alerts.threshold': 'Avisar a partir de esta cantidad',
-  'admin.alerts.window': 'En este número de minutos',
-  'admin.alerts.default': 'Por defecto: {threshold} en {minutes} minutos.',
+  'admin.alerts.window': 'En este tiempo',
+  'admin.alerts.length':
+    '{unit, select, hours {{amount, plural, one {# hora} other {# horas}}} other {{amount, plural, one {# minuto} other {# minutos}}}}',
+  'admin.alerts.default': 'Por defecto: {threshold} en {length}.',
   'admin.alerts.save': 'Guardar reglas de alerta',
   'admin.alerts.saved': 'Reglas de alerta guardadas.',
   'admin.alerts.saveFailed': 'No se pudieron guardar las reglas de alerta. Inténtalo de nuevo.',
   'admin.alerts.failed': 'No se pudieron cargar las reglas de alerta.',
   'admin.alerts.outOfRange':
-    'Elige un número de 1 a 100.000, en 1 a 1.440 minutos, para cada regla.',
+    'Elige un número de 1 a 100.000, en un tiempo de 1 minuto a 24 horas, para cada regla.',
   'admin.alerts.recent': 'Últimas alertas',
   'admin.alerts.none': 'No se ha generado ninguna alerta.',
   'admin.alerts.raised': '{rule}: {count} en {minutes} minutos, {time}',
@@ -4054,7 +4056,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.forbidden':
     'Solo los administradores del sitio y de la configuración gestionan los flujos de trabajo.',
   'admin.workflows.list': 'Flujos de trabajo de este sitio',
-  'admin.workflows.create': 'Crear un flujo de trabajo',
+  'admin.workflows.create': 'Nuevo flujo de trabajo',
   'admin.workflows.none': 'Aún no hay flujos de trabajo.',
   'admin.workflows.default': 'Predeterminado',
   'admin.workflows.draftBadge': 'Borrador de la versión {version}',
@@ -4215,7 +4217,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.addStatusButton': 'Añadir al flujo de trabajo',
   'admin.workflow.allStatusesUsed':
     'Todos los estados del sitio están en este flujo de trabajo. Los estados nuevos se añaden en la página Flujos de trabajo.',
-  'admin.workflow.addTransition': 'Añadir una transición',
+  'admin.workflow.addTransition': 'Nueva transición',
   'admin.workflow.newTransition': 'Transición nueva',
   'admin.workflow.noTransitions': 'Aún no hay transiciones.',
   'admin.workflow.initialBadge': 'Estado inicial',
@@ -6747,7 +6749,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Solo los administradores de este track pueden cambiar sus plantillas.',
   'tickets.templates.readOnlyEveryTrack':
     'Solo los administradores de configuración pueden cambiar estas plantillas.',
-  'tickets.templates.none': 'Todavía no hay plantillas aquí.',
+  'tickets.templates.none': 'Aún no hay plantillas',
   'tickets.templates.new': 'Nueva plantilla',
   'tickets.templates.saved': 'Se guardó la plantilla {name}.',
   'tickets.templates.deleted': 'Se eliminó la plantilla {name}.',

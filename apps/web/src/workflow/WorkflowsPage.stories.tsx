@@ -85,7 +85,7 @@ export const CreatingAWorkflow: Story = {
   args: { client: fakeWorkflowsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Create a workflow' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New workflow' }));
     await expect(canvas.getByRole('form', { name: 'New workflow' })).toBeVisible();
     await userEvent.keyboard('Releases');
     await expect(canvas.getByLabelText('Initial status')).toBeVisible();

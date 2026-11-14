@@ -22,6 +22,36 @@ type Story = StoryObj<typeof meta>;
 /** The defaults and the two latest alerts. */
 export const Defaults: Story = {};
 
+/**
+ * Each window is a narrow number with a unit picker, like the session lengths on the same page,
+ * and the count beside it is as narrow (S3-AC-6): both were plain fields across the whole panel.
+ */
+export const WindowsWithAUnit: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 900 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rule = await canvas.findByRole('group', { name: 'Failed sign-ins for one account' });
+    const window = within(rule).getByLabelText('Within this time');
+    const unit = within(rule).getByRole('combobox', { name: 'Unit of “Within this time”' });
+    await expect(window).toHaveValue(1);
+    await expect(unit).toHaveValue('hours');
+    const count = within(rule).getByLabelText('Alert after this many');
+    const panel = rule.getBoundingClientRect().width;
+    for (const field of [window, count]) {
+      await expect(field.getBoundingClientRect().width).toBeLessThan(panel / 3);
+    }
+    await expect(Math.round(count.getBoundingClientRect().width)).toBe(
+      Math.round(window.getBoundingClientRect().width),
+    );
+  },
+};
+
 /** No alert raised yet. */
 export const NoAlerts: Story = {
   args: { client: fakeAlertsClient([]) },

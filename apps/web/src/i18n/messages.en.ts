@@ -296,7 +296,7 @@ export const messagesEn = {
   'admin.security.about':
     'Who must use a second factor, how long a sign-in lasts and when an idle one ends, and which security alerts are raised and who receives them. Changes apply to the next sign-in.',
   'purpose.security':
-    'The rules that keep accounts safe: second factors and the alerts you receive.',
+    'The rules that keep accounts safe: second factors, how long sign-ins last and the alerts you receive.',
   'admin.system.about':
     'Read when something seems wrong: whether the database answers, how the background jobs and backups are doing, and which version runs. Times are shown in your time zone unless they say UTC.',
   'purpose.system': 'How this site is doing right now: its database, its jobs and its version.',
@@ -540,7 +540,7 @@ export const messagesEn = {
     'A workflow lists the statuses tickets move through and the moves between them. You will draw one, publish it and give it to a track. It is real and stays on this site.',
   'tutorial.step.workflows.newWorkflow.title': 'Start a new workflow',
   'tutorial.step.workflows.newWorkflow.body':
-    'On the Workflows page in Administration, choose Create a workflow.',
+    'On the Workflows page in Administration, choose New workflow.',
   'tutorial.step.workflows.workflowForm.title': 'Name it and create it',
   'tutorial.step.workflows.workflowForm.body':
     'Give it a name and choose how it starts: moving freely, or as a copy of a workflow you have. Creating it opens the editor.',
@@ -2299,7 +2299,7 @@ export const messagesEn = {
   'admin.sessions.unit.hours': 'hours',
   'admin.sessions.unit.days': 'days',
   'admin.sessions.hint':
-    'Shorter is safer: the security checklist (ASVS level 2) asks for 12 hours and 30 minutes. A change also ends sign-ins older than the new limits.',
+    'Shorter is safer: the security checklist (ASVS level 2) asks for a sign-in of at most 12 hours that ends after 30 minutes unused. A change also ends sign-ins older than the new limits.',
   'admin.sessions.save': 'Save session settings',
   'admin.sessions.saved': 'Session settings saved.',
   'admin.sessions.saveFailed': 'The session settings could not be saved. Try again.',
@@ -2316,14 +2316,16 @@ export const messagesEn = {
   'admin.alerts.rule.bulk_exports': 'Bulk exports by one person',
   'admin.alerts.enabled': 'Alert on this',
   'admin.alerts.threshold': 'Alert after this many',
-  'admin.alerts.window': 'Within this many minutes',
-  'admin.alerts.default': 'Default: {threshold} within {minutes} minutes.',
+  'admin.alerts.window': 'Within this time',
+  'admin.alerts.length':
+    '{unit, select, hours {{amount, plural, one {# hour} other {# hours}}} other {{amount, plural, one {# minute} other {# minutes}}}}',
+  'admin.alerts.default': 'Default: {threshold} within {length}.',
   'admin.alerts.save': 'Save alert rules',
   'admin.alerts.saved': 'Alert rules saved.',
   'admin.alerts.saveFailed': 'The alert rules could not be saved. Try again.',
   'admin.alerts.failed': 'The alert rules could not be loaded.',
   'admin.alerts.outOfRange':
-    'Choose a number from 1 to 100,000, within 1 to 1,440 minutes, for every rule.',
+    'Choose a number from 1 to 100,000, within 1 minute to 24 hours, for every rule.',
   'admin.alerts.recent': 'Latest alerts',
   'admin.alerts.none': 'No alert has been raised.',
   'admin.alerts.raised': '{rule}: {count} in {minutes} minutes, {time}',
@@ -3951,7 +3953,7 @@ export const messagesEn = {
   'admin.workflows.failed': 'The workflows could not be loaded. Try again later.',
   'admin.workflows.forbidden': 'Only site and configuration administrators manage workflows.',
   'admin.workflows.list': 'Workflows on this site',
-  'admin.workflows.create': 'Create a workflow',
+  'admin.workflows.create': 'New workflow',
   'admin.workflows.none': 'No workflows yet.',
   'admin.workflows.default': 'Default',
   'admin.workflows.draftBadge': 'Draft version {version}',
@@ -4107,7 +4109,7 @@ export const messagesEn = {
   'admin.workflow.addStatusButton': 'Add to workflow',
   'admin.workflow.allStatusesUsed':
     'Every status of the site is in this workflow. New statuses are added on the Workflows page.',
-  'admin.workflow.addTransition': 'Add a transition',
+  'admin.workflow.addTransition': 'New transition',
   'admin.workflow.newTransition': 'New transition',
   'admin.workflow.noTransitions': 'No transitions yet.',
   'admin.workflow.initialBadge': 'Initial status',
@@ -6594,7 +6596,7 @@ export const messagesEn = {
     'Only the administrators of this track can change its templates.',
   'tickets.templates.readOnlyEveryTrack':
     'Only configuration administrators can change these templates.',
-  'tickets.templates.none': 'There are no templates here yet.',
+  'tickets.templates.none': 'No templates yet',
   'tickets.templates.new': 'New template',
   'tickets.templates.saved': 'Template {name} was saved.',
   'tickets.templates.deleted': 'Template {name} was deleted.',

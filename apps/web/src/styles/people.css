@@ -132,6 +132,11 @@
   overflow-wrap: anywhere;
 }
 
+/* A phrase that does not break inside, such as 'last signed in Nov 14, 2026' (S3-AC-10). */
+.people-meta-whole {
+  white-space: nowrap;
+}
+
 .people-actions {
   display: flex;
   flex-wrap: wrap;
