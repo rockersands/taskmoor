@@ -222,11 +222,13 @@
 }
 
 /* A chip is a row with its text centred in its height: on touch it is a finger tall (D9). The
-   text keeps to one line and ends in an ellipsis. */
+   text keeps to one line and ends in an ellipsis. With a mouse it is at least the 24 px its grip
+   needs, so the grip, as tall as its entry, never sticks out of a chip whose line is shorter. */
 .calendar-chip {
   display: flex;
   align-items: center;
   width: 100%;
+  min-height: 24px;
   overflow: hidden;
   padding: var(--space-half) var(--space-1);
   border: 1px solid var(--glass-edge);
@@ -299,7 +301,6 @@
   inset-inline-end: 0;
   width: 24px;
   height: auto;
-  min-height: 24px;
   border-radius: var(--radius-mark);
   background: var(--glass-surface-strong);
   opacity: 0;

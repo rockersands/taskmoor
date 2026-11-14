@@ -57,7 +57,7 @@ The same settings are at `GET` and `PUT /api/v1/admin/mcp`, with `enabled`, `pro
 |---|---|---|
 | `search_tickets` | Finds tickets with [the query language](../use/search.md); up to 50 per call (20 unless asked), with a cursor for more | Read-only |
 | `get_ticket` | Reads one ticket by key, with its description in Markdown, status, people and dates | Read-only |
-| `list_tracks` | Lists the tracks the caller may browse, with their keys | Read-only |
+| `list_tracks` | Lists the tracks the caller may browse, with their keys, in key order; up to 500 per call (100 unless asked), with a cursor for more | Read-only |
 | `list_boards` | Lists the boards the caller may see, optionally of one track | Read-only |
 | `list_sprints` | Lists a Scrum board's sprints with their states and dates | Read-only |
 | `create_ticket` | Creates a ticket in a track; the ticket type and priority are given by name, the description in Markdown | Planner |

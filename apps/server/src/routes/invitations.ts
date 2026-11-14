@@ -50,6 +50,21 @@ export const ADDRESS_LIMITS = { rate: 5 / 3600, burst: 5 };
 export type InvitationMail = () => Promise<{ transport: MailTransport; from: string } | null>;
 
 const id = z.coerce.number().int().positive();
+/**
+ * A page of a track's pending invitations, newest sent first (T-305): `after` is the `next` of
+ * the page before (when the last one was sent, in microseconds, and its id), so a track with
+ * more than a page of them shows every one.
+ */
+const invitationsQuery = z
+  .object({
+    after: z
+      .string()
+      .regex(/^\d{1,18}-\d{1,10}$/)
+      .refine((v) => Number(v.split('-')[1]) <= 2_147_483_647)
+      .optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(500),
+  })
+  .strict();
 const delivery = z.enum(['email', 'link']);
 const inviteBody = z
   .object({
@@ -233,8 +248,10 @@ export function registerInvitationRoutes(
 
   app.get('/api/v1/tracks/:id/invitations', async (request, reply) => {
     const params = z.object({ id }).safeParse(request.params);
-    if (!params.success) return invalid(reply);
+    const query = invitationsQuery.safeParse(request.query);
+    if (!params.success || !query.success) return invalid(reply);
     const trackId = params.data.id;
+    const { after, limit } = query.data;
     if (!(await runningTrack(request, reply, trackId))) return reply;
     const ws = request.workspaceId;
     const rows = await db
@@ -252,15 +269,26 @@ export function registerInvitationRoutes(
         'i.last_error',
         'i.last_sent_at',
         'i.expires_at',
+        sql<string>`(extract(epoch from i.last_sent_at) * 1000000)::bigint::text`.as('sent_micros'),
       ])
       .where('i.track_id', '=', trackId)
       .where('i.workspace_id', '=', ws)
       .where('i.accepted_at', 'is', null)
       .where('i.revoked_at', 'is', null)
+      .$if(after !== undefined, (qb) => {
+        const [micros, lastId] = (after as string).split('-');
+        return qb.where(
+          sql<boolean>`(i.last_sent_at, i.id) < (timestamptz 'epoch' + ${micros}::bigint * interval '1 microsecond', ${Number(lastId)}::int)`,
+        );
+      })
       .orderBy('i.last_sent_at', 'desc')
       .orderBy('i.id', 'desc')
-      .limit(500)
+      .limit(limit + 1)
       .execute();
+    const more = rows.length > limit;
+    if (more) rows.length = limit;
+    const last = rows[rows.length - 1];
+    const next = more && last ? `${last.sent_micros}-${last.id}` : null;
     const policy = await readPolicy(db, ws);
     const now = new Date();
     const invitations = await Promise.all(
@@ -298,6 +326,7 @@ export function registerInvitationRoutes(
     const emailAvailable = (await mailReady()) !== null;
     return {
       invitations,
+      next,
       canInvite: await request.authz.can('invite_people', trackId),
       invitingGiven: given !== undefined,
       emailAvailable,

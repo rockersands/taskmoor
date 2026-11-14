@@ -76,8 +76,6 @@ export const ALLOWED = {
       'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
     '.create-dialog .create-form > .form-actions':
       "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
-    '.plan-timeline .timeline-edge':
-      "a plan timeline's Earlier or Later marker: today's line runs under it, and would cross its words through glass (PL-6)",
     '.timeline-fade':
       'the rows fading out at the foot of the timeline, into the colour of its sticky cells; no text',
     '.skin-preview-bar': SKIN_PREVIEW,

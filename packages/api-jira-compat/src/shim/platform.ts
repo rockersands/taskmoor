@@ -31,6 +31,29 @@ async function searchPage(
   return ok(res);
 }
 
+/** Tracks read in full at most, a backstop against a list that never ends. */
+const MOST_TRACKS = 20_000;
+
+/**
+ * Every track the caller may browse, a page of 500 at a time: the native list pages by `after`
+ * (the last key of the page before, T-305), so reading its first page alone left out every
+ * track past it. `q` narrows the list on the server, by key or name. Stops at a repeated `after`.
+ */
+async function everyTrack(ctx: ShimContext, q?: string): Promise<Any[]> {
+  const all: Any[] = [];
+  let after: string | null = null;
+  do {
+    const params = new URLSearchParams({ limit: '500' });
+    if (q) params.set('q', q);
+    if (after !== null) params.set('after', after);
+    const page = ok(await ctx.native('GET', `/api/v1/tracks?${params}`));
+    all.push(...((page.tracks ?? []) as Any[]));
+    const next: string | null = page.next ?? null;
+    after = next !== null && next !== after ? next : null;
+  } while (after !== null && all.length < MOST_TRACKS);
+  return all;
+}
+
 async function tokenSearch(ctx: ShimContext, input: Any) {
   const jql = String(input.jql ?? '');
   const max = Math.min(5000, Math.max(1, Number(input.maxResults ?? 50) || 50));
@@ -291,7 +314,7 @@ export const PLATFORM_ROUTES: readonly ShimRoute[] = [
     method: 'GET',
     path: `${API}/project`,
     handle: async (ctx) => {
-      const list = ok(await ctx.native('GET', '/api/v1/tracks?limit=200')).tracks as Any[];
+      const list = await everyTrack(ctx);
       return { status: 200, body: list.map((t) => project(t, ctx.baseUrl)) };
     },
   },
@@ -299,14 +322,12 @@ export const PLATFORM_ROUTES: readonly ShimRoute[] = [
     method: 'GET',
     path: `${API}/project/search`,
     handle: async (ctx) => {
-      const list = ok(await ctx.native('GET', '/api/v1/tracks?limit=200')).tracks as Any[];
       const startAt = Math.max(0, Number(ctx.query.startAt ?? 0) || 0);
       const maxResults = Math.min(100, Math.max(1, Number(ctx.query.maxResults ?? 50) || 50));
-      const q = (ctx.query.query ?? '').toLowerCase();
-      const found = list.filter(
-        (t) =>
-          !q || String(t.key).toLowerCase().includes(q) || String(t.name).toLowerCase().includes(q),
-      );
+      // The server matches the query against key and name, ignoring case; no key or name is
+      // longer than 255 characters, so a longer query finds nothing.
+      const q = (ctx.query.query ?? '').trim();
+      const found = q.length > 255 ? [] : await everyTrack(ctx, q || undefined);
       const values = found.slice(startAt, startAt + maxResults).map((t) => project(t, ctx.baseUrl));
       return {
         status: 200,

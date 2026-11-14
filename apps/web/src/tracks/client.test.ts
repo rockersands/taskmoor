@@ -1,5 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FIRST_PAGE_TRACK, SECOND_PAGE_TRACK, stubTwoTrackPages } from '../test/trackPages';
 import { trackClient } from './client';
+
+describe('the Tracks directory (T-305)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('[CORE-001] lists every track the person sees, past the list’s first page', async () => {
+    const asked = stubTwoTrackPages();
+    expect(await trackClient.list()).toEqual([FIRST_PAGE_TRACK, SECOND_PAGE_TRACK]);
+    expect(asked).toEqual(['/tracks?limit=500', '/tracks?limit=500&after=AAA']);
+  });
+});
 
 describe('the custom fields a track’s statistics group by (T-251)', () => {
   afterEach(() => {

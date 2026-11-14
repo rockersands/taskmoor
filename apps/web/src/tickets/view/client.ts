@@ -1,5 +1,6 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { api } from '../../api/client';
+import { everyPage } from '../../api/pages';
 import { lockOfField } from '../../locks/useLockText';
 import type { TicketForm } from '../form';
 
@@ -201,8 +202,14 @@ export const ticketClient: TicketClient = {
     api<{ changes: HistoryEntry[]; next: string | null }>(
       `/tickets/${id}/history?limit=50${before === undefined ? '' : `&cursor=${before}`}`,
     ),
-  timeEntries: async (id) =>
-    (await api<{ timeEntries: TimeEntry[] }>(`/tickets/${id}/time-entries`)).timeEntries,
+  // Every entry, oldest first: the route answers 100 a page by default, and the newest are last.
+  timeEntries: (id) =>
+    everyPage<TimeEntry, number>(async (after) => {
+      const page = await api<{ timeEntries: TimeEntry[]; next: number | null }>(
+        `/tickets/${id}/time-entries?limit=500${after === null ? '' : `&cursor=${after}`}`,
+      );
+      return { items: page.timeEntries, next: page.next };
+    }),
   logTime: async (id, entry) =>
     (
       await api<{ timeEntry: TimeEntry }>(`/tickets/${id}/time-entries`, {

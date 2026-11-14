@@ -1,4 +1,5 @@
 import { api, openSocket } from '../api/client';
+import { everyTrack } from '../api/tracks';
 
 /** One inbox item, as `GET /api/v1/inbox` gives it (M1-058; NTF-003). */
 export interface InboxItem {
@@ -181,7 +182,7 @@ export const inboxClient: InboxClient = {
     }),
   readAll: (query) =>
     api<{ marked: number; unread: UnreadCounts }>('/inbox/read', { method: 'POST', body: query }),
-  tracks: async () => (await api<{ tracks: InboxTrack[] }>('/tracks')).tracks,
+  tracks: () => everyTrack<InboxTrack>(),
   subscribe: subscribeSocket,
 };
 
