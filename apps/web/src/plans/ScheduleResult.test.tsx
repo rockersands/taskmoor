@@ -207,6 +207,26 @@ describe('the result of a run that evened out load (PLN-011)', () => {
     expect(screen.getByRole('button', { name: 'Moved (300)' })).toBeVisible();
   });
 
+  it('[PLN-011] [NFR-006] agrees in Spanish with a count of one', () => {
+    const run = evenOutRunFixture();
+    render(
+      <I18nProvider locale="es">
+        <ScheduleResult
+          run={run}
+          unit="points"
+          names={scheduleLookup(run.result)}
+          compareHref="#/plans/12/scenarios?scenario=2&a=1&b=2"
+          compareWith="main"
+        />
+      </I18nProvider>,
+    );
+    expect(
+      screen.getByText(
+        '2 tickets movidos más tarde, 1 mantenido, 2 sin mover, 0 propuestas anteriores eliminadas.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[PLN-011] says when every team and person is within capacity after the run', () => {
     show(evenOutRunFixture({ overLeft: [] }));
     const over = screen.getByRole('region', { name: 'Still over capacity' });

@@ -7592,7 +7592,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Solo el propietario del plan y los administradores del sitio capturan, renombran y eliminan líneas base.',
   'baselines.empty': 'Aún no hay líneas base',
   'baselines.emptyBody':
-    'Captura una antes de que el trabajo se mueva y compárala después con los días de entonces.',
+    'Captura una antes de que el trabajo se mueva y compárala más adelante con los días actuales.',
   'baselines.fromLive': 'Desde En vivo',
   'baselines.fromScenario': 'Desde {name}',
   'baselines.madeBy': 'Capturada por {name} el {when}',
@@ -7958,7 +7958,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Una ejecución que reparte la carga y una por rango reemplazan las propuestas de la otra; las dos parten de las fechas de los tickets y de los borradores de las personas.',
   'schedule.evenOut.title': 'Repartir la carga',
   'schedule.evenOut.counts':
-    '{moved, plural, one {# ticket movido} other {# tickets movidos}} más tarde, {kept} mantenidos, {notMoved} sin mover, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
+    '{moved, plural, one {# ticket movido} other {# tickets movidos}} más tarde, {kept, plural, one {# mantenido} other {# mantenidos}}, {notMoved} sin mover, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
   'schedule.evenOut.moved': 'Movidos ({count})',
   'schedule.evenOut.notMoved': 'Sin mover ({count})',
   'schedule.evenOut.overLeft': 'Aún por encima de la capacidad',

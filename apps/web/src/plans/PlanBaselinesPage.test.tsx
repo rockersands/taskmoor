@@ -224,6 +224,25 @@ describe('a plan’s baselines (PLN-011)', () => {
     expect(await screen.findByText('This baseline or scenario no longer exists.')).toBeVisible();
   });
 
+  it('[NFR-006] says in Spanish that a baseline is compared later with the days as they are then', async () => {
+    render(
+      <I18nProvider locale="es">
+        <PlanBaselinesPage
+          planId={12}
+          planName="Spring launch"
+          client={fakeBaselineClient({ baselines: [] })}
+          view={{ filters: {}, group: null }}
+          scenario={null}
+        />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText(
+        'Captura una antes de que el trabajo se mueva y compárala más adelante con los días actuales.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[NFR-006] passes every string through the pseudo-locale', async () => {
     const errors: Error[] = [];
     const view = render(
