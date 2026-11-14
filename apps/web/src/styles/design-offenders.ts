@@ -80,6 +80,8 @@ export const ALLOWED = {
       "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
     '.timeline-fade':
       'the rows fading out at the foot of the timeline, into the colour of its sticky cells; no text',
+    '.timeline-head::after':
+      'the head’s labels fading out at the right edge of the timeline, into its sticky head’s colour; no text',
     '.skin-preview-bar': SKIN_PREVIEW,
     '.skin-preview-card': SKIN_PREVIEW,
   },
@@ -126,6 +128,7 @@ export const ALLOWED = {
     'plans/ProgramBoardPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoards.noField': MISSING_SETUP,
+    'plans/ProgramBoardsPage.tsx programBoards.noFieldAdmin': MISSING_SETUP,
     'plans/ScenarioCompare.tsx scenario.compare.noTeamField': MISSING_SETUP,
     'releases/CrossTrackReleasePage.tsx crossTrack.new.noMove':
       'what linking a release does to its dates, not a list',

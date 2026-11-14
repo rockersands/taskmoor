@@ -12,6 +12,7 @@ export const PLAN_SECTIONS = [
   { id: 'boards', path: '/boards', labelId: 'plans.section.boards' },
   { id: 'changes', path: '/changes', labelId: 'plans.section.changes' },
   { id: 'scenarios', path: '/scenarios', labelId: 'plans.section.scenarios' },
+  { id: 'baselines', path: '/baselines', labelId: 'plans.section.baselines' },
   { id: 'settings', path: '/settings', labelId: 'plans.section.settings' },
 ] as const satisfies readonly { id: string; path: string; labelId: MessageId }[];
 
@@ -46,6 +47,8 @@ export interface PlanPosition {
   month?: string | undefined;
   from?: string | undefined;
   sort?: PlanSort | undefined;
+  /** The Timeline marks the critical path (PLN-011). */
+  critical?: '1' | undefined;
 }
 
 /**
@@ -59,11 +62,13 @@ export interface PlanView {
   position?: PlanPosition;
   scenario?: number | undefined;
   compare?: { a?: string | undefined; b?: string | undefined } | undefined;
+  /** The baseline the Baselines tab compares with (ADR-122 stage 9). */
+  baseline?: number | undefined;
 }
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|changes|scenarios|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|changes|scenarios|baselines|settings))?(?:[/?]|$)/;
 
 /** One program board of a plan (PLN-008): `#/plans/12/boards/5`, with or without a query. */
 export const PLAN_BOARD_ROUTE = /^#\/plans\/(\d{1,10})\/boards\/(\d{1,10})(?:[/?]|$)/;
@@ -94,6 +99,7 @@ function readPosition(params: URLSearchParams): PlanPosition {
   if (from && isDay(from)) position.from = from;
   const sort = oneOf(PLAN_SORTS, params.get('sort'));
   if (sort) position.sort = sort;
+  if (params.get('critical') === '1') position.critical = '1';
   return position;
 }
 
@@ -130,6 +136,10 @@ export function readView(route: string): PlanView {
   const a = side(params.get('a'));
   const b = side(params.get('b'));
   if (a || b) view.compare = { ...(a ? { a } : {}), ...(b ? { b } : {}) };
+  const baseline = params.get('baseline');
+  if (baseline && /^[1-9]\d{0,9}$/.test(baseline) && Number(baseline) <= MAX_ID) {
+    view.baseline = Number(baseline);
+  }
   return view;
 }
 
@@ -143,7 +153,7 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     if (value) params.set(key, value);
   }
   if (view.group) params.set('group', view.group);
-  for (const key of ['zoom', 'month', 'from', 'sort'] as const) {
+  for (const key of ['zoom', 'month', 'from', 'sort', 'critical'] as const) {
     const value = view.position?.[key];
     if (value) params.set(key, value);
   }
@@ -153,6 +163,8 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     if (view.compare?.a) params.set('a', view.compare.a);
     if (view.compare?.b) params.set('b', view.compare.b);
   }
+  // Only the Baselines tab compares with a baseline.
+  if (section === 'baselines' && view.baseline) params.set('baseline', String(view.baseline));
   const text = params.toString();
   return text ? `${path}?${text}` : path;
 }

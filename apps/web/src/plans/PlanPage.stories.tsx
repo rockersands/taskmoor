@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { asOnATouchScreen, notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { withCriticalPath } from '../timeline/criticalFixtures';
 import type { PlanTimelineItem } from './client';
 import { fakePlanClient, manyPlanItems, planItems } from './fixtures';
 import { PlanPage } from './PlanPage';
@@ -121,6 +122,38 @@ export const TimelineDependencies: Story = {
     await expect(canvas.getByRole('heading', { name: 'Dependencies' })).toBeVisible();
     await expect(canvas.getByText('2 tickets outside this plan')).toBeVisible();
     await expect(canvas.getByText('3 tickets have blockers; 1 dependency is late.')).toBeVisible();
+  },
+};
+
+/**
+ * The critical path on (PLN-011; ADR-122 stage 9): the toggle is pressed, SHOP-2 and SHOP-3 are
+ * marked as on the path, OPS-4 says its two days of slack, and the path is given in words below.
+ */
+export const TimelineCriticalPath: Story = {
+  args: { section: 'timeline', client: withCriticalPath(fakePlanClient()) },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/timeline?critical=1';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Critical path', pressed: true }),
+    ).toBeVisible();
+    const onPath = await canvas.findByRole('button', {
+      name: 'SHOP-3: Nov 9, 2026 to Nov 20, 2026',
+      description: /On the critical path$/,
+    });
+    await expect(onPath).toHaveClass('is-critical');
+    await expect(
+      canvas.getByRole('button', {
+        name: 'OPS-4: Nov 12, 2026 to Nov 18, 2026',
+        description: /2 days of slack$/,
+      }),
+    ).not.toHaveClass('is-critical');
+    const list = canvas.getByRole('region', { name: 'Critical path' });
+    await expect(
+      within(list).getByText('2 tickets are on the critical path. The plan ends Nov 20, 2026.'),
+    ).toBeVisible();
   },
 };
 

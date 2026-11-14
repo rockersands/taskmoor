@@ -226,7 +226,8 @@ service accounts](../admin/api-tokens.md).
 ## Your data
 
 The **Your data** section downloads everything Taskmoor keeps about you: your
-profile and settings, your sessions and the names of your API tokens, your groups of tracks
+profile and settings, your sessions and the names of your API tokens, the plans you own and what
+you made in plans (scenarios, draft changes and baselines, by the plan's id), your groups of tracks
 and the groups shared with you, the tickets you reported, created or are assigned, your comments
 and time entries, the files you uploaded, and the audit records about you. **Prepare a download** makes it in the background; it shows **Ready** in the
 list after a short while, and **Download** saves it as a ZIP file of JSON files, with

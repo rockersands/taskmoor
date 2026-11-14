@@ -389,6 +389,8 @@ export const messagesEn = {
     'The buttons under the title move the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
   'about.list':
     'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
+  'about.plan':
+    'Each tab shows this plan’s tickets its own way: Summary counts them, Timeline and Calendar place them on their dates, List gives them as rows, Capacity weighs the work against each team’s room in a period, and Releases and Program boards follow it across tracks. Choose a scenario to try changes as drafts before they reach the tickets. Everyone sees in a plan only the tickets they may see anyway.',
   'help.about': 'What is {name} for?',
   'help.menu': 'Help',
   'help.tutorials': 'Tutorials',
@@ -5282,6 +5284,8 @@ export const messagesEn = {
   'plans.summary.failed': 'This plan’s numbers could not be loaded.',
   'plans.timeline.failed': 'This plan’s timeline could not be loaded.',
   'plans.calendar.failed': 'This plan’s calendar could not be loaded.',
+  // A sprint on a plan's calendar: what tells it apart first, its track after (S3-PL-4).
+  'plans.calendar.sprint': '{sprint} · {track}',
   'plans.list.capped':
     'The list stops at {count, number} tickets. Filter the plan, or open it in search, to see the rest.',
   'plans.sources.find': 'Find a track or saved search',
@@ -5593,7 +5597,7 @@ export const messagesEn = {
   'timeline.legend.sprint': 'Dates from its sprint',
   'timeline.legend.rollup': 'Rolled up from its children',
   'timeline.legend.closed': 'Share of children closed',
-  'timeline.legend.none': 'No dates yet',
+  'timeline.legend.none': 'No dates',
   'timeline.legend.today': 'Today',
   'timeline.legend.release': 'Release',
   'timeline.legend.link': 'Blocks the ticket it leads to',
@@ -7226,6 +7230,10 @@ export const messagesEn = {
     'A program board lays this plan’s outcomes and work out by team and period. Everyone who sees the plan sees its boards, and moves cards as far as they may change those tickets.',
   'programBoards.noField':
     'A program board places cards by a Team field. Ask a site administrator to add one.',
+  // For those who may add fields themselves (S3-PL-8): where, not whom to ask.
+  'programBoards.noFieldAdmin':
+    'A program board places cards by a Team field. Add a field of the Team type under Fields in Administration, and it can be chosen here.',
+  'programBoards.openFields': 'Open Fields',
   'programBoards.none': 'No program boards yet.',
   'programBoards.failed': 'The program boards could not be loaded. Try again in a moment.',
   'programBoards.new': 'New program board',
@@ -7268,6 +7276,39 @@ export const messagesEn = {
     'A link type you chose no longer exists, or always counts. Reload the page and choose again.',
   'dependencies.via': '({phrase})',
   'dependencies.sameSprint': 'Same sprint',
+  // The critical path on a plan's Timeline (PLN-011; ADR-122 stage 9).
+  'critical.toggle': 'Critical path',
+  'critical.goTo': 'Critical path in words',
+  'critical.failed': 'The critical path could not be read. Try again later.',
+  'critical.loading': 'Working out the critical path…',
+  'critical.bar.on': 'On the critical path',
+  'critical.bar.slack': '{days, plural, one {# day of slack} other {# days of slack}}',
+  'critical.legend': 'On the critical path (heavy outline and ▲)',
+  'critical.title': 'Critical path',
+  'critical.covers':
+    'It covers the tickets this plan shows you, whatever the filters, so it can differ from someone else’s.',
+  'critical.summary':
+    '{count, plural, =0 {No ticket is} one {# ticket is} other {# tickets are}} on the critical path. The plan ends {end}.',
+  'critical.noPath': 'No open ticket of this plan has dates, so there is no critical path.',
+  'critical.chain': 'Chain {number, number}',
+  'critical.step.first': 'starts {start}, ends {end}',
+  'critical.step.firstEnd': 'starts {start}, ends {end}, the plan’s end.',
+  'critical.step.then': 'then starts {start}, ends {end}',
+  'critical.step.thenEnd': 'then starts {start}, ends {end}, the plan’s end.',
+  'critical.step.late':
+    '(a dependency before it is {days, plural, one {# day} other {# days}} late)',
+  'critical.more':
+    '{count, plural, one {# more ticket is} other {# more tickets are}} on the path and not listed here.',
+  'critical.cycles':
+    '{count, plural, one {# ticket is} other {# tickets are}} in a circle of dependencies and {count, plural, one {has} other {have}} no slack.',
+  'critical.waitsElsewhere':
+    '{count, plural, one {# ticket waits} other {# tickets wait}} for work outside this plan or not shown to you; that work is not counted.',
+  'critical.undated':
+    '{count, plural, one {# open ticket has} other {# open tickets have}} no dates and {count, plural, one {is} other {are}} left out.',
+  'critical.csv.slack': 'Slack (days)',
+  'critical.csv.critical': 'Critical',
+  'critical.image.legend':
+    'Heavy outline and ▲: on the critical path. Heavy line: a tight dependency on it.',
   'timeline.badge.sprint': 'same sprint',
   'timeline.badge.withSprint':
     'Blocked by {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # late}}, {sprint, plural, one {# in the same sprint} other {# in the same sprint}}',
@@ -7373,6 +7414,108 @@ export const messagesEn = {
   // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
   'plans.section.changes': 'Changes',
   'plans.section.scenarios': 'Scenarios',
+  'plans.section.baselines': 'Baselines',
+  'baselines.title': 'Baselines',
+  'baselines.intro':
+    'A baseline keeps the days of the plan’s tickets as they are at one moment, so you can see later what moved. Each person sees its days only on tickets this plan shows them.',
+  'baselines.capture': 'Capture baseline…',
+  'baselines.full': 'A plan holds at most {count} baselines. Delete one to capture another.',
+  'baselines.readOnly':
+    'Only the plan’s owner and site administrators capture, rename and delete baselines.',
+  'baselines.empty': 'No baselines yet',
+  'baselines.emptyBody': 'Capture one before the work moves, then compare it with the days later.',
+  'baselines.fromLive': 'From Live',
+  'baselines.fromScenario': 'From {name}',
+  'baselines.madeBy': 'Captured by {name} on {when}',
+  'baselines.tickets': '{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}',
+  'baselines.open': 'Compare',
+  'baselines.open.label': 'Compare with {name}',
+  'baselines.rename': 'Rename',
+  'baselines.rename.label': 'Rename {name}',
+  'baselines.rename.title': 'Rename {name}',
+  'baselines.rename.save': 'Save name',
+  'baselines.rename.done': 'The baseline is now called {name}.',
+  'baselines.delete': 'Delete',
+  'baselines.delete.label': 'Delete {name}',
+  'baselines.delete.ask': '{name} and the days it keeps go. No ticket changes.',
+  'baselines.delete.done': '{name} is deleted.',
+  'baselines.capture.title': 'Capture baseline',
+  'baselines.capture.intro':
+    'Keeps the start and due days of every ticket this plan shows you, or its sprint’s days, as they are now. Nothing changes on the tickets.',
+  'baselines.name': 'Name',
+  'baselines.capture.default': 'Baseline {day}',
+  'baselines.capture.sourceLive': 'What the Timeline shows now: Live',
+  'baselines.capture.sourceScenario': 'What the Timeline shows now: {name}, drafts not applied',
+  'baselines.capture.save': 'Capture',
+  'baselines.capture.done':
+    '{name} is captured: {count, plural, =0 {no tickets} one {# ticket} other {# tickets}}.',
+  'baselines.cancel': 'Cancel',
+  'baselines.nameRequired': 'Give the baseline a name.',
+  'baselines.refused.tooMany': 'A plan holds at most {count} baselines. Delete one first.',
+  'baselines.refused.tooLarge':
+    'The plan has more than {count} tickets, too many to capture in one baseline.',
+  'baselines.refused.conflict':
+    'Someone changed this baseline meanwhile. The list is read again; try once more.',
+  'baselines.refused.forbidden':
+    'Only the plan’s owner and site administrators may change its baselines.',
+  'baselines.refused.gone': 'This baseline or scenario no longer exists.',
+  'baselines.refused.other': 'That did not work. Try again in a moment.',
+  'baselines.listFailed': 'The baselines could not be read. Try again in a moment.',
+  'baselines.compare.title': 'Compared with {name}',
+  'baselines.compare.againstLive': 'The days now: Live.',
+  'baselines.compare.againstScenario': 'The days now: {name}, drafts not applied.',
+  'baselines.compare.close': 'Close the comparison',
+  'baselines.compare.later':
+    '{count, plural, =0 {No ticket ends later than in {name}} one {# ticket ends later than in {name}, by {most, plural, one {# day} other {# days}}} other {# tickets end later than in {name}, by up to {most, plural, one {# day} other {# days}}}}',
+  'baselines.compare.sentence': '{later}; {earlier} earlier; {same} the same.',
+  'baselines.compare.planLater':
+    'The plan ends {count, plural, one {# day} other {# days}} later ({now}, was {was}).',
+  'baselines.compare.planEarlier':
+    'The plan ends {count, plural, one {# day} other {# days}} earlier ({now}, was {was}).',
+  'baselines.compare.planSame': 'The plan ends the same day ({now}).',
+  'baselines.compare.planNone': 'No ticket has days in both, so the plan’s end is not compared.',
+  'baselines.compare.notShown':
+    '{count, plural, one {# ticket in this baseline is not shown to you.} other {# tickets in this baseline are not shown to you.}}',
+  'baselines.compare.others':
+    '{added} not in the baseline; {undatedThen} without days then; {undatedNow} without days now.',
+  'baselines.compare.notInBaseline':
+    'A ticket not in the baseline was added to the plan since, or was not shown to whoever captured it.',
+  'baselines.compare.yours':
+    'Delays are in calendar days, over the tickets this plan shows you with the page’s filters.',
+  'baselines.compare.show': 'Show',
+  'baselines.compare.show.slipped': 'Later ({count})',
+  'baselines.compare.show.earlier': 'Earlier ({count})',
+  'baselines.compare.show.added': 'Not in the baseline ({count})',
+  'baselines.compare.show.all': 'All',
+  'baselines.compare.list': 'Tickets: {which}',
+  'baselines.compare.none': 'No tickets here',
+  'baselines.compare.dayLater':
+    '{count, plural, one {# day later} other {# days later}}: {now}, was {was}',
+  'baselines.compare.dayEarlier':
+    '{count, plural, one {# day earlier} other {# days earlier}}: {now}, was {was}',
+  'baselines.compare.sameEnd': 'Same end: {now}',
+  'baselines.compare.due': 'due {day}',
+  'baselines.compare.ends': 'ends {day}',
+  'baselines.compare.noDays': 'no days',
+  'baselines.compare.addedLine': 'Not in the baseline: {now}',
+  'baselines.compare.undatedThenLine': 'No days then; now {now}',
+  'baselines.compare.undatedNowLine': 'No days now; then {was}',
+  'baselines.compare.closed': '(closed)',
+  'baselines.compare.showMore': 'Show more',
+  'baselines.compare.download': 'Download CSV',
+  'baselines.compare.downloadFailed': 'The file could not be made. Try again in a moment.',
+  'baselines.compare.failed': 'The comparison could not be read. Try again in a moment.',
+  'baselines.csv.baseline': 'Baseline: {name}',
+  'baselines.csv.startThen': 'Start then',
+  'baselines.csv.dueThen': 'Due then',
+  'baselines.csv.datedThen': 'Days then from',
+  'baselines.csv.startNow': 'Start now',
+  'baselines.csv.dueNow': 'Due now',
+  'baselines.csv.datedNow': 'Days now from',
+  'baselines.csv.delay': 'Delay (days)',
+  'baselines.csv.startShift': 'Start moved (days)',
+  'baselines.csv.own': 'Its own days',
+  'baselines.csv.sprint': 'Its sprint',
   'draft.tag': 'Draft',
   'draft.stale':
     'Changed since drafted: the ticket no longer has the values this draft started from.',
@@ -7611,6 +7754,46 @@ export const messagesEn = {
     'A condition does not read as a query, so nothing was written. Check its words and run again.',
   'schedule.dialog.refused.invalid': 'Some choices are not valid. Check them and run again.',
   'schedule.dialog.refused.other': 'The run could not finish. Try again in a moment.',
+  // Evening out load: a mode of the auto-scheduler's run (T-089a; ADR-122 stage 9).
+  'schedule.evenOut.mode': 'What the run does',
+  'schedule.evenOut.mode.fill': 'Place work in rank order',
+  'schedule.evenOut.mode.fillHint':
+    'Places every ticket it may move, from the first day, in rank order with blockers first.',
+  'schedule.evenOut.mode.evenOut': 'Even out load',
+  'schedule.evenOut.mode.evenOutHint':
+    'Moves only work that puts someone over capacity, later, by as little as it can, keeping each ticket’s length.',
+  'schedule.evenOut.kept': 'Kept tickets never move (fixed dates)',
+  'schedule.evenOut.overCells':
+    '{count, plural, one {# period of a team or person is} other {# periods of teams and people are}} over capacity now.',
+  'schedule.evenOut.nothingOver':
+    'No team or person is over capacity now, so evening out would move nothing.',
+  'schedule.evenOut.replaces':
+    'A run that evens out load and one in rank order replace each other’s proposals; both start from the tickets’ days and people’s drafts.',
+  'schedule.evenOut.title': 'Even out load',
+  'schedule.evenOut.counts':
+    '{moved, plural, one {# ticket} other {# tickets}} moved later, {kept} kept, {notMoved} not moved, {withdrawn, plural, one {# earlier proposal} other {# earlier proposals}} removed.',
+  'schedule.evenOut.moved': 'Moved ({count})',
+  'schedule.evenOut.notMoved': 'Not moved ({count})',
+  'schedule.evenOut.overLeft': 'Still over capacity',
+  'schedule.evenOut.allWithin':
+    'Every team and person is within capacity in the run’s periods now.',
+  'schedule.evenOut.overLeftOnlyFixed':
+    '{subject} is {over} over in {span}: only tickets that do not move are there.',
+  'schedule.evenOut.overLeftNoRoom':
+    '{subject} is {over} over in {span}: no later period of the run has room.',
+  'schedule.evenOut.span': '{start}–{end}',
+  'schedule.evenOut.daysLater': '{count, plural, one {# day} other {# days}} later',
+  'schedule.evenOut.weeksLater': '{count, plural, one {# week} other {# weeks}} later',
+  'schedule.evenOut.reason.movedOffOver':
+    'Moved {later}, from {from} to {to}: {subject} was {over} over.',
+  'schedule.evenOut.reason.pushedByMove': 'Moved {later} after {blocker}, which was moved.',
+  'schedule.evenOut.reason.stillOver': 'Still over: no room for {subject} up to {until}.',
+  'schedule.evenOut.reason.wouldMakeLate':
+    'Not moved: moving it would make {ticket} late, and this run does not move that ticket.',
+  'schedule.evenOut.reason.wouldMakeKeptLate':
+    'Not moved: moving it would make kept {ticket} late.',
+  'schedule.evenOut.reason.wouldPassEnd':
+    'Not moved: moving it would push {ticket} past {until}, the run’s last day.',
   'scenario.notShown':
     '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
   'scenario.listFailed':

@@ -156,3 +156,44 @@ export const OnAPhone: Story = {
     ).toEqual([]);
   },
 };
+
+/**
+ * Even out load (ADR-122 stage 9): the run's mode chosen beside rank order, how many periods are
+ * over capacity now, and the keep choices headed as what never moves.
+ */
+export const EvenOut: Story = {
+  args: { active: null, client: client({ readiness: { overCells: 4 } }) },
+  play: async ({ canvasElement }) => {
+    const dialog = await dialogOf(canvasElement);
+    await expect(
+      await within(dialog).findByText('4 periods of teams and people are over capacity now.'),
+    ).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Even out load' }));
+    await expect(within(dialog).getByRole('radio', { name: 'Even out load' })).toBeChecked();
+    await expect(
+      within(dialog).getByRole('group', { name: 'Kept tickets never move (fixed dates)' }),
+    ).toBeVisible();
+    await expect(within(dialog).getByRole('button', { name: 'Run' })).toBeEnabled();
+  },
+};
+
+/** Even out load on a phone's touch screen: the mode choice a finger's size, nothing sideways. */
+export const EvenOutOnAPhone: Story = {
+  args: { client: client({ readiness: { overCells: 4 } }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const dialog = await dialogOf(canvasElement);
+    await within(dialog).findByText(/^Web has capacity\./);
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Even out load' }));
+    await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+    await expect(
+      tooSmallForAFinger(dialog, [
+        '.form-field-inline label',
+        '.form-actions button',
+        'select',
+        'input:not([type="checkbox"], [type="radio"])',
+      ]),
+    ).toEqual([]);
+  },
+};

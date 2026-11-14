@@ -14,6 +14,8 @@ describe('a plan view in the address', () => {
       ['month', '2027-02'],
       ['from', '2027-02-28'],
       ['sort', 'priority'],
+      // The Timeline's critical path (PLN-011), so a link keeps it on.
+      ['critical', '1'],
     ] as const) {
       const read = readView(`#/plans/12?${key}=${value}`);
       expect(read.position).toEqual({ [key]: value });
@@ -37,6 +39,8 @@ describe('a plan view in the address', () => {
       'from=2027-2-1',
       'sort=summary',
       'sort=created%20DESC',
+      'critical=yes',
+      'critical=0',
     ]) {
       expect(readView(`#/plans/12?${bad}`).position, bad).toEqual({});
     }
@@ -83,5 +87,20 @@ describe('a plan view in the address', () => {
   it('[PLN-002] routes the Changes and Scenarios tabs', () => {
     expect(PLAN_ROUTE.exec('#/plans/12/changes?scenario=4')?.[2]).toBe('changes');
     expect(PLAN_ROUTE.exec('#/plans/12/scenarios')?.[2]).toBe('scenarios');
+  });
+});
+
+describe('a baseline in the address (ADR-122 stage 9)', () => {
+  it('[PLN-011] routes the Baselines tab and keeps the baseline compared there only', () => {
+    expect(PLAN_ROUTE.exec('#/plans/12/baselines?baseline=3')?.[2]).toBe('baselines');
+    const route = '#/plans/12/baselines?track=SHOP&scenario=4&baseline=3';
+    const view = readView(route);
+    expect(view.baseline).toBe(3);
+    expect(planHref(12, 'baselines', view)).toBe(route);
+    expect(planHref(12, 'timeline', view)).toBe('#/plans/12/timeline?track=SHOP&scenario=4');
+    expect(readView('#/plans/12/baselines?baseline=0').baseline).toBeUndefined();
+    expect(readView('#/plans/12/baselines?baseline=99999999999').baseline).toBeUndefined();
+    // Comparing reads nothing more of the plan.
+    expect(planViewKey(12, view)).toBe(planViewKey(12, { ...view, baseline: undefined }));
   });
 });

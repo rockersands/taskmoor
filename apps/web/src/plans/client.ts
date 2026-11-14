@@ -240,6 +240,30 @@ export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
   sameSprint?: boolean;
 }
 
+/**
+ * The critical path (PLN-011; ADR-122 stage 9) over the plan's open dated tickets the viewer is
+ * shown, never narrowed by the filters; `listed` gives the slack of the tickets the Timeline lists
+ * with the same filters. Days are `YYYY-MM-DD`; slack is in calendar days, 0 or less on the path.
+ */
+export interface PlanCriticalPath {
+  scenario?: ScenarioInView;
+  planEnd: string | null;
+  chains: {
+    tickets: {
+      id: number;
+      key: string;
+      summary: string;
+      start: string;
+      end: string;
+      slack: number;
+    }[];
+  }[];
+  /** Critical tickets past the 500 the chains name. */
+  more: number;
+  counts: { critical: number; cycles: number; undated: number; waitsElsewhere: number };
+  listed: { id: number; slack: number }[];
+}
+
 export interface PlanCalendar {
   query: string | null;
   /** The scenario read, when one was asked for: its drafts are in the tickets' days. */
@@ -355,6 +379,8 @@ export interface PlanClient {
     exporting?: boolean,
     scenario?: number,
   ): Promise<PlanCalendar>;
+  /** The critical path (PLN-011); the filters choose only which tickets `listed` gives. */
+  criticalPath?(id: number, filters: PlanFilters, scenario?: number): Promise<PlanCriticalPath>;
   /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
   capacity(
     id: number,
@@ -463,6 +489,8 @@ export const planClient: PlanClient = {
         ...inScenario(scenario),
       }),
     ),
+  criticalPath: (id, filters, scenario) =>
+    api<PlanCriticalPath>(withFilters(`/plans/${id}/critical-path`, filters, inScenario(scenario))),
   capacity: (id, filters, from, periods, scenario) =>
     api<PlanCapacity>(
       withFilters(`/plans/${id}/capacity`, filters, {

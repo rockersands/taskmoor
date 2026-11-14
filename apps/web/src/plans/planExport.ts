@@ -2,6 +2,7 @@ import { csvFile } from '@taskmoor/webconfig';
 import type { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { typeName } from '../shell/seededNames';
+import type { Slack } from '../timeline/critical';
 import { type Blocked, dependenciesOf } from '../timeline/dependencies';
 import type {
   CapacityCell,
@@ -46,6 +47,9 @@ const scenarioLine = (t: T, data: { scenario?: { name: string } }): Cell[][] =>
   data.scenario ? [[t('plans.csv.inScenario', { name: data.scenario.name })]] : [];
 const draftCell = (t: T, draft: { stale: boolean } | undefined): Cell =>
   draft ? t(draft.stale ? 'plans.csv.draftStale' : 'plans.csv.yes') : t('plans.csv.no');
+/** A ticket's slack and whether it is on the critical path; blank where the path does not judge it. */
+const slackCells = (t: T, days: number | undefined): Cell[] =>
+  days === undefined ? ['', ''] : [days, t(days <= 0 ? 'plans.csv.yes' : 'plans.csv.no')];
 const trackKeys = (tracks: readonly { id: number; key: string }[]) =>
   new Map(tracks.map((x) => [x.id, x.key]));
 const stages: Record<'new' | 'active' | 'closed', MessageId> = {
@@ -56,7 +60,9 @@ const stages: Record<'new' | 'active' | 'closed', MessageId> = {
 
 /**
  * The Timeline: each listed ticket with its days, where they come from, its roll-up and its
- * blockers. Blockers the view does not list are its two numbers, never named.
+ * blockers. Blockers the view does not list are its two numbers, never named. With the critical
+ * path on (`slack`, PLN-011), each ticket's slack in days and whether it is on the path, as the
+ * page and its image mark it; a ticket the path does not judge has neither.
  */
 export function timelineCsv(
   t: T,
@@ -66,6 +72,7 @@ export function timelineCsv(
     data.links,
     data.blockersElsewhere,
   ),
+  slack?: Slack,
 ): string {
   const tracks = trackKeys(data.tracks);
   const drafts = data.scenario !== undefined;
@@ -89,6 +96,7 @@ export function timelineCsv(
       'plans.csv.blockersOutside',
       'plans.csv.blockersUnlisted',
       ...(drafts ? (['plans.csv.draft'] as const) : []),
+      ...(slack ? (['critical.csv.slack', 'critical.csv.critical'] as const) : []),
     ]),
   ];
   for (const item of data.items) {
@@ -115,6 +123,7 @@ export function timelineCsv(
       blocked?.outside ?? 0,
       blocked?.unlisted ?? 0,
       ...(drafts ? [draftCell(t, item.draft)] : []),
+      ...(slack ? slackCells(t, slack.get(item.id)) : []),
     ]);
   }
   return csvText(rows);

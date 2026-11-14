@@ -3792,6 +3792,35 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { into: { scenarioId: state.scenario }, from: '2027-08-02', periods: 2 },
         }),
     },
+    // Even out load (PLN-011; ADR-122 stage 9), the run's second mode: the same event, with `mode`
+    // and the count of cells left over. The ticket is not over capacity, so it stays where it is
+    // and the fill run's proposal is withdrawn (`plan.drafts_set`, a removal).
+    {
+      route: 'POST /api/v1/plans/:id/schedule',
+      expect: 'plan.schedule_ran',
+      also: ['plan.drafts_set'],
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/schedule`,
+          payload: {
+            into: { scenarioId: state.scenario },
+            from: '2027-08-02',
+            periods: 2,
+            mode: 'even_out',
+          },
+        });
+        const ran = await database.db
+          .selectFrom('domain_event')
+          .select('payload')
+          .where('type', '=', 'plan.schedule_ran')
+          .orderBy('id', 'desc')
+          .limit(1)
+          .executeTakeFirstOrThrow();
+        expect(ran.payload).toMatchObject({ mode: 'even_out', overLeft: 0 });
+        return res;
+      },
+    },
     {
       route: 'DELETE /api/v1/plans/:id/scenarios/:sid',
       expect: 'plan.scenario_deleted',
@@ -3805,6 +3834,39 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}?version=${former?.version}`,
         });
       },
+    },
+    // Baselines (PLN-011; ADR-122 stage 9): ids and counts, never a name, a day or a key.
+    {
+      route: 'POST /api/v1/plans/:id/baselines',
+      expect: 'plan.baseline_captured',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/baselines`,
+          payload: { name: 'Contract baseline' },
+        });
+        state.baseline = res.json().baseline?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id/baselines/:bid',
+      expect: 'plan.baseline_renamed',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}/baselines/${state.baseline}`,
+          payload: { name: 'Contract baseline, renamed', version: 1 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id/baselines/:bid',
+      expect: 'plan.baseline_deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/plans/${state.plan}/baselines/${state.baseline}?version=2`,
+        }),
     },
     // Releases across tracks (PLN-007; ADR-122 stage 4).
     {

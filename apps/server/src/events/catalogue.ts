@@ -1191,7 +1191,9 @@ export const EVENT_TYPES = {
    * A run of the auto-scheduler (PLN-004; ADR-122 stage 7): the scenario it wrote into (made by
    * it or not), its first day, periods and choices, and its counts. Ids, days and numbers only:
    * never a query's text or a ticket's name. Its drafts come in `plan.drafts_set` with origin
-   * `scheduler`, emitted before it.
+   * `scheduler`, emitted before it. `mode` says whether it placed work in rank order (`fill`) or
+   * evened out load (`even_out`, ADR-122 stage 9); `overLeft` counts the cells still over
+   * capacity after evening out (0 for a fill run).
    */
   'plan.schedule_ran': {
     subject: 'plan',
@@ -1221,6 +1223,8 @@ export const EVENT_TYPES = {
         warnings: z.record(z.string(), z.number().int().nonnegative()),
         notShown: z.number().int().nonnegative(),
       }),
+      mode: z.enum(['fill', 'even_out']),
+      overLeft: z.number().int().nonnegative(),
     }),
   },
   'plan.drafts_discarded': {
@@ -1240,6 +1244,20 @@ export const EVENT_TYPES = {
       notShown: z.number().int().nonnegative(),
     }),
   },
+  /**
+   * Baselines of a plan (PLN-011; ADR-122 stage 9): ids and counts, never a name, a day or a key.
+   * A capture says where its days came from and how many tickets it holds.
+   */
+  'plan.baseline_captured': {
+    subject: 'plan',
+    payload: z.object({
+      baselineId: id,
+      source: z.enum(['live', 'scenario']),
+      tickets: z.number().int().nonnegative(),
+    }),
+  },
+  'plan.baseline_renamed': { subject: 'plan', payload: z.object({ baselineId: id }) },
+  'plan.baseline_deleted': { subject: 'plan', payload: z.object({ baselineId: id }) },
   /**
    * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
    * its old day, each it left with the reason, and how many were hidden from the mover; each

@@ -256,6 +256,33 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         updated_by: kalo,
       })
       .execute();
+    // [PLN-011] A baseline Kalo captured in Mi's plan, holding the ticket's days.
+    const baseline = await database.db
+      .insertInto('plan_baseline')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kick-off',
+        source: 'scenario',
+        scenario_name: 'Faster',
+        tickets: 1,
+        created_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_baseline_day')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        baseline_id: baseline.id,
+        ticket_id: ticket.id,
+        start_date: null,
+        due_date: '2027-01-15',
+        dated: 'own',
+        closed: false,
+      })
+      .execute();
     const key = newObjectKey(1);
     const bytes = Buffer.from('a photo of the tray');
     const put = await store.put(key, Readable.from([bytes]), { maxBytes: 1000 });
@@ -411,6 +438,18 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       },
     ]);
     expect(JSON.stringify(preferences.planDrafts)).not.toContain(ticket.key);
+    // [PLN-011] The baselines they captured, by ids, without days: the plan or its tickets may be
+    // hidden from them now.
+    expect(preferences.planBaselines).toEqual([
+      {
+        planId: plan.id,
+        baselineId: baseline.id,
+        name: 'Kick-off',
+        source: 'scenario',
+        createdAt: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(preferences.planBaselines)).not.toContain('2027-01-15');
     // [PLN-007] Those they own: what they named them, not the work they hold.
     expect(JSON.parse(String(zip['preferences.json'])).crossTrackReleases).toEqual([
       expect.objectContaining({
@@ -705,6 +744,18 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         updated_by: kalo,
       })
       .execute();
+    // [PLN-011] A baseline Kalo captured in Mi's plan.
+    const baseline = await database.db
+      .insertInto('plan_baseline')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s baseline',
+        source: 'live',
+        created_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     await work();
     const before = await verifyChain(database.db, 1);
     expect(before.ok).toBe(true);
@@ -765,6 +816,14 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         .where('scenario_id', '=', scenario.id)
         .execute(),
     ).toEqual([{ updated_by: kalo }]);
+    // [PLN-011] Erasure rewrites no baseline either: its creator's id now names the placeholder.
+    expect(
+      await database.db
+        .selectFrom('plan_baseline')
+        .select(['name', 'created_by'])
+        .where('id', '=', baseline.id)
+        .execute(),
+    ).toEqual([{ name: 'Kalo’s baseline', created_by: kalo }]);
     // [PLN-007] Erasure keeps it: its owner's id now names the placeholder account.
     expect(
       await database.db

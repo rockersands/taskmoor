@@ -150,10 +150,12 @@ deleted. Downloads need file storage (the same as attachments).
 
 The ZIP holds JSON files: the profile (with groups, teams, single sign-on links, the kinds of
 second factors, API tokens by name, and sessions), settings and saved searches, the
-plans they own and their capacity in them, with its notes, their groups of
-tracks and the groups shared with them (`track-groups.json`), the tickets the person reported,
-created or is assigned, their comments and time entries, the files they
-uploaded, and the audit records about them. `manifest.json` lists every file with its size and
+plans they own and their capacity in them, with its notes, the scenarios they made in plans, the
+draft changes they last changed (by plan, scenario and ticket id, with the field and its values),
+the baselines they captured (by plan, name, source and time, without their days), the releases
+across tracks they own, their groups of tracks and the groups shared with them
+(`track-groups.json`), the tickets the person reported, created or is assigned, their comments
+and time entries, the files they uploaded, and the audit records about them. `manifest.json` lists every file with its size and
 checksum. No password, token or secret is ever in it. An administrator's download has every
 ticket in full; the person's own download shows only the tickets they can still see (the others
 appear with their number and the person's role). The same goes for the tracks of their groups:

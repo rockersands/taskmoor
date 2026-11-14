@@ -106,6 +106,8 @@ export function scheduleRunFixture(overrides: Partial<ScheduleResult> = {}): Hel
             'blocker_undated',
             'blocker_not_placed',
             'no_room',
+            'still_over',
+            'would_make_late',
           ] as const),
           no_estimate: 1,
           hidden_blocker: 1,
@@ -130,6 +132,126 @@ export function scheduleRunFixture(overrides: Partial<ScheduleResult> = {}): Hel
     choices: {
       keep: { inProgress: true, inActiveSprint: false },
       leaveOut: { types: ['Bug'], releases: [] },
+    },
+  };
+}
+
+/**
+ * An even-out run (ADR-122 stage 9) into "Faster": SHOP-3 moved a week later off Atlas's over-full
+ * first period, SHOP-7 pushed after it, SHOP-2 not moved (it would make kept OPS-4 late), SHOP-5
+ * still over, OPS-4 kept and SHOP-6 left where it is; Atlas stays over in the first period, with
+ * no room later, and in the third, where only kept work is.
+ */
+export function evenOutRunFixture(overrides: Partial<ScheduleResult> = {}): HeldRun {
+  const base = scheduleRunFixture().result;
+  const tickets: ScheduleEntry[] = [
+    {
+      id: 2,
+      key: 'SHOP-2',
+      summary: 'Cart totals',
+      outcome: 'not_placed',
+      reason: 'would_make_late',
+      args: { ticketId: 4, why: 'kept', until: '2026-12-20' },
+      warnings: [],
+    },
+    {
+      id: 5,
+      key: 'SHOP-5',
+      summary: 'Gift wrapping',
+      outcome: 'not_placed',
+      reason: 'still_over',
+      args: { teamId: 1, until: '2026-12-20' },
+      warnings: [],
+    },
+    {
+      id: 3,
+      key: 'SHOP-3',
+      summary: 'Checkout redesign',
+      outcome: 'placed',
+      reason: 'moved_off_over',
+      args: {
+        teamId: 1,
+        fromPeriod: '2026-11-09',
+        fromPeriodEnd: '2026-11-22',
+        toPeriod: '2026-11-23',
+        toPeriodEnd: '2026-12-06',
+        days: 14,
+        over: 6,
+      },
+      warnings: [],
+    },
+    {
+      id: 7,
+      key: 'SHOP-7',
+      summary: 'Order emails',
+      outcome: 'placed',
+      reason: 'pushed_by_move',
+      args: { blockerId: 3, days: 3 },
+      warnings: [],
+    },
+    {
+      id: 4,
+      key: 'OPS-4',
+      summary: 'Warehouse sync',
+      outcome: 'kept',
+      reason: 'in_progress',
+      args: {},
+      warnings: [],
+    },
+    {
+      id: 6,
+      key: 'SHOP-6',
+      summary: 'Loyalty points',
+      outcome: 'placed',
+      reason: 'already',
+      args: {},
+      warnings: [],
+    },
+  ];
+  return {
+    result: {
+      ...base,
+      mode: 'even_out',
+      counts: {
+        ...base.counts,
+        placed: 3,
+        already: 1,
+        moved: 2,
+        withdrawn: 0,
+        notShown: 0,
+        kept: { ...base.counts.kept, person_draft: 0, in_progress: 1 },
+        notPlaced: {
+          ...base.counts.notPlaced,
+          no_estimate: 0,
+          hidden_blocker: 0,
+          still_over: 1,
+          would_make_late: 1,
+        },
+        leftOut: { ...base.counts.leftOut, type: 0 },
+        warnings: { ...base.counts.warnings, after_release: 0 },
+      },
+      tickets,
+      overLeft: [
+        {
+          teamId: 1,
+          periodStart: '2026-11-09',
+          periodEnd: '2026-11-22',
+          over: 2,
+          onlyFixed: false,
+        },
+        {
+          teamId: 1,
+          periodStart: '2026-12-07',
+          periodEnd: '2026-12-20',
+          over: 4,
+          onlyFixed: true,
+        },
+      ],
+      ...overrides,
+    },
+    choices: {
+      keep: { inProgress: true, inActiveSprint: true },
+      leaveOut: { types: [], releases: [] },
     },
   };
 }
