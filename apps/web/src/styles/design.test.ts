@@ -32,15 +32,17 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *   `board-problem`: a person. It reads the returns of the page's own function.
  * - A control whose height comes from its words, padding or place rather than a fixed height, a
  *   class put on a control built at runtime, a touch rule under another selector whose reach the
- *   source cannot tell (a state, a sibling, an element around it in another file or past a
- *   component, which may draw it elsewhere) or that two rules of equal weight settle by their order,
- *   a press area drawn by `::after` that is placed elsewhere: the touch stories, which measure what
- *   they cover, and the sweep's probe (T-296). A class put on a control through a component of ours
- *   that passes its className on (`<Link className>`), and a touch rule under another selector that
- *   surely reaches every element a short rule may size, it does see (T-298); an element whose
- *   className is built at runtime is held as one a short rule may size whenever the words of the
- *   scripts could make the class, so it is no cover for one it cannot see. A class that comes only
- *   from data, or one `classList` adds, it cannot see.
+ *   source cannot tell (a state, a sibling, an element around it past a component, which may draw
+ *   it elsewhere, or around a component drawn in ways the source does not show), a press area drawn
+ *   by `::after` that is placed elsewhere: the touch stories, which measure what they cover, and the
+ *   sweep's probe (T-296). A class put on a control through a component of ours that passes its
+ *   className on (`<Link className>`), and a touch rule under another selector that surely reaches
+ *   every element a short rule may size, it does see (T-298); so too a class beside a template's
+ *   placeholder that is only ever a space-led word or nothing, the cascade's order between rules of
+ *   equal weight (the stylesheets as main.tsx loads them), and the elements around a component in
+ *   the files that draw it (T-353). An element whose className is built at runtime is held as one
+ *   a short rule may size whenever the words of the scripts could make the class, so it is no cover
+ *   for one it cannot see. A class that comes only from data, or one `classList` adds, it cannot see.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
  * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
  *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
@@ -419,6 +421,17 @@ const isBoundary = (node: JsxNode) => /^[A-Z]/.test(node.tag) || node.tag.includ
 /** An element drawn by the app's JSX, with the elements around it in its file, nearest first. */
 export interface JsxElementFact extends JsxNode {
   around: JsxNode[];
+  /**
+   * The component of its file whose returned JSX it is part of, with no function, variable or call
+   * between (T-353): where that component is drawn, so is it. Undefined when it is not one's.
+   */
+  root?: string | undefined;
+  /**
+   * The elements around each place its `root` is drawn, in the files that draw it, nearest first,
+   * one list per place (`elementsInPlace`); a selector must reach it in every one. Unknown places
+   * leave it with only what is around it in its file.
+   */
+  outside?: JsxNode[][];
 }
 
 /** Three-valued: true, false, or undefined when the source cannot tell (a state, a sibling). */
@@ -546,13 +559,14 @@ function matchCompound(compound: string, node: JsxNode, carry: MayCarry = anythi
 
 /**
  * Whether a selector surely reaches an element of the app's JSX (T-298): its last compound matches
- * the element and the others the elements around it in its file, by the classes surely on them and
- * their literal attributes. What the source cannot tell (a state such as `:hover`, a sibling, a
- * class only a condition or the runtime puts there, an ancestor in another file) is taken as not
- * reached, so a touch rule is only credited where it surely applies. A component between them is
- * an ancestor no one knows: it may draw its children anywhere, even elsewhere in the page (a
- * portal, as OverlayLayer does), so a selector reaches past one to nothing. A trailing `::before`
- * or `::after` reaches the element it is drawn on.
+ * the element and the others the elements around it in its file and then, in every place its
+ * component is drawn, around that (`outside`, T-353), by the classes surely on them and their
+ * literal attributes. What the source cannot tell (a state such as `:hover`, a sibling, a class
+ * only a condition or the runtime puts there, an ancestor where a component is drawn unseen) is
+ * taken as not reached, so a touch rule is only credited where it surely applies. A component
+ * between them is an ancestor no one knows: it may draw its children anywhere, even elsewhere in
+ * the page (a portal, as OverlayLayer does), so a selector reaches past one to nothing. A trailing
+ * `::before` or `::after` reaches the element it is drawn on.
  */
 export function surelyReaches(
   part: string,
@@ -567,19 +581,24 @@ export function surelyReaches(
     node !== undefined &&
     !isBoundary(node) &&
     matchCompound(compounds[i] as string, node, carry) === true;
-  // Compound i at element `at` of `around`, and the ones before it further out.
-  const from = (i: number, at: number): boolean => {
-    if (i < 0) return true;
-    const combinator = combinators[i];
-    if (combinator === '>') return matches(i, element.around[at]) && from(i - 1, at + 1);
-    if (combinator !== ' ') return false;
-    for (let j = at; j < element.around.length; j++) {
-      if (isBoundary(element.around[j] as JsxNode)) return false;
-      if (matches(i, element.around[j]) && from(i - 1, j + 1)) return true;
-    }
-    return false;
-  };
-  return from(last - 1, 0);
+  // In every place it is drawn (T-353): what is around it in its file, then around its component.
+  const places = element.outside?.length ? element.outside : [[]];
+  return places.every((place) => {
+    const around = [...element.around, ...place];
+    // Compound i at element `at` of `around`, and the ones before it further out.
+    const from = (i: number, at: number): boolean => {
+      if (i < 0) return true;
+      const combinator = combinators[i];
+      if (combinator === '>') return matches(i, around[at]) && from(i - 1, at + 1);
+      if (combinator !== ' ') return false;
+      for (let j = at; j < around.length; j++) {
+        if (isBoundary(around[j] as JsxNode)) return false;
+        if (matches(i, around[j]) && from(i - 1, j + 1)) return true;
+      }
+      return false;
+    };
+    return from(last - 1, 0);
+  });
 }
 
 /**
@@ -631,15 +650,18 @@ const beats = (a: string, b: string) => {
  *   with every test green (T-294). A height of 1 px or none hides a control, it does not size it.
  * A touch rule that asks for less is the same mistake. A touch rule that gives the selector's
  * `::before` or `::after` a finger's height counts as the finger's: a press area drawn over the
- * control, so it can keep its look (T-293).
+ * control, so it can keep its look (T-293). A touch rule counts only where it wins (T-353): a press
+ * area, a min-height over a height, a finger's height over a short min-height, and between two of
+ * one kind the cascade: `!important`, then specificity, then the later rule, `sources` being in the
+ * order the app loads them. So a short rule of equal weight after a touch rule undoes it.
  *
  * A touch rule under another selector counts too when it reaches every element of `elements` (the
- * app's JSX, `jsxFacts`) that the short selector may reach, and wins there (T-298): a press area, a
- * min-height, a height over a min-height, or a height under a selector more specific than the short
- * one. One whose reach the source cannot tell (a state, an ancestor in another file or past a
- * component) is no cover. An element whose className is built at runtime may hold any class that
- * `carry` allows (`mayCarryFrom`, every class without it), so a short rule may size it too, and
- * the cover must surely reach it as well.
+ * app's JSX, `jsxFacts`, placed by `elementsInPlace`) that the short selector may reach, and wins
+ * there (T-298). One whose reach the source cannot tell (a state, a sibling, an ancestor past a
+ * component or where a component is drawn in more ways than the source shows) is no cover. An
+ * element whose className is built at runtime may hold any class that `carry` allows
+ * (`mayCarryFrom`, every class without it), so a short rule may size it too, and the cover must
+ * surely reach it as well.
  */
 export function shortOnTouch(
   sources: string[],
@@ -647,51 +669,62 @@ export function shortOnTouch(
   elements: readonly JsxElementFact[] = [],
   carry: MayCarry = anything,
 ): string[] {
+  // In the order the browser reads them: a later declaration of equal weight wins (T-353).
   const declarations = sources.flatMap(cssDeclarations);
   const sizes = fixedSizes(declarations);
-  const sized = declarations.filter((d) => HEIGHT.test(d.property));
+  const sized = declarations
+    .map((d, order) => ({ ...d, order, important: /!important\s*$/.test(d.value) }))
+    .filter((d) => HEIGHT.test(d.property));
   const fingerRules = sized
     .filter(
       (d) => isTouchRule(d) && (FINGER.test(d.value) || (pixels(d.value, sizes) ?? 0) >= FINGER_PX),
     )
     .flatMap((d) =>
       selectorsOf(d.selector).map((part) => ({
+        ...d,
         part: part.replace(/::(?:before|after)$/, ''),
         pressArea: /::(?:before|after)$/.test(part),
-        property: d.property,
       })),
     );
-  const fingers = new Set(fingerRules.map((f) => f.part));
   const short = sized.flatMap((d) => {
     const parts = selectorsOf(d.selector);
-    const found = (list: string[]) => list.map((part) => ({ part, property: d.property }));
+    const found = (list: string[]) => list.map((part) => ({ ...d, part }));
     if (d.value === 'var(--hit-target)') return found(parts);
     const px = pixels(d.value, sizes);
     if (px === undefined || px <= 1 || px >= FINGER_PX) return [];
     return found(parts.filter(isTarget));
   });
+  type Sized = { part: string; property: string; order: number; important: boolean };
+  /**
+   * Whether a finger's rule gives a finger's height where a short rule also applies (T-353): a
+   * press area is drawn over the control whatever sizes it; a min-height is a floor under any
+   * height, and a height of a finger's lifts a short min-height; between two of the same kind the
+   * cascade decides: `!important`, then the more specific selector, then the later one.
+   */
+  const outweighs = (f: Sized & { pressArea: boolean }, s: Sized) => {
+    if (f.pressArea || isMin(f.property) !== isMin(s.property)) return true;
+    if (f.important !== s.important) return f.important;
+    const by = beats(f.part, s.part);
+    return by > 0 || (by === 0 && f.order > s.order);
+  };
   /** Whether touch rules under other selectors give every element this rule may size a finger's. */
-  const coveredElsewhere = (part: string, property: string) => {
-    const reached = elements.filter((element) => mayReach(part, element, carry));
+  const coveredElsewhere = (s: Sized) => {
+    const reached = elements.filter((element) => mayReach(s.part, element, carry));
     return (
       reached.length > 0 &&
       reached.every((element) =>
-        fingerRules.some(
-          (f) =>
-            surelyReaches(f.part, element, carry) &&
-            (f.pressArea ||
-              f.property.startsWith('min-') ||
-              property.startsWith('min-') ||
-              beats(f.part, part) > 0),
-        ),
+        fingerRules.some((f) => surelyReaches(f.part, element, carry) && outweighs(f, s)),
       )
     );
   };
   const left = short.filter(
-    ({ part, property }) => !fingers.has(part) && !coveredElsewhere(part, property),
+    (s) => !fingerRules.some((f) => f.part === s.part && outweighs(f, s)) && !coveredElsewhere(s),
   );
   return [...new Set(left.map(({ part }) => part))].sort();
 }
+
+/** A floor (min-height, min-block-size) rather than a height. */
+const isMin = (property: string) => property.startsWith('min-');
 
 /** A cursor that says "drag me": a grab, a grabbing hand or a move, whatever its fallbacks. */
 const GRAB_CURSOR = /^(?:-webkit-|-moz-)?(?:grab|grabbing|move)(?:\s*!important)?$/;
@@ -796,17 +829,75 @@ function attribute(node: ts.JsxOpeningLikeElement, wanted: string): ts.JsxAttrib
 const hasSpread = (node: ts.JsxOpeningLikeElement) =>
   node.attributes.properties.some(ts.isJsxSpreadAttribute);
 
-/** The class names written in a className, even in a conditional; what is built at runtime is not. */
+/**
+ * The class names written in a className, even in a conditional or a template, where a word glued
+ * to a `${}` counts when the `${}` is only ever a space-led word or nothing (`timeline-bar${on ? '
+ * is-on' : ''}`, T-353); what is built at runtime is not.
+ */
 function classesOf(node: ts.JsxOpeningLikeElement): string[] {
   const init = attribute(node, 'className')?.initializer;
   if (!init) return [];
-  const classes: string[] = [];
+  const classes = new Set<string>();
   const walk = (n: ts.Node) => {
-    if (ts.isStringLiteralLike(n)) classes.push(...n.text.split(/\s+/).filter(Boolean));
+    if (ts.isStringLiteralLike(n)) for (const w of wordsOf(n.text)) classes.add(w);
+    if (ts.isTemplateExpression(n)) {
+      for (const way of templateWays(n)) {
+        for (const w of wordsOf(way)) if (!HOLES.test(w)) classes.add(w);
+      }
+    }
     ts.forEachChild(n, walk);
   };
   walk(init);
-  return classes;
+  return [...classes];
+}
+
+/** What stands in a template for the `${}` at `i` whose value the source cannot read. */
+const hole = (i: number) => String.fromCharCode(0xe000 + i);
+const HOLES = /[\ue000-\uf8ff]/;
+/** What stands for a part no one can read inside a `${}` that is otherwise read. */
+const UNKNOWN = '\uf8ff';
+/** How many ways a template may read before a `${}` is taken as unknown instead. */
+const MOST_WAYS = 256;
+
+/**
+ * The strings an expression may be when they are a few literals: a literal, a condition's branches,
+ * a template of those. Undefined for anything else: a name, a call, `on && ' x'` (which is `false`
+ * in a template), or what `known` says is counted elsewhere.
+ */
+function valuesOf(
+  e: ts.Expression,
+  known: (e: ts.Expression) => boolean = () => false,
+): string[] | undefined {
+  if (known(e)) return undefined;
+  if (ts.isStringLiteralLike(e)) return [e.text];
+  if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e)) return valuesOf(e.expression, known);
+  if (ts.isConditionalExpression(e)) {
+    const [a, b] = [valuesOf(e.whenTrue, known), valuesOf(e.whenFalse, known)];
+    return a && b ? [...new Set([...a, ...b])] : undefined;
+  }
+  // A template's `${}` no one can read stays unknown in it, apart from the template's own holes.
+  if (ts.isTemplateExpression(e)) {
+    return templateWays(e, known).map((way) => way.replace(new RegExp(HOLES.source, 'g'), UNKNOWN));
+  }
+  return undefined;
+}
+
+/**
+ * Every way a template may read (T-353): each `${}` that is a few literals put in, and any other as
+ * a `hole` of its own, so a word beside a `${}` reads whole when what fills it is only ever a word
+ * led by a space, or nothing.
+ */
+function templateWays(
+  e: ts.TemplateExpression,
+  known: (e: ts.Expression) => boolean = () => false,
+): string[] {
+  let ways = [e.head.text];
+  e.templateSpans.forEach((span, i) => {
+    const read = valuesOf(span.expression, known);
+    const values = read && read.length * ways.length <= MOST_WAYS ? read : [hole(i)];
+    ways = ways.flatMap((way) => values.map((v) => way + v + span.literal.text));
+  });
+  return ways;
 }
 
 export interface JsxFacts {
@@ -847,6 +938,22 @@ export interface JsxFacts {
   elements: JsxElementFact[];
   /** The words a class built at runtime here could be made of (`looseClasses`). */
   loose: LooseClasses;
+  /** Each place a component is drawn here, as a tag, with what is around it (T-353). */
+  uses: ComponentUse[];
+  /**
+   * Capitalised names used here otherwise than as a tag, an import or a declaration (`memo(X)`,
+   * `{ page: X }`, `typeof X`): a component named so may be drawn where no one can see (T-353).
+   */
+  references: Set<string>;
+  /** Names exported here from another file (`export { X } from './x'`), or `*` for all of one. */
+  reexports: Set<string>;
+}
+
+/** A component drawn in a file: its tag, the elements around it there, and its own `root`. */
+export interface ComponentUse {
+  tag: string;
+  around: JsxNode[];
+  root?: string | undefined;
 }
 
 /** The tag names of a control a finger presses; an `<input type="hidden">` is none. */
@@ -912,34 +1019,29 @@ function readClasses(
       }
     }
     if (ts.isTemplateExpression(e)) {
-      const out: ClassReading = { sure: [], maybe: [], built: false };
-      const texts = [e.head.text, ...e.templateSpans.map((s) => s.literal.text)];
-      texts.forEach((text, i) => {
-        const words = wordsOf(text);
-        // A word that touches a `${}` is only part of a class.
-        const glued = (at: number) => {
-          if (at === 0 && i > 0 && !/^\s/.test(text)) return true;
-          return at === words.length - 1 && i < texts.length - 1 && !/\s$/.test(text);
-        };
-        words.forEach((w, at) => {
-          if (glued(at)) out.built = true;
-          else out.sure.push(w);
-        });
-        const span = e.templateSpans[i];
-        if (!span) return;
-        const next = texts[i + 1] ?? '';
-        const apart =
-          (text === '' ? i === 0 : /\s$/.test(text)) &&
-          (next === '' ? i + 1 === texts.length - 1 : /^\s/.test(next));
-        if (!apart) {
-          out.built = true;
-          return;
-        }
+      // Every way it may read: a word in each is sure, in some only maybe (T-353).
+      const ways = templateWays(e, known).map(wordsOf);
+      const words = [...new Set(ways.flat())];
+      const plain = words.filter((w) => !HOLES.test(w));
+      const sure = plain.filter((w) => ways.every((way) => way.includes(w)));
+      const out: ClassReading = {
+        sure,
+        maybe: plain.filter((w) => !sure.includes(w)),
+        built: false,
+      };
+      // A `${}` read as a word of its own in every way says what it says; any other part no one
+      // can read (glued to a word, or inside a `${}` otherwise read) makes a class built.
+      const apart = e.templateSpans.flatMap((span, i) =>
+        ways.every((way) => way.includes(hole(i))) ? [[hole(i), span] as const] : [],
+      );
+      const marks = new Set<string>(apart.map(([mark]) => mark));
+      if (words.some((w) => HOLES.test(w) && !marks.has(w))) out.built = true;
+      for (const [, span] of apart) {
         const inner = read(span.expression);
         out.sure.push(...inner.sure);
         out.maybe.push(...inner.maybe);
         out.built ||= inner.built;
-      });
+      }
       return out;
     }
     return { sure: [], maybe: literalsIn(e).flatMap(wordsOf), built: true };
@@ -1312,17 +1414,22 @@ export function looseClasses(file: string, source: string): LooseClasses {
       for (const w of wordsOf(node.text)) loose.whole.add(w);
     }
     if (ts.isTemplateExpression(node)) {
-      const texts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)];
-      texts.forEach((text, i) => {
-        const words = wordsOf(text);
-        words.forEach((w, at) => {
-          const start = at === 0 && i > 0 && !/^\s/.test(text);
-          const end = at === words.length - 1 && i < texts.length - 1 && !/\s$/.test(text);
-          if (start) loose.suffixes.add(w);
-          if (end) loose.prefixes.add(w);
-          if (!start && !end && !ownClass) loose.whole.add(w);
-        });
-      });
+      // Read in every way it may read (T-353): a word glued to a `${}` no one can read is the start
+      // or the end of a class, or a piece of one; any other word is whole.
+      for (const way of templateWays(node)) {
+        for (const w of wordsOf(way)) {
+          const pieces = w.split(new RegExp(HOLES.source, 'g'));
+          if (pieces.length === 1) {
+            if (!ownClass) loose.whole.add(w);
+            continue;
+          }
+          pieces.forEach((piece, at) => {
+            if (!piece) return;
+            if (at < pieces.length - 1) loose.prefixes.add(piece);
+            if (at > 0) loose.suffixes.add(piece);
+          });
+        }
+      }
     }
     ts.forEachChild(node, (child) => visit(child, ownClass));
   };
@@ -1360,7 +1467,14 @@ export function jsxFacts(
     inlineGrips: [],
     elements: [],
     loose: looseClasses(file, source),
+    uses: [],
+    references: new Set(),
+    reexports: new Set(),
   };
+  const sourceFile = parse(file, source);
+  const components = new Map<ts.Node, string>(
+    componentsIn(sourceFile).map(([component, fn]) => [fn, component]),
+  );
   const visit = (
     node: ts.Node,
     ancestors: string[],
@@ -1416,7 +1530,9 @@ export function jsxFacts(
       const written = nodeOf(opening);
       const native = /^[a-z]/.test(tag);
       const passer = native ? undefined : passers(tag);
-      if (native) facts.elements.push({ ...written, around: path });
+      const root = rootIn(node, components);
+      if (native) facts.elements.push({ ...written, around: path, root });
+      else facts.uses.push({ tag, around: path, root });
       if (passer) {
         facts.elements.push({
           ...passer.control,
@@ -1427,6 +1543,7 @@ export function jsxFacts(
             ? { ...passer.control.attrs, ...written.attrs }
             : passer.control.attrs,
           around: [...passer.inner, ...path],
+          root,
         });
       }
       within = [native ? written : componentNode(tag), ...path];
@@ -1456,11 +1573,184 @@ export function jsxFacts(
       if (STRING_COLOUR.test(node.text)) facts.rawColours.push(node.text);
       if (OPAQUE_SURFACE.test(node.text)) facts.opaqueSurfaces.push(node.text);
     }
+    if (ts.isIdentifier(node) && /^[A-Z]/.test(node.text) && isReference(node)) {
+      facts.references.add(node.text);
+    }
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+      const clause = node.exportClause;
+      if (clause && ts.isNamedExports(clause)) {
+        for (const e of clause.elements) facts.reexports.add((e.propertyName ?? e.name).text);
+      } else {
+        facts.reexports.add('*');
+      }
+    }
     ts.forEachChild(node, (child) => visit(child, classes, note, around, within));
   };
-  visit(parse(file, source), [], false, null, []);
+  visit(sourceFile, [], false, null, []);
   return facts;
 }
+
+/**
+ * Whether a name is used as a value or a type, not as a tag, an import or export of it, the name of
+ * what it declares, or a property's name (T-353).
+ */
+function isReference(node: ts.Identifier): boolean {
+  const p = node.parent;
+  if (
+    (ts.isJsxOpeningElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxClosingElement(p)) &&
+    p.tagName === node
+  ) {
+    return false;
+  }
+  if (
+    ts.isImportSpecifier(p) ||
+    ts.isImportClause(p) ||
+    ts.isNamespaceImport(p) ||
+    ts.isExportSpecifier(p) ||
+    ts.isJsxAttribute(p)
+  ) {
+    return false;
+  }
+  const named =
+    ts.isFunctionDeclaration(p) ||
+    ts.isVariableDeclaration(p) ||
+    ts.isClassDeclaration(p) ||
+    ts.isInterfaceDeclaration(p) ||
+    ts.isTypeAliasDeclaration(p) ||
+    ts.isEnumDeclaration(p) ||
+    ts.isParameter(p) ||
+    ts.isTypeParameterDeclaration(p) ||
+    ts.isBindingElement(p) ||
+    ts.isPropertyAssignment(p) ||
+    ts.isPropertySignature(p) ||
+    ts.isPropertyDeclaration(p) ||
+    ts.isMethodDeclaration(p) ||
+    ts.isEnumMember(p);
+  if (named && (p as { name?: ts.Node }).name === node) return false;
+  if (ts.isPropertyAccessExpression(p) && p.name === node) return false;
+  if (ts.isQualifiedName(p) && p.right === node) return false;
+  return true;
+}
+
+/**
+ * The component of a file whose returned JSX holds `node` with nothing between (T-353): the JSX
+ * outermost around it is returned by that component (or is its arrow's body), through brackets, a
+ * condition's branch or `&&`. JSX kept in a variable, made by another function, or put elsewhere by
+ * a call (`createPortal`) has none: where it lands, no one reads here.
+ */
+function rootIn(node: ts.Node, components: Map<ts.Node, string>): string | undefined {
+  let top = node;
+  for (let p = node.parent; p; p = p.parent) {
+    if (ts.isJsxElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxFragment(p)) top = p;
+  }
+  for (let at: ts.Node = top; ; ) {
+    const p = at.parent;
+    if (!p) return undefined;
+    if (ts.isParenthesizedExpression(p) || ts.isAsExpression(p)) {
+      at = p;
+    } else if (ts.isConditionalExpression(p) && p.condition !== at) {
+      at = p;
+    } else if (
+      ts.isBinaryExpression(p) &&
+      p.right === at &&
+      [
+        ts.SyntaxKind.AmpersandAmpersandToken,
+        ts.SyntaxKind.BarBarToken,
+        ts.SyntaxKind.QuestionQuestionToken,
+      ].includes(p.operatorToken.kind)
+    ) {
+      at = p;
+    } else if (ts.isArrowFunction(p)) {
+      return p.body === at ? components.get(p) : undefined;
+    } else if (ts.isReturnStatement(p)) {
+      let fn: ts.Node | undefined = p.parent;
+      while (fn && !ts.isFunctionLike(fn)) fn = fn.parent;
+      return fn ? components.get(fn) : undefined;
+    } else {
+      return undefined;
+    }
+  }
+}
+
+/**
+ * The app's elements with every place they are drawn (T-353): an element that is its component's
+ * (`root`) is drawn wherever that component is, so the elements around each tag that draws it, in
+ * the file that does, are around it too, and so on outwards while that tag is its own component's
+ * too. A component drawn nowhere the source shows, used otherwise than as a tag (a name passed on,
+ * `memo(X)`), exported again from another file, or drawn in more places than `MOST_PLACES` is in no
+ * place known, and only what is around it in its file counts.
+ */
+export function elementsInPlace(
+  sources: readonly (readonly [string, string])[],
+  factsOf: (file: string) => JsxFacts,
+): JsxElementFact[] {
+  const known = new Set(sources.map(([file]) => file));
+  const exists = (path: string) => known.has(path) || existsSync(path);
+  const declared = new Map<string, Set<string>>();
+  const imports = new Map<string, Map<string, { file: string; name: string }>>();
+  for (const [file, source] of sources) {
+    declared.set(file, new Set(componentsIn(parse(file, source)).map(([component]) => component)));
+    imports.set(file, importNames(file, source, exists));
+  }
+  /** The component a name stands for in a file, as `file#Name`. */
+  const resolve = (file: string, tag: string) => {
+    if (declared.get(file)?.has(tag)) return `${file}#${tag}`;
+    const from = imports.get(file)?.get(tag);
+    return from ? `${from.file}#${from.name}` : undefined;
+  };
+  const sites = new Map<string, { file: string; use: ComponentUse }[]>();
+  const unknown = new Set<string>();
+  const reexported = new Set<string>();
+  for (const [file] of sources) {
+    const facts = factsOf(file);
+    for (const use of facts.uses) {
+      const id = resolve(file, use.tag);
+      if (id) sites.set(id, [...(sites.get(id) ?? []), { file, use }]);
+    }
+    for (const ref of facts.references) {
+      const id = resolve(file, ref);
+      if (id) unknown.add(id);
+    }
+    for (const name of facts.reexports) reexported.add(name);
+  }
+  const memo = new Map<string, JsxNode[][]>();
+  /** The elements around each place a component is drawn; `[[]]` when its places are unknown. */
+  const outward = (id: string, seen: ReadonlySet<string>): JsxNode[][] => {
+    const done = memo.get(id);
+    if (done) return done;
+    const component = id.slice(id.lastIndexOf('#') + 1);
+    const here = sites.get(id);
+    if (
+      !here ||
+      unknown.has(id) ||
+      seen.has(id) ||
+      reexported.has('*') ||
+      reexported.has(component)
+    ) {
+      return [[]];
+    }
+    const deeper = new Set([...seen, id]);
+    const places = here.flatMap(({ file, use }) =>
+      (use.root ? outward(`${file}#${use.root}`, deeper) : [[]]).map((rest) => [
+        ...use.around,
+        ...rest,
+      ]),
+    );
+    const result = places.length > MOST_PLACES ? [[]] : places;
+    memo.set(id, result);
+    return result;
+  };
+  return sources.flatMap(([file]) =>
+    factsOf(file).elements.map((element) =>
+      element.root
+        ? { ...element, outside: outward(`${file}#${element.root}`, new Set()) }
+        : element,
+    ),
+  );
+}
+
+/** How many places a component may be drawn in before they count as unknown. */
+const MOST_PLACES = 64;
 
 /** What draws a check box: its kind, its fill, its edge, its shadow, a mark over it. */
 const DRAWS_A_BOX =
@@ -1593,6 +1883,16 @@ const facts = new Map(
   scriptSources.map(([file, source]) => [file, jsxFacts(file, source, styled, passers(file))]),
 );
 const factsOf = (file: string) => facts.get(file) as JsxFacts;
+/** The stylesheets main.tsx imports, in its order: the order of the cascade. */
+const LOAD_ORDER = [
+  ...readFileSync(join(SRC, 'main.tsx'), 'utf8').matchAll(/import '\.\/(styles\/[\w-]+\.css)'/g),
+].map((m) => m[1]);
+const rank = (file: string) => {
+  const at = LOAD_ORDER.indexOf(name(file));
+  return at < 0 ? LOAD_ORDER.length : at;
+};
+/** The stylesheets as the browser reads them; one main.tsx does not import (the Builder's) last. */
+const inLoadOrder = [...cssSources].sort(([a], [b]) => rank(a) - rank(b));
 const APP = join(SRC, 'App.tsx');
 
 /** Every *Page component App.tsx imports. */
@@ -2264,6 +2564,180 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect([two?.classes, two?.maybe, two?.built]).toEqual([['y'], ['x'], false]);
   });
 
+  it('[NFR-005] reads a class beside a placeholder that is only ever a word led by a space, or nothing (T-353)', () => {
+    const see = (code: string) => jsxFacts('x.tsx', code, none);
+    // The row of the backlog: the class before the placeholder is whole, what it adds is maybe.
+    const row = `\`sprint-ticket\${held ? ' is-dragging' : ''}\${over ? ' is-drop-before' : ''}\``;
+    expect([...see(`<li role="button" className={${row}} />`).controls].sort()).toEqual([
+      'is-dragging',
+      'is-drop-before',
+      'sprint-ticket',
+    ]);
+    const reading = (className: string) => {
+      const [element] = see(`<button className={${className}} />`).elements;
+      return [element?.classes, element?.maybe, element?.built];
+    };
+    expect(reading(row)).toEqual([['sprint-ticket'], ['is-dragging', 'is-drop-before'], false]);
+    // After a placeholder too, and in a template inside one; a word the placeholder may lengthen
+    // is no class of its own, and one glued to what no one can read (`&&`, which may be `false`)
+    // is built.
+    expect(reading(`\`\${on ? 'is-on ' : ''}chip\``)).toEqual([['chip'], ['is-on'], false]);
+    expect(reading(`\`chip\${on ? \` is-\${tone}\` : ''}\``)).toEqual([['chip'], [], true]);
+    expect(reading(`\`chip\${wide ? '-wide' : ''}\``)).toEqual([[], ['chip-wide', 'chip'], false]);
+    expect(reading(`\`chip\${on && ' is-on'}\``)).toEqual([[], [], true]);
+    expect([...see(`<button className={\`zoom-\${size}\`} />`).controls]).toEqual([]);
+    // So a short height on such a control is a short target's, and a check box drawn its own way
+    // under such a class is found.
+    expect(
+      shortOnTouch(['.sprint-ticket { height: 24px; }'], (part) =>
+        isTargetSelector(part, see(`<li role="button" className={${row}} />`).controls, new Set()),
+      ),
+    ).toEqual(['.sprint-ticket']);
+    const box: [string, string] = [
+      'a.tsx',
+      `export const A = () => <input type="checkbox" className={\`mine\${on ? ' on' : ''}\`} />;`,
+    ];
+    expect(ownCheckBoxes([box], [['a.css', '.mine { appearance: none; }']])).toHaveLength(1);
+    // The words a class built elsewhere could be made of: whole where it reads whole.
+    const loose = looseClasses('x.tsx', `const c = \`chip\${on ? ' on' : ''} zoom-\${size}\`;`);
+    expect([[...loose.whole].sort(), [...loose.prefixes]]).toEqual([['chip', 'on'], ['zoom-']]);
+    const own = looseClasses('x.tsx', `<i className={\`chip\${on ? ' on' : ''}\`} />`);
+    expect([[...own.whole], [...own.prefixes]]).toEqual([[], []]);
+  });
+
+  it('[NFR-005] credits a touch rule only where it wins in the cascade (T-353)', () => {
+    const short = (...sheets: string[]) => shortOnTouch(sheets);
+    const mouse = '.a { min-height: var(--hit-target); }';
+    const finger = '@media (pointer: coarse) { .a { min-height: 44px; } }';
+    // A short rule of equal weight after the touch rule undoes it, in one sheet or the next.
+    expect(short(`${finger} ${mouse}`)).toEqual(['.a']);
+    expect(short(`${mouse} ${finger}`)).toEqual([]);
+    expect(short(finger, mouse)).toEqual(['.a']);
+    expect(short(mouse, finger)).toEqual([]);
+    // Unless the touch rule is important or more specific, or a floor under a height.
+    expect(short(`${finger.replace('44px', '44px !important')} ${mouse}`)).toEqual([]);
+    expect(
+      short(
+        `@media (pointer: coarse) { .a { min-height: 44px; } } .a { height: var(--hit-target); }`,
+      ),
+    ).toEqual([]);
+    expect(
+      short(
+        `@media (pointer: coarse) { .a { height: 44px; } } .a { min-height: var(--hit-target); }`,
+      ),
+    ).toEqual([]);
+    expect(
+      short(`@media (pointer: coarse) { .a { height: 44px; } } .a { height: var(--hit-target); }`),
+    ).toEqual(['.a']);
+
+    // Under another selector alike: one of equal weight counts only after the short rule, and a
+    // min-height under a min-height counts only from a selector that wins.
+    const page = jsxFacts(
+      'x.tsx',
+      '<div className="zoom"><button className="zoom-btn" type="button" /></div>',
+      none,
+    ).elements;
+    const elsewhere = (css: string) =>
+      shortOnTouch([css], (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()), page);
+    const base = '.zoom-btn { height: 24px; }';
+    const typed = '@media (pointer: coarse) { [type="button"] { height: 44px; } }';
+    expect(elsewhere(`${base} ${typed}`)).toEqual([]);
+    expect(elsewhere(`${typed} ${base}`)).toEqual(['.zoom-btn']);
+    const floor = '.zoom-btn { min-height: 24px; }';
+    expect(elsewhere(`${floor} @media (pointer: coarse) { button { min-height: 44px; } }`)).toEqual(
+      ['.zoom-btn'],
+    );
+    expect(
+      elsewhere(`${floor} @media (pointer: coarse) { .zoom button { min-height: 44px; } }`),
+    ).toEqual([]);
+  });
+
+  it('[NFR-005] follows a component to where it is drawn for the elements around it (T-353)', () => {
+    const covered =
+      '.zoom-btn { height: 24px; } @media (pointer: coarse) { .zoom button { min-height: 44px; } }';
+    const child = (body = '<button className="zoom-btn" type="button" />') =>
+      `export function Zoomed() { return ${body}; }`;
+    const place = (files: Record<string, string>) => {
+      const sources = Object.entries(files);
+      const facts = new Map(sources.map(([file, source]) => [file, jsxFacts(file, source, none)]));
+      return elementsInPlace(sources, (file) => facts.get(file) as JsxFacts);
+    };
+    const short = (files: Record<string, string>, css = covered) =>
+      shortOnTouch(
+        [css],
+        (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()),
+        place(files),
+      );
+    const drawn = (wrapped: string, extra = '') =>
+      `import { Zoomed } from './child';\n${extra}export function Bar() { return ${wrapped}; }`;
+    const inZoom = drawn('<div className="zoom"><Zoomed /></div>');
+    // The button's wrapper is in the file that draws its component, and in every place it does.
+    expect(short({ 'a/child.tsx': child(), 'a/bar.tsx': inZoom })).toEqual([]);
+    expect(
+      short({
+        'a/child.tsx': child(),
+        'a/bar.tsx': inZoom,
+        'a/other.tsx': drawn('<section><Zoomed /></section>'),
+      }),
+    ).toEqual(['.zoom-btn']);
+    // Through a component that is drawn inside the wrapper in turn, and in its own file.
+    expect(
+      short({
+        'a/child.tsx': child(),
+        'a/middle.tsx': drawn('<span><Zoomed /></span>').replace('Bar', 'Middle'),
+        'a/page.tsx':
+          'import { Middle } from \'./middle\';\nexport const Page = () => <div className="zoom"><Middle /></div>;',
+      }),
+    ).toEqual([]);
+    expect(
+      short({
+        'a/child.tsx': `${child()}\nexport const Bar = () => (<div className="zoom">{on ? <Zoomed /> : null}</div>);`,
+      }),
+    ).toEqual([]);
+    // A child is a child of the element around its component only, not of one further out.
+    const direct =
+      '.zoom-btn { height: 24px; } @media (pointer: coarse) { .zoom > button { min-height: 44px; } }';
+    expect(short({ 'a/child.tsx': child(), 'a/bar.tsx': inZoom }, direct)).toEqual([]);
+    expect(
+      short(
+        {
+          'a/child.tsx': child(),
+          'a/bar.tsx': drawn('<div className="zoom"><span><Zoomed /></span></div>'),
+        },
+        direct,
+      ),
+    ).toEqual(['.zoom-btn']);
+    // Not where it lands elsewhere or no one knows: a portal, JSX kept aside or made by a helper,
+    // a component between, a component passed on by name or exported again, one drawn nowhere.
+    for (const files of [
+      {
+        'a/child.tsx': child('createPortal(<button className="zoom-btn" />, document.body)'),
+        'a/bar.tsx': inZoom,
+      },
+      {
+        'a/child.tsx':
+          'export function Zoomed() { const b = <button className="zoom-btn" />; return <i>{b}</i>; }',
+        'a/bar.tsx': inZoom,
+      },
+      {
+        'a/child.tsx': child(),
+        'a/bar.tsx': drawn('<div className="zoom"><Tip><Zoomed /></Tip></div>'),
+      },
+      {
+        'a/child.tsx': child(),
+        'a/bar.tsx': drawn('<div className="zoom"><Zoomed /></div>', 'const pages = [Zoomed];\n'),
+      },
+      {
+        'a/child.tsx': child(),
+        'a/bar.tsx': inZoom,
+        'a/index.ts': "export { Zoomed } from './child';",
+      },
+      { 'a/child.tsx': child() },
+    ]) {
+      expect(short(files), JSON.stringify(files)).toEqual(['.zoom-btn']);
+    }
+  });
+
   it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
     const grips = (css: string, listed: string[] = []) => unlistedGrips([css], listed);
     expect(grips('.a { cursor: grab; touch-action: none; }')).toEqual(['.a']);
@@ -2332,16 +2806,8 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   });
 
   it('[NFR-005] draws menus, the command palette and dialogs opaque (D3, T-220)', () => {
-    const main = readFileSync(join(SRC, 'main.tsx'), 'utf8');
-    const order = [...main.matchAll(/import '\.\/(styles\/[\w-]+\.css)'/g)].map((m) => m[1]);
-    expect(order.length).toBeGreaterThan(20);
-    const rank = (file: string) => {
-      const at = order.indexOf(name(file));
-      return at < 0 ? order.length : at;
-    };
-    const sheets = [...cssSources]
-      .sort(([a], [b]) => rank(a) - rank(b))
-      .map(([file, source]) => [name(file), source] as const);
+    expect(LOAD_ORDER.length).toBeGreaterThan(20);
+    const sheets = inLoadOrder.map(([file, source]) => [name(file), source] as const);
     expect(overlayProblems(sheets)).toEqual([]);
   });
 
@@ -2360,12 +2826,13 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   });
 
   it("[NFR-005] gives every target under a finger's height a finger's on touch (ADR-033, T-294)", () => {
-    const sources = cssSources.map(([, source]) => source);
+    // In the order the app loads them, so a later rule of equal weight wins (T-353).
+    const sources = inLoadOrder.map(([, source]) => source);
     const controls = new Set(scripts.flatMap((file) => [...factsOf(file).controls]));
     const grips = new Set(
       [...LISTED_GRIPS, ...cssGrips(sources)].flatMap((grip) => classesIn(subjectOf(grip))),
     );
-    const elements = scripts.flatMap((file) => factsOf(file).elements);
+    const elements = elementsInPlace(scriptSources, factsOf);
     const short = shortOnTouch(
       sources,
       (part) => isTargetSelector(part, controls, grips),
