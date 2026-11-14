@@ -22,7 +22,27 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the auto-scheduler (2026-11-14, Windows)
+### Latest: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
+
+`main` is at `c10ea330` (T-355 and T-356, the last full gate: 9,257 tests, 266 e2e). The main
+lock is free and no test or gate is running on the Mac.
+
+- T-358, the third page sweep, is done: `docs/plan/page-review-third-sweep.md` (166 routes, 1,219
+  pictures; of the second sweep's open faults 86 fixed, 29 still there or changed; 66 new faults,
+  9 medium, none high; 11 in Plans, passed to Windows in COORDINATION.md).
+- T-359, fixing those faults outside Plans, was stopped mid-wave at the user's request. Six
+  branches are pushed (`wave26m/t359-*`), none merged or gated. One (`admin2`) is reviewed and
+  ready; two are built but not reviewed; one build was stopped while testing; two stopped in
+  their fix round with an untested work-in-progress commit. Each branch's state, what is left and
+  the reviewers' notes: `docs/plan/t359-handover.md`.
+- Waiting on the user: T-354 (restricted person fields in a template for every track), T-278
+  (picker permissions, which T-284 needs), the You rows listed in tickets.md, and the M1 gate's
+  three items (8-hour fuzz runs after all merges, ASVS 1.14.2 with the release signing decision,
+  the prompt-injection corpus against a live model).
+- Next on the Mac: finish T-359 from the hand-over file, then T-357 (low priority). No
+  benchmarking until the user lifts it.
+
+### Earlier: the auto-scheduler (2026-11-14, Windows)
 
 On `main` at `91a354b0` after a full gate (9,404 tests, 268 e2e). No migration; the next is 0111.
 
