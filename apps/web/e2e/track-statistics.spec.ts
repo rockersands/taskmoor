@@ -182,6 +182,12 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
   const { key } = await newTrack(api, testInfo);
 
   await visit(page, `#/tracks/${key}/statistics/group-by`);
+  // A Kanban track's purpose names only the reports it lists, no sprints or releases (S3-ST-3).
+  await expect(
+    page.getByText(
+      'Every report of this track in one place: how its work flows, its tickets and the time spent on them.',
+    ),
+  ).toBeVisible();
   if (isMobile) {
     // On a phone one Report picker stands for the grouped links (D5).
     const picker = page.getByRole('combobox', { name: 'Report' });
@@ -225,6 +231,25 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
     const link = page.getByRole('region', { name: 'Time tracking' }).getByRole('link').first();
     expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   }
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await noSidewaysScroll(page);
+
+  // Two-dimensional statistics: the corner heads the row names with their field, inside the
+  // header band (S3-ST-8), and the table fits its card on a phone too.
+  await openReport(page, 'Two-dimensional statistics');
+  const grid = page.getByRole('region', { name: 'Two-dimensional statistics' });
+  const headers = grid.getByRole('columnheader');
+  await expect(headers.first()).toHaveText('Status');
+  await expect(headers.last()).toHaveText('Total');
+  expect(
+    await grid.evaluate((region) => {
+      const [corner, next] = Array.from(region.querySelectorAll('thead th'));
+      return corner && next
+        ? getComputedStyle(corner).backgroundColor === getComputedStyle(next).backgroundColor
+        : false;
+    }),
+  ).toBe(true);
+  expect(await grid.evaluate((region) => region.scrollWidth <= region.clientWidth)).toBe(true);
   expect(await seriousAxeViolations(page)).toEqual([]);
   await noSidewaysScroll(page);
 
