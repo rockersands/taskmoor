@@ -1,3 +1,4 @@
+import { ApiError } from '../api/client';
 import type { Translate } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { fieldName as seededFieldName } from '../shell/seededNames';
@@ -10,7 +11,7 @@ import { customId, errorMessage, SYSTEM_FIELDS } from './form';
  * (`priorityId`, `fields.12`, `close-reason`), with the server's reason for it.
  */
 
-/** Custom field names by id, from a field catalogue the page already has. */
+/** Custom field names by id, from a field catalogue the page has read (T-297). */
 export type CustomFieldNames = ReadonlyMap<number, string>;
 
 /**
@@ -29,7 +30,7 @@ const LABELS: Readonly<Record<string, MessageId>> = {
 };
 
 /** A custom field's id from the key a refusal or a layout names it by (`fields.12`, `cf[12]`). */
-function customOf(key: string): number | null {
+export function customFieldOf(key: string): number | null {
   const body = /^fields\.(\d+)$/.exec(key);
   return body ? Number(body[1]) : customId(key);
 }
@@ -48,7 +49,7 @@ export function refusedFieldLabel(
 ): string | null {
   const id = Object.hasOwn(LABELS, key) ? LABELS[key] : undefined;
   if (id) return t(id);
-  const customField = customOf(key);
+  const customField = customFieldOf(key);
   if (customField === null) return null;
   const name = custom?.get(customField);
   return name === undefined ? t(unnamedCustom) : seededFieldName(t, name);
@@ -71,4 +72,11 @@ export function refusedFieldsMessage(
     parts.push(t('tickets.create.fieldProblem', { field, problem: t(errorMessage(code)) }));
   }
   return parts.length === 0 ? null : t('ticketView.problem.fields', { fields: parts.join(' ') });
+}
+
+/** The keys of the fields a ticket route refused (`invalid_fields`), none for another error. */
+export function refusedFieldKeys(error: unknown): string[] {
+  if (!(error instanceof ApiError)) return [];
+  const fields = (error.body as { fields?: unknown } | null)?.fields;
+  return fields && typeof fields === 'object' ? Object.keys(fields) : [];
 }

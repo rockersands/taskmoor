@@ -1,8 +1,14 @@
 import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
+import { ApiError } from '../api/client';
 import type { Translate } from '../i18n/I18nProvider';
 import { type Locale, messagesFor } from '../i18n/locale';
-import { refusedFieldLabel, refusedFieldsMessage } from './refusedFields';
+import {
+  customFieldOf,
+  refusedFieldKeys,
+  refusedFieldLabel,
+  refusedFieldsMessage,
+} from './refusedFields';
 
 const translate = (locale: Locale): Translate => {
   const intl = createIntl({ locale, messages: messagesFor(locale) });
@@ -54,5 +60,19 @@ describe('refused fields by their labels (T-292)', () => {
     expect(refusedFieldsMessage(translate('es'), { summary: 'required' })).toBe(
       'Revisa estos valores. Resumen: Este campo es obligatorio.',
     );
+  });
+
+  it('[CORE-008] finds the custom fields a refusal names, to read their names (T-297)', () => {
+    const refused = new ApiError(400, {
+      error: 'invalid_fields',
+      fields: { 'fields.12': 'required', priorityId: 'not_found' },
+    });
+    expect(refusedFieldKeys(refused)).toEqual(['fields.12', 'priorityId']);
+    expect(refusedFieldKeys(refused).map(customFieldOf)).toEqual([12, null]);
+    expect(customFieldOf('cf[31]')).toBe(31);
+    // Any other error names no field.
+    expect(refusedFieldKeys(new ApiError(403, { error: 'forbidden' }))).toEqual([]);
+    expect(refusedFieldKeys(new ApiError(500, null))).toEqual([]);
+    expect(refusedFieldKeys(new Error('offline'))).toEqual([]);
   });
 });

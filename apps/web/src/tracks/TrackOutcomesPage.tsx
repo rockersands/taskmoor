@@ -7,7 +7,12 @@ import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { TypeIcon } from '../shell/TicketIcons';
-import { refusedFieldsMessage } from '../tickets/refusedFields';
+import { useCustomFieldNames } from '../tickets/customFieldNames';
+import {
+  type CustomFieldNames,
+  refusedFieldKeys,
+  refusedFieldsMessage,
+} from '../tickets/refusedFields';
 import { ProgressBar, percentOf } from '../tickets/tools/Progress';
 import type { Transition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
@@ -88,7 +93,7 @@ export function TrackOutcomesPage({
   const [working, setWorking] = useState<Working | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, showProblem] = useState<string | null>(null);
   /** Asks the panel to put the focus in its new outcome's summary. */
   const [focusNew, setFocusNew] = useState(0);
   /** Where the focus goes once a row's controls have changed under it. */
@@ -124,9 +129,21 @@ export function TrackOutcomesPage({
     }
   };
 
+  // The panel has no field catalogue of its own: a refused custom field is named from the
+  // track's, read the first time one is refused (T-297).
+  const nameFields = useCustomFieldNames(read?.track.id ?? null, manager.fieldNames);
+  /**
+   * Says (or clears) what went wrong. Anything the panel says drops a refusal still waiting on the
+   * catalogue, so a change that went through since is never shown beside it (T-297).
+   */
+  const setProblem = (next: string | null) => {
+    nameFields.cancel();
+    showProblem(next);
+  };
+
   /** Why a change did not go through, in the words of the ticket page. */
   const refusal = useCallback(
-    (error: unknown) => {
+    (error: unknown, custom: CustomFieldNames) => {
       if (error instanceof ApiError) {
         const body = error.body as { error?: string; fields?: Record<string, string> } | null;
         if (error.status === 403) return t('track.outcomes.manage.forbidden');
@@ -137,8 +154,9 @@ export function TrackOutcomesPage({
           return t('ticketView.problem.transition');
         }
         if (body?.fields) {
-          // Each field by its label with the server's reason, never its API key (T-292).
-          const named = refusedFieldsMessage(t, body.fields);
+          // Each field by its label with the server's reason, never its API key (T-292), a
+          // custom one by its name (T-297).
+          const named = refusedFieldsMessage(t, body.fields, custom);
           if (named) return named;
         }
       }
@@ -146,6 +164,9 @@ export function TrackOutcomesPage({
     },
     [t],
   );
+  /** Shows why a change did not go through, once any custom field it names has its name. */
+  const refuse = (error: unknown) =>
+    nameFields(refusedFieldKeys(error), (custom) => showProblem(refusal(error, custom)));
 
   /**
    * Runs a change, then reads the list again from the top, as the server now orders it, and puts
@@ -161,7 +182,7 @@ export function TrackOutcomesPage({
     try {
       done = await work();
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
       setSaving(false);
       return false;
     }
@@ -224,7 +245,7 @@ export function TrackOutcomesPage({
     try {
       ways = (await manager.transitions(outcome.id)).filter((w) => w.to.stage === 'closed');
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
       return;
     }
     const usable = ways.filter((w) => w.layout.every((f) => FILLABLE_FIELDS.includes(f)));
