@@ -103,6 +103,8 @@ describe('a baseline compared with the days now (PLN-011)', () => {
     expect(await within(list).findByText(/^3 days later/)).toBeVisible();
     expect(within(list).getAllByRole('listitem')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    // The button went with the last page: its first ticket takes focus, not the page.
+    expect(within(list).getByRole('link', { name: 'OPS-5 Runbook' })).toHaveFocus();
     expect(client.asked.map((a) => a.after ?? null)).toEqual([null, '2']);
   });
 

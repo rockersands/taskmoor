@@ -71,6 +71,9 @@ export function BaselineCompare({
   const intl = useIntl();
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // The last page read takes Show more away: its first ticket takes focus, at this place.
+  const focusAt = useRef<number | null>(null);
   const [show, setShow] = useState<BaselineShow>('slipped');
   const base = JSON.stringify([baseline.id, baseline.version, scenario ?? null, filters]);
   const key = JSON.stringify([base, show]);
@@ -143,7 +146,7 @@ export function BaselineCompare({
   };
 
   const more = async () => {
-    if (!data?.next) return;
+    if (!data?.next || busy) return;
     setBusy(true);
     setProblem(null);
     const page = await client
@@ -154,12 +157,19 @@ export function BaselineCompare({
       setProblem(t('baselines.compare.failed'));
       return;
     }
+    if (page.next === null && page.tickets.length > 0) focusAt.current = data.tickets.length;
     setRead((was) =>
       was?.key === key
         ? { ...was, tickets: [...was.tickets, ...page.tickets], next: page.next }
         : was,
     );
   };
+  useEffect(() => {
+    const at = focusAt.current;
+    if (at === null) return;
+    focusAt.current = null;
+    listRef.current?.querySelectorAll<HTMLAnchorElement>(':scope > li > a')[at]?.focus();
+  });
   const download = async () => {
     if (!data) return;
     setBusy(true);
@@ -299,6 +309,7 @@ export function BaselineCompare({
             <EmptyState compact title={t('baselines.compare.none')} />
           ) : (
             <ul
+              ref={listRef}
               className="scenario-differing"
               aria-label={t('baselines.compare.list', { which: label(data.first, show) })}
             >
@@ -314,10 +325,11 @@ export function BaselineCompare({
           )}
           {data?.next && (
             <div className="scenario-item-actions">
+              {/* Busy, yet focusable (`aria-disabled`), so focus stays while a page is read. */}
               <button
                 type="button"
                 className="button-secondary"
-                disabled={busy}
+                aria-disabled={busy || undefined}
                 onClick={() => void more()}
               >
                 {t('baselines.compare.showMore')}
