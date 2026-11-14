@@ -25,7 +25,12 @@
     --glass-surface-sunken: transparent;
     --field-surface: transparent;
     --color-text: CanvasText;
-    --color-text-muted: GrayText;
+    /*
+     * The quieter text (the track and type over the title, the fields' names, the dates of the
+     * comments) is a dark grey mixed from the printer's own colours: GrayText is about 3.9:1 on
+     * white, short of the 4.5:1 small text needs (S3-SP-2); this is about 7.8:1.
+     */
+    --color-text-muted: color-mix(in srgb, CanvasText 68%, Canvas);
     --color-border: GrayText;
     --color-field-border: GrayText;
     --glass-edge: GrayText;
@@ -43,6 +48,15 @@
     display: none;
   }
 
+  /*
+   * The sidebar's column goes with the sidebar (S3-SP-3): the shell's grid would keep it empty at
+   * the left of the paper and push the ticket against the right edge.
+   */
+  .shell:has(.ticket-page) {
+    display: block;
+    padding: 0;
+  }
+
   .shell:has(.ticket-page) .shell-main {
     margin: 0;
     padding: 0;
@@ -56,7 +70,7 @@
     .ticket-title-row > .ticket-action,
     .help-tip,
     .ticket-header .form-status,
-    .rt-toolbar,
+    .rt-bar,
     .ticket-tool,
     .ai-panel,
     .attachment-panel,
@@ -105,12 +119,29 @@
     break-inside: avoid-page;
   }
 
-  /* A field edited in place prints as its value. */
+  /*
+   * A field edited in place prints as its value (PL-27): flush with the other values, at their
+   * height, and an empty one says "None" in the values' own colour, not a placeholder's grey.
+   */
   .ticket-page .ticket-details :is(input, select) {
+    min-height: 0;
+    padding: 0;
     border: 0;
     background: none;
     box-shadow: none;
     appearance: none;
+    color: inherit;
+    font: inherit;
+  }
+
+  .ticket-page .ticket-details input::placeholder {
+    color: inherit;
+    opacity: 1;
+  }
+
+  .ticket-page .ticket-details input::-webkit-datetime-edit,
+  .ticket-page .ticket-details input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
   }
 }
 

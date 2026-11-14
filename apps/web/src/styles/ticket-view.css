@@ -224,6 +224,20 @@
 }
 
 /*
+ * On a phone the actions follow the status menu at once and fill their rows (S3-SP-9): pushed to
+ * the end, they spread over three ragged rows and held the description far below the title.
+ */
+@media (max-width: 767px) {
+  .ticket-toolbar-gap {
+    display: none;
+  }
+
+  .ticket-toolbar > .ticket-action {
+    padding-inline: var(--space-3);
+  }
+}
+
+/*
  * One column in the page's order on phones: the ticket, its Details, then Activity (D33). On a
  * wide screen Details stand at the side across both rows, and Activity follows the main column
  * at once: the side's extra height goes to the second row, under Activity, never between them.
@@ -672,6 +686,15 @@
 
 .ticket-popup-body .ticket-view {
   max-width: none;
+}
+
+/*
+ * The pop-up's surface is near white in the light skin, where a quiet pill's white edge and pale
+ * fill vanish and its words read as bare text (S3-SP-1). There its pills take the edge controls
+ * have, 3:1 against the surfaces, in both skins; a pressed one keeps its accent edge.
+ */
+.ticket-popup :is(.button-secondary, .button-quiet):not([aria-pressed="true"]) {
+  border-color: var(--color-field-border);
 }
 
 @media (max-width: 767px) {
