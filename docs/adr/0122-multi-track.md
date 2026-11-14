@@ -2555,7 +2555,8 @@ from the design above, or settles what it left open:
 
 ### Stage 9 (T-089a): baselines, the critical path and levelling
 
-**Designed on 2026-11-14; not built yet.**
+**Designed on 2026-11-14; built the same day (see "As built (stage 9)" below for where the build
+differs).**
 PLN-011 moves to M1 with this stage, as a Must, reworded to what will be built (the wording is
 under "Tests"); the user brought it into 1.0 on 2026-11-13 (`docs/plan/decisions.csv`, "Hierarchy
 grid and baselines"). The new wording narrows the spec's in five ways: delay and slack are counted
@@ -3019,6 +3020,82 @@ Three pieces, in this order, each gated on its own if the wave must be cut:
 - A stored "Keep its dates" mark or a shared "Fixed dates" field (stage 7, question 4).
 - A critical path that counts capacity, or one through parents' roll-ups.
 
+#### As built (stage 9)
+
+Built on 2026-11-14 on `wave19/t089a-hierarchy-baselines`, in the three pieces of "Building it":
+baselines (migration `0111_plan_baselines`, `plans/access.ts`, `routes/plan-baselines.ts`, the
+download, the events; `PlanBaselinesPage.tsx`, `BaselineCompare.tsx`, `baselineClient.ts`,
+`baselineFixtures.ts`, `baselineExport.ts`, `address.ts`, `PlanPage.tsx`), the critical path
+(`plans/graph.ts`, `classify` exported, `plans/criticalPath.ts`, the route in `plan-views.ts`;
+`TimelineView.tsx`, `timeline/critical.ts`, `CriticalPathList.tsx`, `criticalFixtures.ts`,
+`PlanTimelinePage.tsx`, `planExport.ts`, `planImage.ts`) and evening out (`plans/evenOut.ts`,
+`scheduler.ts`, `routes/plan-schedule.ts`, `scheduleInputs.ts`; `AutoScheduleDialog.tsx`,
+`ScheduleResult.tsx`, `scheduleWords.ts`, `scenarioClient.ts`), with the manual's sections. Where
+the build differs from the design above, or settles what it left open:
+
+- **`then` is `was`** in the comparison's answer (`tickets[].was`, `planEnd.was`): Biome's
+  `noThenProperty` refuses a property named `then`, since it makes an object look like a promise.
+  `was` is null for a ticket added since, rather than an object of nulls.
+- **The comparison answers more:** `mostLater` (the largest delay, for "by up to N days"),
+  `query` and `show`. Each ticket's `level` is `{ rank, kind }`, as on the Timeline, and `closed` is
+  the ticket's state now; the `closed` flag stored at capture is kept but not answered. `show` is
+  the page's state, not in its address; `baseline=` is (`PlanView.baseline`, written only on the
+  Baselines tab and not part of `planViewKey`).
+- **The comparison's file** holds every page of the list chosen, reading at most 250 pages of 200
+  (a whole plan of 50,000), through `planExport`'s `csvText`; its first lines name the baseline and,
+  when any, `notShown`.
+- **`planEditable`** replaced `mayManage` in `routes/plans.ts` and the `editable` of `visiblePlan`
+  in both `routes/plan-scenarios.ts` and `routes/plan-schedule.ts`; behaviour is unchanged.
+- **The page reuses** the Scenarios tab's list, card and dialog classes and the filter chips, so no
+  stylesheet changed for baselines.
+- **The critical path's open choices:** `waitsElsewhere` counts the dated open tickets with at
+  least one blocker outside the plan or hidden from the viewer. Links into or out of a circle
+  constrain nothing. Each critical ticket is in exactly one chain: a ticket with two tight links
+  onward follows the longer, and the other starts a chain of its own; chains come longest first,
+  then by their first start, then id. The cut at 500 tickets can end partway through a chain.
+  `undated` counts open tickets with no bar of their own or of their sprint, parents dated only
+  by their children included. The answer carries `scenario` when one is read.
+- **The critical path on the page** shows only where the page's client reads it
+  (`PlanClient.criticalPath`, optional), so pages and stories built on `fakePlanClient` show no
+  toggle. A path that ends partway through a late chain says, on each ticket of slack below 0, "(a
+  dependency before it is N days late)". The Timeline's CSV gains **Slack (days)** and
+  **Critical** only while the toggle is on, and the image a legend line; the page reads the path
+  afresh for each file.
+- **Evening out's answer shapes:** `moved_off_over` carries `{ subject, fromPeriod, fromPeriodEnd,
+  toPeriod, toPeriodEnd, days, over }`, where after several moves `fromPeriod` is the first period
+  and `days` the whole shift; `would_make_late` carries `{ ticketId?, why, until }`, `why` being
+  `kept`, `left_out`, `cycle`, `hidden_blocker`, `sprint` or `past_end`; `overLeft` is `[{ teamId
+  | userId, periodStart, periodEnd, over, onlyFixed }]`, a boolean decided in the final pass (true
+  when the cell ends holding only tickets that do not move). `DayProposal` lets a proposal keep a
+  null day: a day a ticket does not have stays null. `countOverCells` is exported for readiness.
+- **Evening out's outcomes:** every other movable ticket is placed with `already` and the page
+  never lists those; tickets in a circle or behind a hidden blocker are listed as not placed
+  (`cycle`, `hidden_blocker`), as in stage 7. A failed try stays on its ticket even when a later
+  candidate's move makes its cell fit. Within a cell, a size no later period could take is not
+  searched again for the same assignee, which keeps the large case inside its budget.
+- **Pushes can raise the number of over cells.** Rule 5 checks room only for the moved ticket; a
+  pushed ticket lands where the push puts it and its cell is worked when its turn comes. Promise
+  (d) holds, since every cell left over is listed, but in the large synthetic plan (packed full,
+  then capacity cut by 20%) 161 over cells became 511 after a run. Counting the pushes' load when
+  choosing where to move would change rule 5; the user's to decide (question 17).
+- **Readiness's `overCells`** counts the reader's tickets of the plan by their live days and
+  people's drafts in the scenario (never the auto-scheduler's), closed work due then and work
+  elsewhere included, in one more read-only statement; readiness now passes the scenario's
+  overlay through. `diffProposals` takes nullable days. `plan.schedule_ran` gains `mode` and
+  `overLeft` (a count), as designed, in `events/catalogue.ts`.
+- **The dialog** remembers `mode` with its other choices in this browser, and a run in rank order
+  sends no `mode`. The keep choices sit in a nested fieldset with the legend "Kept tickets never
+  move (fixed dates)", styled by the existing `.auto-schedule-choices`; the note that the two kinds
+  of run replace each other's proposals shows when Even out load is chosen.
+- **Measured, not enforced** (the user's hold on benchmarking): `evenOut` alone on 10,000 tickets,
+  20,000 links, 300 people and 12 periods, about 200 ms (`evenOut.large.test.ts`).
+- **Not yet done:** the budgets in `plans.large.test.ts` (a capture and a comparison of 50,000
+  tickets; `criticalPath` on 50,000 tickets and 100,000 links, and its route); the e2e
+  `plan-baselines.spec.ts`; a contract scenario with `mode: 'even_out'` (the existing one checks the
+  new payload fields with `'fill'`); `fakeScenarioClient`'s run ignores `mode`; a `TimelinePage`
+  story with the critical marks on. `docs/api` lists the five baseline routes and the critical
+  path's, all internal.
+
 #### Questions for the user (the design takes the first answer each time)
 
 1. **What evening out is called** ("level" already names a hierarchy level): **Even out load**;
@@ -3066,6 +3143,11 @@ Three pieces, in this order, each gated on its own if the wave must be cut:
     may see.
 16. **Where the critical path shows:** a toggle on the Timeline with a list in words, marked in
     its image and CSV; or also on the program board; or only as a list.
+17. **Pushes that fill later periods** (asked after the build, 2026-11-14): a move checks room only
+    for the ticket it moves, the tickets it pushes are worked when their period's turn comes, and
+    every cell left over is listed, as built; or a move counts its pushes' load too and is undone
+    when they would take a later cell over (fewer moves, more cells left over where they are); or
+    pushed tickets may move again past the run's periods.
 
 ### Stage 10 (T-089a): the hierarchy grid
 
@@ -3513,10 +3595,10 @@ steps deeper than 3; a structure's own filters beyond the plan's.
 
 Each stage adds its section above when it starts. Releases across tracks (stage 4), duplicating,
 linking and exporting (stage 8), the program board with dependency options (stage 5), draft
-changes and scenarios (stage 6) and the auto-scheduler (stage 7) are designed and built above.
-Baselines, the critical path and levelling (stage 9) and the hierarchy grid (stage 10), both
-T-089a, which the user brought into 1.0 on 2026-11-13, are designed above and not built yet; stage
-9 is to be built first. PLN-002 to PLN-011 move to M1 in the spec with their stage: PLN-006 moved
+changes and scenarios (stage 6), the auto-scheduler (stage 7) and baselines, the critical path
+and levelling (stage 9, built on 2026-11-14) are designed and built above. The hierarchy grid
+(stage 10), which like stage 9 is T-089a and which the user brought into 1.0 on 2026-11-13, is
+designed above and not built yet. PLN-002 to PLN-011 move to M1 in the spec with their stage: PLN-006 moved
 with stage 2, PLN-005 and PLN-009 with stage 3, PLN-007 with stage 4, PLN-008 and PLN-013 with
 stage 5, which builds PLN-013 with the program board as the user decided on 2026-11-13 (T-089i),
 PLN-002 and PLN-003 with stage 6, and PLN-004 with stage 7. PLN-011 and PLN-010 move with stages 9
