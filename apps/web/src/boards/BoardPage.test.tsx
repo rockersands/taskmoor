@@ -546,6 +546,28 @@ describe('the board page (M1-043)', () => {
     expect(keysIn('Review and done in Everything else')).toEqual(['SHOP-23']);
   });
 
+  it('[AGL-002] [NFR-005] the choice is a modal dialog: a veil, Tab kept inside, focus back on the card', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    await user.click(screen.getByRole('button', { name: 'Move SHOP-23' }));
+    await user.click(screen.getByRole('button', { name: 'Forward to Review and done' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Move SHOP-23 to Review and done' });
+    expect(screen.getByRole('button', { name: 'Close without moving' })).toHaveClass(
+      'create-backdrop',
+    );
+    // From the last button, Tab goes round to the first, never out to the board.
+    within(dialog).getByRole('button', { name: 'Cancel' }).focus();
+    await user.tab();
+    expect(within(dialog).getByRole('button', { name: /Send to review/ })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // The veil closes it as Escape does, and focus is back on the card it was about.
+    await user.click(screen.getByRole('button', { name: 'Close without moving' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('link', { name: /SHOP-23/ })).toHaveFocus();
+  });
+
   it('[AGL-002] says so when no transition leads into the column', async () => {
     const user = userEvent.setup();
     renderBoard();

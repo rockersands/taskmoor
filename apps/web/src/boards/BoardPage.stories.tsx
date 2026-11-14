@@ -176,6 +176,23 @@ export const ChooseTransition: Story = {
     await expect(getComputedStyle(dialog).backdropFilter).toBe('none');
     // An opaque fill: Chrome writes a colour with any transparency as rgba().
     await expect(getComputedStyle(dialog).backgroundColor).toMatch(/^rgb\(/);
+    // A modal dialog (T-222): a veil over the page, and Tab goes round the choices, never out.
+    const veil = within(document.body).getByRole('button', { name: 'Close without moving' });
+    await expect(veil).toBeVisible();
+    await expect(veil.classList.contains('create-backdrop')).toBe(true);
+    for (let i = 0; i < 5; i++) {
+      await userEvent.tab();
+      await expect(dialog.contains(document.activeElement)).toBe(true);
+    }
+    // It still floats near the bottom edge, as wide as its choices need.
+    const box = dialog.getBoundingClientRect();
+    await expect(window.innerHeight - box.bottom).toBeLessThan(40);
+    const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    await expect(box.width).toBeLessThanOrEqual(28 * rem + 1);
+    // Escape closes it and gives focus back to the card it was about.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    await expect(document.activeElement).toBe(canvas.getByRole('link', { name: /SHOP-23/ }));
   },
 };
 

@@ -4717,6 +4717,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.choose.intro': 'Varias transiciones llevan allí. ¿Cuál?',
   'boards.choose.option': '{name} (a {status})',
   'boards.choose.cancel': 'Cancelar',
+  'boards.choose.close': 'Cerrar sin mover',
   'boards.sprint.complete': 'Completar {name}',
   'boards.list.title': 'Tableros',
   'boards.list.failed': 'No se pudieron cargar los tableros.',

@@ -4575,6 +4575,7 @@ export const messagesEn = {
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',
   'boards.choose.cancel': 'Cancel',
+  'boards.choose.close': 'Close without moving',
   'boards.sprint.complete': 'Complete {name}',
   'boards.list.title': 'Boards',
   'boards.list.failed': 'The boards could not be loaded.',
