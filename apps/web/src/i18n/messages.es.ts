@@ -7561,7 +7561,7 @@ export const messagesEs: Record<MessageId, string> = {
   'scenario.changes.title': 'Cambios en {name}',
   'scenario.changes.titleMain': 'Cambios en {name}, el escenario principal',
   'scenario.changes.counts':
-    '{count, plural, one {# cambio} other {# cambios}}: {ready} listos, {changed} cambiados desde el borrador, {refused} rechazados.',
+    '{count, plural, one {# cambio} other {# cambios}}: {ready, plural, one {# listo} other {# listos}}, {changed, plural, one {# cambiado} other {# cambiados}} desde el borrador, {refused, plural, one {# rechazado} other {# rechazados}}.',
   'scenario.changes.notMain': 'Los borradores solo se aplican desde el escenario principal.',
   'scenario.changes.readOnly':
     'Solo el propietario del plan y los administradores del sitio pueden aplicarlos o descartarlos.',
@@ -7619,8 +7619,9 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {¿Cambiar # ticket como tú, con tus permisos?} other {¿Cambiar # tickets como tú, con tus permisos?}}',
   'scenario.apply.askAll':
     '¿Cambiar todos los tickets con un borrador que ves ({count}) como tú, con tus permisos?',
-  'scenario.apply.progress': 'Aplicando: {done} de {total} hechos.',
-  'scenario.apply.result': '{applied} aplicados, {refused} rechazados',
+  'scenario.apply.progress': 'Aplicando: van {done} de {total}.',
+  'scenario.apply.result':
+    '{applied, plural, one {# aplicado} other {# aplicados}}, {refused, plural, one {# rechazado} other {# rechazados}}',
   'scenario.apply.refusedRow': '{key}: {reason}',
   'scenario.apply.inProgress':
     'Se está aplicando otra vez este plan. Vuelve a intentarlo cuando termine.',
