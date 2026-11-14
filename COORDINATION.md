@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Mac | 2026-11-14 06:09 UTC | Gate for T-271 and T-272 (the second sweep's fixes), then main |
 
 ## Numbers
 
