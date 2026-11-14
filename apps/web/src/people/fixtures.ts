@@ -1,6 +1,12 @@
 import { fakePersonalDataClient } from '../account/fixtures';
 import { ApiError } from '../api/client';
-import type { GroupDetail, GroupSummary, PeopleClient, User } from './client';
+import {
+  type GroupDetail,
+  type GroupSummary,
+  type PeopleClient,
+  USERS_PAGE,
+  type User,
+} from './client';
 import type { TeamDetail, TeamSummary, TeamsClient } from './teamsClient';
 
 const person = (id: number, name: string, email: string, extra: Partial<User> = {}): User => ({
@@ -26,13 +32,28 @@ export const PEOPLE: User[] = [
   }),
 ];
 
+/** `count` active people named Person 001, Person 002…, for lists longer than a page (T-307). */
+export function manyPeople(count: number): User[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = String(i + 1).padStart(3, '0');
+    return person(1000 + i, `Person ${n}`, `person-${n}@example.com`);
+  });
+}
+
 export interface FakePeopleClient extends PeopleClient {
   calls: { action: string; args: unknown[] }[];
 }
 
-/** An in-memory backend for stories and tests: it answers as the API would. */
-export function fakePeopleClient(): FakePeopleClient {
-  let users = structuredClone(PEOPLE);
+/**
+ * An in-memory backend for stories and tests: it answers as the API would, `pageSize` people a
+ * page (as many as the People page asks for, unless a story wants to show paging), and holds
+ * `people` (the sample people unless given).
+ */
+export function fakePeopleClient(
+  options: { pageSize?: number; people?: User[] } = {},
+): FakePeopleClient {
+  const pageSize = options.pageSize ?? USERS_PAGE;
+  let users = structuredClone(options.people ?? PEOPLE);
   let groups: {
     id: number;
     name: string;
@@ -65,14 +86,19 @@ export function fakePeopleClient(): FakePeopleClient {
   });
   return {
     calls,
-    users: async (query, status) => {
+    users: async (query, status, offset = 0) => {
       const q = query.toLowerCase();
-      const list = users.filter(
-        (u) =>
-          (status === 'all' || (status === 'active' ? u.active : !u.active)) &&
-          (!q || u.name.toLowerCase().includes(q) || u.email.includes(q)),
-      );
-      return { users: structuredClone(list), total: list.length };
+      const list = users
+        .filter(
+          (u) =>
+            (status === 'all' || (status === 'active' ? u.active : !u.active)) &&
+            (!q || u.name.toLowerCase().includes(q) || u.email.includes(q)),
+        )
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id - b.id);
+      return {
+        users: structuredClone(list.slice(offset, offset + pageSize)),
+        total: list.length,
+      };
     },
     createUser: async (body) => {
       log('createUser', body);

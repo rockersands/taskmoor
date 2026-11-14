@@ -14,6 +14,7 @@ import {
   type OwnerSummary,
   type PolicyLimits,
   type TokenFilter,
+  type TokenInventory,
   type TokenPolicy,
 } from './client';
 import { TokenItem } from './TokenItem';
@@ -25,10 +26,34 @@ export interface AdminTokensPageProps {
 
 const FILTERS: readonly TokenFilter[] = ['all', 'active', 'expiring', 'expired', 'revoked'];
 
-type Inventory =
-  | { status: 'loading' }
-  | { status: 'loaded'; tokens: ApiToken[]; total: number; owners: OwnerSummary[] }
-  | { status: 'failed' };
+/** The tokens shown, the filter they answer, and how far the server's list has been read. */
+interface Listed {
+  filter: TokenFilter;
+  tokens: ApiToken[];
+  total: number;
+  owners: OwnerSummary[];
+  /** Rows read from the server so far: where the next page starts. */
+  read: number;
+  /** An empty page arrived before `total` was reached (tokens left the list meanwhile). */
+  end: boolean;
+  /** Show more is reading the next page. */
+  more: boolean;
+}
+
+type Inventory = { status: 'loading' } | ({ status: 'loaded' } & Listed) | { status: 'failed' };
+
+/** The list with the next page after it; a token already shown is not shown twice. */
+function withPage<L extends Listed>(listed: L, page: TokenInventory): L {
+  const known = new Set(listed.tokens.map((token) => token.id));
+  return {
+    ...listed,
+    tokens: [...listed.tokens, ...page.tokens.filter((token) => !known.has(token.id))],
+    total: page.total,
+    owners: page.owners,
+    read: listed.read + page.tokens.length,
+    end: page.tokens.length === 0,
+  };
+}
 
 /**
  * The administrator's token inventory (IAM-007): every personal and service-account token
@@ -46,8 +71,9 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [inventory, setInventory] = useState<Inventory>({ status: 'loading' });
   const [policy, setPolicy] = useState<{ policy: TokenPolicy; limits: PolicyLimits } | null>(null);
-  // Bumped after a bulk revocation, so the list and the owners are read again.
-  const [version, setVersion] = useState(0);
+  // Each reading of the list from its start takes the next number; a page that arrives after a
+  // newer reading began (another filter, a revocation) is dropped (T-308).
+  const reading = useRef(0);
 
   const refuse = useCallback(
     (error: unknown): boolean => {
@@ -61,20 +87,65 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
     [expired],
   );
 
-  const load = useCallback(async () => {
-    try {
-      const answer = await client.list(filter);
-      setInventory({ status: 'loaded', ...answer });
-    } catch (error) {
-      if (!refuse(error)) setInventory({ status: 'failed' });
-    }
-  }, [client, filter, refuse]);
+  /**
+   * Reads the list from its start: one page for a new filter, or as many as were shown (`keep`)
+   * after a revocation, so Show more's pages stay open; the owners are read again with it.
+   */
+  const load = useCallback(
+    async (keep = 0) => {
+      const mine = ++reading.current;
+      try {
+        let listed: Listed = {
+          filter,
+          tokens: [],
+          total: 0,
+          owners: [],
+          read: 0,
+          end: false,
+          more: false,
+        };
+        do {
+          const page = await client.list(filter, listed.read);
+          if (mine !== reading.current) return;
+          listed = withPage(listed, page);
+        } while (listed.read < Math.min(keep, listed.total) && !listed.end);
+        setInventory({ status: 'loaded', ...listed });
+      } catch (error) {
+        if (mine !== reading.current) return;
+        if (!refuse(error)) setInventory({ status: 'failed' });
+      }
+    },
+    [client, filter, refuse],
+  );
+  const shown = inventory.status === 'loaded' ? inventory.read : 0;
+  const reload = () => load(shown);
 
   useEffect(() => {
     if (forbidden) return;
-    void version;
     void load();
-  }, [forbidden, load, version]);
+  }, [forbidden, load]);
+
+  /**
+   * Show more: the next page of the same filter, after the tokens already shown (T-308).
+   * Resolves to false when the page could not be read, for the list to say so.
+   */
+  const more = async (): Promise<boolean> => {
+    if (inventory.status !== 'loaded' || inventory.more) return true;
+    const mine = reading.current;
+    const from = inventory;
+    setInventory({ ...from, more: true });
+    try {
+      const page = await client.list(from.filter, from.read);
+      if (mine === reading.current) {
+        setInventory((s) => (s.status === 'loaded' ? { ...withPage(s, page), more: false } : s));
+      }
+      return true;
+    } catch (error) {
+      if (mine !== reading.current) return true;
+      setInventory((s) => (s.status === 'loaded' ? { ...s, more: false } : s));
+      return refuse(error);
+    }
+  };
 
   useEffect(() => {
     if (forbidden) return;
@@ -113,7 +184,8 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
           inventory={inventory}
           reminderDays={policy?.policy.reminderDays ?? 14}
           timeZone={timeZone}
-          onChanged={load}
+          onChanged={reload}
+          onMore={more}
           refuse={refuse}
         />
         {/* Nothing to revoke in bulk while there are no tokens at all (AD-31). */}
@@ -121,7 +193,7 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
           <BulkSection
             client={client}
             owners={inventory.status === 'loaded' ? inventory.owners : []}
-            onRevoked={() => setVersion((v) => v + 1)}
+            onRevoked={() => void reload()}
             refuse={refuse}
           />
         )}
@@ -147,6 +219,7 @@ function InventorySection({
   reminderDays,
   timeZone,
   onChanged,
+  onMore,
   refuse,
 }: {
   client: AdminTokensClient;
@@ -156,6 +229,8 @@ function InventorySection({
   reminderDays: number;
   timeZone: string | null;
   onChanged: () => Promise<void>;
+  /** Reads the next page; false when it could not be read. */
+  onMore: () => Promise<boolean>;
   refuse: (error: unknown) => boolean;
 }) {
   const t = useT();
@@ -263,6 +338,23 @@ function InventorySection({
                 />
               ))}
             </ul>
+          )}
+          {!inventory.end && inventory.read < inventory.total && (
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={inventory.more}
+                onClick={() => {
+                  setError(null);
+                  void onMore().then((read) => {
+                    if (!read) setError(t('admin.tokens.failed'));
+                  });
+                }}
+              >
+                {t('admin.tokens.more')}
+              </button>
+            </div>
           )}
         </>
       )}

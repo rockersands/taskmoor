@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { fakePeopleClient, fakeTeamsClient } from './fixtures';
+import { fakePeopleClient, fakeTeamsClient, manyPeople } from './fixtures';
 import { GroupsPage } from './GroupsPage';
 import { TeamsPage } from './TeamsPage';
 import { UsersPage } from './UsersPage';
@@ -249,5 +249,30 @@ export const TeamsAtPhoneWidth: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage Platform' }));
     await expect(await canvas.findByText('Members of Platform')).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** More people than a page holds (T-307): the count says how many, Show more lists the rest. */
+const showsMore = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await expect(await canvas.findByText('5 people')).toBeVisible();
+  await userEvent.click(canvas.getByRole('button', { name: 'Show more' }));
+  await expect(await canvas.findByText('Person 004')).toBeVisible();
+  return canvas;
+};
+
+export const ShowMorePeople: Story = {
+  decorators: [atDesktopPageWidth],
+  args: { client: fakePeopleClient({ pageSize: 2, people: manyPeople(5) }) },
+  play: async ({ canvasElement }) => {
+    await showsMore(canvasElement);
+  },
+};
+
+export const ShowMorePeopleAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  args: { client: fakePeopleClient({ pageSize: 2, people: manyPeople(5) }) },
+  play: async ({ canvasElement }) => {
+    await fitsPhoneWidth(await showsMore(canvasElement));
   },
 };

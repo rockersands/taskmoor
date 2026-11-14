@@ -1,7 +1,7 @@
 ---
 title: "API tokens and service accounts"
 audience: admins
-sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, apps/web/src/admin/TableScroller.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/shell/DangerAction.tsx
+sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/client.ts, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, apps/web/src/admin/TableScroller.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/shell/DangerAction.tsx
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -138,6 +138,10 @@ Site administrators see every token of the site on **Administration**, then **AP
 - **Show** filters the list: **All tokens**, **Active**, **Due for rotation**, **Expired** or
   **Revoked**. While the site has no token at all, the page says so and offers no filter. A token is due for rotation when it is active, not yet replaced, and expires
   within the reminder window.
+- Above the list, the count says how many tokens the filter matches. The list shows the newest
+  500 first; **Show more** under it adds the next 500, until every token is listed. **Due for
+  rotation** lists all of its tokens at once. Choosing another filter starts the list again
+  from the top, and revoking a token keeps the tokens you had already listed in view.
 - **Revoke** next to a token, in the danger colour, first says what will happen: programs
   using it stop working at once, and a revoked token cannot be used again. **Revoke**, the
   token's name and its owner's, in that question, stops it; **Cancel** keeps it.

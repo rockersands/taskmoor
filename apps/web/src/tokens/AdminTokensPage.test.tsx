@@ -3,11 +3,22 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { ADMIN, MEMBER } from '../admin/fixtures';
+import { I18nProvider } from '../i18n/I18nProvider';
+import { SessionProvider } from '../session/SessionProvider';
 import { type Handler, noContent, stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import type { ApiToken, BulkCriteria, TokenPolicy } from './client';
-import { inventoryTokens, LIMITS, ownersOf, POLICY } from './fixtures';
+import { AdminTokensPage } from './AdminTokensPage';
+import type { AdminTokensClient, ApiToken, BulkCriteria, TokenPolicy } from './client';
+import {
+  fakeAdminTokensClient,
+  inventoryTokens,
+  LIMITS,
+  manyTokens,
+  ownersOf,
+  POLICY,
+  sampleToken,
+} from './fixtures';
 
 /** A backend that keeps the inventory and the policy, like the real one. */
 function inventoryBackend(extra: Record<string, Handler> = {}) {
@@ -315,5 +326,81 @@ describe('admin token inventory', () => {
     const { tokens, region } = await openPage();
     expect(items(tokens)).toHaveLength(8);
     expect(region('Revoke in bulk').getByRole('button', { name: 'Revoke tokens' })).toBeVisible();
+  });
+});
+
+describe('the token inventory past the first page (T-308)', () => {
+  const renderPage = (client: AdminTokensClient) => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={ADMIN}>
+          <main>
+            <AdminTokensPage client={client} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return within(screen.getByRole('region', { name: 'Tokens' }));
+  };
+  const names = (tokens: ReturnType<typeof within>) =>
+    items(tokens).map((li) => li.querySelector('.token-name span')?.textContent);
+  const old = sampleToken({ id: 90, name: 'Old laptop', status: 'revoked' });
+
+  it('[IAM-007] counts every token and shows the rest a page at a time', async () => {
+    const user = userEvent.setup();
+    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }));
+    expect(await tokens.findByText('5 tokens')).toBeVisible();
+    expect(names(tokens)).toEqual(['Token 001', 'Token 002']);
+    await user.click(tokens.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items(tokens)).toHaveLength(4));
+    await user.click(tokens.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items(tokens)).toHaveLength(5));
+    expect(names(tokens).at(-1)).toBe('Token 005');
+    expect(tokens.queryByRole('button', { name: 'Show more' })).toBeNull();
+    expect(tokens.getByText('5 tokens')).toBeVisible();
+  });
+
+  it('[IAM-007] another filter after Show more starts afresh, and the late page is dropped', async () => {
+    const user = userEvent.setup();
+    const base = fakeAdminTokensClient({}, { tokens: [...manyTokens(5), old], pageSize: 2 });
+    let release = () => {};
+    const tokens = renderPage({
+      ...base,
+      list: async (filter, offset = 0) => {
+        const answer = await base.list(filter, offset);
+        // The second page of every token arrives only after the revoked ones have been listed.
+        if (filter === 'all' && offset > 0) await new Promise<void>((done) => (release = done));
+        return answer;
+      },
+    });
+    await tokens.findByText('6 tokens');
+    await user.click(tokens.getByRole('button', { name: 'Show more' }));
+    expect(tokens.getByRole('button', { name: 'Show more' })).toBeDisabled();
+    await user.selectOptions(tokens.getByLabelText('Show'), 'revoked');
+    expect(await tokens.findByText('1 token')).toBeVisible();
+    expect(names(tokens)).toEqual(['Old laptop']);
+    release();
+    await new Promise((settle) => setTimeout(settle, 20));
+    expect(names(tokens)).toEqual(['Old laptop']);
+    expect(tokens.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('[IAM-007] a revocation keeps the pages Show more opened', async () => {
+    const user = userEvent.setup();
+    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }));
+    await tokens.findByText('5 tokens');
+    await user.click(tokens.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items(tokens)).toHaveLength(4));
+    await user.click(tokens.getByRole('button', { name: 'Revoke Token 004 of River Stone' }));
+    const confirm = tokens.getByRole('group', { name: /Revoke Token 004 of River Stone\?/ });
+    await user.click(
+      within(confirm).getByRole('button', { name: 'Revoke Token 004 of River Stone' }),
+    );
+    expect(await tokens.findByText('Revoked Token 004 of River Stone.')).toBeVisible();
+    await waitFor(() =>
+      expect(tokens.queryByRole('button', { name: 'Revoke Token 004 of River Stone' })).toBeNull(),
+    );
+    expect(names(tokens)).toEqual(['Token 001', 'Token 002', 'Token 003', 'Token 004']);
+    expect(tokens.getByRole('button', { name: 'Show more' })).toBeVisible();
   });
 });

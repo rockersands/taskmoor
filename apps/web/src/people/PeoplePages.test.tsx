@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, MEMBER } from '../admin/fixtures';
@@ -8,7 +8,8 @@ import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakePeopleClient, fakeTeamsClient, PEOPLE } from './fixtures';
+import type { PeopleClient } from './client';
+import { fakePeopleClient, fakeTeamsClient, manyPeople, PEOPLE } from './fixtures';
 import { GroupsPage } from './GroupsPage';
 import { TeamsPage } from './TeamsPage';
 import { UsersPage } from './UsersPage';
@@ -409,5 +410,79 @@ describe('teams (M1-123, CORE-027)', () => {
       (t) => !data.has(t) && t !== '·' && t !== '· Runs the servers',
     );
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('people past the first page (T-307)', () => {
+  const names = () =>
+    screen.getAllByRole('listitem').map((li) => li.querySelector('.people-name')?.textContent);
+  const showMore = () => screen.getByRole('button', { name: 'Show more' });
+  const renderUsers = (client: PeopleClient) =>
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={ADMIN}>
+          <main>
+            <UsersPage client={client} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+
+  it('[IAM-008] counts everyone and shows the rest a page at a time', async () => {
+    const user = userEvent.setup();
+    renderUsers(fakePeopleClient({ pageSize: 2, people: manyPeople(5) }));
+    expect(await screen.findByText('5 people')).toBeVisible();
+    expect(names()).toEqual(['Person 001', 'Person 002']);
+    await user.click(showMore());
+    await waitFor(() => expect(names()).toHaveLength(4));
+    await user.click(showMore());
+    await waitFor(() => expect(names()).toHaveLength(5));
+    expect(names().at(-1)).toBe('Person 005');
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    expect(screen.getByText('5 people')).toBeVisible();
+  });
+
+  it('[IAM-008] a search after Show more starts afresh, and the late page is dropped', async () => {
+    const user = userEvent.setup();
+    const base = fakePeopleClient({ pageSize: 2, people: manyPeople(5) });
+    let release = () => {};
+    const client: PeopleClient = {
+      ...base,
+      users: async (query, status, offset = 0) => {
+        const answer = await base.users(query, status, offset);
+        // The second page of everyone arrives only after the search below has been answered.
+        if (query === '' && offset > 0) await new Promise<void>((done) => (release = done));
+        return answer;
+      },
+    };
+    renderUsers(client);
+    await screen.findByText('5 people');
+    await user.click(showMore());
+    expect(showMore()).toBeDisabled();
+    await user.type(screen.getByRole('searchbox', { name: 'Find by name or email' }), 'person 005');
+    expect(await screen.findByText('1 person')).toBeVisible();
+    expect(names()).toEqual(['Person 005']);
+    release();
+    await new Promise((settle) => setTimeout(settle, 20));
+    expect(names()).toEqual(['Person 005']);
+    expect(screen.getByText('1 person')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('[IAM-008] a change keeps the pages Show more opened', async () => {
+    const user = userEvent.setup();
+    renderUsers(fakePeopleClient({ pageSize: 2, people: manyPeople(5) }));
+    await screen.findByText('5 people');
+    await user.click(showMore());
+    await waitFor(() => expect(names()).toHaveLength(4));
+    await user.click(screen.getByRole('button', { name: 'Make site administrator: Person 004' }));
+    expect(await screen.findByText('Person 004 was changed.')).toBeInTheDocument();
+    expect(names()).toEqual([
+      'Person 001',
+      'Person 002',
+      'Person 003',
+      'Person 004Site administrator',
+    ]);
+    expect(showMore()).toBeVisible();
   });
 });

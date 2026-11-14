@@ -1,15 +1,16 @@
 import { ApiError } from '../api/client';
-import type {
-  AdminTokensClient,
-  ApiToken,
-  BulkCriteria,
-  OwnerSummary,
-  PersonalTokensClient,
-  PolicyLimits,
-  ServiceAccount,
-  ServiceAccountsClient,
-  TokenOwner,
-  TokenPolicy,
+import {
+  type AdminTokensClient,
+  type ApiToken,
+  type BulkCriteria,
+  type OwnerSummary,
+  type PersonalTokensClient,
+  type PolicyLimits,
+  type ServiceAccount,
+  type ServiceAccountsClient,
+  TOKENS_PAGE,
+  type TokenOwner,
+  type TokenPolicy,
 } from './client';
 
 /** Synthetic tokens, owners and service accounts for stories and tests. */
@@ -114,6 +115,17 @@ export function inventoryTokens(now = Date.now()): ApiToken[] {
   ];
 }
 
+/** `count` live tokens of River's named Token 001, Token 002…, newest first (T-308). */
+export function manyTokens(count: number, now = Date.now()): ApiToken[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = String(i + 1).padStart(3, '0');
+    return sampleToken(
+      { id: 2000 + i, name: `Token ${n}`, owner: RIVER_OWNER, createdAt: iso(-i * 60_000, now) },
+      now,
+    );
+  });
+}
+
 const live = (t: ApiToken) => t.status === 'active';
 
 /** Owners with how many live tokens each holds, as the inventory reports them. */
@@ -183,11 +195,15 @@ function matches(t: ApiToken, criteria: BulkCriteria): boolean {
   return Date.parse(t.createdAt) < Date.parse(criteria.createdBefore);
 }
 
-/** An in-memory administrator backend: the inventory, bulk revocation and the policy. */
+/**
+ * An in-memory administrator backend: the inventory, `pageSize` tokens a page (as many as the
+ * page asks for, unless a story wants to show paging), bulk revocation and the policy.
+ */
 export function fakeAdminTokensClient(
   overrides: Partial<AdminTokensClient> = {},
-  options: { tokens?: ApiToken[]; policy?: TokenPolicy } = {},
+  options: { tokens?: ApiToken[]; policy?: TokenPolicy; pageSize?: number } = {},
 ): AdminTokensClient {
+  const pageSize = options.pageSize ?? TOKENS_PAGE;
   let tokens = options.tokens ?? inventoryTokens();
   let policy = options.policy ?? POLICY;
   const revoke = (t: ApiToken): ApiToken => ({
@@ -196,7 +212,7 @@ export function fakeAdminTokensClient(
     revokedAt: new Date().toISOString(),
   });
   return {
-    list: async (filter) => {
+    list: async (filter, offset = 0) => {
       const now = Date.now();
       const shown = tokens.filter((t) => {
         if (filter === 'all') return true;
@@ -209,7 +225,9 @@ export function fakeAdminTokensClient(
         }
         return t.status === filter;
       });
-      return { tokens: shown, total: shown.length, owners: ownersOf(tokens) };
+      // "Expiring" is one list, unpaged, as the API answers it.
+      const page = filter === 'expiring' ? shown : shown.slice(offset, offset + pageSize);
+      return { tokens: page, total: shown.length, owners: ownersOf(tokens) };
     },
     revoke: async (id) => {
       tokens = tokens.map((t) => (t.id === id ? revoke(t) : t));

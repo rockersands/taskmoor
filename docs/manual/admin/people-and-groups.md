@@ -42,6 +42,10 @@ list. For each person you see the name, the email, the date they last signed in,
 
 - **Find by name or email** narrows the list as you type.
 - **Show** picks **Active people**, **Deactivated people** or **Everyone**.
+- Above the list, the count says how many people match. The list shows the first 200 by name;
+  **Show more** under it adds the next 200, until everyone who matches is listed. A new search
+  or another **Show** choice starts the list again from the top, and a change to someone keeps
+  the people you had already listed in view.
 
 ## Adding a person
 

@@ -93,10 +93,16 @@ export interface PolicyLimits {
   reminderDays: { min: number; max: number };
 }
 
+/** Tokens the inventory asks for at a time; Show more reads the next page (T-308). */
+export const TOKENS_PAGE = 500;
+
 /** The administrator's token inventory (`/api/v1/admin/tokens`, site administrators only). */
 export interface AdminTokensClient {
-  /** Every token, or those of one status; "expiring" lists those due for rotation. */
-  list: (filter: TokenFilter) => Promise<TokenInventory>;
+  /**
+   * One page of every token, or of those of one status, from `offset` (0 when left out), with
+   * how many there are in all (`total`). "expiring" lists every token due for rotation at once.
+   */
+  list: (filter: TokenFilter, offset?: number) => Promise<TokenInventory>;
   revoke: (id: number) => Promise<void>;
   /** Resolves to how many tokens it revoked, or would revoke when `dryRun` is set. */
   bulkRevoke: (criteria: BulkCriteria, dryRun: boolean) => Promise<number>;
@@ -105,7 +111,7 @@ export interface AdminTokensClient {
 }
 
 export const adminTokensClient: AdminTokensClient = {
-  list: async (filter) => {
+  list: async (filter, offset = 0) => {
     if (filter === 'expiring') {
       const [{ tokens }, all] = await Promise.all([
         api<{ tokens: ApiToken[] }>('/admin/tokens/expiring'),
@@ -113,7 +119,9 @@ export const adminTokensClient: AdminTokensClient = {
       ]);
       return { tokens, total: tokens.length, owners: all.owners };
     }
-    return api<TokenInventory>(`/admin/tokens?status=${filter}&limit=500`);
+    return api<TokenInventory>(
+      `/admin/tokens?status=${filter}&limit=${TOKENS_PAGE}${offset ? `&offset=${offset}` : ''}`,
+    );
   },
   revoke: async (id) => {
     await api<null>(`/admin/tokens/${id}`, { method: 'DELETE' });
