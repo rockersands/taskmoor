@@ -15,6 +15,7 @@ import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { MentionSource } from '../../richtext/mentions';
 import { EmptyState } from '../../shell/EmptyState';
+import { useMoreSides } from '../../shell/moreSides';
 import { useMotionOnChange } from '../../shell/motion';
 import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
 import type { HistoryEntry, TicketClient, TimeEntry } from './client';
@@ -98,6 +99,10 @@ export function ActivityPanel({
     onTab?.(next);
   };
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  // The tabs keep one row: where a language's words do not fit, the row scrolls and fades at the
+  // edge with more beyond it, as a track's tabs do.
+  const strip = useRef<HTMLDivElement>(null);
+  const more = useMoreSides(strip, TABS.map((item) => t(item.label)).join());
   const onKey = (event: KeyboardEvent, index: number) => {
     const step =
       event.key === 'ArrowRight'
@@ -121,7 +126,13 @@ export function ActivityPanel({
       <h2 id={titleId} className="ticket-section-title">
         {t('ticketView.activity')}
       </h2>
-      <div role="tablist" aria-labelledby={titleId} className="ticket-tabs">
+      <div
+        ref={strip}
+        role="tablist"
+        aria-labelledby={titleId}
+        className="ticket-tabs"
+        data-more={more}
+      >
         {TABS.map((item, index) => (
           <button
             key={item.id}

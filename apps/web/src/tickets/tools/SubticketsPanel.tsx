@@ -4,7 +4,9 @@ import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { navigate, openOverlay, overlayRoute, routeHref } from '../../routing/router';
 import { EmptyState } from '../../shell/EmptyState';
-import { fieldName as seededFieldName } from '../../shell/seededNames';
+import { IconSelect } from '../../shell/IconSelect';
+import { fieldName as seededFieldName, typeName } from '../../shell/seededNames';
+import { TypeGlyph } from '../../shell/TicketIcons';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { customId, fieldErrors, SYSTEM_FIELDS } from '../form';
 import type { Transition } from '../view/client';
@@ -430,17 +432,17 @@ export function SubticketsPanel({
               <label htmlFor={typeId} className="form-label">
                 {t('workflow.field.ticketType')}
               </label>
-              <select
+              {/* The icon menu Create uses for the same choice. */}
+              <IconSelect
                 id={typeId}
-                value={type ?? ''}
-                onChange={(event) => setType(Number(event.target.value))}
-              >
-                {types.map((choice) => (
-                  <option key={choice.id} value={choice.id}>
-                    {choice.name}
-                  </option>
-                ))}
-              </select>
+                value={String(type ?? '')}
+                options={types.map((choice) => ({
+                  value: String(choice.id),
+                  label: typeName(t, choice.name),
+                  icon: <TypeGlyph name={choice.name} />,
+                }))}
+                onChange={(next) => setType(Number(next))}
+              />
             </div>
           )}
           <div className="ticket-child-field ticket-child-summary-field">

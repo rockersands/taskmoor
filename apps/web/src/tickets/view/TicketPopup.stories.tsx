@@ -149,3 +149,32 @@ export const Printed: Story = {
     await expect(dialog.querySelector('.ticket-toolbar')).not.toBeVisible();
   },
 };
+
+/** How light a colour is, 0 for black to 1 for white (the mean of its channels). */
+const lightness = (colour: string) => {
+  const [r = 0, g = 0, b = 0] = (colour.match(/[\d.]+/g) ?? []).map(Number);
+  return (r + g + b) / (3 * 255);
+};
+
+/**
+ * What the paper shows (PL-27, D37), in both skins: Priority's value as text, no 'saved as you
+ * type' note from the editor, and dark text on white even in the dark skin.
+ */
+export const PrintedOnWhite: Story = {
+  beforeEach: asPrinted,
+  play: async () => {
+    const canvas = within(document.body);
+    const dialog = await canvas.findByRole('dialog', { name: NAME });
+    const ticket = within(dialog);
+    const title = await ticket.findByRole('heading', { level: 1 });
+    const priority = await ticket.findByRole('combobox', { name: 'Priority' });
+    await expect(priority).toBeVisible();
+    await expect(priority).toHaveTextContent(SHOP_41.priority?.name ?? '');
+    await expect(getComputedStyle(priority).borderTopStyle).toBe('none');
+    const note = await ticket.findByText('Changes are saved as you type.', {}, { timeout: 3000 });
+    await expect(note).not.toBeVisible();
+    await expect(lightness(getComputedStyle(document.body).backgroundColor)).toBeGreaterThan(0.95);
+    await expect(getComputedStyle(document.body).backgroundImage).toBe('none');
+    await expect(lightness(getComputedStyle(title).color)).toBeLessThan(0.3);
+  },
+};

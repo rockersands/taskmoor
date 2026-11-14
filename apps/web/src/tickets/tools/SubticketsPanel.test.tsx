@@ -136,7 +136,8 @@ describe('SubticketsPanel', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Customer'));
     expect(names).toBe(1);
     // Another type's form could not be read: the field goes by its number, and is asked again.
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Ticket type' }), 'Sub-bug');
+    await user.click(screen.getByRole('combobox', { name: 'Ticket type' }));
+    await user.click(screen.getByRole('option', { name: 'Sub-bug' }));
     await user.type(field, '{Enter}');
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('also asks for: field 12.'),
@@ -202,7 +203,7 @@ describe('SubticketsPanel', () => {
     await waitFor(() => expect(link).toHaveFocus());
   });
 
-  it('[CORE-032] asks which type when the track has several', async () => {
+  it('[CORE-032] asks which type, in the icon menu Create uses, when the track has several', async () => {
     const user = userEvent.setup();
     const { client } = renderPanel(
       fakeToolsClient({
@@ -212,10 +213,12 @@ describe('SubticketsPanel', () => {
         ],
       }),
     );
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Ticket type' }),
-      'Sub-bug',
-    );
+    // The icon menu Create uses for the same choice, not a native select.
+    const type = await screen.findByRole('combobox', { name: 'Ticket type' });
+    expect(type.tagName).toBe('BUTTON');
+    expect(type).toHaveTextContent('Subticket');
+    await user.click(type);
+    await user.click(screen.getByRole('option', { name: 'Sub-bug' }));
     await user.type(screen.getByRole('textbox', { name: 'New subticket' }), 'A{Enter}');
     await waitFor(() =>
       expect(client.calls).toContainEqual({

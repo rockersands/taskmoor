@@ -16,6 +16,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -241,9 +242,24 @@ const HISTORY_TOOLS: Tool[] = [
   },
 ];
 
-/** Below this width the toolbar shows its first tools and a More button for the rest. */
-const NARROW_TOOLBAR = '(max-width: 599px)';
+/**
+ * On a phone, or wherever tools are a finger wide, the toolbar keeps one row: the tools that fit
+ * and a More button for the rest.
+ */
+const NARROW_TOOLBAR = '(max-width: 599px), (pointer: coarse)';
+/** The tools shown before More while the row is not measured yet. */
 const FIRST_TOOLS = 6;
+
+/**
+ * How many tools fit one row beside the More button: the bar's width in tool widths, less one for
+ * More itself, so More never wraps alone onto a second row (PL-42). Unmeasured (no layout),
+ * `FIRST_TOOLS`.
+ */
+export function toolsThatFit(width: number, tool: number, gap: number): number {
+  if (width <= 0 || tool <= 0) return FIRST_TOOLS;
+  const slots = Math.floor((width + gap) / (tool + gap));
+  return Math.max(1, slots - 1);
+}
 
 /** A link target as typed: a bare host gets https; unsafe schemes are refused. */
 export function linkTarget(typed: string): string | null {
@@ -300,6 +316,7 @@ export function RichTextEditor({
   // On a phone the toolbar keeps one row: the first tools and More, which shows the rest (PL-42).
   const narrow = useMediaQuery(NARROW_TOOLBAR);
   const [allTools, setAllTools] = useState(false);
+  const [fit, setFit] = useState(FIRST_TOOLS);
 
   const labels = {
     unknownBlock: t('richtext.unknownBlock'),
@@ -790,8 +807,31 @@ export function RichTextEditor({
         ]
       : []),
   ];
-  const folded = narrow && buttons.length > FIRST_TOOLS + 1;
-  const shown = folded && !allTools ? buttons.slice(0, FIRST_TOOLS) : buttons;
+  // How many tools fit the bar's row with More beside them, measured from a tool and the bar.
+  const hasBar = editable && Boolean(editor);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the bar appears once the editor exists
+  useLayoutEffect(() => {
+    const bar = toolbarRef.current;
+    const box = bar?.parentElement;
+    if (!narrow || !bar || !box) return;
+    const measure = () => {
+      const tool = bar.querySelector<HTMLElement>('.rt-tool');
+      const boxStyle = getComputedStyle(box);
+      const width =
+        box.clientWidth -
+        Number.parseFloat(boxStyle.paddingLeft || '0') -
+        Number.parseFloat(boxStyle.paddingRight || '0');
+      const gap = Number.parseFloat(getComputedStyle(bar).columnGap) || 0;
+      setFit(toolsThatFit(width, tool?.getBoundingClientRect().width ?? 0, gap));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [narrow, hasBar]);
+  const folded = narrow && buttons.length > fit + 1;
+  const shown = folded && !allTools ? buttons.slice(0, fit) : buttons;
   // The More button, when there is one, is the last stop of the arrow keys.
   const stops = shown.length + (folded ? 1 : 0);
   const tabStop = Math.min(focusIndex, Math.max(0, stops - 1));

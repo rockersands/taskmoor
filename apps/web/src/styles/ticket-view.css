@@ -170,6 +170,16 @@
   background: var(--color-success);
 }
 
+/*
+ * Opened with a click, the first place to go has the focus but no fill (PL-47): a filled row is
+ * how the other menus mark the current value, and the current status is the line above. A hover or
+ * the first key fills it.
+ */
+.status-menu-popup[data-pointer] .status-menu-item:focus:not(:hover) {
+  background: transparent;
+  color: var(--color-text);
+}
+
 /* The current status, above the menu's items and not one of them (PL-47). */
 .status-menu-current {
   display: flex;
@@ -340,16 +350,41 @@
   text-decoration: line-through;
 }
 
+/*
+ * The activity's tabs keep one row (no 'All' alone on a second one): where the words do not fit,
+ * the row scrolls inside itself and the edge with more beyond it fades, as a track's tabs do.
+ */
 .ticket-tabs {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--space-1);
+  overflow-x: auto;
   border-bottom: 1px solid var(--color-field-border);
+  scrollbar-width: thin;
+}
+
+.ticket-tabs[data-more="end"]:not(:focus-within) {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.ticket-tabs[data-more="start"]:not(:focus-within) {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.ticket-tabs[data-more="both"]:not(:focus-within) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
 }
 
 .ticket-tab {
+  flex: none;
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
+  white-space: nowrap;
   border: 0;
   border-bottom: 3px solid transparent;
   background: none;
@@ -363,9 +398,21 @@
   font-weight: var(--font-weight-strong);
 }
 
+/* Inside the row, which scrolls and so would cut a ring drawn outside the tab. */
 .ticket-tab:focus-visible {
   outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+
+/* On a phone the tabs sit closer, so the four fit a phone's width in English. */
+@media (max-width: 767px) {
+  .ticket-tabs {
+    gap: 0;
+  }
+
+  .ticket-tab {
+    padding: 0 var(--space-2);
+  }
 }
 
 .ticket-tabpanel {
