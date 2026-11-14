@@ -88,6 +88,8 @@ const CELL_BATCH = 500;
 const CELL_CACHE = 5_000;
 /** A card's height on a phone: key, summary and two columns, with a 44 px expand button. */
 const CARD_ROW = 120;
+/** A card grows to fit its words up to this height, so nothing can make it grow without end. */
+const CARD_MOST = 4 * CARD_ROW;
 /** Cards indent a level at a time up to this many; deeper ones name their level in words. */
 const CARD_LEVELS = 4;
 /** Rows the Move under picker lists at once; typing narrows the rest. */
@@ -576,7 +578,18 @@ function GridBody({
   const focusShown = Math.max(0, shownIndex(visible, focus.row));
   const scroller = useRef<HTMLDivElement>(null);
   const table = useRef<HTMLTableElement>(null);
-  const rowHeight = compact ? CARD_ROW : undefined;
+  // A card is 120 px unless its words need more (two facts and two marks, or larger text): the
+  // tallest card drawn sets every card's height, so the window's rows stay one height.
+  const [cardHeight, setCardHeight] = useState(CARD_ROW);
+  useLayoutEffect(() => {
+    if (!compact) return;
+    let need = cardHeight;
+    for (const card of scroller.current?.querySelectorAll<HTMLElement>('.plan-grid-card') ?? []) {
+      need = Math.max(need, cardHeight + card.scrollHeight - card.clientHeight);
+    }
+    if (need > cardHeight) setCardHeight(Math.min(CARD_MOST, Math.ceil(need)));
+  });
+  const rowHeight = compact ? cardHeight : undefined;
   // The sticky header and "All rows" footer cover the scroller's top and foot: a row scrolled to
   // shows between them, and focus scrolls a row clear of them (scroll padding).
   const [edges, setEdges] = useState({ top: 0, bottom: 0 });
@@ -1299,7 +1312,12 @@ function GridBody({
                 <li
                   key={row}
                   className="glass-card plan-grid-card"
-                  style={{ '--grid-indent': Math.min(depth, CARD_LEVELS) } as React.CSSProperties}
+                  style={
+                    {
+                      '--grid-indent': Math.min(depth, CARD_LEVELS),
+                      blockSize: cardHeight,
+                    } as React.CSSProperties
+                  }
                 >
                   {below ? (
                     <button

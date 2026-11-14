@@ -369,6 +369,37 @@ describe('a plan’s Grid (PLN-010)', () => {
     ).toBeVisible();
   });
 
+  it('[PLN-010] on a phone a card grows to show every word and mark it holds, never clipping one', async () => {
+    act(() => setViewportWidth(360));
+    // Two facts and two marks, or larger text, need more than 120 px: say 32 px more.
+    // A card's inside is its height less a 1 px border; its words need 150 px.
+    const inside = (el: HTMLElement) =>
+      el.classList.contains('plan-grid-card')
+        ? (Number.parseFloat(el.style.blockSize) || 120) - 2
+        : 0;
+    const client = vi
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return inside(this);
+      });
+    const scroll = vi
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('plan-grid-card') ? Math.max(150, inside(this)) : 0;
+      });
+    renderGrid(saved);
+    const cards = await screen.findByRole('list', { name: '9 rows' });
+    await waitFor(() =>
+      expect(
+        Array.from(cards.querySelectorAll<HTMLElement>('.plan-grid-card')).map(
+          (c) => c.style.blockSize,
+        ),
+      ).toEqual(Array(9).fill('152px')),
+    );
+    scroll.mockRestore();
+    client.mockRestore();
+  });
+
   it('[NFR-006] passes every string through the pseudo-locale', async () => {
     const errors: Error[] = [];
     const grid = fakeGridClient(saved);
