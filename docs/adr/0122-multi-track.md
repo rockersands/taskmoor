@@ -1270,7 +1270,8 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
 
 ### Stage 6 (T-089e): draft changes and scenarios
 
-**Designed on 2026-11-14, not built.** PLN-002 and PLN-003 move to M1 with this stage, reworded to
+**Designed on 2026-11-14; the server built the same day (see "As built"), the web app not yet.**
+PLN-002 and PLN-003 move to M1 with this stage, reworded to
 what will be built (the wordings are under "Tests"). Two designs were made and judged against the
 spec, privacy, the earlier stages and the code; this one is the server-first design with the
 person-first one's safer pieces grafted in (a lock per scenario while applying, deleting only a
@@ -1681,6 +1682,65 @@ a scenario main makes its drafts the plan's drafts to apply, and keeps the forme
 - Private scenarios, permissions per scenario, live push of drafts and presence, notifications,
   comments and webhooks about drafts, expiry of old drafts.
 - Saved snapshots of dates (PLN-011, T-089a).
+
+#### As built (the server; T-089e)
+
+Built on 2026-11-14 in `plans/drafts.ts` (the model, `writeDrafts`, `draftOverlay`, `draftMarks`,
+`refusalOf`) and `routes/plan-scenarios.ts`; the views gained `scenario=` in `plan-views.ts`,
+`plan-capacity.ts` and `program-boards.ts`. The web app, the manual's section and the budgets in
+`plans.large.test.ts` wait for the next builder. Where this differs from the design above:
+
+- **Migration 0110** also has an index on `plan_scenario.created_by` (the data download) and on
+  `plan_draft.team_field_id` (deleting a field). `(plan_id, id)` on `plan_scenario` is unique, so a
+  draft names its scenario and plan together by a foreign key, and a scenario of another plan
+  cannot hold a draft. Checks keep `team_field_id` equal to the id in `cf:<id>` and both values JSON
+  strings, numbers or null; a cleared value is stored as SQL null.
+- **Every write is Keep my draft:** `writeDrafts` stores the live value as the value when drafted
+  on every write, not only the first, so drafting a changed field again is what the page's button
+  does, and an unchanged field keeps its value. A write clears the field's refusal.
+- **`start_after_due`** reads, for the day not in the request, the scenario's draft before the live
+  value. Its error is on `changes.N.startDate`.
+- **Answers.** The list: `{ plan, editable, scenarios: [{ id, name, main, drafts, notShown,
+  applying, createdBy, createdAt, updatedAt, version }], limits }`; counts are tickets, not fields.
+  The change list: `{ scenario, editable, applying, changes, counts: { ready, already, changed,
+  refused }, drafts, notShown, teams, teamFields, next }`, each change `{ ticketId, key, summary,
+  trackId, version, state, fields: [{ field, teamFieldId, was, now, draft, state }], mayApply,
+  needs, refusal, refusedAt, origin, updatedBy, updatedAt }`, where `needs` names the permission the
+  reader lacks ("Schedule tickets" for days, "Edit tickets" for a Team value) and `state` is
+  `changed`, then `refused`, then `already`, then `ready`; `only=ready` lists `already` too. `PUT
+  .../drafts` answers that list for the tickets it named. `DELETE` answers 204. Promotion answers
+  the scenarios. The limits answer 409 with `limit`.
+- **Deleting a scenario while an apply holds it** is refused (`apply_in_progress`), as promotion is.
+- **Applying.** A `gone` refusal carries `key: null` and is never stored, so a hidden ticket's
+  draft shows no refusal to anyone. A ticket refused by a version raced during the apply gets its
+  values now from a second read, as the applier sees it. A throw anywhere clears the hold. The
+  applier's permissions come from `request.authz`, an API token's included, through `callRoute`.
+- **`track_archived`** is reachable only when a track is archived between the read and the ticket's
+  change (archived tracks' tickets are not in a plan, so they are `gone` before that); the test
+  covers it in `refusalOf`'s table, not with a race.
+- **The views.** `scenario` appears in an answer only in a scenario. A drafted item, chip or card
+  carries `draft: { startDate?: { now }, dueDate?: { now }, fields?: { "<id>": { now } }, stale }`.
+  A Capacity or board cell is touched only when a draft moves a ticket from one cell to another
+  (two days in one period touch nothing); touched cells carry `drafts` and `clause: null`. The
+  overlay applies drafts only where the plan's `unfiltered` holds for the viewer, roll-ups of
+  descendants included.
+- **Comparing** answers `{ plan, query, teamField, teamFields, a, b, later, earlier, differing: {
+  count, tickets } }`, each side `{ side, scenario, end: { due, ticket, undated }, teams: [{ team,
+  due, ticket, undated }] }` with "other or no team" last (`team: null`), and each differing
+  ticket `{ id, key, summary, a: { start, due, team }, b: { ... } }`. `teamField=` picks another
+  Team field; one not found, and a side not found, answer `invalid_fields`.
+- **Events:** `plan.drafts_set` is `{ scenarioId, changes: [{ ticketId, field, from, to }], removed:
+  [{ ticketId, field }], origin }`, emitted only when something changed; `plan.drafts_discarded`
+  only when something went; `plan.drafts_committed`'s `applied` is `[{ ticketId, key }]` and its
+  `refused` `[{ ticketId, reason }]`.
+- **The data download** says `planScenarios: [{ planId, scenarioId, name, main, createdAt }]` and
+  `planDrafts: [{ planId, scenarioId, ticketId, field, was, draft, origin, updatedAt }]`.
+- **Client types** stay in the web app (`apps/web/src/plans/*Client.ts`), as the other stages'
+  do, so none were added on the server.
+- **Tests:** `routes/plan-scenarios.test.ts` (18), additions to `plans.test.ts`,
+  `privacy/privacy.test.ts`, `events/contract.test.ts`, `tokens/scopes.test.ts`, the upgrade
+  fixture and the schema golden file. The locked case is a field lock (a field rule set); a
+  status lock goes through the same refusal and is not tested here.
 
 #### Questions for the user (the design takes the first answer each time)
 
