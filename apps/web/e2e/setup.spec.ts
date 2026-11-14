@@ -966,7 +966,11 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await expect(page.getByRole('button', { name: ADMIN.name, exact: true })).toBeVisible();
     await page.goto('./#/admin/identity-providers');
     await page.getByRole('button', { name: 'Delete Staff accounts' }).click();
-    await page.getByRole('button', { name: 'Delete provider' }).click();
+    // Asks first, saying what will happen (D13); the answer names the provider.
+    await page
+      .getByRole('group', { name: /^Delete Staff accounts\? Nobody can sign in with it/ })
+      .getByRole('button', { name: 'Delete Staff accounts' })
+      .click();
     await expect(page.getByText('Deleted Staff accounts.')).toBeVisible();
     await signOutThroughMenu(page, ADMIN.name);
     await expect(page.getByRole('button', { name: 'Sign in with Staff accounts' })).toHaveCount(0);
