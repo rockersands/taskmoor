@@ -439,7 +439,7 @@ export function SubticketsPanel({
                 options={types.map((choice) => ({
                   value: String(choice.id),
                   label: typeName(t, choice.name),
-                  icon: <TypeGlyph name={choice.name} />,
+                  icon: <TypeGlyph name={choice.name} icon={choice.icon} />,
                 }))}
                 onChange={(next) => setType(Number(next))}
               />

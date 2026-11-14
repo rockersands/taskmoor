@@ -6,6 +6,7 @@ import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
 import type { SearchClient } from '../../search/client';
 import { ResultTable } from '../../search/ResultTable';
+import { TypeGlyph } from '../../shell/TicketIcons';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import type { Transition } from '../view/client';
@@ -225,6 +226,30 @@ describe('SubticketsPanel', () => {
         action: 'createChild',
         args: [{ track: 'SHOP', parent: 'SHOP-41', ticketTypeId: 10, summary: 'A' }],
       }),
+    );
+  });
+
+  it('[CORE-032] draws each type with the icon its administrator chose, as Create does', async () => {
+    const user = userEvent.setup();
+    renderPanel(
+      fakeToolsClient({
+        childTypes: [
+          { id: 9, name: 'Subticket', icon: null },
+          { id: 10, name: 'Sub-bug', icon: 'bug' },
+        ],
+      }),
+    );
+    await user.click(await screen.findByRole('combobox', { name: 'Ticket type' }));
+    const drawn = (name: string) =>
+      screen.getByRole('option', { name }).querySelector('svg')?.outerHTML;
+    // The chosen icon, not the default glyph a name it does not know gets.
+    const bug = render(<TypeGlyph name="Bug" />).container.querySelector('svg')?.outerHTML;
+    const plain = render(<TypeGlyph name="Sub-bug" />).container.querySelector('svg')?.outerHTML;
+    expect(bug).not.toBe(plain);
+    expect(drawn('Sub-bug')).toBe(bug);
+    // A type with no chosen icon keeps its name's own.
+    expect(drawn('Subticket')).toBe(
+      render(<TypeGlyph name="Subticket" />).container.querySelector('svg')?.outerHTML,
     );
   });
 

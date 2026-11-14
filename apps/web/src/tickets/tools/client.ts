@@ -118,6 +118,8 @@ export interface ChildTicket {
 export interface ChildType {
   id: number;
   name: string;
+  /** The icon the track's administrator chose for the type; its name's own when none. */
+  icon?: string | null;
 }
 
 export type ItemState = 'open' | 'in_progress' | 'done' | 'rejected';
@@ -306,12 +308,12 @@ export const ticketToolsClient: TicketToolsClient = {
   },
   childTypes: async (track, rank) =>
     (
-      await api<{ ticketTypes: { id: number; name: string; level: { rank: number } }[] }>(
-        `/tracks/${encodeURIComponent(track)}/ticket-types`,
-      )
+      await api<{
+        ticketTypes: { id: number; name: string; icon?: string | null; level: { rank: number } }[];
+      }>(`/tracks/${encodeURIComponent(track)}/ticket-types`)
     ).ticketTypes
       .filter((type) => type.level.rank === rank - 1)
-      .map((type) => ({ id: type.id, name: type.name })),
+      .map((type) => ({ id: type.id, name: type.name, icon: type.icon ?? null })),
   childFields: async (track, ticketTypeId) =>
     (
       await api<TicketForm>(
