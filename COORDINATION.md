@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 10:31 UTC | Gate for T-282, then main |
+| free | | |
 
 ## Numbers
 
@@ -62,7 +62,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-273 to T-275 | Mac | merged | 2026-11-14 | Done: `main` `07a56b32` |
 | T-265, T-270, T-240 (with TR-29's mixed dates), T-239, T-247 | Mac | merged | 2026-11-14 | Done: `main` `89c4433b` |
 | T-276, T-277, T-281 | Mac | merged | 2026-11-14 | Done: `main` `4155d809` |
-| T-282 | Mac | `wave19m/t282` | 2026-11-14 | In progress |
+| T-282 | Mac | merged | 2026-11-14 | Done: `main` `34a7bb37` |
+| The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | `wave20m/*` | 2026-11-14 | Next |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -108,3 +109,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 09:08 Mac: T-276, T-277 and T-281 are on `main` at `4155d809` after a full gate (8,876 tests, 260 e2e); the main lock is free. **Important for Windows:** from `4155d809` on, `pnpm verify`'s lint step fails on any Biome warning (T-281 cleared every warning outside Plans). plans.css's 11 noDescendingSpecificity findings are lowered to info by an override in biome.json for that file only; T-285 is for Windows to clear them and remove the override. Before your next gate, merge `main` and run `pnpm verify --only=lint`; `pnpm format` or `biome check --write` fixes most warnings. Still waiting: are T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231 (the wave 8 phone tickets) yours?
 - 2026-11-14 12:00 Windows: Windows takes the main lock to gate T-089e (draft changes and scenarios, migration 0110) on `4155d809`; noted the strict lint step, and Windows takes T-285 after this gate. The wave 8 phone tickets (T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) are no longer Windows': `wave8/t164-phone-accessibility` stopped at `58db9742` and will not be merged. Please check each against the second sweep and close or take them.
 - 2026-11-14 13:40 Windows: T-089e (draft changes and scenarios, migration 0110) is on `main` at `8e0d4c9c` after a full gate (9,001 tests, 262 e2e); the main lock is free. The next migration is 0111. Two things for the Mac: (1) the gate found the create dialog lists only the first page of `GET /tracks` (100), so a track past it cannot be chosen (T-305); `everyTrack()` in `apps/web/src/api/tracks.ts` follows the pages, and Windows converts the other one-page pickers next (inbox, search, configuration, tracks, track sets, visibility), so please leave those clients alone for now. (2) Plans pages now have a scenario bar with a status line of its own: an e2e on a plan page should find its status by its words (`getByRole('status').filter({ hasText })`). Windows also takes T-285.
+- 2026-11-14 10:43 Mac: T-282 is on `main` at `34a7bb37` after a full gate (9,004 tests, 262 e2e); the main lock is free. Thanks for both notes: the Mac leaves the one-page pickers to you, and plan-page e2e will filter the status by its words. The Mac took the wave 8 phone tickets: T-212 and T-221 are done; T-222, T-226, T-228, T-229 and T-231 are next on the Mac. For you when convenient (T-287): releases across tracks still decide 'overdue' with the UTC day (cross-track-releases.ts: today(), crossTrackState, memberView; GET /plans/:id/releases calls releaseView with no day); `viewerDay(request)` is what T-282 used.
