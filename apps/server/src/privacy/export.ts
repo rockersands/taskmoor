@@ -336,6 +336,8 @@ export async function writePersonalData(
     plans,
     capacity,
     crossTrackReleases,
+    scenarios,
+    drafts,
   ] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
@@ -383,6 +385,36 @@ export async function writePersonalData(
       .where('owner_id', '=', userId)
       .orderBy('id')
       .execute(),
+    // Scenarios they made in plans (PLN-003): by the plan's id, as a plan may be hidden from them.
+    db
+      .selectFrom('plan_scenario')
+      .select(['id', 'plan_id', 'name', 'main', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('created_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('id')
+      .execute(),
+    // Draft changes they last changed (PLN-002): by plan, scenario and ticket id with the field
+    // and its values, never a key or summary, since the plan or the ticket may be hidden now.
+    db
+      .selectFrom('plan_draft')
+      .select([
+        'plan_id',
+        'scenario_id',
+        'ticket_id',
+        'field',
+        'old_value',
+        'new_value',
+        'origin',
+        'updated_at',
+      ])
+      .where('workspace_id', '=', ws)
+      .where('updated_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('scenario_id')
+      .orderBy('ticket_id')
+      .orderBy('field')
+      .execute(),
   ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
@@ -421,6 +453,23 @@ export async function writePersonalData(
         period: c.period_start,
         amount: Number(c.amount),
         note: c.note,
+      })),
+      planScenarios: scenarios.map((x) => ({
+        planId: x.plan_id,
+        scenarioId: x.id,
+        name: x.name,
+        main: x.main,
+        createdAt: iso(x.created_at),
+      })),
+      planDrafts: drafts.map((d) => ({
+        planId: d.plan_id,
+        scenarioId: d.scenario_id,
+        ticketId: d.ticket_id,
+        field: d.field,
+        was: d.old_value,
+        draft: d.new_value,
+        origin: d.origin,
+        updatedAt: iso(d.updated_at),
       })),
       crossTrackReleases: crossTrackReleases.map((c) => ({
         name: c.name,
