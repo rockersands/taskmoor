@@ -2,7 +2,7 @@
 title: "The Builder's kits"
 audience: admins
 sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/routes/frontends.ts, apps/server/src/network/frontends.ts, apps/web/src/admin/FrontendsPage.tsx, docs/adr/0087-registered-frontend-origins.md, packages/builder-core/src/kit-scripts.ts, deploy/compose/update.sh
-accessed: 2026-11-13
+accessed: 2026-11-14
 attestation: own-words
 ---
 # The Builder's kits
@@ -255,8 +255,8 @@ bucket itself: add a CORS rule to the bucket that allows `GET` from the frontend
 ## Adding frontends without a restart
 
 A site administrator can let more frontends use the backend under **Administration > Frontends**,
-beside the ones `.env` lists. A frontend added there may use the backend at once, with no
-restart. Under **This server** the page says whether the backend serves the app itself and at
+beside the ones `.env` lists: **New frontend**, under the page's title, opens the form above the
+list. A frontend added there may use the backend at once, with no restart. Under **This server** the page says whether the backend serves the app itself and at
 which version; when that is the server's own version it says so once. With several API processes, the others follow within five seconds.
 
 - **Origin**: the frontend's address with scheme, name and port only, such as

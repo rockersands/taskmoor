@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx
-accessed: 2026-11-13
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Workflows
@@ -32,9 +32,11 @@ A fresh site has these statuses: Open, New, Backlog, Selected for Development an
 Active, In Review and Under review (active); Approved, Rejected, Cancelled, Published and Closed
 (closed).
 
-The **Statuses** section of **Administration**, **Workflows** manages them: **Add a status** (with
-**Name**, **Description** and **Stage**), **Edit**, move up and down, and **Delete**. **Delete**
-is in the danger colour and asks first. On a phone a status's buttons share one line.
+The **Statuses** section of **Administration**, **Workflows** manages them: **New status** opens the
+form (with **Name**, **Description** and **Stage**); each status has **Edit**, move up and down,
+and **Delete**. **Delete** is in the danger colour and asks first. The buttons stand in columns: a
+status with no move up or down keeps that button's place. On a phone a status's buttons share one
+line.
 
 - A status keeps its stage while tickets are in it.
 - Changing a status's stage takes the free moves into it along: on every workflow whose global
@@ -227,7 +229,8 @@ in Administration does. The address of a workflow that does not exist, or no lon
   and description** opens with a chevron.
 - **Text** mode shows the definition as JSON, with a key from status ids to names. Switching
   modes keeps every change.
-- **Add a status** puts one of the site's statuses into the workflow. On a workflow that moves
+- **Add a status** picks one of the site's statuses, and **Add to workflow** puts it into the
+  workflow. On a workflow that moves
   freely (every transition global, with no guard, check, field or rule) it also adds the global
   transition into it, so tickets can enter it at once: a closed-stage status sets the close reason
   Completed, or what took its place if it was renamed or replaced, and any other clears the reason.
