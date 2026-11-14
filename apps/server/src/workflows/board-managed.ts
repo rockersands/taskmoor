@@ -735,6 +735,26 @@ export async function columnReach(
 }
 
 /**
+ * The workflow a column's path goes to (T-249): the track's only workflow, read inside the path's
+ * transaction with the track's map held (update), after the board and before the status list and
+ * the workflow, in the order a board's sync holds them. A map changed meanwhile is waited for and
+ * then read; read before the transaction, the path went to the workflow the track had before. Null
+ * when the track's tickets have more than one workflow, or none.
+ */
+export async function columnPathWorkflow(
+  trx: Trx,
+  ws: number,
+  trackId: number,
+  columns: readonly Column[],
+): Promise<number | null> {
+  const mapId = await trackMapId(trx, ws, trackId);
+  if (mapId === undefined) return null;
+  await loadMap(trx, ws, mapId, 'update');
+  const reach = await columnReach(trx, ws, trackId, columns);
+  return reach?.workflow && reach.singleWorkflow ? reach.workflow.id : null;
+}
+
+/**
  * Lets cards reach a column on a workflow that stays an ordinary one: a status for the column if it
  * has none, a transition from any status to it, and steps out of it to the other columns. A new
  * version of the workflow; other tracks using it see the new status too, which the page says first.
