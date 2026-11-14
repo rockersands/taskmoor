@@ -21,8 +21,8 @@ import { entryQuery, entryView, visibleTo } from './time';
  *   track the reader may see now (the list predicate in the statement, outside the trash).
  *
  * Only what the reader may see: comment entries of comments they may not read are left out (a
- * readable one carries a short excerpt), as in the ticket history. Rich text values are not
- * repeated (the entry says the description changed). A custom field's change says the field's
+ * readable one carries a short excerpt), as in the ticket history. A rich text value is not
+ * repeated: its `display` is a line of its text, 80 characters at most. A custom field's change says the field's
  * name and how its values read, as the ticket history does (T-277, T-282): the name only while
  * the field applies to the ticket where it is now, so the reader sees the field on it. `limit` counts history rows; a change set
  * is never split across pages, so a page can hold a few more rows.
@@ -57,6 +57,19 @@ const trackQuery = z
   .object({ cursor: cursorParam, limit: z.coerce.number().int().min(1).max(200).default(50) })
   .strict();
 const params = z.object({ id: z.string().min(1).max(300) });
+
+/**
+ * A rich text value as an entry shows it: a short line of its text (null with no document, `''`
+ * for one with no text), so the entry says whether it was set, changed or cleared (T-309).
+ */
+function excerpt(value: string | null): string | null {
+  if (value === null) return null;
+  try {
+    return commentText(JSON.parse(value) as JsonValue, 80).replace(/\s+/g, ' ');
+  } catch {
+    return '';
+  }
+}
 
 const invalid = (reply: FastifyReply) => reply.code(400).send({ error: 'invalid_request' });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
@@ -194,8 +207,12 @@ export function registerActivityRoutes(
               row.field,
             )
           : null),
-        from: { value: rich ? null : row.from_value, display: rich ? null : row.from_display },
-        to: { value: rich ? null : row.to_value, display: rich ? null : row.to_display },
+        from: rich
+          ? { value: null, display: excerpt(row.from_value) }
+          : { value: row.from_value, display: row.from_display },
+        to: rich
+          ? { value: null, display: excerpt(row.to_value) }
+          : { value: row.to_value, display: row.to_display },
       };
       const last = out[out.length - 1];
       if (last && last.changeSet === row.change_set && last.ticket.id === row.ticket_id) {
