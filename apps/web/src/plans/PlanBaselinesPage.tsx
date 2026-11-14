@@ -84,6 +84,17 @@ export function PlanBaselinesPage({
     focusHeading.current = false;
     heading.current?.focus();
   }, [list]);
+  // Closing the comparison takes its focused Close link away: focus goes back to the Compare link
+  // that opened it, rather than to the page.
+  const compareLinks = useRef(new Map<number, HTMLAnchorElement>());
+  const lastOpened = useRef<number | null>(null);
+  useEffect(() => {
+    const was = lastOpened.current;
+    lastOpened.current = view.baseline ?? null;
+    if (was === null || view.baseline !== undefined) return;
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) compareLinks.current.get(was)?.focus();
+  }, [view.baseline]);
 
   if (failed && !list) {
     return (
@@ -182,6 +193,10 @@ export function PlanBaselinesPage({
               </p>
               <div className="scenario-item-actions">
                 <a
+                  ref={(link) => {
+                    if (link) compareLinks.current.set(b.id, link);
+                    else compareLinks.current.delete(b.id);
+                  }}
                   className="button-secondary"
                   href={routeHref(hrefWith(b.id))}
                   aria-current={view.baseline === b.id ? 'true' : undefined}

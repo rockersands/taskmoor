@@ -201,6 +201,17 @@ describe('a plan’s baselines (PLN-011)', () => {
     );
   });
 
+  it('[PLN-011] gives focus back to the Compare link when the comparison is closed', async () => {
+    const user = userEvent.setup();
+    renderBaselines('#/plans/12/baselines?baseline=1');
+    await screen.findByRole('heading', { name: 'Compared with Kick-off', level: 3 });
+    await user.click(screen.getByRole('link', { name: 'Close the comparison' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Compared with Kick-off' })).toBeNull(),
+    );
+    expect(screen.getByRole('link', { name: 'Compare with Kick-off' })).toHaveFocus();
+  });
+
   it('[PLN-011] compares with Live, as Capture says, when the scenario in the address is gone', async () => {
     const { baselines } = renderBaselines('#/plans/12/baselines?scenario=99&baseline=1');
     expect(await screen.findByText(/^The days now: Live\./)).toBeVisible();
