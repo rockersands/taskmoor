@@ -419,14 +419,6 @@
   }
 }
 
-/*
- * A ticket wholly before or after the days in view gets an Earlier or Later marker (PL-6): opaque,
- * so today's line, drawn under the rows, never runs through its words.
- */
-.plan-timeline .timeline-edge {
-  background: var(--color-surface-raised);
-}
-
 /* Copying, linking and downloading a plan (T-089g; PLN-014). */
 .plan-page .page-header-actions {
   align-items: flex-start;
@@ -526,14 +518,6 @@
   /* After the rules above that end in a button: this one is more specific (see the file's end). */
   .plan-page .page-header-actions button {
     min-height: var(--hit-target-touch);
-  }
-
-  /* A ticket's chip on the Calendar keeps a finger's height beside its grip, its one line of words
-     in the middle of it rather than at its top: a line as tall as the chip inside its border. */
-  .plan-calendar .calendar-entry .calendar-chip {
-    box-sizing: border-box;
-    padding-block: 0;
-    line-height: calc(var(--hit-target-touch) - 2px);
   }
 }
 
