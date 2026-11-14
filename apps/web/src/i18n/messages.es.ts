@@ -7524,7 +7524,6 @@ export const messagesEs: Record<MessageId, string> = {
     'Solo el propietario del plan y los administradores del sitio pueden hacer esto.',
   'scenario.refused.gone': 'Ese escenario ya no existe.',
   'scenario.refused.other': 'No funcionó. Inténtalo de nuevo en un momento.',
-  'scenario.makeMain': 'Hacer principal',
   'scenario.promote': 'Hacer principal a {name}',
   'scenario.promote.ask':
     '{count, plural, one {El # cambio de {name} pasa} other {Los # cambios de {name} pasan}} a ser los borradores del plan por aplicar. {main} conserva sus {mainCount, plural, one {# cambio} other {# cambios}} como escenario.',

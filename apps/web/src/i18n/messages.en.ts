@@ -7352,7 +7352,6 @@ export const messagesEn = {
   'scenario.refused.forbidden': 'Only the plan’s owner and site administrators can do this.',
   'scenario.refused.gone': 'That scenario no longer exists.',
   'scenario.refused.other': 'That did not work. Try again in a moment.',
-  'scenario.makeMain': 'Make main',
   'scenario.promote': 'Make {name} main',
   'scenario.promote.ask':
     '{name}’s {count, plural, one {# change becomes} other {# changes become}} the plan’s drafts to apply. {main} keeps its {mainCount, plural, one {# change} other {# changes}} as a scenario.',

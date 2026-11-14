@@ -168,8 +168,7 @@ export function PlanScenariosPage({
                   {list.editable && !s.main && (
                     <AskFirst
                       look="secondary"
-                      label={t('scenario.makeMain')}
-                      name={t('scenario.promote', { name: s.name })}
+                      label={t('scenario.promote', { name: s.name })}
                       question={t('scenario.promote.ask', {
                         name: s.name,
                         count: s.drafts,
