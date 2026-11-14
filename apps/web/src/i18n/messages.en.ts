@@ -14,13 +14,13 @@ export const messagesEn = {
   'instance.wrong':
     'It was made for another Taskmoor server and does not sign in here, so that nothing you type goes to a server you did not mean.',
   'instance.wrongAdmin':
-    'Ask your administrator for the app of this server, or for the right address of this app.',
+    'Ask a site administrator for the app of this server, or for the right address of this app.',
   'update.later': 'Not now',
   'update.requiredTitle': 'Update required',
   'update.required':
     'This version of the app ({version}) no longer works with the server, which runs {server}. Reload the page to get the current version.',
   'update.askAdmin':
-    'If this page comes back after reloading, the app itself needs updating: ask your administrator.',
+    'If this page comes back after reloading, the app itself needs updating: ask a site administrator.',
   'shell.skipToContent': 'Skip to content',
   'shell.openNavigation': 'Open navigation',
   'shell.closeNavigation': 'Close navigation',
@@ -383,10 +383,10 @@ export const messagesEn = {
   'about.board':
     'Each column stands for one or more statuses of the workflow. Moving a card runs the transition that leads into that column; when several do, Taskmoor asks which. Filters narrow the cards, and the counts always cover every card.',
   'about.ticket':
-    'The buttons under the title move the ticket through its workflow. Details on the side are its fields: change one and it saves at once. Activity below keeps the comments, the history of every change and the time recorded.',
+    'The status menu under the title moves the ticket through its workflow. Details on the side are its fields: change one and it saves at once. Activity below keeps the comments, the history of every change and the time recorded.',
   // The "what is this for" button beside a title (ADR-114).
   'about.ticketStacked':
-    'The buttons under the title move the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
+    'The status menu under the title moves the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
   'about.list':
     'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
   'help.about': 'What is {name} for?',
@@ -857,7 +857,7 @@ export const messagesEn = {
     'The board {board} stands on this saved search, so its query has to stay inside the track {track}. Start it with track = {track} AND, or save it as a new search.',
   'importedLink.title': 'Opening a link from your earlier tracker',
   'importedLink.looking': 'Looking for what this link became…',
-  'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',
+  'importedLink.missing': 'Nothing that was imported matches this link, or you cannot see it.',
   'importedLink.failed': 'The link could not be looked up. Try again in a moment.',
   'importedLink.notFound': 'Link not found',
   'saved.importProblem':
@@ -2749,7 +2749,7 @@ export const messagesEn = {
   'workflow.field.parent': 'Parent',
   'tickets.create.title': 'Create ticket',
   'tickets.create.track': 'Track',
-  'tickets.create.trackName': '{key} {name}',
+  'tickets.create.trackName': '{key} · {name}',
   'tickets.create.type': 'Ticket type',
   'tickets.create.loading': 'Loading the form…',
   'tickets.create.failed': 'The form could not be loaded. Try again in a moment.',

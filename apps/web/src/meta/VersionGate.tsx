@@ -4,7 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { runtimeConfig } from '../runtime/config';
 import { WEB_VERSION } from '../runtime/version';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 import { httpMetaClient, type MetaClient } from './client';
 
 /**
@@ -114,7 +114,8 @@ function WrongInstance() {
     <StandaloneFrame wayOut={false}>
       <main id="main" className="setup" tabIndex={-1}>
         <PageHeader title={t('instance.wrongTitle')} purpose={t('instance.wrong')} />
-        <p className="page-note">{t('instance.wrongAdmin')}</p>
+        {/* On a card, as on every stand-alone page (ADR-114; S3-SP-5). */}
+        <StandaloneNote kind="note">{t('instance.wrongAdmin')}</StandaloneNote>
       </main>
     </StandaloneFrame>
   );
@@ -131,10 +132,13 @@ function UpdateRequired({ version, server }: { version: string; server: string }
           title={t('update.requiredTitle')}
           purpose={t('update.required', { version, server })}
         />
-        <p className="page-note">{t('update.askAdmin')}</p>
-        <button type="button" className="button-primary" onClick={reload}>
-          {t('update.reload')}
-        </button>
+        {/* What to do, on a card as every stand-alone page has it (ADR-114; S3-SP-5). */}
+        <div className="glass-card account-section">
+          <p className="page-note">{t('update.askAdmin')}</p>
+          <button type="button" className="button-primary" onClick={reload}>
+            {t('update.reload')}
+          </button>
+        </div>
       </main>
     </StandaloneFrame>
   );

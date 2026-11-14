@@ -668,7 +668,7 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByLabelText('Due date (required)')).toBeNull();
   });
 
-  it('[CORE-001] the Track picker is a labelled combobox with each track’s mark, key and name (T-255)', async () => {
+  it('[CORE-001] the Track picker is a labelled combobox with each track’s mark, and its key and name kept apart (T-255, S3-SP-13)', async () => {
     const user = userEvent.setup();
     openCreate({
       'GET /tracks?limit=500': () =>
@@ -681,11 +681,11 @@ describe('the create form (M1-012)', () => {
     });
     await screen.findByLabelText('Severity (required)');
     const track = screen.getByRole('combobox', { name: 'Track' });
-    expect(track).toHaveTextContent('SHOP Shop');
+    expect(track).toHaveTextContent('SHOP · Shop');
     await user.click(track);
     const listbox = screen.getByRole('listbox');
-    const ops = within(listbox).getByRole('option', { name: 'OPS Operations' });
-    expect(within(listbox).getByRole('option', { name: 'SHOP Shop' })).toHaveAttribute(
+    const ops = within(listbox).getByRole('option', { name: 'OPS · Operations' });
+    expect(within(listbox).getByRole('option', { name: 'SHOP · Shop' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
@@ -693,7 +693,7 @@ describe('the create form (M1-012)', () => {
     expect(ops.querySelector('.track-glyph')).toHaveTextContent('O');
     expect(ops.querySelector('.track-glyph')).toHaveAttribute('aria-hidden', 'true');
     await user.click(ops);
-    expect(track).toHaveTextContent('OPS Operations');
+    expect(track).toHaveTextContent('OPS · Operations');
     // The other track's form, its type chosen.
     expect(await screen.findByLabelText('Due date')).toBeVisible();
     expect(screen.queryByLabelText('Severity (required)')).toBeNull();
@@ -715,7 +715,7 @@ describe('the create form (M1-012)', () => {
     openCreate();
     await screen.findByLabelText('Severity (required)');
     await user.click(screen.getByRole('combobox', { name: 'Track' }));
-    await user.click(screen.getByRole('option', { name: 'SHOP Shop' }));
+    await user.click(screen.getByRole('option', { name: 'SHOP · Shop' }));
     // The list stays filled and a type stays chosen: found by the fresh-install run (M1-113).
     const type = screen.getByRole('combobox', { name: 'Ticket type' });
     expect(type).toHaveTextContent('Bug');
