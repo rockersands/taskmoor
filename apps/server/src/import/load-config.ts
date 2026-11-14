@@ -1,6 +1,7 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { REFERENCE_OF } from '../fields/types';
+import { withMovesIfNone } from '../workflows/free-moves';
 import { definitionProblem, definitionSchema, statusIdsOf } from '../workflows/model';
 import {
   existingTarget,
@@ -761,7 +762,6 @@ export const workflows: Loader<WorkflowCommand> = {
   async apply(ctx, cmd, plan) {
     // A workflow the target has keeps its versions: an import never publishes over it.
     if (plan.action !== 'create') return plan.targetId as number;
-    const definition = plan.data as ReturnType<typeof definitionSchema.parse>;
     const row = await ctx.trx
       .insertInto('workflow')
       .values({
@@ -772,6 +772,15 @@ export const workflows: Loader<WorkflowCommand> = {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
+    // One that converts to no transitions at all (a source workflow with only its create action)
+    // is published with the free moves a new workflow gets, never as a workflow where no ticket
+    // can move (T-246; WF-008 (4); ADR-116). Close reasons load before workflows.
+    const definition = await withMovesIfNone(
+      ctx.trx,
+      ctx.workspaceId,
+      row.id,
+      plan.data as ReturnType<typeof definitionSchema.parse>,
+    );
     await ctx.trx
       .insertInto('workflow_version')
       .values({

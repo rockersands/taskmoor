@@ -1,3 +1,4 @@
+import { migrations } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
@@ -993,6 +994,202 @@ describe('free moving at its edges (WF-008)', () => {
       const after = await view(id);
       expect(after.published.version).toBe(1);
       expect(after.published.definition.transitions).toEqual([step]);
+    });
+
+    /** What a free move is, without its id (numbered per workflow). */
+    const shape = (d: Definition) => d.transitions.map(({ id: _, ...t }) => t);
+    const freeMoves = () => [
+      { name: 'New', from: 'any', to: status.New, effects: CLEAR },
+      { name: 'Active', from: 'any', to: status.Active, effects: CLEAR },
+      {
+        name: 'Closed',
+        from: 'any',
+        to: status.Closed,
+        effects: setting(reason.Completed as number),
+      },
+    ];
+
+    it('[WF-008] migration 0107 gives an old empty workflow the moves the operator repair gives, and the check then finds nothing (T-246)', async () => {
+      const ids = [status.New as number, status.Active as number, status.Closed as number];
+      const migrated = await leftEmpty('Empty until the upgrade', ids);
+      await saveDraft(migrated.id, migrated.stored);
+      const count = await eventCount();
+
+      await migrations['0107_workflows_left_without_moves']?.up(database.db as never);
+
+      const after = await view(migrated.id);
+      expect(after.published.version).toBeGreaterThan(1);
+      expect(shape(after.published.definition)).toEqual(freeMoves());
+      // Numbered above every transition id the workflow used (its draft's Start is 4).
+      for (const t of after.published.definition.transitions) expect(t.id).toBeGreaterThan(4);
+      expect(after.draft?.version).toBeGreaterThan(after.published.version);
+      expect(draftOf(after).transitions).toEqual(migrated.stored.transitions);
+      // An upgrade is no one's change: no event.
+      expect(await eventCount()).toBe(count);
+      // The operator's command is now a check that finds it no more.
+      const checked = await repairWorkflowMoves(database.db, 1, { repair: false });
+      expect(checked.found).not.toContain(migrated.id);
+
+      // The same workflow repaired by the command: the same moves.
+      const repaired = await leftEmpty('Empty until repaired again', ids);
+      await saveDraft(repaired.id, repaired.stored);
+      const run = await repairWorkflowMoves(database.db, 1, { repair: true });
+      expect(run.repaired).toContain(repaired.id);
+      expect(shape((await view(repaired.id)).published.definition)).toEqual(
+        shape(after.published.definition),
+      );
+
+      // Its tickets move again.
+      const map = await post('/api/v1/workflow-maps', {
+        name: 'Map MIGR',
+        defaultWorkflowId: migrated.id,
+      });
+      expect(map.statusCode, map.body).toBe(201);
+      const track = await post('/api/v1/tracks', { key: 'MIGR', name: 'MIGR', mode: 'shared' });
+      const linked = await patch(`/api/v1/tracks/${track.json().track.id}`, {
+        workflowMapId: map.json().workflowMap.id,
+      });
+      expect(linked.statusCode, linked.body).toBe(200);
+      const made = await post('/api/v1/tickets', { track: 'MIGR', summary: 'Moves after upgrade' });
+      const closed = await move(
+        made.json().ticket.id,
+        into(after.published.definition, status.Closed as number)?.id,
+      );
+      expect(closed.closeReason?.name).toBe('Completed');
+    });
+
+    it('[WF-008] publishing a draft with no transitions publishes the free moves a new workflow gets (T-246)', async () => {
+      const ids = [status.New as number, status.Active as number, status.Closed as number];
+      const { id } = await leftEmpty('Restored empty', ids);
+      // An empty version restored as the draft keeps what it holds until it is published.
+      const restored = await post(`/api/v1/workflows/${id}/versions/1/restore`);
+      expect(restored.statusCode, restored.body).toBe(200);
+      expect(draftOf(restored.json().workflow).transitions).toEqual([]);
+      const count = await eventCount();
+
+      const published = await post(`/api/v1/workflows/${id}/publish`, {});
+      expect(published.statusCode, published.body).toBe(200);
+      const after = published.json().workflow as View;
+      expect(after.published.version).toBe(2);
+      expect(after.draft).toBeNull();
+      expect(shape(after.published.definition)).toEqual(freeMoves());
+      expect(new Set(after.published.definition.transitions.map((t) => t.id)).size).toBe(3);
+      // Still one publish, one event.
+      expect(await eventCount()).toBe(count + 1);
+      const [last] = (await events('workflow.published')).slice(-1);
+      expect(last?.payload).toEqual({
+        version: 2,
+        removedStatuses: [],
+        statusMapping: {},
+        ticketCount: 0,
+      });
+
+      // A draft with a rule and no transitions is somebody's on purpose: published as it is.
+      const ruled = await leftEmpty('Ruled and empty', ids);
+      const withRule = { ...ruled.stored, transitions: [], rules: { '4': [] } };
+      await database.db
+        .updateTable('workflow_version')
+        .set({ definition: JSON.stringify(withRule) as never })
+        .where('workflow_id', '=', ruled.id)
+        .execute();
+      const again = await post(`/api/v1/workflows/${ruled.id}/versions/1/restore`);
+      expect(again.statusCode, again.body).toBe(200);
+      const kept = await post(`/api/v1/workflows/${ruled.id}/publish`, {});
+      expect(kept.statusCode, kept.body).toBe(200);
+      expect((kept.json().workflow as View).published.definition.transitions).toEqual([]);
+    });
+
+    it('[WF-008] a refused publish of a draft with no transitions leaves the draft as saved: the free moves come only with the publish (T-246)', async () => {
+      const { id } = await leftEmpty('Refused while empty', [
+        status.New as number,
+        status.Active as number,
+      ]);
+      // Version 2 adds Closed, and a ticket stands in it.
+      await publishChanged(id, (d) => ({
+        ...d,
+        statuses: [...d.statuses, { statusId: status.Closed as number }],
+      }));
+      const map = await post('/api/v1/workflow-maps', { name: 'Map RFSD', defaultWorkflowId: id });
+      expect(map.statusCode, map.body).toBe(201);
+      const track = await post('/api/v1/tracks', { key: 'RFSD', name: 'RFSD', mode: 'shared' });
+      const linked = await patch(`/api/v1/tracks/${track.json().track.id}`, {
+        workflowMapId: map.json().workflowMap.id,
+      });
+      expect(linked.statusCode, linked.body).toBe(200);
+      const made = await post('/api/v1/tickets', { track: 'RFSD', summary: 'Stands in Closed' });
+      expect(made.statusCode, made.body).toBe(201);
+      await database.db
+        .updateTable('ticket')
+        .set({ status_id: status.Closed as number })
+        .where('id', '=', made.json().ticket.id)
+        .execute();
+      // Version 1, empty and without Closed, restored as the draft.
+      const restored = await post(`/api/v1/workflows/${id}/versions/1/restore`);
+      expect(restored.statusCode, restored.body).toBe(200);
+      const draftVersion = restored.json().workflow.draft.version as number;
+      const stored = async () =>
+        (
+          await database.db
+            .selectFrom('workflow_version')
+            .select('definition')
+            .where('workflow_id', '=', id)
+            .where('version', '=', draftVersion)
+            .executeTakeFirstOrThrow()
+        ).definition as unknown as Definition;
+      expect((await stored()).transitions).toEqual([]);
+      const count = await eventCount();
+
+      // Refused for its mapping: the draft stays as restored, and nothing happened.
+      const refused = await post(`/api/v1/workflows/${id}/publish`, {});
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(refused.json().error).toBe('status_mapping_required');
+      expect((await stored()).transitions).toEqual([]);
+      expect(draftOf(await view(id)).transitions).toEqual([]);
+      expect(await eventCount()).toBe(count);
+
+      // Refused for a bad mapping: the same.
+      const bad = await post(`/api/v1/workflows/${id}/publish`, {
+        statusMapping: { [String(status.Closed)]: status.Closed },
+      });
+      expect(bad.statusCode, bad.body).toBe(400);
+      expect((await stored()).transitions).toEqual([]);
+      expect(await eventCount()).toBe(count);
+
+      // Published with its mapping: the free moves come with it.
+      const published = await post(`/api/v1/workflows/${id}/publish`, {
+        statusMapping: { [String(status.Closed)]: status.New },
+      });
+      expect(published.statusCode, published.body).toBe(200);
+      const after = published.json().workflow as View;
+      expect(after.published.version).toBe(draftVersion);
+      expect(shape(after.published.definition)).toEqual(freeMoves().slice(0, 2));
+      const [last] = (await events('workflow.published')).slice(-1);
+      expect(last?.payload).toMatchObject({ version: draftVersion, ticketCount: 1 });
+    });
+
+    it('[WF-008] a workflow file with no transitions imports with the free moves, as a new workflow and as a next draft (T-246)', async () => {
+      const ids = [status.New as number, status.Active as number, status.Closed as number];
+      const { id } = await leftEmpty('Exported empty', ids);
+      const exported = await get(`/api/v1/admin/workflows/${id}/export`);
+      expect(exported.statusCode, exported.body).toBe(200);
+      const document = exported.json();
+      expect(document.definition.transitions).toEqual([]);
+
+      const imported = await post('/api/v1/admin/workflows/import', {
+        document,
+        name: 'Imported empty',
+      });
+      expect(imported.statusCode, imported.body).toBe(201);
+      const fresh = imported.json().workflow as View;
+      expect(fresh.published.version).toBe(1);
+      expect(shape(fresh.published.definition)).toEqual(freeMoves());
+
+      const asDraft = await post(`/api/v1/admin/workflows/${id}/import`, { document });
+      expect(asDraft.statusCode, asDraft.body).toBe(200);
+      const drafted = asDraft.json().workflow as View;
+      expect(shape(draftOf(drafted))).toEqual(freeMoves());
+      // The published version stays as it is until the draft is published.
+      expect(drafted.published.definition.transitions).toEqual([]);
     });
   });
 

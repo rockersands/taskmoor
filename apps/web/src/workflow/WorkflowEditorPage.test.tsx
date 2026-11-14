@@ -542,6 +542,58 @@ describe('workflow editor (M1-030)', () => {
     expect(screen.queryByRole('region', { name: 'Publish version 3' })).toBeNull();
   });
 
+  it('[WF-008] says nothing of free moves when the draft it publishes has transitions (T-246)', async () => {
+    const user = userEvent.setup();
+    const note =
+      'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.';
+    // A draft with transitions says nothing of the kind.
+    renderEditor(withDraft());
+    await user.click(await screen.findByRole('button', { name: 'Publish' }));
+    expect(
+      within(await screen.findByRole('region', { name: 'Publish version 3' })).queryByText(note),
+    ).toBeNull();
+  });
+
+  it('[WF-008] publishes a draft with no transitions and shows the moves it got (T-246)', async () => {
+    const user = userEvent.setup();
+    const { rules: _, ...plain } = SUPPORT_DEFINITION;
+    const client = fakeWorkflowsClient({
+      workflows: [
+        {
+          ...SUPPORT_WORKFLOW,
+          draft: {
+            version: 3,
+            definition: { ...plain, transitions: [] },
+            createdAt: '2026-10-27T15:00:00.000Z',
+            publishedAt: null,
+          },
+        },
+      ],
+    });
+    renderEditor(client);
+    expect(await screen.findByText('No transitions yet.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    const panel = await screen.findByRole('region', { name: 'Publish version 3' });
+    expect(
+      within(panel).getByText(
+        'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+      ),
+    ).toBeVisible();
+    await user.click(within(panel).getByRole('button', { name: 'Publish now' }));
+    expect(
+      await screen.findByText(
+        'Version 3 is published. The next transition of every ticket uses it.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(transitionList())
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(
+      plain.statuses.map((x) => STATUSES.find((st) => st.id === x.statusId)?.name as string),
+    );
+  });
+
   it('[WF-002] discards the draft after asking', async () => {
     const user = userEvent.setup();
     const client = withDraft();

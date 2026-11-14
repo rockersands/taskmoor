@@ -160,8 +160,7 @@ them.
       workflow that moves freely, not only the editor's. The server only adds: a status that was
       already in the workflow, a step someone drew, any draft with a rule and a board-managed
       workflow's draft (its board says which columns there are) stay as sent. An old workflow
-      with no transitions gets its moves when its next draft is saved, or from the operator's
-      repair below. The web editor saves with `transitionsAsSent`: its Add a status already gives
+      with no transitions got its moves from migration 0107 (T-246, below). The web editor saves with `transitionsAsSent`: its Add a status already gives
       a new status its free move, so a move missing from a draft that has transitions was deleted
       on purpose, and the server adds none (a draft with no transitions at all still gets them, as
       a new workflow does). Without it, a free move deleted from a status just added came back on
@@ -181,17 +180,51 @@ them.
       one a board manages, gets nothing and stays listed, and the command then exits with 1. We
       considered:
       - *a migration*, which would do the same at the next upgrade with nobody running anything.
-        Not now: this wave may take no migration number, every site holding one from before the
-        rule is a pre-release one, and an import or a restore can still make one after any
-        migration, which the command, run when needed, covers too. A migration before 1.0 can
-        reuse `repairWorkflowMoves` if wanted;
+        Not then (no migration number in that wave); chosen by the user on 2026-11-13 (T-246,
+        below);
       - *the moves at read time*, when a ticket asks for its transitions: built in memory, the
         definition, the editor and an exported file would say something other than what happens
         (rejected for the same reason in T-209); written then, a read would publish a version,
         and a ticket write holds its workflow with key share, so two writes raising it to update
         at once would deadlock;
       - *the moves at the next publish*: only a draft is published, so a workflow with no draft
-        stays as it is, and the editor's Publish saves first, which gives them already.
+        stays as it is, and the editor's Publish saves first, which gives them already. T-246
+        added them at publish anyway, for a draft that reaches it empty (below), but that alone
+        leaves a workflow with no draft as it is.
+    - *Old workflows' free moves at the upgrade; none published or imported empty* (T-246, the
+      user's decision of 2026-11-13: a migration before 1.0, no manual step). Migration 0107
+      gives every workflow whose published version has no transitions the repair's moves, with
+      the repair's rules: a global transition into each status in the definition's order, named
+      after it, numbered above every transition id any version used; a closed-stage status sets
+      the reason free moves close with (Completed by name, else what the default workflow's
+      published version sets on entering a closed-stage status) and gets no move when there is
+      none to name, and no reason is made; any other move clears the reason. A workflow a board
+      manages, one with a rule and one that would get no move at all stay as they are. The moves
+      are a new published version by nobody; a draft stays as its author saved it, renumbered
+      above it as 0104 renumbered drafts (the new version takes the draft's number). Like 0089,
+      0104 and 0105 it writes no event: an upgrade is no one's change. A migration is frozen and
+      `@taskmoor/db` cannot import the server, so the rules are written out in the migration;
+      a server test runs it and `repairWorkflowMoves` on the same workflow and checks both give
+      the same moves. `cli.mjs workflow-moves` stays, as the check: after 0107 it lists only what
+      free moves leave alone, and `--repair` still repairs anything an older path left. So that
+      no new one appears, a definition with no transitions at all (and no rule, no board) gets
+      the free moves wherever it becomes a version: a draft saved through the editor or the API
+      (already so, T-210), **a publish** (a draft restored from an empty version, or imported
+      empty, reaches Publish without a save; the draft's version is rewritten with the moves
+      under the publish's lock, then published, still one `workflow.published`; the rewrite
+      comes after every check that can refuse the publish, since a refusal is a normal answer and
+      its transaction commits, so a refused publish leaves the draft as its author saved it and
+      writes nothing no event records), **an import of a workflow file**, as a new workflow and
+      as the next draft (`withMovesIfNone`, inside the import's one transaction and one
+      `workflow.imported`), and **an import run** (a Data Center backup or a
+      Taskmoor export: the workflow loader publishes a workflow that converts to none, one with
+      only its create action, as version 1 with the moves). What free moves cannot reach stays
+      empty wherever it comes from: a definition whose only statuses are closed-stage ones when
+      the workspace has no reason to name gets no move, is published or imported as it is, and
+      the check lists it. A restore still keeps what the version holds
+      until it is published, and the editor's publish step says that such a draft is published
+      with a move into every status. An import keeps every transition and rule a file has
+      (WF-008 (4): imported workflows keep their rules); only a file with none gets moves.
     - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
       The reason free moves close with (`closingReasonId`) stays as it was: the reason named
       Completed, else what the default workflow's published version sets on entering a
