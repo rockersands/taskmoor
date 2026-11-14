@@ -5,6 +5,7 @@ import boot from '../../public/skin-boot.js?raw';
 import {
   APPEARANCE_STORAGE_KEY,
   applyAppearance,
+  printInLightSkin,
   resolveSkin,
   SKINS,
   storedAppearance,
@@ -51,6 +52,26 @@ describe('skins (M1-122, ADR-036)', () => {
     expect(bootSkins).toEqual(SKINS.map((s) => s.id));
     for (const skin of SKINS) expect(css).toContain(`[data-skin="${skin.id}"]`);
     expect(boot).toContain(APPEARANCE_STORAGE_KEY);
+  });
+
+  it('[CORE-022] prints a ticket in the light skin and gives the skin back after (PL-27, D37)', () => {
+    document.documentElement.dataset.skin = 'dark';
+    // The page and its pop-up may both show a ticket: one switch, undone once.
+    const stopPage = printInLightSkin();
+    const stopPopup = printInLightSkin();
+    window.dispatchEvent(new Event('beforeprint'));
+    expect(document.documentElement.dataset.skin).toBe('light');
+    window.dispatchEvent(new Event('afterprint'));
+    expect(document.documentElement.dataset.skin).toBe('dark');
+    // A ticket closed while printing gives the skin back too.
+    window.dispatchEvent(new Event('beforeprint'));
+    stopPopup();
+    expect(document.documentElement.dataset.skin).toBe('light');
+    stopPage();
+    expect(document.documentElement.dataset.skin).toBe('dark');
+    // With no ticket on screen, printing leaves the skin alone.
+    window.dispatchEvent(new Event('beforeprint'));
+    expect(document.documentElement.dataset.skin).toBe('dark');
   });
 });
 

@@ -41,6 +41,7 @@ import { priorityName } from '../../shell/priorityName';
 import { fieldName, typeName } from '../../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
 import { useMediaQuery } from '../../shell/useMediaQuery';
+import { printInLightSkin } from '../../skins/skins';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
@@ -282,6 +283,9 @@ export function TicketView({
   const helpButton = useRef<HTMLButtonElement>(null);
   const article = useRef<HTMLElement>(null);
   const overOverlay = useOverlayRoute() !== null;
+
+  // A printed ticket is in the light skin's colours, whatever the skin on screen (PL-27, D37).
+  useEffect(() => printInLightSkin(), []);
 
   useEffect(() => {
     let live = true;

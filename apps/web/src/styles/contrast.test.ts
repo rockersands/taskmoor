@@ -95,23 +95,16 @@ describe('design token contrast (M1-115)', () => {
   }
 
   it("[CORE-022] prints the tones in the light skin's values, whatever the skin (PL-27, D37)", () => {
+    // Printing takes the light skin itself (printInLightSkin): print.css keeps no colours of its
+    // own for the tones, which would drift from the skin's (and break NFR-005's rule of tokens).
     const sheet = file ? readFileSync(file.replace('tokens.css', 'print.css'), 'utf8') : '';
-    const printed = Object.fromEntries(
-      [...sheet.matchAll(/--(color-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((m) => [m[1], m[2]]),
-    );
+    const tones = ['danger', 'warning', 'success', 'blue', 'blush', 'butter'];
+    const declared = [...sheet.matchAll(/--color-([a-z]+)(?:-soft)?:/g)].map((m) => m[1]);
+    expect(declared.filter((name) => tones.includes(name as string))).toEqual([]);
+    // And the light skin's tones keep their contrast on the white paper.
     const light = skin('light');
-    const tones = ['danger', 'warning', 'success', 'blue', 'blush', 'butter'].flatMap((tone) => [
-      `color-${tone}`,
-      `color-${tone}-soft`,
-    ]);
-    expect(Object.fromEntries(tones.map((tone) => [tone, printed[tone]]))).toEqual(
-      Object.fromEntries(tones.map((tone) => [tone, light[tone]])),
-    );
-    // And so they keep their contrast on the white paper.
     for (const tone of ['danger', 'warning', 'success', 'blue']) {
-      expect(contrast(printed[`color-${tone}`] ?? '#ffffff', '#ffffff')).toBeGreaterThanOrEqual(
-        4.5,
-      );
+      expect(contrast(light[`color-${tone}`] ?? '#ffffff', '#ffffff')).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

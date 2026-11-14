@@ -111,7 +111,10 @@ export const OnAPhone: Story = {
   },
 };
 
-/** The print rules of print.css put in force by hand: the stories' browser draws for a screen. */
+/**
+ * The print rules of print.css put in force by hand: the stories' browser draws for a screen.
+ * The cleanup also ends a print begun by `startPrinting`.
+ */
 function asPrinted(): () => void {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync(printSheet);
@@ -124,7 +127,15 @@ function asPrinted(): () => void {
     .flatMap((rule) => Array.from(rule.cssRules, (inner) => inner.cssText))
     .join('\n');
   document.head.append(style);
-  return () => style.remove();
+  return () => {
+    window.dispatchEvent(new Event('afterprint'));
+    style.remove();
+  };
+}
+
+/** What the browser says as it starts printing, once the ticket is on screen to hear it. */
+function startPrinting() {
+  window.dispatchEvent(new Event('beforeprint'));
 }
 
 /**
@@ -167,6 +178,10 @@ export const PrintedOnWhite: Story = {
     const dialog = await canvas.findByRole('dialog', { name: NAME });
     const ticket = within(dialog);
     const title = await ticket.findByRole('heading', { level: 1 });
+    // Printing takes the light skin, whatever the skin on screen; ending it gives the skin back.
+    const skin = document.documentElement.dataset.skin;
+    startPrinting();
+    await expect(document.documentElement.dataset.skin).toBe('light');
     const priority = await ticket.findByRole('combobox', { name: 'Priority' });
     await expect(priority).toBeVisible();
     await expect(priority).toHaveTextContent(SHOP_41.priority?.name ?? '');
@@ -188,5 +203,7 @@ export const PrintedOnWhite: Story = {
       await expect(lightness(drawn.backgroundColor), `${tone}-soft`).toBeGreaterThan(0.85);
       probe.remove();
     }
+    window.dispatchEvent(new Event('afterprint'));
+    await expect(document.documentElement.dataset.skin).toBe(skin);
   },
 };

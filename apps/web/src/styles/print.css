@@ -7,8 +7,10 @@
 @media print {
   /*
    * Paper is light whatever the skin (D37): a dark skin's canvas and pale text would print as a
-   * black page. The skin's colours give way to the printer's own, dark text on white, on the ticket
-   * page and under a ticket's pop-up alike.
+   * black page. While a ticket prints the page takes the light skin (`printInLightSkin` in
+   * skins.ts), so the tones (a high priority's glyph, a warning, a done state) print in the light
+   * skin's tokens, which hold their contrast on white. The surfaces and text give way to the
+   * printer's own, dark text on white, on the ticket page and under a ticket's pop-up alike.
    */
   :root:has(.ticket-page) {
     color-scheme: light;
@@ -29,24 +31,6 @@
     --glass-edge: GrayText;
     --color-accent: LinkText;
     --color-primary: CanvasText;
-    /*
-     * The tones (a high priority's glyph, a warning, a done state) take the light skin's values,
-     * which hold their contrast on white: the dark skin's pale tones and dark tints would print
-     * barely seen, or as dark blocks. Kept equal to tokens.css's light block.
-     */
-    --color-danger: #b3261e;
-    --color-danger-soft: #fbe4e1;
-    --color-success: #2c6a44;
-    --color-success-soft: #e0f2e6;
-    --color-warning: #8a5300;
-    --color-warning-soft: #fcefd6;
-    --color-blue: #2f5f8f;
-    --color-blue-soft: #e1edf9;
-    --color-blush: #9b3550;
-    --color-blush-soft: #fbe5ea;
-    --color-butter: #7a5a00;
-    --color-butter-soft: #fbf1d3;
-    --color-accent-soft: #fde6d9;
   }
 
   :root:has(.ticket-page) body {
