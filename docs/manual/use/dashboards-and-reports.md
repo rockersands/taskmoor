@@ -264,8 +264,9 @@ estimates to add up** instead of charting zeros.
 - **Release report**: **Release progress**, the scope and the completed work day by day from
   the release's start (without one, from the earliest of the day it was made, its first ticket
   and its release date), its planned date and the day the work would be done at the pace of the
-  last 14 days. **Completed** is drawn over **Scope**, so it stays in sight once all the work is
-  done. Once the release has shipped it says the day it shipped on, as its page does, and no
+  last 14 days. Its legend names what the lines add up, such as **Estimate in scope** and
+  **Estimate completed** (or **Hours** or **Tickets**); the completed line is drawn over the scope
+  line, so it stays in sight once all the work is done. Once the release has shipped it says the day it shipped on, as its page does, and no
   forecast.
 - **Outcome report**: choose an outcome as for its burndown. **Outcome progress**: the same chart
   for the tickets under the outcome, from the day the first one joined it, its axis and legend
