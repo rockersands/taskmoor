@@ -55,6 +55,8 @@ const steps = [
     args: [
       bin('@biomejs/biome', 'bin/biome'),
       ci ? 'ci' : 'check',
+      // A warning fails the step too (T-281), so a new one cannot hide among old ones.
+      '--error-on-warnings',
       '--colors=off',
       '--max-diagnostics=30',
       '.',
@@ -217,9 +219,11 @@ function finish(step, log, t0, code, rawOutput) {
 
 function summarizeLint(code, output) {
   if (code === 0) return { headline: '' };
-  const found = output.match(/Found (\d+) errors?/);
+  const errors = output.match(/Found (\d+) errors?/);
+  const warnings = output.match(/Found (\d+) warnings?/);
+  const counts = [errors && `${errors[1]} errors`, warnings && `${warnings[1]} warnings`];
   return {
-    headline: found ? `${found[1]} errors` : '',
+    headline: counts.filter(Boolean).join(', '),
     details: tail(output, 60),
   };
 }
