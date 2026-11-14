@@ -1,5 +1,12 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { api } from '../../api/client';
+import {
+  findFieldPeople,
+  findGroups,
+  findPeople,
+  findSitePeople,
+  findTeams,
+} from '../pickerSources';
 
 /**
  * Ticket templates (CORE-029, CORE-030; ADR-113) as the API gives them. Default values are named
@@ -86,6 +93,18 @@ export interface TrackChoice extends Named {
   archived?: boolean;
 }
 
+/**
+ * One of a custom field's contexts as the template form reads it (T-350): the tracks and ticket
+ * types it covers (null: all of them), and whether it allows only some people (a person field
+ * limited to a group or a role, CORE-009 (2)).
+ */
+export interface FieldRule {
+  id: number;
+  trackIds: number[] | null;
+  ticketTypeIds: number[] | null;
+  restricted: boolean;
+}
+
 /** What the template form offers. */
 export interface TemplateOptions {
   track: { id: number; key: string; name: string } | null;
@@ -120,8 +139,29 @@ export interface TemplateClient {
   list: (track: string | null) => Promise<TemplateList>;
   options: (track: string | null) => Promise<TemplateOptions>;
   fieldOptions: (fieldId: number, trackId: number | null) => Promise<FieldValueOption[]>;
-  /** People who can be found in a track, for its templates' assignee. */
+  /**
+   * People who can be found in a track, for its templates' assignee and person fields: the
+   * create form's search (T-350).
+   */
   people: (track: string, query: string) => Promise<Named[]>;
+  /**
+   * Anyone active in the site, for a person field of a template for every track (T-350), which
+   * has no track to search in; those who change such templates may use it (ADR-114).
+   */
+  sitePeople: (query: string) => Promise<Named[]>;
+  /** The people a person field allows for a ticket of a type in a track (CORE-009 (2), T-350). */
+  fieldPeople: (
+    fieldId: number,
+    track: string,
+    ticketTypeId: number,
+    query: string,
+  ) => Promise<Named[]>;
+  /** The site's groups a group field offers, as on the create form (T-350). */
+  groups: (fieldId: number, query: string) => Promise<Named[]>;
+  /** The site's teams, as on the create form (T-350). */
+  teams: (query: string) => Promise<Named[]>;
+  /** A custom field's contexts, to know whom a person field allows (T-350). */
+  fieldRules: (fieldId: number) => Promise<FieldRule[]>;
   /**
    * The names of the people, groups and teams a template's custom values name, by body key
    * (`fields.12`), as far as the reader may see them (T-299); a value with no name here is one
@@ -222,12 +262,29 @@ export const templateClient: TemplateClient = {
     }
     return [...seen.values()];
   },
-  people: async (track, query) =>
-    (
-      await api<{ people: Named[] }>(
-        `/people/mentionable?track=${encodeURIComponent(track)}&q=${encodeURIComponent(query)}&limit=8`,
-      )
-    ).people,
+  people: (track, query) => findPeople(track, query),
+  sitePeople: findSitePeople,
+  fieldPeople: findFieldPeople,
+  groups: findGroups,
+  teams: findTeams,
+  fieldRules: async (fieldId) => {
+    const { field } = await api<{
+      field: {
+        contexts: {
+          id: number;
+          trackIds: number[] | null;
+          ticketTypeIds: number[] | null;
+          config: { userGroupId?: number | null; userRoleId?: number | null } | null;
+        }[];
+      };
+    }>(`/fields/${fieldId}`);
+    return field.contexts.map((c) => ({
+      id: c.id,
+      trackIds: c.trackIds,
+      ticketTypeIds: c.ticketTypeIds,
+      restricted: c.config?.userGroupId != null || c.config?.userRoleId != null,
+    }));
+  },
   names: async (id) =>
     (await api<{ names?: Record<string, Named[]> }>(`${templatesPath}/${id}`)).names ?? {},
   create: async (body) =>

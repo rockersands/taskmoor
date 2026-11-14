@@ -35,6 +35,7 @@ import {
   type TicketForm,
 } from './form';
 import { PersonPicker, type PickedPerson } from './PersonPicker';
+import { findFieldPeople, findGroups, findPeople, findTeams } from './pickerSources';
 import { type AppliedTemplate, type PickerClient, pickerClient } from './templates/client';
 import { SUBTICKET_RANK } from './templates/draft';
 import { omitKeys } from './templates/start';
@@ -101,17 +102,6 @@ export interface CreateClient {
   teams?: (typed: string) => Promise<NamedChoice[]>;
 }
 
-/** How many matches a picker shows, as the people and group searches ask for. */
-const PICKER_LIMIT = 8;
-
-/** People found by name in a track; only those who may be given tickets there, if asked. */
-const findPeople = async (track: string, typed: string, assignable: boolean) =>
-  (
-    await api<{ people: PickedPerson[] }>(
-      `/people/mentionable?track=${encodeURIComponent(track)}&q=${encodeURIComponent(typed)}&limit=8${assignable ? '&assignable=true' : ''}`,
-    )
-  ).people.map((p) => ({ id: p.id, name: p.name }));
-
 export const createClient: CreateClient = {
   tracks: () => everyTrack<TrackChoice>(),
   ticketTypes: async (track) => {
@@ -132,7 +122,7 @@ export const createClient: CreateClient = {
   mentions: (track) => mentionSource({ track }),
   ticketTemplates: pickerClient,
   assignable: (track, typed) => findPeople(track, typed, true),
-  people: (track, typed) => findPeople(track, typed, false),
+  people: (track, typed) => findPeople(track, typed),
   tickets: (query) => ticketToolsClient.pick(query),
   releases: async (trackId) =>
     (await api<{ releases: NamedChoice[] }>(`/tracks/${trackId}/releases`)).releases.map((r) => ({
@@ -144,25 +134,9 @@ export const createClient: CreateClient = {
       id: a.id,
       name: a.name,
     })),
-  fieldPeople: async (fieldId, track, ticketTypeId, typed) =>
-    (
-      await api<{ people: PickedPerson[] }>(
-        `/fields/${fieldId}/people?track=${encodeURIComponent(track)}&ticketTypeId=${ticketTypeId}&q=${encodeURIComponent(typed)}&limit=8`,
-      )
-    ).people.map((p) => ({ id: p.id, name: p.name })),
-  groups: async (fieldId, typed) =>
-    (
-      await api<{ groups: NamedChoice[] }>(
-        `/fields/${fieldId}/groups?q=${encodeURIComponent(typed)}&limit=8`,
-      )
-    ).groups.map((g) => ({ id: g.id, name: g.name })),
-  // The server keeps to the limit (T-282), as the people and group searches do.
-  teams: async (typed) =>
-    (
-      await api<{ teams: NamedChoice[] }>(
-        `/teams?query=${encodeURIComponent(typed)}&limit=${PICKER_LIMIT}`,
-      )
-    ).teams.map((t) => ({ id: t.id, name: t.name })),
+  fieldPeople: findFieldPeople,
+  groups: findGroups,
+  teams: findTeams,
   template: async (key) =>
     templateOf(
       (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,

@@ -5,14 +5,23 @@ import { ApiError } from '../../api/client';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
 import { untranslated, visibleTexts } from '../../test/backend';
-import type { SavedTemplate, TemplateClient, TemplateOptions } from './client';
-import { bodyOf, clearedRefusal, draftOf, editedSpots, saveRefusalOf } from './draft';
+import type { FieldRule, SavedTemplate, TemplateClient, TemplateOptions } from './client';
+import {
+  bodyOf,
+  clearedRefusal,
+  draftOf,
+  editedSpots,
+  foundByEach,
+  personSearchOf,
+  saveRefusalOf,
+} from './draft';
 import {
   EVERY_TRACK_OPTIONS,
   fakeTemplateClient,
   HOTFIX_TEMPLATE,
   PEOPLE_TEMPLATE,
   RELEASE_TEMPLATE,
+  RESTRICTED_RULES,
   TEMPLATE_OPTIONS,
 } from './fixtures';
 import { TemplateForm } from './TemplateForm';
@@ -25,9 +34,10 @@ function renderForm(
     track = 'SHOP' as string | null,
     locale = 'en' as Locale,
     names = undefined as TemplateClient['names'] | undefined,
+    rules = {} as Record<string, FieldRule[]>,
   } = {},
 ) {
-  const client = fakeTemplateClient(template ? [template] : [], { options, refuse });
+  const client = fakeTemplateClient(template ? [template] : [], { options, refuse, rules });
   if (names) client.names = names;
   const saved: SavedTemplate[] = [];
   render(
@@ -312,6 +322,10 @@ describe('the ticket template form names custom release and area values (CORE-02
       'Customer',
       'Fixed in',
       'Owning area',
+      // Offered to add (T-350).
+      'Reviewer',
+      'Owners',
+      'Squad',
     ];
     const texts = visibleTexts(form).filter(
       (t) => !data.includes(t) && !data.some((d) => t === `[${d}]`),
@@ -394,7 +408,8 @@ describe('the ticket template form adds custom release and area values (CORE-029
     )
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(fields).toEqual(['None', 'Severity', 'Customer']);
+    // Person, group and team fields are found in the whole site (T-350).
+    expect(fields).toEqual(['None', 'Severity', 'Customer', 'Reviewer', 'Owners', 'Squad']);
   });
 
   it('[CORE-029] says when the track has no open area to add', () => {
@@ -422,11 +437,11 @@ describe('the ticket template form names custom person, group and team values (C
         .getAllByRole('listitem')
         .map((li) => li.firstChild?.textContent),
     ).toEqual(['Support', 'Group 52, hidden from you or gone']);
-    expect(owners).toHaveAccessibleDescription(/^Set through the API\./);
+    expect(owners).toHaveAccessibleDescription(/^Find one to add, or remove one/);
     expect(
       within(within(form).getByRole('list', { name: 'Squad' })).getByText('Checkout squad'),
     ).toBeVisible();
-    // None is only counted any more, and none can be added here.
+    // None is only counted any more; they are found with a search, not picked from a list.
     expect(within(form).queryByText(/this form cannot show/)).toBeNull();
     expect(within(form).queryByRole('button', { name: /^Add to / })).toBeNull();
   });
@@ -565,5 +580,244 @@ describe('a refused value’s reason clears when it is edited (CORE-029, T-299)'
         subtickets: [first, { summary: 'B', ticketTypeId: '5' }],
       }),
     ).toEqual(['field:7', 'subticket:1', 'subticket:1:type']);
+  });
+});
+
+/** Types into a picker's search field; the picker around it, to read what it offers. */
+async function search(form: HTMLElement, name: string, typed: string) {
+  const user = userEvent.setup();
+  const input = within(form).getByRole('searchbox', { name });
+  await user.clear(input);
+  await user.type(input, typed);
+  return input.closest('.person-picker') as HTMLElement;
+}
+
+/** What a picker offers, by name. */
+const offeredIn = (picker: HTMLElement) =>
+  within(picker)
+    .queryAllByRole('listitem')
+    .map((li) => li.textContent);
+
+describe('the ticket template form adds custom person, group and team values (CORE-029, T-350)', () => {
+  it('[CORE-029] [CORE-009] finds people, groups and teams as the create form does, and saves them', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(PEOPLE_TEMPLATE);
+    // A field that holds one person offers a search once that person is removed.
+    await within(form).findByRole('list', { name: 'Reviewer' });
+    expect(within(form).queryByRole('searchbox', { name: 'Person to add to Reviewer' })).toBeNull();
+    await user.click(within(form).getByRole('button', { name: 'Remove Sam Rivera from Reviewer' }));
+    // As for a release or area, the focus goes to the line saying it holds none (T-299).
+    expect(within(form).getByText('None: saving leaves this field empty.')).toHaveFocus();
+    expect(
+      within(form).getByRole('searchbox', { name: 'Person to add to Reviewer' }),
+    ).toBeVisible();
+    const reviewer = await search(form, 'Person to add to Reviewer', 'an');
+    await waitFor(() => expect(offeredIn(reviewer)).toEqual(['Ana Ortiz']));
+    expect(client.searched).toContain('people:SHOP:an');
+    await user.click(within(form).getByRole('button', { name: 'Ana Ortiz' }));
+    // The search gives way to the one person, whose Remove takes the focus.
+    expect(within(form).queryByRole('searchbox', { name: 'Person to add to Reviewer' })).toBeNull();
+    expect(
+      within(form).getByRole('button', { name: 'Remove Ana Ortiz from Reviewer' }),
+    ).toHaveFocus();
+
+    // A field that holds several keeps its search, and never offers what it holds.
+    const owners = await search(form, 'Group to add to Owners', 's');
+    await waitFor(() => expect(offeredIn(owners)).toEqual(['Design', 'Sales']));
+    expect(client.searched).toContain('groups:15:s');
+    await user.click(within(form).getByRole('button', { name: 'Sales' }));
+    expect(within(form).getByRole('searchbox', { name: 'Group to add to Owners' })).toHaveFocus();
+    expect(
+      within(within(form).getByRole('list', { name: 'Owners' }))
+        .getAllByRole('listitem')
+        .map((li) => li.firstChild?.textContent),
+    ).toEqual(['Support', 'Group 52, hidden from you or gone', 'Sales']);
+
+    await user.click(
+      within(form).getByRole('button', { name: 'Remove Checkout squad from Squad' }),
+    );
+    const squad = await search(form, 'Team to add to Squad', 'squad');
+    await waitFor(() => expect(offeredIn(squad)).toEqual(['Checkout squad', 'Search squad']));
+    expect(client.searched).toContain('teams:squad');
+    await user.click(within(form).getByRole('button', { name: 'Search squad' }));
+
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.defaults.fields).toEqual({
+      '14': 22,
+      '15': [51, 52, 54],
+      '16': 62,
+    });
+  });
+
+  it('[CORE-029] adds a person, group or team field a new template does not hold yet', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(null);
+    await user.type(within(form).getByRole('textbox', { name: 'Name' }), 'Review');
+    const add = within(form).getByRole('combobox', { name: 'Add a value for a field' });
+    expect(
+      within(add)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'None',
+      'Severity',
+      'Customer',
+      'Fixed in',
+      'Owning area',
+      'Reviewer',
+      'Owners',
+      'Squad',
+    ]);
+    await user.selectOptions(add, 'Owners');
+    await user.click(within(form).getByRole('button', { name: 'Add the field' }));
+    expect(within(form).getByText('None: saving leaves this field empty.')).toBeVisible();
+    const owners = await search(form, 'Group to add to Owners', 'de');
+    await waitFor(() => expect(offeredIn(owners)).toEqual(['Design']));
+    await user.click(within(form).getByRole('button', { name: 'Design' }));
+    expect(
+      within(within(form).getByRole('list', { name: 'Owners' })).getByText('Design'),
+    ).toBeVisible();
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.defaults.fields).toEqual({ '15': [53] });
+  });
+
+  it('[CORE-029] [CORE-009] offers only the people a restricted field allows for every type the template fits', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(null, { rules: { '14': RESTRICTED_RULES } });
+    await user.click(within(form).getByRole('checkbox', { name: 'Bug' }));
+    await user.selectOptions(
+      within(form).getByRole('combobox', { name: 'Add a value for a field' }),
+      'Reviewer',
+    );
+    await user.click(within(form).getByRole('button', { name: 'Add the field' }));
+    const input = await within(form).findByRole('searchbox', {
+      name: 'Person to add to Reviewer',
+    });
+    expect(input).toHaveAccessibleDescription(
+      'Type a name. Only the people this field allows are offered.',
+    );
+    // Bugs allow Sam and Ana.
+    const reviewer = await search(form, 'Person to add to Reviewer', 'a');
+    await waitFor(() => expect(offeredIn(reviewer)).toEqual(['Sam Rivera', 'Ana Ortiz']));
+    expect(client.searched).toEqual(['fieldPeople:14:SHOP:3:a']);
+    // Chores allow Ana and Lee: a template for both offers only Ana, whom both allow.
+    await user.click(within(form).getByRole('checkbox', { name: 'Chore' }));
+    client.searched.length = 0;
+    await search(form, 'Person to add to Reviewer', 'a');
+    await waitFor(() => expect(offeredIn(reviewer)).toEqual(['Ana Ortiz']));
+    expect([...client.searched].sort()).toEqual([
+      'fieldPeople:14:SHOP:3:a',
+      'fieldPeople:14:SHOP:4:a',
+    ]);
+    // A template for every type fits them all: the subticket types' context allows anyone, so
+    // Bugs and Chores still limit it.
+    await user.click(within(form).getByRole('checkbox', { name: 'Bug' }));
+    await user.click(within(form).getByRole('checkbox', { name: 'Chore' }));
+    client.searched.length = 0;
+    await search(form, 'Person to add to Reviewer', 'a');
+    await waitFor(() => expect(offeredIn(reviewer)).toEqual(['Ana Ortiz']));
+    expect(client.searched).toHaveLength(2);
+  });
+
+  it('[CORE-029] finds people in the whole site for a template for every track, unless the field allows only some', async () => {
+    const user = userEvent.setup();
+    const every = renderForm(null, { options: EVERY_TRACK_OPTIONS, track: null });
+    await user.selectOptions(
+      within(every.form).getByRole('combobox', { name: 'Add a value for a field' }),
+      'Reviewer',
+    );
+    await user.click(within(every.form).getByRole('button', { name: 'Add the field' }));
+    await within(every.form).findByRole('searchbox', { name: 'Person to add to Reviewer' });
+    const reviewer = await search(every.form, 'Person to add to Reviewer', 'kim');
+    await waitFor(() => expect(offeredIn(reviewer)).toEqual(['Kim Alvarez']));
+    expect(every.client.searched).toEqual(['sitePeople:kim']);
+    cleanup();
+
+    // Whom a restricted field allows is known per track and type: no search can say it here.
+    const restricted = renderForm(
+      { ...PEOPLE_TEMPLATE, track: null },
+      { options: EVERY_TRACK_OPTIONS, track: null, rules: { '14': RESTRICTED_RULES } },
+    );
+    await user.click(
+      await within(restricted.form).findByRole('button', {
+        name: 'Remove Sam Rivera from Reviewer',
+      }),
+    );
+    expect(
+      await within(restricted.form).findByText(
+        /^This field allows only some people, and who depends on the track/,
+      ),
+    ).toBeVisible();
+    expect(
+      within(restricted.form).queryByRole('searchbox', { name: 'Person to add to Reviewer' }),
+    ).toBeNull();
+    // Groups and teams are the site's anywhere.
+    expect(
+      within(restricted.form).getByRole('searchbox', { name: 'Group to add to Owners' }),
+    ).toBeVisible();
+  });
+
+  it('[CORE-029] offers no person search when the field’s contexts cannot be read', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(null);
+    client.fieldRules = async () => {
+      throw new ApiError(503, { error: 'unavailable' });
+    };
+    await user.selectOptions(
+      within(form).getByRole('combobox', { name: 'Add a value for a field' }),
+      'Reviewer',
+    );
+    await user.click(within(form).getByRole('button', { name: 'Add the field' }));
+    expect(await within(form).findByText(/^Set through the API\./)).toBeVisible();
+    expect(within(form).queryByRole('searchbox', { name: 'Person to add to Reviewer' })).toBeNull();
+  });
+
+  it('[CORE-009] reads a field’s context for a type and track as the server picks it', () => {
+    const rules: FieldRule[] = [
+      { id: 1, trackIds: null, ticketTypeIds: null, restricted: true },
+      { id: 2, trackIds: [1], ticketTypeIds: null, restricted: false },
+      { id: 3, trackIds: null, ticketTypeIds: [4], restricted: true },
+      { id: 4, trackIds: [1], ticketTypeIds: [5], restricted: true },
+    ];
+    // In track 1, the track's own context wins over the type's in every track, and the one
+    // naming both wins over the track's.
+    expect(personSearchOf(rules, 1, [3, 4])).toEqual({ kind: 'anyone' });
+    expect(personSearchOf(rules, 1, [3, 5])).toEqual({ kind: 'allowed', typeIds: [5] });
+    // Elsewhere, the type's context, then the one for everything; one type is asked per context.
+    expect(personSearchOf(rules, 2, [4, 6, 7])).toEqual({ kind: 'allowed', typeIds: [4, 6] });
+    // A field no context covers here leaves the track's search as it is.
+    expect(personSearchOf([rules[3] as FieldRule], 2, [5])).toEqual({ kind: 'anyone' });
+    expect(personSearchOf(rules, null, [])).toEqual({ kind: 'none' });
+    expect(personSearchOf([rules[1] as FieldRule], null, [])).toEqual({ kind: 'anyone' });
+    const a = { id: 1, name: 'A' };
+    const b = { id: 2, name: 'B' };
+    expect(foundByEach([[a, b], [b]])).toEqual([b]);
+    expect(foundByEach([])).toEqual([]);
+  });
+
+  it('passes every string through the pseudo-locale while searching', async () => {
+    const { form } = renderForm(PEOPLE_TEMPLATE, { locale: 'en-XA' });
+    await within(form).findByText('Support');
+    // The search of Owners, the one field here that holds several.
+    const input = form.querySelector('.ticket-template-find input') as HTMLElement;
+    await userEvent.type(input, 'zzz');
+    const picker = input.closest('.person-picker') as HTMLElement;
+    await waitFor(() => expect(within(picker).getByRole('status')).not.toHaveTextContent(''));
+    const data = [
+      'Review',
+      'A change someone reviews',
+      'Sam Rivera',
+      'Support',
+      'Checkout squad',
+      ...TEMPLATE_OPTIONS.fields.map((f) => f.name),
+      ...TEMPLATE_OPTIONS.types.map((f) => f.name),
+      ...TEMPLATE_OPTIONS.priorities.map((f) => f.name),
+      ...TEMPLATE_OPTIONS.areas.map((f) => f.name),
+      ...TEMPLATE_OPTIONS.releases.map((f) => f.name),
+    ];
+    const texts = visibleTexts(form).filter((t) => !data.some((d) => t === d || t === `[${d}]`));
+    expect(untranslated(texts)).toEqual([]);
   });
 });

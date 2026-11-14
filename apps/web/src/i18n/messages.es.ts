@@ -6810,6 +6810,12 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.templates.addValue': 'Añadir',
   'tickets.templates.addValueTo': 'Añadir a {field}',
   'tickets.templates.noTrackValues': 'Ninguno: al guardar, este campo queda vacío.',
+  'tickets.templates.addNamedValueLabel':
+    '{type, select, user {Persona para añadir a {field}} group {Grupo para añadir a {field}} other {Equipo para añadir a {field}}}',
+  'tickets.templates.namedValuesHint':
+    'Busca uno para añadirlo, o quita uno para que los tickets creados con esta plantilla no lo lleven.',
+  'tickets.templates.restrictedEveryTrack':
+    'Este campo solo permite a algunas personas, y cuáles depende del track: ponlo en la plantilla de un track o a través de la API. Si quitas una, los tickets creados con esta plantilla no la llevan.',
   'tickets.templates.pick': 'Empezar desde una plantilla',
   'tickets.templates.pickNone': 'Sin plantilla',
   'tickets.templates.pickFailed':

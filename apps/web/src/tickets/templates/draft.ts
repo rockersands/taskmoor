@@ -4,6 +4,7 @@ import type { MessageId } from '../../i18n/messages.en';
 import { errorMessage, splitLabels } from '../form';
 import type {
   FieldChoice,
+  FieldRule,
   Named,
   SavedTemplate,
   TemplateBody,
@@ -29,12 +30,74 @@ export const TRACK_VALUE_TYPES: ReadonlySet<string> = new Set(['release', 'area'
 
 /**
  * Custom field types whose values are people, groups or teams: the form names them as the create
- * form's pickers do and lets a person remove one, but offers none to add (T-299).
+ * form's pickers do, lets a person remove one (T-299) and find one to add with the create form's
+ * searches (T-350).
  */
 export const NAMED_VALUE_TYPES: ReadonlySet<string> = new Set(['user', 'group', 'team']);
 
 /** Custom field types the form lists by id: the track's lists, and the named ones. */
 const LISTED_TYPES: ReadonlySet<string> = new Set([...TRACK_VALUE_TYPES, ...NAMED_VALUE_TYPES]);
+
+/**
+ * The context a field takes for a ticket of a type in a track, as the server picks it: the one
+ * that names both, then the track's for every type, then the type's in every track, then the one
+ * for everything (CORE-009).
+ */
+function ruleFor(rules: readonly FieldRule[], trackId: number, typeId: number): FieldRule | null {
+  const covers = (list: number[] | null, id: number, named: boolean) =>
+    named ? list?.includes(id) === true : list === null;
+  for (const [track, type] of [
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false],
+  ] as const) {
+    const found = rules.find(
+      (r) => covers(r.trackIds, trackId, track) && covers(r.ticketTypeIds, typeId, type),
+    );
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Where a template's custom person field finds people to add (T-350):
+ * - `anyone`: the track's people, as the create form's person picker finds them, or, on a
+ *   template for every track, anyone active in the site;
+ * - `allowed`: only those the field allows (CORE-009 (2)), asked for with one ticket type per
+ *   context that limits it among the types the template fits; a person must be allowed by each,
+ *   since the ticket can be of any of them;
+ * - `none`: no search can say, because the field allows only some people in a context and the
+ *   template is for every track, whose people the server finds per track only.
+ */
+export type PersonSearch =
+  | { kind: 'anyone' }
+  | { kind: 'allowed'; typeIds: number[] }
+  | { kind: 'none' };
+
+export function personSearchOf(
+  rules: readonly FieldRule[],
+  trackId: number | null,
+  typeIds: readonly number[],
+): PersonSearch {
+  if (trackId === null) {
+    return rules.some((r) => r.restricted) ? { kind: 'none' } : { kind: 'anyone' };
+  }
+  const byRule = new Map<number, number>();
+  for (const typeId of typeIds) {
+    const rule = ruleFor(rules, trackId, typeId);
+    if (rule?.restricted && !byRule.has(rule.id)) byRule.set(rule.id, typeId);
+  }
+  return byRule.size === 0
+    ? { kind: 'anyone' }
+    : { kind: 'allowed', typeIds: [...byRule.values()] };
+}
+
+/** Those found by every one of several searches, in the first one's order. */
+export function foundByEach(lists: readonly Named[][]): Named[] {
+  const [first = [], ...rest] = lists;
+  return first.filter((n) => rest.every((list) => list.some((m) => m.id === n.id)));
+}
 
 /** A subticket-level type's rank (spec 01a section 1.2). */
 export const SUBTICKET_RANK = -1;

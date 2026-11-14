@@ -264,6 +264,10 @@ describe('ticket templates page (CORE-029)', () => {
       '1.1',
       'Fixed in',
       'Owning area',
+      // Person, group and team fields offered to add (T-350).
+      'Reviewer',
+      'Owners',
+      'Squad',
       'Severity',
       'Customer',
       'Secret formula',

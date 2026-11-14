@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import {
   fakeTemplateClient,
   HOTFIX_TEMPLATE,
   PEOPLE_TEMPLATE,
   RELEASE_TEMPLATE,
+  RESTRICTED_RULES,
   TEMPLATE_OPTIONS,
 } from './fixtures';
 import { TemplateForm } from './TemplateForm';
@@ -154,5 +155,97 @@ export const PeopleOnAPhone: Story = {
     await expect(out).toEqual([]);
     const page = document.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** Nothing in a form reaches past its right edge, and the page does not scroll sideways. */
+async function staysInside(canvasElement: HTMLElement) {
+  const form = within(canvasElement).getByRole('form');
+  const edge = form.getBoundingClientRect().right;
+  const out = [...form.querySelectorAll('*')]
+    .filter((el) => el.getBoundingClientRect().right > edge + 0.5)
+    .map((el) => `${el.tagName}.${el.className} ${el.getBoundingClientRect().right - edge}`);
+  await expect(out).toEqual([]);
+  const page = document.documentElement;
+  await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+}
+
+/**
+ * A person, group and team found with the create form's searches and added (T-350): a field
+ * that holds one offers its search once its value is removed; one that holds several keeps it.
+ */
+export const AddingPeopleGroupsAndTeams: Story = {
+  args: { template: PEOPLE_TEMPLATE, client: fakeTemplateClient([PEOPLE_TEMPLATE]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove Sam Rivera from Reviewer' }),
+    );
+    await userEvent.type(
+      canvas.getByRole('searchbox', { name: 'Person to add to Reviewer' }),
+      'an',
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Ana Ortiz' }));
+    await expect(
+      canvas.getByRole('button', { name: 'Remove Ana Ortiz from Reviewer' }),
+    ).toHaveFocus();
+    const groups = canvas.getByRole('searchbox', { name: 'Group to add to Owners' });
+    await userEvent.type(groups, 's');
+    await expect(await canvas.findByRole('button', { name: 'Design' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Sales' })).toBeVisible();
+  },
+};
+
+/** A person field that allows only some people offers those it allows for every type (T-350). */
+export const RestrictedPersonField: Story = {
+  args: {
+    template: { ...PEOPLE_TEMPLATE, ticketTypeIds: [3, 4] },
+    client: fakeTemplateClient([PEOPLE_TEMPLATE], { rules: { '14': RESTRICTED_RULES } }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove Sam Rivera from Reviewer' }),
+    );
+    const search = canvas.getByRole('searchbox', { name: 'Person to add to Reviewer' });
+    await expect(search).toHaveAccessibleDescription(
+      'Type a name. Only the people this field allows are offered.',
+    );
+    await userEvent.type(search, 'a');
+    await expect(await canvas.findByRole('button', { name: 'Ana Ortiz' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Lee Park' })).toBeNull();
+  },
+};
+
+/** At a phone's width, the searches and what they find stay inside the form (T-350). */
+export const AddingOnAPhone: Story = {
+  ...AddingPeopleGroupsAndTeams,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async (context) => {
+    await AddingPeopleGroupsAndTeams.play?.(context);
+    await staysInside(context.canvasElement);
+  },
+};
+
+/** A finger reaches the search fields and each person, group or team found (ADR-033, T-350). */
+export const FindingOnATouchScreen: Story = {
+  args: { template: PEOPLE_TEMPLATE, client: fakeTemplateClient([PEOPLE_TEMPLATE]) },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      await canvas.findByRole('searchbox', { name: 'Group to add to Owners' }),
+      's',
+    );
+    await canvas.findByRole('button', { name: 'Sales' });
+    await waitFor(() =>
+      expect(
+        tooSmallForAFinger(canvasElement, [
+          '.ticket-template-find input',
+          '.ticket-template-find .person-picker-found button',
+          '.ticket-template-values button',
+        ]),
+      ).toEqual([]),
+    );
   },
 };

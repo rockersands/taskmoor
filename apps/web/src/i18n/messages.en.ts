@@ -6656,6 +6656,12 @@ export const messagesEn = {
   'tickets.templates.addValue': 'Add',
   'tickets.templates.addValueTo': 'Add to {field}',
   'tickets.templates.noTrackValues': 'None: saving leaves this field empty.',
+  'tickets.templates.addNamedValueLabel':
+    '{type, select, user {Person to add to {field}} group {Group to add to {field}} other {Team to add to {field}}}',
+  'tickets.templates.namedValuesHint':
+    'Find one to add, or remove one to leave it off the tickets made from this template.',
+  'tickets.templates.restrictedEveryTrack':
+    'This field allows only some people, and who depends on the track: set it on a track’s template, or through the API. Removing one leaves it off the tickets made from this template.',
   'tickets.templates.pick': 'Start from a template',
   'tickets.templates.pickNone': 'No template',
   'tickets.templates.pickFailed': 'That template could not be loaded. Try again in a moment.',
