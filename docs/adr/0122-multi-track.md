@@ -1814,6 +1814,32 @@ parts, and the manual's page its section. Where this differs from the design abo
   side panel, **Move…** and the bar at the bottom. Its keys and names come from `uniqueRun`
   (T-244).
 
+#### After review (T-089e)
+
+A review of the branch found these, each fixed with a test that fails without the fix (the server
+and the page notes above say what changed where they belong):
+
+- **Server:** Keep my draft is said with `keep: true`, so a drafted day the Timeline sends again
+  beside a moved one keeps its mark; making, deleting and promoting scenarios take the plan's row
+  first; an apply lets go only of its own hold; a scenario's id in `compare` and a Team field's id
+  in a draft beyond an int4 answer `invalid_fields` (`too_large`), not a 500. New tests pin what
+  was untested: the overlay's guard on a roll-up's descendants outside the plan, all or nothing
+  with one bad change among good ones, `start_after_due` against a drafted day, every Capacity
+  cell with a search equal to it in a scenario, an archived track's ticket refused as `gone`, and
+  `apply_in_progress` on delete and promotion. `routes/plan-scenarios.test.ts` holds 29 tests.
+- **The change list** is drawn afresh for each scenario (choices, a result and pages stay with
+  theirs), and **Show more** drops a page that answers after the list was read again. Focus never
+  falls to the page: AskFirst's answer gives it back to its button, and Keep, Make main, a running
+  Apply and, on the Scenarios tab, Make main and Delete give it to the list's heading.
+- **The comparison** shows a pair's numbers only under that pair's names, and is read again when
+  a scenario's version, drafts or hidden drafts change.
+- **The scenario bar** no longer says the scenario asked for is gone when the list could not be
+  read; that list's own alert says so.
+- **On a touch screen** a change card's ticket link and a differing ticket's link are 44 px high.
+- **Spanish** agrees a scenario's counts with their number ("1 aplicado, 1 rechazado").
+- **The manual** gives the permission refusals in the page's words and counts an archived track's
+  ticket as no longer in the plan; the multi-track task plan has PLN-002 and PLN-003 in M1.
+
 #### Questions for the user (the design takes the first answer each time)
 
 1. **Opening a plan:** shows Live (edits change tickets at once, as now) until someone picks a
