@@ -22,7 +22,24 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: lists that stop early, releases on your own day (2026-11-14, Windows)
+### Latest: T-296 to T-299 (2026-11-14, the Mac)
+
+On `main` at `e9adbd70` after a full gate (9,226 tests, 264 e2e), with Windows' T-287 part,
+T-289's last four and T-307 to T-311 already there.
+
+- T-296: the sweep's probe counts a positioned ::before or ::after as part of a press area (the
+  timeline bar on touch). A phone sweep of the timeline on the demo has not confirmed it yet.
+- T-297: refusals name custom fields from the field catalogue on the ticket page and the
+  Outcomes panel (`useCustomFieldNames`).
+- T-298: the design guard learns which of our components pass className to a native control,
+  and matches coarse overrides by the element they reach.
+- T-299: the template form picks custom release and area values, names person, group and team
+  values, and clears a kept reason when its field is edited; release notes name their 'left
+  out' reasons in words. Spanish drafts for the seeded close reasons: Completado, No
+  planificado, Duplicado, No reproducible.
+- Next on the Mac: T-350 to T-353.
+
+### Earlier: lists that stop early, releases on your own day (2026-11-14, Windows)
 
 On `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e). No migration; the next is 0111.
 
