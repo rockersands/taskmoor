@@ -5516,8 +5516,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda. Cualquiera puede filtrarlo para sí, sin cambiarlo para nadie más.',
   'summary.customize': 'Personalizar',
   'summary.backToDefault': 'Volver al predeterminado',
-  'summary.confirmDefault':
-    '¿Volver al resumen predeterminado? Se quitan los widgets elegidos para este track, para todos.',
+  'summary.resetOutcome':
+    'El resumen de {track} vuelve al predeterminado para todos, y se quitan los widgets elegidos para él. No se puede deshacer.',
+  'summary.resetOf': 'Restablecer el resumen de {track}',
   'summary.backToDefaultDone': 'Este track vuelve a mostrar su resumen predeterminado.',
   'summary.save': 'Guardar el resumen',
   'summary.conflict':

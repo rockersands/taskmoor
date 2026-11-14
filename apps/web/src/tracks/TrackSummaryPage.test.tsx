@@ -280,21 +280,87 @@ describe('a customized track summary (ADR-116)', () => {
     );
   });
 
-  it('[RPT-006] goes back to the default when asked, and not otherwise', async () => {
+  /** A Summary its owner customized, counting the times it was sent back to the default. */
+  const resettable = (refuse = false) => {
+    const client = customizable({ custom: CUSTOM });
+    const resets: string[] = [];
+    const reset = client.resetSummaryLayout;
+    client.resetSummaryLayout = async (key) => {
+      resets.push(key);
+      if (refuse) throw new Error('forbidden');
+      await reset(key);
+    };
+    return { client, resets };
+  };
+  const OUTCOME =
+    'The summary of Shop returns to the default for everyone, and the widgets chosen for it are removed. This cannot be undone.';
+
+  it('[RPT-006] [NFR-005] asks first, saying the summary returns to the default for everyone', async () => {
     const user = userEvent.setup();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
-    open('en', customizable({ custom: CUSTOM }));
+    const { client, resets } = resettable();
+    open('en', client);
     const back = await screen.findByRole('button', { name: 'Back to the default' });
+    expect(back).toHaveClass('button-danger-quiet');
     await user.click(back);
+    const question = screen.getByRole('group', { name: OUTCOME });
+    expect(within(question).getByRole('button', { name: 'Reset the summary of Shop' })).toHaveClass(
+      'button-danger',
+    );
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // Cancel and Escape send nothing, keep the widgets and give focus back to the button.
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Back to the default' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Back to the default' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: OUTCOME })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Back to the default' })).toHaveFocus();
+    expect(resets).toEqual([]);
     expect(screen.getByRole('article', { name: 'Open bugs' })).toBeVisible();
-    await user.click(back);
-    expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('[RPT-006] [NFR-005] goes back to the default on the named answer, focus on the heading', async () => {
+    const user = userEvent.setup();
+    const { client, resets } = resettable();
+    open('en', client);
+    await user.click(await screen.findByRole('button', { name: 'Back to the default' }));
+    await user.click(screen.getByRole('button', { name: 'Reset the summary of Shop' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'This track shows its default summary again.',
     );
+    expect(resets).toEqual(['SHOP']);
     expect(screen.queryByRole('article', { name: 'Open bugs' })).toBeNull();
     expect(await screen.findByRole('region', { name: 'Open by priority' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Back to the default' })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Summary' })).toHaveFocus(),
+    );
+  });
+
+  it('[RPT-006] [NFR-005] keeps the question open on a refusal, saying why', async () => {
+    const user = userEvent.setup();
+    const { client, resets } = resettable(true);
+    open('en', client);
+    await user.click(await screen.findByRole('button', { name: 'Back to the default' }));
+    await user.click(screen.getByRole('button', { name: 'Reset the summary of Shop' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only the track’s owner and administrators',
+    );
+    expect(resets).toEqual(['SHOP']);
+    expect(screen.getByRole('group', { name: OUTCOME })).toBeVisible();
+    expect(screen.getByRole('article', { name: 'Open bugs' })).toBeVisible();
+  });
+
+  it('[RPT-006] asks in Spanish', async () => {
+    const user = userEvent.setup();
+    const { client } = resettable();
+    open('es', client);
+    await user.click(await screen.findByRole('button', { name: 'Volver al predeterminado' }));
+    expect(
+      screen.getByRole('group', {
+        name: 'El resumen de Shop vuelve al predeterminado para todos, y se quitan los widgets elegidos para él. No se puede deshacer.',
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Restablecer el resumen de Shop' })).toBeVisible();
   });
 
   it('[RPT-006] explains a summary with no widgets', async () => {

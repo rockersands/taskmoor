@@ -145,6 +145,54 @@ export const DefaultForAnAdministrator: Story = {
   },
 };
 
+/** Opens the question before going back to the default (D13, T-273). */
+const askToGoBack = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole('button', { name: 'Back to the default' }));
+  await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  return canvas;
+};
+const RESETTABLE = {
+  client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }),
+};
+const RESET_OUTCOME =
+  'The summary of Shop returns to the default for everyone, and the widgets chosen for it are removed. This cannot be undone.';
+
+/**
+ * Back to the default removes the track's widgets for everyone, so it asks first (D13, T-273): the
+ * button looks like a danger, and the question in its place says what will happen.
+ */
+export const AskingToGoBackToTheDefault: Story = {
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    const canvas = await askToGoBack(canvasElement);
+    await expect(canvas.getByRole('group', { name: RESET_OUTCOME })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Reset the summary of Shop' })).toBeVisible();
+    await expect(canvas.getByRole('article', { name: 'Open bugs' })).toBeVisible();
+  },
+};
+
+/** The question on a phone: under the title, nothing sideways. */
+export const AskingToGoBackOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    await askToGoBack(canvasElement);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** A finger reaches both answers (ADR-033). */
+export const AskingToGoBackOnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    await askToGoBack(canvasElement);
+    await expect(tooSmallForAFinger(canvasElement, ['.danger-confirm button'])).toEqual([]);
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

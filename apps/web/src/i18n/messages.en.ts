@@ -5386,8 +5386,9 @@ export const messagesEn = {
     'Until someone customises it, this page shows the track’s numbers. The track’s owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.',
   'summary.customize': 'Customise',
   'summary.backToDefault': 'Back to the default',
-  'summary.confirmDefault':
-    'Go back to the default summary? This removes the widgets chosen for this track, for everyone.',
+  'summary.resetOutcome':
+    'The summary of {track} returns to the default for everyone, and the widgets chosen for it are removed. This cannot be undone.',
+  'summary.resetOf': 'Reset the summary of {track}',
   'summary.backToDefaultDone': 'This track shows its default summary again.',
   'summary.save': 'Save the summary',
   'summary.conflict': 'Someone changed this summary meanwhile. Reload the page and try again.',
