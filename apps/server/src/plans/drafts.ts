@@ -22,6 +22,11 @@ type Db = Kysely<Database> | Transaction<Database>;
 
 const MAX_INT = 2_147_483_647;
 const idNum = z.number().int().positive().max(MAX_INT);
+/** An id written as text (a scenario's in an address, a field's as a key): an int4 at most. */
+const idText = z
+  .string()
+  .regex(/^[1-9]\d{0,9}$/)
+  .refine((v) => Number(v) <= MAX_INT, 'too_large');
 const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
 
 /** Scenarios a plan holds, main included. */
@@ -79,7 +84,7 @@ export const draftChange = z
     startDate: day.nullable().optional(),
     dueDate: day.nullable().optional(),
     fields: z
-      .record(z.string().regex(/^[1-9]\d{0,9}$/), idNum.nullable())
+      .record(idText, idNum.nullable())
       .refine((f) => Object.keys(f).length <= 20, 'too_many_fields')
       .optional(),
   })
@@ -121,7 +126,7 @@ export const applyBody = z
   .strict()
   .refine(oneOf, ticketsOrAll);
 
-const side = z.union([z.literal('live'), z.string().regex(/^[1-9]\d{0,9}$/)]);
+const side = z.union([z.literal('live'), idText]);
 export const compareQuery = z
   .object({
     ...filterShape,

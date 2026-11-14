@@ -1407,4 +1407,20 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
       expect(actions, type).toContain(type);
     }
   });
+
+  it('[PLN-002] [PLN-003] answers an id beyond an int4 as a bad field, never as a database error', async () => {
+    const compare = await as('admin', {
+      method: 'GET',
+      url: `${plan()}/compare?a=live&b=9999999999`,
+    });
+    expect(compare.statusCode, compare.body).toBe(400);
+    expect(compare.json()).toEqual({ error: 'invalid_fields', fields: { b: 'too_large' } });
+    const drafted = await as('admin', {
+      method: 'PUT',
+      url: scen(faster.id, '/drafts'),
+      payload: { changes: [{ ticketId: t.alpha.id, fields: { '9999999999': teams.Red } }] },
+    });
+    expect(drafted.statusCode, drafted.body).toBe(400);
+    expect(drafted.json().error).toBe('invalid_fields');
+  });
 });
