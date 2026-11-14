@@ -23,6 +23,7 @@ import {
 } from '../plans/drafts';
 import { idParam, MAX_PERIODS } from '../plans/model';
 import { type Period, periodsFrom } from '../plans/periods';
+import { browsedTracks } from '../plans/query';
 import {
   type DaySnapshot,
   InvalidCondition,
@@ -30,6 +31,7 @@ import {
   PlanTooLarge,
   readReadiness,
   readScheduleInputs,
+  type ScheduleInputs,
   snapshotKey,
 } from '../plans/scheduleInputs';
 import {
@@ -217,6 +219,73 @@ export function diffProposals(options: {
     for (const field of fields.keys()) clears.push({ ticketId: id, field });
   }
   return { writes, clears, meanwhile, unchanged, placed };
+}
+
+/**
+ * The names the answer's ids stand for, as far as the runner is shown them: the plan's teams, the
+ * people a reason names, the target releases of tracks the runner browses (as the plan's views
+ * show releases), and the keys of tickets a reason names that are not listed themselves (a kept
+ * or left-out ticket, all of them tickets the run read as the runner sees the plan).
+ */
+async function answerNames(
+  db: Kysely<Database>,
+  request: FastifyRequest,
+  listed: readonly ScheduleEntry[],
+  inputs: ScheduleInputs,
+) {
+  const tickets = new Set<number>();
+  const people = new Set<number>();
+  const teams = new Set<number>();
+  const releases = new Set<number>();
+  const visit = (args: ScheduleEntry['args']) => {
+    for (const key of ['blockerId', 'ticketId'] as const) {
+      const id = args[key];
+      if (typeof id === 'number') tickets.add(id);
+    }
+    if (Array.isArray(args.ticketIds)) for (const id of args.ticketIds) tickets.add(id);
+    if (typeof args.userId === 'number') people.add(args.userId);
+    if (typeof args.teamId === 'number') teams.add(args.teamId);
+    if (Array.isArray(args.teamIds)) for (const id of args.teamIds) teams.add(id);
+    if (typeof args.releaseId === 'number') releases.add(args.releaseId);
+  };
+  for (const e of listed) {
+    visit(e.args);
+    for (const w of e.warnings) visit(w.args);
+  }
+  const shown = new Set(listed.map((e) => e.id));
+  const keyOf = new Map(inputs.input.tickets.map((x) => [x.id, x.key]));
+  const ws = request.workspaceId;
+  const userRows =
+    people.size === 0
+      ? []
+      : await db
+          .selectFrom('app_user')
+          .select(['id', 'name'])
+          .where('workspace_id', '=', ws)
+          .where('id', 'in', [...people])
+          .orderBy('id')
+          .execute();
+  const releaseRows =
+    releases.size === 0
+      ? []
+      : await db
+          .selectFrom('release')
+          .select(['id', 'name', 'track_id'])
+          .where('id', 'in', [...releases])
+          .orderBy('id')
+          .execute();
+  const browses = await browsedTracks(request);
+  return {
+    teams: inputs.teams.filter((x) => teams.has(x.id)),
+    people: userRows.map((u) => ({ id: u.id, name: u.name })),
+    releases: releaseRows
+      .filter((r) => browses(r.track_id))
+      .map((r) => ({ id: r.id, name: r.name })),
+    tickets: [...tickets]
+      .filter((id) => !shown.has(id) && keyOf.has(id))
+      .sort((a, b) => a - b)
+      .map((id) => ({ id, key: keyOf.get(id) as string })),
+  };
 }
 
 export function registerPlanScheduleRoutes(
@@ -576,6 +645,7 @@ export function registerPlanScheduleRoutes(
         counts: outcome.counts,
         tickets: listed,
         more: Math.max(0, output.tickets.length - MAX_LISTED),
+        names: await answerNames(db, request, listed, inputs),
       });
     } catch (error) {
       if (error instanceof InvalidCondition) {

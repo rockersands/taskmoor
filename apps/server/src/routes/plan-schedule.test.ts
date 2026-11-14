@@ -53,6 +53,12 @@ interface Run {
   };
   tickets: Entry[];
   more: number;
+  names: {
+    teams: { id: number; name: string }[];
+    people: { id: number; name: string }[];
+    releases: { id: number; name: string }[];
+    tickets: { id: number; key: string }[];
+  };
 }
 interface Readiness {
   unit: string;
@@ -64,6 +70,8 @@ interface Readiness {
   editable: boolean;
   scenario?: { id: number; proposals: number; drafts: number; notShown: number; applying: boolean };
   limits: Record<string, number>;
+  types: { id: number; name: string }[];
+  releases: { id: number; name: string; date: string | null }[];
 }
 
 const SENTINEL_DAYS = ['2027-06-16', '2027-06-17'];
@@ -618,12 +626,21 @@ describe('the auto-scheduler (PLN-004)', () => {
     const all = await readiness('admin', 'Private');
     expect(all.tickets.open - priv.tickets.open).toBe(2);
     expect(priv.tickets).toMatchObject({ unestimated: 1, unassigned: 1, noTeam: 1 });
+    // What a run may leave out: the types and target releases of the reader's level-0 tickets.
+    expect(priv.types).toEqual([
+      { id: bug, name: 'Bug' },
+      { id: feature, name: 'Feature' },
+    ]);
+    expect(priv.releases).toEqual([{ id: release, name: 'Private 1.0', date: '2027-03-05' }]);
     // Ana sees SKD only, Cy none of the tracks; neither may run it.
     const ana = await readiness('ana', 'Private');
     expect(ana.tickets.open).toBe(priv.tickets.open - 1);
     expect(ana.editable).toBe(false);
+    expect(ana.releases).toEqual(priv.releases);
     const cy = await readiness('cy', 'Private');
     expect(cy.tickets).toEqual({ open: 0, unestimated: 0, unassigned: 0, noTeam: 0 });
+    expect(cy.types).toEqual([]);
+    expect(cy.releases).toEqual([]);
     for (const answer of [priv, ana, cy]) {
       const body = JSON.stringify(answer);
       for (const word of [...SENTINEL_WORDS, ...SENTINEL_DAYS, t.h1?.key, t.h2?.key])
@@ -1140,6 +1157,11 @@ describe('the auto-scheduler (PLN-004)', () => {
         args: { releaseId: release, releaseDate: '2027-03-05', days: 2 },
       },
     ]);
+    // The names its ids stand for: the release, the person outside the teams, the teams named.
+    expect(run.names.releases).toEqual([{ id: release, name: 'Private 1.0' }]);
+    expect(run.names.people).toContainEqual({ id: user('u9'), name: 'u9' });
+    expect(run.names.teams).toContainEqual({ id: teams.Delta, name: 'Delta' });
+    for (const named of run.names.tickets) expect(named.key).toMatch(/^SK[DV]-\d+$/);
     expect(of('p2')).toMatchObject({
       outcome: 'placed',
       reason: 'after_blocker',

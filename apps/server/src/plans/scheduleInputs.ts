@@ -20,7 +20,7 @@ import {
 import { blockingLinks, dependencyOptions } from './dependencies';
 import { draftOverlay } from './drafts';
 import type { Period } from './periods';
-import { type PlanTickets, planTickets, sourceRows } from './query';
+import { browsedTracks, type PlanTickets, planTickets, sourceRows } from './query';
 import {
   hundredths,
   MAX_OPEN_READ,
@@ -90,6 +90,8 @@ export interface ScheduleInputs {
   tickets: PlanTickets;
   /** Each open ticket read: its days, for the check under the lock. */
   read: Map<number, DaySnapshot>;
+  /** The plan's teams by name, for the words of the answer. */
+  teams: { id: number; name: string }[];
 }
 
 interface TicketRow {
@@ -203,6 +205,7 @@ export async function readScheduleInputs(
   const empty: ScheduleInputs = {
     tickets,
     read: new Map(),
+    teams: teams.map((t) => ({ id: t.id, name: t.name })),
     input: {
       from: options.from,
       periods,
@@ -388,6 +391,7 @@ export async function readScheduleInputs(
   return {
     tickets,
     read: snapshots,
+    teams: empty.teams,
     input: {
       ...empty.input,
       tickets: input,
@@ -449,7 +453,17 @@ export interface Readiness {
   teams: { id: number; name: string; withCapacity: boolean }[];
   people: { withCapacity: number; without: number };
   tickets: { open: number; unestimated: number; unassigned: number; noTeam: number };
+  /** The ticket types of the reader's open level-0 tickets, for Leave out ticket types. */
+  types: { id: number; name: string }[];
+  /**
+   * The releases those tickets target, neither shipped nor archived, for Leave out releases: only
+   * of tracks the reader browses, as the plan's views show releases.
+   */
+  releases: { id: number; name: string; date: string | null }[];
 }
+
+/** Choices a leave-out list offers at most. */
+export const MAX_CHOICES = 200;
 
 /**
  * Readiness before a run, over the reader's tickets: the plan's teams and whether each has a
@@ -492,6 +506,39 @@ export async function readReadiness(
           ).rows[0],
       )
     : undefined;
+  // What the run may leave out: the types and target releases of the same tickets.
+  const choices = unfiltered
+    ? await readOnly(db, options.timeoutMs, async (trx) => {
+        const types = (
+          await sql<{ id: number; name: string }>`
+            SELECT DISTINCT y.id, y.name
+              FROM ticket k
+              JOIN status s ON s.id = k.status_id
+              JOIN ticket_type y ON y.id = k.ticket_type_id
+              JOIN hierarchy_level h ON h.id = y.level_id
+             WHERE ${unfiltered} AND s.stage <> 'closed' AND h.rank = 0
+             ORDER BY y.name, y.id
+             LIMIT ${MAX_CHOICES}`.execute(trx)
+        ).rows;
+        const releases = (
+          await sql<{ id: number; name: string; date: string | null; track_id: number }>`
+            SELECT r.id, r.name, r.release_date::text AS date, r.track_id
+              FROM release r
+             WHERE r.shipped_at IS NULL AND r.archived_at IS NULL
+               AND r.id IN (
+                 SELECT tr.release_id
+                   FROM ticket k
+                   JOIN status s ON s.id = k.status_id
+                   JOIN ticket_type y ON y.id = k.ticket_type_id
+                   JOIN hierarchy_level h ON h.id = y.level_id
+                   JOIN ticket_release tr ON tr.ticket_id = k.id AND tr.role = 'target'
+                  WHERE ${unfiltered} AND s.stage <> 'closed' AND h.rank = 0)
+             ORDER BY r.release_date NULLS LAST, r.name, r.id`.execute(trx)
+        ).rows;
+        return { types, releases };
+      })
+    : { types: [], releases: [] };
+  const browses = await browsedTracks(request);
   return {
     planTickets: tickets,
     unit: plan.capacity_unit,
@@ -505,5 +552,10 @@ export async function readReadiness(
       unassigned: counts?.unassigned ?? 0,
       noTeam: counts?.no_team ?? 0,
     },
+    types: choices.types,
+    releases: choices.releases
+      .filter((r) => browses(r.track_id))
+      .slice(0, MAX_CHOICES)
+      .map((r) => ({ id: r.id, name: r.name, date: r.date })),
   };
 }
