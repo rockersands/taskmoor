@@ -25,7 +25,39 @@ describe('reading a list a page at a time (T-305)', () => {
       const from = after ?? 0;
       return { items: [from + 1, from + 2], next: from + 2 };
     }, 5);
-    expect(all).toEqual([1, 2, 3, 4, 5, 6]);
+    // The cap holds even where it falls inside a page: the first five, from three pages.
+    expect(all).toEqual([1, 2, 3, 4, 5]);
     expect(calls).toBe(3);
+  });
+
+  it('[CORE-001] stops at a page that names the start it was asked for', async () => {
+    const asked: (string | null)[] = [];
+    const all = await everyPage<string, string>(async (after) => {
+      asked.push(after);
+      return after === null ? { items: ['a'], next: 'x' } : { items: [], next: 'x' };
+    });
+    expect(all).toEqual(['a']);
+    expect(asked).toEqual([null, 'x']);
+  });
+
+  it('[CORE-001] stops when empty pages lead back to a start already read', async () => {
+    const asked: (number | null)[] = [];
+    const all = await everyPage<number, number>(async (after) => {
+      asked.push(after);
+      // 1 -> 2 -> 3 -> 1 -> ... with every page empty.
+      return { items: [], next: ((after ?? 0) % 3) + 1 };
+    });
+    expect(all).toEqual([]);
+    expect(asked).toEqual([null, 1, 2, 3]);
+  });
+
+  it('[CORE-001] stops after `most` requests when empty pages never end', async () => {
+    let calls = 0;
+    const all = await everyPage<number, number>(async (after) => {
+      calls += 1;
+      return { items: [], next: (after ?? 0) + 1 };
+    }, 7);
+    expect(all).toEqual([]);
+    expect(calls).toBe(7);
   });
 });
