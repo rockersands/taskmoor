@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
-import type { FastifyInstance, InjectOptions } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { Authorizer } from '../authz/authorizer';
