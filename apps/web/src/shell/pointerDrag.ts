@@ -6,6 +6,16 @@ export const DRAG_START = 6;
 const EDGE = 56;
 /** The most one frame scrolls, in pixels, with the pointer at the very edge. */
 const STEP = 16;
+/**
+ * How long a finger rests on a handle that lets the page scroll before a move up or down drags
+ * rather than scrolls, in milliseconds (T-228): under a phone's long press, so it never opens one.
+ */
+export const HOLD = 300;
+/**
+ * Said on the pressed element, bubbling, when a press becomes a drag: a grip's menu closes on it
+ * (T-228), so it never stays open over the drag.
+ */
+export const DRAG_BEGAN = 'taskmoor-drag-began';
 
 export interface PointerDragHandlers {
   /** The press has moved far enough: the drag begins here. */
@@ -18,6 +28,17 @@ export interface PointerDragHandlers {
   cancel(): void;
   /** The press is over, whether it became a drag or stayed a press: a new one may begin. */
   end?(): void;
+}
+
+export interface PointerDragOptions {
+  /**
+   * A finger's press on a handle that leaves scrolling up and down to the page (`touch-action:
+   * pan-y`, the calendar's grips; T-228): it becomes a drag once the finger has rested `HOLD`
+   * milliseconds, or when it first moves at least as far sideways as up or down. A quicker flick
+   * up or down is the page's scroll: the press lets go and nothing moves. A mouse and a pen drag
+   * as usual.
+   */
+  scrollFirst?: boolean;
 }
 
 /** The next frame, or a moment later where there are no frames (a page not drawn). */
@@ -87,14 +108,19 @@ const offsetOf = (scroller: Element, axis: Axis) =>
  *
  * The click a drag ends with belongs to the drag and is swallowed: a link or a button under the
  * drop does nothing. A handle that a finger drags needs `touch-action: none`, or the browser
- * scrolls instead. Returns a function that stops following, for a page that goes mid-drag.
+ * scrolls instead, unless it is followed with `scrollFirst` (and `touch-action: pan-y`). Returns a
+ * function that stops following, for a page that goes mid-drag.
  */
 export function followPointerDrag(
   event: ReactPointerEvent | PointerEvent,
   handlers: PointerDragHandlers,
+  options: PointerDragOptions = {},
 ): () => void {
   const pointerId = event.pointerId;
   const byTouch = event.pointerType === 'touch';
+  /** A finger whose first move up or down may be the page's scroll, not a drag. */
+  const scrollFirst = byTouch && options.scrollFirst === true;
+  const pressedAt = event.timeStamp;
   const origin = { x: event.clientX, y: event.clientY };
   const pressed = event.target instanceof Element ? event.target : null;
   const scrollers = { y: scrollerOf(pressed, 'y'), x: scrollerOf(pressed, 'x') };
@@ -137,6 +163,10 @@ export function followPointerDrag(
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onCancel);
     window.removeEventListener('keydown', onKey, true);
+    if (scrollFirst) {
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('contextmenu', onContextMenu, true);
+    }
     if (frame) cancelFrame(frame);
     frame = 0;
     // The page's drop reads what is under the finger, so the drag's styles stay until it has:
@@ -180,9 +210,19 @@ export function followPointerDrag(
     at = { x: e.clientX, y: e.clientY };
     if (!dragging) {
       if (Math.hypot(at.x - origin.x, at.y - origin.y) < DRAG_START) return;
+      if (scrollFirst) {
+        const held = e.timeStamp - pressedAt >= HOLD;
+        const sideways = Math.abs(at.x - origin.x) >= Math.abs(at.y - origin.y);
+        // A quick flick up or down: the page scrolls, and this press is no drag.
+        if (!held && !sideways) {
+          stop();
+          return;
+        }
+      }
       dragging = true;
       document.body.classList.add('is-pointer-dragging');
       window.getSelection?.()?.removeAllRanges();
+      if (pressed?.isConnected) pressed.dispatchEvent(new Event(DRAG_BEGAN, { bubbles: true }));
       handlers.start(at.x, at.y);
     }
     e.preventDefault();
@@ -206,6 +246,19 @@ export function followPointerDrag(
     });
   }
 
+  /**
+   * A finger's drag on a handle that lets the page scroll: the page stays still under it. The
+   * touch's move comes after its pointer's, which has already said whether this is a drag.
+   */
+  function onTouchMove(e: TouchEvent) {
+    if (dragging && e.cancelable) e.preventDefault();
+  }
+
+  /** A finger resting on the handle is a drag about to begin, not a call for the browser's menu. */
+  function onContextMenu(e: Event) {
+    e.preventDefault();
+  }
+
   function onKey(e: KeyboardEvent) {
     // Before the press has become a drag, Escape is the page's as usual.
     if (e.key !== 'Escape' || !dragging || cancelled) return;
@@ -225,5 +278,10 @@ export function followPointerDrag(
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onCancel);
   window.addEventListener('keydown', onKey, true);
+  if (scrollFirst) {
+    // Not passive, or the page scrolls whatever the drag says.
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('contextmenu', onContextMenu, true);
+  }
   return () => stop();
 }
