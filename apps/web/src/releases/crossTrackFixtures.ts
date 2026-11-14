@@ -62,6 +62,8 @@ export interface FakeCrossTrackOptions {
   hiddenReleases?: number;
   /** A move finds someone else changed it first, once. */
   staleOnce?: boolean;
+  /** Another name than "Spring launch", such as one long word. */
+  name?: string;
 }
 
 export function fakeCrossTrackClient(
@@ -72,7 +74,7 @@ export function fakeCrossTrackClient(
   let stale = options.staleOnce ?? false;
   let staleEdit = options.staleEditOnce ?? false;
   let version = 3;
-  let name = 'Spring launch';
+  let name = options.name ?? 'Spring launch';
   let description = 'Shop and Operations go out together.';
   let date: string | null = '2026-12-01';
   let endRule: 'fixed_date' | 'work_complete' = 'fixed_date';

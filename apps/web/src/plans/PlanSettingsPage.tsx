@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
 import { DangerAction } from '../shell/DangerAction';
@@ -213,19 +214,28 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     setBusy(true);
     setProblem(null);
     setStatus('');
-    const saved = await client.update(plan.id, {
-      name: name.trim(),
-      description,
-      sources,
-      ...(visibility === 'custom'
-        ? {}
-        : { shares: visibility === 'private' ? [] : [{ scope: 'any_user' as const }] }),
-      teams,
-      capacityUnit: unit,
-      period,
-      dependencies: { linkTypeIds: linkTypes, sameSprint },
-      version: plan.version,
-    });
+    let saved: Awaited<ReturnType<PlanClient['update']>>;
+    try {
+      saved = await client.update(plan.id, {
+        name: name.trim(),
+        description,
+        sources,
+        ...(visibility === 'custom'
+          ? {}
+          : { shares: visibility === 'private' ? [] : [{ scope: 'any_user' as const }] }),
+        teams,
+        capacityUnit: unit,
+        period,
+        dependencies: { linkTypeIds: linkTypes, sameSprint },
+        version: plan.version,
+      });
+    } catch {
+      // No answer at all (a dropped connection, a proxy's page): Save and the question come back.
+      setBusy(false);
+      if (asking) closeQuestion(true);
+      setProblem(t('plans.settings.failed'));
+      return;
+    }
     setBusy(false);
     // Answered: the question goes, and the focus waits on Save, the result beside it.
     if (asking) closeQuestion(true);
@@ -255,6 +265,11 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     try {
       await client.remove(plan.id);
     } catch (error) {
+      // Someone else deleted it first: nothing to try again, so the question closes and says so.
+      if (error instanceof ApiError && error.status === 404) {
+        setProblem(t('plans.settings.alreadyDeleted'));
+        return;
+      }
       setProblem(t('plans.settings.deleteFailed'));
       throw error;
     }
@@ -269,8 +284,11 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         event.preventDefault();
         submit();
       }}
-      // A change to the settings makes the question about the old ones moot.
-      onChange={() => {
+      // A change to the settings makes the question about the old ones moot. The pickers' search
+      // boxes only narrow their lists and are not settings, so typing in them leaves it open.
+      onChange={(event) => {
+        const target = event.target as HTMLElement;
+        if (target instanceof HTMLInputElement && target.type === 'search') return;
         if (asking) closeQuestion(false);
       }}
     >

@@ -5357,6 +5357,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.settings.delete': 'Eliminar plan',
   'plans.settings.deleteNamed': 'Eliminar {name}',
   'plans.settings.deleteFailed': 'No se pudo eliminar el plan. Inténtalo de nuevo.',
+  'plans.settings.alreadyDeleted': 'Alguien ya ha eliminado este plan. Vuelve a Planes.',
   'plans.settings.confirmDelete':
     '¿Eliminar el plan «{name}» para todas las personas que lo ven? Sus vistas y su capacidad se eliminan con él; sus tickets quedan como están.',
   'plans.settings.conflict':

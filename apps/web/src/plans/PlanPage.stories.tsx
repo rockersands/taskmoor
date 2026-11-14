@@ -320,6 +320,35 @@ export const SettingsAskingOnAPhone: Story = {
 };
 
 /**
+ * Deleting a plan whose name is one long word, on a phone (PLN-001, D13, ADR-033): the answer
+ * "Delete <name>" wraps inside the question instead of pushing the page sideways.
+ */
+export const SettingsDeletingALongNameOnAPhone: Story = {
+  args: {
+    section: 'settings',
+    client: fakePlanClient({ name: 'PlataformaDeMigracionInfraestructura2027Global' }),
+  },
+  decorators: [atPhoneWidth],
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/settings';
+    return asOnATouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete plan' }));
+    const question = canvas.getByRole('group', { name: /Delete the plan/ });
+    const answer = within(question).getByRole('button', {
+      name: 'Delete PlataformaDeMigracionInfraestructura2027Global',
+    });
+    await expect(answer.getBoundingClientRect().right).toBeLessThanOrEqual(
+      question.getBoundingClientRect().right,
+    );
+    await expect(tooSmallForAFinger(canvasElement, ['.danger-confirm .button-danger'])).toEqual([]);
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
  * Settings on a phone's touch screen (PLN-001, ADR-033): every check box is the shared 28 px square,
  * as on Search, and its row with the label takes the finger (the second sweep's
  * plan-settings--375: the boxes were 28 x 44).

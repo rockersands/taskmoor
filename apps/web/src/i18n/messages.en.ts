@@ -5230,6 +5230,7 @@ export const messagesEn = {
   'plans.settings.delete': 'Delete plan',
   'plans.settings.deleteNamed': 'Delete {name}',
   'plans.settings.deleteFailed': 'The plan could not be deleted. Try again.',
+  'plans.settings.alreadyDeleted': 'Someone has already deleted this plan. Go back to Plans.',
   'plans.settings.confirmDelete':
     'Delete the plan “{name}” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
   'plans.settings.conflict': 'Someone changed this plan meanwhile. Reload the page and try again.',

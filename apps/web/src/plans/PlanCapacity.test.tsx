@@ -348,6 +348,44 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     confirm.mockRestore();
   });
 
+  it('[PLN-005] a save that gets no answer gives Save back, the question closed and the reason said (D13)', async () => {
+    const user = userEvent.setup();
+    const client = renderPlan('settings', '#/plans/12/settings');
+    await user.selectOptions(await screen.findByLabelText('Count work in'), 'hours');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const outcome = 'Change the unit? Every capacity set in this plan will be cleared.';
+    // The connection drops: fetch throws, never an answer from the server.
+    const update = vi
+      .spyOn(client, 'update')
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'Save and clear all capacity' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The plan could not be saved.');
+    expect(screen.queryByRole('group', { name: outcome })).toBeNull();
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeEnabled();
+    expect(save).toHaveFocus();
+    // Asked again, it saves.
+    update.mockRestore();
+    await user.click(save);
+    await user.click(screen.getByRole('button', { name: 'Save and clear all capacity' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
+    expect(client.saved.at(-1)).toMatchObject({ capacityUnit: 'hours' });
+  });
+
+  it('[PLN-005] typing in a list’s search box leaves the question open: it changes no setting (D13)', async () => {
+    const user = userEvent.setup();
+    renderPlan('settings', '#/plans/12/settings');
+    await user.selectOptions(await screen.findByLabelText('Count work in'), 'hours');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const outcome = 'Change the unit? Every capacity set in this plan will be cleared.';
+    const question = screen.getByRole('group', { name: outcome });
+    await user.type(screen.getByLabelText('Find a track or saved search'), 'sh');
+    expect(question).toBeInTheDocument();
+    // A setting changed while it asks still closes it.
+    await user.type(screen.getByLabelText('Name'), '!');
+    expect(question).not.toBeInTheDocument();
+  });
+
   it('[PLN-005] fits a phone: a card per team and person, no sideways scroll', async () => {
     setViewportWidth(375);
     renderCapacity();

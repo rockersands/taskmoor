@@ -329,7 +329,9 @@ describe('a plan (PLN-001, PLN-012)', () => {
     confirm.mockRestore();
   });
 
-  it('[PLN-001] asks on a phone with answers that wrap, no sideways scroll (D13, ADR-033)', async () => {
+  // jsdom lays nothing out, so the width is measured in a real browser: the stories
+  // SettingsAskingOnAPhone and SettingsDeletingALongNameOnAPhone, and plans.spec.ts.
+  it('[PLN-001] asks on a phone too, in the shared question whose answers wrap (D13)', async () => {
     setViewportWidth(375);
     const user = userEvent.setup();
     renderPlan('settings', '#/plans/12/settings');
@@ -337,8 +339,22 @@ describe('a plan (PLN-001, PLN-012)', () => {
     const question = screen.getByRole('group', { name: /Delete the plan “Spring launch”/ });
     expect(question).toHaveClass('danger-confirm');
     expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
     setViewportWidth(1280);
+  });
+
+  it('[PLN-001] says a plan someone else deleted first is gone, not to try again (D13)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPlan('settings', '#/plans/12/settings');
+    vi.spyOn(client, 'remove').mockRejectedValue(new ApiError(404, { error: 'not_found' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete plan' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Spring launch' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Someone has already deleted this plan. Go back to Plans.',
+    );
+    // Nothing to try again: the question closes, the focus back on Delete plan.
+    expect(screen.queryByRole('group', { name: /Delete the plan/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete plan' })).toHaveFocus();
+    expect(window.location.hash).toBe('#/plans/12/settings');
   });
 
   it('[PLN-001] [PLN-005] settings read as the rest of the app: “Only me”, shared boxes, a written date (PL-41)', async () => {
@@ -424,9 +440,10 @@ describe('a plan (PLN-001, PLN-012)', () => {
   it('[PLN-001] asks a plan that is not there for nothing more: no choices, one failed request (D4)', async () => {
     window.location.hash = '#/plans/99';
     const client = fakePlanClient();
-    client.get = async () => {
+    const get = vi.fn(async () => {
       throw new ApiError(404, { error: 'not_found' });
-    };
+    });
+    client.get = get;
     const choices = vi.spyOn(client, 'choices');
     const search = fakeListSearch();
     render(
@@ -444,6 +461,7 @@ describe('a plan (PLN-001, PLN-012)', () => {
     // Long enough for a request made at the start to have gone out.
     await new Promise((done) => setTimeout(done, 20));
     expect(choices).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   it('[PLN-012] asks for its filter choices once the plan has loaded', async () => {
