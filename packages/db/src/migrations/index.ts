@@ -93,6 +93,7 @@ import * as m0106 from './0106_cross_track_releases';
 import * as m0107 from './0107_workflows_left_without_moves';
 import * as m0108 from './0108_program_boards';
 import * as m0109 from './0109_checklist_item_edited_by';
+import * as m0110 from './0110_plan_scenarios';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -196,4 +197,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0107_workflows_left_without_moves': m0107,
   '0108_program_boards': m0108,
   '0109_checklist_item_edited_by': m0109,
+  '0110_plan_scenarios': m0110,
 };

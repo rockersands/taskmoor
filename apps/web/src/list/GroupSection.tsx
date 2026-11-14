@@ -24,6 +24,7 @@ export function GroupSection({
   onTickets,
   cap,
   emptyBody,
+  readOnly = false,
 }: {
   sectionKey: string;
   title: string | null;
@@ -40,6 +41,8 @@ export function GroupSection({
   cap?: { rows: number; text: string };
   /** What an empty list tells the person; a track's list by default. */
   emptyBody?: ReactNode;
+  /** No cell edits in place (a plan's List in a scenario). */
+  readOnly?: boolean;
 }) {
   const t = useT();
   const id = useId();
@@ -106,6 +109,7 @@ export function GroupSection({
           fields={fields}
           client={search}
           sort={sortOfQuery(query)}
+          readOnly={readOnly}
           {...(format ? { format } : {})}
           onSaved={(saved) =>
             setTickets((current) => current.map((x) => (x.id === saved.id ? saved : x)))

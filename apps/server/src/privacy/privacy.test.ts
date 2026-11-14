@@ -237,6 +237,25 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         note: 'Leave',
       })
       .execute();
+    // [PLN-002] [PLN-003] A scenario Kalo made in Mi's plan, and a draft Kalo changed in it.
+    const scenario = await database.db
+      .insertInto('plan_scenario')
+      .values({ workspace_id: 1, plan_id: plan.id, name: 'Faster', main: true, created_by: kalo })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_draft')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        scenario_id: scenario.id,
+        ticket_id: ticket.id,
+        field: 'dueDate',
+        old_value: null,
+        new_value: JSON.stringify('2027-01-15'),
+        updated_by: kalo,
+      })
+      .execute();
     const key = newObjectKey(1);
     const bytes = Buffer.from('a photo of the tray');
     const put = await store.put(key, Readable.from([bytes]), { maxBytes: 1000 });
@@ -367,6 +386,31 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     expect(JSON.parse(String(zip['preferences.json'])).planCapacity).toEqual([
       { planId: plan.id, period: '2026-11-02', amount: 12.5, note: 'Leave' },
     ]);
+    // [PLN-002] [PLN-003] The scenarios they made and the drafts they last changed, by ids: no
+    // ticket key or summary, since the plan or the ticket may be hidden from them now.
+    const preferences = JSON.parse(String(zip['preferences.json']));
+    expect(preferences.planScenarios).toEqual([
+      {
+        planId: plan.id,
+        scenarioId: scenario.id,
+        name: 'Faster',
+        main: true,
+        createdAt: expect.any(String),
+      },
+    ]);
+    expect(preferences.planDrafts).toEqual([
+      {
+        planId: plan.id,
+        scenarioId: scenario.id,
+        ticketId: ticket.id,
+        field: 'dueDate',
+        was: null,
+        draft: '2027-01-15',
+        origin: 'person',
+        updatedAt: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(preferences.planDrafts)).not.toContain(ticket.key);
     // [PLN-007] Those they own: what they named them, not the work they hold.
     expect(JSON.parse(String(zip['preferences.json'])).crossTrackReleases).toEqual([
       expect.objectContaining({
@@ -643,6 +687,24 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       .insertInto('plan_capacity')
       .values({ workspace_id: 1, plan_id: plan.id, user_id: kalo, amount: 4, note: 'Part time' })
       .execute();
+    // [PLN-002] [PLN-003] A scenario Kalo made and a draft Kalo changed in Mi's plan.
+    const scenario = await database.db
+      .insertInto('plan_scenario')
+      .values({ workspace_id: 1, plan_id: plan.id, name: 'Kalo’s idea', created_by: kalo })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_draft')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        scenario_id: scenario.id,
+        ticket_id: ticket.id,
+        field: 'dueDate',
+        new_value: JSON.stringify('2027-02-01'),
+        updated_by: kalo,
+      })
+      .execute();
     await work();
     const before = await verifyChain(database.db, 1);
     expect(before.ok).toBe(true);
@@ -688,6 +750,21 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     expect(
       await database.db.selectFrom('plan').select('id').where('id', '=', plan.id).execute(),
     ).toHaveLength(1);
+    // [PLN-002] [PLN-003] Erasure rewrites no scenario or draft: their ids now name the placeholder.
+    expect(
+      await database.db
+        .selectFrom('plan_scenario')
+        .select(['name', 'created_by'])
+        .where('id', '=', scenario.id)
+        .execute(),
+    ).toEqual([{ name: 'Kalo’s idea', created_by: kalo }]);
+    expect(
+      await database.db
+        .selectFrom('plan_draft')
+        .select('updated_by')
+        .where('scenario_id', '=', scenario.id)
+        .execute(),
+    ).toEqual([{ updated_by: kalo }]);
     // [PLN-007] Erasure keeps it: its owner's id now names the placeholder account.
     expect(
       await database.db

@@ -10,6 +10,8 @@ import { z } from 'zod';
  */
 const id = z.number().int().positive();
 const changes = z.record(z.string(), z.object({ from: z.unknown(), to: z.unknown() }));
+/** A drafted value in a plan (ADR-122 stage 6): a day as text, a team's id, or none. */
+const draftScalar = z.union([z.string(), z.number(), z.null()]);
 /** Hierarchy levels a change renumbered, with their rank before and after. */
 const shifted = z.array(z.object({ levelId: id, from: z.number().int(), to: z.number().int() }));
 /** Tickets that took another type because theirs left a track (CORE-005 (2)). */
@@ -1148,6 +1150,59 @@ export const EVENT_TYPES = {
   'plan.program_board_deleted': {
     subject: 'plan',
     payload: z.object({ boardId: id, name: z.string() }),
+  },
+  /**
+   * Scenarios and draft changes of a plan (PLN-002, PLN-003; ADR-122 stage 6): ids, days and team
+   * ids, never names of tickets. Drafting changes no ticket; applying is each ticket's own change,
+   * with its own `ticket.updated`, and `plan.drafts_committed` says what was applied and refused,
+   * and how many drafted tickets the applier was not shown (a number).
+   */
+  'plan.scenario_created': {
+    subject: 'plan',
+    payload: z.object({
+      scenarioId: id,
+      name: z.string(),
+      from: id.nullable(),
+      drafts: z.number().int().nonnegative(),
+      notShown: z.number().int().nonnegative(),
+    }),
+  },
+  'plan.scenario_updated': { subject: 'plan', payload: z.object({ scenarioId: id, changes }) },
+  'plan.scenario_deleted': {
+    subject: 'plan',
+    payload: z.object({ scenarioId: id, name: z.string(), drafts: z.number().int().nonnegative() }),
+  },
+  'plan.scenario_promoted': {
+    subject: 'plan',
+    payload: z.object({ scenarioId: id, formerMain: id.nullable() }),
+  },
+  'plan.drafts_set': {
+    subject: 'plan',
+    payload: z.object({
+      scenarioId: id,
+      changes: z.array(
+        z.object({ ticketId: id, field: z.string(), from: draftScalar, to: draftScalar }),
+      ),
+      removed: z.array(z.object({ ticketId: id, field: z.string() })),
+      origin: z.enum(['person', 'scheduler']),
+    }),
+  },
+  'plan.drafts_discarded': {
+    subject: 'plan',
+    payload: z.object({
+      scenarioId: id,
+      ticketIds: z.array(id),
+      count: z.number().int().nonnegative(),
+    }),
+  },
+  'plan.drafts_committed': {
+    subject: 'plan',
+    payload: z.object({
+      scenarioId: id,
+      applied: z.array(z.object({ ticketId: id, key: z.string() })),
+      refused: z.array(z.object({ ticketId: id, reason: z.string() })),
+      notShown: z.number().int().nonnegative(),
+    }),
   },
   /**
    * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with

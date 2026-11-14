@@ -6,6 +6,7 @@ import { dayNumber, isoDay, localDay } from '../timeline/client';
 import type { PlanCalendar } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { csvBlob, fileName, saveBlob } from './download';
+import { draftCalls } from './drafting';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { calendarCsv } from './planExport';
 
@@ -22,6 +23,9 @@ export function PlanCalendarPage({
   now,
   position,
   onPosition,
+  scenario,
+  scenarios,
+  onDrafted,
 }: PlanSectionProps) {
   const t = useT();
   const today = localDay(now());
@@ -44,7 +48,7 @@ export function PlanCalendarPage({
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
     const asked = ++latest.current;
-    client.calendar(id, filters, isoDay(first), isoDay(last)).then(
+    client.calendar(id, filters, isoDay(first), isoDay(last), false, scenario?.id).then(
       (d) => {
         if (asked !== latest.current) return;
         setData(d);
@@ -54,7 +58,7 @@ export function PlanCalendarPage({
         if (asked === latest.current) setFailed(true);
       },
     );
-  }, [client, id, filterKey, first, last]);
+  }, [client, id, filterKey, first, last, scenario?.id]);
   useEffect(load, [load]);
   useTicketChanges(load);
 
@@ -68,13 +72,26 @@ export function PlanCalendarPage({
   if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
   if (data.query === null) return null;
 
+  // In a scenario a move is a draft in it (ADR-122 stage 6), never the ticket's own change.
+  const drafts =
+    scenario && scenarios
+      ? draftCalls(
+          id,
+          scenario,
+          scenarios,
+          (key) => data.tickets.find((x) => x.key === key)?.id,
+          onDrafted,
+        )
+      : null;
+
   return (
     <div className="calendar-page plan-calendar">
       <CalendarView
         data={data}
         month={month}
         onMonth={setMonth}
-        move={client.move}
+        move={drafts?.move ?? client.move}
+        {...(scenario ? { draftIn: scenario.name } : {})}
         reload={load}
         now={now}
         truncatedText={t('plans.truncated', { count: data.tickets.length })}
@@ -91,6 +108,7 @@ export function PlanCalendarPage({
                     isoDay(first),
                     isoDay(last),
                     true,
+                    scenario?.id,
                   );
                   const name = fileName(plan.name, 'calendar', isoDay(month).slice(0, 7), 'csv');
                   saveBlob(name, csvBlob(calendarCsv(t, fresh)));

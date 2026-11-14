@@ -7322,6 +7322,253 @@ export const messagesEn = {
   'plans.csv.closed': 'Closed',
   'plans.csv.hiddenReleases': 'Hidden releases',
   'plans.csv.hiddenOpen': 'Open tickets in hidden releases',
+  // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
+  'plans.section.changes': 'Changes',
+  'plans.section.scenarios': 'Scenarios',
+  'draft.tag': 'Draft',
+  'draft.stale':
+    'Changed since drafted: the ticket no longer has the values this draft started from.',
+  'draft.staleShort': 'changed since drafted',
+  'timeline.drafted': 'Draft: {key} {start} to {due} in {scenario}. Nothing changed yet.',
+  'timeline.undone': 'The draft of {key} in {scenario} is undone.',
+  'timeline.bar.draft': '{key}, draft: {start} to {due}. Now {nowStart} to {nowDue}.',
+  'timeline.bar.draftStale':
+    '{key}, draft: {start} to {due}. Now {nowStart} to {nowDue}. Changed since drafted.',
+  'timeline.schedule.draft': 'Draft without dates: schedule {key}. Now {nowStart} to {nowDue}.',
+  'timeline.legend.draft': 'Draft change (dashed edge, marked Draft)',
+  'timeline.panel.draftHint':
+    'Saving makes a draft in {scenario}; the ticket does not change until it is applied.',
+  'timeline.panel.nowLive': 'Now: {start} to {due}',
+  'timeline.panel.draftOther': 'Its days are as they are now; its team is drafted.',
+  'timeline.panel.saveDraft': 'Save draft',
+  'timeline.panel.undoDraft': 'Undo this draft',
+  'calendar.draftedDue': 'Draft: {key} due {date} in {scenario}. Nothing changed yet.',
+  'calendar.draftedStart': 'Draft: {key} starts {date} in {scenario}. Nothing changed yet.',
+  'schedule.refused.order': '{key} was not drafted: its start would come after its due date.',
+  'schedule.refused.tooManyDrafts':
+    '{key} was not drafted: this scenario already holds as many drafted tickets as it may.',
+  'schedule.refused.notEditor':
+    '{key} was not drafted: only the plan’s owner and site administrators can draft in a scenario.',
+  'plans.capacity.rangeIn': '{start} to {end}, in {scenario}',
+  'plans.capacity.inScenarioNote':
+    'Capacity is the plan’s own, not a draft: it applies live and in every scenario.',
+  'plans.list.live':
+    'The List shows tickets as they are, not drafts, and its cells cannot be edited here.',
+  'programBoard.drafted': 'Draft: {key} to {place} in {scenario}. Nothing changed yet.',
+  'programBoard.withDrafts': 'includes drafts',
+  'programBoard.moreWithDrafts':
+    '{count, plural, one {and # more, includes drafts} other {and # more, includes drafts}}',
+  'programBoard.moveDraft': 'Draft the move',
+  'programBoard.refused.notEditor':
+    '{key} was not drafted: only the plan’s owner and site administrators can draft in a scenario.',
+  'programBoard.refused.order': '{key} was not drafted: its start would come after its due date.',
+  'programBoard.refused.tooManyDrafts':
+    '{key} was not drafted: this scenario already holds as many drafted tickets as it may.',
+  'scenario.bar.label': 'Scenario',
+  'scenario.bar.liveOption': 'Live',
+  'scenario.bar.mainOption': '{name} (main)',
+  'scenario.bar.newOption': 'New scenario…',
+  'scenario.bar.live': 'Changes you make here change tickets now.',
+  'scenario.bar.drafting':
+    'Drafting in {name}: {count, plural, one {# change} other {# changes}}. Nothing changes tickets until you apply them.',
+  'scenario.bar.viewing':
+    'Viewing {name}. Only the plan’s owner and site administrators can draft.',
+  'scenario.bar.review': '{count, plural, one {Review # change} other {Review # changes}}',
+  'scenario.bar.missing': 'That scenario no longer exists, so this is the plan live.',
+  'scenario.bar.nowIn': 'Now showing {name}: drafts, not applied.',
+  'scenario.bar.nowLive': 'Now showing the plan live.',
+  'scenario.notShown':
+    '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
+  'scenario.listFailed':
+    'The plan’s scenarios could not be loaded, so this is the plan live. Try again in a moment.',
+  'scenario.staysLive': 'This tab shows tickets as they are, not drafts.',
+  'scenario.cell.withDrafts':
+    '{count, plural, one {With # draft change} other {With # draft changes}}',
+  'scenario.cancel': 'Cancel',
+  'scenario.name': 'Name',
+  'scenario.main': 'Main',
+  'scenario.new': 'New scenario',
+  'scenario.new.title': 'New scenario',
+  'scenario.new.intro':
+    'A scenario holds draft changes to this plan’s tickets. Nothing changes a ticket until its drafts are applied. Everyone who sees the plan sees its scenarios.',
+  'scenario.new.from': 'Start from',
+  'scenario.new.empty': 'Empty',
+  'scenario.new.copyOf': 'A copy of {name} ({count, plural, one {# change} other {# changes}})',
+  'scenario.new.save': 'Make scenario',
+  'scenario.new.nameRequired': 'Give the scenario a name.',
+  'scenario.new.done': '{name} is made.',
+  'scenario.new.doneLeft':
+    '{name} is made. {count, plural, one {# draft on a ticket hidden from you stayed behind.} other {# drafts on tickets hidden from you stayed behind.}}',
+  'scenario.rename': 'Rename',
+  'scenario.rename.label': 'Rename {name}',
+  'scenario.rename.title': 'Rename {name}',
+  'scenario.rename.save': 'Save name',
+  'scenario.rename.done': 'The scenario is now called {name}.',
+  'scenario.refused.tooMany':
+    'This plan already has as many scenarios as it may. Delete one first.',
+  'scenario.refused.conflict':
+    'Someone changed this scenario meanwhile. Look again, then try again.',
+  'scenario.refused.main':
+    'The main scenario cannot be deleted while others exist. Make another one main first.',
+  'scenario.refused.applying': 'Its drafts are being applied now. Try again once that is done.',
+  'scenario.refused.forbidden': 'Only the plan’s owner and site administrators can do this.',
+  'scenario.refused.gone': 'That scenario no longer exists.',
+  'scenario.refused.other': 'That did not work. Try again in a moment.',
+  'scenario.promote': 'Make {name} main',
+  'scenario.promote.ask':
+    '{name}’s {count, plural, one {# change becomes} other {# changes become}} the plan’s drafts to apply. {main} keeps its {mainCount, plural, one {# change} other {# changes}} as a scenario.',
+  'scenario.promote.done': '{name} is now main: its drafts are the ones to apply.',
+  'scenario.open': 'Open',
+  'scenario.open.label': 'Open {name} on the Timeline',
+  'scenario.delete': 'Delete',
+  'scenario.delete.label': 'Delete {name}',
+  'scenario.delete.ask':
+    '{name} and its {count, plural, one {# draft change go} other {# draft changes go}}. No ticket changes.',
+  'scenario.delete.askHidden':
+    '{name} and its {count, plural, one {# draft change go} other {# draft changes go}}, with {hidden, plural, one {# more on a ticket hidden from you} other {# more on tickets hidden from you}}. No ticket changes.',
+  'scenario.delete.done': '{name} is deleted.',
+  'scenario.delete.mainKept':
+    'The main scenario stays while others exist; make another one main to delete it.',
+  'scenario.list.title': 'Scenarios',
+  'scenario.list.intro':
+    'Each scenario holds draft changes to the plan’s start and due days and Team values. Drafts are applied only from the main scenario; the others are ideas to try and compare.',
+  'scenario.list.readOnly':
+    'Only the plan’s owner and site administrators can make, change or apply scenarios.',
+  'scenario.list.full': 'A plan holds at most {count} scenarios.',
+  'scenario.list.empty': 'No scenarios yet',
+  'scenario.list.emptyBody':
+    'Make one to draft changes without changing tickets. The first scenario is main.',
+  'scenario.list.drafts': '{count, plural, =0 {No changes} one {# change} other {# changes}}',
+  'scenario.list.madeBy': 'Made by {name} on {when}',
+  'scenario.list.applying': 'Applying now',
+  'scenario.changes.link': 'Changes',
+  'scenario.changes.label': 'Changes in {name}',
+  'scenario.changes.noneChosen': 'No scenario chosen',
+  'scenario.changes.chooseOne':
+    'Changes belong to a scenario. Choose one above, or make one on the Scenarios tab.',
+  'scenario.changes.toScenarios': 'Go to Scenarios',
+  'scenario.changes.failed': 'The changes could not be loaded. Try again in a moment.',
+  'scenario.changes.title': 'Changes in {name}',
+  'scenario.changes.titleMain': 'Changes in {name}, the main scenario',
+  'scenario.changes.counts':
+    '{count, plural, one {# change} other {# changes}}: {ready} ready, {changed} changed since drafted, {refused} refused.',
+  'scenario.changes.notMain': 'Drafts are applied only from the main scenario.',
+  'scenario.changes.readOnly':
+    'Only the plan’s owner and site administrators can apply or discard them.',
+  'scenario.changes.notShown':
+    '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
+  'scenario.changes.onlyMine': 'Only those I can apply',
+  'scenario.changes.selectAll':
+    '{count, plural, one {Select the # shown} other {Select all # shown}}',
+  'scenario.changes.selectNone': 'Clear the choice',
+  'scenario.changes.select': 'Select {key}',
+  'scenario.changes.choose': 'Chosen',
+  'scenario.changes.list': 'Draft changes',
+  'scenario.changes.ticket': 'Ticket',
+  'scenario.changes.track': 'Track',
+  'scenario.changes.change': 'Change',
+  'scenario.changes.state': 'State',
+  'scenario.changes.drafted': 'Drafted',
+  'scenario.changes.by': '{name}, {when}',
+  'scenario.changes.more': 'Show more',
+  'scenario.changes.empty': 'No draft changes',
+  'scenario.changes.emptyBody':
+    'Drag bars on the Timeline, move days on the Calendar or cards on a program board in this scenario to draft changes.',
+  'scenario.changes.actions': 'Chosen changes',
+  'scenario.field.start': 'Start',
+  'scenario.field.due': 'Due',
+  'scenario.field.team': 'Team',
+  'scenario.value.none': 'none',
+  'scenario.value.team': 'team {id}',
+  'scenario.line': '{field}: {now} → {draft}',
+  'scenario.line.changed': '{field}: {now} → {draft} (drafted from {was})',
+  'scenario.isNow': '{field} is now {value}',
+  'scenario.state.ready': 'Ready',
+  'scenario.state.already': 'Already so',
+  'scenario.state.changed': 'Changed since drafted: {values}',
+  'scenario.state.refused': 'Refused: {reason}',
+  'scenario.state.scheduler': 'Proposed by the auto-scheduler',
+  'scenario.needs.schedule': 'You may not schedule tickets in {track}',
+  'scenario.needs.edit': 'You may not edit tickets in {track}',
+  'scenario.refusal.permission': 'you lack a permission it needs in {track}',
+  'scenario.refusal.locked': 'it is locked',
+  'scenario.refusal.lockedBy': 'it is locked. {why}',
+  'scenario.refusal.archived': 'its track is archived',
+  'scenario.refusal.gone': 'No longer in this plan for you',
+  'scenario.refusal.changed': 'it changed since drafted',
+  'scenario.refusal.invalid':
+    'the ticket does not take these values, for example a Team that is not on its form',
+  'scenario.refusal.failed': 'not changed; try again',
+  'scenario.keep': 'Keep my draft',
+  'scenario.keep.label': 'Keep my draft of {key}',
+  'scenario.keep.done': 'The draft of {key} is kept, against its values now.',
+  'scenario.apply.chosen':
+    '{count, plural, =0 {Apply changes} one {Apply # change} other {Apply # changes}}',
+  'scenario.apply.all': 'Apply all',
+  'scenario.apply.ask':
+    '{count, plural, one {Change # ticket as you, with your permissions?} other {Change # tickets as you, with your permissions?}}',
+  'scenario.apply.askAll':
+    'Change every ticket with a draft you see ({count}) as you, with your permissions?',
+  'scenario.apply.progress': 'Applying: {done} of {total} done.',
+  'scenario.apply.result': '{applied} applied, {refused} refused',
+  'scenario.apply.refusedRow': '{key}: {reason}',
+  'scenario.apply.inProgress': 'Another apply of this plan is running. Try again once it is done.',
+  'scenario.apply.notMain': 'This scenario is no longer main, so nothing more was applied.',
+  'scenario.apply.stopped':
+    'Applying stopped before the end. What is listed was done; try again for the rest.',
+  'scenario.discard.chosen':
+    '{count, plural, =0 {Discard changes} one {Discard # change} other {Discard # changes}}',
+  'scenario.discard.all': 'Discard all',
+  'scenario.discard.ask':
+    '{count, plural, one {The drafts of # ticket in {scenario} go. The ticket stays as it is.} other {The drafts of # tickets in {scenario} go. The tickets stay as they are.}}',
+  'scenario.discard.askAll':
+    'Every draft you see in {scenario} goes ({count, plural, one {# ticket} other {# tickets}}). {hidden, plural, =0 {} one {# on a ticket hidden from you stays.} other {# on tickets hidden from you stay.}} No ticket changes.',
+  'scenario.discard.done':
+    '{count, plural, one {The drafts of # ticket in {scenario} are discarded.} other {The drafts of # tickets in {scenario} are discarded.}}',
+  'scenario.compare.title': 'Compare',
+  'scenario.compare.a': 'Compare',
+  'scenario.compare.b': 'With',
+  'scenario.compare.live': 'Live (tickets as they are)',
+  'scenario.compare.gone': 'A scenario that no longer exists',
+  'scenario.compare.yours': 'The numbers are of the tickets you see.',
+  'scenario.compare.failed': 'The comparison could not be loaded. Try again in a moment.',
+  'scenario.compare.measures': 'The plan compared',
+  'scenario.compare.measure': 'Measure',
+  'scenario.compare.difference': 'Difference',
+  'scenario.compare.planEnd': 'The plan ends',
+  'scenario.compare.drafts': 'Draft changes',
+  'scenario.compare.moved': 'Tickets that end elsewhere',
+  'scenario.compare.movedWords':
+    '{later, plural, one {# ends later} other {# end later}} and {earlier} earlier in {name}',
+  'scenario.compare.noDrafts': 'None: the tickets as they are',
+  'scenario.compare.draftsCount': '{count, plural, one {# change} other {# changes}}',
+  'scenario.compare.draftsHidden':
+    '{count, plural, one {# change} other {# changes}}, and {hidden} on tickets hidden from you',
+  'scenario.compare.noEnd': 'no due date',
+  'scenario.compare.endUndated':
+    '{end}; {count, plural, one {# open ticket has no due date} other {# open tickets have no due date}}',
+  'scenario.compare.neither': 'Neither has an end',
+  'scenario.compare.noEndIn': 'No end in {name}',
+  'scenario.compare.onlyIn': 'Ends only in {name}',
+  'scenario.compare.same': 'Ends the same day',
+  'scenario.compare.later':
+    '{count, plural, one {Ends # day later in {name}} other {Ends # days later in {name}}}',
+  'scenario.compare.earlier':
+    '{count, plural, one {Ends # day earlier in {name}} other {Ends # days earlier in {name}}}',
+  'scenario.compare.teams': 'Each team’s end, by {field}',
+  'scenario.compare.team': 'Team',
+  'scenario.compare.otherTeam': 'Other or no team',
+  'scenario.compare.noTeamField': 'The site has no Team field, so teams are not compared.',
+  'scenario.compare.differing':
+    '{count, plural, =0 {No tickets differ} one {# ticket differs} other {# tickets differ}}',
+  'scenario.compare.firstOf': 'The first {shown} of {count} are listed.',
+  'scenario.compare.days': '{start} to {due}',
+  'scenario.compare.daysTeam': '{start} to {due}, {team}',
+  'scenario.compare.ticketSides': '{a}: {aDays}. {b}: {bDays}.',
+  'plans.csv.inScenario': 'Scenario: {name}, drafts not applied',
+  'plans.csv.draft': 'Draft',
+  'plans.csv.draftStale': 'Yes, changed since drafted',
+  'plans.image.inScenario': '{plan} — Scenario: {scenario}, drafts not applied',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

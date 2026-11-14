@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planHref, planViewKey, readView } from './address';
+import { PLAN_ROUTE, planHref, planViewKey, readView } from './address';
 
 /** A view in the address (PLN-012), and where it stands (PLN-014). */
 describe('a plan view in the address', () => {
@@ -50,5 +50,38 @@ describe('a plan view in the address', () => {
     expect(planViewKey(12, filtered)).not.toBe(planViewKey(12, base));
     const grouped = readView('#/plans/12?track=SHOP&group=type');
     expect(planViewKey(12, grouped)).not.toBe(planViewKey(12, base));
+  });
+
+  it('[PLN-002] keeps the scenario read in the address, so a link opens the same one', () => {
+    const route = '#/plans/12/timeline?track=SHOP&zoom=months&scenario=4';
+    const view = readView(route);
+    expect(view.scenario).toBe(4);
+    expect(planHref(12, 'timeline', view)).toBe(route);
+    // Another tab keeps it; Live has none.
+    expect(planHref(12, 'calendar', view)).toBe(
+      '#/plans/12/calendar?track=SHOP&zoom=months&scenario=4',
+    );
+    expect(readView('#/plans/12/timeline').scenario).toBeUndefined();
+    // A change of scenario reads the plan again; where the view stands still does not.
+    const live = readView('#/plans/12/timeline?track=SHOP');
+    expect(planViewKey(12, view)).not.toBe(planViewKey(12, live));
+    expect(planViewKey(12, readView(`${route}&month=2027-02`))).toBe(planViewKey(12, view));
+    for (const bad of ['scenario=0', 'scenario=-1', 'scenario=x', 'scenario=99999999999']) {
+      expect(readView(`#/plans/12?${bad}`).scenario, bad).toBeUndefined();
+    }
+  });
+
+  it('[PLN-003] keeps the two sides compared on the Scenarios tab only', () => {
+    const route = '#/plans/12/scenarios?scenario=4&a=live&b=7';
+    const view = readView(route);
+    expect(view.compare).toEqual({ a: 'live', b: '7' });
+    expect(planHref(12, 'scenarios', view)).toBe(route);
+    expect(planHref(12, 'timeline', view)).toBe('#/plans/12/timeline?scenario=4');
+    expect(readView('#/plans/12/scenarios?a=main&b=0').compare).toBeUndefined();
+  });
+
+  it('[PLN-002] routes the Changes and Scenarios tabs', () => {
+    expect(PLAN_ROUTE.exec('#/plans/12/changes?scenario=4')?.[2]).toBe('changes');
+    expect(PLAN_ROUTE.exec('#/plans/12/scenarios')?.[2]).toBe('scenarios');
   });
 });

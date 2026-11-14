@@ -939,6 +939,40 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     expect(all.plan.shares).toEqual([]);
   });
 
+  it('[PLN-003] [PLN-014] a copy takes no scenarios or drafts, and a deleted plan takes its own', async () => {
+    const original = await shared('Scenario original');
+    const dated = await ticket('PLA', { summary: 'Drafted in a scenario', dueDate: '2027-04-01' });
+    const made = await call(
+      'admin',
+      {
+        method: 'POST',
+        url: `/api/v1/plans/${original.id}/scenarios`,
+        payload: { name: 'Faster' },
+      },
+      201,
+    );
+    await call('admin', {
+      method: 'PUT',
+      url: `/api/v1/plans/${original.id}/scenarios/${made.scenario.id}/drafts`,
+      payload: { changes: [{ ticketId: dated.id, dueDate: '2027-04-08' }] },
+    });
+    const copy = await duplicate('admin', original.id, 'Copy without scenarios');
+    expect((await get('admin', `/api/v1/plans/${copy.plan.id}/scenarios`)).scenarios).toEqual([]);
+    const count = async (table: 'plan_scenario' | 'plan_draft', planId: number) =>
+      (
+        await database.db
+          .selectFrom(table)
+          .select((eb) => eb.fn.countAll<string>().as('n'))
+          .where('plan_id', '=', planId)
+          .executeTakeFirstOrThrow()
+      ).n;
+    expect(await count('plan_draft', copy.plan.id)).toBe('0');
+    expect(await count('plan_draft', original.id)).toBe('1');
+    await call('admin', { method: 'DELETE', url: `/api/v1/plans/${original.id}` }, 204);
+    expect(await count('plan_scenario', original.id)).toBe('0');
+    expect(await count('plan_draft', original.id)).toBe('0');
+  });
+
   it('[PLN-014] [PLN-012] copies a plan of 500 sources and 50 teams within a second', async () => {
     const ana = users.ana?.id as number;
     const plan = (await make('ana', { name: 'At its limits' })).plan as { id: number };

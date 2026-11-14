@@ -1,7 +1,8 @@
 import { ApiError, api } from '../api/client';
-import { type Refusal, refusalOf } from '../timeline/client';
+import { type DraftMark, type Refusal, refusalOf } from '../timeline/client';
 import type { BlockersElsewhere, DependencyLink } from '../timeline/dependencies';
 import { filterParams, type LinkTypeOption, type PlanFilters } from './client';
+import type { ScenarioInView } from './scenarioClient';
 
 /** A program board as a plan lists it (PLN-008; ADR-122 stage 5). */
 export interface ProgramBoardSummary {
@@ -28,6 +29,11 @@ export interface ProgramBoardList {
 export interface BoardCell {
   count: number;
   cards: number[];
+  /**
+   * In a scenario, how many cards a draft moves into or out of this cell (ADR-122 stage 6): its
+   * count then finds no search, so it says "includes drafts" and links nowhere.
+   */
+  drafts?: number;
 }
 
 export interface BoardRow {
@@ -53,12 +59,16 @@ export interface ProgramBoardCard {
   version: number;
   assignee: { id: number; name: string } | null;
   team: { id: number; name: string } | null;
+  /** In a scenario: the card's drafts, its days and team above being the drafted ones. */
+  draft?: DraftMark;
 }
 
 /** `GET /api/v1/plans/:id/program-boards/:boardId`. */
 export interface ProgramBoard {
   board: ProgramBoardSummary;
   plan: { id: number; name: string };
+  /** The scenario read, when one was asked for. */
+  scenario?: ScenarioInView;
   editable: boolean;
   /** The plan's query with the filters; null when the viewer sees none of it. */
   query: string | null;
@@ -110,7 +120,13 @@ export interface ProgramBoardClient {
     input: Partial<BoardInput> & { archived?: boolean; version: number },
   ): Promise<BoardSaved>;
   remove(planId: number, boardId: number): Promise<void>;
-  read(planId: number, boardId: number, filters: PlanFilters): Promise<ProgramBoard>;
+  /** With `scenario`, each card stands where that scenario's drafts put it (ADR-122 stage 6). */
+  read(
+    planId: number,
+    boardId: number,
+    filters: PlanFilters,
+    scenario?: number,
+  ): Promise<ProgramBoard>;
   /** A card moves through the ticket's own route (`PATCH /tickets/:key`), with the version read. */
   move(key: string, change: CardChange): Promise<CardMoved>;
 }
@@ -143,8 +159,10 @@ export const programBoardClient: ProgramBoardClient = {
   remove: async (planId, boardId) => {
     await api(`${boardsOf(planId)}/${boardId}`, { method: 'DELETE' });
   },
-  read: (planId, boardId, filters) => {
-    const params = filterParams(filters).toString();
+  read: (planId, boardId, filters, scenario) => {
+    const query = filterParams(filters);
+    if (scenario !== undefined) query.set('scenario', String(scenario));
+    const params = query.toString();
     return api<ProgramBoard>(`${boardsOf(planId)}/${boardId}${params ? `?${params}` : ''}`);
   },
   move: async (key, change) => {

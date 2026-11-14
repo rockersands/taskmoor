@@ -17,6 +17,13 @@ import {
   type PlanTimeline,
   type PlanTimelineItem,
 } from './client';
+import type { ScenarioInView } from './scenarioClient';
+
+/** How a fake plan reads a scenario: what the views name, and the tickets with its drafts. */
+export interface ScenarioOverlay {
+  info(scenario: number): ScenarioInView | null;
+  overlay(items: PlanTimelineItem[], scenario: number): PlanTimelineItem[];
+}
 
 /**
  * A Multi-track plan in memory for stories and tests (ADR-122): "Spring launch" over the tracks
@@ -202,6 +209,10 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   planReads: () => number;
   /** What each read of the capacity asked for: from which day, and how many periods. */
   capacityAsked: { from: string; periods: number }[];
+  /** The scenarios a view may read (ADR-122 stage 6): `fakeScenarioClient` attaches itself. */
+  attachScenarios: (scenarios: ScenarioOverlay) => void;
+  /** The scenario each read of a view asked for, in order; undefined for Live. */
+  scenarioReads: (number | undefined)[];
 } {
   const capacity = fakeCapacity();
   let teams = options.noTeams ? [] : PLAN_TEAMS;
@@ -257,12 +268,31 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       sameSprint: dependencies.sameSprint,
     },
   });
-  const shown = (filters: PlanFilters) =>
-    nothing ? [] : items.filter((i) => passes(i, filters, me));
+  let scenarios: ScenarioOverlay | null = null;
+  const scenarioReads: (number | undefined)[] = [];
+  /** The tickets a view lists, with a scenario's drafts; a scenario not there is refused. */
+  const read = (scenario: number | undefined) => {
+    scenarioReads.push(scenario);
+    if (scenario === undefined) return { list: items, inScenario: {} };
+    const info = scenarios?.info(scenario) ?? null;
+    if (!info) {
+      throw new ApiError(400, { error: 'invalid_fields', fields: { scenario: 'not_found' } });
+    }
+    return {
+      list: rolled(scenarios?.overlay(items, scenario) ?? items),
+      inScenario: { scenario: info },
+    };
+  };
+  const shown = (filters: PlanFilters, list: PlanTimelineItem[] = items) =>
+    nothing ? [] : list.filter((i) => passes(i, filters, me));
   const query = (filters: PlanFilters) => plan(filters).query;
   return {
     items: () => items,
     capacityAsked,
+    scenarioReads,
+    attachScenarios: (attached) => {
+      scenarios = attached;
+    },
     saved,
     removed,
     capacitySaved: capacity.saved,
@@ -443,9 +473,10 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         ),
       };
     },
-    timeline: async (_id, filters, exporting): Promise<PlanTimeline> => {
+    timeline: async (_id, filters, exporting, scenario): Promise<PlanTimeline> => {
       if (exporting) exportReads++;
-      const list = shown(filters);
+      const { list: base, inScenario } = read(scenario);
+      const list = shown(filters, base);
       const listed = list.slice(0, 10_000);
       const ids = new Set(listed.map((i) => i.id));
       const chosen = dependencies.linkTypeIds.includes(3)
@@ -468,6 +499,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
             return outside + unlisted > 0 ? [{ id: i.id, outside, unlisted }] : [];
           });
       return structuredClone({
+        ...inScenario,
         query: query(filters),
         items: listed,
         links,
@@ -496,11 +528,13 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         truncated: list.length > listed.length,
       });
     },
-    calendar: async (_id, filters, from, to, exporting): Promise<PlanCalendar> => {
+    calendar: async (_id, filters, from, to, exporting, scenario): Promise<PlanCalendar> => {
       if (exporting) exportReads++;
+      const { list: base, inScenario } = read(scenario);
       const inRange = (d: string | null) => d !== null && d >= from && d <= to;
-      const list = shown(filters).filter((i) => inRange(i.start) || inRange(i.due));
+      const list = shown(filters, base).filter((i) => inRange(i.start) || inRange(i.due));
       return structuredClone({
+        ...inScenario,
         query: query(filters),
         tickets: list.slice(0, 10_000).map((i) => ({
           id: i.id,
@@ -511,6 +545,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
           start: i.start,
           due: i.due,
           trackId: i.trackId,
+          ...(i.draft ? { draft: i.draft } : {}),
         })),
         tracks: TRACKS,
         sprints: [],
@@ -543,17 +578,21 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       );
       return { ok: true };
     },
-    capacity: async (_id, filters, from, periods) => {
+    capacity: async (_id, filters, from, periods, scenario) => {
       capacityAsked.push({ from, periods });
-      const answer = capacity.answer(
-        shown(filters),
-        query(filters),
-        filters,
-        from,
-        periods,
-        options.editable ?? true,
-        unit,
-      );
+      const { list: base, inScenario } = read(scenario);
+      const answer = {
+        ...inScenario,
+        ...capacity.answer(
+          shown(filters, base),
+          query(filters),
+          filters,
+          from,
+          periods,
+          options.editable ?? true,
+          unit,
+        ),
+      };
       return teams.length === 0 ? { ...answer, teams: [] } : answer;
     },
     setCapacity: async (_id, entries, settings) => {

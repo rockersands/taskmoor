@@ -782,3 +782,345 @@
   padding: 0;
   list-style: none;
 }
+
+/* Scenarios and draft changes (T-089e; ADR-122 stage 6). A draft is said in words ("Draft") and
+   drawn with a dashed edge, never told by colour alone. */
+.scenario-bar {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.scenario-bar-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.scenario-bar-choice select {
+  max-width: 20rem;
+}
+
+.scenario-bar-sentence {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.scenario-bar-sentence.is-draft {
+  color: var(--color-text);
+}
+
+.draft-tag {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border: 1px dashed var(--color-text-muted);
+  border-radius: var(--radius-mark);
+  font-size: var(--font-size-100);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.timeline-label .draft-tag {
+  flex: none;
+  margin-inline-start: var(--space-1);
+}
+
+.timeline-bar.is-draft {
+  outline: 2px dashed var(--color-text);
+  outline-offset: 1px;
+}
+
+.timeline-legend-mark.is-draft {
+  border: 2px dashed var(--color-text);
+  background: var(--color-flow-first);
+}
+
+.timeline-panel-draft {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.timeline-panel-draft p {
+  margin: 0;
+}
+
+.calendar-chip.is-draft {
+  border-style: dashed;
+  border-inline-start-style: dashed;
+}
+
+.capacity-count.is-draft {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.program-cell-drafts {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.scenario-live-note {
+  margin: 0;
+}
+
+.plan-changes,
+.plan-scenarios,
+.scenario-compare {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.plan-changes h2,
+.plan-scenarios h2,
+.scenario-compare h3,
+.scenario-compare h4 {
+  margin: 0;
+}
+
+.scenario-status:empty {
+  display: none;
+}
+
+.scenario-tools,
+.plan-scenarios-head,
+.scenario-item-actions,
+.scenario-compare-sides {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.plan-scenarios-head {
+  justify-content: space-between;
+}
+
+.scenario-only {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scenario-table-scroll {
+  overflow-x: auto;
+}
+
+.scenario-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scenario-table th,
+.scenario-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.scenario-table caption {
+  padding: var(--space-2) var(--space-3);
+  font-weight: var(--font-weight-strong);
+  text-align: start;
+}
+
+.scenario-lines {
+  display: grid;
+  gap: var(--space-half);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-state {
+  display: block;
+}
+
+.scenario-state.is-changed,
+.scenario-state.is-refused,
+.scenario-state.is-blocked {
+  color: var(--color-warning);
+}
+
+.scenario-meta {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.scenario-key {
+  font-weight: var(--font-weight-strong);
+}
+
+.scenario-keep {
+  margin-top: var(--space-1);
+}
+
+.scenario-result {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.scenario-result h3 {
+  margin: 0;
+}
+
+.scenario-result ul,
+.scenario-cards,
+.scenario-list,
+.scenario-compare-cards,
+.scenario-differing {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-result ul {
+  padding-inline-start: var(--space-4);
+  list-style: disc;
+}
+
+.scenario-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.scenario-card-check {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-target-touch);
+  height: var(--hit-target-touch);
+  cursor: pointer;
+}
+
+.scenario-card-body {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scenario-card-body p {
+  margin: 0;
+}
+
+/* On a phone the actions stay at the bottom while the cards scroll under them. */
+.scenario-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.scenario-action-bar > * {
+  flex: 1 1 auto;
+}
+
+.scenario-item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.scenario-item h3,
+.scenario-item p {
+  margin: 0;
+}
+
+.scenario-main {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+}
+
+.scenario-compare-cards li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  overflow-wrap: anywhere;
+}
+
+.scenario-compare-cards h4,
+.scenario-compare-cards dl,
+.scenario-compare-diff {
+  margin: 0;
+}
+
+.scenario-compare-cards dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+}
+
+.scenario-compare-cards dt {
+  font-weight: var(--font-weight-strong);
+}
+
+.scenario-compare-cards dd {
+  margin: 0;
+}
+
+.scenario-differing li {
+  display: grid;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .scenario-bar-choice .form-field,
+  .scenario-bar-choice select,
+  .scenario-compare-sides .form-field,
+  .scenario-compare-sides select {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .scenario-bar select,
+  .scenario-bar-review,
+  .scenario-tools button,
+  .scenario-only,
+  .scenario-keep,
+  .scenario-action-bar button,
+  .scenario-item-actions a,
+  .scenario-item-actions button,
+  .plan-scenarios-head button,
+  .scenario-compare-sides select,
+  .scenario-dialog input,
+  .scenario-dialog select,
+  .scenario-dialog button,
+  .timeline-panel-draft button {
+    min-height: var(--hit-target-touch);
+  }
+
+  .scenario-bar-review,
+  .scenario-item-actions a {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* A card's or a differing ticket's link is the way into the ticket: a finger's target too. */
+  .scenario-card-title a,
+  .scenario-differing li > a {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.3em;
+    min-height: var(--hit-target-touch);
+  }
+}

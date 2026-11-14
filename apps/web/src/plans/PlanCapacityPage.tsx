@@ -60,6 +60,7 @@ export function PlanCapacityPage({
   now,
   position,
   onPosition,
+  scenario,
 }: PlanSectionProps) {
   const t = useT();
   const intl = useIntl();
@@ -85,7 +86,7 @@ export function PlanCapacityPage({
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
     const asked = ++latest.current;
-    client.capacity(id, filters, from, count).then(
+    client.capacity(id, filters, from, count, scenario?.id).then(
       (d) => {
         if (asked !== latest.current) return;
         setData(d);
@@ -95,7 +96,7 @@ export function PlanCapacityPage({
         if (asked === latest.current) setFailed(true);
       },
     );
-  }, [client, id, filterKey, from, count]);
+  }, [client, id, filterKey, from, count, scenario?.id]);
   useEffect(load, [load]);
   useTicketChanges(load);
 
@@ -188,6 +189,17 @@ export function PlanCapacityPage({
 
   const link = (row: Row, clause: string, work: CapacityWork, period: string, due = true) => {
     const tickets = t('plans.capacity.tickets', { count: work.count });
+    // A draft moved a ticket into or out of this cell: no search finds its count (ADR-122 stage 6).
+    if (work.drafts) {
+      return (
+        <span className="capacity-count is-draft">
+          {work.count === 0
+            ? t(due ? 'plans.capacity.nothingDue' : 'plans.capacity.noneOpen')
+            : tickets}{' '}
+          <span className="draft-tag">{t('scenario.cell.withDrafts', { count: work.drafts })}</span>
+        </span>
+      );
+    }
     if (work.count === 0 || data.query === null) {
       return (
         <span className="capacity-count">
@@ -308,9 +320,10 @@ export function PlanCapacityPage({
       <div className="calendar-tools capacity-tools">
         <h2 id={headingId} aria-live="polite">
           {first && last
-            ? t('plans.capacity.range', {
+            ? t(scenario ? 'plans.capacity.rangeIn' : 'plans.capacity.range', {
                 start: date(first.start, true),
                 end: date(last.end, true),
+                scenario: scenario?.name ?? '',
               })
             : null}
         </h2>
@@ -436,6 +449,7 @@ export function PlanCapacityPage({
           unit={data.unit}
           periods={data.periods.map((p, i) => ({ start: p.start, label: labels[i] ?? p.start }))}
           capacity={editing.capacity}
+          {...(scenario ? { scenarioNote: t('plans.capacity.inScenarioNote') } : {})}
           onClose={() => setEditing(null)}
           onSave={async (entries) => {
             // The unit and periods the amounts were typed for, refused once they change.
