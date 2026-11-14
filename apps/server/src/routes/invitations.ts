@@ -14,8 +14,11 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import {
   checkGivingCreateTracks,
+  dropLapsedCreateTracks,
   giveCreateTracks,
   inviterMayGiveCreateTracks,
+  type LapsedCreateTracks,
+  lapsedPayload,
 } from '../authz/create-tracks';
 import {
   inviterStillBacks,
@@ -757,6 +760,7 @@ export function registerInvitationRoutes(
         .executeTakeFirst();
       if (!marked) return false;
       let roleRemoved = false;
+      let lapsed: LapsedCreateTracks[] = [];
       if (row.granted_user_id !== null) {
         const removed = await trx
           .deleteFrom('track_role_actor')
@@ -767,6 +771,9 @@ export function registerInvitationRoutes(
         roleRemoved = Number(removed.numDeletedRows) > 0;
         // A share may have come to hold it meanwhile: its record goes with the role (IAM-034).
         await keepRole(trx, trackId, row.role_id, row.granted_user_id);
+        // The permission to create tracks that came with a role goes once the person runs no
+        // track any more (T-087b; IAM-033).
+        if (roleRemoved) lapsed = await dropLapsedCreateTracks(trx, ws, [row.granted_user_id]);
       }
       await emit(
         trx,
@@ -774,7 +781,7 @@ export function registerInvitationRoutes(
         {
           type: 'track_invitation.revoked',
           subjectId: trackId,
-          payload: { invitationId, roleRemoved },
+          payload: { invitationId, roleRemoved, ...lapsedPayload(lapsed) },
         },
       );
       return true;

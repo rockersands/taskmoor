@@ -1,7 +1,8 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
-import { activeAdminCount } from '../directory';
+import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
+import { activeAdminCount, effectiveMemberIds } from '../directory';
 import { diff, emit } from '../events/bus';
 import {
   invalidSyntax,
@@ -324,6 +325,11 @@ export async function registerScimRoutes(
         .execute();
     }
     const endedSessions = changes.active && !values.active ? await signOut(trx, row.id) : 0;
+    // A deactivated person runs no track (T-087b; IAM-033).
+    const lapsed =
+      changes.active && !values.active
+        ? await dropLapsedCreateTracks(trx, workspaceId, [row.id])
+        : [];
     const scimChanged =
       changes.userName || changes.externalId || attributes.length > 0 || row.user_name === null;
     if (scimChanged) {
@@ -346,7 +352,7 @@ export async function registerScimRoutes(
         )
         .execute();
     }
-    return { changes, attributes, endedSessions };
+    return { changes, attributes, endedSessions, ...lapsedPayload(lapsed) };
   }
 
   /** Replaces a user's attributes with a canonical resource (PUT, and PATCH after applying). */
@@ -459,10 +465,12 @@ export async function registerScimRoutes(
             .execute();
         }
         if (Object.keys(changes).length > 0 || added.length > 0 || removed.length > 0) {
+          // People who left may run no track without the group (T-087b; IAM-033).
+          const lapsed = await dropLapsedCreateTracks(trx, ws, removed);
           await emit(trx, by(request), {
             type: 'scim.group_updated',
             subjectId: id,
-            payload: { changes, added, removed },
+            payload: { changes, added, removed, ...lapsedPayload(lapsed) },
           });
         }
         return groupView(trx, ws, await loadGroup(trx, ws, id));
@@ -735,6 +743,7 @@ export async function registerScimRoutes(
             endedSessions = await signOut(trx, id);
           }
           const userName = row.user_name ?? row.email;
+          const lapsed = await dropLapsedCreateTracks(trx, ws, [id]);
           await trx
             .insertInto('scim_user')
             .values({
@@ -751,7 +760,7 @@ export async function registerScimRoutes(
           await emit(trx, by(request), {
             type: 'scim.user_removed',
             subjectId: id,
-            payload: { userName, endedSessions },
+            payload: { userName, endedSessions, ...lapsedPayload(lapsed) },
           });
         });
         return reply.code(204).send();
@@ -878,11 +887,13 @@ export async function registerScimRoutes(
         const ws = request.workspaceId;
         await db.transaction().execute(async (trx) => {
           const row = await loadGroup(trx, ws, id, true);
+          const members = await effectiveMemberIds(trx, ws, id);
           await trx.deleteFrom('user_group').where('id', '=', id).execute();
+          const lapsed = await dropLapsedCreateTracks(trx, ws, members);
           await emit(trx, by(request), {
             type: 'scim.group_deleted',
             subjectId: id,
-            payload: { name: row.name },
+            payload: { name: row.name, ...lapsedPayload(lapsed) },
           });
         });
         return reply.code(204).send();

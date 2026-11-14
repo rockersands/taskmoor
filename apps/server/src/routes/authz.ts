@@ -4,7 +4,13 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireSiteAdmin, requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
-import { checkGivingCreateTracks, giveCreateTracks, isActivePerson } from '../authz/create-tracks';
+import {
+  checkGivingCreateTracks,
+  dropLapsedCreateTracks,
+  giveCreateTracks,
+  isActivePerson,
+  lapsedPayload,
+} from '../authz/create-tracks';
 import {
   GLOBAL_PERMISSIONS,
   isGlobalPermission,
@@ -14,6 +20,7 @@ import {
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
 import { mayGiveRole, roleRunsTrack, trackKeepsAdministrator } from '../authz/track-admins';
+import { effectiveMemberIds } from '../directory';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { ticketKey } from '../tickets/model';
@@ -912,6 +919,17 @@ export function registerAuthzRoutes(
         if (count > 0) {
           // Shares that held the role hold nothing now (IAM-034).
           if (kind === 'users') await keepRole(trx, trackId, roleId, actorId);
+          // Someone who runs no track any more loses the permission to create tracks that came
+          // with a role (T-087b; IAM-033): the person, or everyone in the group.
+          const lapsed = running
+            ? await dropLapsedCreateTracks(
+                trx,
+                request.workspaceId,
+                kind === 'users'
+                  ? [actorId]
+                  : await effectiveMemberIds(trx, request.workspaceId, actorId),
+              )
+            : [];
           await emit(trx, by(request), {
             type: 'track_role.actor_removed',
             subjectId: trackId,
@@ -919,6 +937,7 @@ export function registerAuthzRoutes(
               roleId,
               userId: kind === 'users' ? actorId : null,
               groupId: kind === 'groups' ? actorId : null,
+              ...lapsedPayload(lapsed),
             },
           });
         }

@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireSiteAdmin } from '../auth';
+import { type LapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import { diff, emit } from '../events/bus';
 import { deactivateAccount } from '../ldap/accounts';
 import {
@@ -490,10 +491,12 @@ export function registerDirectoryRoutes(
         .execute();
       const now = new Date();
       let deactivated = 0;
+      const lapsed: LapsedCreateTracks[] = [];
       for (const account of accounts) {
         const result = await deactivateAccount(trx, ws, account.id, now);
         if (result.refused === 'last_admin') return 'last_admin' as const;
         if (result.deactivated) deactivated += 1;
+        lapsed.push(...result.lapsed);
       }
       const groups = await trx
         .selectFrom('ldap_group')
@@ -511,6 +514,7 @@ export function registerDirectoryRoutes(
             name: row.name,
             deactivatedUsers: deactivated,
             releasedGroups: Number(groups.n),
+            ...lapsedPayload(lapsed),
           },
         },
       );

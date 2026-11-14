@@ -65,8 +65,8 @@ Site administrators hold every global permission, so they always create tracks. 
 **Create tracks with their own configuration** reaches people through a track: whoever gives
 someone the role that runs a track, and may create tracks themselves, can tick **Also let them
 create tracks** ([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)).
-That writes a grant to that person, listed here with their name. Taking the role away leaves it;
-**Remove** it here.
+That writes a grant to that person, listed here with their name. It goes by itself once they run
+no track any more, or are deactivated; a grant you give here stays until you **Remove** it.
 
 The list also holds **Manage onboarding**, **Connect goals**, **Manage automation**,
 **Manage AI features** and **Manage extensions**. They belong to features that are not built

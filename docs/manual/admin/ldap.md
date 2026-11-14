@@ -1,8 +1,8 @@
 ---
 title: "LDAP directories"
 audience: admins
-sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-11-04
+sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # LDAP directories
@@ -177,7 +177,10 @@ language and site administration are Taskmoor's in both modes.
 ## Removed and disabled people
 
 A person disabled in the directory, removed from it, or no longer matching the people filter
-is deactivated at the next sync, and their sessions end. Their account and work stay. When the
+is deactivated at the next sync, and their sessions end. Their account and work stay. A
+permission to create tracks that came with a role that runs a track goes, as with any
+deactivation ([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)),
+and does not come back with the account. When the
 entry comes back, the account is reactivated, but only if the sync deactivated it: a
 deactivation by an administrator stands. A sync never deactivates a break-glass account or the
 last active site administrator; it warns instead.

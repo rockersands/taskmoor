@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireSiteAdmin, revokeUserSessions } from '../auth';
+import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import {
   activeAdminCount,
   canonicalTimeZone,
@@ -426,13 +427,16 @@ export function registerUserRoutes(
         .where('used_at', 'is', null)
         .execute();
       if (current.deactivated_at === null) {
+        // A deactivated person runs no track: a permission to create tracks that came with a
+        // role goes (T-087b; IAM-033).
+        const lapsed = await dropLapsedCreateTracks(trx, request.workspaceId, [current.id]);
         await emit(
           trx,
           { workspaceId: request.workspaceId, actorId: admin.id },
           {
             type: 'user.deactivated',
             subjectId: current.id,
-            payload: { endedSessions: Number(ended.numDeletedRows) },
+            payload: { endedSessions: Number(ended.numDeletedRows), ...lapsedPayload(lapsed) },
           },
         );
       }
