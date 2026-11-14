@@ -1014,18 +1014,6 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       if (!held) return { missing: true as const };
       const impact = await impactOf(trx, ws, held.id);
       if (!impact) return { conflict: 'no_draft' };
-      // A draft with no transitions at all (restored or imported so) is published with the free
-      // moves a new workflow gets, never as a workflow where no ticket can move (T-246; WF-008).
-      const moving = await withMovesIfNone(trx, ws, held.id, impact.draft);
-      if (moving !== impact.draft) {
-        await trx
-          .updateTable('workflow_version')
-          .set({ definition: JSON.stringify(moving) })
-          .where('workflow_id', '=', held.id)
-          .where('version', '=', held.draft_version as number)
-          .execute();
-        impact.draft = moving;
-      }
       // A reason deleted after the draft was saved would refuse every move into its status.
       const closing = await closeReasonProblem(trx, ws, impact.draft);
       if (closing) return { closing };
@@ -1047,9 +1035,23 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           return { badMapping: r.statusId };
         }
       }
+      const version = held.draft_version as number;
+      // A draft with no transitions at all (restored or imported so) is published with the free
+      // moves a new workflow gets, never as a workflow where no ticket can move (T-246; WF-008).
+      // Only once every check above has passed: a refused publish commits, and must leave the
+      // draft as its author saved it. The moves close with a reason that exists, so the closing
+      // check above holds for them too, and they add no status.
+      const moving = await withMovesIfNone(trx, ws, held.id, impact.draft);
+      if (moving !== impact.draft) {
+        await trx
+          .updateTable('workflow_version')
+          .set({ definition: JSON.stringify(moving) })
+          .where('workflow_id', '=', held.id)
+          .where('version', '=', version)
+          .execute();
+      }
       const used = new Map(needed.map((r) => [r.statusId, mapping.get(r.statusId) as number]));
       const ticketCount = await remapStatuses(trx, ws, user.id, impact.tickets, used);
-      const version = held.draft_version as number;
       await trx
         .updateTable('workflow_version')
         .set({ published_at: new Date(), published_by: user.id })

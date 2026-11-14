@@ -1099,6 +1099,74 @@ describe('free moving at its edges (WF-008)', () => {
       expect((kept.json().workflow as View).published.definition.transitions).toEqual([]);
     });
 
+    it('[WF-008] a refused publish of a draft with no transitions leaves the draft as saved: the free moves come only with the publish (T-246)', async () => {
+      const { id } = await leftEmpty('Refused while empty', [
+        status.New as number,
+        status.Active as number,
+      ]);
+      // Version 2 adds Closed, and a ticket stands in it.
+      await publishChanged(id, (d) => ({
+        ...d,
+        statuses: [...d.statuses, { statusId: status.Closed as number }],
+      }));
+      const map = await post('/api/v1/workflow-maps', { name: 'Map RFSD', defaultWorkflowId: id });
+      expect(map.statusCode, map.body).toBe(201);
+      const track = await post('/api/v1/tracks', { key: 'RFSD', name: 'RFSD', mode: 'shared' });
+      const linked = await patch(`/api/v1/tracks/${track.json().track.id}`, {
+        workflowMapId: map.json().workflowMap.id,
+      });
+      expect(linked.statusCode, linked.body).toBe(200);
+      const made = await post('/api/v1/tickets', { track: 'RFSD', summary: 'Stands in Closed' });
+      expect(made.statusCode, made.body).toBe(201);
+      await database.db
+        .updateTable('ticket')
+        .set({ status_id: status.Closed as number })
+        .where('id', '=', made.json().ticket.id)
+        .execute();
+      // Version 1, empty and without Closed, restored as the draft.
+      const restored = await post(`/api/v1/workflows/${id}/versions/1/restore`);
+      expect(restored.statusCode, restored.body).toBe(200);
+      const draftVersion = restored.json().workflow.draft.version as number;
+      const stored = async () =>
+        (
+          await database.db
+            .selectFrom('workflow_version')
+            .select('definition')
+            .where('workflow_id', '=', id)
+            .where('version', '=', draftVersion)
+            .executeTakeFirstOrThrow()
+        ).definition as unknown as Definition;
+      expect((await stored()).transitions).toEqual([]);
+      const count = await eventCount();
+
+      // Refused for its mapping: the draft stays as restored, and nothing happened.
+      const refused = await post(`/api/v1/workflows/${id}/publish`, {});
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(refused.json().error).toBe('status_mapping_required');
+      expect((await stored()).transitions).toEqual([]);
+      expect(draftOf(await view(id)).transitions).toEqual([]);
+      expect(await eventCount()).toBe(count);
+
+      // Refused for a bad mapping: the same.
+      const bad = await post(`/api/v1/workflows/${id}/publish`, {
+        statusMapping: { [String(status.Closed)]: status.Closed },
+      });
+      expect(bad.statusCode, bad.body).toBe(400);
+      expect((await stored()).transitions).toEqual([]);
+      expect(await eventCount()).toBe(count);
+
+      // Published with its mapping: the free moves come with it.
+      const published = await post(`/api/v1/workflows/${id}/publish`, {
+        statusMapping: { [String(status.Closed)]: status.New },
+      });
+      expect(published.statusCode, published.body).toBe(200);
+      const after = published.json().workflow as View;
+      expect(after.published.version).toBe(draftVersion);
+      expect(shape(after.published.definition)).toEqual(freeMoves().slice(0, 2));
+      const [last] = (await events('workflow.published')).slice(-1);
+      expect(last?.payload).toMatchObject({ version: draftVersion, ticketCount: 1 });
+    });
+
     it('[WF-008] a workflow file with no transitions imports with the free moves, as a new workflow and as a next draft (T-246)', async () => {
       const ids = [status.New as number, status.Active as number, status.Closed as number];
       const { id } = await leftEmpty('Exported empty', ids);
