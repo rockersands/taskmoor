@@ -154,6 +154,21 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(within(rowOf('SHOP-70')).getByRole('rowheader')).toHaveFocus();
   });
 
+  it('[PLN-010] a focused row hidden by Collapse all hands the Tab stop to the row shown above it', async () => {
+    const user = userEvent.setup();
+    renderGrid(saved);
+    await screen.findByRole('treegrid');
+    act(() => rowOf('SHOP-1').focus());
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(rowOf('SHOP-60')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(screen.queryByRole('rowheader', { name: /SHOP-60/ })).toBeNull();
+    expect(rowOf('SHOP-1')).toHaveAttribute('tabindex', '0');
+    // Tab from the button above the grid comes back into it there.
+    await user.tab();
+    expect(rowOf('SHOP-1')).toHaveFocus();
+  });
+
   it('[PLN-010] edits a cell in place; the totals above change and their cells are read again', async () => {
     const user = userEvent.setup();
     const { grid } = renderGrid(saved);

@@ -497,6 +497,13 @@ function GridBody({
     collapsedFromKeys(skeleton, tree, loadCollapsed(store)),
   );
   const setAndKeep = (next: ReadonlySet<number>) => {
+    // A focused row hidden under a closed row hands focus to the highest closed row above it,
+    // which is shown, so the grid keeps its one stop for Tab.
+    let shownAbove = -1;
+    for (let at = tree.parent[focus.row] as number; at < n; at = tree.parent[at] as number) {
+      if (next.has(at)) shownAbove = at;
+    }
+    if (shownAbove >= 0) setFocus({ row: shownAbove, col: -1 });
     setCollapsed(next);
     saveCollapsed(
       store,
