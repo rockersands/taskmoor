@@ -26,6 +26,13 @@ interface Outcome {
 interface Page {
   track: { id: number; key: string; name: string };
   outcomeTypes: string[];
+  manage: {
+    create: boolean;
+    edit: boolean;
+    schedule: boolean;
+    close: boolean;
+    types: { id: number; name: string }[];
+  };
   outcomes: Outcome[];
   next: string | null;
 }
@@ -108,6 +115,7 @@ describe('track outcomes (AGL-024)', () => {
     for (const [name, admin] of [
       ['admin', true],
       ['alice', false],
+      ['viewer', false],
       ['nobody', false],
     ] as const) {
       const row = await database.db
@@ -309,6 +317,127 @@ describe('track outcomes (AGL-024)', () => {
     expect(read.json().track.sections).toEqual({ backlog: false, sprints: false });
     const goal = await outcome('KAN', 'Kanban goal');
     expect((await outcomes('alice', 'KAN')).outcomes.map((o) => o.key)).toEqual([goal.key]);
+  });
+
+  it('[AGL-024] a Kanban track’s outcomes are created, edited, ordered and closed through the API (T-082)', async () => {
+    await newTrack('KMG');
+    const board = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/boards',
+      payload: { name: 'Flow', kind: 'kanban', trackId: tracks.KMG, source: { query: 'track = KMG' } },
+    });
+    expect(board.statusCode, board.body).toBe(201);
+    const viewers = await database.db
+      .selectFrom('role')
+      .select('id')
+      .where('name', '=', 'Viewers')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('track_role_actor')
+      .values({
+        workspace_id: 1,
+        track_id: tracks.KMG as number,
+        role_id: viewers.id,
+        user_id: ids.viewer as number,
+      })
+      .execute();
+
+    // A member may do everything the section offers, with the type that makes an outcome.
+    const offered = (await outcomes('alice', 'KMG')).manage;
+    expect(offered).toEqual({
+      create: true,
+      edit: true,
+      schedule: true,
+      close: true,
+      types: [{ id: await typeAt('KMG', 1), name: 'Outcome' }],
+    });
+    // A viewer may do none of it, and the ticket routes refuse them all the same.
+    expect((await outcomes('viewer', 'KMG')).manage).toMatchObject({
+      create: false,
+      edit: false,
+      schedule: false,
+      close: false,
+    });
+
+    const make = async (who: string, summary: string) =>
+      as(who, {
+        method: 'POST',
+        url: '/api/v1/tickets',
+        payload: { track: 'KMG', summary, ticketTypeId: offered.types[0]?.id },
+      });
+    const refused = await make('viewer', 'Not mine to make');
+    expect(refused.statusCode).toBe(403);
+    const first = (await make('alice', 'Steady flow')).json().ticket as { id: number; key: string };
+    const second = (await make('alice', 'Fewer handoffs')).json().ticket as {
+      id: number;
+      key: string;
+    };
+    expect((await outcomes('alice', 'KMG')).outcomes.map((o) => o.key)).toEqual([
+      first.key,
+      second.key,
+    ]);
+
+    // Edited: its summary and dates.
+    const edited = await as('alice', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${first.id}`,
+      payload: { summary: 'Steadier flow', startDate: '2026-11-16', dueDate: '2026-12-11' },
+    });
+    expect(edited.statusCode, edited.body).toBe(200);
+    // Ordered: the second before the first.
+    const moved = await as('alice', {
+      method: 'PUT',
+      url: `/api/v1/tickets/${second.id}/rank`,
+      payload: { before: first.id },
+    });
+    expect(moved.statusCode, moved.body).toBe(200);
+    const notViewer = await as('viewer', {
+      method: 'PUT',
+      url: `/api/v1/tickets/${first.id}/rank`,
+      payload: { before: second.id },
+    });
+    expect(notViewer.statusCode).toBe(403);
+    expect((await outcomes('alice', 'KMG')).outcomes).toEqual([
+      expect.objectContaining({ key: second.key }),
+      expect.objectContaining({
+        key: first.key,
+        summary: 'Steadier flow',
+        startDate: '2026-11-16',
+        dueDate: '2026-12-11',
+      }),
+    ]);
+
+    // Closed: by the workflow's way into the closed stage, as the ticket page does it.
+    const ways = (
+      await as('alice', { method: 'GET', url: `/api/v1/tickets/${second.id}/transitions` })
+    ).json().transitions as { id: number; to: { stage: string } }[];
+    const closing = ways.find((w) => w.to.stage === 'closed');
+    expect(closing).toBeDefined();
+    const closed = await as('alice', {
+      method: 'POST',
+      url: `/api/v1/tickets/${second.id}/transitions`,
+      payload: { transitionId: closing?.id },
+    });
+    expect(closed.statusCode, closed.body).toBe(200);
+    expect(
+      (await outcomes('alice', 'KMG')).outcomes.map((o) => [o.key, o.status.stage]),
+    ).toEqual([
+      [first.key, 'new'],
+      [second.key, 'closed'],
+    ]);
+
+    // An archived track offers nothing to manage.
+    const archived = await as('admin', {
+      method: 'POST',
+      url: `/api/v1/tracks/${tracks.KMG}/archive`,
+    });
+    expect(archived.statusCode, archived.body).toBe(200);
+    expect((await outcomes('alice', 'KMG')).manage).toMatchObject({
+      create: false,
+      edit: false,
+      schedule: false,
+      close: false,
+    });
   });
 
   it('[AGL-024] pages past 100 outcomes, each once, with an opaque cursor', async () => {
