@@ -171,7 +171,7 @@ export function BaselineCompare({
     listRef.current?.querySelectorAll<HTMLAnchorElement>(':scope > li > a')[at]?.focus();
   });
   const download = async () => {
-    if (!data) return;
+    if (!data || busy) return;
     setBusy(true);
     setProblem(null);
     try {
@@ -242,10 +242,11 @@ export function BaselineCompare({
           {t('baselines.compare.title', { name: baseline.name })}
         </h3>
         <div className="scenario-item-actions">
+          {/* Off while it reads, yet focusable (`aria-disabled`), so focus stays on it. */}
           <button
             type="button"
             className="button-secondary"
-            disabled={!data || busy}
+            aria-disabled={!data || busy || undefined}
             onClick={() => void download()}
           >
             {t('baselines.compare.download')}

@@ -1,6 +1,6 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { BaselineCompare } from './BaselineCompare';
@@ -24,8 +24,10 @@ const KICK_OFF: BaselineRow = {
  * SHOP-1 9, OPS-5 (closed) 3; OPS-4 3 days earlier; SHOP-3 the same; WEB-6 not in it; WEB-7
  * without days then. The plan's end moves from 1 to 4 December.
  */
-function renderCompare(options: FakeBaselineOptions = {}) {
-  const client = fakeBaselineClient(options);
+function renderCompare(
+  options: FakeBaselineOptions = {},
+  client: ReturnType<typeof fakeBaselineClient> = fakeBaselineClient(options),
+) {
   render(
     <I18nProvider locale="en">
       <BaselineCompare
@@ -109,6 +111,49 @@ describe('a baseline compared with the days now (PLN-011)', () => {
     // The button went with the last page: its first ticket takes focus, not the page.
     expect(within(list).getByRole('link', { name: 'OPS-5 Runbook' })).toHaveFocus();
     expect(client.asked.map((a) => a.after ?? null)).toEqual([null, '2']);
+  });
+
+  it('[PLN-011] keeps focus on Download CSV while it reads every page, and saves once', async () => {
+    const user = userEvent.setup();
+    const client = fakeBaselineClient({ page: 2 });
+    const read = client.compare.bind(client);
+    let release = () => {};
+    // The file's second page waits until released, so the button is seen while it reads.
+    client.compare = (planId, id, query) => {
+      const answer = read(planId, id, query);
+      return query.after
+        ? new Promise((resolve) => {
+            release = () => resolve(answer);
+          })
+        : answer;
+    };
+    const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    const saved: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      saved.push(blob);
+      return 'blob:baseline';
+    });
+    URL.revokeObjectURL = vi.fn();
+    try {
+      renderCompare({}, client);
+      await screen.findByRole('list', { name: 'Tickets: Later (3)' });
+      const download = screen.getByRole('button', { name: 'Download CSV' });
+      download.focus();
+      await user.keyboard('{Enter}');
+      // Off, yet focusable: a second press reads nothing more.
+      await waitFor(() => expect(download).toHaveAttribute('aria-disabled', 'true'));
+      expect(download).not.toBeDisabled();
+      expect(download).toHaveFocus();
+      await user.keyboard('{Enter}');
+      expect(client.asked.filter((a) => a.after)).toHaveLength(1);
+      release();
+      await waitFor(() => expect(download).not.toHaveAttribute('aria-disabled'));
+      expect(download).toHaveFocus();
+      expect(saved).toHaveLength(1);
+    } finally {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+    }
   });
 
   it('[PLN-011] stays a list on a phone, never a table', async () => {
