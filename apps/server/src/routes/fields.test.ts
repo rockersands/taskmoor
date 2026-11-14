@@ -94,6 +94,8 @@ describe('custom fields (M1-010)', () => {
   const history = async (t: { id: number }) =>
     (await get('alice', `/api/v1/tickets/${t.id}/history?order=asc`)).json().changes as {
       field: string;
+      fieldName?: string | null;
+      valueType?: string | null;
       from: { value: string | null; display: string | null };
       to: { value: string | null; display: string | null };
     }[];
@@ -284,6 +286,47 @@ describe('custom fields (M1-010)', () => {
     // Labels fields keep their own vocabulary.
     const suggested = await get('alice', `/api/v1/fields/${f.labels.id}/labels?q=BI`);
     expect(suggested.json().labels).toEqual(['billing']);
+  });
+
+  it('[CORE-022] names a custom field in history and says whether its values are days or instants (T-277)', async () => {
+    const day = await field({ name: 'Go-live day', type: 'date' });
+    const moment = await field({ name: 'Cut-over', type: 'datetime' });
+    const note = await field({ name: 'Rollout note', type: 'text' });
+    const gone = await field({ name: 'Audit day', type: 'date' });
+    const made = await ticket('XT', {
+      fields: {
+        [day.id]: '2026-10-13',
+        [moment.id]: '2026-10-13T09:00:00Z',
+        [note.id]: 'Soon',
+        [gone.id]: '2026-11-01',
+      },
+    });
+    // Audit day stops applying to the ticket's track: its rows keep how they read, not the name.
+    const narrowed = await patch(
+      'admin',
+      `/api/v1/fields/${gone.id}/contexts/${gone.contexts[0]?.id}`,
+      { trackIds: [tracks.YT] },
+    );
+    expect(narrowed.statusCode, narrowed.body).toBe(200);
+    const rows = await history(made);
+    const row = (f: FieldJson) => rows.find((r) => r.field === `cf[${f.id}]`);
+    expect(row(day)).toMatchObject({
+      fieldName: 'Go-live day',
+      valueType: 'date',
+      to: { value: '2026-10-13', display: null },
+    });
+    expect(row(moment)).toMatchObject({
+      fieldName: 'Cut-over',
+      valueType: 'datetime',
+      to: { value: '2026-10-13T09:00:00.000Z', display: null },
+    });
+    expect(row(note)).toMatchObject({ fieldName: 'Rollout note', valueType: null });
+    expect(row(gone)).toMatchObject({ fieldName: null, valueType: 'date' });
+    // A system field's row carries neither.
+    const summary = rows.find((r) => r.field === 'summary');
+    expect(summary).toBeDefined();
+    expect(summary).not.toHaveProperty('fieldName');
+    expect(summary).not.toHaveProperty('valueType');
   });
 
   it('[CORE-010] checks values on write: numbers, text length, references and read-only text', async () => {

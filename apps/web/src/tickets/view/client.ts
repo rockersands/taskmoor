@@ -83,6 +83,10 @@ export interface HistoryEntry {
   at: string;
   actor: Person | null;
   field: string;
+  /** A custom field's row: its name, when it applies to the ticket where it is now (T-277). */
+  fieldName?: string | null;
+  /** A custom field's row: its values are calendar days (`date`) or instants (`datetime`). */
+  valueType?: 'date' | 'datetime' | null;
   from: { value: string | null; display: string | null };
   to: { value: string | null; display: string | null };
   transitionId: number | null;

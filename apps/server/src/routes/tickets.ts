@@ -31,6 +31,7 @@ import {
   customChanges,
   customFieldViews,
   type FieldValues,
+  historyFieldOf,
   historyName,
   rememberFieldLabels,
   withoutTrackValues,
@@ -974,6 +975,11 @@ export function ticketRoutes(
     const page = rows.slice(0, q.limit);
     // A comment's row names it by id only, and only for those who may read it (M1-018).
     const hidden = await unreadableComments(request, found.row, page);
+    // A custom field's row says its name and how its values read (T-277).
+    const catalog = page.some((c) => c.field.startsWith('cf['))
+      ? await catalogs.get(request.workspaceId)
+      : null;
+    const at = { trackId: found.row.track_id, ticketTypeId: found.row.ticket_type_id };
     return {
       changes: page
         .filter((c) => !hidden.has(c.id))
@@ -983,6 +989,7 @@ export function ticketRoutes(
           at: c.at.toISOString(),
           actor: c.actor_id === null ? null : { id: c.actor_id, name: c.actor_name ?? '' },
           field: c.field,
+          ...(catalog ? historyFieldOf(catalog, at, c.field) : null),
           from: { value: c.from_value, display: c.from_display },
           to: { value: c.to_value, display: c.to_display },
           transitionId: c.transition_id,

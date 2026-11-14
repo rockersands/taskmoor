@@ -246,6 +246,10 @@ describe('a release’s page (M1-050)', () => {
   });
 
   it('[CORE-016] shows the generated notes, to copy as Markdown or download', async () => {
+    const zone = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+      ...new Intl.DateTimeFormat().resolvedOptions(),
+      timeZone: 'America/Chicago',
+    });
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
@@ -259,13 +263,15 @@ describe('a release’s page (M1-050)', () => {
     await user.click(notes.getByRole('button', { name: 'Copy as Markdown' }));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n\n- CHK-26'));
     expect(await screen.findByText('Release notes copied.')).toBeVisible();
+    // The file's link names the browser's zone, which a download cannot send as a header (T-277).
     expect(notes.getByRole('link', { name: 'Download Markdown' })).toHaveAttribute(
       'href',
-      '/api/v1/releases/1/notes?format=markdown',
+      '/api/v1/releases/1/notes?format=markdown&timeZone=America%2FChicago',
     );
     // Shipped: no way to ship it again, the day it shipped.
     expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
     expect(screen.getByText('Shipped on').nextElementSibling).toHaveTextContent('Oct 1, 2026');
+    zone.mockRestore();
   });
 
   it('[CORE-016] offers no Markdown to copy or download while the notes are empty (D27)', async () => {

@@ -960,6 +960,13 @@
           "field": {
             "type": "string"
           },
+          "fieldName": {
+            "description": "A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "from": {
             "additionalProperties": {},
             "properties": {
@@ -1018,6 +1025,21 @@
                 "type": "null"
               }
             ]
+          },
+          "valueType": {
+            "anyOf": [
+              {
+                "enum": [
+                  "date",
+                  "datetime"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value."
           }
         },
         "required": [

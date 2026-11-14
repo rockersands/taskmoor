@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
-import { dayText, isCalendarDay } from '../i18n/days';
+import { dayText, isCalendarDay, isInstant, momentText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
@@ -309,8 +309,8 @@ function Cell({
   // No one assigned reads 'Unassigned', as the phone's rows say, never a blank cell.
   const unassigned = column === 'assignee' && (value === null || value === undefined);
   const shown =
-    dateTime && typeof value === 'string' && !Number.isNaN(Date.parse(value))
-      ? intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
+    dateTime && isInstant(value)
+      ? momentText(intl, value)
       : editor?.kind === 'date' && isCalendarDay(value)
         ? dayText(intl, value)
         : unassigned
