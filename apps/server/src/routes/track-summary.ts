@@ -12,7 +12,7 @@ import {
   type Widget,
   widgetInput,
 } from '../dashboards/model';
-import { widgetData } from '../dashboards/widgets';
+import { narrowQuery, widgetData } from '../dashboards/widgets';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { COUNT_CAP, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
@@ -34,6 +34,12 @@ import { searchPerson, searchRefusal } from './search';
  *   administer it change it. `PUT` saves it with the version it was read at (none for the first);
  *   `DELETE` goes back to the default. `GET .../summary-layout/widgets/:widgetId` is a widget's data
  *   as the viewer, an empty query meaning the track.
+ *
+ * Members filter the Summary for themselves (T-075a; RPT-006 "view and filter"): `GET .../summary`
+ * and `GET .../summary-layout/widgets/:widgetId` take `?filter=`, a condition in the query language
+ * that every number and widget query must also meet (`narrowQuery`). The filter is the viewer's
+ * own: the web app keeps it in the page's address, the server stores nothing and emits nothing, so
+ * it never changes the shared layout, which only the owner and administrators customize.
  */
 const MAX_INT = 2_147_483_647;
 const trackParam = z
@@ -82,6 +88,8 @@ const statisticQuery = z
 const layoutWidgetParam = z
   .object({ id: trackParam.shape.id, widgetId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/) })
   .strict();
+/** The viewer's own filter (T-075a): a query-language condition; empty means none. */
+const filterQuery = z.object({ filter: z.string().max(2000).optional() }).strict();
 const layoutBody = z
   .object({
     layout: z.enum(LAYOUTS),
@@ -158,12 +166,13 @@ export function registerTrackSummaryRoutes(
     return { track, mayCustomize };
   }
 
-  const widgetContext = (request: FastifyRequest, track: TrackRow) => ({
+  const widgetContext = (request: FastifyRequest, track: TrackRow, filter?: string) => ({
     db,
     catalogs: options.catalogs,
     timeoutMs,
     request,
     track: { key: track.key },
+    ...(filter ? { filter } : {}),
   });
 
   /** The customized Summary as the API says it, or null for the default. */
@@ -337,6 +346,10 @@ export function registerTrackSummaryRoutes(
     if (!request.user) return reply.code(401).send({ error: 'unauthenticated' });
     const p = layoutWidgetParam.safeParse(request.params);
     if (!p.success) return reply.code(404).send({ error: 'not_found' });
+    const q = filterQuery.safeParse(request.query ?? {});
+    if (!q.success) {
+      return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(q.error) });
+    }
     const found = await seenTrack(request, p.data.id);
     if (!found) return reply.code(404).send({ error: 'not_found' });
     const custom = await customLayout(found.track.id);
@@ -345,7 +358,7 @@ export function registerTrackSummaryRoutes(
     try {
       return {
         widget: { id: widget.id, kind: widget.kind },
-        data: await widgetData(widgetContext(request, found.track), widget),
+        data: await widgetData(widgetContext(request, found.track, q.data.filter), widget),
       };
     } catch (error) {
       return searchRefusal(reply as FastifyReply, error, timeoutMs);
@@ -448,6 +461,10 @@ export function registerTrackSummaryRoutes(
     if (!request.user) return reply.code(401).send({ error: 'unauthenticated' });
     const p = trackParam.safeParse(request.params);
     if (!p.success) return reply.code(404).send({ error: 'not_found' });
+    const f = filterQuery.safeParse(request.query ?? {});
+    if (!f.success) {
+      return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(f.error) });
+    }
     const ws = request.workspaceId;
     let lookup = db
       .selectFrom('track')
@@ -465,7 +482,8 @@ export function registerTrackSummaryRoutes(
     }
     try {
       const scope = await boardScope(db, options.catalogs, request);
-      const base = `track = ${track.key}`;
+      // The viewer's own filter (T-075a) is part of every number and of the search it links to.
+      const base = narrowQuery(`track = ${track.key}`, f.data.filter);
       const open = `${base} AND closeReason IS EMPTY`;
       // The values to name: those the viewer's open tickets in the track have.
       const openWhere = await compileQuery(db, scope, open, new Date());

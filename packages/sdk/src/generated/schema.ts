@@ -8,8 +8,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * What this instance is and which clients it works with
-         * @description Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.
+         * What this site is and which clients it works with
+         * @description Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.
          */
         get: operations["getMeta"];
         put?: never;
@@ -202,7 +202,7 @@ export interface paths {
         put?: never;
         /**
          * Start a bulk change
-         * @description Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
+         * @description Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The site limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
          */
         post: operations["createBulkOperation"];
         delete?: never;
@@ -1482,7 +1482,7 @@ export interface components {
             product: "taskmoor";
             signature?: {
                 nonce: string;
-                /** @description Ed25519 over `taskmoor-meta-v1`, the instance id and the nonce, one per line; base64url. */
+                /** @description Ed25519 over `taskmoor-meta-v1`, the site’s id (`instance.id`) and the nonce, one per line; base64url. */
                 value: string;
             };
             signIn: {
@@ -2079,7 +2079,7 @@ export interface operations {
             query?: {
                 /** @description The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. */
                 frontend?: string;
-                /** @description 16 to 128 base64url characters the instance signs, chosen afresh by the caller. */
+                /** @description 16 to 128 base64url characters the site signs, chosen afresh by the caller. */
                 nonce?: string;
             };
             header?: never;
@@ -2088,7 +2088,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The instance. */
+            /** @description The site. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6271,7 +6271,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @description Links are on in the workspace. */
+                        /** @description Links are on for the site. */
                         enabled: boolean;
                         links: components["schemas"]["Link"][];
                         /** @description May this person add and remove links here. */

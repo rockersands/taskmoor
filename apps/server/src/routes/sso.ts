@@ -17,6 +17,7 @@ import {
   type Provider,
   providerConfiguration,
   providerForDomain,
+  publicProvider,
   returnAddress,
   safeReturnTo,
   startAuthorization,
@@ -259,12 +260,12 @@ export function registerSsoRoutes(
   app.get('/api/v1/auth/providers', async (request) => {
     const rows = await db
       .selectFrom('identity_provider')
-      .select(['id', 'name', 'kind'])
+      .select(['id', 'name', 'kind', 'issuer'])
       .where('workspace_id', '=', request.workspaceId)
       .where('enabled', '=', true)
       .orderBy(sql`lower(name)`)
       .execute();
-    return { providers: rows.map((r) => ({ id: r.id, name: r.name, protocol: r.kind })) };
+    return { providers: rows.map(publicProvider) };
   });
 
   // Which sign-in methods an email's domain uses; decided by the domain alone, never by
@@ -280,7 +281,7 @@ export function registerSsoRoutes(
       emailDomain(parsed.data.email),
     );
     return {
-      provider: provider ? { id: provider.id, name: provider.name, protocol: provider.kind } : null,
+      provider: provider ? publicProvider(provider) : null,
       password: !provider?.enforce_sso,
     };
   });

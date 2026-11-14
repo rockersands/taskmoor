@@ -98,6 +98,12 @@ and surfaces (ADR-114) and nothing else.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.
+- **The permission to create tracks goes with the last role** (T-087b; ADR-118). Every take-back
+  (a share taken back, a group left or deleted, a track moved out of a shared group, an erasure)
+  runs through `releaseShares`, which removes the create-tracks grant that came with a role from
+  anyone the roles it removed leave running no track. The change's one event lists it as
+  `createTracksGrantsRemoved` (`track_group.unshared`, `.left`, `.deleted`, `.created` when it
+  takes tracks out of other groups, `.track_moved`, and `user.erased`).
 - **People.** A group goes only to an active person of the workspace other than its owner;
   a deactivated person is refused (`person_inactive`) and gets nothing. A share made before
   someone was deactivated stays, shows them as inactive, and can be taken back as usual. The
@@ -145,12 +151,16 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
   page does; a site administrator's lists every track.
 - Erasure removes the person's groups and the shares they received, after the person is
   deactivated in the erasure's transaction, so they no longer count as running a track. What
-  their groups' shares gave others is taken back by the rules above, and a share that gave the
-  only other person who runs a track refuses the erasure (`last_track_admin`, the whole
-  transaction rolled back): an administrator gives someone else that role first. What the shares
-  they received gave them goes without that check: once deactivated their roles run nothing.
-  Copies they set on others stay, as the others' own; `user.erased` lists the roles that went
-  (`groupAccess`).
+  their groups' shares gave others is taken back by the rules above, except a role that is the
+  last way to run its track: **the erasure goes through and that person keeps the role** (T-205a,
+  the user's decision of 2026-11-13, replacing the first build's `409 last_track_admin`). The
+  share's record goes with the share, so the role is the person's own from then on, as a role
+  given on the People page is (`releaseShares` with `keepLast`); taking it away later is the People
+  page's ordinary rule, which keeps the last one to run a track. An erasure request is never held
+  up by someone else's role. What the shares they received gave them goes without that check:
+  once deactivated their roles run nothing. Copies they set on others stay, as the others' own;
+  `user.erased` lists the roles that went (`groupAccess`) and the roles that stayed with their
+  holders (`groupAccessKept`), and `POST /users/:id/erase` no longer answers `last_track_admin`.
 - The erasure takes the routes' locks in the routes' order before it locks the person's account
   row: the arrangements of the person and of everyone whose group they received, then the tracks
   those shares and the shares of their groups hold roles on. Someone who shared with the person
@@ -171,7 +181,8 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
 ### Events, audit and tokens
 
 - One event per change, `track_group.*`, with ids and names only and the roles a change gave or
-  took (`given`, `removed`). The audit log records those that can change access (`created`,
+  took (`given`, `removed`), and any create-tracks grants that went with them
+  (`createTracksGrantsRemoved`, above). The audit log records those that can change access (`created`,
   `deleted`, `track_moved`, `shared`, `unshared`, `left`, `copied`); renaming, minimizing and ordering
   are a person's own arrangement and are not audited.
 - Every route is read for GET and write otherwise. Sharing gives roles, as the People page does

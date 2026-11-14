@@ -11,6 +11,7 @@ import { SESSION_COOKIE } from '../auth';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { records } from '../import/csv';
 
 const PASSWORD = 'ladder violet harbour';
 
@@ -269,8 +270,15 @@ describe('audit log API (M1-003, IAM-013)', () => {
     expect(csv.statusCode).toBe(200);
     expect(csv.headers['content-type']).toMatch(/^text\/csv/);
     expect(csv.headers['content-disposition']).toMatch(/^attachment; filename="audit-.*\.csv"$/);
-    const lines = csv.body.split('\r\n').filter(Boolean);
+    // The byte-order mark first, once (T-252); then the header.
+    expect([...csv.rawPayload.subarray(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 's'.charCodeAt(0)]);
+    const lines = csv.body.slice(1).split('\r\n').filter(Boolean);
     expect(lines[0]).toBe(CSV_COLUMNS.join(','));
+    // The CSV importer reads the file back as written, the mark taken off.
+    const back = [...records(csv.rawPayload, ',')].map((r) => r.fields);
+    expect(back[0]).toEqual([...CSV_COLUMNS]);
+    expect(back).toHaveLength(lines.length);
+    expect(back.at(-1)?.[6]).toBe(AUDIT_ACTIONS.exported);
     const total = await database.db
       .selectFrom('audit_event')
       .select((eb) => eb.fn.countAll<string>().as('n'))

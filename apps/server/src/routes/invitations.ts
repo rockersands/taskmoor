@@ -14,8 +14,11 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import {
   checkGivingCreateTracks,
+  dropLapsedCreateTracks,
   giveCreateTracks,
   inviterMayGiveCreateTracks,
+  type LapsedCreateTracks,
+  lapsedPayload,
 } from '../authz/create-tracks';
 import {
   inviterStillBacks,
@@ -215,6 +218,19 @@ export function registerInvitationRoutes(
     }
   }
 
+  /**
+   * Whether the person may have an invitation's link in hand (T-053, IAM-027): where the site
+   * sends email only a site administrator may, since a copied link skips the mailbox check;
+   * everyone else's invitations go by email. Without email a link is the only way, for anyone
+   * who may invite.
+   */
+  async function mayCopyLinks(request: FastifyRequest, emailAvailable: boolean) {
+    return !emailAvailable || (await request.authz.isSiteAdmin());
+  }
+
+  const refuseLink = (reply: FastifyReply) =>
+    reply.code(403).send({ error: 'email_invitations_only' });
+
   app.get('/api/v1/tracks/:id/invitations', async (request, reply) => {
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
@@ -279,11 +295,13 @@ export function registerInvitationRoutes(
       .where('g.permission', '=', 'invite_people')
       .limit(1)
       .executeTakeFirst();
+    const emailAvailable = (await mailReady()) !== null;
     return {
       invitations,
       canInvite: await request.authz.can('invite_people', trackId),
       invitingGiven: given !== undefined,
-      emailAvailable: (await mailReady()) !== null,
+      emailAvailable,
+      canCopyLinks: await mayCopyLinks(request, emailAvailable),
     };
   });
 
@@ -424,6 +442,9 @@ export function registerInvitationRoutes(
     const mail = await mailReady();
     if (body.delivery === 'email' && !mail) {
       return reply.code(409).send({ error: 'email_not_set_up' });
+    }
+    if (body.delivery === 'link' && !(await mayCopyLinks(request, mail !== null))) {
+      return refuseLink(reply);
     }
 
     const seen = new Set<string>();
@@ -637,6 +658,9 @@ export function registerInvitationRoutes(
     if (parsed.data.delivery === 'email' && !mail) {
       return reply.code(409).send({ error: 'email_not_set_up' });
     }
+    if (parsed.data.delivery === 'link' && !(await mayCopyLinks(request, mail !== null))) {
+      return refuseLink(reply);
+    }
     const wait = inviterWait(user.id, 1);
     if (wait !== null) return tooMany(reply, wait);
     if (!limiter.take(`invitations:to:${row.email}`, ADDRESS_LIMITS).allowed) {
@@ -757,6 +781,7 @@ export function registerInvitationRoutes(
         .executeTakeFirst();
       if (!marked) return false;
       let roleRemoved = false;
+      let lapsed: LapsedCreateTracks[] = [];
       if (row.granted_user_id !== null) {
         const removed = await trx
           .deleteFrom('track_role_actor')
@@ -767,6 +792,9 @@ export function registerInvitationRoutes(
         roleRemoved = Number(removed.numDeletedRows) > 0;
         // A share may have come to hold it meanwhile: its record goes with the role (IAM-034).
         await keepRole(trx, trackId, row.role_id, row.granted_user_id);
+        // The permission to create tracks that came with a role goes once the person runs no
+        // track any more (T-087b; IAM-033).
+        if (roleRemoved) lapsed = await dropLapsedCreateTracks(trx, ws, [row.granted_user_id]);
       }
       await emit(
         trx,
@@ -774,7 +802,7 @@ export function registerInvitationRoutes(
         {
           type: 'track_invitation.revoked',
           subjectId: trackId,
-          payload: { invitationId, roleRemoved },
+          payload: { invitationId, roleRemoved, ...lapsedPayload(lapsed) },
         },
       );
       return true;

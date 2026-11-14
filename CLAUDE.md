@@ -2,8 +2,8 @@
 
 Taskmoor (written taskmoor in handles and identifiers; "Tracksmith" was the codename) is an
 open-source, self-hostable work tracker with every premium feature included. Claude writes the
-code; the user decides product questions. Start every session by reading `HANDOFF.md`, then
-`STATUS.md`.
+code; the user decides product questions. Start every session by reading `COORDINATION.md` (two
+sessions work at once and claim work there), then `HANDOFF.md`, then `STATUS.md`.
 
 ## Identity (non-negotiable)
 

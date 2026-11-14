@@ -313,28 +313,21 @@ describe('who may create tracks (IAM-033)', () => {
       expect(await grantsOf('ben')).toEqual([]);
     });
 
-    it('[IAM-033] removing the role leaves the grant, which a site administrator removes', async () => {
-      expect((await take('Administrators', 'dee')).statusCode).toBe(204);
+    it('[IAM-033] taking the role away takes the grant that came with it, in the role’s one event', async () => {
       const [grant] = await grantsOf('dee');
       expect(grant).toBeDefined();
-      expect(await mayCreate('dee')).toBe(true);
-      // The Permissions page lists it with the person's name, and removes it.
-      const list = await as('admin', { method: 'GET', url: '/api/v1/global-grants' });
-      expect(list.json().grants).toContainEqual(
-        expect.objectContaining({
-          id: grant?.id,
-          permission: 'create_local_tracks',
-          grantee: 'user',
-          userId: ids.dee,
-          userName: 'dee',
-        }),
-      );
-      const removed = await as('admin', {
-        method: 'DELETE',
-        url: `/api/v1/global-grants/${grant?.id}`,
-      });
-      expect(removed.statusCode).toBe(204);
+      const before = await eventCount();
+      expect((await take('Administrators', 'dee')).statusCode).toBe(204);
+      expect(await eventCount()).toBe(before + 1);
+      expect(await grantsOf('dee')).toEqual([]);
       expect(await mayCreate('dee')).toBe(false);
+      expect((await createLocal('dee')).statusCode).toBe(403);
+      expect((await lastEvent('track_role.actor_removed')).payload).toEqual({
+        roleId: roles.Administrators,
+        userId: ids.dee,
+        groupId: null,
+        createTracksGrantsRemoved: [{ userId: ids.dee, grantId: grant?.id }],
+      });
     });
 
     it('[IAM-033] the grant is audited with the role', async () => {
@@ -506,6 +499,295 @@ describe('who may create tracks (IAM-033)', () => {
           })
           .execute();
       }
+    });
+  });
+
+  /**
+   * T-087b, the user's decision of 2026-11-13: losing the role takes the permission that came
+   * with it, once the person runs no track; a grant given separately stays (ADR-118).
+   */
+  describe('losing the role (T-087b)', () => {
+    let two: number;
+    let runners: number;
+
+    const giveOn = (on: number, user: string, createTracks?: boolean) =>
+      as('admin', {
+        method: 'PUT',
+        url: `/api/v1/tracks/${on}/roles/${roles.Administrators}/users/${ids[user]}`,
+        ...(createTracks === undefined ? {} : { payload: { createTracks } }),
+      });
+    const takeOn = (on: number, user: string) =>
+      as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/tracks/${on}/roles/${roles.Administrators}/users/${ids[user]}`,
+      });
+
+    beforeAll(async () => {
+      for (const name of ['lia', 'max', 'ned', 'ora', 'pia', 'quy']) await addUser(name);
+      const policy = await database.db
+        .selectFrom('access_policy')
+        .select('id')
+        .where('name', '=', 'Default access policy')
+        .executeTakeFirstOrThrow();
+      two = (
+        await database.db
+          .insertInto('track')
+          .values({ workspace_id: 1, key: 'TWO', name: 'Second', access_policy_id: policy.id })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      // Someone else runs TWO throughout, so every role below may be taken from it.
+      expect((await giveOn(two, 'member')).statusCode).toBe(204);
+      const group = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/groups',
+        payload: { name: 'Runners' },
+      });
+      expect(group.statusCode, group.body).toBe(201);
+      runners = group.json().group.id;
+    });
+
+    it('[IAM-033] a permission given separately stays when the role goes', async () => {
+      // A site administrator gives Lia the permission on the Permissions page first.
+      const given = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/global-grants',
+        payload: { permission: 'create_local_tracks', grantee: 'user', userId: ids.lia },
+      });
+      expect(given.statusCode, given.body).toBe(201);
+      // Ticking the box then writes nothing: she already holds it.
+      expect((await giveOn(track, 'lia', true)).statusCode).toBe(204);
+      expect((await lastEvent('track_role.actor_added')).payload).not.toHaveProperty(
+        'createTracksGrantId',
+      );
+      expect((await takeOn(track, 'lia')).statusCode).toBe(204);
+      expect((await lastEvent('track_role.actor_removed')).payload).not.toHaveProperty(
+        'createTracksGrantsRemoved',
+      );
+      const [grant] = await grantsOf('lia');
+      expect(grant).toBeDefined();
+      expect(await mayCreate('lia')).toBe(true);
+      // The Permissions page lists it with her name, and a site administrator removes it.
+      const list = await as('admin', { method: 'GET', url: '/api/v1/global-grants' });
+      expect(list.json().grants).toContainEqual(
+        expect.objectContaining({
+          id: grant?.id,
+          permission: 'create_local_tracks',
+          grantee: 'user',
+          userId: ids.lia,
+          userName: 'lia',
+        }),
+      );
+      const removed = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/global-grants/${grant?.id}`,
+      });
+      expect(removed.statusCode).toBe(204);
+      expect(await mayCreate('lia')).toBe(false);
+    });
+
+    it('[IAM-033] the grant stays while the person runs another track, and goes with the last', async () => {
+      expect((await giveOn(track, 'max', true)).statusCode).toBe(204);
+      const [grant] = await grantsOf('max');
+      expect(grant).toBeDefined();
+      expect((await giveOn(two, 'max')).statusCode).toBe(204);
+      expect((await takeOn(track, 'max')).statusCode).toBe(204);
+      expect(await grantsOf('max')).toHaveLength(1);
+      expect(await mayCreate('max')).toBe(true);
+      expect((await takeOn(two, 'max')).statusCode).toBe(204);
+      expect(await grantsOf('max')).toEqual([]);
+      const event = await database.db
+        .selectFrom('domain_event')
+        .select(['subject_id', 'payload'])
+        .where('type', '=', 'track_role.actor_removed')
+        .orderBy('id', 'desc')
+        .executeTakeFirstOrThrow();
+      expect(event).toEqual({
+        subject_id: String(two),
+        payload: expect.objectContaining({
+          createTracksGrantsRemoved: [{ userId: ids.max, grantId: grant?.id }],
+        }),
+      });
+    });
+
+    it('[IAM-033] running a track only through a group: leaving the group, or the group losing the role, takes it', async () => {
+      // The group runs TWO; Ned and Ora are in it, and each was given the permission with a
+      // role on MGR that is then taken away.
+      const toGroup = await as('admin', {
+        method: 'PUT',
+        url: `/api/v1/tracks/${two}/roles/${roles.Administrators}/groups/${runners}`,
+      });
+      expect(toGroup.statusCode, toGroup.body).toBe(204);
+      for (const name of ['ned', 'ora']) {
+        const joined = await as('admin', {
+          method: 'PUT',
+          url: `/api/v1/groups/${runners}/members/${ids[name]}`,
+        });
+        expect(joined.statusCode, joined.body).toBeLessThan(300);
+        expect((await giveOn(track, name, true)).statusCode).toBe(204);
+        expect((await takeOn(track, name)).statusCode).toBe(204);
+        // Still running TWO through the group: the grant stays.
+        expect(await grantsOf(name)).toHaveLength(1);
+      }
+      const [nedGrant] = await grantsOf('ned');
+      const [oraGrant] = await grantsOf('ora');
+      const left = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/groups/${runners}/members/${ids.ned}`,
+      });
+      expect(left.statusCode).toBe(204);
+      expect(await grantsOf('ned')).toEqual([]);
+      expect((await lastEvent('group.member_removed')).payload).toEqual({
+        userId: ids.ned,
+        createTracksGrantsRemoved: [{ userId: ids.ned, grantId: nedGrant?.id }],
+      });
+      expect(await grantsOf('ora')).toHaveLength(1);
+      // The group's role on TWO goes: Ora runs nothing now.
+      const taken = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/tracks/${two}/roles/${roles.Administrators}/groups/${runners}`,
+      });
+      expect(taken.statusCode, taken.body).toBe(204);
+      expect(await grantsOf('ora')).toEqual([]);
+      expect((await lastEvent('track_role.actor_removed')).payload).toEqual({
+        roleId: roles.Administrators,
+        userId: null,
+        groupId: runners,
+        createTracksGrantsRemoved: [{ userId: ids.ora, grantId: oraGrant?.id }],
+      });
+    });
+
+    it('[IAM-033] revoking an invitation that gave the role at once takes the grant with it', async () => {
+      const made = await invite('admin', { addresses: ['quy@example.com'], createTracks: true });
+      expect(made.statusCode, made.body).toBe(201);
+      const [grant] = await grantsOf('quy');
+      expect(grant).toBeDefined();
+      const revoked = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/tracks/${track}/invitations/${made.json().results[0].invitationId}`,
+      });
+      expect(revoked.statusCode, revoked.body).toBe(204);
+      expect(await grantsOf('quy')).toEqual([]);
+      expect((await lastEvent('track_invitation.revoked')).payload).toMatchObject({
+        roleRemoved: true,
+        createTracksGrantsRemoved: [{ userId: ids.quy, grantId: grant?.id }],
+      });
+    });
+
+    it('[IAM-033] an invitation sent again once the address has an account gives the grant, and losing the role takes it', async () => {
+      const made = await invite('admin', { addresses: ['rex@example.net'], createTracks: true });
+      expect(made.statusCode, made.body).toBe(201);
+      const invitationId = made.json().results[0].invitationId as number;
+      // No account yet, so nothing was given. Rex then gets one another way.
+      const rex = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: 'rex@example.net',
+          name: 'rex',
+          password_hash: await passwords.hash(PASSWORD),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      ids.rex = rex.id;
+      expect(await grantsOf('rex')).toEqual([]);
+      const resent = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/tracks/${track}/invitations/${invitationId}/resend`,
+        payload: { delivery: 'link' },
+      });
+      expect(resent.statusCode, resent.body).toBe(200);
+      const [grant] = await grantsOf('rex');
+      expect(grant).toBeDefined();
+      expect((await lastEvent('track_invitation.resent')).payload).toMatchObject({
+        invitationId,
+        createTracksGrantId: grant?.id,
+      });
+      // The role taken on the People page, Rex runs nothing: the grant the resend gave goes.
+      expect((await takeOn(track, 'rex')).statusCode).toBe(204);
+      expect(await grantsOf('rex')).toEqual([]);
+      expect((await lastEvent('track_role.actor_removed')).payload).toMatchObject({
+        createTracksGrantsRemoved: [{ userId: rex.id, grantId: grant?.id }],
+      });
+    });
+
+    it('[IAM-033] a track every signed-in person runs counts as running one: the grant stays', async () => {
+      await addUser('sol');
+      // OPS's own policy gives administer_track to every signed-in person.
+      const open = await database.db
+        .insertInto('access_policy')
+        .values({ workspace_id: 1, name: 'Everyone runs' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const grantRow = await database.db
+        .insertInto('access_grant')
+        .values({
+          workspace_id: 1,
+          policy_id: open.id,
+          permission: 'administer_track',
+          grantee: 'any_user',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await database.db
+        .insertInto('track')
+        .values({ workspace_id: 1, key: 'OPS', name: 'Operations', access_policy_id: open.id })
+        .execute();
+      try {
+        expect((await giveOn(track, 'sol', true)).statusCode).toBe(204);
+        const [grant] = await grantsOf('sol');
+        expect(grant).toBeDefined();
+        expect((await takeOn(track, 'sol')).statusCode).toBe(204);
+        // Sol still runs OPS, as everyone does: still a manager, the grant stays.
+        expect(await grantsOf('sol')).toEqual([grant]);
+        expect((await lastEvent('track_role.actor_removed')).payload).not.toHaveProperty(
+          'createTracksGrantsRemoved',
+        );
+      } finally {
+        // The other tests count on nobody running a track through everyone.
+        await database.db.deleteFrom('access_grant').where('id', '=', grantRow.id).execute();
+      }
+    });
+
+    it('[IAM-033] deactivating a person takes the grant that came with a role, audited', async () => {
+      expect((await giveOn(track, 'pia', true)).statusCode).toBe(204);
+      const [grant] = await grantsOf('pia');
+      expect(grant).toBeDefined();
+      const deactivated = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/users/${ids.pia}/deactivate`,
+      });
+      expect(deactivated.statusCode, deactivated.body).toBe(200);
+      expect(await grantsOf('pia')).toEqual([]);
+      expect((await lastEvent('user.deactivated')).payload).toEqual({
+        endedSessions: expect.any(Number),
+        createTracksGrantsRemoved: [{ userId: ids.pia, grantId: grant?.id }],
+      });
+      // The audit log records each removal with the change that made it.
+      const bus = new EventBus(database.db);
+      registerSubscribers(bus, { db: database.db });
+      const runner = new JobRunner(database.db, 'create-tracks-lost-test');
+      bus.attach(runner);
+      while ((await bus.relayOnce()) > 0) {}
+      while ((await runner.runOnce()) > 0) {}
+      const records = await database.db
+        .selectFrom('audit_event')
+        .select(['action', 'details'])
+        .where('action', 'in', ['user.deactivated', 'group.member_removed'])
+        .execute();
+      expect(records).toContainEqual({
+        action: 'user.deactivated',
+        details: expect.objectContaining({
+          createTracksGrantsRemoved: [{ userId: ids.pia, grantId: grant?.id }],
+        }),
+      });
+      expect(records).toContainEqual({
+        action: 'group.member_removed',
+        details: expect.objectContaining({
+          userId: ids.ned,
+          createTracksGrantsRemoved: [expect.objectContaining({ userId: ids.ned })],
+        }),
+      });
     });
   });
 });

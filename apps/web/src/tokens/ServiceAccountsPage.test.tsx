@@ -92,7 +92,7 @@ async function openPage(extra: Record<string, Handler> = {}) {
   window.location.hash = '#/admin/service-accounts';
   render(<App session={ADMIN} />);
   await screen.findByRole('heading', { level: 1, name: 'Service accounts' });
-  const list = within(screen.getByRole('region', { name: 'Service accounts of this instance' }));
+  const list = within(screen.getByRole('region', { name: 'Service accounts of this site' }));
   await list.findAllByRole('listitem');
   return { calls, list };
 }

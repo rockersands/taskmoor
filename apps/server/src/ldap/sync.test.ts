@@ -316,6 +316,74 @@ describe('directory sync (M1-082)', () => {
     });
   });
 
+  it('[IAM-033] a person the directory disables loses the create-tracks grant that came with a role, for good', async () => {
+    // T-087b (ADR-118): as a deactivation in Administration does; one given separately stays.
+    const fake = await server({ flavour: 'openldap' });
+    const kit = fake.addUser({ username: 'kit-grant' });
+    const lee = fake.addUser({ username: 'lee-grant' });
+    const id = await directory(fake);
+    await sync(id);
+    const k = (await account('kit-grant@example.com'))?.id as number;
+    const l = (await account('lee-grant@example.com'))?.id as number;
+    const grant = (userId: number) =>
+      db
+        .insertInto('global_grant')
+        .values({
+          workspace_id: 1,
+          permission: 'create_local_tracks',
+          grantee: 'user',
+          user_id: userId,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+    const grantsOf = (userId: number) =>
+      db
+        .selectFrom('global_grant')
+        .select('id')
+        .where('permission', '=', 'create_local_tracks')
+        .where('user_id', '=', userId)
+        .execute();
+    // Kit was given it with a manager role, since gone; Lee on the Permissions page.
+    const kits = await grant(k);
+    const lees = await grant(l);
+    await db
+      .insertInto('domain_event')
+      .values({
+        workspace_id: 1,
+        type: 'track_role.actor_added',
+        subject_type: 'track',
+        subject_id: '1',
+        payload: JSON.stringify({
+          roleId: 1,
+          userId: k,
+          groupId: null,
+          createTracksGrantId: kits.id,
+        }),
+      })
+      .execute();
+
+    fake.setDisabled(kit, true);
+    fake.setDisabled(lee, true);
+    const run = await sync(id);
+    expect((await account('kit-grant@example.com'))?.deactivated_at).not.toBeNull();
+    expect(await grantsOf(k)).toEqual([]);
+    expect(await grantsOf(l)).toEqual([{ id: lees.id }]);
+    const updates = (await events(run.runId)).filter((e) => e.type === 'directory.user_updated');
+    expect(updates.find((e) => e.subject_id === String(k))?.payload).toMatchObject({
+      changes: { active: { from: true, to: false } },
+      createTracksGrantsRemoved: [{ userId: k, grantId: kits.id }],
+    });
+    expect(updates.find((e) => e.subject_id === String(l))?.payload).not.toHaveProperty(
+      'createTracksGrantsRemoved',
+    );
+
+    // Enabled again, Kit is back without it.
+    fake.setDisabled(kit, false);
+    await sync(id);
+    expect((await account('kit-grant@example.com'))?.deactivated_at).toBeNull();
+    expect(await grantsOf(k)).toEqual([]);
+  });
+
   it('[IAM-005] never deactivates break-glass accounts or the last active site administrator', async () => {
     const fake = await server({ flavour: 'active_directory' });
     const hash = 'pepper:test:not-a-real-hash';

@@ -18,7 +18,7 @@ install and needs nothing extra.
   as a person who approves it (below). Every tool runs the REST API as that token, so the token's scopes, the owner's permissions, field rules, ticket
   history and notifications apply exactly as for any other API call. An agent can never do
   more than the token could.
-- Administrators choose one tool profile for the whole instance, and may restrict which MCP
+- Administrators choose one tool profile for the whole site, and may restrict which MCP
   clients may connect.
 - Every tool call is written to the audit log with the client, the person and the tool.
 

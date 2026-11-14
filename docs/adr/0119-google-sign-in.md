@@ -99,7 +99,19 @@ became "Other ways to sign in". An invitation's page asks at once whether a prov
 address, decided by its domain alone so that it says nothing about accounts; if so it opens at signing
 in, with the provider emphasised and choosing a password one click away.
 
-The button stays text: "Sign in with Google". No Google logo ships in this repository.
+**The button is Google's own** (the user's decision of 2026-11-13, T-061, which differs from Claude's
+recommendation of a plain button). A provider whose issuer is Google's (the same test the server
+already uses for `prompt=select_account` and for believing Google only about Gmail and hosted domains)
+is marked `brand: "google"` in the public provider list and in discovery, and the sign-in page draws
+Google's button for it, as Google's sign-in branding guidelines describe: the four-colour "G" at the
+left, "Sign in with Google" in the person's language whatever name the operator gave the provider
+(also as the form's submit button where a Google provider requires single sign-on for the domain),
+Google's light or dark look with the skin, 40 px high and the pill shape, and a finger's height on
+touch. Its colours are tokens of each skin (`--color-google-*`) and stay Google's. The "G" is an inline
+SVG written from Google's published four-colour geometry, not a file downloaded from Google; it is to
+be compared with Google's official asset before a release. The label asks for Roboto Medium, which
+the page does not load: where Roboto is not installed the skin's own sans-serif stands in. Earlier
+the button was text only and no logo shipped.
 
 ### Break-glass
 
@@ -143,12 +155,12 @@ Nothing changes, and nothing needed to: password sign-in never contacts a provid
 - A person who has a live invitation and goes to the sign-in page rather than following the link gets
   an account and no role yet: the role still comes through the link, as ADR-118 says.
 - Google's sign-in branding guidelines ask for its "G" on the button, and say an app must follow them
-  to complete verification. Taskmoor's text button does not, so an operator seeking verification may
-  meet this. Whether to ship the logo is an open question for the user.
+  to complete verification. The button now follows them (T-061), but its "G" is drawn here rather than
+  taken from Google's download, and without Roboto loaded, so an operator seeking verification may be
+  asked about either.
 - Google's pages disagree on a user cap: one ties 100 new users before verification to sensitive or
   restricted scopes, which Taskmoor does not ask for; another speaks of a 100-user cap for unverified
   apps in general. Neither says what holds for sign-in alone, and no test can show it. The guide says
   so.
 
-Revisit if the real test shows an `iss` without a scheme, if sites want Gmail spellings matched, or if
-the user wants the logo on the button.
+Revisit if the real test shows an `iss` without a scheme, or if sites want Gmail spellings matched.

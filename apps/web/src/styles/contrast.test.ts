@@ -61,6 +61,8 @@ const TEXT: [string, string[]][] = [
   ['color-blue', ['color-blue-soft']],
   ['color-blush', ['color-blush-soft']],
   ['color-butter', ['color-butter-soft']],
+  // Google's sign-in button (T-061): its label on its own fill.
+  ['color-google-text', ['color-google-fill']],
 ];
 const NON_TEXT: [string, string[]][] = [
   ['color-field-border', ['color-surface', 'color-surface-raised']],

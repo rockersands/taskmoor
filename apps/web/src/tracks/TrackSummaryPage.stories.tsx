@@ -141,3 +141,67 @@ export const OnATouchScreen: Story = {
     );
   },
 };
+
+/** The address of a Summary a person filtered for themselves (T-075a). */
+const filtered = (filter: string) => () => {
+  window.history.replaceState(null, '', `#/tracks/SHOP?${new URLSearchParams({ filter })}`);
+  return () => window.history.replaceState(null, '', '#/');
+};
+
+/**
+ * A member's own filter (RPT-006 "view and filter"; T-075a): every number counts only their
+ * tickets, and the page says plainly that no one else sees it.
+ */
+export const FilteredForThemselves: Story = {
+  beforeEach: filtered('assignee = currentUser()'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: '8' })).toBeVisible();
+    await expect(
+      canvas.getByText('Showing only the tickets that match assignee = currentUser().'),
+    ).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Clear the filter' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Customize' })).toBeNull();
+  },
+};
+
+/** A customized Summary, filtered: its widgets narrow too. */
+export const CustomizedAndFiltered: Story = {
+  beforeEach: filtered('type = Bug'),
+  args: { client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('article', { name: 'Open bugs' })).toBeVisible();
+    await expect(canvas.getByText('Showing only the tickets that match type = Bug.')).toBeVisible();
+  },
+};
+
+/** The filter on a phone: its buttons under the field, nothing sideways. */
+export const FilteredOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: filtered('assignee = currentUser()'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('link', { name: '8' });
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** A finger reaches the filter's field and each of its buttons (ADR-033). */
+export const FilterOnATouchScreen: Story = {
+  beforeEach: () => {
+    const touch = asOnATouchScreen();
+    const address = filtered('assignee = currentUser()')();
+    return () => {
+      touch();
+      address();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: '8' });
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.summary-filter input', '.summary-filter button']),
+    ).toEqual([]);
+  },
+};

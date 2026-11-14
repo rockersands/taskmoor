@@ -74,8 +74,11 @@ group only**:
 - **Take back** (or deleting the group) removes only the roles the share gave. A role the person
   already had, or that someone gives them afterwards on the track's page, by an invitation or by
   an import, stays. A role two shared groups gave stays until both are taken back.
+- If what you take back was the last track the person ran, a permission to create tracks they got
+  with a role goes too ([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)).
 - Nothing is taken back that would leave a track with nobody to run it; give someone else that
-  role on the track first.
+  role on the track first. If the group's owner is erased, such a role stays with the person
+  instead, as their own (see [Erasing a person](people-and-groups.md#erasing-a-person)).
 - Only active people can receive a group. A person deactivated after you shared stays listed as
   deactivated, and you can still take the share back.
 
@@ -444,11 +447,11 @@ and has its own **Limit** field, which takes a whole number with or without sepa
 ### Attachment storage
 
 Below the guardrails, **Attachment storage** shows how much the attachments take in the whole
-workspace and for the person who uploaded most, against two storage quotas. A new installation
-starts with 1 TiB for the workspace and 20 GiB a person; an installation upgraded from a version
+site and for the person who uploaded most, against two storage quotas. A new installation
+starts with 1 TiB for the site and 20 GiB a person; an installation upgraded from a version
 without quotas starts with none. Change them here, or clear a field to remove that quota.
 
-- **Workspace quota (GiB)** limits all attachments together; **Quota per person (GiB)** limits
+- **Site quota (GiB)** limits all attachments together; **Quota per person (GiB)** limits
   what each person uploads. Leave a field empty for no quota, then **Save the quotas**.
 - An upload that would pass a quota is refused with `413 storage_quota_exceeded`, naming the
   quota (`person` or `workspace`), the limit, the usage and the room left, in bytes. The ticket

@@ -24,12 +24,12 @@ function renderSection(settings: StorageSettings = STORAGE, locale: Locale = 'en
 }
 
 describe('storage quotas on the usage page (M1-118, ASVS 12.1.3)', () => {
-  it('[CORE-021] shows what the workspace and its heaviest uploader hold against the quotas', async () => {
+  it('[CORE-021] shows what the site and its heaviest uploader hold against the quotas', async () => {
     renderSection();
     expect(await screen.findByText('42 GB of 100 GB, in 1,234 files')).toBeVisible();
     expect(screen.getByText('Most used: 9.5 GB of 10 GB, by Sam Rivera')).toBeVisible();
     expect(
-      screen.getByRole('meter', { name: 'The workspace: 42 percent of its quota used' }),
+      screen.getByRole('meter', { name: 'The site: 42 percent of its quota used' }),
     ).toBeVisible();
     expect(
       screen.getByRole('meter', { name: 'Sam Rivera: 95 percent of the quota per person used' }),
@@ -41,14 +41,14 @@ describe('storage quotas on the usage page (M1-118, ASVS 12.1.3)', () => {
     expect(await screen.findByText('42 GB in 1,234 files; no quota')).toBeVisible();
     expect(screen.getByText('Most used: 9.5 GB, by Sam Rivera; no quota')).toBeVisible();
     expect(screen.queryByRole('meter')).toBeNull();
-    expect(screen.getByLabelText('Workspace quota (GiB)')).toHaveValue(null);
+    expect(screen.getByLabelText('Site quota (GiB)')).toHaveValue(null);
   });
 
   it('[CORE-021] saves quotas in bytes; an empty field takes a quota off; a bad one is refused', async () => {
     const user = userEvent.setup();
     const client = renderSection();
     const form = await screen.findByRole('form', { name: 'Change the storage quotas' });
-    const workspace = within(form).getByLabelText('Workspace quota (GiB)');
+    const workspace = within(form).getByLabelText('Site quota (GiB)');
     const person = within(form).getByLabelText('Quota per person (GiB)');
     expect(workspace).toHaveValue(100);
     await user.clear(workspace);

@@ -21,7 +21,7 @@ function stubApi(answer: (call: Call) => Response) {
 }
 
 async function fillAdminForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Instance name'), 'Acme Tracker');
+  await user.type(screen.getByLabelText('Site name'), 'Acme Tracker');
   await user.type(screen.getByLabelText('Name'), 'Kalo');
   await user.type(screen.getByLabelText('Email'), 'kalo@example.com');
   await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');
@@ -191,7 +191,7 @@ describe('setup page', () => {
     window.location.hash = '#/setup?token=t';
     render(<App />);
     await screen.findByRole('button', { name: 'Finish setup' });
-    await user.type(screen.getByLabelText('Instance name'), 'Acme');
+    await user.type(screen.getByLabelText('Site name'), 'Acme');
     await user.type(screen.getByLabelText('Name'), 'Kalo');
     await user.type(screen.getByLabelText('Email'), 'kalo@example.com');
     await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');

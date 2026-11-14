@@ -3,9 +3,9 @@ import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * Multi-track end to end (T-088; PLN-001, PLN-012; ADR-122): two tracks of their own, an outcome
+ * Plans end to end (T-088; PLN-001, PLN-012; ADR-122): two tracks of their own, an outcome
  * with a dated feature in one and a dated ticket in the other, and a plan over both. The sidebar
- * lists Multi-track; the plan's Summary counts both tracks and links each number to its search;
+ * lists Plans; the plan's Summary counts both tracks and links each number to its search;
  * its Timeline rolls the outcome up, and a bar dragged a week later (on a phone, its side panel)
  * moves the ticket's dates through the ticket's own route; a track filter in the address narrows
  * the view. No serious axe issue and no sideways page scroll, on a phone too. It uses the
@@ -96,11 +96,11 @@ test('[PLN-012] a plan over two tracks: its numbers, its timeline and a ticket r
   expect(made.status(), await made.text()).toBe(201);
   const planId = (await made.json()).plan.id as number;
 
-  // Multi-track is in the sidebar, under "Plan and track".
+  // Plans is in the sidebar, under "Plan and track".
   await page.clock.setFixedTime(EVENING);
   await page.goto(`${BASE}/#/home`);
   if (isMobile) await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('link', { name: 'Multi-track' }).click();
+  await page.getByRole('link', { name: 'Plans', exact: true }).click();
   await page.getByRole('link', { name: `Launch ${stamp}` }).click();
 
   // The Summary: both tracks counted, each number a search.

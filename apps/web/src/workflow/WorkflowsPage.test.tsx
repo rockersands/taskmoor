@@ -89,7 +89,7 @@ const fileOf = (content: unknown, name = 'support.workflow.json') =>
   });
 
 const workflowItem = async (name: string) => {
-  const list = await screen.findByRole('list', { name: 'Workflows in this workspace' });
+  const list = await screen.findByRole('list', { name: 'Workflows on this site' });
   const item = within(list)
     .getAllByRole('listitem')
     .find((li) => within(li).queryByRole('link', { name }));
@@ -215,7 +215,7 @@ describe('workflows administration (M1-030)', () => {
     );
     expect(await screen.findByText('Deleted Support.')).toBeVisible();
     expect(calls.some((c) => c.method === 'DELETE' && c.path === '/workflows/2')).toBe(true);
-    expect(screen.getByRole('heading', { name: 'Workflows in this workspace' })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Workflows on this site' })).toHaveFocus();
   });
 
   it('[CORE-014] adds, renames and orders statuses, and explains why one in use stays', async () => {

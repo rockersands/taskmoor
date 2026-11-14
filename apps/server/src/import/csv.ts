@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { bomLength } from '@taskmoor/webconfig';
 import { z } from 'zod';
 import type {
   Command,
@@ -207,8 +208,8 @@ export function readRecord(
 /** Every record of a file, blank lines left out. */
 export function* records(buf: Buffer, delimiter: string): Generator<CsvRecord> {
   const d = delimiter.charCodeAt(0);
-  // A byte order mark is not part of the first header.
-  let pos = buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf ? 3 : 0;
+  // A byte-order mark is not part of the first header: every export writes one (T-252).
+  let pos = bomLength(buf);
   let line = 1;
   for (;;) {
     const read = readRecord(buf, pos, d);

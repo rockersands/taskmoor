@@ -1,9 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import type { TrackOutcome } from './client';
-import { fakeTrackClient, outcomePages, SHOP_OUTCOMES } from './fixtures';
+import { fakeTrackClient, managedOutcomes, outcomePages, SHOP_OUTCOMES } from './fixtures';
 import { TrackLayout } from './TrackLayout';
 import { TrackOutcomesPage } from './TrackOutcomesPage';
+
+/** The page over outcomes its manage panel changes, fresh each time it is drawn (T-082). */
+function Managed({ outcomes = SHOP_OUTCOMES }: { outcomes?: TrackOutcome[] }) {
+  const [state] = useState(() => {
+    const made = managedOutcomes(outcomes);
+    const client = fakeTrackClient();
+    client.outcomes = made.outcomes;
+    return { client, manager: made.manager };
+  });
+  return <TrackOutcomesPage trackKey="SHOP" client={state.client} manager={state.manager} />;
+}
 
 const withOutcomes = (outcomes: TrackOutcome[], size = 100, types = ['Outcome']) => {
   const client = fakeTrackClient();
@@ -105,5 +118,84 @@ export const OnAPhone: Story = {
     ).toBeVisible();
     const page = canvasElement.ownerDocument.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/**
+ * The manage panel, on any track type (T-082): a new outcome, then one moved up, edited and
+ * closed, each through the ticket routes.
+ */
+export const Managing: Story = {
+  render: () => <Managed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage outcomes' }));
+    const panel = canvas.getByRole('region', { name: 'Manage outcomes' });
+    await userEvent.type(within(panel).getByLabelText('Summary'), 'Loyalty points{Enter}');
+    await expect(await canvas.findByText('Created SHOP-60.')).toBeVisible();
+    const row = () => canvas.getByRole('group', { name: 'Manage SHOP-60' });
+    await userEvent.click(within(row()).getByRole('button', { name: 'Move up' }));
+    await expect(await canvas.findByText('Moved SHOP-60 up.')).toBeVisible();
+    await userEvent.click(within(row()).getByRole('button', { name: 'Edit' }));
+    await expect(canvas.getByRole('form', { name: 'Edit SHOP-60' })).toBeVisible();
+  },
+};
+
+/** Closing asks how when the workflow offers more than one way. */
+export const ManagingAClose: Story = {
+  render: () => <Managed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage outcomes' }));
+    await userEvent.click(
+      within(canvas.getByRole('group', { name: 'Manage SHOP-51' })).getByRole('button', {
+        name: 'Close',
+      }),
+    );
+    await expect(await canvas.findByText('Closed SHOP-51.')).toBeVisible();
+  },
+};
+
+/** No outcomes yet, for someone who may create one: the panel is a press away. */
+export const EmptyForAManager: Story = {
+  render: () => <Managed outcomes={[]} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'New outcome' }));
+    await expect(canvas.getByRole('textbox', { name: 'Summary' })).toHaveFocus();
+  },
+};
+
+/** The panel on a phone: the tools wrap under each outcome, nothing scrolls sideways. */
+export const ManagingOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: () => <Managed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage outcomes' }));
+    await userEvent.click(
+      within(canvas.getByRole('group', { name: 'Manage SHOP-50' })).getByRole('button', {
+        name: 'Edit',
+      }),
+    );
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** A finger reaches every tool of the panel (ADR-033). */
+export const ManagingOnATouchScreen: Story = {
+  beforeEach: asOnATouchScreen,
+  render: () => <Managed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage outcomes' }));
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.track-outcomes-new input',
+        '.track-outcomes-new button',
+        '.track-outcome-tools button',
+      ]),
+    ).toEqual([]);
   },
 };

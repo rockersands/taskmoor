@@ -90,6 +90,7 @@ import * as m0103 from './0103_checklist_notices';
 import * as m0104 from './0104_default_workflow_left_strict';
 import * as m0105 from './0105_close_reason_left_dangling';
 import * as m0106 from './0106_cross_track_releases';
+import * as m0107 from './0107_workflows_left_without_moves';
 import * as m0108 from './0108_program_boards';
 
 /**
@@ -191,5 +192,6 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0104_default_workflow_left_strict': m0104,
   '0105_close_reason_left_dangling': m0105,
   '0106_cross_track_releases': m0106,
+  '0107_workflows_left_without_moves': m0107,
   '0108_program_boards': m0108,
 };

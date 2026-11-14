@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -33,8 +33,10 @@ then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page sh
   and no item (see [Checklist changes](../use/notifications.md#checklist-changes)). Through the
   API it is `checklistNotices` on `PATCH /api/v1/tracks/:id`.
 
-What an action did, or why it was refused, is said at the foot of the part of the page you used it
-in, and read out by a screen reader.
+What an action did, or why it was refused, shows right beside the row you pressed it on, however
+long the list: under that person, group or invitation, or under the box. When the action takes the
+row away (a role removed, an invitation withdrawn, a person given a role from the search), the
+answer takes the row's place in the list. A screen reader reads it out.
 
 Finding people by name uses **See people and groups**. If that permission has been taken away, a
 person can still be invited by address. Managers give roles to people; giving a role to a group
@@ -96,12 +98,28 @@ this track.
   already holds the role gets nothing more.
 - An invitation keeps the box until it is taken up. If the person who backs it can no longer give
   the permission by then, the role still comes, without the permission.
-- **Taking the role away later does not remove the permission.** A site administrator removes it on
-  **Settings** > **Permissions** > **Global permissions**, where each person who holds it is listed
-  by name.
+- **The permission goes with the role.** When the person no longer runs any track, the permission
+  that came with the box goes too: when you take their role away under **Who does what**, take a
+  group's role that was how they ran it, withdraw the invitation that gave it, remove them from
+  that group (or the group, or its place inside another group), take back the shared group of
+  tracks that gave them their last role there (or they leave it, or it is deleted, or its owner is
+  erased), or deactivate them (here, through SCIM, or when a directory removes or disables them).
+  Someone who still runs another track keeps it, including a track every signed-in person runs.
+- **A permission given separately stays.** If a site administrator gave it on **Settings** >
+  **Permissions** > **Global permissions**, or the person had it before you ticked the box, losing
+  the role leaves it; remove it there, where each person who holds it is listed by name. To let a
+  former manager keep creating tracks, give it to them there.
 
 The grant shows in the audit log inside the event that gave the role: `createTracksGrantId` on
-`track_role.actor_added`, `track_invitation.created`, `.resent` or `.accepted`.
+`track_role.actor_added`, `track_invitation.created`, `.resent` or `.accepted`. Its removal shows
+inside the event of the change that took it, as `createTracksGrantsRemoved` (for example on
+`track_role.actor_removed`, `group.member_removed`, `track_group.unshared`, `user.deactivated` or
+`directory.user_updated`).
+
+Changes that take no one's role away directly leave the permission until a site administrator
+removes it: an access policy's administer permission taken from a role, a track deleted or given
+another policy, and group changes that come from a directory sync or single sign-on for someone
+who stays active.
 
 ### A track keeps someone to run it
 
@@ -121,7 +139,9 @@ deactivating a person is not stopped.
 2. Choose a **Role**. Only the roles you may give are offered. With the role that runs the track,
    **Also let them create tracks** may appear, ticked
    ([Letting a manager create tracks](#letting-a-manager-create-tracks)).
-3. Choose how it travels: **Taskmoor sends an email**, or **I copy a link and pass it on**.
+3. Choose how it travels: **Taskmoor sends an email**, or **I copy a link and pass it on**. Where
+   the site sends email, only site administrators see this choice: see
+   [Who may copy a link](#who-may-copy-a-link).
 
 Up to 50 addresses go at once. One inviter sends up to 100 an hour, and one address gets at most 5
 an hour, per server process.
@@ -129,10 +149,23 @@ an hour, per server process.
 A link works once and for seven days. It is shown only at that moment, and the server keeps only a
 hash of it. Each email or link carries one track and one role. It gives nothing else.
 
+### Who may copy a link
+
+A copied link lets whoever holds it take up the invitation without showing that the mailbox is
+theirs. So where the site sends email, **only site administrators copy links**. A track's
+administrators who are not site administrators send every invitation by email: the dialog offers
+no choice, **New link** is not shown on waiting invitations, and one line on the page and in the
+dialog says "Your invitations go by email: on a site that sends email, only site administrators
+copy links." The server refuses such a link from anyone else with `403 email_invitations_only`, also
+through the API, and the list's `canCopyLinks` says whether the person asking may.
+
+A site administrator may still make a link, for their own invitations or someone else's, with
+**New link** or **I copy a link and pass it on**.
+
 ### Without a mail server
 
 A site with no mail server cannot send anything, and the dialog says so: "Email is not set up on
-this site". Links are then the only way. See [the configuration reference](configuration.md) for
+this site". Links are then the only way, for everyone who may invite. See [the configuration reference](configuration.md) for
 setting up mail. Pass a link only to the person it is for: whoever holds it can take up the
 invitation, and for a new address that means making the account.
 
@@ -148,7 +181,9 @@ else: no role, no email. You may notice a name appear under **Who holds which ro
 
 ### Waiting invitations
 
-**Send again** and **New link** make a new link and end the old one. **Withdraw** ends the invitation.
+**Send again** and **New link** make a new link and end the old one. **New link** is there for those
+who may copy links ([Who may copy a link](#who-may-copy-a-link)), and shows the link to copy inside
+that invitation's row. **Withdraw** ends the invitation.
 **Email not sent** means the mail server refused it; try **Send again**.
 
 ## What the invited person sees
@@ -195,9 +230,9 @@ own checks replace Taskmoor's second factor there. For invitations to Gmail addr
 |---|---|
 | `GET /api/v1/me/managed-tracks` | The tracks the person runs |
 | `GET /api/v1/tracks/:id/roles` | The roles, with `runsTrack` and `givable` |
-| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
+| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations, with `emailAvailable` and `canCopyLinks`; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
 | `PUT /api/v1/tracks/:id/roles/:roleId/users/:userId` | Give a person a role; `{"createTracks": true}` with a role that runs the track |
-| `POST /api/v1/tracks/:id/invitations/:invitationId/resend` | A new link (`delivery`) |
+| `POST /api/v1/tracks/:id/invitations/:invitationId/resend` | A new link (`delivery`); `"link"` only for those who may copy links |
 | `DELETE /api/v1/tracks/:id/invitations/:invitationId` | Withdraw |
 | `POST /api/v1/invitations/inspect`, `redeem`, `accept` | The invited person's side: the token in the body, `accept` with a session |
 

@@ -22,8 +22,7 @@ import { INSTANCE_KEY, readSetting } from '../setup';
 export const metaQuery = z
   .object({
     nonce: z.string().regex(NONCE).optional().meta({
-      description:
-        '16 to 128 base64url characters the instance signs, chosen afresh by the caller.',
+      description: '16 to 128 base64url characters the site signs, chosen afresh by the caller.',
     }),
     frontend: z.string().max(200).optional().meta({
       description:
@@ -81,7 +80,7 @@ export const metaAnswer = z
         nonce: z.string(),
         value: z.string().meta({
           description:
-            'Ed25519 over `taskmoor-meta-v1`, the instance id and the nonce, one per line; base64url.',
+            'Ed25519 over `taskmoor-meta-v1`, the site’s id (`instance.id`) and the nonce, one per line; base64url.',
         }),
       })
       .optional(),
@@ -133,7 +132,7 @@ export function registerMetaRoutes(
     if (query.data.nonce !== undefined) {
       const value = me.signNonce(query.data.nonce);
       if (value === null) {
-        request.log.error('the instance private key cannot be opened with the configured pepper');
+        request.log.error('the site’s private key cannot be opened with the configured pepper');
         return reply.code(503).send({ error: 'identity_unavailable' });
       }
       signature = { nonce: query.data.nonce, value };

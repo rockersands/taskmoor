@@ -107,9 +107,17 @@ test('[NTF-015] whoever runs a track turns checklist notices on, and a follower 
   await expect(box).not.toBeChecked();
   await box.focus();
   await page.keyboard.press('Space');
-  await expect(
-    page.getByText(`Followers of tickets in ${key} now hear when a checklist changes.`),
-  ).toBeVisible();
+  // Said right under the box (T-248), and told to a screen reader by the page's status line.
+  const saidText = `Followers of tickets in ${key} now hear when a checklist changes.`;
+  const answer = page
+    .getByRole('region', { name: 'Notices to followers' })
+    .getByText(saidText, { exact: true });
+  await expect(answer).toBeVisible();
+  const boxAt = await box.boundingBox();
+  const saidAt = await answer.boundingBox();
+  expect(saidAt?.y ?? 0).toBeGreaterThanOrEqual((boxAt?.y ?? 0) + (boxAt?.height ?? 0));
+  expect((saidAt?.y ?? 0) - ((boxAt?.y ?? 0) + (boxAt?.height ?? 0))).toBeLessThan(40);
+  await expect(page.getByRole('status').filter({ hasText: saidText })).toHaveCount(1);
   await expect(box).toBeChecked();
   await expect(box).toBeFocused();
   if (phone) {

@@ -1,23 +1,23 @@
 ---
-title: "Multi-track"
+title: "Plans"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts
 accessed: 2026-11-13
 attestation: own-words
 ---
-# Multi-track
+# Plans
 
-Multi-track brings the work of several tracks together in one place, without changing how those
+Plans bring the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
 shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
-**Capacity**, its tracks' **Releases** and its **Program boards**. Open **Multi-track** in the sidebar, under **Plan and track**.
+**Capacity**, its tracks' **Releases** and its **Program boards**. Open **Plans** in the sidebar, under **Plan and track**.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
 
 ## Making a plan
 
-1. Open **Multi-track** and choose **New plan**.
+1. Open **Plans** and choose **New plan**.
 2. Give it a name.
 3. Tick its tracks and saved searches. **Find a track or saved search** narrows both lists.
 4. Choose **Create plan**.
@@ -27,7 +27,7 @@ to one track, so choosing the track brings the same tickets. A saved search brin
 its condition finds, read again every time, so a plan changes when someone changes the saved
 search. A plan has at most 500 sources and any number of tickets.
 
-The **Multi-track** page lists **Your plans** and those **Shared with you**.
+The **Plans** page lists **Your plans** and those **Shared with you**.
 
 ## What each person sees
 
@@ -164,7 +164,8 @@ it, each period in view can have its own capacity and note instead, for leave or
 a field empty for none. A note goes with a capacity: a note typed where no capacity is typed is
 not saved, and the dialog says so at that capacity. Emptying a capacity removes it with its note.
 **Save capacity** saves only what changed. Each change is kept in the plan's history with its
-note, so a note should say what planning needs ("Leave"), not why. If someone changes the plan's
+note, so a note should say what planning needs ("Leave"), not why. When a person is erased, their
+capacity goes, and the notes about them are emptied in that history too; the amounts stay. If someone changes the plan's
 unit or periods while you type, nothing is saved and the dialog asks you to reload the page.
 
 ## Filtering and grouping
@@ -273,13 +274,13 @@ Cards move with their **Move…** button.
 ## Releases across tracks
 
 A **release across tracks** lines up several tracks' own releases on one end, so that people can
-see whether they will land together. It belongs to the workspace, not to a plan, and a plan only
+see whether they will land together. It belongs to the site, not to a plan, and a plan only
 shows it. It holds no tickets: its work is the target tickets of its linked releases. Each linked
 release stays its track's own, with its approvals, shipping, notes and page, and its track's
 administrators keep every right they have over it.
 
 The link **Releases across tracks** leads to all of them. It is on a track's **Releases**, on the
-**Multi-track** page, on a plan's **Releases** tab, and on the page of a release that is not in one
+**Plans** page, on a plan's **Releases** tab, and on the page of a release that is not in one
 yet. A release that is in one links to it among its facts.
 
 ### Who sees what
@@ -421,11 +422,16 @@ Past 400 rows, filter the plan to fit the image: the page says so beside the but
 cannot draw it, the page says that too and no file comes. Headers are in your language, and the image
 is drawn in light colours whatever your skin.
 
+Every CSV file is UTF-8 and starts with a byte-order mark, so Excel on Windows shows accented
+headers such as "Versión" properly when you open the file with a double-click. Cells are separated
+by commas: if your spreadsheet expects semicolons, as it may with Spanish settings, open the file
+through its import from text and choose the comma.
+
 Downloading the Timeline, the Calendar or the List counts as a bulk export for your administrators'
 security alerts. Keep in mind that a saved file leaves Taskmoor's permissions: whoever
 you send it to reads what it holds.
 
-## Not yet in Multi-track
+## Not yet in plans
 
 Draft changes and scenarios, and the auto-scheduler come in later versions. A link cannot be
 named and saved as a view, or made public; files come as CSV and PNG only, by hand, with no
@@ -433,6 +439,6 @@ schedule; and a copy cannot follow its original. A program board draws no lines 
 (its badges and list say the same), shows no one else's cursor, cannot take its columns from each
 team's own sprints, and cannot be downloaded. Capacity counts work by its due date, in points or
 hours: velocity from past sprints, capacity in days or as a percentage of a working week, time set
-aside for leave as its own entry, and copying capacity between periods are not in Multi-track yet.
+aside for leave as its own entry, and copying capacity between periods are not in plans yet.
 Releases across tracks cannot yet be shipped together, have no combined notes, burndown or forecast
 date, gather no approvals in one place and send no notifications.

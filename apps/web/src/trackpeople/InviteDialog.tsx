@@ -17,6 +17,11 @@ export interface InviteDialogProps {
   track: { id: number; key: string };
   roles: TrackRole[];
   emailAvailable: boolean;
+  /**
+   * The person may make links to copy (T-053). Where the site sends email only site
+   * administrators may, and everyone else's invitations go by email.
+   */
+  canCopyLinks?: boolean;
   /** The person may give the permission to create tracks with the role (IAM-033). */
   mayGrantCreateTracks?: boolean;
   client: TrackPeopleClient;
@@ -45,6 +50,7 @@ export function InviteDialog({
   track,
   roles,
   emailAvailable,
+  canCopyLinks = true,
   mayGrantCreateTracks = false,
   client,
   onClose,
@@ -118,9 +124,11 @@ export function InviteDialog({
             ? t('trackPeople.problem.tooMany')
             : code === 'email_not_set_up'
               ? t('trackPeople.emailOff')
-              : error instanceof ApiError && error.status === 403
-                ? t('trackPeople.problem.forbidden')
-                : (tooManyAttemptsMessage(t, error) ?? t('trackPeople.problem.other')),
+              : code === 'email_invitations_only'
+                ? t('trackPeople.linksByEmail')
+                : error instanceof ApiError && error.status === 403
+                  ? t('trackPeople.problem.forbidden')
+                  : (tooManyAttemptsMessage(t, error) ?? t('trackPeople.problem.other')),
       );
     } finally {
       setBusy(false);
@@ -268,7 +276,10 @@ export function InviteDialog({
             {offerCreateTracks && (
               <CreateTracksBox checked={createTracks} onChange={setCreateTracks} />
             )}
-            {emailAvailable && (
+            {emailAvailable && !canCopyLinks && (
+              <p className="form-hint">{t('trackPeople.linksByEmail')}</p>
+            )}
+            {emailAvailable && canCopyLinks && (
               <fieldset className="form-field invite-delivery">
                 <legend className="form-label">{t('trackPeople.delivery')}</legend>
                 <label>

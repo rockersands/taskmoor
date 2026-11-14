@@ -11,7 +11,9 @@ import type { MessageId } from './messages.en';
  * requester → solicitante, label → etiqueta, dashboard → panel, workflow → flujo de trabajo,
  * workflow map → mapa de flujos, guardrail → salvaguarda, inbox → bandeja de entrada,
  * skin → tema, sign in → iniciar sesión, two-factor → verificación en dos pasos, site
- * administrator → administrador del sitio, trash → papelera, follow → seguir. Informal "tú".
+ * administrator → administrador del sitio, site (the whole installation; never "workspace" or
+ * "instance") → sitio, plan → plan, Plans (the section) → Planes, trash → papelera, follow →
+ * seguir. Informal "tú".
  */
 export const messagesEs: Record<MessageId, string> = {
   'app.name': 'Taskmoor',
@@ -95,6 +97,39 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.howToNone':
     'Ninguno de los tipos de ticket de este track está en el nivel de objetivo. Un administrador puede añadir uno en la configuración del track.',
   'track.outcomes.create': 'Crear un ticket',
+  'track.outcomes.howToManage':
+    'Elige Nuevo objetivo para crear uno del tipo {types} y luego, desde su página, añade los tickets que contribuyen a él.',
+  'track.outcomes.manage.toggle': 'Gestionar objetivos',
+  'track.outcomes.manage.title': 'Gestionar objetivos',
+  'track.outcomes.manage.note':
+    'Crea aquí un objetivo y usa las herramientas de cada uno para cambiar su resumen y sus fechas, subirlo o bajarlo entre los abiertos, o cerrarlo. Cada cambio es el mismo que en la página del propio objetivo.',
+  'track.outcomes.manage.new': 'Nuevo objetivo',
+  'track.outcomes.manage.summary': 'Resumen',
+  'track.outcomes.manage.summaryMissing': 'Ponle un resumen al objetivo.',
+  'track.outcomes.manage.type': 'Tipo',
+  'track.outcomes.manage.create': 'Crear objetivo',
+  'track.outcomes.manage.created': 'Se creó {key}.',
+  'track.outcomes.manage.tools': 'Gestionar {key}',
+  'track.outcomes.manage.edit': 'Editar',
+  'track.outcomes.manage.editOf': 'Editar {key}',
+  'track.outcomes.manage.startDate': 'Fecha de inicio',
+  'track.outcomes.manage.dueDate': 'Fecha de vencimiento',
+  'track.outcomes.manage.save': 'Guardar',
+  'track.outcomes.manage.saved': 'Se guardó {key}.',
+  'track.outcomes.manage.up': 'Subir',
+  'track.outcomes.manage.down': 'Bajar',
+  'track.outcomes.manage.movedUp': 'Se subió {key}.',
+  'track.outcomes.manage.movedDown': 'Se bajó {key}.',
+  'track.outcomes.manage.close': 'Cerrar',
+  'track.outcomes.manage.closeHow': 'Cómo cerrar {key}',
+  'track.outcomes.manage.closed': 'Se cerró {key}.',
+  'track.outcomes.manage.noClose':
+    'El flujo de trabajo de {key} no ofrece ningún paso a un estado cerrado desde donde está ahora.',
+  'track.outcomes.manage.onPage':
+    'Cerrar {key} pide más de lo que se puede rellenar aquí: ábrelo y ciérralo desde su página.',
+  'track.outcomes.manage.forbidden': 'No puedes hacer este cambio en este objetivo.',
+  'track.outcomes.manage.stale':
+    'El cambio se hizo, pero la lista no se pudo volver a leer. Recarga la página para verla como está ahora.',
   'popover.done': 'Listo',
   'dialog.close': 'Cerrar',
   'danger.cancel': 'Cancelar',
@@ -219,7 +254,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Todos los tracks que puedes ver. Abre uno para ver su resumen, tablero, backlog, calendario, cronograma y estadísticas.',
   'nav.search': 'Buscar',
   'nav.dashboards': 'Paneles',
-  'nav.plans': 'Multi-track',
+  'nav.plans': 'Planes',
   'nav.settings': 'Configuración',
   'nav.group.you': 'Tu trabajo',
   'nav.group.work': 'Planificar y seguir',
@@ -230,8 +265,6 @@ export const messagesEs: Record<MessageId, string> = {
     'Un tablero muestra los tickets como tarjetas en columnas, una columna por paso del trabajo. Mueve una tarjeta para avanzar el trabajo.',
   'purpose.board':
     'Las tarjetas avanzan de izquierda a derecha a medida que avanza el trabajo: arrastra una a otra columna para mover su ticket.',
-  'purpose.ticket':
-    'Una unidad de trabajo: qué es, en qué punto está, quién la tiene y todo lo que le ha pasado.',
   'purpose.inbox': 'Menciones a ti y cambios en los tickets que sigues, los más recientes primero.',
   'purpose.search':
     'Encuentra tickets con filtros o con el lenguaje de consulta, y guarda las búsquedas que repites.',
@@ -281,8 +314,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Las reglas que protegen las cuentas: segundos factores y las alertas que recibes.',
   'admin.system.about':
     'Consúltalo cuando algo parezca ir mal: si la base de datos responde, cómo van las tareas en segundo plano y las copias de seguridad, y qué versión se ejecuta. Las horas se muestran en tu zona horaria salvo que digan UTC.',
-  'purpose.system':
-    'Cómo está esta instancia ahora mismo: su base de datos, sus tareas y su versión.',
+  'purpose.system': 'Cómo está este sitio ahora mismo: su base de datos, sus tareas y su versión.',
   'admin.trash.about':
     'Un ticket o un track eliminado espera aquí los días que lo guarda la política de la papelera. Restaurarlo lo devuelve tal como estaba; cuando se acaba su tiempo se elimina definitivamente.',
   'purpose.trash':
@@ -424,7 +456,7 @@ export const messagesEs: Record<MessageId, string> = {
   'home.count': '{count, number}',
   'tutorial.title': 'Tutoriales',
   'tutorial.purpose':
-    'Aprende Taskmoor haciendo: cada sección te guía para crear algo real en esta instancia. Elige las secciones que quieras; puedes saltarlas, pausarlas y volver cuando quieras.',
+    'Aprende Taskmoor haciendo: cada sección te guía para crear algo real en este sitio. Elige las secciones que quieras; puedes saltarlas, pausarlas y volver cuando quieras.',
   'tutorial.about':
     'Un tutorial resalta el control que debes usar a continuación y espera a que lo uses. Lo que creas es real y se queda, así que puedes conservarlo o borrarlo después. Tu progreso se guarda con tu cuenta.',
   'tutorial.startSelected':
@@ -496,7 +528,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tutorial.coach.close': 'Cerrar por ahora',
   'tutorial.step.tracks.intro.title': 'Tracks y tickets',
   'tutorial.step.tracks.intro.body':
-    'Un track reúne un trabajo y sus tickets. Vas a crear un ticket, comentarlo y adjuntarle un archivo. Lo que crees es real y se queda en esta instancia, así que al final puedes conservarlo o borrarlo.',
+    'Un track reúne un trabajo y sus tickets. Vas a crear un ticket, comentarlo y adjuntarle un archivo. Lo que crees es real y se queda en este sitio, así que al final puedes conservarlo o borrarlo.',
   'tutorial.step.tracks.newTrack.title': 'Empieza un track nuevo',
   'tutorial.step.tracks.newTrack.body':
     'En la página Tracks, elige Nuevo track. Cada track tiene su propio tablero, su backlog y una clave para sus tickets.',
@@ -523,10 +555,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige Adjuntar archivos o suelta un archivo en el ticket. Los archivos se quedan con el ticket para todos los que pueden verlo.',
   'tutorial.step.tracks.finish.title': 'Tu ticket está listo',
   'tutorial.step.tracks.finish.body':
-    'Lo que creaste se queda en esta instancia. Consérvalo para probar más, o abre el ticket para borrarlo.',
+    'Lo que creaste se queda en este sitio. Consérvalo para probar más, o abre el ticket para borrarlo.',
   'tutorial.step.workflows.intro.title': 'Flujos de trabajo',
   'tutorial.step.workflows.intro.body':
-    'Un flujo de trabajo enumera los estados por los que pasan los tickets y los pasos entre ellos. Vas a dibujar uno, publicarlo y dárselo a un track. Es real y se queda en esta instancia.',
+    'Un flujo de trabajo enumera los estados por los que pasan los tickets y los pasos entre ellos. Vas a dibujar uno, publicarlo y dárselo a un track. Es real y se queda en este sitio.',
   'tutorial.step.workflows.newWorkflow.title': 'Empieza un flujo de trabajo nuevo',
   'tutorial.step.workflows.newWorkflow.body':
     'En la página Flujos de trabajo de Administración, elige Crear un flujo de trabajo.',
@@ -547,7 +579,7 @@ export const messagesEs: Record<MessageId, string> = {
     'En Tracks de Administración, abre un track y elige tu mapa como su mapa de flujos. Sus tickets seguirán entonces tu flujo de trabajo.',
   'tutorial.step.workflows.finish.title': 'Tu flujo de trabajo está en uso',
   'tutorial.step.workflows.finish.body':
-    'Se queda en esta instancia. Ábrelo para volver a cambiarlo; se puede borrar cuando ningún track lo use.',
+    'Se queda en este sitio. Ábrelo para volver a cambiarlo; se puede borrar cuando ningún track lo use.',
   'tutorial.step.boards.intro.title': 'Tableros y sprints',
   'tutorial.step.boards.intro.body':
     'Cada track tiene un tablero que muestra sus tickets por estado, y un backlog para planificar. Vas a mover una tarjeta y después planificar un sprint e iniciarlo. Lo que cambies es real.',
@@ -571,7 +603,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige Empezar el sprint. Sus tickets llenan entonces el tablero hasta que lo completes.',
   'tutorial.step.boards.finish.title': 'Tu sprint está en curso',
   'tutorial.step.boards.finish.body':
-    'Se queda en esta instancia. Complétalo desde el tablero o el backlog cuando el trabajo esté hecho.',
+    'Se queda en este sitio. Complétalo desde el tablero o el backlog cuando el trabajo esté hecho.',
   'tutorial.step.search.intro.title': 'Búsqueda y búsquedas guardadas',
   'tutorial.step.search.intro.body':
     'La búsqueda encuentra tickets en todos los tracks que puedes ver. Vas a buscar de dos formas y guardar una búsqueda para volver a usarla. La búsqueda guardada es real y se queda.',
@@ -591,10 +623,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige Guardar como nueva y ponle un nombre. Una búsqueda guardada puede alimentar un tablero, un panel o un correo.',
   'tutorial.step.search.finish.title': 'Tu búsqueda está guardada',
   'tutorial.step.search.finish.body':
-    'Se queda en esta instancia. Vuelve a abrirla desde las búsquedas guardadas de esta página cuando la necesites.',
+    'Se queda en este sitio. Vuelve a abrirla desde las búsquedas guardadas de esta página cuando la necesites.',
   'tutorial.step.dashboards.intro.title': 'Paneles',
   'tutorial.step.dashboards.intro.body':
-    'Un panel reúne en una página las listas y cifras que miras a menudo. Vas a crear uno y añadirle un widget. Es real y se queda en esta instancia.',
+    'Un panel reúne en una página las listas y cifras que miras a menudo. Vas a crear uno y añadirle un widget. Es real y se queda en este sitio.',
   'tutorial.step.dashboards.openDashboards.title': 'Abre Paneles',
   'tutorial.step.dashboards.openDashboards.body': 'Elige Paneles en la navegación.',
   'tutorial.step.dashboards.newDashboard.title': 'Crea un panel',
@@ -608,10 +640,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige un widget, añádelo, configúralo y elige Guardar el panel. Mientras editas, arrastra los widgets para colocarlos.',
   'tutorial.step.dashboards.finish.title': 'Tu panel está listo',
   'tutorial.step.dashboards.finish.body':
-    'Se queda en esta instancia. En su página puedes compartirlo, mostrarlo como pantalla mural o borrarlo.',
+    'Se queda en este sitio. En su página puedes compartirlo, mostrarlo como pantalla mural o borrarlo.',
   'tutorial.step.releases.intro.title': 'Versiones',
   'tutorial.step.releases.intro.body':
-    'Una versión reúne los tickets que se entregan juntos. Vas a crear una, asignarle un ticket y marcarla como entregada. Es real y se queda en esta instancia.',
+    'Una versión reúne los tickets que se entregan juntos. Vas a crear una, asignarle un ticket y marcarla como entregada. Es real y se queda en este sitio.',
   'tutorial.step.releases.openReleases.title': 'Abre las versiones de un track',
   'tutorial.step.releases.openReleases.body': 'Abre un track y elige su pestaña Versiones.',
   'tutorial.step.releases.newRelease.title': 'Crea una versión',
@@ -625,7 +657,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Abre la versión, elige Entregar esta versión y confírmalo. Sus tickets cuentan entonces como entregados.',
   'tutorial.step.releases.finish.title': 'Tu versión está entregada',
   'tutorial.step.releases.finish.body':
-    'Se queda en esta instancia con sus notas, en las versiones del track.',
+    'Se queda en este sitio con sus notas, en las versiones del track.',
   'tutorial.step.admin.intro.title': 'Administración',
   'tutorial.step.admin.intro.body':
     'Vas a añadir una persona, ponerla en un grupo y dar al grupo un rol en un track, para que el acceso siga al grupo. Todo es real y se queda.',
@@ -642,7 +674,7 @@ export const messagesEs: Record<MessageId, string> = {
     'En Tracks de Administración, abre un track y da el rol a tu grupo. Todos los del grupo reciben el acceso de ese rol.',
   'tutorial.step.admin.finish.title': 'El acceso está listo',
   'tutorial.step.admin.finish.body':
-    'La persona, el grupo y el rol se quedan en esta instancia. Cámbialos o quítalos en las mismas páginas.',
+    'La persona, el grupo y el rol se quedan en este sitio. Cámbialos o quítalos en las mismas páginas.',
   'tutorial.step.import.intro.title': 'Importación',
   'tutorial.step.import.intro.body':
     'Vas a traer tickets desde un archivo CSV. Una prueba revisa antes el archivo y no cambia nada; la importación en sí es real.',
@@ -657,7 +689,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Si el informe se ve bien, elige Importar. El informe se queda con la ejecución.',
   'tutorial.step.import.finish.title': 'Tus tickets están dentro',
   'tutorial.step.import.finish.body':
-    'Se quedan en esta instancia. El informe de la importación enumera todo lo que entró.',
+    'Se quedan en este sitio. El informe de la importación enumera todo lo que entró.',
   'boards.emptyScrumTitle': 'No hay ningún sprint en curso',
   'boards.emptyScrumBody':
     'Un tablero Scrum muestra los tickets de su sprint en curso. Planifica un sprint en el backlog e inícialo; sus tickets aparecerán aquí.',
@@ -904,17 +936,17 @@ export const messagesEs: Record<MessageId, string> = {
   'storage.loading': 'Leyendo el uso del almacenamiento…',
   'storage.loadFailed':
     'No se pudo leer el uso del almacenamiento. Inténtalo de nuevo en un momento.',
-  'storage.workspace': 'Todo el espacio de trabajo',
+  'storage.workspace': 'Todo el sitio',
   'storage.usedOf': '{used} de {limit}, en {files, number} archivos',
   'storage.usedNoQuota': '{used} en {files, number} archivos; sin cuota',
-  'storage.workspaceShare': 'El espacio de trabajo: {share} por ciento de su cuota usado',
+  'storage.workspaceShare': 'El sitio: {share} por ciento de su cuota usado',
   'storage.person': 'Una persona',
   'storage.nobody': 'Nadie ha subido nada todavía',
   'storage.topOf': 'Mayor uso: {used} de {limit}, de {name}',
   'storage.topNoQuota': 'Mayor uso: {used}, de {name}; sin cuota',
   'storage.personShare': '{name}: {share} por ciento de la cuota por persona usado',
   'storage.form': 'Cambiar las cuotas de almacenamiento',
-  'storage.workspaceQuota': 'Cuota del espacio de trabajo (GiB)',
+  'storage.workspaceQuota': 'Cuota del sitio (GiB)',
   'storage.personQuota': 'Cuota por persona (GiB)',
   'storage.hint': 'Deja un campo vacío para no tener cuota.',
   'storage.save': 'Guardar las cuotas',
@@ -971,6 +1003,7 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.challengeExpired':
     'El inicio de sesión tardó demasiado o tuvo demasiados códigos erróneos. Vuelve a introducir tu contraseña.',
   'auth.sso.signInWith': 'Iniciar sesión con {name}',
+  'auth.sso.google': 'Iniciar sesión con Google',
   'auth.sso.others': 'Otras formas de iniciar sesión',
   'auth.sso.organisation': 'Esta dirección inicia sesión con {name}.',
   'auth.sso.error.invalidState':
@@ -1038,9 +1071,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Contiene tu nombre, tu dirección de correo o el nombre del producto.',
   'setup.title': 'Configurar Taskmoor',
   'setup.intro':
-    'Esto se hace una sola vez. Crea la primera cuenta de administrador y da un nombre a la instancia; todo lo demás se puede cambiar después en Configuración.',
-  'setup.instance': 'Instancia',
-  'setup.instanceName': 'Nombre de la instancia',
+    'Esto se hace una sola vez. Crea la primera cuenta de administrador y da un nombre al sitio; todo lo demás se puede cambiar después en Configuración.',
+  'setup.instance': 'Sitio',
+  'setup.instanceName': 'Nombre del sitio',
   'setup.admin': 'Administrador',
   'setup.adminName': 'Nombre',
   'setup.confirmPassword': 'Confirmar la contraseña',
@@ -1069,7 +1102,7 @@ export const messagesEs: Record<MessageId, string> = {
   'settings.administration': 'Administración',
   'settings.systemStatus': 'Estado del sistema',
   'settings.systemStatusHint':
-    'Versión, base de datos, almacenamiento, copias de seguridad y tiempo de ejecución de esta instancia.',
+    'Versión, base de datos, almacenamiento, copias de seguridad y tiempo de ejecución de este sitio.',
   'settings.apiTokens': 'Tokens de API',
   'settings.apiTokensHint':
     'Todos los tokens de cada persona y cuenta de servicio: revocación en bloque, avisos de rotación y la política de tokens.',
@@ -1340,7 +1373,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tokens.expiry': 'Caduca después de',
   'tokens.expiryOption': '{days, plural, one {# día} other {# días}} (el {date})',
   'tokens.expiryHint':
-    '{max, plural, one {En esta instancia los tokens duran como mucho # día.} other {En esta instancia los tokens duran como mucho # días.}}',
+    '{max, plural, one {En este sitio los tokens duran como mucho # día.} other {En este sitio los tokens duran como mucho # días.}}',
   'tokens.expiryTooLong':
     '{max, plural, one {Los tokens pueden durar como mucho # día.} other {Los tokens pueden durar como mucho # días.}}',
   'tokens.scopeNotAllowed':
@@ -2096,7 +2129,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.system.loading': 'Leyendo el estado del sistema…',
   'admin.system.failed': 'No se pudo leer el estado del sistema. Inténtalo de nuevo en un momento.',
   'admin.system.forbidden': 'Solo los administradores del sitio pueden ver el estado del sistema.',
-  'admin.system.instance': 'Instancia',
+  'admin.system.instance': 'Sitio',
   'admin.system.version': 'Versión',
   'admin.system.roles': 'Roles',
   'admin.system.started': 'Iniciado',
@@ -2194,7 +2227,7 @@ export const messagesEs: Record<MessageId, string> = {
     'No se pudo guardar la retención. Inténtalo de nuevo en un momento.',
   'admin.tokens.title': 'Tokens de API',
   'admin.tokens.intro':
-    'Todos los tokens personales y de cuentas de servicio de esta instancia. Revoca uno, o muchos a la vez tras una filtración o cuando alguien se va.',
+    'Todos los tokens personales y de cuentas de servicio de este sitio. Revoca uno, o muchos a la vez tras una filtración o cuando alguien se va.',
   'admin.tokens.forbidden': 'Solo los administradores del sitio pueden ver todos los tokens.',
   'admin.tokens.list': 'Tokens',
   'admin.tokens.filter': 'Mostrar',
@@ -2258,7 +2291,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.serviceAccounts.created': 'Se creó {name}.',
   'admin.serviceAccounts.createFailed':
     'No se pudo crear la cuenta de servicio. Inténtalo de nuevo en un momento.',
-  'admin.serviceAccounts.list': 'Cuentas de servicio de esta instancia',
+  'admin.serviceAccounts.list': 'Cuentas de servicio de este sitio',
   'admin.serviceAccounts.loading': 'Leyendo las cuentas de servicio…',
   'admin.serviceAccounts.failed':
     'No se pudieron leer las cuentas de servicio. Inténtalo de nuevo en un momento.',
@@ -3065,6 +3098,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.openPermissions': 'Abrir Permisos',
   'trackPeople.emailOff':
     'El correo no está configurado en este sitio, así que Taskmoor no puede enviar nada. Crea un enlace y pásalo tú.',
+  'trackPeople.linksByEmail':
+    'Tus invitaciones van por correo: en un sitio que envía correo, solo los administradores del sitio copian enlaces.',
   'trackPeople.holders': 'Quién tiene cada rol',
   'trackPeople.noHolders': 'Nadie tiene un rol en este track todavía.',
   'trackPeople.appointLocked':
@@ -3737,8 +3772,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.time.log': 'Registrar tiempo',
   'ticketView.time.logged': 'Tiempo registrado.',
   'ticketView.time.required': 'Di primero cuánto tiempo.',
-  'ticketView.time.invalid': 'Esa no es una duración que este espacio de trabajo entienda.',
-  'ticketView.time.disabled': 'El registro de tiempo está desactivado en este espacio de trabajo.',
+  'ticketView.time.invalid': 'Esa no es una duración que este sitio entienda.',
+  'ticketView.time.disabled': 'El registro de tiempo está desactivado en este sitio.',
   'ticketView.time.forbidden': 'No puedes registrar tiempo en este ticket.',
   'ticketView.problem.forbidden': 'No puedes hacer este cambio en este ticket.',
   'ticketView.problem.stale':
@@ -3754,7 +3789,7 @@ export const messagesEs: Record<MessageId, string> = {
   'comments.mentionWarning.cannotRead':
     '{name} no puede leer este comentario y no recibió el aviso.',
   'comments.mentionWarning.unknown':
-    'Alguien a quien mencionaste no está en este espacio de trabajo y no recibió el aviso.',
+    'Alguien a quien mencionaste no está en este sitio y no recibió el aviso.',
   'comments.mentionWarning.teamView':
     '{count, plural, one {# miembro de {name} no puede ver este ticket y no recibió el aviso.} other {# miembros de {name} no pueden ver este ticket y no recibieron el aviso.}}',
   'comments.mentionWarning.teamRead':
@@ -3853,7 +3888,7 @@ export const messagesEs: Record<MessageId, string> = {
   'attachments.personQuota':
     'No se añadió {name}: tus adjuntos superarían tu cuota de almacenamiento de {limit} ({used} usados, {available} libres). Borra algunos o pide a un administrador del sitio que la amplíe.',
   'attachments.workspaceQuota':
-    'No se añadió {name}: el espacio de trabajo superaría su cuota de almacenamiento de {limit} ({used} usados, {available} libres). Consulta a un administrador del sitio.',
+    'No se añadió {name}: el sitio superaría su cuota de almacenamiento de {limit} ({used} usados, {available} libres). Consulta a un administrador del sitio.',
   'attachments.uploadFailed': 'No se pudo adjuntar {name}. Inténtalo de nuevo en un momento.',
   'attachments.forbidden': 'No puedes adjuntar archivos a este ticket.',
   'attachments.pastedName': 'pegado-{time}',
@@ -3950,7 +3985,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.failed': 'No se pudieron cargar los flujos de trabajo. Inténtalo más tarde.',
   'admin.workflows.forbidden':
     'Solo los administradores del sitio y de la configuración gestionan los flujos de trabajo.',
-  'admin.workflows.list': 'Flujos de trabajo de este espacio de trabajo',
+  'admin.workflows.list': 'Flujos de trabajo de este sitio',
   'admin.workflows.create': 'Crear un flujo de trabajo',
   'admin.workflows.none': 'Aún no hay flujos de trabajo.',
   'admin.workflows.default': 'Predeterminado',
@@ -3989,7 +4024,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.import.title': 'Importar un archivo de flujo de trabajo',
   'admin.workflows.import.file': 'Archivo de flujo de trabajo',
   'admin.workflows.import.fileHint':
-    'Un archivo de flujo de trabajo descargado de esta página, aquí o en otro servidor de Taskmoor. Los estados se buscan por nombre y se crean cuando este espacio de trabajo no tiene ninguno con ese nombre.',
+    'Un archivo de flujo de trabajo descargado de esta página, aquí o en otro servidor de Taskmoor. Los estados se buscan por nombre y se crean cuando este sitio no tiene ninguno con ese nombre.',
   'admin.workflows.import.into': 'Importar como',
   'admin.workflows.import.asNew': 'Un flujo de trabajo nuevo',
   'admin.workflows.import.asDraft': 'El siguiente borrador de {name}',
@@ -4029,7 +4064,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.report.onCreate': 'al crear un ticket',
   'admin.statuses.title': 'Estados',
   'admin.statuses.intro':
-    'Los estados pertenecen a todo el espacio de trabajo, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',
+    'Los estados pertenecen a todo el sitio, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',
   'admin.statuses.loading': 'Cargando los estados…',
   'admin.statuses.failed': 'No se pudieron cargar los estados.',
   'admin.statuses.add': 'Añadir un estado',
@@ -4111,7 +4146,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.addStatus': 'Añadir un estado',
   'admin.workflow.addStatusButton': 'Añadir al flujo de trabajo',
   'admin.workflow.allStatusesUsed':
-    'Todos los estados del espacio de trabajo están en este flujo de trabajo. Los estados nuevos se añaden en la página Flujos de trabajo.',
+    'Todos los estados del sitio están en este flujo de trabajo. Los estados nuevos se añaden en la página Flujos de trabajo.',
   'admin.workflow.addTransition': 'Añadir una transición',
   'admin.workflow.newTransition': 'Transición nueva',
   'admin.workflow.noTransitions': 'Aún no hay transiciones.',
@@ -4347,7 +4382,7 @@ export const messagesEs: Record<MessageId, string> = {
   'workflow.lint.error': 'Error',
   'workflow.lint.warning': 'Aviso',
   'workflow.lint.show': 'Mostrar {name}',
-  'workflow.lint.unknownStatus': 'El estado {id} ya no existe en el espacio de trabajo.',
+  'workflow.lint.unknownStatus': 'El estado {id} ya no existe en el sitio.',
   'workflow.lint.duplicateStatus': '{status} está dos veces en el flujo de trabajo.',
   'workflow.lint.initialMissing': 'El estado inicial, {status}, no está en el flujo de trabajo.',
   'workflow.lint.duplicateTransition': 'Dos transiciones comparten el identificador {id}.',
@@ -4392,7 +4427,7 @@ export const messagesEs: Record<MessageId, string> = {
   'workflow.shape.not_assign_target':
     'En {path}: se esperaba current-user, requester o una persona.',
   'workflow.shape.not_guard': 'En {path}: se esperaba una condición, o un grupo all o any.',
-  'workflow.problem.unknown_status': 'El estado {statusId} ya no existe en el espacio de trabajo.',
+  'workflow.problem.unknown_status': 'El estado {statusId} ya no existe en el sitio.',
   'workflow.problem.duplicate_status': '{status} está dos veces en el flujo de trabajo.',
   'workflow.problem.initial_not_in_workflow': 'El estado inicial no está en el flujo de trabajo.',
   'workflow.problem.duplicate_transition': 'Dos transiciones comparten el identificador {id}.',
@@ -4421,6 +4456,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.publishPanel.warnings':
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
+  'admin.workflow.publishPanel.freeMoves':
+    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',
@@ -5219,7 +5256,7 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.newName': 'Panel nuevo',
   'dashboards.create': 'Crear el panel',
   'dashboards.listFailed': 'No se pudieron cargar los paneles.',
-  // Multi-track plans (T-088; ADR-122).
+  // Plans (T-088; ADR-122).
   'plans.intro':
     'Un plan reúne los tickets de varios tracks y búsquedas guardadas en un solo Resumen, Cronograma, Lista y Calendario. Cada persona ve en él solo los tickets que ya puede ver.',
   'plans.new': 'Nuevo plan',
@@ -5424,7 +5461,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.purpose':
     'Cómo va este track, de un vistazo: cada número abre la búsqueda que hay detrás.',
   'summary.about':
-    'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda.',
+    'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda. Cualquiera puede filtrarlo para sí, sin cambiarlo para nadie más.',
   'summary.customize': 'Personalizar',
   'summary.backToDefault': 'Volver al predeterminado',
   'summary.confirmDefault':
@@ -5442,6 +5479,18 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.empty': 'Los administradores del track aún no eligieron widgets para él.',
   'summary.emptyEditable':
     'Elige Personalizar para añadir algunos, o Volver al predeterminado para los números con los que empieza esta página.',
+  'summary.filter.label': 'Filtrar este resumen solo para ti',
+  'summary.filter.field': 'Solo los tickets que coincidan con',
+  'summary.filter.placeholder': 'Por ejemplo: assignee = currentUser()',
+  'summary.filter.apply': 'Filtrar',
+  'summary.filter.mine': 'Mis tickets',
+  'summary.filter.clear': 'Quitar el filtro',
+  'summary.filter.note':
+    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+  'summary.filter.bad':
+    'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
+  'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',
+  'summary.filter.sprints': 'Los widgets de sprint siguen mostrando todo su sprint.',
   'statistics.report': 'Informe',
   'statistics.purpose':
     'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus sprints, sus versiones y sus tickets.',
@@ -5829,7 +5878,7 @@ export const messagesEs: Record<MessageId, string> = {
   'builder.formName': 'Ajustes de los kits',
   'builder.project.title': 'Archivo de proyecto',
   'builder.project.hint':
-    'Un archivo de proyecto guarda estos ajustes, para preparar los mismos kits otra vez en una actualización o un cambio de imagen. Con una frase de contraseña también guarda los secretos de la instancia, cifrados; sin ella no guarda ninguno y los siguientes kits reciben secretos nuevos.',
+    'Un archivo de proyecto guarda estos ajustes, para preparar los mismos kits otra vez en una actualización o un cambio de imagen. Con una frase de contraseña también guarda los secretos del sitio, cifrados; sin ella no guarda ninguno y los siguientes kits reciben secretos nuevos.',
   'builder.project.passphrase': 'Frase de contraseña (opcional)',
   'builder.project.passphraseHint':
     'Cifra los secretos al guardar y los abre al cargar. Nadie puede recuperar una frase de contraseña perdida.',
@@ -5843,7 +5892,7 @@ export const messagesEs: Record<MessageId, string> = {
   'builder.project.saved':
     'Se guardó el archivo de proyecto sin secretos. Los kits que salgan de él tendrán secretos nuevos.',
   'builder.project.savedWithSecrets':
-    'Se guardó el archivo de proyecto con los secretos de la instancia, cifrados con tu frase de contraseña. Guarda ambos en un lugar seguro.',
+    'Se guardó el archivo de proyecto con los secretos del sitio, cifrados con tu frase de contraseña. Guarda ambos en un lugar seguro.',
   'builder.project.notAProject':
     'Ese archivo no es un archivo de proyecto del Builder de Taskmoor.',
   'builder.project.invalidInputs':
@@ -5857,8 +5906,8 @@ export const messagesEs: Record<MessageId, string> = {
   'builder.frontendUrl': 'Dirección del frontend',
   'builder.frontendUrlHint':
     'Donde se abre la aplicación, como https://tracker.example.com/. Termina en barra y puede nombrar una carpeta.',
-  'builder.instance': 'Instancia',
-  'builder.instanceName': 'Nombre de la instancia (opcional)',
+  'builder.instance': 'Sitio',
+  'builder.instanceName': 'Nombre del sitio (opcional)',
   'builder.defaultLanguage': 'Idioma predeterminado',
   'builder.language.en': 'English',
   'builder.language.es': 'Español',
@@ -5920,7 +5969,7 @@ export const messagesEs: Record<MessageId, string> = {
   'builder.failed': 'No se pudieron preparar los kits. Revisa los ajustes y vuelve a intentarlo.',
   'builder.results': 'Tus kits',
   'builder.resultsHint':
-    'Instala primero el kit del backend en tu servidor y después sube una de las formas del kit del frontend a tu alojamiento estático. El kit del backend contiene los secretos de la instancia: mantenlo en privado.',
+    'Instala primero el kit del backend en tu servidor y después sube una de las formas del kit del frontend a tu alojamiento estático. El kit del backend contiene los secretos del sitio: mantenlo en privado.',
   'builder.result.backend': 'Descargar el kit del backend',
   'builder.result.frontend': 'Descargar el kit del frontend',
   'builder.result.single': 'Descargar el frontend en un solo archivo',
@@ -5938,7 +5987,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.keyStorageNone':
     'Este servidor no puede guardar claves: define TASKMOOR_MASTER_KEY (o TASKMOOR_DATA) y reinícialo.',
   'ai.formLabel': 'Ajustes de IA',
-  'ai.enabled': 'Usar IA en este espacio de trabajo',
+  'ai.enabled': 'Usar IA en este sitio',
   'ai.strict': 'Modo estricto',
   'ai.strictHint':
     'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives abajo.',
@@ -6039,7 +6088,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.statement.provider.vertex': 'Vertex AI de Google Cloud',
   'ai.statement.provider.foundry': 'Microsoft Foundry',
   'ai.statement.provider.openaiCompatible': 'un servidor de modelos propio',
-  'ai.statement.title': 'Qué sale de esta instancia',
+  'ai.statement.title': 'Qué sale de este sitio',
   'ai.statement.notConfigured': 'La IA no está configurada: no se envía nada a ninguna parte.',
   'ai.statement.provider': 'Las funciones de IA envían datos a {provider}.',
   'ai.statement.providerRegion': 'Las funciones de IA envían datos a {provider}, región {region}.',
@@ -6067,7 +6116,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.refused.failed': 'La IA no pudo ayudar con esta petición.',
   'admin.aiUsage.title': 'Uso de la IA',
   'admin.aiUsage.forbidden': 'Solo los administradores del sitio ven el uso de la IA.',
-  'admin.aiUsage.statementFailed': 'No se pudo cargar qué sale de esta instancia.',
+  'admin.aiUsage.statementFailed': 'No se pudo cargar qué sale de este sitio.',
   'admin.aiUsage.usage': 'Uso',
   'admin.aiUsage.period': 'Periodo',
   'admin.aiUsage.last7': 'Últimos 7 días',
@@ -6211,12 +6260,12 @@ export const messagesEs: Record<MessageId, string> = {
     'Qué pueden hacer aquí otros programas y las funciones de IA, y cuánto cuestan.',
   'admin.group.system': 'Sistema',
   'admin.group.systemPurpose':
-    'El estado de esta instancia, sus límites, importaciones y lo que se eliminó.',
+    'El estado de este sitio, sus límites, importaciones y lo que se eliminó.',
   'admin.group.about':
     'Cada página de este grupo cambia una parte del sitio. La lista de todas las páginas de Administración está junto a la página, o tras la barra de arriba en un teléfono; sus grupos se abren y se cierran.',
   'admin.overview.title': 'Resumen',
   'admin.overview.purpose':
-    'Cómo va esta instancia y qué está pendiente. Aquí también están las páginas para gestionar el sitio.',
+    'Cómo va este sitio y qué está pendiente. Aquí también están las páginas para gestionar el sitio.',
   'admin.overview.purposeSetup':
     'Aquí puedes configurar tracks. El resto de Administración es para los administradores del sitio.',
   'admin.overview.loading': 'Leyendo…',
@@ -6230,7 +6279,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.overview.health.backup': 'No hay ninguna copia de seguridad del último día.',
   'admin.overview.health.version': 'Versión {version}, en marcha desde {since}.',
   'admin.overview.health.failed':
-    'No se pudo leer el estado de esta instancia. Inténtalo de nuevo en un momento.',
+    'No se pudo leer el estado de este sitio. Inténtalo de nuevo en un momento.',
   'admin.overview.health.more': 'Ver todos los detalles',
   'admin.overview.waiting': 'Personas que aún no han iniciado sesión',
   'admin.overview.waiting.count':
@@ -6368,9 +6417,9 @@ export const messagesEs: Record<MessageId, string> = {
   'webhooks.purpose':
     'Envía los eventos de Taskmoor a otro sistema o a una sala de chat cuando ocurren, y mira qué se entregó.',
   'webhooks.about':
-    'Un webhook envía solo lo que puede ver quien lo creó. Los inicios de sesión, tokens, contraseñas y otros eventos de seguridad nunca salen de la instancia, pida lo que pida el webhook.',
+    'Un webhook envía solo lo que puede ver quien lo creó. Los inicios de sesión, tokens, contraseñas y otros eventos de seguridad nunca salen del sitio, pida lo que pida el webhook.',
   'webhooks.forbidden':
-    'Solo los administradores del sitio gestionan los webhooks, porque envían los datos de esta instancia a otro servidor.',
+    'Solo los administradores del sitio gestionan los webhooks, porque envían los datos de este sitio a otro servidor.',
   'webhooks.loading': 'Leyendo…',
   'webhooks.loadFailed': 'No se pudieron leer los webhooks. Inténtalo de nuevo en un momento.',
   'webhooks.failedAction': 'No se pudo hacer. Inténtalo de nuevo en un momento.',

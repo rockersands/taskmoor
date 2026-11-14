@@ -8,7 +8,9 @@ import { heldStatusInfo, holdCurrentVersions, rewriteCurrentVersions } from './s
 
 /**
  * The free moves the server gives a workflow beyond the editor's (WF-008 (4); ADR-116): a draft's
- * new statuses (T-210), and an old workflow left with no transitions at all (T-237).
+ * new statuses (T-210), a workflow published or imported with no transitions at all (T-246), and
+ * an old workflow left with none (T-237; migration 0107 gave every such workflow its moves at the
+ * upgrade, and `cli.mjs workflow-moves` checks that none is left).
  */
 
 /**
@@ -58,11 +60,27 @@ export async function withFreeMoves(
 }
 
 /**
+ * A definition about to be published or imported with no transitions at all, with the free moves
+ * a new workflow gets (T-246; WF-008 (4); ADR-116): a global transition into every status, as
+ * `withFreeMoves` gives a draft with none. A definition with any transition, one with a rule and a
+ * board-managed one stay as they are. The caller holds the workflow (or has just made it).
+ */
+export async function withMovesIfNone(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  workflowId: number,
+  definition: WorkflowDefinition,
+): Promise<WorkflowDefinition> {
+  if (definition.transitions.length > 0) return definition;
+  return withFreeMoves(trx, workspaceId, workflowId, definition, definition, true);
+}
+
+/**
  * The workflows of a workspace whose published version has no transitions, by id: no ticket in
- * them can move. A new workflow and a saved draft with none get their free moves, but a workflow
- * made empty before that rule (or imported from a file with none, or published from an empty
- * version restored as its draft: imports and restores keep what they hold) stays so until its
- * next draft is saved.
+ * them can move. A new workflow, a saved draft, a publish and an import with none get their free
+ * moves, and migration 0107 gave them to every workflow left without (T-246), so on an upgraded
+ * site this finds only what free moves cannot fix: a workflow with a rule, one a board manages,
+ * and one whose only statuses close with no reason to name.
  */
 export async function workflowsWithoutMoves(
   db: Kysely<Database>,
@@ -86,9 +104,11 @@ export interface WorkflowMovesRun {
 }
 
 /**
- * The operator's repair for old workflows left with no moves (T-237; `cli.mjs workflow-moves`):
- * lists them, and with `repair` gives each one a global transition into every status, as a new
- * workflow gets (WF-008 (4)), as a new published version. A closing status takes the reason free
+ * The operator's check and repair for old workflows left with no moves (T-237; `cli.mjs
+ * workflow-moves`): lists them, and with `repair` gives each one a global transition into every
+ * status, as a new workflow gets (WF-008 (4)), as a new published version. Migration 0107 does the
+ * same at the upgrade with the same rules (T-246), so after it this lists only the workflows free
+ * moves leave alone and `repair` has nothing to give. A closing status takes the reason free
  * moves close with; with none to name it gets no move and nothing is made. One transaction and one
  * event (`workflow.published`, by the system) per workflow. Each is held as a publish holds it
  * (update, so ticket writes on it wait), then its statuses, and checked again under the lock: one

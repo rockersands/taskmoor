@@ -31,6 +31,27 @@ describe('command palette', () => {
     expect(options).toEqual(['System status', 'Follow the device for light or dark']);
   });
 
+  it('[AGL-018] lists labels that start with the letters typed before those that contain them', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <CommandPalette
+          commands={[
+            { id: 'go-dashboards', labelId: 'nav.dashboards', run: () => {} },
+            { id: 'go-home', labelId: 'nav.home', run: () => {} },
+            { id: 'go-boards', labelId: 'nav.boards', run: () => {} },
+          ]}
+        />
+      </I18nProvider>,
+    );
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('boa');
+    const options = screen.getAllByRole('option');
+    // Dashboards comes first in the list given, and still follows Boards.
+    expect(options.map((o) => o.textContent)).toEqual(['Boards', 'Dashboards']);
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('[AGL-018] opens over the whole page, out of the top bar, with a phone-sized prompt (PL-3, PL-49)', async () => {
     const user = userEvent.setup();
     const palette = (
@@ -77,8 +98,7 @@ describe('command palette', () => {
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
-    // Multi-track (ADR-122) matches too, after the label that starts with the letters typed.
-    expect(options.map((o) => o.textContent)).toEqual(['Tracks', 'Multi-track']);
+    expect(options.map((o) => o.textContent)).toEqual(['Tracks']);
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
     expect(input).toHaveAttribute('aria-activedescendant', options[0]?.id);
 

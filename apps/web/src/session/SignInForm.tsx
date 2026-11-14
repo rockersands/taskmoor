@@ -16,6 +16,11 @@ import {
 import { ssoErrorMessage, ssoRequiredProvider } from '../sso/errors';
 import { EnrollmentStep } from './EnrollmentStep';
 import { tooManyAttemptsMessage } from './errors';
+import {
+  GOOGLE_SIGN_IN_CLASS,
+  GoogleSignInButton,
+  GoogleSignInContent,
+} from './GoogleSignInButton';
 import { PasswordField } from './PasswordField';
 import { SecondFactorStep } from './SecondFactorStep';
 import { type SecondFactorMethod, type SessionUser, useSession } from './SessionProvider';
@@ -115,6 +120,7 @@ export function SignInForm({
                   id: found.provider.id,
                   name: found.provider.name,
                   ...(found.provider.protocol === 'saml' ? { protocol: 'saml' as const } : {}),
+                  ...(found.provider.brand === 'google' ? { brand: 'google' as const } : {}),
                 }
               : null;
           const known: Discovery = { provider, password: found?.password !== false };
@@ -268,15 +274,19 @@ export function SignInForm({
             {organisation ? t('auth.sso.organisation', { name: organisation.name }) : ''}
           </p>
         </div>
-        {organisation && !enforced && (
-          <button
-            type="button"
-            className="button-secondary sso-button sso-button-emphasis"
-            onClick={() => start(organisation)}
-          >
-            {t('auth.sso.signInWith', { name: organisation.name })}
-          </button>
-        )}
+        {organisation &&
+          !enforced &&
+          (organisation.brand === 'google' ? (
+            <GoogleSignInButton onClick={() => start(organisation)} />
+          ) : (
+            <button
+              type="button"
+              className="button-secondary sso-button sso-button-emphasis"
+              onClick={() => start(organisation)}
+            >
+              {t('auth.sso.signInWith', { name: organisation.name })}
+            </button>
+          ))}
         {!enforced && (
           <PasswordField
             label={t('auth.password')}
@@ -299,24 +309,40 @@ export function SignInForm({
             {t('auth.forgotPassword')}
           </p>
         )}
-        {/* One button: when the domain enforces single sign-on it leads there, so focus stays. */}
-        <button type="submit" className="button-primary" disabled={busy}>
-          {enforced ? t('auth.sso.signInWith', { name: enforced.name }) : t('auth.signIn')}
+        {/* One button: when the domain enforces single sign-on it leads there, so focus stays.
+            Through Google it takes Google's look and words (T-061), whatever the provider's
+            name; only its class and contents change, never the element, so focus stays then too. */}
+        <button
+          type="submit"
+          className={enforced?.brand === 'google' ? GOOGLE_SIGN_IN_CLASS : 'button-primary'}
+          disabled={busy}
+        >
+          {enforced?.brand === 'google' ? (
+            <GoogleSignInContent />
+          ) : enforced ? (
+            t('auth.sso.signInWith', { name: enforced.name })
+          ) : (
+            t('auth.signIn')
+          )}
         </button>
       </form>
       {others.length > 0 && (
         <fieldset className="sso-options">
           <legend className="sso-divider">{t('auth.sso.others')}</legend>
-          {others.map((provider) => (
-            <button
-              key={provider.id}
-              type="button"
-              className="button-secondary sso-button"
-              onClick={() => start(provider)}
-            >
-              {t('auth.sso.signInWith', { name: provider.name })}
-            </button>
-          ))}
+          {others.map((provider) =>
+            provider.brand === 'google' ? (
+              <GoogleSignInButton key={provider.id} onClick={() => start(provider)} />
+            ) : (
+              <button
+                key={provider.id}
+                type="button"
+                className="button-secondary sso-button"
+                onClick={() => start(provider)}
+              >
+                {t('auth.sso.signInWith', { name: provider.name })}
+              </button>
+            ),
+          )}
         </fieldset>
       )}
     </div>

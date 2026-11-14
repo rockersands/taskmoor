@@ -28,6 +28,8 @@ const searchHref = (query: string) =>
 export interface TrackNumbersProps {
   trackKey: string;
   client?: TrackClient;
+  /** The viewer's own filter (T-075a): every number counts only the tickets that also match. */
+  filter?: string;
 }
 
 /**
@@ -36,7 +38,7 @@ export interface TrackNumbersProps {
  * exactly those tickets, and is that search's count. They are the default Summary, and a widget of
  * a customized one (ADR-116).
  */
-export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersProps) {
+export function TrackNumbers({ trackKey, client = trackClient, filter = '' }: TrackNumbersProps) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
@@ -45,14 +47,15 @@ export function TrackNumbers({ trackKey, client = trackClient }: TrackNumbersPro
 
   useEffect(() => {
     let live = true;
-    client.summary(trackKey).then(
+    setFailed(false);
+    client.summary(trackKey, filter || undefined).then(
       (s) => live && setSummary(s),
       () => live && setFailed(true),
     );
     return () => {
       live = false;
     };
-  }, [client, trackKey]);
+  }, [client, trackKey, filter]);
 
   if (failed) {
     return (

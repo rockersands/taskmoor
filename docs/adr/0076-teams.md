@@ -7,7 +7,7 @@
 ## Context
 
 CORE-027 asks for site-wide teams with members, a lead and a description, a Team field, and
-team references that boards, roadmaps, on-call and ownership can use. Its acceptance criteria:
+team references that boards, plans, on-call and ownership can use. Its acceptance criteria:
 `membersOf("id:<teamId>")` returns the team's members (also in spec 01b section 1.6), and
 renaming a team updates every reference. Spec 01a section 1.4 lists Team among the custom field
 types. Until now the manual told administrators to use groups as teams, and

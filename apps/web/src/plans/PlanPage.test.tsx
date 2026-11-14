@@ -34,7 +34,7 @@ afterEach(() => {
   window.location.hash = '';
 });
 
-describe('a Multi-track plan (PLN-001, PLN-012)', () => {
+describe('a plan (PLN-001, PLN-012)', () => {
   it('[PLN-012] shows the Summary with every number linked to the search that finds it', async () => {
     renderPlan('summary', '#/plans/12');
     expect(await screen.findByRole('heading', { name: 'Spring launch' })).toBeVisible();

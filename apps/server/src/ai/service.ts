@@ -63,7 +63,7 @@ export type AiFeatureState =
   | { available: false; reason: AiUnavailableReason };
 
 const BLOCK_MESSAGE: Record<string, string> = {
-  disabled: 'AI is switched off for this workspace',
+  disabled: 'AI is switched off on this site',
   track_off: 'AI is switched off for this track',
   strict: 'Strict mode: AI runs only in tracks an administrator opted in',
   feature_off: 'This AI feature is switched off',
@@ -167,7 +167,7 @@ export class AiService {
     if (supplied) return fn(supplied.gateway, supplied.settings);
     const head = await readAiSettings(this.db, workspaceId);
     if (!head.settings.enabled) {
-      throw new AiUnavailableError('disabled', 'AI is switched off for this workspace');
+      throw new AiUnavailableError('disabled', 'AI is switched off on this site');
     }
     const runtime = await this.runtimeFor(workspaceId, head.version, head.settings);
     if (!runtime.gateway) throw runtime.failure;

@@ -51,7 +51,7 @@ Some rules sit on top of the table:
    it later.
 3. Choose the **Scopes**. **Read** is ticked to begin with.
 4. Choose how long it lasts in **Expires after**. The choices are 7, 30, 60, 90, 180 and 365
-   days, cut to the instance's longest lifetime; 30 days is the default.
+   days, cut to the site's longest lifetime; 30 days is the default.
 5. Select **Create token**, then **Copy** the token. **This is the only time it is shown.**
    Select **Done** when it is stored in a password manager or in the program's secret store.
 
@@ -69,7 +69,7 @@ The Account page does not rotate tokens yet. Revoke the old token and create a n
 
 ## Service accounts
 
-A service account is an account for a program, owned by the instance rather than by a person.
+A service account is an account for a program, owned by the site rather than by a person.
 
 - It has no password and never signs in, not through single sign-on either.
 - It is not counted as a user and does not appear in the people list.
@@ -127,7 +127,7 @@ that acts as another person.
 
 ## The token inventory and policy
 
-Site administrators see every token of the instance on **Administration**, then **API tokens**.
+Site administrators see every token of the site on **Administration**, then **API tokens**.
 
 - **Show** filters the list: **All tokens**, **Active**, **Due for rotation**, **Expired** or
   **Revoked**. A token is due for rotation when it is active, not yet replaced, and expires

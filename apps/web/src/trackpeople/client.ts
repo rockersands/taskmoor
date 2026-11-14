@@ -53,6 +53,11 @@ export interface InvitationsView {
   /** Somebody may invite here besides site administrators. */
   invitingGiven: boolean;
   emailAvailable: boolean;
+  /**
+   * The person may make links to copy (T-053): anyone who may invite where the site sends no
+   * email; only site administrators where it does, since a copied link skips the mailbox.
+   */
+  canCopyLinks: boolean;
 }
 
 export interface InviteResult {

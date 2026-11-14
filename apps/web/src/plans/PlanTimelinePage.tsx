@@ -13,7 +13,7 @@ import { type TimelineGroup, TimelineView } from '../timeline/TimelineView';
 import type { PlanGroup, PlanZoom } from './address';
 import type { PlanTimeline, PlanTimelineItem } from './client';
 import { DownloadMenu } from './DownloadMenu';
-import { fileName, saveBlob } from './download';
+import { csvBlob, fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { timelineCsv } from './planExport';
 import { IMAGE_ROWS, imageRows, svgToPng, timelineSvg, viewWords } from './planImage';
@@ -139,7 +139,7 @@ export function PlanTimelinePage({
           make: async () => {
             const fresh = await client.timeline(id, filters, true);
             const name = dated('timeline', 'csv');
-            saveBlob(name, new Blob([timelineCsv(t, fresh)], { type: 'text/csv' }));
+            saveBlob(name, csvBlob(timelineCsv(t, fresh)));
             return name;
           },
         },

@@ -20,6 +20,8 @@ const FACT = 'a fact with no value, beside others that have one';
 const SETTING_HINT = 'a hint on a setting, about sections left empty: no list is empty here';
 const PRINTED =
   'a Timeline image: fixed light colours chosen for print, since the skin must not change a file';
+const GOOGLE_MARK =
+  "Google's G on its sign-in button (T-061): the colours Google requires, which no skin may change";
 const CARET_MENU = 'a line in the small menu at the caret, which closes as the person types on';
 
 export const ALLOWED = {
@@ -29,6 +31,10 @@ export const ALLOWED = {
     'boards/fixtures.ts #2f6fdb': SAMPLE_DATA,
     'boards/fixtures.ts #c4314b': SAMPLE_DATA,
     'builder/form.ts #6d5bd0': 'the accent a kit starts with, written into what the Builder makes',
+    'session/GoogleMark.tsx #EA4335': GOOGLE_MARK,
+    'session/GoogleMark.tsx #4285F4': GOOGLE_MARK,
+    'session/GoogleMark.tsx #FBBC05': GOOGLE_MARK,
+    'session/GoogleMark.tsx #34A853': GOOGLE_MARK,
     'plans/planImage.ts #ffffff': PRINTED,
     'plans/planImage.ts #1c2230': PRINTED,
     'plans/planImage.ts #566072': PRINTED,

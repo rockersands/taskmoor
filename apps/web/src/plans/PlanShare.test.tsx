@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -51,6 +51,14 @@ const textOf = (blob: Blob) =>
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.readAsText(blob);
+  });
+
+/** A file's bytes, as the browser writes them to disk. */
+const bytesOf = (blob: Blob) =>
+  new Promise<Uint8Array>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.readAsArrayBuffer(blob);
   });
 
 let clipboard: { writeText: ReturnType<typeof vi.fn> };
@@ -247,6 +255,33 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'CSV' }));
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(await textOf(saved[0]?.blob as Blob)).toContain('counted by whole weeks');
+  });
+
+  it('[PLN-014] every file a view makes starts with one UTF-8 byte-order mark, for Excel on Windows', async () => {
+    const views: [PlanSection, string][] = [
+      ['summary', '#/plans/12'],
+      ['timeline', '#/plans/12/timeline'],
+      ['calendar', '#/plans/12/calendar'],
+      ['capacity', '#/plans/12/capacity'],
+      ['releases', '#/plans/12/releases'],
+    ];
+    for (const [section, hash] of views) {
+      const user = userEvent.setup();
+      const saved = catchFiles();
+      renderPlan(section, hash);
+      await openDownload(user);
+      await user.click(await screen.findByRole('menuitem', { name: 'CSV' }));
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const file = saved[0]?.blob as Blob;
+      expect(file.type, section).toBe('text/csv; charset=utf-8');
+      const bytes = await bytesOf(file);
+      // EF BB BF once, then the header's first letter: never a second mark.
+      expect([...bytes.slice(0, 3)], section).toEqual([0xef, 0xbb, 0xbf]);
+      expect([...bytes.slice(3, 6)], section).not.toEqual([0xef, 0xbb, 0xbf]);
+      expect(String.fromCharCode(bytes[3] ?? 0), section).toMatch(/[A-Z]/);
+      cleanup();
+      vi.restoreAllMocks();
+    }
   });
 
   it('[PLN-014] says the file stops at 10,000 and the image at 400', async () => {

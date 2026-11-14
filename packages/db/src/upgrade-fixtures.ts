@@ -486,11 +486,13 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   '0024_workflows': {
     tables: {
       status: "name = 'Seed status' AND stage = 'active'",
-      workflow: "name = 'Seed workflow' AND draft_version = 2",
+      // Since 0107 its empty published version 1 is followed by version 2 with free moves, and
+      // its draft moves up to 3.
+      workflow: "name = 'Seed workflow' AND draft_version IN (2, 3)",
       workflow_version:
         "workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow') AND version = 2",
-      workflow_version_status:
-        "status_id IN (SELECT id FROM status WHERE name = 'Seed status') AND version = 2",
+      workflow_version_status: `status_id IN (SELECT id FROM status WHERE name = 'Seed status')
+        AND version = 2 AND workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow')`,
       // Its workflow lives on as the default of the track's workflow map since 0042.
       track:
         "key = 'SEED' AND workflow_map_id IN (SELECT id FROM workflow_map WHERE default_workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow'))",
@@ -1783,6 +1785,15 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         db,
       );
     },
+  },
+  '0107_workflows_left_without_moves': {
+    tables: {
+      // The seed workflow of 0024, left with no moves, has them as its published version.
+      workflow_version: `workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow')
+        AND version IN (SELECT published_version FROM workflow WHERE name = 'Seed workflow')
+        AND jsonb_array_length(definition -> 'transitions') = 1`,
+    },
+    seed: async () => {},
   },
   '0108_program_boards': {
     tables: {

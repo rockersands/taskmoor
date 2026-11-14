@@ -12,7 +12,9 @@ work. Spec 03 section 1 describes it (PLN-001 to PLN-011). The user decided on 2
 rules"):
 
 - The feature is called **Multi-track**; one of them is a **plan** over several tracks and saved
-  searches.
+  searches. Changed on 2026-11-13 (`docs/plan/decisions.csv`, "The Multi-track section's name"):
+  the section is named **Plans**, as its addresses (`/plans`) already were, and one of them stays a
+  **plan**. This record keeps its old title and file name; the interface and the manual say Plans.
 - All of Multi-track is in 1.0 except the hierarchy grid (PLN-010) and baselines (PLN-011). It is
   built in stages, one ticket each: this first one (T-088), then dependencies, teams and
   capacity, cross-track releases, the program board, draft changes and scenarios, the
@@ -28,9 +30,10 @@ Nothing here was taken from another product: no competing product, its documenta
 screens were opened (ADR-003). The views reuse Taskmoor's own track timeline (ADR-064), list and
 calendar (ADR-065) and summary (ADR-116).
 
-The terminology file maps the other product's "Plans" to our "roadmaps". The user named the
+The terminology file first mapped the other product's "Plans" to "roadmaps". The user named the
 feature Multi-track and calls one a plan; "plan" is ordinary English for it, the feature's name is
-our own, and the terminology file now lists Multi-track. If the user prefers another word for one
+our own, and the terminology file then listed Multi-track. Since 2026-11-13 it lists Plans, with
+one of them a plan and never a "roadmap". If the user prefers another word for one
 plan, the rename is in the UI strings and the manual; the tables and routes can keep theirs.
 
 ## Decision
@@ -308,15 +311,22 @@ take on.
   the plan's are no longer those (an anchor moved by whole periods is the same), nothing is set
   and the answer is 409 `settings_changed` with the plan's, since 30 points are not 30 hours. One `plan.capacity_set` event lists every change with its amount and note before
   and after; nothing changed records nothing. Audited, as `plan.updated` is: capacity is
-  configuration others see. A note is in the event as typed, as a plan's description is, so
-  the audit log keeps it after an erasure deletes the row: notes should say "Leave", not why.
+  configuration others see. A note is in the event as typed, as a plan's description is.
+- **An erased person's notes leave the history too** (T-089j, the user's decision of 2026-11-13).
+  The erasure's scrub job (`ERASE_SCRUB_TASK`, ADR-111) finds the `plan.capacity_set` events
+  that changed `user:<id>` and empties the notes of those changes, before and after; the amounts
+  and other subjects' notes stay. The audit log is append-only and never rewritten (ADR-034), so
+  it keeps the stored words but shows them empty when read or exported, with `masked: true`, as it
+  masks an erased person's name (`audit/query.ts`), and in a personal data download's
+  `audit.ndjson`, whoever downloads it; `audit-verify` still checks the stored
+  records. Notes should still say "Leave", not why: until the erasure they are as typed.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
 - Both routes are internal in the API document, as the other plan routes. Token scopes: read for
   the GET, write for the PUT.
 - A person's data download lists their capacity in plans with its notes, by the plan's id (the
   plan may be hidden from them); erasure deletes it (`PERSONAL_TABLES`), as notes may say why
-  someone was away. The plan stays.
+  someone was away, and clears its notes from the events as above. The plan stays.
 
 #### The page
 
@@ -767,8 +777,9 @@ holds of how many.
 - **The other views:** built on the page by one pure function per view from the view's own answer,
   so the file is what the view shows (RPT-009 (1) is the same idea), including what only the view
   knows: sprint-derived days, roll-ups and blocker counts on the Timeline. Headers are in the
-  person's language, each cell through a `csvField` kept the same as the server's and tested with
-  the same table. RFC 4180; no byte-order mark, like the existing exports.
+  person's language, each cell through the one `csvField` the server's exports use too
+  (`@taskmoor/webconfig` `csv.ts`). RFC 4180, and a UTF-8 byte-order mark first, as on every CSV
+  export (see the byte-order mark below).
   - **Timeline:** key, summary, type, track, status, start, due, where the days come from, roll-up,
     late, and `blockersElsewhere` as its two numbers. First 10,000, with a line beneath the button
     saying so when `truncated`.
@@ -888,8 +899,23 @@ touch drags), and how the image looks, which needs a person to look at it.
   characters beside their key, with an ellipsis; the file's CSV has them whole.
 - **Text XML cannot hold is taken out, not escaped:** control characters and lone surrogates would
   stop the whole picture from loading, so a ticket's odd title cannot cost someone their image.
-- **The cell guard is tested with one table** (`plans/csvGuardTable.json`) read by the web test and
-  by the server's `audit/query.test.ts`, so the two functions cannot drift apart unseen.
+- **One CSV rule for every export** (T-252): `csvField`, `csvLine`, `csvFile`, `withBom` and
+  `bomLength` live in `@taskmoor/webconfig` (`csv.ts`), which the server and the page both import,
+  so the search export, the List, the audit log and the views' files cannot drift apart. Its cell
+  guard is tested with one table (`csvGuardTable.json` beside it).
+- **A UTF-8 byte-order mark on every CSV file** (question 7 below, the user's answer of
+  2026-11-13): the three bytes EF BB BF come first, exactly once, so Excel on Windows opened by a
+  double-click reads the file as UTF-8 and accented headers such as "Versión" come out whole.
+  Streamed exports put it before the header in their first chunk (`withBom` leaves text that
+  already has one as it is); the views' files get it from `csvFile`, and `csvBlob` makes sure of it
+  again when the page hands the file over, typed `text/csv; charset=utf-8`. The separator stays a
+  comma: a Spanish Excel that wants semicolons still needs its import from text, which the mark does
+  not change. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
+  start reading after it, through `bomLength`, so an exported file imports as it is. Tests: each
+  export's bytes start EF BB BF once (`search-export.test.ts`, `plans.test.ts`, `audit.test.ts`,
+  `PlanShare.test.tsx`), and each reads back through the importer, the search export as a whole
+  CSV import (`search-export.test.ts`) and the downloaded files in the e2e specs
+  (`search-results`, `audit`, `plan-share-and-export`).
 - **The picture's colours are listed in the design guard's ALLOWED list,** with the reason: a file
   must not change with the skin.
 - **Tests by name:** the page's flows are in `plans/PlanShare.test.tsx`, and the file functions' in
@@ -912,7 +938,8 @@ touch drags), and how the image looks, which needs a person to look at it.
 7. **A byte-order mark on the CSV files:** none, like the existing exports; or one, so that Excel on
    Windows reads accented headers such as "Versión" when the file is opened by a double-click. A
    Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
-   Excel.
+   Excel. **Answered 2026-11-13: a mark on every CSV export, not only a plan's; separators as they
+   are. Built in T-252** (above).
 
 ### Stage 5 (T-089d): the program board and dependency options
 

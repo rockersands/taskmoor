@@ -86,7 +86,8 @@ again one of them. Two rows with the same id: the second fails as `duplicate_row
 ## Files from Taskmoor
 
 A CSV exported from search results (`GET /api/v1/search/export`) imports back with a mapping of
-its columns. Lists in its cells are separated by `; `, and the apostrophe the export puts before a
+its columns. Its first bytes are a UTF-8 byte-order mark, as on every Taskmoor CSV export (T-252);
+the importer leaves the mark out, as it does for any file that starts with one. Lists in its cells are separated by `; `, and the apostrophe the export puts before a
 cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return (so that a spreadsheet does
 not run it as a formula) is removed again. People appear by name in that export: map them with
 `people`.

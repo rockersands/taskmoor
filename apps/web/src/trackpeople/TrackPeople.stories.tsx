@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -9,7 +9,7 @@ import { fakeSignInSso } from '../sso/fixtures';
 import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
-import { fakeInvitationClient, fakeTrackPeopleClient, ROLES } from './fixtures';
+import { fakeInvitationClient, fakeTrackPeopleClient, ROLES, WAITING } from './fixtures';
 import { InvitationPage } from './InvitationPage';
 import { InviteDialog } from './InviteDialog';
 import { ManagedTracksPage } from './ManagedTracksPage';
@@ -74,6 +74,52 @@ export const InvitingOff: Story = {
 
 export const NoMailServer: Story = {
   args: { client: fakeTrackPeopleClient({ emailAvailable: false }) },
+};
+
+/**
+ * Where the site sends email a manager's invitations go by email (T-053): no New link, and one
+ * line saying why.
+ */
+export const ManagerWhereEmailWorks: Story = {
+  args: { client: fakeTrackPeopleClient({ emailAvailable: true, canCopyLinks: false }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/Your invitations go by email: on a site that sends email/),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /Make a new link/ })).toBeNull();
+  },
+};
+
+/** A site administrator on the same site may still copy a link (T-053). */
+export const LinksForASiteAdministrator: Story = {
+  args: { client: fakeTrackPeopleClient({ emailAvailable: true, canCopyLinks: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Make a new link for nia@example.com' }),
+    ).toBeVisible();
+  },
+};
+
+/** The manager's dialog: email only, with the line that says why. */
+export const DialogEmailOnly: StoryObj<typeof InviteDialog> = {
+  render: () => (
+    <InviteDialog
+      track={{ id: 3, key: 'SHOP' }}
+      roles={ROLES}
+      emailAvailable
+      canCopyLinks={false}
+      client={fakeTrackPeopleClient()}
+      onClose={() => {}}
+      onSent={() => {}}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('radio')).toBeNull();
+    await expect(canvas.getByText(/only site administrators copy links/)).toBeVisible();
+  },
 };
 
 export const Phone: Story = {
@@ -379,6 +425,123 @@ export const InvitationAtPhoneWidth: StoryObj<typeof InvitationPage> = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('form')).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A row's box on screen, to say where an answer is against it. */
+const rect = (element: Element) => element.getBoundingClientRect();
+const rowNamed = (list: HTMLElement, text: string) =>
+  within(list)
+    .getAllByRole('listitem')
+    .find((li) => li.textContent?.startsWith(text)) as HTMLElement;
+const twoWaiting = () =>
+  fakeTrackPeopleClient({
+    invitations: [WAITING, { ...WAITING, id: 22, email: 'oli@example.com' }],
+    // As for a site administrator, who may copy links where the site sends email (T-053).
+    canCopyLinks: true,
+  });
+
+/**
+ * A long list of who holds which role (T-248): taking a role from someone halfway down says so in
+ * that row's place, between the rows around it, not at the foot of the card far below; the
+ * page's status line tells a screen reader.
+ */
+export const AnswerBesideTheRow: Story = {
+  args: { client: fakeTrackPeopleClient({ crowd: 12 }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByRole('region', { name: 'Who holds which role' });
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove Member 6 from Members' }),
+    );
+    const said = await within(card).findByText('Member 6 no longer holds Members.');
+    await expect(said).toBeVisible();
+    const list = within(card).getAllByRole('list')[0] as HTMLElement;
+    await expect(rect(said).top).toBeGreaterThanOrEqual(
+      rect(rowNamed(list, 'Member 5: Members')).bottom,
+    );
+    await expect(rect(said).bottom).toBeLessThanOrEqual(
+      rect(rowNamed(list, 'Member 7: Members')).top,
+    );
+    await waitFor(() =>
+      expect(canvas.getByRole('status')).toHaveTextContent('Member 6 no longer holds Members.'),
+    );
+  },
+};
+
+/**
+ * A refusal at a small phone's width, in Spanish, as on a touch screen: it wraps inside the row
+ * pressed, with nothing sideways, and the buttons still take a finger (ADR-033).
+ */
+export const AnswerBesideTheRowAtPhoneWidth: Story = {
+  args: { client: fakeTrackPeopleClient({ crowd: 12 }) },
+  decorators: [
+    atPhoneWidth,
+    (Story) => (
+      <I18nProvider locale="es">
+        <Story />
+      </I18nProvider>
+    ),
+  ],
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByRole('region', { name: 'Quién tiene cada rol' });
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Quitar Administrators a Kalo Reyes' }),
+    );
+    const alert = await within(card).findByRole('alert');
+    await expect(alert).toBeVisible();
+    const row = alert.closest('li') as HTMLElement;
+    await expect(row).toHaveTextContent('Kalo Reyes');
+    await expect(rect(alert).left).toBeGreaterThanOrEqual(rect(row).left);
+    await expect(rect(alert).right).toBeLessThanOrEqual(rect(row).right + 0.5);
+    await expect(tooSmallForAFinger(card, ['.people-action'])).toEqual([]);
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** Two invitations waiting: one sent again says so in its own row, not in the other's (T-248). */
+export const InvitationAnswerInItsRow: Story = {
+  args: { client: twoWaiting() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByRole('region', { name: 'Invitations waiting' });
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Send again to oli@example.com' }),
+    );
+    const list = within(card).getByRole('list');
+    await expect(
+      await within(rowNamed(list, 'oli@example.com')).findByText(
+        'The invitation to oli@example.com went out again.',
+      ),
+    ).toBeVisible();
+    await expect(rowNamed(list, 'nia@example.com')).not.toHaveTextContent('went out again');
+  },
+};
+
+/** A new link at a small phone's width, as on a touch screen: in its own row, fitting. */
+export const InvitationAnswerInItsRowAtPhoneWidth: Story = {
+  args: { client: twoWaiting() },
+  decorators: [atPhoneWidth],
+  beforeEach: asOnATouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByRole('region', { name: 'Invitations waiting' });
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Make a new link for oli@example.com' }),
+    );
+    const row = rowNamed(within(card).getByRole('list'), 'oli@example.com');
+    await expect(
+      await within(row).findByRole('textbox', { name: 'Link for oli@example.com' }),
+    ).toBeVisible();
+    await expect(
+      await within(row).findByText(
+        'There is a new link for oli@example.com; the old one no longer works.',
+      ),
+    ).toBeVisible();
+    await expect(tooSmallForAFinger(card, ['.people-action'])).toEqual([]);
     await fitsPhoneWidth(canvas);
   },
 };

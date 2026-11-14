@@ -9,7 +9,7 @@ import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
 import { closingReasonId, completedReasonId } from '../workflows/board-managed';
 import { closeReasonProblem } from '../workflows/close-reasons';
-import { withFreeMoves } from '../workflows/free-moves';
+import { withFreeMoves, withMovesIfNone } from '../workflows/free-moves';
 import { followingStage, freeTransitions } from '../workflows/free-moving';
 import {
   defaultMapId,
@@ -1035,9 +1035,23 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
           return { badMapping: r.statusId };
         }
       }
+      const version = held.draft_version as number;
+      // A draft with no transitions at all (restored or imported so) is published with the free
+      // moves a new workflow gets, never as a workflow where no ticket can move (T-246; WF-008).
+      // Only once every check above has passed: a refused publish commits, and must leave the
+      // draft as its author saved it. The moves close with a reason that exists, so the closing
+      // check above holds for them too, and they add no status.
+      const moving = await withMovesIfNone(trx, ws, held.id, impact.draft);
+      if (moving !== impact.draft) {
+        await trx
+          .updateTable('workflow_version')
+          .set({ definition: JSON.stringify(moving) })
+          .where('workflow_id', '=', held.id)
+          .where('version', '=', version)
+          .execute();
+      }
       const used = new Map(needed.map((r) => [r.statusId, mapping.get(r.statusId) as number]));
       const ticketCount = await remapStatuses(trx, ws, user.id, impact.tickets, used);
-      const version = held.draft_version as number;
       await trx
         .updateTable('workflow_version')
         .set({ published_at: new Date(), published_by: user.id })
@@ -1308,7 +1322,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
             })
             .returning('id')
             .executeTakeFirstOrThrow();
-          await writeVersion(trx, ws, row.id, 1, result.definition, user.id, true);
+          // A file with no transitions gives the free moves a new workflow gets (T-246).
+          const definition = await withMovesIfNone(trx, ws, row.id, result.definition);
+          await writeVersion(trx, ws, row.id, 1, definition, user.id, true);
           await emit(trx, by(request), {
             type: 'workflow.imported',
             subjectId: row.id,
@@ -1357,7 +1373,10 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         const done = await db.transaction().execute(async (trx) => {
           const result = await importDocument(trx, ws, document, access.ownerTrackId);
           await checkImported(trx, ws, result);
-          const draft = await writeDraft(trx, request, params.data.id, result.definition);
+          // A file with no transitions gives the draft the free moves a new workflow gets (T-246).
+          const draft = await writeDraft(trx, request, params.data.id, () =>
+            withMovesIfNone(trx, ws, params.data.id, result.definition),
+          );
           // Deleted meanwhile: nothing the import created stays.
           if (!draft) throw new ImportRefused(null);
           await emit(trx, by(request), {

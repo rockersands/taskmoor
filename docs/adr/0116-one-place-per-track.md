@@ -160,8 +160,7 @@ them.
       workflow that moves freely, not only the editor's. The server only adds: a status that was
       already in the workflow, a step someone drew, any draft with a rule and a board-managed
       workflow's draft (its board says which columns there are) stay as sent. An old workflow
-      with no transitions gets its moves when its next draft is saved, or from the operator's
-      repair below. The web editor saves with `transitionsAsSent`: its Add a status already gives
+      with no transitions got its moves from migration 0107 (T-246, below). The web editor saves with `transitionsAsSent`: its Add a status already gives
       a new status its free move, so a move missing from a draft that has transitions was deleted
       on purpose, and the server adds none (a draft with no transitions at all still gets them, as
       a new workflow does). Without it, a free move deleted from a status just added came back on
@@ -181,17 +180,51 @@ them.
       one a board manages, gets nothing and stays listed, and the command then exits with 1. We
       considered:
       - *a migration*, which would do the same at the next upgrade with nobody running anything.
-        Not now: this wave may take no migration number, every site holding one from before the
-        rule is a pre-release one, and an import or a restore can still make one after any
-        migration, which the command, run when needed, covers too. A migration before 1.0 can
-        reuse `repairWorkflowMoves` if wanted;
+        Not then (no migration number in that wave); chosen by the user on 2026-11-13 (T-246,
+        below);
       - *the moves at read time*, when a ticket asks for its transitions: built in memory, the
         definition, the editor and an exported file would say something other than what happens
         (rejected for the same reason in T-209); written then, a read would publish a version,
         and a ticket write holds its workflow with key share, so two writes raising it to update
         at once would deadlock;
       - *the moves at the next publish*: only a draft is published, so a workflow with no draft
-        stays as it is, and the editor's Publish saves first, which gives them already.
+        stays as it is, and the editor's Publish saves first, which gives them already. T-246
+        added them at publish anyway, for a draft that reaches it empty (below), but that alone
+        leaves a workflow with no draft as it is.
+    - *Old workflows' free moves at the upgrade; none published or imported empty* (T-246, the
+      user's decision of 2026-11-13: a migration before 1.0, no manual step). Migration 0107
+      gives every workflow whose published version has no transitions the repair's moves, with
+      the repair's rules: a global transition into each status in the definition's order, named
+      after it, numbered above every transition id any version used; a closed-stage status sets
+      the reason free moves close with (Completed by name, else what the default workflow's
+      published version sets on entering a closed-stage status) and gets no move when there is
+      none to name, and no reason is made; any other move clears the reason. A workflow a board
+      manages, one with a rule and one that would get no move at all stay as they are. The moves
+      are a new published version by nobody; a draft stays as its author saved it, renumbered
+      above it as 0104 renumbered drafts (the new version takes the draft's number). Like 0089,
+      0104 and 0105 it writes no event: an upgrade is no one's change. A migration is frozen and
+      `@taskmoor/db` cannot import the server, so the rules are written out in the migration;
+      a server test runs it and `repairWorkflowMoves` on the same workflow and checks both give
+      the same moves. `cli.mjs workflow-moves` stays, as the check: after 0107 it lists only what
+      free moves leave alone, and `--repair` still repairs anything an older path left. So that
+      no new one appears, a definition with no transitions at all (and no rule, no board) gets
+      the free moves wherever it becomes a version: a draft saved through the editor or the API
+      (already so, T-210), **a publish** (a draft restored from an empty version, or imported
+      empty, reaches Publish without a save; the draft's version is rewritten with the moves
+      under the publish's lock, then published, still one `workflow.published`; the rewrite
+      comes after every check that can refuse the publish, since a refusal is a normal answer and
+      its transaction commits, so a refused publish leaves the draft as its author saved it and
+      writes nothing no event records), **an import of a workflow file**, as a new workflow and
+      as the next draft (`withMovesIfNone`, inside the import's one transaction and one
+      `workflow.imported`), and **an import run** (a Data Center backup or a
+      Taskmoor export: the workflow loader publishes a workflow that converts to none, one with
+      only its create action, as version 1 with the moves). What free moves cannot reach stays
+      empty wherever it comes from: a definition whose only statuses are closed-stage ones when
+      the workspace has no reason to name gets no move, is published or imported as it is, and
+      the check lists it. A restore still keeps what the version holds
+      until it is published, and the editor's publish step says that such a draft is published
+      with a move into every status. An import keeps every transition and rule a file has
+      (WF-008 (4): imported workflows keep their rules); only a file with none gets moves.
     - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
       The reason free moves close with (`closingReasonId`) stays as it was: the reason named
       Completed, else what the default workflow's published version sets on entering a
@@ -276,8 +309,25 @@ them.
   status other workflows share keeps its stage.
 
 - **Outcomes** (T-079, the user's decision of 2026-11-03; AGL-024) lists the track's outcomes
-  with their progress, on Scrum and Kanban tracks alike. How a Kanban track manages its outcomes
-  (T-082) is still the user's question; this section only lists them.
+  with their progress, on Scrum and Kanban tracks alike. Every track type manages them here too
+  (T-082, the user's decision of 2026-11-13): the section gains a manage panel.
+  - **The manage panel** creates an outcome (a summary, and a type when the track has more than one
+    at the outcome level), edits its summary and dates, moves an open one up or down among the open
+    ones, and closes one through its workflow (the one way into the closed stage at once; a choice
+    when there are several; the close reason or priority a way asks for, as the ticket page's
+    transition form; otherwise it sends the person to the outcome's page).
+  - **No new route and no new event.** The panel calls the ticket routes the ticket page and the
+    backlog use (`POST /tickets`, `PATCH /tickets/:id`, `PUT /tickets/:id/rank`,
+    `POST /tickets/:id/transitions`), which work on any track type, check each ticket again and emit
+    their own events (`ticket.created`, `ticket.updated`, `ticket.ranked`, `ticket.transitioned`),
+    so the audit and contract decisions are theirs. Moving up is a rank just before the open
+    outcome above, moving down just after the one below; the backlog's block rank stays Scrum-only.
+  - **What the page offers** comes with the list: `manage` says, from the person's roles in the
+    track, whether they may create (`create_tickets` and an outcome-level type, whose ids it lists),
+    edit (`edit_tickets`), schedule (`schedule_tickets`: dates and order) and close
+    (`transition_tickets`); all false on an archived track. It is a hint for the page; the ticket
+    routes decide. `track-outcomes.test.ts` runs the whole cycle on a Kanban track as a member, and
+    shows a viewer refused.
   - `GET /api/v1/tracks/:id/outcomes` reads a page of up to 100 in one statement: the outcomes and,
     in a second common table expression of the same statement, the counts under them. The person's
     ticket filter is in both, as in search (QRY-008), so a hidden outcome is not listed and a hidden
@@ -322,7 +372,7 @@ them.
     chart for an outcome, from the first day a ticket came under it, with its tickets as they
     stand: done, still open, and open without an estimate. Like the other release and outcome
     reports it follows the Scrum board's estimation and done columns, so a Kanban track does not
-    list it; how a Kanban track manages outcomes is still the user's question (T-082).
+    list it; a Kanban track manages its outcomes from the Outcomes section (T-082).
   - **Every number equals a search.** `track-reports.test.ts` checks each count against the search
     API, and each sum against the tickets that search finds, as two people a visibility level
     tells apart, on a Scrum and a Kanban track; and that a Summary widget with no query reads
@@ -334,10 +384,22 @@ them.
     against a budget of 1,000 ms each (RPT-002 (3) asks 3 s at a million tickets). Every gate
     reads a track of 10,000; `TASKMOOR_LARGE_TRACK_REPORTS=1` reads 100,000. No index or migration
     was needed.
-  - **Not done:** RPT-006 says members "view and filter" the Summary. Members read it as the
-    owner set it; a filter of their own over all its widgets is not built, as the user's decision
-    names only customizing by the owner. Numbers in the new reports are not links to their
-    searches yet, unlike the default Summary's.
+  - **Members filter it for themselves** (T-075a, the user's decision of 2026-11-13; RPT-006 "view
+    and filter"); only the owner and administrators customize it for everyone. The filter is a
+    condition in the query language that `GET /tracks/:id/summary` and
+    `GET /tracks/:id/summary-layout/widgets/:widgetId` take as `?filter=` (at most 2,000
+    characters). `narrowQuery` parses the widget's query and the filter and joins them with AND,
+    each kept whole, so an OR in the filter cannot widen past the track and a stray bracket is a
+    refused query, not an escape; the filter's own ORDER BY is ignored. Every number's query
+    carries it, so a number still equals the search it links to. Sprint widgets read a sprint, not
+    a query, and are not narrowed; the page says so.
+  - **Where the filter is kept: the page's address** (`#/tracks/KEY?filter=...`), not a stored
+    setting. That is per person by nature, survives a reload, can be bookmarked, needs no table, no
+    migration and no event, and cannot touch the shared layout, which a server test checks (a
+    member filtering changes neither the stored layout nor its version, and their `PUT` and
+    `DELETE` are still refused). Customizing shows the widgets unfiltered.
+  - **Not done:** numbers in the new reports are not links to their searches yet, unlike the
+    default Summary's.
 
 ## Options considered
 

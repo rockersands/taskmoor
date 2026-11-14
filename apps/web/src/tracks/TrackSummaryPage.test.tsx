@@ -1,13 +1,13 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import type { FakeTrackClient } from './fixtures';
 import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
-import { TrackSummaryPage } from './TrackSummaryPage';
+import { filterOfRoute, routeWithFilter, TrackSummaryPage } from './TrackSummaryPage';
 import { TrackSectionsContext } from './trackSections';
 
 function open(locale: Locale = 'en', client: FakeTrackClient = fakeTrackClient()) {
@@ -307,6 +307,141 @@ describe('a customized track summary (ADR-116)', () => {
     const user = userEvent.setup();
     open('en', customizable({ custom: CUSTOM }));
     await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+describe('filtering a track summary for oneself (RPT-006; T-075a)', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#/tracks/SHOP');
+  });
+  afterEach(() => {
+    window.history.replaceState(null, '', '#/');
+    setViewportWidth(1280);
+  });
+  const MINE = 'assignee = currentUser()';
+
+  it('[RPT-006] a member narrows every number to their tickets, each still opening its search', async () => {
+    const user = userEvent.setup();
+    const { client } = open();
+    expect(await screen.findByRole('link', { name: '26' })).toBeVisible();
+    // A member reads it and may filter it, but not customize it.
+    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+    const form = screen.getByRole('form', { name: 'Filter this summary for yourself' });
+    await user.click(within(form).getByRole('button', { name: 'My tickets' }));
+    // The filter is in the page's address, the person's own.
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/tracks/SHOP?${new URLSearchParams({ filter: MINE }).toString()}`,
+      ),
+    );
+    const open8 = await screen.findByRole('link', { name: '8' });
+    expect(open8).toHaveAttribute(
+      'href',
+      `#/search?${new URLSearchParams({ q: `track = SHOP AND ${MINE} AND closeReason IS EMPTY` }).toString()}`,
+    );
+    expect(within(form).getByLabelText('Only tickets that match')).toHaveValue(MINE);
+    expect(within(form).getByText(`Showing only the tickets that match ${MINE}.`)).toBeVisible();
+    expect(within(form).getByText(/Only you see this filter/)).toBeVisible();
+    expect(client.filters).toEqual(['', MINE]);
+    // Nothing was saved for anyone.
+    expect(client.saved).toEqual([]);
+
+    await user.click(within(form).getByRole('button', { name: 'Clear the filter' }));
+    expect(await screen.findByRole('link', { name: '26' })).toBeVisible();
+    expect(window.location.hash).toBe('#/tracks/SHOP');
+    expect(within(form).getByLabelText('Only tickets that match')).toHaveValue('');
+  });
+
+  it('[RPT-006] reads the filter from the address, and checks a typed one like a search', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '#/tracks/SHOP?filter=type%20%3D%20Bug');
+    const checked: string[] = [];
+    const client = fakeTrackClient();
+    render(
+      <I18nProvider locale="en">
+        <TrackSummaryPage
+          trackKey="SHOP"
+          client={client}
+          checkQuery={async (q) => {
+            checked.push(q);
+            return !q.includes('==');
+          }}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('link', { name: '8' })).toBeVisible();
+    expect(client.filters).toEqual(['type = Bug']);
+    const field = screen.getByLabelText('Only tickets that match');
+    expect(field).toHaveValue('type = Bug');
+
+    await user.clear(field);
+    await user.type(field, 'priority == High{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That filter does not read as a search.',
+    );
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(checked).toEqual(['priority == High']);
+    // Refused: the address and the numbers stay as they were.
+    expect(window.location.hash).toBe('#/tracks/SHOP?filter=type%20%3D%20Bug');
+    expect(client.filters).toEqual(['type = Bug']);
+
+    await user.clear(field);
+    await user.type(field, ' priority = High {Enter}');
+    await waitFor(() => expect(client.filters).toEqual(['type = Bug', 'priority = High']));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('[RPT-006] narrows a customized summary’s widgets too, and the owner customizes it unfiltered', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', `#/tracks/SHOP?filter=${encodeURIComponent(MINE)}`);
+    const client = fakeTrackClient(SHOP_SUMMARY, { mayCustomize: true, custom: CUSTOM });
+    open('en', client);
+    expect(await screen.findByRole('link', { name: 'SHOP-41' })).toBeVisible();
+    // The numbers widget and the list both read with the filter.
+    await waitFor(() => expect(client.filters.filter((f) => f === MINE)).toHaveLength(2));
+
+    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    // While customizing, the widgets read as everyone will see them, and the filter steps aside.
+    expect(screen.queryByRole('form', { name: 'Filter this summary for yourself' })).toBeNull();
+    await waitFor(() => expect(client.filters.at(-1)).toBe(''));
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    await screen.findByText('Saved.');
+    // What is saved for everyone holds no filter.
+    expect(JSON.stringify(client.saved)).not.toContain('currentUser');
+    // The person's filter is still theirs afterwards.
+    expect(screen.getByLabelText('Only tickets that match')).toHaveValue(MINE);
+  });
+
+  it('[RPT-006] says sprint widgets keep their whole sprint under a filter', async () => {
+    window.history.replaceState(null, '', `#/tracks/SHOP?filter=${encodeURIComponent(MINE)}`);
+    const sprint = {
+      id: 'sb',
+      kind: 'sprint-burndown' as const,
+      column: 0,
+      title: 'Our burndown',
+      config: {},
+    };
+    open(
+      'en',
+      fakeTrackClient(SHOP_SUMMARY, {
+        custom: { layout: 'two', version: 1, widgets: [...CUSTOM_WIDGETS, sprint] },
+      }),
+    );
+    expect(await screen.findByText(/Sprint widgets still show their whole sprint\./)).toBeVisible();
+  });
+
+  it('[RPT-006] keeps what else the address says, and fits a phone', async () => {
+    expect(routeWithFilter('#/tracks/SHOP?x=1', 'type = Bug')).toBe(
+      '#/tracks/SHOP?x=1&filter=type+%3D+Bug',
+    );
+    expect(routeWithFilter('#/tracks/SHOP?filter=a&x=1', '')).toBe('#/tracks/SHOP?x=1');
+    expect(filterOfRoute('#/tracks/SHOP?filter=+type+%3D+Bug+')).toBe('type = Bug');
+    expect(filterOfRoute('#/tracks/SHOP')).toBe('');
+    setViewportWidth(375);
+    window.history.replaceState(null, '', `#/tracks/SHOP?filter=${encodeURIComponent(MINE)}`);
+    open();
+    await screen.findByRole('link', { name: '8' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

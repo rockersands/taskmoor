@@ -259,7 +259,7 @@ Responses:
 
 `POST /api/v1/bulk-operations`, operation `createBulkOperation`, access: write.
 
-Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
+Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The site limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
 
 Body:
 
@@ -622,20 +622,20 @@ Responses:
 
 ## Instance
 
-### What this instance is and which clients it works with
+### What this site is and which clients it works with
 
 `GET /api/meta`, operation `getMeta`, access: public.
 
-Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.
+Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
-| `nonce` | query | string | no | 16 to 128 base64url characters the instance signs, chosen afresh by the caller. |
+| `nonce` | query | string | no | 16 to 128 base64url characters the site signs, chosen afresh by the caller. |
 | `frontend` | query | string | no | The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. |
 
 Responses:
 
-- 200: The instance. Body: [Meta](#schema-meta).
+- 200: The site. Body: [Meta](#schema-meta).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 

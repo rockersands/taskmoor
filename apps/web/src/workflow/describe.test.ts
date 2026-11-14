@@ -31,7 +31,7 @@ describe('the editor words server refusals (M1-030)', () => {
       ),
     ).toBe('Approve: there is no field named mood.');
     expect(definitionProblemMessage(t, { problem: 'unknown_status', statusId: 99 }, names)).toBe(
-      'Status 99 no longer exists in the workspace.',
+      'Status 99 no longer exists on the site.',
     );
     expect(definitionProblemMessage(t, { problem: 'toString' }, names)).toBe(
       messages['workflow.problem.refused'],
@@ -45,7 +45,7 @@ describe('the editor words server refusals (M1-030)', () => {
     );
     expect(
       refused({ error: 'cannot_restore', detail: { problem: 'unknown_status', statusId: 7 } }),
-    ).toBe('Version 1 cannot be restored: Status 7 no longer exists in the workspace.');
+    ).toBe('Version 1 cannot be restored: Status 7 no longer exists on the site.');
     expect(
       refused({
         error: 'cannot_restore',

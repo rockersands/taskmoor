@@ -8,7 +8,7 @@ attestation: own-words
 # Tutorials
 
 The guided tutorial teaches Taskmoor by having you use it. It is split into sections, and each
-section walks you through making one real thing in this instance: a ticket, a dashboard, a
+section walks you through making one real thing on this site: a ticket, a dashboard, a
 sprint. What you make is real and stays, so at the end you can keep it or delete it. Your place
 in every section is saved with your account, so it follows you to another device.
 

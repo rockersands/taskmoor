@@ -37,7 +37,7 @@ export const Away: Story = { args: { goThere: '#/dashboards' } };
 export const First: Story = {
   args: {
     title: 'Dashboards',
-    body: 'A dashboard puts the lists and numbers you check often on one page. You will make one and add a widget. It is real and stays in this instance.',
+    body: 'A dashboard puts the lists and numbers you check often on one page. You will make one and add a widget. It is real and stays on this site.',
     index: 0,
     waiting: false,
   },
@@ -47,7 +47,7 @@ export const First: Story = {
 export const Last: Story = {
   args: {
     title: 'Your dashboard is ready',
-    body: 'It stays in this instance. On its page you can share it, show it as a wallboard or delete it.',
+    body: 'It stays on this site. On its page you can share it, show it as a wallboard or delete it.',
     index: 5,
     waiting: false,
     made: '#/dashboards/7',

@@ -1,6 +1,6 @@
 # Example alert rules (ADR-023, OPS-011). Thresholds follow the performance budgets of the
 # plan (NFR-001: p95 under 300 ms for searches, 1 s for pages) and the backup policy of the
-# pre-upgrade check (a backup older than a day). Adjust them to your instance.
+# pre-upgrade check (a backup older than a day). Adjust them to your site.
 groups:
   - name: taskmoor
     rules:

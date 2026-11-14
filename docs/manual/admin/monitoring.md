@@ -1,7 +1,7 @@
 ---
 title: "Monitoring and logs"
 audience: admins
-sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/words.ts, apps/web/src/admin/TableScroller.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts
+sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/words.ts, apps/web/src/admin/TableScroller.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts, packages/webconfig/src/csv.ts
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -30,12 +30,12 @@ curl http://localhost:8080/ready
 
 ## The System status page
 
-Site administrators open **Administration**, **System status** to see whether the instance is healthy.
+Site administrators open **Administration**, **System status** to see whether the site is healthy.
 **Refresh** reads it again.
 
 | Section | Shows |
 |---|---|
-| **Instance** | **Version**, **Roles**, **Started**, **Uptime** |
+| **Site** | **Version**, **Roles**, **Started**, **Uptime** |
 | **Updates** | **Running**, **Newest version**, **Last looked**, the command when a newer version exists, and the switch (see [The new-version notice](upgrades.md#the-new-version-notice)) |
 | **Database** | **Connection** (**Connected**, a green badge, or **Unreachable**), **PostgreSQL** version, **Size**, **Migrations** (applied, pending, and any from a newer release), **Connections** in use, maximum and waiting |
 | **Storage** | **Data directory**, **Free space**, **Last backup** (with a warning once it is older than a day) |
@@ -82,7 +82,7 @@ The `deploy/observability` folder of the Taskmoor repository holds three files t
 
 - `prometheus.yml` scrapes `taskmoor:9464` every 30 seconds as the job `taskmoor`; list each
   process as a target when you run one per role.
-- `alerts.yml` holds these rules; adjust the thresholds to your instance.
+- `alerts.yml` holds these rules; adjust the thresholds to your site.
 - `grafana-dashboard.json` is a dashboard named Taskmoor with the version, the last backup's age,
   requests per second and p95 latency by route, the server error ratio, p95 statement time, the
   database pool and resident memory. A dashboard variable picks the Prometheus data source.
@@ -168,7 +168,8 @@ an action the page does not know yet shows as its code. Times stay on one line. 
 than the screen scrolls sideways inside its card, which the keyboard reaches with Tab. On a phone
 each record is one block: when, who and what, then what it is about and the address it came
 from. Through the API, `action=user.` finds every event about people. **Download as CSV** and **Download as JSON Lines** save
-every record the filter finds, oldest first; each download is itself recorded. **Check the
+every record the filter finds, oldest first; each download is itself recorded. The CSV file is
+UTF-8 with a byte-order mark first, so Excel on Windows opens it properly by a double-click. **Check the
 chain** verifies the whole log and says where it breaks, if it does.
 
 The same is available through the API (an API token needs the admin scope; see
@@ -178,7 +179,7 @@ The same is available through the API (an API token needs the admin scope; see
 |---|---|
 | `GET /api/v1/audit` | Searches, newest first, 50 records a page (`limit` up to 500, `cursor` for the next page) |
 | `GET /api/v1/audit/export?format=csv` | Streams every matching record, oldest first, as CSV or `jsonl` (JSON Lines) |
-| `GET /api/v1/audit/verify` | Checks this workspace's chain |
+| `GET /api/v1/audit/verify` | Checks this site's chain |
 | `GET` and `PUT /api/v1/audit/settings` | Reads or sets `retentionMonths` |
 
 Both search and export take the filters `from` and `to` (a date or a date and time with an
@@ -193,7 +194,7 @@ address, and its own and the previous hash.
 docker compose exec taskmoor node cli.mjs audit-verify
 ```
 
-It prints one JSON line per workspace (`ok`, the records checked, where checking started, the
+It prints one JSON line per site (`ok`, the records checked, where checking started, the
 head's sequence number and hash, and the first broken record) and exits with 1 when a chain is
 broken. Someone with full rights on the database could rewrite a chain from start to end, so keep
 the head hash it prints, or the last line of an export, somewhere else as well.
@@ -201,7 +202,7 @@ the head hash it prints, or the last line of an export, somewhere else as well.
 ### Retention
 
 The log keeps 12 months by default. **Keep records for** on the audit log page changes it for
-the whole instance, as does `PUT /api/v1/audit/settings` with `{"retentionMonths": 24}`; `0`
+the whole site, as does `PUT /api/v1/audit/settings` with `{"retentionMonths": 24}`; `0`
 (**Forever**) keeps everything. Once a day the worker drops the
 months older than that, after checking the part of the chain it drops; a range that does not
 verify is kept and reported instead. Each drop is itself recorded in the log.
@@ -223,7 +224,7 @@ moving that position. The same settings are `GET` and `PUT /api/v1/audit/syslog`
 `POST /api/v1/audit/syslog/test`. A continuous stream in other formats (CEF, HTTPS,
 OpenTelemetry) is planned for release 2.0.
 
-## Instance and version information
+## Site and version information
 
 `GET /api/meta` answers without signing in, to any origin, and holds only public values:
 
@@ -232,10 +233,10 @@ OpenTelemetry) is planned for release 2.0.
 | `version` | The backend's version |
 | `api` | The native API's version and base path (`/api/v1`) |
 | `frontend` | `minimum` and `recommended` web app versions this backend works with; null on a development build |
-| `instance` | The instance's id, name and public key (Ed25519) with its fingerprint |
+| `instance` | The site's id, name and public key (Ed25519) with its fingerprint |
 | `signIn` | Whether passwords work, and each enabled single sign-on provider's public details |
 
-With `?nonce=` (16 to 128 base64url characters) the answer also carries the instance's signature
+With `?nonce=` (16 to 128 base64url characters) the answer also carries the site's signature
 over the nonce, which the Builder's kits use to check they reached their own backend. When the
 password pepper is lost, the signature is refused with `503 identity_unavailable`. The version
 also appears in `/health`, in `taskmoor_build_info` and on the System status page. See

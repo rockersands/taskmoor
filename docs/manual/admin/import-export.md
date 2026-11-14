@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/boards/one-per-track.ts, docs/adr/0116-one-place-per-track.md, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
+sources: apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/boards/one-per-track.ts, docs/adr/0116-one-place-per-track.md, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/csv.ts, apps/server/src/workflows/free-moves.ts
 accessed: 2026-11-13
 attestation: own-words
 jira-names: import sources and field mapping
@@ -10,7 +10,7 @@ jira-names: import sources and field mapping
 
 Taskmoor imports CSV files, its own full exports, a Jira Data Center backup's configuration
 and issues, and a Jira Cloud site (or any server with a Jira-compatible REST API) read with your
-own API token, and exports a whole workspace, chosen tracks, or the results of a search. Imports are
+own API token, and exports a whole site, chosen tracks, or the results of a search. Imports are
 for site administrators and run in the background; exports of search results are open to
 everyone who can search.
 
@@ -143,7 +143,7 @@ Content-Type: application/json
 `taskmoor` (see [Importing an export](#importing-an-export)), `dc-backup` (see
 [Data Center backups](#data-center-backups)), `cloud-rest` (see
 [Jira Cloud sites](#jira-cloud-sites)), or `synthetic`, a test format of Taskmoor's own
-with a seeded generator, for trying the importer on a scratch instance.
+with a seeded generator, for trying the importer on a scratch site.
 
 ### Following a run
 
@@ -214,7 +214,7 @@ imports the tickets too, but not
 their comments, history, time entries, links, web links and attachments, which are counted with
 the reason `tickets_only`.
 
-The source's system administrators become site administrators, who run the instance and see
+The source's system administrators become site administrators, who run the site and see
 every track. Add `"systemAdmins": "configuration_admin"` to make them configuration
 administrators instead: they manage the configuration but not the site, and the report warns
 `system_admin_as_configuration_admin`. Importing again with the other choice changes the grants
@@ -228,7 +228,7 @@ the numbers; raise them with `TASKMOOR_ARCHIVE_MAX_GIB`, `TASKMOOR_ARCHIVE_MAX_R
 
 `system` names the Jira instance, by default `dc`. Importing a later backup with the same
 `system` updates what the first import made instead of adding copies. Give each instance its own
-name if you import several into one workspace.
+name if you import several into one site.
 
 The request only checks that the file is a ZIP with `entities.xml` at its root. The job then
 reads the whole backup once, as a stream, and keeps what it read in a folder next to the ZIP
@@ -265,7 +265,7 @@ What the import makes of the backup:
 | Grants to groups, people, project roles, the reporter, the assignee, the project lead, user and group fields, anyone signed in, and anyone | Grants to the same, the reporter as the requester and the lead as the track owner | |
 | Issue security schemes and their levels | Visibility policies and levels, with the same members and the default level, used by the projects' tracks | By name; levels by name within the policy |
 | Notification schemes | Notification policies, used by the projects' tracks, with each event's recipients | By name |
-| Workflows | Published workflows (version 1) with the same statuses, initial status and transitions: global ones from any status, shared ones from every status that offers them, and each status's own. A transition keeps its id, name, description, screen (as its layout), properties and custom event. Identical workflows (whatever their names) become one, and the report names each merge | By name. A workflow of yours with that name is used as it is |
+| Workflows | Published workflows (version 1) with the same statuses, initial status and transitions: global ones from any status, shared ones from every status that offers them, and each status's own. A transition keeps its id, name, description, screen (as its layout), properties and custom event. A workflow that ends up with no transitions at all (one with only its create action) gets a transition from any status into each of its statuses instead, as a new workflow gets, so its tickets can move; a closed-stage status gets one only when there is a close reason to set. Identical workflows (whatever their names) become one, and the report names each merge | By name. A workflow of yours with that name is used as it is |
 | Conditions, validators and post functions | Guards, checks and effects of the same kind, with their settings: only the assignee or reporter, never, a permission, sub-tasks done, a group, a role or any of several roles, a people field; permission validators; assign to the current user, the project lead or the reporter, and clearing a field. Groups of conditions keep their all or any nesting | |
 | Step properties that lock editing or limit comments, attachments, assigning or transitions to a role or group | Who may do what in the status | |
 | Workflow schemes | Workflow maps, used by the projects' tracks: each issue type's workflow, and the default for the rest. Schemes that become identical once their workflows merged become one | By name. A map of yours with that name is used as it is |
@@ -592,6 +592,8 @@ Content-Type: application/json
   mapping that worked once serves as a template.
 - The header is checked against the mapping before the run is queued: a column the mapping names
   but the file lacks is refused with `400 invalid_source` and the line.
+- The file is read as UTF-8. A byte-order mark at its start, as Excel's "CSV UTF-8" and Taskmoor's
+  own exports write, is left out, so it never becomes part of the first header.
 
 ### The mapping
 
@@ -653,11 +655,14 @@ its order and in the columns shown, never a ticket the person could not see. The
 - In CSV, lists are joined by `; ` and a cell starting with `=`, `+`, `-`, `@`, a tab or a
   carriage return gets a leading apostrophe, so a spreadsheet does not run it as a formula. CSV
   import removes that apostrophe again; people appear by name, so map them with `people`.
+- A CSV file starts with a UTF-8 byte-order mark (the bytes EF BB BF), once, so Excel on Windows
+  reads accented headers properly; cells stay separated by commas. Every CSV download does the
+  same: the audit log and a plan's files too. JSON has no mark.
 
 ## Full export
 
-A full export writes a workspace as documented plain files that any tool can read and another
-Taskmoor instance can import.
+A full export writes a site as documented plain files that any tool can read and another
+Taskmoor site can import.
 
 - **Download:** a site administrator opens `GET /api/v1/admin/export` and receives
   `taskmoor-export-<date>.zip`, written while it downloads. `?tracks=KEY,KEY` exports only those
@@ -681,7 +686,7 @@ time entries, attachments and history, plus the files under `attachments/`.
   is Taskmoor's stored document format, unchanged.
 - Tickets on higher hierarchy levels come first, so a parent precedes its children. A history
   record is one change of one ticket, with fields named as the query language names them.
-- The manifest names the format and its version (1), the source instance and workspace, the time,
+- The manifest names the format and its version (1), the source site, the time,
   the chosen tracks, and for each file its records, size and SHA-256. It is written last: an
   export without one is incomplete, and an import refuses it.
 
@@ -698,12 +703,12 @@ backup apply before it is unpacked, and a refused or broken ZIP leaves nothing b
 matched rather than created: people by email; groups, teams, roles, statuses, priorities, close reasons,
 ticket types, link types and workflows by name; fields, releases and areas by name within what
 they belong to. Importing the same export again changes nothing, and a later export of the same
-workspace updates what changed and adds what is new. People arrive without a password: they sign
+site updates what changed and adds what is new. People arrive without a password: they sign
 in through single sign-on or after an administrator sends them a password link.
 
 ### Not carried
 
-These stay with the source instance, and the report says what could not come across:
+These stay with the source site, and the report says what could not come across:
 
 - access policies, track role memberships, global permissions, visibility policies (a ticket
   with a visibility level fails to import), notification policies, field rule sets, layouts, and

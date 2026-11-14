@@ -15,7 +15,7 @@ import {
 import { defaultConfig, SETTINGS } from '../dashboards/WidgetSettings';
 import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
-import { routeHref } from '../routing/router';
+import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type TrackClient, type TrackSummaryLayout, trackClient } from './client';
@@ -28,6 +28,26 @@ export interface TrackSummaryPageProps {
   /** Checks a widget's query before it is kept; the search's check. */
   checkQuery?: (query: string) => Promise<boolean>;
 }
+
+/** The viewer's own filter in a Summary's address (T-075a), or '' for none. */
+export function filterOfRoute(route: string): string {
+  const at = route.indexOf('?');
+  return (new URLSearchParams(at < 0 ? '' : route.slice(at + 1)).get('filter') ?? '').trim();
+}
+
+/** The route with this filter in it ('' takes it out), keeping what else it says. */
+export function routeWithFilter(route: string, filter: string): string {
+  const at = route.indexOf('?');
+  const path = at < 0 ? route : route.slice(0, at);
+  const params = new URLSearchParams(at < 0 ? '' : route.slice(at + 1));
+  if (filter.trim()) params.set('filter', filter.trim());
+  else params.delete('filter');
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+/** What "My tickets" fills in. */
+const MINE = 'assignee = currentUser()';
 
 /** Today's numbers as the one widget a first customization starts from. */
 const NUMBERS: Widget = {
@@ -42,6 +62,12 @@ const NUMBERS: Widget = {
  * A track's Summary (M1-064; RPT-006; ADR-116): its numbers until someone customizes it, then the
  * widgets its owner and administrators chose, which everyone else who sees the track reads as they
  * are, each through their own permission filter. "Back to the default" removes the customization.
+ *
+ * Everyone who reads it may also filter it for themselves (T-075a; RPT-006 "view and filter"): a
+ * condition in the query language that every number and widget must also meet. It lives in the
+ * page's address (`?filter=`), so it is the viewer's own, survives a reload and can be bookmarked,
+ * and it is never saved: the layout everyone shares stays as its owner set it. Sprint widgets read
+ * a sprint, not a query, and are not narrowed. Customizing shows the widgets unfiltered.
  */
 export function TrackSummaryPage({
   trackKey,
@@ -60,9 +86,16 @@ export function TrackSummaryPage({
   const [status, setStatus] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
+  // The address holds the filter; replacing it tells no one, so the page keeps it as well.
+  const [filter, setFilter] = useState(() => filterOfRoute(currentRoute()));
+  useEffect(() => onRouteChange(() => setFilter(filterOfRoute(currentRoute()))), []);
+  // While customizing, the widgets show as everyone will see them.
+  const shown = draft ? '' : filter;
   const widgetClient = useMemo(
-    () => ({ widget: (_: number, id: string) => client.summaryWidget(trackKey, id) }),
-    [client, trackKey],
+    () => ({
+      widget: (_: number, id: string) => client.summaryWidget(trackKey, id, shown || undefined),
+    }),
+    [client, trackKey, shown],
   );
 
   useEffect(() => {
@@ -177,6 +210,7 @@ export function TrackSummaryPage({
   };
 
   const showWidgets = draft !== null || custom !== null;
+  const sprintWidgets = showWidgets && widgets.some(needsSprints);
 
   return (
     <section className="page track-summary" aria-labelledby={titleId}>
@@ -244,6 +278,17 @@ export function TrackSummaryPage({
           </button>
         </div>
       )}
+      {!draft && (
+        <SummaryFilter
+          applied={filter}
+          checkQuery={checkQuery}
+          sprintWidgets={sprintWidgets}
+          onApply={(next) => {
+            setFilter(next);
+            replaceRoute(routeWithFilter(currentRoute(), next));
+          }}
+        />
+      )}
       {status && (
         <p className="report-note" role="status">
           {status}
@@ -255,7 +300,7 @@ export function TrackSummaryPage({
         </p>
       )}
       {!showWidgets ? (
-        <TrackNumbers trackKey={trackKey} client={client} />
+        <TrackNumbers trackKey={trackKey} client={client} filter={shown} />
       ) : widgets.length === 0 ? (
         <EmptyState title={t('summary.emptyTitle')}>
           {t(read.mayCustomize ? 'summary.emptyEditable' : 'summary.empty')}
@@ -273,7 +318,7 @@ export function TrackSummaryPage({
           queryHint={t('summary.queryHint')}
           renderWidget={(w) =>
             w.kind === 'track-summary' ? (
-              <TrackNumbers key={refresh} trackKey={trackKey} client={client} />
+              <TrackNumbers key={refresh} trackKey={trackKey} client={client} filter={shown} />
             ) : draft && w.id.startsWith('new-') ? (
               <p className="report-note">{t('summary.unsaved')}</p>
             ) : (
@@ -289,5 +334,96 @@ export function TrackSummaryPage({
         />
       )}
     </section>
+  );
+}
+
+/**
+ * The viewer's own filter on the Summary (T-075a): a query-language condition, checked like a
+ * search before it applies, with "My tickets" at hand. It says plainly that only they see it.
+ */
+function SummaryFilter({
+  applied,
+  checkQuery,
+  sprintWidgets,
+  onApply,
+}: {
+  applied: string;
+  checkQuery: (query: string) => Promise<boolean>;
+  /** Whether the Summary shows sprint widgets, which a filter does not narrow. */
+  sprintWidgets: boolean;
+  onApply: (filter: string) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const [text, setText] = useState(applied);
+  const [bad, setBad] = useState(false);
+  // The address is the truth: Back, a bookmark or Clear set what the field shows.
+  useEffect(() => {
+    setText(applied);
+    setBad(false);
+  }, [applied]);
+
+  const apply = async (next: string) => {
+    const wanted = next.trim();
+    if (wanted && !(await checkQuery(wanted).catch(() => false))) {
+      setBad(true);
+      return;
+    }
+    setBad(false);
+    setText(wanted);
+    onApply(wanted);
+  };
+
+  return (
+    <form
+      className="summary-filter"
+      aria-label={t('summary.filter.label')}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void apply(text);
+      }}
+    >
+      <div className="form-field">
+        <label htmlFor={`${id}-filter`}>{t('summary.filter.field')}</label>
+        <input
+          id={`${id}-filter`}
+          value={text}
+          spellCheck={false}
+          autoComplete="off"
+          maxLength={2000}
+          placeholder={t('summary.filter.placeholder')}
+          aria-invalid={bad || undefined}
+          aria-describedby={`${id}-note`}
+          onChange={(event) => setText(event.target.value)}
+        />
+      </div>
+      <div className="summary-filter-actions">
+        <button type="submit" className="button-secondary">
+          {t('summary.filter.apply')}
+        </button>
+        <button type="button" className="button-quiet" onClick={() => void apply(MINE)}>
+          {t('summary.filter.mine')}
+        </button>
+        {applied && (
+          <button type="button" className="button-quiet" onClick={() => void apply('')}>
+            {t('summary.filter.clear')}
+          </button>
+        )}
+      </div>
+      <p id={`${id}-note`} className="page-note summary-filter-note">
+        {t('summary.filter.note')}
+      </p>
+      {bad && (
+        <p className="form-error" role="alert">
+          {t('summary.filter.bad')}
+        </p>
+      )}
+      {applied && (
+        <p className="report-note summary-filter-on">
+          {t('summary.filter.on', { filter: applied })}
+          {sprintWidgets && ` ${t('summary.filter.sprints')}`}
+        </p>
+      )}
+    </form>
   );
 }
