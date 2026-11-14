@@ -7260,7 +7260,7 @@ export const messagesEs: Record<MessageId, string> = {
   'programBoard.refused.other': 'No se pudo mover {key}. Inténtalo de nuevo en un momento.',
   'programBoards.title': 'Tableros de programa',
   'programBoards.about':
-    'Un tablero de programa ordena los resultados y el trabajo de este plan por equipo y periodo. Quien ve el plan ve sus tableros y mueve tarjetas en la medida en que puede cambiar esos tickets.',
+    'Un tablero de programa ordena los objetivos y el trabajo de este plan por equipo y periodo. Quien ve el plan ve sus tableros y mueve tarjetas en la medida en que puede cambiar esos tickets.',
   'programBoards.noField':
     'Un tablero de programa coloca las tarjetas según un campo de equipo. Pide a un administrador del sitio que añada uno.',
   'programBoards.none': 'Aún no hay tableros de programa.',

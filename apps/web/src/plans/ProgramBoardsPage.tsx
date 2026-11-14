@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -6,7 +6,7 @@ import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { ModalDialog } from '../shell/ModalDialog';
 import { localDay } from '../timeline/client';
-import { boardHref } from './address';
+import { boardHref, type PlanView } from './address';
 import {
   type BoardInput,
   type BoardSaved,
@@ -18,6 +18,8 @@ import {
 
 export interface ProgramBoardsPageProps {
   planId: number;
+  /** The plan's view in the address (its filters), carried to each board. */
+  view?: PlanView;
   client?: ProgramBoardClient;
   /** Today, the first day a new board offers. */
   now?: () => Date;
@@ -34,6 +36,7 @@ const MAX_PERIODS = 12;
  */
 export function ProgramBoardsPage({
   planId,
+  view,
   client = programBoardClient,
   now = () => new Date(),
 }: ProgramBoardsPageProps) {
@@ -46,17 +49,22 @@ export function ProgramBoardsPage({
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
 
-  const load = useCallback(() => {
-    client.list(planId).then(
-      (l) => {
-        setList(l);
-        setFailed(false);
-      },
-      () => setFailed(true),
-    );
-  }, [client, planId]);
-  useEffect(load, [load]);
+  const load = useCallback(
+    () =>
+      client.list(planId).then(
+        (l) => {
+          setList(l);
+          setFailed(false);
+        },
+        () => setFailed(true),
+      ),
+    [client, planId],
+  );
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (failed && !list) {
     return (
@@ -90,31 +98,39 @@ export function ProgramBoardsPage({
           ? t('programBoards.conflict')
           : t('programBoards.saveFailed'),
       );
-      load();
+      void load();
       return;
     }
     setStatus(
       t(board.archived ? 'programBoards.restored' : 'programBoards.archived', { name: board.name }),
     );
-    load();
+    void load();
   };
 
+  // Delete asks first (D13). A refusal leaves the question open to try again or cancel; a deletion
+  // takes the board's row, and its buttons, away, so the list's heading keeps the focus.
   const remove = async (board: ProgramBoardSummary) => {
     setBusy(board.id);
+    setProblem(null);
     try {
       await client.remove(planId, board.id);
-      setStatus(t('programBoards.deleted', { name: board.name }));
-    } catch {
+    } catch (error) {
       setProblem(t('programBoards.saveFailed'));
+      throw error;
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
-    load();
+    heading.current?.focus();
+    setStatus(t('programBoards.deleted', { name: board.name }));
+    await load();
   };
 
   return (
     <section className="program-boards" aria-labelledby={`${id}-title`}>
       <div className="program-board-head">
-        <h2 id={`${id}-title`}>{t('programBoards.title')}</h2>
+        <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
+          {t('programBoards.title')}
+        </h2>
         {list.editable && !noField && (
           <button type="button" className="button-primary" onClick={() => setEditing('new')}>
             {t('programBoards.new')}
@@ -138,7 +154,7 @@ export function ProgramBoardsPage({
           {list.boards.map((board) => (
             <li key={board.id} className="glass-card program-board-row">
               <h3>
-                <a href={routeHref(boardHref(planId, board.id))}>{board.name}</a>
+                <a href={routeHref(boardHref(planId, board.id, view))}>{board.name}</a>
                 {board.archived && (
                   <span className="program-board-state"> · {t('programBoards.isArchived')}</span>
                 )}
@@ -201,7 +217,7 @@ export function ProgramBoardsPage({
           onSaved={(board) => {
             setEditing(null);
             setStatus(t('programBoards.saved', { name: board.name }));
-            load();
+            void load();
           }}
           onClose={() => setEditing(null)}
         />

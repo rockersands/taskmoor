@@ -237,8 +237,20 @@ test('[PLN-008] two people on one program board see each other’s moves within 
       `${f.keys.search} changed while you moved it`,
     );
     await expect(cell(b, f.red, 3).locator(`[data-card="${f.keys.search}"]`)).toBeVisible();
-    // The ticket kept Ori's move.
-    await expect(cell(a, f.blue, 3).locator(`[data-card="${f.keys.search}"]`)).toHaveCount(0);
+    // The ticket kept Ori's move: the server's board, read afresh, has Search in Red's third week.
+    // Vera's stale move asked for Blue in the week her dialog showed; applied, it would be there.
+    const fresh = await ok<{
+      rows: { team: { id: number } | null; cells: { cards: number[] }[] }[];
+      cards: { id: number; key: string }[];
+    }>(b.request.get(`${BASE}/api/v1/plans/${f.plan}/program-boards/${f.board}`));
+    const searchId = fresh.cards.find((c) => c.key === f.keys.search)?.id;
+    expect(searchId).toBeDefined();
+    const where = fresh.rows.flatMap((row) =>
+      row.cells.flatMap((c, i) =>
+        c.cards.includes(searchId as number) ? [`${row.team?.id ?? 'none'}:${i + 1}`] : [],
+      ),
+    );
+    expect(where).toEqual([`${f.red}:3`]);
   } finally {
     await ori.context.close();
     await vera.context.close();

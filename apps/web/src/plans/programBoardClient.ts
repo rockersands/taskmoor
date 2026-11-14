@@ -93,7 +93,13 @@ export interface CardChange {
   fields?: Record<string, number | null>;
 }
 
-export type CardMoved = { ok: true } | Refusal;
+/**
+ * A move's answer. A made move carries the ticket as it now is (its new version and days), so the
+ * next move of the same card sends that version, not the one read before this move.
+ */
+export type CardMoved =
+  | { ok: true; ticket?: { version: number; start?: string | null; due?: string | null } }
+  | Refusal;
 
 export interface ProgramBoardClient {
   list(planId: number): Promise<ProgramBoardList>;
@@ -101,7 +107,7 @@ export interface ProgramBoardClient {
   update(
     planId: number,
     boardId: number,
-    input: Partial<BoardInput> & { archived?: boolean; version?: number },
+    input: Partial<BoardInput> & { archived?: boolean; version: number },
   ): Promise<BoardSaved>;
   remove(planId: number, boardId: number): Promise<void>;
   read(planId: number, boardId: number, filters: PlanFilters): Promise<ProgramBoard>;
@@ -143,8 +149,16 @@ export const programBoardClient: ProgramBoardClient = {
   },
   move: async (key, change) => {
     try {
-      await api(`/tickets/${encodeURIComponent(key)}`, { method: 'PATCH', body: change });
-      return { ok: true };
+      const answer = await api<{
+        ticket?: { version: number; startDate: string | null; dueDate: string | null };
+      }>(`/tickets/${encodeURIComponent(key)}`, { method: 'PATCH', body: change });
+      const ticket = answer?.ticket;
+      return ticket
+        ? {
+            ok: true,
+            ticket: { version: ticket.version, start: ticket.startDate, due: ticket.dueDate },
+          }
+        : { ok: true };
     } catch (error) {
       // A dropped connection is said as one: the move may not have happened.
       if (!(error instanceof ApiError)) return { ok: false, code: 'unreachable' };

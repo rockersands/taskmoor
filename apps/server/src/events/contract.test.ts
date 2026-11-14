@@ -3634,6 +3634,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { name: 'Contract board' },
         });
         state.programBoard = res.json().board?.id;
+        state.programBoardVersion = res.json().board?.version;
         return res;
       },
     },
@@ -3644,7 +3645,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         admin({
           method: 'PATCH',
           url: `/api/v1/plans/${state.plan}/program-boards/${state.programBoard}`,
-          payload: { name: 'Contract board, renamed' },
+          payload: { name: 'Contract board, renamed', version: state.programBoardVersion },
         }),
     },
     {

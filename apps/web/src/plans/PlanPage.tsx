@@ -11,6 +11,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
+  boardHref,
   GROUP_LABELS,
   PLAN_GROUPS,
   PLAN_SECTIONS,
@@ -146,7 +147,12 @@ export function PlanPage({
   if (problem === 'missing') {
     return <NotFoundPage title={t('notFound.plan')}>{t('plans.notFound')}</NotFoundPage>;
   }
-  if (problem === 'filter') return <FilterProblem id={id} section={section} />;
+  // This page's own address for a view: one program board keeps its id (PLN-008).
+  const here = (next?: PlanView) =>
+    section === 'boards' && boardId !== undefined
+      ? boardHref(id, boardId, next)
+      : planHref(id, section, next);
+  if (problem === 'filter') return <FilterProblem clearHref={here()} />;
   if (!plan && problem === 'failed') {
     return (
       <section className="page plan-page" aria-labelledby={titleId}>
@@ -159,7 +165,7 @@ export function PlanPage({
   }
   if (!plan) return <p className="report-loading">{t('reports.loading')}</p>;
 
-  const go = (next: PlanView) => navigate(planHref(id, section, next));
+  const go = (next: PlanView) => navigate(here(next));
   const tabs = PLAN_SECTIONS.filter((s) => s.id !== 'settings' || plan.editable);
   const broken = plan.sources.filter((s) => s.kind === 'savedSearch' && s.state === 'broken');
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
@@ -169,7 +175,7 @@ export function PlanPage({
     section === 'capacity' ||
     (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
-    redirectRoute(planHref(id, section, { ...view, position: { ...view.position, ...change } }));
+    redirectRoute(here({ ...view, position: { ...view.position, ...change } }));
   const viewProps = {
     id,
     plan,
@@ -254,7 +260,12 @@ export function PlanPage({
         {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
         {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
         {problem !== 'failed' && section === 'boards' && boardId === undefined && (
-          <ProgramBoardsPage planId={id} now={now} {...(boards ? { client: boards } : {})} />
+          <ProgramBoardsPage
+            planId={id}
+            view={view}
+            now={now}
+            {...(boards ? { client: boards } : {})}
+          />
         )}
         {problem !== 'failed' && section === 'boards' && boardId !== undefined && (
           <ProgramBoardPage
@@ -262,6 +273,7 @@ export function PlanPage({
             planId={id}
             boardId={boardId}
             filters={view.filters}
+            view={view}
             now={now}
             {...(boards ? { client: boards } : {})}
           />
@@ -275,7 +287,7 @@ export function PlanPage({
 }
 
 /** A filter in the address that does not read: say so, and offer the plan without filters. */
-function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
+function FilterProblem({ clearHref }: { clearHref: string }) {
   const t = useT();
   const titleId = useId();
   return (
@@ -285,7 +297,7 @@ function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
         title={t('nav.plans')}
         purpose={t('purpose.plan')}
         actions={
-          <a className="button-quiet" href={routeHref(planHref(id, section))}>
+          <a className="button-quiet" href={routeHref(clearHref)}>
             {t('plans.filters.clear')}
           </a>
         }

@@ -1202,15 +1202,39 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
   the page's: three single runs on Windows, 2026-11-13, with other work on the machine: 861 ms and
   840 ms (with a settle of 100 ms) and 354 ms (30 ms). One sample each; the margin under load is
   not known.
-- **A move made from the Move dialog carries the version read when the dialog opened**, so a card
-  moved by someone else while it was open is refused, which is how the e2e proves the conflict.
+- **A move made from the Move dialog carries the version read when the dialog opened, and moves
+  the card from where it stood then**, so a card moved by someone else while it was open is
+  refused, which is how the e2e proves the conflict; the move is sent even when the card has left
+  the board meanwhile, and the ticket route says what happened. A made move takes the version and
+  days its answer gives, so moving the same card again before the board reads sends them.
+- **Review fixes (2026-11-13):**
+  - `PATCH .../program-boards/:boardId` requires `version`, as the route table says: one without it
+    answers 400 `invalid_fields` and changes nothing, so a change made meanwhile is never
+    overwritten unseen.
+  - A read skipped while a card is held or a move waits is remembered and made once neither holds
+    the board, so a drag let go without a move still shows others' moves. A read already on its way
+    when a card moves is dropped, so its answer cannot put the card back; the board reads once
+    after the last waiting move answers.
+  - After a move from the dialog, focus goes to the card's link where it now stands, or the board's
+    name when it left the view; after a refusal, to the card where the next read puts it. Cancel
+    gives it back to the Move button. A dialog's first field may be a select (`ModalDialog`).
+  - A board keeps its id when its filters change, and the filters travel from the list to a board
+    and back. Deleting a board keeps the question open when refused and puts focus on the list's
+    heading when done.
+  - A link type the plan counts that an administrator has since made a blocking one is neither
+    offered nor sent by the settings page, so the plan's settings still save.
+  - Tests now cover the board with a chosen link type and the same-sprint flag (server and page),
+    the Timeline's same-sprint words, colour and type phrase on the page, a closed status that is
+    not named "Closed", three active boards on the list page, and the e2e's stale move checked
+    against the server's board read afresh.
 - **A badge says "Blocked by 2 tickets, 1 late"**, the Timeline's words, rather than a new
   "Waits for"; the list below the board is the Timeline's `DependencyList`, fed with the cards.
 - **The routes refuse to delete a Team field in use** (`in_use`), so a board loses its field only
   when the field held no values, or was removed outside the routes; the test removes it in the
   database to check the board then shows one row.
 - **Dependency options are read from `GET /link-types`** on the settings page, blocking types left
-  out; a type the plan already counts still shows ticked if the list lacks it.
+  out; a type the plan already counts still shows ticked if the list lacks it, unless it now reads
+  "blocks".
 - **A copy of a plan copies its dependency options**, as the design says; a test checks it.
 - **Cells carry `data-cell="<team>:<column>"`**, for the e2e's drops; the cell's name says the team,
   the period and its count.

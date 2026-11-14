@@ -15,7 +15,8 @@ import type {
  * Web's in the first week, with three more found by the cell's search; OPS-7 is Ops's in the
  * second and blocks SHOP-2, which it ends after, so late; SHOP-2 also waits for one ticket outside
  * the plan, only counted. SHOP-3 is the Data team's, a team the plan does not plan with, and has no
- * due day. OPS-9 is closed, in the third week.
+ * due day. OPS-9 is done (a closed status named "Done"), in the third week. The plan has three
+ * active boards and an archived one.
  */
 export const BOARD_SUMMARY: ProgramBoardSummary = {
   id: 5,
@@ -116,7 +117,7 @@ export function boardFixture(overrides: Partial<ProgramBoard> = {}): ProgramBoar
       card(105, 'OPS-9', 'Old logs', {
         due: '2026-11-18',
         team: ops,
-        status: { name: 'Closed', stage: 'closed' },
+        status: { name: 'Done', stage: 'closed' },
       }),
     ],
     links: [{ from: 103, to: 102, linkTypeId: 1 }],
@@ -134,6 +135,12 @@ export interface FakeBoardOptions {
   refuse?: string;
   /** Never answer reads: the loading state. */
   pending?: boolean;
+  /** Answers the nth read (from 1) instead, when it returns one: to hold or change a read. */
+  readWith?: (n: number) => Promise<ProgramBoard> | undefined;
+  /** Answers a move instead, when it returns one: to hold it. */
+  moveWith?: (key: string, change: CardChange) => Promise<CardMoved> | undefined;
+  /** Refuse deleting boards. */
+  refuseRemove?: boolean;
 }
 
 export function fakeBoardClient(options: FakeBoardOptions = {}): ProgramBoardClient & {
@@ -151,6 +158,7 @@ export function fakeBoardClient(options: FakeBoardOptions = {}): ProgramBoardCli
   let boards: ProgramBoardSummary[] = [
     BOARD_SUMMARY,
     { ...BOARD_SUMMARY, id: 6, name: 'Summer PI', from: '2027-01-04', version: 1 },
+    { ...BOARD_SUMMARY, id: 9, name: 'Autumn PI', from: '2027-03-01', version: 1 },
     { ...BOARD_SUMMARY, id: 7, name: 'Winter PI', archived: true, version: 4 },
   ];
   const saved = (board: ProgramBoardSummary): BoardSaved => ({ ok: true, board });
@@ -185,16 +193,30 @@ export function fakeBoardClient(options: FakeBoardOptions = {}): ProgramBoardCli
       return saved(board);
     },
     remove: async (_planId, boardId) => {
+      if (options.refuseRemove) throw new Error('refused');
       removed.push(boardId);
     },
     read: async () => {
       reads++;
       if (options.pending) return new Promise<ProgramBoard>(() => {});
+      const instead = options.readWith?.(reads);
+      if (instead) return instead;
       return options.board ?? boardFixture();
     },
     move: async (key, change): Promise<CardMoved> => {
       moves.push({ key, change });
-      return options.refuse ? { ok: false, code: options.refuse } : { ok: true };
+      const instead = options.moveWith?.(key, change);
+      if (instead) return instead;
+      if (options.refuse) return { ok: false, code: options.refuse };
+      // The ticket route answers the ticket as it now is: the next version, and the days sent.
+      return {
+        ok: true,
+        ticket: {
+          version: change.version + 1,
+          ...(change.startDate !== undefined ? { start: change.startDate } : {}),
+          ...(change.dueDate !== undefined ? { due: change.dueDate } : {}),
+        },
+      };
     },
   };
 }

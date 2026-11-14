@@ -99,7 +99,9 @@ other link types to count as well, such as **Precedes**. Each is read the way th
 for "A precedes B", B waits for A, so A is the blocker. A ticked type is drawn, badged, judged late
 and listed exactly like a **Blocks** link, on the Timeline, in its files and on the plan's program
 boards; in the list it shows its own phrase, such as "(precedes)". Two links between the same two
-tickets are one dependency. Untick it and those links stop counting at once.
+tickets are one dependency. Untick it and those links stop counting at once. If an administrator
+later changes a ticked type to read "blocks", it counts as a **Blocks** link and leaves the list;
+saving the settings then drops it.
 
 **Flag dependencies within one sprint** marks each dependency whose two tickets are in the same
 sprint now (one that has not been completed): its line on the Timeline is dotted, and the badge,
@@ -224,8 +226,9 @@ one per increment, say, each read only when opened.
   Capacity always agree. Closed work stays in its period, marked **Closed**.
 - **A cell** shows its first 20 cards, outcomes first, then in rank order; "and 14 more" opens the
   search that finds all of them, and its count is that search's.
-- The plan's filters apply, and each card shows its dependencies as a badge ("Blocked by 2
-  tickets, 1 late"), with **Dependencies** listed below the board as on the Timeline.
+- The plan's filters apply, and stay set as you go between the list of boards and a board. Each
+  card shows its dependencies as a badge ("Blocked by 2 tickets, 1 late"), with **Dependencies**
+  listed below the board as on the Timeline.
 
 A board gives no access: you see only the cards you may see anyway. Work hidden from you is never
 a card and is not counted in any cell; a blocker hidden from you is counted on the card it holds

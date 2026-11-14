@@ -49,6 +49,9 @@ export interface PlanSettingsPageProps {
   onSaved: () => void;
 }
 
+/** A link type that reads "A blocks B": always counted as a dependency, never chosen (PLN-013). */
+const isBlocking = (l: { outward: string }) => l.outward.trim().toLowerCase() === 'blocks';
+
 /**
  * A plan's settings (PLN-001), for its owner and site administrators: its name, description,
  * sources and who sees it, and deleting it. The sources hidden from the editor stay as they are:
@@ -79,8 +82,10 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
   );
   const [anchor, setAnchor] = useState(plan.period.kind === 'weeks' ? plan.period.anchor : '');
   // Dependency options (PLN-013): link types counted beside blocking ones, and the sprint flag.
+  // A chosen type an administrator has since made a blocking one is always counted: it is neither
+  // offered nor sent again, which the plan's update would refuse (`always_counted`).
   const [linkTypes, setLinkTypes] = useState<number[]>(
-    () => plan.dependencies?.linkTypes.map((l) => l.id) ?? [],
+    () => plan.dependencies?.linkTypes.filter((l) => !isBlocking(l)).map((l) => l.id) ?? [],
   );
   const [sameSprint, setSameSprint] = useState(plan.dependencies?.sameSprint ?? false);
   const [linkOptions, setLinkOptions] = useState<LinkTypeOption[] | null>(null);
@@ -140,10 +145,14 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
       (list) => {
         if (!live) return;
         // Blocking links are always counted, so they are not offered.
-        const offered = list.filter((l) => l.outward.trim().toLowerCase() !== 'blocks');
+        const offered = list.filter((l) => !isBlocking(l));
+        const blocking = new Set(list.filter(isBlocking).map((l) => l.id));
         for (const l of plan.dependencies?.linkTypes ?? []) {
-          if (!offered.some((o) => o.id === l.id)) offered.push(l);
+          if (!blocking.has(l.id) && !isBlocking(l) && !offered.some((o) => o.id === l.id)) {
+            offered.push(l);
+          }
         }
+        setLinkTypes((chosen) => chosen.filter((id) => !blocking.has(id)));
         setLinkOptions(offered);
       },
       () => live && setLinksFailed(true),

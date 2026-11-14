@@ -71,7 +71,8 @@ const updateBoard = z
     from: day.optional(),
     periods: z.number().int().min(1).max(MAX_BOARD_PERIODS).optional(),
     archived: z.boolean().optional(),
-    version: idNum.optional(),
+    // The version read: required, so a change made meanwhile is never overwritten unseen.
+    version: idNum,
   })
   .strict();
 const boardQuery = z.object(filterShape).strict();
@@ -309,9 +310,7 @@ export function registerProgramBoardRoutes(
         .forUpdate()
         .executeTakeFirst();
       if (!locked) return { missing: true as const };
-      if (body.version !== undefined && body.version !== locked.version) {
-        return { conflict: locked.version };
-      }
+      if (body.version !== locked.version) return { conflict: locked.version };
       const before = {
         name: locked.name,
         teamFieldId: locked.team_field_id,

@@ -39,7 +39,9 @@ interface Board {
     cells: Cell[];
   }[];
   cards: { id: number; key: string; summary: string; version: number }[];
-  links: { from: number; to: number; linkTypeId: number }[];
+  links: { from: number; to: number; linkTypeId: number; sameSprint?: boolean }[];
+  linkTypes: { id: number; outward: string }[];
+  sameSprint: boolean;
   blockersElsewhere: { id: number; outside: number; unlisted: number }[];
 }
 
@@ -461,10 +463,20 @@ describe('program boards (PLN-008)', () => {
     });
     expect(stale.statusCode).toBe(409);
     expect(stale.json()).toEqual({ error: 'version_conflict', version: board.board.version + 1 });
+    // Without the version read, nothing changes: a change made meanwhile is never overwritten.
+    const unversioned = await as('admin', {
+      method: 'PATCH',
+      url: `${base()}/${boardId}`,
+      payload: { periods: 2 },
+    });
+    expect(unversioned.statusCode).toBe(400);
+    expect(unversioned.json()).toMatchObject({ error: 'invalid_fields' });
+    expect(Object.keys(unversioned.json().fields)).toEqual(['version']);
+    expect((await read('admin')).board.periods).toHaveLength(4);
     const refused = await as('admin', {
       method: 'PATCH',
       url: `${base()}/${boardId}`,
-      payload: { teamFieldId: 999_999 },
+      payload: { teamFieldId: 999_999, version: renamed.board.version },
     });
     expect(refused.json()).toEqual({
       error: 'invalid_fields',
@@ -486,7 +498,7 @@ describe('program boards (PLN-008)', () => {
     await call('admin', {
       method: 'PATCH',
       url: `${base()}/${boardId}`,
-      payload: { name: 'Spring' },
+      payload: { name: 'Spring', version: renamed.board.version },
     });
   });
 
@@ -545,6 +557,102 @@ describe('program boards (PLN-008)', () => {
     const after = await read('ana');
     expect(layout(after.board)['Red 2027-03-15']).toEqual(['Search']);
     expect(layout(after.board)['Blue 2027-03-08']).toBeUndefined();
+  });
+
+  it('[PLN-013] [PLN-008] counts the plan’s chosen link types and marks a dependency within one sprint on the board', async () => {
+    const relates = (
+      await database.db
+        .selectFrom('link_type')
+        .select('id')
+        .where('outward', '=', 'relates to')
+        .executeTakeFirstOrThrow()
+    ).id;
+    const options = (linkTypeIds: number[], sameSprint: boolean) =>
+      call('admin', {
+        method: 'PATCH',
+        url: `/api/v1/plans/${planId}`,
+        payload: { dependencies: { linkTypeIds, sameSprint } },
+      });
+    // Launch relates to Login: Login waits for Launch once the plan counts "relates to".
+    await call(
+      'admin',
+      {
+        method: 'POST',
+        url: `/api/v1/tickets/${t.launch?.key}/links`,
+        payload: { linkTypeId: relates, ticket: t.login?.key },
+      },
+      201,
+    );
+    const scrum = await database.db
+      .insertInto('board')
+      .values({
+        workspace_id: 1,
+        name: 'PBA board',
+        kind: 'scrum',
+        location_track_id: tracks.PBA as number,
+        location_user_id: null,
+        filter_query: 'track = PBA',
+        sub_filter_query: null,
+        columns: JSON.stringify([]),
+        swimlanes: JSON.stringify({ kind: 'none' }),
+        card_rules: JSON.stringify([]),
+        created_by: null,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const sprint = await database.db
+      .insertInto('sprint')
+      .values({
+        workspace_id: 1,
+        board_id: scrum.id,
+        name: 'PBA 1',
+        sequence: 1,
+        state: 'active',
+        started_at: new Date(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('sprint_ticket')
+      .values([
+        { workspace_id: 1, sprint_id: sprint.id, ticket_id: t.launch?.id as number },
+        { workspace_id: 1, sprint_id: sprint.id, ticket_id: t.login?.id as number },
+      ])
+      .execute();
+    const chosen = (b: Board) => b.links.filter((l) => l.linkTypeId === relates);
+    try {
+      // Not chosen: only blocking links, and nothing marked.
+      let { board } = await read('admin');
+      expect(chosen(board)).toEqual([]);
+      expect(board.sameSprint).toBe(false);
+      expect(board.links.some((l) => l.sameSprint)).toBe(false);
+
+      await options([relates], true);
+      ({ board } = await read('admin'));
+      expect(board.sameSprint).toBe(true);
+      expect(chosen(board)).toEqual([
+        { from: t.launch?.id, to: t.login?.id, linkTypeId: relates, sameSprint: true },
+      ]);
+      expect(board.linkTypes.map((l) => l.outward).sort()).toEqual(['blocks', 'relates to']);
+      // Search blocks Login, but Search is in no sprint: not marked.
+      expect(board.links.find((l) => l.from === t.search?.id)?.sameSprint).toBeUndefined();
+
+      // The type alone, without the flag: drawn, never marked.
+      await options([relates], false);
+      ({ board } = await read('admin'));
+      expect(board.sameSprint).toBe(false);
+      expect(chosen(board)).toEqual([{ from: t.launch?.id, to: t.login?.id, linkTypeId: relates }]);
+    } finally {
+      await options([], false);
+      await database.db.deleteFrom('sprint_ticket').where('sprint_id', '=', sprint.id).execute();
+      await database.db.deleteFrom('sprint').where('id', '=', sprint.id).execute();
+      await database.db.deleteFrom('board').where('id', '=', scrum.id).execute();
+      await database.db
+        .deleteFrom('ticket_link')
+        .where('link_type_id', '=', relates)
+        .where('source_id', '=', t.launch?.id as number)
+        .execute();
+    }
   });
 
   it('[PLN-008] puts every card in one row once its Team field is gone', async () => {

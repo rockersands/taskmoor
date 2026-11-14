@@ -15,7 +15,7 @@ import type { Refusal, TimelineItem } from '../timeline/client';
 import { localDay } from '../timeline/client';
 import { DependencyList } from '../timeline/DependencyList';
 import { type Blocked, blockerCount, dependenciesOf } from '../timeline/dependencies';
-import { planHref } from './address';
+import { type PlanView, planHref } from './address';
 import type { PlanFilters } from './client';
 import {
   type BoardCell,
@@ -31,6 +31,8 @@ export interface ProgramBoardPageProps {
   planId: number;
   boardId: number;
   filters: PlanFilters;
+  /** The plan's view in the address, carried back to the list of boards. */
+  view?: PlanView;
   client?: ProgramBoardClient;
   /** Today, for the period marked "Now". */
   now?: () => Date;
@@ -85,30 +87,54 @@ function placesOf(board: ProgramBoard): Map<number, Place> {
   return out;
 }
 
-/** The board with one card moved at once, before the server answers. */
-function movedLocally(board: ProgramBoard, id: number, from: Place, to: Place): ProgramBoard {
-  const cellOf = (row: ProgramBoard['rows'][number], column: number) =>
-    column === 0 ? row.unscheduled : (row.cells[column - 1] as BoardCell);
+/**
+ * The board with one card moved at once, before the server answers: taken from wherever it now
+ * stands (someone else may have moved it since the Move dialog opened) and put in its new cell, if
+ * the board still lists it.
+ */
+function movedLocally(board: ProgramBoard, id: number, to: Place): ProgramBoard {
+  const listed = board.cards.some((c) => c.id === id);
+  const take = (cell: BoardCell): BoardCell =>
+    cell.cards.includes(id)
+      ? { ...cell, count: Math.max(0, cell.count - 1), cards: cell.cards.filter((x) => x !== id) }
+      : cell;
+  const put = (cell: BoardCell): BoardCell => ({
+    ...cell,
+    count: cell.count + 1,
+    cards: [...cell.cards, id],
+  });
   const rows = board.rows.map((row) => {
-    const team = row.team?.id ?? null;
-    const copy = {
+    const here = listed && (row.team?.id ?? null) === to.team;
+    const unscheduled = take(row.unscheduled);
+    const cells = row.cells.map(take);
+    return {
       ...row,
-      unscheduled: { ...row.unscheduled, cards: [...row.unscheduled.cards] },
-      cells: row.cells.map((c) => ({ ...c, cards: [...c.cards] })),
+      unscheduled: here && to.column === 0 ? put(unscheduled) : unscheduled,
+      cells: cells.map((c, i) => (here && to.column === i + 1 ? put(c) : c)),
     };
-    if (team === from.team) {
-      const cell = cellOf(copy, from.column);
-      cell.cards = cell.cards.filter((x) => x !== id);
-      cell.count = Math.max(0, cell.count - 1);
-    }
-    if (team === to.team) {
-      const cell = cellOf(copy, to.column);
-      cell.cards.push(id);
-      cell.count += 1;
-    }
-    return copy;
   });
   return { ...board, rows };
+}
+
+/** The board with a moved card's version and days as the ticket route answered them. */
+function withTicket(
+  board: ProgramBoard,
+  id: number,
+  ticket: { version: number; start?: string | null; due?: string | null },
+): ProgramBoard {
+  return {
+    ...board,
+    cards: board.cards.map((c) =>
+      c.id === id
+        ? {
+            ...c,
+            version: ticket.version,
+            ...(ticket.start !== undefined ? { start: ticket.start } : {}),
+            ...(ticket.due !== undefined ? { due: ticket.due } : {}),
+          }
+        : c,
+    ),
+  };
 }
 
 /**
@@ -118,7 +144,10 @@ function movedLocally(board: ProgramBoard, id: number, from: Place, to: Place): 
  * button (the keyboard's, a screen reader's and a phone's way); either sends the ticket's own
  * change with the version read, so a card someone else moved meanwhile is refused and shown where
  * it now is. Changes made elsewhere arrive through the local copy (ADR-013): the board reads again
- * within 30 ms of it moving, not while a card is held or a move waits. On a phone it shows one
+ * within 30 ms of it moving; while a card is held or a move waits it reads once they are done. A
+ * read already on its way when a card moves is dropped, so it cannot put the card back. The Move
+ * dialog moves the card from where it stood when it opened, with the version read then, so a card
+ * moved meanwhile is refused, never moved from somewhere the person did not see. On a phone it shows one
  * team at a time, each period a list. Its dependencies are badges on the cards and a list below,
  * the blockers it does not show only counted.
  */
@@ -126,6 +155,7 @@ export function ProgramBoardPage({
   planId,
   boardId,
   filters,
+  view,
   client = programBoardClient,
   now = () => new Date(),
 }: ProgramBoardPageProps) {
@@ -139,11 +169,20 @@ export function ProgramBoardPage({
   const [pending, setPending] = useState<ReadonlySet<number>>(new Set());
   const [dragging, setDragging] = useState<number | null>(null);
   const [over, setOver] = useState<string | null>(null);
-  const [moving, setMoving] = useState<ProgramBoardCard | null>(null);
+  // The card in the Move dialog, and where it stood when the dialog opened.
+  const [moving, setMoving] = useState<{ card: ProgramBoardCard; from: Place } | null>(null);
   const [phoneRow, setPhoneRow] = useState(0);
   const generation = useRef(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
-  busy.current = dragging !== null || pending.size > 0;
+  const idle = dragging === null && pending.size === 0;
+  busy.current = !idle;
+  // A read put off while a card was held or a move waited, made once they are done.
+  const missed = useRef(false);
+  // The card a move from the dialog left focus on, and the one to find again after a read moves it.
+  const following = useRef<string | null>(null);
+  const refocus = useRef<string | null>(null);
   const filterKey = JSON.stringify(filters);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the filters by their text
@@ -166,15 +205,24 @@ export function ProgramBoardPage({
     [client, planId, boardId, filterKey],
   );
   useEffect(() => load(false), [load]);
+  // Reads again now, or once nothing holds the board: a read made while a card is held or a move
+  // waits would put the card back where the server last had it.
+  const readSoon = useCallback(() => {
+    if (busy.current) missed.current = true;
+    else load(true);
+  }, [load]);
+  useEffect(() => {
+    if (!idle || !missed.current) return;
+    missed.current = false;
+    load(true);
+  }, [idle, load]);
 
   // Moves made elsewhere reach the local copy through the socket: read again, at most once in
-  // 30 ms, and not while a card is held or a move waits (its own answer reads again).
+  // 30 ms, and after a held card or a waiting move (whose own answer reads again too).
   const engine = useSyncEngine();
   useEffect(() => {
     if (!engine) {
-      const timer = setInterval(() => {
-        if (!busy.current) load(true);
-      }, POLL_MS);
+      const timer = setInterval(readSoon, POLL_MS);
       return () => clearInterval(timer);
     }
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -182,17 +230,32 @@ export function ProgramBoardPage({
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
-        if (!busy.current) load(true);
+        readSoon();
       }, SETTLE_MS);
     });
     return () => {
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [engine, load]);
-  useTicketChanges(() => {
-    if (!busy.current) load(true);
-  });
+  }, [engine, readSoon]);
+  useTicketChanges(readSoon);
+
+  /** Focus on a card's link where it now stands, or on the board's name when it is not shown. */
+  const focusCard = useCallback((key: string) => {
+    const shown = [...(page.current?.querySelectorAll<HTMLElement>('li[data-card]') ?? [])].find(
+      (li) => li.dataset.card === key,
+    );
+    (shown?.querySelector<HTMLElement>('a') ?? heading.current)?.focus();
+  }, []);
+  // A refused move from the dialog: the read puts the card back, in a list of its own, and focus
+  // that was on it would fall to the page.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: after each read
+  useEffect(() => {
+    const key = refocus.current;
+    if (!key) return;
+    refocus.current = null;
+    if (!document.activeElement || document.activeElement === document.body) focusCard(key);
+  }, [data, focusCard]);
 
   const cards = useMemo(() => new Map((data?.cards ?? []).map((c) => [c.id, c])), [data]);
   const places = useMemo(() => (data ? placesOf(data) : new Map<number, Place>()), [data]);
@@ -250,17 +313,29 @@ export function ProgramBoardPage({
     });
   };
 
-  const move = async (card: ProgramBoardCard, to: Place) => {
-    const from = places.get(card.id);
-    if (!from) return;
+  const move = async (card: ProgramBoardCard, from: Place, to: Place) => {
     const change = cardChange(card, from, to, board.periods, teamField?.id ?? null);
     if (!change) return;
+    // A read already on its way began before this move: its answer would put the card back.
+    generation.current++;
+    missed.current = true;
     setPending((set) => new Set(set).add(card.id));
-    setData((current) => (current ? movedLocally(current, card.id, from, to) : current));
+    setData((current) => (current ? movedLocally(current, card.id, to) : current));
     setStatus(t('programBoard.moving', { key: card.key }));
     const result = await client
       .move(card.key, change)
       .catch((): Refusal => ({ ok: false, code: 'unreachable' }));
+    // The next move of this card sends the version this one made, before the board reads again.
+    if (result.ok && result.ticket) {
+      const ticket = result.ticket;
+      setData((current) => (current ? withTicket(current, card.id, ticket) : current));
+    }
+    // The board reads again once no other move waits and no card is held (`missed` above).
+    missed.current = true;
+    if (following.current === card.key) {
+      following.current = null;
+      if (!result.ok) refocus.current = card.key;
+    }
     setPending((set) => {
       const next = new Set(set);
       next.delete(card.id);
@@ -276,7 +351,18 @@ export function ProgramBoardPage({
             { key: card.key, field: teamField?.name ?? '' },
           ),
     );
-    load(true);
+  };
+
+  // After a move from the dialog its Move button is gone (the card is in another cell and moving),
+  // so focus goes to the card where it now stands, or to the board's name when it left the view;
+  // after a refusal, to the card where the board's next read puts it.
+  const focusAfter = (key: string) => (opener: HTMLElement | null) => {
+    if (opener?.isConnected) {
+      opener.focus();
+      return;
+    }
+    following.current = key;
+    focusCard(key);
   };
 
   const movable = (card: ProgramBoardCard) =>
@@ -346,7 +432,10 @@ export function ProgramBoardPage({
             type="button"
             className="button-secondary program-card-move"
             aria-label={t('programBoard.moveCard', { key: card.key })}
-            onClick={() => setMoving(card)}
+            onClick={() => {
+              const from = places.get(card.id);
+              if (from) setMoving({ card, from });
+            }}
           >
             {t('programBoard.move')}
           </button>
@@ -390,7 +479,8 @@ export function ProgramBoardPage({
         setDragging(null);
         setOver(null);
         const card = dropped === null ? undefined : cards.get(dropped);
-        if (card && movable(card)) void move(card, to);
+        const from = card ? places.get(card.id) : undefined;
+        if (card && from && movable(card)) void move(card, from, to);
       },
     };
   };
@@ -398,10 +488,12 @@ export function ProgramBoardPage({
   const phone = board.rows[Math.min(phoneRow, board.rows.length - 1)] ?? board.rows[0];
 
   return (
-    <div className="program-board-page">
+    <div className="program-board-page" ref={page}>
       <div className="program-board-head">
-        <h2 id={`${id}-title`}>{board.board.name}</h2>
-        <a className="button-secondary" href={routeHref(planHref(planId, 'boards'))}>
+        <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
+          {board.board.name}
+        </h2>
+        <a className="button-secondary" href={routeHref(planHref(planId, 'boards', view))}>
           {t('programBoard.all')}
         </a>
       </div>
@@ -512,17 +604,18 @@ export function ProgramBoardPage({
       />
       {moving && (
         <MoveDialog
-          card={moving}
-          from={places.get(moving.id) ?? { team: null, column: 0 }}
+          card={moving.card}
+          from={moving.from}
           rows={board.rows.map((row) => ({ team: row.team?.id ?? null, name: rowName(row) }))}
           columns={columns.map((c) => c.label)}
           teamMovable={teamField !== null}
           onMove={(to) => {
-            const card = moving;
+            const { card, from } = moving;
             setMoving(null);
-            void move(card, to);
+            void move(card, from, to);
           }}
           onClose={() => setMoving(null)}
+          restoreFocus={focusAfter(moving.card.key)}
         />
       )}
     </div>
@@ -538,6 +631,8 @@ export interface MoveDialogProps {
   teamMovable: boolean;
   onMove: (to: Place) => void;
   onClose: () => void;
+  /** Where focus goes when the dialog closes; back to its opener by default. */
+  restoreFocus?: (opener: HTMLElement | null) => void;
 }
 
 /** Moving one card by its team and period: the way for the keyboard, screen readers and phones. */
@@ -549,6 +644,7 @@ export function MoveDialog({
   teamMovable,
   onMove,
   onClose,
+  restoreFocus,
 }: MoveDialogProps) {
   const t = useT();
   const id = useId();
@@ -563,6 +659,7 @@ export function MoveDialog({
       closeLabel={t('programBoard.cancel')}
       focusFirstField
       className="program-move-dialog"
+      {...(restoreFocus ? { restoreFocus } : {})}
     >
       <form
         onSubmit={(event) => {

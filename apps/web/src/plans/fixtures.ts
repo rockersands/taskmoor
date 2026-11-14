@@ -167,6 +167,12 @@ export interface FakePlanOptions {
   noTeams?: boolean;
   /** Answer capacity changes with this code instead of saving them. */
   refuseCapacity?: string;
+  /**
+   * The plan's dependency options (PLN-013): with Precedes (3) chosen, SHOP-3 precedes OPS-4; with
+   * the sprint flag, SHOP-2 and SHOP-3 are in one sprint. `linkTypes` names the plan's chosen types
+   * as the plan answers them, a type since made a blocking one included.
+   */
+  dependencies?: { linkTypeIds: number[]; sameSprint: boolean; linkTypes?: typeof LINK_TYPES };
 }
 
 const refusal = (r: string | Omit<Refusal, 'ok'>): Refusal =>
@@ -211,7 +217,11 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   let planReads = 0;
   let version = 1;
   let name = 'Spring launch';
-  let dependencies = { linkTypeIds: [] as number[], sameSprint: false };
+  let dependencies = {
+    linkTypeIds: options.dependencies?.linkTypeIds ?? [],
+    sameSprint: options.dependencies?.sameSprint ?? false,
+  };
+  const chosenTypes = options.dependencies?.linkTypes;
   const plan = (filters: PlanFilters = {}): Plan => ({
     id: 12,
     name,
@@ -241,7 +251,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     period,
     teams,
     dependencies: {
-      linkTypes: LINK_TYPES.filter((l) => dependencies.linkTypeIds.includes(l.id)),
+      linkTypes: chosenTypes ?? LINK_TYPES.filter((l) => dependencies.linkTypeIds.includes(l.id)),
       sameSprint: dependencies.sameSprint,
     },
   });
@@ -436,7 +446,18 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       const list = shown(filters);
       const listed = list.slice(0, 10_000);
       const ids = new Set(listed.map((i) => i.id));
-      const links = nothing ? [] : LINKS.filter((l) => ids.has(l.from) && ids.has(l.to));
+      const chosen = dependencies.linkTypeIds.includes(3)
+        ? [{ from: 3, to: 4, linkTypeId: 3 }]
+        : [];
+      const links = nothing
+        ? []
+        : [...LINKS, ...chosen]
+            .filter((l) => ids.has(l.from) && ids.has(l.to))
+            .map((l) =>
+              dependencies.sameSprint && l.from === 2 && l.to === 3
+                ? { ...l, sameSprint: true }
+                : l,
+            );
       const blockersElsewhere = nothing
         ? []
         : listed.flatMap((i) => {
@@ -448,6 +469,10 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         query: query(filters),
         items: listed,
         links,
+        linkTypes: LINK_TYPES.filter(
+          (l) => l.id === 1 || (chosen.length > 0 && dependencies.linkTypeIds.includes(l.id)),
+        ),
+        sameSprint: dependencies.sameSprint,
         blockersElsewhere,
         tracks: TRACKS,
         markers: {
