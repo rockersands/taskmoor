@@ -8,6 +8,7 @@ import { ReleaseState } from '../releases/ReleaseState';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { localDay } from '../timeline/client';
 import type { PlanRelease, PlanReleases } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { fileName, saveBlob } from './download';
@@ -118,12 +119,7 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
               key: 'csv',
               label: t('plans.download.csv'),
               make: async () => {
-                const name = fileName(
-                  plan.name,
-                  'releases',
-                  now().toISOString().slice(0, 10),
-                  'csv',
-                );
+                const name = fileName(plan.name, 'releases', localDay(now()), 'csv');
                 saveBlob(name, new Blob([releasesCsv(t, data)], { type: 'text/csv' }));
                 return name;
               },

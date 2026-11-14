@@ -110,6 +110,10 @@ created in the track with that summary; open it to fill in the rest.
 titled by its section, with the track's name above; the tab bar leads back to the summary, and
 **What is Calendar for?** beside the title says what it shows.
 
+Start and due dates are calendar days, so "today" on the calendar and the timeline is the day on
+your own device's clock: in the evening in the Americas, when it is already tomorrow in UTC, the
+calendar still opens on your month and marks your day.
+
 - Each ticket appears on its due day, and also on its start day when that is different (marked
   **Starts:**, which a screen reader reads first too).
 - Sprints of the track's boards show as bands, named on their first day and on Mondays. Since the

@@ -16,7 +16,14 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
-import { dayNumber, isoDay, type Rescheduled, type Timeline, type TimelineItem } from './client';
+import {
+  dayNumber,
+  isoDay,
+  localDay,
+  type Rescheduled,
+  type Timeline,
+  type TimelineItem,
+} from './client';
 import { type Blocked, barOf, blockerCount, dependencyState } from './dependencies';
 import { drawnReleases, releaseMarkerText } from './markers';
 import { scheduleRefusal } from './refusal';
@@ -151,7 +158,7 @@ export function TimelineView({
   /** Set when a drag ends, so the click that follows does not open the panel. */
   const justDragged = useRef(false);
 
-  const today = dayNumber(now().toISOString().slice(0, 10));
+  const today = dayNumber(localDay(now()));
   const px = SCALE[zoom];
 
   const rows = useMemo(

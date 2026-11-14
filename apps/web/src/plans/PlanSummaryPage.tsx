@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { searchHref } from '../releases/client';
 import { EmptyState } from '../shell/EmptyState';
+import { localDay } from '../timeline/client';
 import type { PlanPosition } from './address';
 import type { Plan, PlanClient, PlanCount, PlanFilters, PlanSummary } from './client';
 import { DownloadMenu } from './DownloadMenu';
@@ -116,12 +117,7 @@ export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionP
               key: 'csv',
               label: t('plans.download.csv'),
               make: async () => {
-                const name = fileName(
-                  plan.name,
-                  'summary',
-                  now().toISOString().slice(0, 10),
-                  'csv',
-                );
+                const name = fileName(plan.name, 'summary', localDay(now()), 'csv');
                 saveBlob(name, new Blob([summaryCsv(t, summary)], { type: 'text/csv' }));
                 return name;
               },

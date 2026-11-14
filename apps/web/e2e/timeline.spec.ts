@@ -12,6 +12,14 @@ import { expect, type Page, test } from '@playwright/test';
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
 
+/**
+ * The browser keeps a person's clock in Mexico City (UTC−6) at 8 pm, when UTC is already the next
+ * day, and the day is fixed, so where today falls (the range drawn, where it first scrolls) does
+ * not depend on when the test runs: the bars of 2–12 November are in view around the 6th.
+ */
+test.use({ timezoneId: 'America/Mexico_City' });
+const EVENING = new Date('2026-11-06T20:00:00-06:00');
+
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 async function seriousAxeViolations(page: Page): Promise<string[]> {
   // Evaluated, not a script element, which the app's content security policy refuses (M1-107).
@@ -73,6 +81,7 @@ test('[AGL-015] a bar dragged a week later moves the ticket’s dates', async ({
     dueDate: '2026-11-12',
   });
 
+  await page.clock.setFixedTime(EVENING);
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Timeline', exact: true }).click();
   const timeline = page.getByRole('region', { name: 'Timeline', exact: true });

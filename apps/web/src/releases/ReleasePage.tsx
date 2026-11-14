@@ -7,6 +7,7 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
+import { localDay } from '../timeline/client';
 import { type TrackClient, trackClient } from '../tracks/client';
 import { TrackLayout } from '../tracks/TrackLayout';
 import {
@@ -320,7 +321,7 @@ export function ReleasePage({
             client={client}
             release={release}
             open={overview.open.count}
-            today={now().toISOString().slice(0, 10)}
+            today={localDay(now())}
             onCancel={() => {
               focusAfterShipping.current = 'ship';
               setShipping(false);

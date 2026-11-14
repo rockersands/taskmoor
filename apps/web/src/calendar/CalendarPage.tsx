@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { PageHeader } from '../shell/PageHeader';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
-import { dayNumber, isoDay } from '../timeline/client';
+import { dayNumber, isoDay, localDay } from '../timeline/client';
 import { CalendarView, monthOf, monthWeeks } from './CalendarView';
 import { type CalendarClient, type CalendarData, calendarClient } from './client';
 
@@ -36,7 +36,7 @@ export function CalendarPage({
 }: CalendarPageProps) {
   const t = useT();
   const id = useId();
-  const [month, setMonth] = useState(() => monthOf(dayNumber(now().toISOString().slice(0, 10))));
+  const [month, setMonth] = useState(() => monthOf(dayNumber(localDay(now()))));
   const [data, setData] = useState<CalendarData | null>(null);
   const [failed, setFailed] = useState(false);
   const { first, last } = monthWeeks(month);

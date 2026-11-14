@@ -2,14 +2,18 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { CalendarPage, withoutTrackName } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
-function renderCalendar(client = fakeCalendarClient()) {
+function renderCalendar(
+  client = fakeCalendarClient(),
+  now = () => new Date('2026-11-06T09:00:00Z'),
+) {
   render(
     <I18nProvider locale="en">
-      <CalendarPage trackKey="CAL" client={client} now={() => new Date('2026-11-06T09:00:00Z')} />
+      <CalendarPage trackKey="CAL" client={client} now={now} />
     </I18nProvider>,
   );
   return client;
@@ -272,6 +276,36 @@ describe('a track’s calendar (M1-049)', () => {
     renderCalendar();
     await screen.findByRole('heading', { name: 'Calendar', level: 1 });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+/**
+ * Due dates are calendar days, and this month and today are the person's own: at 8 pm on the
+ * last day of November in Mexico City (UTC−6) it is already December in UTC.
+ */
+describe('this month on the person’s own clock (AGL-017)', () => {
+  useTimeZone('America/Mexico_City');
+  const evening = () => new Date('2026-12-01T02:00:00Z');
+
+  it('[AGL-017] opens on the local month and marks the local today in the evening', async () => {
+    renderCalendar(fakeCalendarClient(), evening);
+    expect(await screen.findByRole('heading', { name: 'November 2026' })).toBeVisible();
+    expect(day(/^Nov 30, 2026/)).toHaveClass('is-today');
+    expect(day(/^Dec 1, 2026/)).not.toHaveClass('is-today');
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByRole('heading', { name: 'December 2026' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'This month' }));
+    expect(screen.getByRole('heading', { name: 'November 2026' })).toBeVisible();
+  });
+
+  it('[AGL-017] saves a ticket dragged in the evening on the day it was dropped on', async () => {
+    const client = renderCalendar(fakeCalendarClient(), evening);
+    const chip = await screen.findByRole('link', { name: 'CAL-1 Build the site, due this day' });
+    pointerDrag(chip, day(/^Nov 13, 2026/));
+    await waitFor(() =>
+      expect(ticketOf(client, 'CAL-1')).toMatchObject({ start: '2026-11-07', due: '2026-11-13' }),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('CAL-1 is now due on Nov 13, 2026.');
   });
 });
 

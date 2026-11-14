@@ -83,3 +83,11 @@ export const dayNumber = (iso: string) => {
   return Date.UTC(y, m - 1, d) / 86_400_000;
 };
 export const isoDay = (day: number) => new Date(day * 86_400_000).toISOString().slice(0, 10);
+/**
+ * The calendar day it is at `at` on the person's own clock, as `YYYY-MM-DD`. Start and due dates
+ * are calendar days, so "today" is the local day, not UTC's: in the Americas UTC is already
+ * tomorrow every evening, and the today line, the month first shown and a new date would be a
+ * day ahead.
+ */
+export const localDay = (at: Date) =>
+  `${String(at.getFullYear()).padStart(4, '0')}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;

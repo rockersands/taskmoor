@@ -6,7 +6,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
-import { dayNumber, type TimelineItem } from '../timeline/client';
+import { dayNumber, localDay, type TimelineItem } from '../timeline/client';
 import { DependencyList } from '../timeline/DependencyList';
 import { dependenciesOf } from '../timeline/dependencies';
 import { type TimelineGroup, TimelineView } from '../timeline/TimelineView';
@@ -121,7 +121,7 @@ export function PlanTimelinePage({
     return <EmptyState title={t('plans.empty')}>{t('empty.planTickets.body')}</EmptyState>;
   }
 
-  const today = now().toISOString().slice(0, 10);
+  const today = localDay(now());
   const dated = (view: string, extension: string) => fileName(plan.name, view, today, extension);
   const notes = [
     ...(data.truncated ? [t('plans.download.first', { count: data.items.length })] : []),

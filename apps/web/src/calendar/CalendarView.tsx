@@ -14,7 +14,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
-import { dayNumber, isoDay } from '../timeline/client';
+import { dayNumber, isoDay, localDay } from '../timeline/client';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
 import { useTouchWording } from '../timeline/touch';
@@ -121,7 +121,7 @@ export function CalendarView({
   const t = useT();
   const intl = useIntl();
   const id = useId();
-  const today = dayNumber(now().toISOString().slice(0, 10));
+  const today = dayNumber(localDay(now()));
   const compact = useMediaQuery(COMPACT_QUERY);
   const touch = useTouchWording();
   const [dragging, setDragging] = useState<Entry | null>(null);

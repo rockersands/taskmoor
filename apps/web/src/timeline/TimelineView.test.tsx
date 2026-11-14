@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
-import type { Timeline } from './client';
+import { useTimeZone } from '../test/timeZone';
+import { localDay, type Timeline } from './client';
 import { fakeTimelineClient, manyItems } from './fixtures';
 import { TimelineView } from './TimelineView';
 
@@ -230,5 +231,31 @@ describe('what the chart shows and where (PLN-012)', () => {
     expect(body).not.toHaveClass('has-panel');
     act(() => screen.getByRole('button', { name: /^LCH-2: / }).click());
     expect(body).toHaveClass('has-panel');
+  });
+});
+
+/**
+ * Start and due dates are calendar days, and today is the person's own day: at 8 pm in Mexico
+ * City (UTC−6) it is already tomorrow in UTC, and the today line must not move a day ahead.
+ */
+describe('today on the person’s own clock (AGL-015)', () => {
+  useTimeZone('America/Mexico_City');
+  // 8 pm on Wednesday 4 November in Mexico City: 02:00 on Thursday 5 November in UTC.
+  const evening = () => new Date('2026-11-05T02:00:00Z');
+
+  it('[AGL-015] names the local day, not UTC’s, in the evening west of UTC', () => {
+    expect(localDay(evening())).toBe('2026-11-04');
+    expect(localDay(new Date('2026-11-04T06:00:00Z'))).toBe('2026-11-04');
+    expect(localDay(new Date('2026-11-04T05:59:00Z'))).toBe('2026-11-03');
+  });
+
+  it('[AGL-015] draws the today line through the local day in the evening', () => {
+    render(view(fakeTimelineClient().data(), evening));
+    // LCH-2 starts on 2 November; at 28px a day the line runs through the middle of the 4th.
+    const bar = screen.getByRole('button', { name: 'LCH-2: Nov 2, 2026 to Nov 10, 2026' });
+    const line = document.querySelector('.timeline-today') as HTMLElement;
+    expect(Number.parseFloat(line.style.left) - Number.parseFloat(bar.style.left)).toBe(
+      2 * 28 + 14,
+    );
   });
 });

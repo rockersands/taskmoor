@@ -5,6 +5,7 @@ import { searchHref } from '../releases/client';
 import { routeHref } from '../routing/router';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { localDay } from '../timeline/client';
 import { planHref } from './address';
 import { CapacityDialog } from './CapacityDialog';
 import type {
@@ -65,7 +66,7 @@ export function PlanCapacityPage({
   const headingId = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
   const count = compact ? PERIODS.compact : PERIODS.wide;
-  const today = now().toISOString().slice(0, 10);
+  const today = localDay(now());
   // Kept in the address on a plan's page, so a link opens the same periods.
   const [fromHere, setFromHere] = useState(today);
   const from = position?.from ?? fromHere;

@@ -16,6 +16,14 @@ import { finger } from './touch';
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
 
+/**
+ * The browser keeps a person's clock in Mexico City (UTC−6) at 8 pm on the last day of November,
+ * when UTC is already December: the calendar opens on the person's own month, and the days the
+ * test uses do not depend on when it runs.
+ */
+test.use({ timezoneId: 'America/Mexico_City' });
+const EVENING = new Date('2026-11-30T20:00:00-06:00');
+
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 async function seriousAxeViolations(page: Page): Promise<string[]> {
   // Evaluated, not a script element, which the app's content security policy refuses (M1-107).
@@ -120,16 +128,8 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   const key = `C${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
   await track(page, key, `Calendar ${key}`);
   // The 10th of this month, moved to the 17th.
-  const now = new Date();
-  const day = (n: number) =>
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), n)).toISOString().slice(0, 10);
-  const label = (n: number) =>
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), n)).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
+  const day = (n: number) => `2026-11-${String(n).padStart(2, '0')}`;
+  const label = (n: number) => `Nov ${n}, 2026`;
   const made = await page.request.post(`${BASE}/api/v1/tickets`, {
     data: { track: key, summary: 'Launch party', dueDate: day(10) },
   });
@@ -144,6 +144,7 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
     expect(other.status(), await other.text()).toBe(201);
   }
 
+  await page.clock.setFixedTime(EVENING);
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Calendar', exact: true }).click();
   const calendar = page.getByRole('region', { name: 'Calendar', exact: true });

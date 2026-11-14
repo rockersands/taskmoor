@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CalendarView, monthOf, monthWeeks } from '../calendar/CalendarView';
 import { useT } from '../i18n/I18nProvider';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
-import { dayNumber, isoDay } from '../timeline/client';
+import { dayNumber, isoDay, localDay } from '../timeline/client';
 import type { PlanCalendar } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { fileName, saveBlob } from './download';
@@ -24,7 +24,7 @@ export function PlanCalendarPage({
   onPosition,
 }: PlanSectionProps) {
   const t = useT();
-  const today = now().toISOString().slice(0, 10);
+  const today = localDay(now());
   // Kept in the address on a plan's page, so a link opens the same month.
   const [monthHere, setMonthHere] = useState(() => monthOf(dayNumber(today)));
   const month = position?.month ? dayNumber(`${position.month}-01`) : monthHere;
