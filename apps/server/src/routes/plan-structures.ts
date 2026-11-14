@@ -40,6 +40,7 @@ import { names as axisNames, axisValues, parseAxis } from '../reports/general';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { todayIn } from '../templates/model';
+import { canonicalJson } from '../tickets/model';
 import { viewScenario } from './plan-scenarios';
 import { planVisible } from './plans';
 import { project, projection, searchRefusal, searchViews } from './search';
@@ -446,9 +447,10 @@ export function registerPlanStructureRoutes(
       if (!locked) return { missing: true as const };
       if (locked.version !== parsed.data.version) return { conflict: locked.version };
       const next = { name: parsed.data.name ?? locked.name, spec: spec ?? locked.spec };
+      // Keys sorted: jsonb gives the stored spec's keys in its own order, not the request's.
       const changes = diff(
-        { name: locked.name, spec: JSON.stringify(locked.spec) },
-        { name: next.name, spec: JSON.stringify(next.spec) },
+        { name: locked.name, spec: canonicalJson(locked.spec) },
+        { name: next.name, spec: canonicalJson(next.spec) },
       );
       if (Object.keys(changes).length === 0) return { unchanged: true as const };
       if (await nameTaken(trx, o.plan.id, next.name, o.structure.id))

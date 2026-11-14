@@ -502,6 +502,38 @@ describe('plan structures and the Grid (PLN-010)', () => {
     expect(onlyHidden.body).toBe(onlyMissing.body);
   });
 
+  it('[PLN-010] a change that sends the stored spec again changes nothing, whatever its keys’ order', async () => {
+    // jsonb gives keys in its own order ({ fn, of, kind }); the request's come in the schema's.
+    const made = await save('admin', 'Same again', {
+      steps: [
+        { kind: 'insert' },
+        { kind: 'children' },
+        { kind: 'links', linkTypeId: blocks, direction: 'outward', depth: 2 },
+      ],
+      columns: [
+        { kind: 'ticket', field: 'summary' },
+        { kind: 'total', fn: 'count' },
+        { kind: 'total', fn: 'progress' },
+        { kind: 'total', fn: 'sum', of: `cf[${points}]` },
+        {
+          kind: 'formula',
+          name: 'Twice',
+          expression: '{Grid points} * 2',
+          output: 'number',
+          decimals: 1,
+        },
+      ],
+    });
+    const since = await lastEventId();
+    const url = `${plan()}/structures/${made.id}`;
+    const again = (
+      await call('admin', { method: 'PATCH', url, payload: { spec: made.spec, version: 1 } })
+    ).structure as Structure;
+    expect(again.version).toBe(1);
+    expect(await eventsOf('plan.structure_changed', since)).toEqual([]);
+    await call('admin', { method: 'DELETE', url: `${url}?version=1` }, 204);
+  });
+
   it('[PLN-010] saves, changes and deletes a structure with its version, and audits each', async () => {
     const since = await lastEventId();
     const made = await save('admin', '  Delivery  ', {
