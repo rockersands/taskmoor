@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import { knownTimeZone, localDate, parseQuery, printQuery } from '@taskmoor/query';
+import { localDate, parseQuery, printQuery } from '@taskmoor/query';
 import type { FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
@@ -21,6 +21,7 @@ import {
   twoDimensional,
   workload,
 } from '../reports/general';
+import { viewerTimeZone } from '../reports/zone';
 import { visibleBoardRecord } from '../routes/boards';
 import { searchPerson } from '../routes/search';
 import {
@@ -110,11 +111,8 @@ const ASSIGNED =
 const FOLLOWED = 'follower = currentUser() ORDER BY updated DESC';
 const DAY = 86_400_000;
 
-/** The viewer's time zone, else UTC. */
-function zoneOf(request: FastifyRequest): string {
-  const zone = searchPerson(request).timeZone;
-  return zone && knownTimeZone(zone) ? zone : 'UTC';
-}
+/** The viewer's time zone: their browser's, else their profile's, else UTC (T-272). */
+const zoneOf = (request: FastifyRequest): string => viewerTimeZone(request);
 
 /** The last `days` local days up to today, as dates and instants. */
 function window(request: FastifyRequest, days: number) {

@@ -22,6 +22,7 @@ import {
   rolling,
   timeInStatus,
 } from '../reports/flow';
+import { viewerTimeZone } from '../reports/zone';
 import { readOnly } from '../search/run';
 import { searchRefusal } from './search';
 
@@ -147,8 +148,7 @@ export function registerBoardReportRoutes(
       }
       active.push(filter);
     }
-    const timeZone =
-      q.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const timeZone = viewerTimeZone(request, q.timeZone);
     const now = Date.now();
     const to = q.to ?? localDate(new Date(now), timeZone);
     const from = q.from ?? daysBefore(to, (q.days ?? 30) - 1);
