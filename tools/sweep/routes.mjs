@@ -541,7 +541,9 @@ try {
   save();
   const { counts } = summarise(captures);
   const pictures = captures.filter((c) => !c.error).flatMap((c) => c.images ?? [c.image]).length;
-  say(`Routes and states: ${chosen.length} of ${everything.length}. Pictures: ${pictures}.`);
+  say(
+    `Routes and states: ${chosen.length} of ${everything.length}. Pictures in the report: ${pictures}.`,
+  );
   say(JSON.stringify(counts));
   say(`Written to ${REPORT}`);
 } finally {
