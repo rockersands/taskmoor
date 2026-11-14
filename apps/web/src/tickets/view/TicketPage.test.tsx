@@ -204,6 +204,38 @@ describe('the ticket view (M1-051)', () => {
     expect(alert).not.toHaveTextContent('The workflow does not let');
   });
 
+  it('[CORE-022][CORE-015] names a choice the track does not offer, or an archived one, as the create form does (T-287)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    await heading();
+    const refuse = (code: string) => {
+      client.edit = async () => {
+        throw new ApiError(400, { error: 'invalid_fields', fields: { priorityId: code } });
+      };
+    };
+    refuse('not_in_track');
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This track does not offer this choice. Choose one of its own.',
+    );
+    refuse('archived');
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Medium' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This release or area is archived. Choose another.',
+      ),
+    );
+    // Any other refused value still names the fields to check.
+    refuse('invalid');
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Check these values: priorityId.'),
+    );
+  });
+
   it('[WF-006] runs a transition, asking for a close reason when it needs one', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();

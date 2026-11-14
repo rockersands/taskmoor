@@ -7,7 +7,7 @@ import { routeHref } from '../routing/router';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { priorityName } from '../shell/priorityName';
-import { SYSTEM_FIELDS } from '../tickets/form';
+import { placementRefusal, SYSTEM_FIELDS } from '../tickets/form';
 import {
   type BulkClient,
   type BulkError,
@@ -69,6 +69,9 @@ export function useReason(): (error: BulkError | null) => string {
     if (code === 'transition_refused') {
       return t(error?.by === 'check' ? 'bulk.reason.checkRefused' : 'bulk.reason.ruleRefused');
     }
+    // A choice the ticket's track does not offer, or an archived one, as the create form says it.
+    const placement = code === 'invalid_fields' ? placementRefusal(error?.fields) : null;
+    if (placement) return t(placement);
     const id = REASONS[code];
     return id ? t(id) : t('bulk.reason.other', { code: code || '?' });
   };
