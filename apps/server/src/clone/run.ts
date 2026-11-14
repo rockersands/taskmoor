@@ -10,7 +10,7 @@ import type { SessionUser } from '../auth';
 import type { AuthzContext } from '../authz/authorizer';
 import { storedError } from '../bulk/model';
 import { emit } from '../events/bus';
-import type { FieldCatalogs } from '../fields/catalog';
+import type { Catalog, FieldCatalogs } from '../fields/catalog';
 import { bodyKey } from '../fields/layouts';
 import { customFieldViews } from '../fields/values';
 import { linksEnabled } from '../routes/links';
@@ -184,8 +184,54 @@ async function copyBody(
     if (value === null) continue;
     fields[key] = value;
   }
+  if (sameTrack) await dropArchived(db, catalog, fields);
   if (Object.keys(fields).length > 0) body.fields = fields;
   return body;
+}
+
+/**
+ * Leaves out of custom release and area values the ones archived, as the system fields' copy
+ * does: a new ticket takes no archived one (CORE-015, CORE-016), and the create route would
+ * refuse the whole field, open ones and all.
+ */
+async function dropArchived(
+  db: Kysely<Database>,
+  catalog: Catalog,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  type Ref = { id: number };
+  const named = { release: new Set<number>(), area: new Set<number>() };
+  const refOf = (key: string) => {
+    const type = catalog.fields.get(Number(key))?.type;
+    return type === 'release' || type === 'area' ? type : null;
+  };
+  for (const [key, value] of Object.entries(fields)) {
+    const ref = refOf(key);
+    if (ref === null) continue;
+    for (const v of Array.isArray(value) ? value : [value]) named[ref].add((v as Ref).id);
+  }
+  const archived = { release: new Set<number>(), area: new Set<number>() };
+  for (const ref of ['release', 'area'] as const) {
+    if (named[ref].size === 0) continue;
+    const rows = await db
+      .selectFrom(ref)
+      .select('id')
+      .where('id', 'in', [...named[ref]])
+      .where('archived_at', 'is not', null)
+      .execute();
+    for (const r of rows) archived[ref].add(r.id);
+  }
+  for (const [key, value] of Object.entries(fields)) {
+    const ref = refOf(key);
+    if (ref === null) continue;
+    if (!Array.isArray(value)) {
+      if (archived[ref].has((value as Ref).id)) delete fields[key];
+      continue;
+    }
+    const open = value.filter((v) => !archived[ref].has((v as Ref).id));
+    if (open.length === 0) delete fields[key];
+    else fields[key] = open;
+  }
 }
 
 /**

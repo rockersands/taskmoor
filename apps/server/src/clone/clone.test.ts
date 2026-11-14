@@ -586,6 +586,53 @@ describe('clone and deep clone (M1-124)', () => {
     }
   });
 
+  it('[CORE-023][CORE-015][CORE-016] copies a custom release or area field without its archived values, as the system fields (T-282)', async () => {
+    const made = async (url: string, payload: Record<string, unknown> = {}) => {
+      const res = await post('admin', url, payload);
+      expect(res.statusCode, res.body).toBeLessThan(300);
+      return res.json();
+    };
+    const ca = (
+      await database.db
+        .selectFrom('track')
+        .select('id')
+        .where('key', '=', 'CA')
+        .executeTakeFirstOrThrow()
+    ).id;
+    const open = (await made(`/api/v1/tracks/${ca}/releases`, { name: 'C1' })).release;
+    const old = (await made(`/api/v1/tracks/${ca}/releases`, { name: 'C0' })).release;
+    const legacy = (await made(`/api/v1/tracks/${ca}/areas`, { name: 'Old wing' })).area;
+    const shippedIn = (
+      await made('/api/v1/fields', { name: 'Shipped in', type: 'release', multiple: true })
+    ).field.id as number;
+    const keptBy = (await made('/api/v1/fields', { name: 'Kept by', type: 'area' })).field
+      .id as number;
+    const source = await ticket('alice', {
+      track: 'CA',
+      summary: 'Shipped twice',
+      targetReleaseIds: [open.id, old.id],
+      fields: { [shippedIn]: [open.id, old.id], [keptBy]: legacy.id },
+    });
+    await made(`/api/v1/releases/${old.id}/archive`);
+    await made(`/api/v1/areas/${legacy.id}/archive`);
+    const { op, items } = await clone('alice', source.key, {
+      subtickets: false,
+      attachments: false,
+      links: false,
+    });
+    expect(op).toMatchObject({ total: 1, succeeded: 1 });
+    // The archived ones are left out quietly, as from Target releases; the open one is copied.
+    expect(items[0]?.result?.left).toEqual([]);
+    const copy = (await get('alice', `/api/v1/tickets/${copyOf(items, source.key)}`)).json()
+      .ticket as {
+      targetReleases: { id: number }[];
+      fields: Record<string, unknown>;
+    };
+    expect(copy.targetReleases.map((r) => r.id)).toEqual([open.id]);
+    expect(copy.fields[shippedIn]).toEqual([{ id: open.id, name: 'C1' }]);
+    expect(copy.fields).not.toHaveProperty(String(keptBy));
+  });
+
   it('[CORE-023] refuses a clone the person may not make, and one over the workspace limit', async () => {
     const source = await ticket('alice', { track: 'CA', summary: 'Guarded' });
     const sub = await ticket('alice', {

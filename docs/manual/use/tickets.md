@@ -470,7 +470,8 @@ many are done. Each copy:
 
 - starts in the first status of its workflow, with the original's type, description, people,
   dates, priority, labels, estimate and custom fields, and its checklists with every item open. In the same track it also keeps the
-  original's releases, areas and visibility level;
+  original's releases, areas and visibility level, leaving out any release or area archived since,
+  in custom release and area fields too;
 - is linked to its original with the **copies** link (the original reads **is copied by**);
 - under a deep clone, sits under the copy of its parent, and two copied tickets that were linked
   to each other are linked as copies too.
