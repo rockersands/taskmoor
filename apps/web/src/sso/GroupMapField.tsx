@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { GroupSummary } from '../admin/SecurityPage';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { type MappingRow, mappingRow } from './draft';
 
 export interface GroupMapFieldProps {
@@ -52,9 +53,9 @@ export function GroupMapField({ rows, groups, onChange }: GroupMapFieldProps) {
       ) : (
         <>
           {groups.length === 0 && rows.length === 0 ? (
-            <p className="form-hint">{t('admin.sso.form.noGroups')}</p>
+            <EmptyState compact title={t('admin.sso.form.noGroups')} />
           ) : (
-            rows.length === 0 && <p className="form-hint">{t('admin.sso.form.noMappings')}</p>
+            rows.length === 0 && <EmptyState compact title={t('admin.sso.form.noMappings')} />
           )}
           {rows.map((row, index) => {
             const number = index + 1;

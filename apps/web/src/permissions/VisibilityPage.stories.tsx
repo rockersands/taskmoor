@@ -27,6 +27,20 @@ type Story = StoryObj<typeof meta>;
 /** A policy in use with two levels, and one no track uses. */
 export const Policies: Story = {};
 
+/** A level just added has no members yet, and says so as an empty state (T-289). */
+export const LevelWithNoMembers: Story = {
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    const spare = await page.findByRole('region', { name: 'Spare' });
+    const add = within(spare).getByRole('form', { name: 'Add a level to Spare' });
+    await userEvent.type(within(add).getByLabelText('Level name'), 'Counsel');
+    await userEvent.click(within(add).getByRole('button', { name: 'Add a level' }));
+    await expect(await within(spare).findByText(/^No members yet/)).toHaveClass(
+      'empty-state-title',
+    );
+  },
+};
+
 /** No policy yet: what one is for. */
 export const Empty: Story = { args: { client: fakeVisibilityClient([]) } };
 

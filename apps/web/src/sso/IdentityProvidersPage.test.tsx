@@ -190,6 +190,9 @@ describe('identity provider administration (M1-080)', () => {
     await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     expect(within(form).getByLabelText('Name')).toHaveFocus();
+    // A new provider has no domains and no mappings, each said as an empty state (T-289).
+    expect(within(form).getByText('No domains yet.')).toHaveClass('empty-state-title');
+    expect(await within(form).findByText('No mappings.')).toHaveClass('empty-state-title');
     await user.keyboard('Contractors');
     await user.type(within(form).getByLabelText('Issuer URL'), 'https://login.contractors.example');
     await user.type(within(form).getByLabelText('Client ID'), 'taskmoor-web');
@@ -394,6 +397,17 @@ describe('identity provider administration (M1-080)', () => {
     await user.click(within(form).getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Saved Staff accounts.')).toBeVisible();
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ enabled: false });
+  });
+
+  it('[IAM-003] says there is no group to map claim values to yet, as an empty state', async () => {
+    const user = userEvent.setup();
+    openPage({ 'GET /groups': () => jsonResponse(200, { groups: [] }) });
+    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    const form = screen.getByRole('form', { name: 'New identity provider' });
+    expect(await within(form).findByText(/^There are no groups yet\./)).toHaveClass(
+      'empty-state-title',
+    );
+    expect(within(form).queryByText('No mappings.')).toBeNull();
   });
 
   it('[IAM-003] is listed in Administration for site administrators only', async () => {

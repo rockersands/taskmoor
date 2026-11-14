@@ -425,7 +425,7 @@ function LevelRow({
         </p>
         {level.description && <p className="people-meta">{level.description}</p>}
         {level.members.length === 0 ? (
-          <p className="people-meta">{t('admin.visibility.noMembers')}</p>
+          <EmptyState compact title={t('admin.visibility.noMembers')} />
         ) : (
           <ul
             className="visibility-members"

@@ -254,6 +254,15 @@ describe('the directory in the person’s groups (CORE-034)', () => {
     expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['SHOPShop']);
   });
 
+  it('[CORE-034] a search that matches no track says so as an empty state', async () => {
+    const user = userEvent.setup();
+    open(signedIn());
+    await user.type(await screen.findByLabelText('Find a track'), 'zzz');
+    const none = await screen.findByText('No track has that name or key.');
+    expect(none).toHaveClass('empty-state-title');
+    expect(screen.queryAllByRole('link')).toEqual([]);
+  });
+
   it('[IAM-034] leaving a shared group reads the tracks again: those it opened go', async () => {
     const user = userEvent.setup();
     const web = { id: 2, key: 'WEB', name: 'Web', owner: null };

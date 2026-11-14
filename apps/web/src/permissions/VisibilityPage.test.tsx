@@ -74,6 +74,8 @@ describe('visibility policies (UI-T17)', () => {
     await user.type(within(level).getByLabelText('Level name'), 'Counsel');
     await user.click(within(level).getByRole('button', { name: 'Add a level' }));
     expect(await within(legal).findByText('Counsel', { selector: 'p' })).toBeVisible();
+    // A new level has no members yet, and says so as an empty state (T-289).
+    expect(within(legal).getByText(/^No members yet/)).toHaveClass('empty-state-title');
     expect(client.calls.map((c) => c.action)).toEqual(['createPolicy', 'createPolicy', 'addLevel']);
   });
 
