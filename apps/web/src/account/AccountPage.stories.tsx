@@ -131,3 +131,23 @@ export const SectionsAtPhoneWidth: Story = {
     await fitsPhoneWidth(canvas);
   },
 };
+
+/**
+ * Opened at Profile on a phone, the row says it goes on (D2, D17): the edge fades over at least a
+ * tab's width, so a tab that ends at the edge, such as 'API tokens', visibly thins out instead of
+ * looking whole while 'Your data' waits unseen beyond it.
+ */
+export const RowReadsAsGoingOnAtPhoneWidth: Story = {
+  decorators: [atPhone375],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole('navigation', { name: 'Account sections' });
+    await waitFor(() => expect(bar).toHaveAttribute('data-more', 'end'));
+    const mask = getComputedStyle(bar).maskImage;
+    const fade = Number(/calc\(100% - ([\d.]+)px\)/.exec(mask)?.[1] ?? 0);
+    for (const name of ['API tokens', 'Your data']) {
+      const tab = within(bar).getByRole('link', { name }).getBoundingClientRect();
+      await expect(fade).toBeGreaterThanOrEqual(tab.width);
+    }
+  },
+};
