@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import type { TrackGroup, TrackGroupClient } from './client';
 import { fakeTrackGroupClient, GROUP_TRACKS, ownGroup, sharedGroup } from './fixtures';
 import { ShareGroupDialog } from './ShareGroupDialog';
@@ -89,9 +90,28 @@ export const ByKeyboard: Story = {
   },
 };
 
-/** Phones: one column, the grips 44px under a finger. */
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every group's and track's grip is
+ * a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
+  },
+};
+
+/** Phones: one column, nothing sideways, the grips 44px under a finger (T-231). */
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1' } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
 };
 
 const dialogArgs = (client: TrackGroupClient) => ({

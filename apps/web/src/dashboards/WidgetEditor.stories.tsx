@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import type { Layout, Widget } from './client';
 import { WidgetGrid } from './WidgetEditor';
 
@@ -186,5 +187,27 @@ export const Phone: Story = {
     await expect(canvasElement.querySelector('[aria-live="polite"]')).toHaveTextContent(
       'Charlie is now in column 3, 1 of 1.',
     );
+  },
+};
+
+/**
+ * NFR-007, ADR-033: being arranged on a real touch screen at a desktop's width, every widget's
+ * grip is a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.dashboard-widget-grip'])).toEqual([]);
+  },
+};
+
+/** The same on a phone. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.dashboard-widget-grip'])).toEqual([]);
   },
 };

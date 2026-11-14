@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import { MoveMenu } from './MoveMenu';
 
 /** Rows, each led by a grip whose menu and Alt with the arrows reorder them. */
@@ -51,7 +52,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Grips at rest: a 44 px target on touch, a drag handle for a mouse or a finger. */
+/** Grips at rest: a drag handle for a mouse or a finger that opens a menu of its moves. */
 export const Grips: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -59,6 +60,28 @@ export const Grips: Story = {
       'aria-haspopup',
       'menu',
     );
+  },
+};
+
+/**
+ * NFR-007, ADR-033: the grips on a real touch screen at a desktop's width, each a finger's size
+ * (T-231). The rule was once hidden behind a width query with every test green.
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
+  },
+};
+
+/** The same on a phone. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
   },
 };
 
