@@ -5,13 +5,18 @@
 // by this account only. Neither the link nor the password is ever printed, logged or written.
 import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync } from 'node:fs';
-import { firstLine } from './redact.mjs';
+import { firstLine, redact } from './redact.mjs';
 
 const ADMIN_LINK = /\(site administrator\)\s+(https?:\/\/\S+)/g;
 
-/** The site administrator's one-time link in a demo's output: the last one printed, or null. */
+/**
+ * The site administrator's one-time link in a demo's output: the last one printed, or null. A link
+ * with nothing left to hide (the sweep's own log, where redact() put "..." for its token) is no
+ * link: it would open a password page that never comes.
+ */
 export function adminLinkIn(text) {
-  return [...String(text ?? '').matchAll(ADMIN_LINK)].at(-1)?.[1] ?? null;
+  const link = [...String(text ?? '').matchAll(ADMIN_LINK)].at(-1)?.[1] ?? null;
+  return link && redact(link, Number.POSITIVE_INFINITY) !== link ? link : null;
 }
 
 /** The administrator's one-time link, from the last time a demo wrote its output to this file. */

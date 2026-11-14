@@ -5,7 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { demoOutput } from './demo.mjs';
 import { firstLine, pngSize, redact } from './redact.mjs';
-import { adminLinkFrom, adminLinkIn, makePassword, signInFailure } from './session.mjs';
+import {
+  adminLinkFrom,
+  adminLinkIn,
+  ensureSignedIn,
+  makePassword,
+  signInFailure,
+} from './session.mjs';
 
 // Values shaped like real secrets, made at run time so no secret scanner mistakes this file for
 // one holding them.
@@ -86,12 +92,47 @@ describe('the session', () => {
     expect(adminLinkIn('')).toBeNull();
   });
 
+  it("[NFR-008] takes a link the sweep's own log redacted as no link", () => {
+    const logged = [];
+    const output = demoOutput((text) => logged.push(text));
+    output.push(DEMO_OUTPUT);
+    output.end();
+    const redactedLog = logged.join('');
+    expect(redactedLog).toContain('http://localhost:8090/#/password?token=...');
+    expect(adminLinkIn(redactedLog)).toBeNull();
+    // A demo started by hand after the sweep's run writes a real link after the redacted ones.
+    expect(adminLinkIn(`${redactedLog}\n${DEMO_OUTPUT}`)).toBe(LINK);
+    // The last demo's link is redacted: an earlier real one belongs to a demo that is gone.
+    expect(adminLinkIn(`${DEMO_OUTPUT}\n${redactedLog}`)).toBeNull();
+  });
+
   it('[NFR-008] reads the link from a log file, and nothing from one that is not there', () => {
     const file = join(dir, 'demo.log');
     writeFileSync(file, DEMO_OUTPUT);
     expect(adminLinkFrom(file)).toBe(LINK);
     expect(adminLinkFrom(join(dir, 'missing.log'))).toBeNull();
     expect(adminLinkFrom(undefined)).toBeNull();
+    writeFileSync(file, redact(DEMO_OUTPUT, 2000));
+    expect(adminLinkFrom(file)).toBeNull();
+  });
+
+  it("[NFR-008] says there is no administrator's link when the log holds only redacted ones", async () => {
+    const logFile = join(dir, 'redacted.log');
+    writeFileSync(logFile, redact(DEMO_OUTPUT, 2000));
+    // No saved state: the browser is never asked to open anything.
+    const browser = {
+      newContext: () => {
+        throw new Error('opened a page');
+      },
+    };
+    await expect(
+      ensureSignedIn(browser, {
+        url: 'http://localhost:8090',
+        link: null,
+        logFile,
+        stateFile: join(dir, 'no-state.json'),
+      }),
+    ).rejects.toThrow(/^No saved session and no administrator's link: run with --demo/);
   });
 
   it('[NFR-008] makes a new long random password each time', () => {
