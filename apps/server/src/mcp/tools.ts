@@ -129,17 +129,35 @@ export const TOOLS: readonly Tool[] = [
   {
     name: 'list_tracks',
     title: 'List tracks',
-    description: 'The tracks (projects) the caller may browse, with their keys.',
+    description:
+      'The tracks (projects) the caller may browse, with their keys, in key order. Returns up to `limit` tracks and a cursor for more.',
     profile: 'read-only',
     readOnly: true,
-    input: z.object({}),
-    run: async (api) => ({
-      tracks: (((await ok(api, 'GET', '/api/v1/tracks')).tracks ?? []) as Json[]).map((t) => ({
-        key: t.key,
-        name: t.name,
-        type: t.type,
-      })),
+    input: z.object({
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(500)
+        .optional()
+        .describe('How many tracks, 100 by default.'),
+      cursor: z.string().min(1).max(255).optional().describe('The `next` of an earlier answer.'),
     }),
+    run: async (api, a) => {
+      const page = await ok(
+        api,
+        'GET',
+        `/api/v1/tracks${q({ limit: a.limit ?? 100, after: a.cursor })}`,
+      );
+      return {
+        tracks: ((page.tracks ?? []) as Json[]).map((t) => ({
+          key: t.key,
+          name: t.name,
+          type: t.type,
+        })),
+        next: page.next ?? null,
+      };
+    },
   },
   {
     name: 'list_boards',
