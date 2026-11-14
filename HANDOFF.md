@@ -22,7 +22,20 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: wave 12's follow-ups on main (2026-11-14, the Mac)
+### Latest: the program board and eleven bugs on main (2026-11-14, Windows)
+
+- **On `main` (`443b2dcd`, full gate on Windows: 8,615 tests, 255 e2e):** T-089d, program boards
+  (ADR-122 stage 5, PLN-008, PLN-013, migration 0108), reviewed by a panel (17 faults fixed with
+  tests); and the bugs T-203 (migration 0109), T-223, T-224, T-225, T-227, T-230, T-235, T-243,
+  T-244, T-245 and T-249, reviewed too (10 faults fixed). New helper: `apps/web/e2e/unique.ts`
+  for track keys and stamps per worker; new specs should use it.
+- **Found by the gate, fixed:** T-301 (notification settings: an earlier save's answer took back a
+  quick second change) and T-302 (the finger-drag e2e on Windows never saw `scrollend`).
+- **Open questions for the user:** T-300 (the program board's twelve). Left open in T-245: a save
+  sent after the OAuth token has run out still waits for a refresh.
+- **Next for Windows:** T-266, the `plan-` rows of the second sweep, then T-089e, T-089f, T-089a.
+
+### Earlier: wave 12's follow-ups on main (2026-11-14, the Mac)
 
 - **On `main` (`488632e0`, full gate: 8,526 tests, 254 e2e):** T-253 (the create form sets assignee,
   release, area, parent and person fields; Track is an icon select), T-254 (one confirmation,
