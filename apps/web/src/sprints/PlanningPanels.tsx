@@ -1,4 +1,5 @@
 import { type ReactNode, useId } from 'react';
+import { useDayText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { EmptyState } from '../shell/EmptyState';
 import type { BacklogPanels } from './client';
@@ -31,6 +32,7 @@ const same = (a: PanelTarget | null, b: PanelTarget) => a?.kind === b.kind && a.
  */
 export function PlanningPanels({ panels, failed, filter, onFilter, over }: PlanningPanelsProps) {
   const t = useT();
+  const day = useDayText();
   const id = useId();
 
   const item = (target: PanelTarget, name: string, body: ReactNode) => {
@@ -102,7 +104,7 @@ export function PlanningPanels({ panels, failed, filter, onFilter, over }: Plann
                       {r.releaseDate
                         ? t('sprints.panels.releaseCountDated', {
                             count: r.tickets,
-                            date: r.releaseDate,
+                            date: day(r.releaseDate),
                           })
                         : t('sprints.panels.releaseCount', { count: r.tickets })}
                     </span>

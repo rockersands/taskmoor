@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react';
 import { useIntl } from 'react-intl';
+import { useDayText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -946,6 +947,7 @@ function SchedulePanel({
   onClose: () => void;
 }) {
   const t = useT();
+  const day = useDayText();
   const id = useId();
   const [start, setStart] = useState(item.start ?? '');
   const [due, setDue] = useState(item.due ?? '');
@@ -959,8 +961,8 @@ function SchedulePanel({
         <p className="board-hint">
           {item.rollup.start || item.rollup.due
             ? t('timeline.panel.rollup', {
-                start: item.rollup.start ?? t('timeline.noDate'),
-                due: item.rollup.due ?? t('timeline.noDate'),
+                start: item.rollup.start ? day(item.rollup.start) : t('timeline.noDate'),
+                due: item.rollup.due ? day(item.rollup.due) : t('timeline.noDate'),
               })
             : t('timeline.panel.noRollup')}
         </p>

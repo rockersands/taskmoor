@@ -245,6 +245,49 @@ describe('the ticket view (M1-051)', () => {
     expect(within(all).getByText('Logged 2 h')).toBeVisible();
   });
 
+  // History reads a start or due day as the ticket's own fields do, in the reader's locale and
+  // on its calendar day, never 'Set Due date to 2026-10-13' (T-240).
+  it.each([
+    {
+      locale: 'en' as const,
+      names: ['Activity', 'History'],
+      lines: ['Changed Due date from Oct 13, 2026 to Nov 2, 2026', 'Set Start date to Oct 1, 2026'],
+    },
+    {
+      locale: 'es' as const,
+      names: ['Actividad', 'Historial'],
+      lines: [
+        'Cambió Fecha límite de 13 oct 2026 a 2 nov 2026',
+        'Definió Fecha de inicio como 1 oct 2026',
+      ],
+    },
+  ])(
+    '[CORE-022] [NFR-006] reads start and due days in history in $locale',
+    async ({ locale, names, lines }) => {
+      const user = userEvent.setup();
+      const { client } = renderPage({}, locale);
+      const day = (field: string, from: string | null, to: string) => ({
+        id: field,
+        at: '2026-10-21T15:00:00Z',
+        actor: null,
+        field,
+        from: { value: from, display: null },
+        to: { value: to, display: null },
+        transitionId: null,
+      });
+      vi.spyOn(client, 'history').mockResolvedValue({
+        changes: [day('dueDate', '2026-10-13', '2026-11-02'), day('startDate', null, '2026-10-01')],
+        next: null,
+      });
+      await heading();
+      const [activity, history] = names as [string, string];
+      const tabs = screen.getByRole('tablist', { name: activity });
+      await user.click(within(tabs).getByRole('tab', { name: history }));
+      const panel = screen.getByRole('tabpanel', { name: history });
+      for (const line of lines) expect(await within(panel).findByText(line)).toBeVisible();
+    },
+  );
+
   it('[AGL-018] keyboard shortcuts: help, follow, assign, comment, edit, transitions', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();

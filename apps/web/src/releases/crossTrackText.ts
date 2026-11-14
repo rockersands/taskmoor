@@ -1,16 +1,11 @@
-import { type IntlShape, useIntl } from 'react-intl';
+import { useIntl } from 'react-intl';
+import { dayText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import type { MoveReason } from './crossTrackClient';
 
-/** A calendar day as people read it: 12 Nov 2026, whatever the viewer's clock says. */
-export const dayText = (intl: IntlShape, day: string) =>
-  intl.formatDate(`${day}T00:00:00Z`, {
-    timeZone: 'UTC',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+/** A calendar day as people read it; shared with every page that shows one (T-240). */
+export { dayText } from '../i18n/days';
 
 /** Why a move left a release where it is, in words. */
 export const MOVE_REASONS: Record<MoveReason, MessageId> = {

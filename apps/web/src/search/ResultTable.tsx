@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
+import { dayText, isCalendarDay } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
@@ -21,6 +22,7 @@ import {
   cellValue,
   DATE_COLUMNS,
   editorStart,
+  isDateTimeColumn,
   type TableSort,
   valueText,
 } from './columns';
@@ -49,7 +51,6 @@ export interface ResultTableProps {
   sort?: TableSort | null;
 }
 
-const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
 /**
  * Short values that read best on one line; the summary takes the width they leave (TR-8). A name
  * stays whole too ('Chen Wei', not 'Chen' above 'Wei').
@@ -234,6 +235,7 @@ export function ResultGrid({
                     column={column}
                     columnName={nameOf(column)}
                     editor={cellEditor(column, fields)}
+                    dateTime={isDateTimeColumn(column, fields)}
                     priorities={priorities}
                     client={client}
                     onSaved={onSaved}
@@ -269,6 +271,7 @@ function Cell({
   column,
   columnName,
   editor,
+  dateTime,
   priorities,
   client,
   onSaved,
@@ -278,6 +281,8 @@ function Cell({
   column: string;
   columnName: string;
   editor: CellEditor | null;
+  /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
+  dateTime: boolean;
   priorities: { id: number; name: string; level?: number }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
@@ -304,11 +309,13 @@ function Cell({
   // No one assigned reads 'Unassigned', as the phone's rows say, never a blank cell.
   const unassigned = column === 'assignee' && (value === null || value === undefined);
   const shown =
-    DATE_TIMES.has(column) && typeof value === 'string'
+    dateTime && typeof value === 'string' && !Number.isNaN(Date.parse(value))
       ? intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
-      : unassigned
-        ? t('search.edit.unassigned')
-        : valueText(value);
+      : editor?.kind === 'date' && isCalendarDay(value)
+        ? dayText(intl, value)
+        : unassigned
+          ? t('search.edit.unassigned')
+          : valueText(value);
 
   const close = () => {
     setInput(null);

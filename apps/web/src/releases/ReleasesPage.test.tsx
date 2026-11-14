@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasesPage } from './ReleasesPage';
@@ -83,5 +84,42 @@ describe('the releases hub (M1-050)', () => {
     renderHub();
     await screen.findByRole('heading', { level: 1, name: 'Releases' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+// A release shipped with no release date: the day it shipped is the person's own day, as its
+// page says, not UTC's, which is already the next day on a Los Angeles evening (T-240).
+describe('the day a release shipped, on the person’s clock (T-240)', () => {
+  useTimeZone('America/Los_Angeles');
+
+  const undated = () => {
+    const client = fakeReleaseClient();
+    const list = client.list.bind(client);
+    vi.spyOn(client, 'list').mockImplementation(async (trackId) => {
+      const answer = await list(trackId);
+      return {
+        ...answer,
+        releases: answer.releases.map((r) =>
+          r.id === 1 ? { ...r, releaseDate: null, shippedAt: '2026-10-01T03:00:00Z' } : r,
+        ),
+      };
+    });
+    return client;
+  };
+  const shipped = async () =>
+    within((await screen.findByRole('link', { name: '1.9' })).closest('li') as HTMLElement);
+
+  it('[NFR-006] [CORE-016] in English', async () => {
+    renderHub(undated());
+    expect((await shipped()).getByText('Shipped on Sep 30, 2026')).toBeVisible();
+  });
+
+  it('[NFR-006] [CORE-016] in Spanish', async () => {
+    render(
+      <I18nProvider locale="es">
+        <ReleasesPage trackKey="CHK" client={undated()} />
+      </I18nProvider>,
+    );
+    expect((await shipped()).getByText('Entregada el 30 sept 2026')).toBeVisible();
   });
 });

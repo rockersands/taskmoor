@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { type BoardReport, BoardReportsPage } from './BoardReportsPage';
 import {
   fakeReportClient,
   RELEASES,
   REPORT_BOARD,
+  releaseReportFixture,
   SCRUM_REPORT_BOARD,
   SUMMARIES,
 } from './fixtures';
@@ -322,10 +324,46 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
     ]);
     expect(
       screen.getByText(
-        'Planned for Nov 30. At the pace of the last 14 days, the work is done by Nov 11.',
+        'Planned for Nov 30, 2026. At the pace of the last 14 days, the work is done by Nov 11, 2026.',
       ),
     ).toBeVisible();
     expect(within(figure).getAllByRole('row')).toHaveLength(23);
+  });
+
+  // The release's days read as the Releases list says them, with their year, in the person's
+  // locale; a release shipped with no date shipped on the person's own day (T-240).
+  it('[RPT-001] [NFR-006] the release report reads its days in Spanish', async () => {
+    open('release-report', 'es', scrum());
+    expect(
+      await screen.findByText(
+        'Prevista para el 30 nov 2026. Al ritmo de los últimos 14 días, el trabajo estará hecho el 11 nov 2026.',
+      ),
+    ).toBeVisible();
+  });
+
+  describe('a release shipped with no date (T-240)', () => {
+    useTimeZone('America/Los_Angeles');
+    const shipped = () => {
+      const client = scrum();
+      client.releaseReport = async () => {
+        const report = releaseReportFixture();
+        return {
+          ...report,
+          release: { ...report.release, releaseDate: null, shippedAt: '2026-11-12T03:00:00Z' },
+        };
+      };
+      return client;
+    };
+
+    it('[RPT-001] [NFR-006] says the day it shipped on the person’s clock, in English', async () => {
+      open('release-report', 'en', shipped());
+      expect(await screen.findByText('Shipped on Nov 11, 2026.')).toBeVisible();
+    });
+
+    it('[RPT-001] [NFR-006] says the day it shipped on the person’s clock, in Spanish', async () => {
+      open('release-report', 'es', shipped());
+      expect(await screen.findByText('Entregada el 11 nov 2026.')).toBeVisible();
+    });
   });
 
   it('[RPT-001] says when the board’s track has no releases', async () => {

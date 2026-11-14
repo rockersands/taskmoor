@@ -372,6 +372,24 @@ describe('a track’s statistics (ADR-116)', () => {
     }
   });
 
+  // The outcome report's forecast reads its day with the year, as the release report's same
+  // sentence does, in the person's locale (T-240).
+  it('[RPT-001] [NFR-006] the outcome report’s forecast reads its day as the release report’s does, in English', async () => {
+    open('outcome-report', SCRUM);
+    expect(
+      await screen.findByText('At the pace of the last 14 days, the work is done by Nov 12, 2026.'),
+    ).toBeVisible();
+  });
+
+  it('[RPT-001] [NFR-006] the outcome report’s forecast reads its day as the release report’s does, in Spanish', async () => {
+    open('outcome-report', SCRUM, { locale: 'es' });
+    expect(
+      await screen.findByText(
+        'Al ritmo de los últimos 14 días, el trabajo estará hecho el 12 nov 2026.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[RPT-001] picks an outcome from the track’s outcomes, the first chosen, instead of a typed key (D25)', async () => {
     const user = userEvent.setup();
     const { reportClient } = openWithReports('outcome-burndown');
@@ -473,7 +491,8 @@ describe('a track’s statistics (ADR-116)', () => {
         };
       };
     });
-    expect(await screen.findByText('Shipped on Aug 18.')).toBeVisible();
+    // With its year, as the release's page and the Releases list say it (T-240).
+    expect(await screen.findByText('Shipped on Aug 18, 2026.')).toBeVisible();
     expect(screen.queryByText(/At the pace of the last/)).toBeNull();
   });
 
