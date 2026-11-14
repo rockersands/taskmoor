@@ -324,7 +324,12 @@ describe('track outcomes (AGL-024)', () => {
     const board = await as('admin', {
       method: 'POST',
       url: '/api/v1/boards',
-      payload: { name: 'Flow', kind: 'kanban', trackId: tracks.KMG, source: { query: 'track = KMG' } },
+      payload: {
+        name: 'Flow',
+        kind: 'kanban',
+        trackId: tracks.KMG,
+        source: { query: 'track = KMG' },
+      },
     });
     expect(board.statusCode, board.body).toBe(201);
     const viewers = await database.db
@@ -419,9 +424,7 @@ describe('track outcomes (AGL-024)', () => {
       payload: { transitionId: closing?.id },
     });
     expect(closed.statusCode, closed.body).toBe(200);
-    expect(
-      (await outcomes('alice', 'KMG')).outcomes.map((o) => [o.key, o.status.stage]),
-    ).toEqual([
+    expect((await outcomes('alice', 'KMG')).outcomes.map((o) => [o.key, o.status.stage])).toEqual([
       [first.key, 'new'],
       [second.key, 'closed'],
     ]);
