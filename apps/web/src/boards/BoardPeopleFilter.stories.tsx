@@ -62,20 +62,33 @@ export const SharedLink: Story = {
   },
 };
 
+const MANY_PEOPLE: BoardPeopleFilterProps['people'] = {
+  ...PEOPLE,
+  assignees: Array.from({ length: 30 }, (_, i) => ({ id: 100 + i, name: `Person ${i + 1}` })),
+  more: true,
+};
+
 /** A long list with its menu open: a box finds a name, and the list scrolls inside itself. */
 export const ManyPeople: Story = {
-  args: {
-    people: {
-      ...PEOPLE,
-      assignees: Array.from({ length: 30 }, (_, i) => ({ id: 100 + i, name: `Person ${i + 1}` })),
-      more: true,
-    },
-  },
+  args: { people: MANY_PEOPLE },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await userEvent.type(canvas.getByRole('searchbox', { name: 'Find a person' }), 'person 2');
     await expect(canvas.getByRole('checkbox', { name: 'Person 20' })).toBeVisible();
+  },
+};
+
+/** A find that matches nobody says so as an empty state, inside the menu (T-289). */
+export const FindsNobody: Story = {
+  args: { people: MANY_PEOPLE },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Find a person' }), 'zzz');
+    await expect(canvas.getByText('Nobody by that name is assigned here.')).toHaveClass(
+      'empty-state-title',
+    );
   },
 };
 

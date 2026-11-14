@@ -81,6 +81,17 @@ export const MovedWithTheKeyboard: Story = {
 /** A set with no layouts yet: every form shows every field, and offers to make a layout. */
 export const EmptySet: Story = { args: { initialSetId: 2 } };
 
+/** No ticket type to preview: the preview says so as an empty state (T-289). */
+export const NoTicketTypes: Story = {
+  args: { client: { ...fakeLayoutsClient(), ticketTypes: async () => [] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('There are no ticket types to preview.')).toHaveClass(
+      'empty-state-title',
+    );
+  },
+};
+
 /** A local-mode track's own set: its own ticket type and field, previewed in that track. */
 export const TrackOwnSet: Story = { args: { initialSetId: 5 } };
 
