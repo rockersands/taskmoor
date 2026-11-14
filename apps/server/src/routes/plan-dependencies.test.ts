@@ -435,4 +435,270 @@ describe('a plan’s dependencies (PLN-006)', () => {
       }
     });
   });
+
+  /**
+   * The critical path (PLN-011; ADR-122 stage 9). A plan over DPD: First -> Middle -> Last ends
+   * the plan on 30 Apr; Side blocks Last; Wide runs beside them; Sprinted has no days and is
+   * dated by its sprint's; Early only relates to First. A closed ticket of DPD blocks First, and
+   * Secret core work (DPC, which Ana may not see) blocks Middle.
+   */
+  describe('the critical path (PLN-011)', () => {
+    let pathPlan = 0;
+    const p: Record<string, { id: number; key: string }> = {};
+    interface PathAnswer {
+      planEnd: string | null;
+      chains: {
+        tickets: {
+          id: number;
+          key: string;
+          summary: string;
+          start: string;
+          end: string;
+          slack: number;
+        }[];
+      }[];
+      more: number;
+      counts: { critical: number; cycles: number; undated: number; waitsElsewhere: number };
+      listed: { id: number; slack: number }[];
+      scenario?: { id: number };
+    }
+    const path = async (who: string, query = '') => {
+      const res = await as(who, {
+        method: 'GET',
+        url: `/api/v1/plans/${pathPlan}/critical-path${query}`,
+      });
+      expect(res.statusCode, res.body.slice(0, 400)).toBe(200);
+      return { body: res.body, answer: res.json() as PathAnswer };
+    };
+    const slackOf = (answer: PathAnswer) =>
+      Object.fromEntries(answer.listed.map((l) => [l.id, l.slack]));
+    const chainKeys = (answer: PathAnswer) =>
+      answer.chains.map((c) => c.tickets.map((x) => x.summary));
+
+    beforeAll(async () => {
+      const made = await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'DPD', name: 'Delivery', mode: 'shared' },
+        },
+        201,
+      );
+      const members = (
+        await database.db
+          .selectFrom('role')
+          .select('id')
+          .where('name', '=', 'Members')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: made.track.id,
+          role_id: members,
+          user_id: users.ana?.id as number,
+        })
+        .execute();
+      p.first = await ticket('DPD', 'First', { startDate: '2027-04-01', dueDate: '2027-04-05' });
+      p.middle = await ticket('DPD', 'Middle', {
+        startDate: '2027-04-06',
+        dueDate: '2027-04-10',
+        assigneeId: users.ana?.id,
+      });
+      p.last = await ticket('DPD', 'Last', { startDate: '2027-04-11', dueDate: '2027-04-30' });
+      p.side = await ticket('DPD', 'Side', { startDate: '2027-04-01', dueDate: '2027-04-03' });
+      p.wide = await ticket('DPD', 'Wide', { startDate: '2027-04-01', dueDate: '2027-04-20' });
+      p.early = await ticket('DPD', 'Early', { startDate: '2027-03-20', dueDate: '2027-03-25' });
+      p.sprinted = await ticket('DPD', 'Sprinted');
+      p.undated = await ticket('DPD', 'Undated');
+      p.closed = await ticket('DPD', 'Closed blocker', { dueDate: '2027-04-29' });
+      await link(p.first, p.middle);
+      await link(p.middle, p.last);
+      await link(p.side, p.last);
+      await link(p.early, p.first, 'relates to');
+      await link(p.closed, p.first);
+      await link(t.secret as { key: string }, p.middle);
+      const closed = await database.db
+        .selectFrom('status')
+        .select('id')
+        .where('stage', '=', 'closed')
+        .limit(1)
+        .executeTakeFirstOrThrow();
+      await database.db
+        .updateTable('ticket')
+        .set({ status_id: closed.id, closed_at: new Date() })
+        .where('id', '=', p.closed.id)
+        .execute();
+      const board = await database.db
+        .insertInto('board')
+        .values({
+          workspace_id: 1,
+          name: 'DPD board',
+          kind: 'scrum',
+          location_track_id: made.track.id,
+          location_user_id: null,
+          filter_query: 'track = DPD',
+          sub_filter_query: null,
+          columns: JSON.stringify([]),
+          swimlanes: JSON.stringify({ kind: 'none' }),
+          card_rules: JSON.stringify([]),
+          created_by: null,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const sprint = await database.db
+        .insertInto('sprint')
+        .values({
+          workspace_id: 1,
+          board_id: board.id,
+          name: 'DPD 1',
+          sequence: 1,
+          state: 'future',
+          start_at: new Date('2027-04-12T09:00:00Z'),
+          end_at: new Date('2027-04-30T17:00:00Z'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await database.db
+        .insertInto('sprint_ticket')
+        .values({ workspace_id: 1, sprint_id: sprint.id, ticket_id: p.sprinted.id })
+        .execute();
+      pathPlan = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: '/api/v1/plans',
+            payload: {
+              name: 'Path',
+              sources: [{ kind: 'track', trackId: made.track.id }],
+              shares: [{ scope: 'any_user' }],
+            },
+          },
+          201,
+        )
+      ).plan.id;
+    }, 120_000);
+
+    it('[PLN-011] gives a chain that ends the plan slack 0, and the tickets beside it their slack', async () => {
+      // Acceptance 4.
+      const { answer } = await path('admin');
+      expect(answer.planEnd).toBe('2027-04-30');
+      expect(chainKeys(answer)).toEqual([['First', 'Middle', 'Last'], ['Sprinted']]);
+      expect(answer.chains[0]?.tickets[0]).toEqual({
+        id: p.first?.id,
+        key: p.first?.key,
+        summary: 'First',
+        start: '2027-04-01',
+        end: '2027-04-05',
+        slack: 0,
+      });
+      // Sprinted is read by its sprint's days.
+      expect(answer.chains[1]?.tickets[0]).toMatchObject({
+        start: '2027-04-12',
+        end: '2027-04-30',
+      });
+      expect(slackOf(answer)).toEqual({
+        [p.first?.id as number]: 0,
+        [p.middle?.id as number]: 0,
+        [p.last?.id as number]: 0,
+        [p.sprinted?.id as number]: 0,
+        // Last may start no later than 11 Apr.
+        [p.side?.id as number]: 7,
+        [p.wide?.id as number]: 10,
+        // Relates to First, which is not a dependency until the plan chooses it.
+        [p.early?.id as number]: 36,
+      });
+      // The closed blocker holds nothing; Secret core work waits elsewhere, only counted.
+      expect(answer.counts).toEqual({ critical: 4, cycles: 0, undated: 1, waitsElsewhere: 1 });
+      expect(answer.more).toBe(0);
+    });
+
+    it('[PLN-011] [QRY-008] never names a blocker the viewer may not see', async () => {
+      const { answer, body } = await path('ana');
+      expect(answer.counts.waitsElsewhere).toBe(1);
+      expect(body).not.toContain(t.secret?.key);
+      expect(body).not.toContain('Secret core work');
+      expect(body).not.toContain('DPC');
+      // Someone shown none of the plan gets no path at all.
+      const none = await path('cy');
+      expect(none.answer).toMatchObject({ planEnd: null, chains: [], listed: [] });
+      expect(none.body).not.toContain('First');
+    });
+
+    it('[PLN-011] lets the filters change only which tickets are listed, never the path', async () => {
+      const all = await path('ana');
+      const mine = await path('ana', '?assignee=me');
+      expect(mine.answer.listed).toEqual([{ id: p.middle?.id, slack: 0 }]);
+      expect(mine.answer.chains).toEqual(all.answer.chains);
+      expect(mine.answer.planEnd).toBe(all.answer.planEnd);
+      expect(mine.answer.counts).toEqual(all.answer.counts);
+    });
+
+    it('[PLN-011] [PLN-013] counts a link type the plan chose', async () => {
+      const relates = await linkType('relates to');
+      const set = (linkTypeIds: number[]) =>
+        call('admin', {
+          method: 'PATCH',
+          url: `/api/v1/plans/${pathPlan}`,
+          payload: { dependencies: { linkTypeIds, sameSprint: false } },
+        });
+      await set([relates]);
+      try {
+        const { answer } = await path('admin');
+        // Early relates to First, which may start no later than 1 Apr.
+        expect(slackOf(answer)[p.early?.id as number]).toBe(6);
+      } finally {
+        await set([]);
+      }
+    });
+
+    it('[PLN-011] reads a scenario’s days', async () => {
+      const scenario = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: `/api/v1/plans/${pathPlan}/scenarios`,
+            payload: { name: 'Later' },
+          },
+          201,
+        )
+      ).scenario as { id: number };
+      await call('admin', {
+        method: 'PUT',
+        url: `/api/v1/plans/${pathPlan}/scenarios/${scenario.id}/drafts`,
+        payload: { changes: [{ ticketId: p.wide?.id, dueDate: '2027-05-10' }] },
+      });
+      const { answer } = await path('admin', `?scenario=${scenario.id}`);
+      expect(answer.scenario?.id).toBe(scenario.id);
+      expect(answer.planEnd).toBe('2027-05-10');
+      expect(chainKeys(answer)).toEqual([['Wide']]);
+      expect(slackOf(answer)[p.last?.id as number]).toBe(10);
+      // Live is unchanged.
+      expect((await path('admin')).answer.planEnd).toBe('2027-04-30');
+    });
+
+    it('[PLN-011] answers 404 for a plan the viewer may not see and 400 for another plan’s scenario', async () => {
+      const missing = await as('admin', {
+        method: 'GET',
+        url: '/api/v1/plans/999999/critical-path',
+      });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json()).toEqual({ error: 'not_found' });
+      const other = await as('admin', {
+        method: 'GET',
+        url: `/api/v1/plans/${pathPlan}/critical-path?scenario=999999`,
+      });
+      expect(other.statusCode).toBe(400);
+      expect(other.json()).toEqual({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+      const bad = await as('admin', {
+        method: 'GET',
+        url: `/api/v1/plans/${pathPlan}/critical-path?stage=later`,
+      });
+      expect(bad.statusCode).toBe(400);
+    });
+  });
 });

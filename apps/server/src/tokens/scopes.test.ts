@@ -191,6 +191,8 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/plans/:id/summary']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/timeline']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/calendar']).toBe('read');
+    // The critical path (PLN-011): a read.
+    expect(classes['GET /api/v1/plans/:id/critical-path']).toBe('read');
     // Teams and capacity (PLN-005, PLN-009): the view reads, setting capacity writes.
     expect(classes['GET /api/v1/plans/:id/capacity']).toBe('read');
     expect(classes['PUT /api/v1/plans/:id/capacity']).toBe('write');
