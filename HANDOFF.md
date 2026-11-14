@@ -22,7 +22,26 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-291 to T-295 (2026-11-14, the Mac)
+### Latest: lists that stop early, releases on your own day (2026-11-14, Windows)
+
+On `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e). No migration; the next is 0111.
+
+- T-287 (Windows' part): releases across tracks, their linked releases and a plan's Releases tab
+  turn overdue at the viewer's midnight (`viewerDay`); `releaseView(r, today)` needs the day.
+- T-307 and T-308: Administration > People and API tokens have Show more. `pageAfter()` in
+  `apps/web/src/api/pages.ts` starts each page at the last row read and reads again if it moved,
+  so a row is never skipped when an earlier one leaves the list.
+- T-309: a ticket's All feed reads `GET /tickets/:id/activity?kind=all` page by page; a page holds
+  at most `limit` time entries and its cursor is `<row>.<microseconds>.<entryId>` (ADR-047). Opened
+  pages stay when the ticket changes. A description or environment change quotes one line of text.
+- T-310: `GET /saved-searches` and `GET /me/managed-tracks` page by cursor; every reader follows
+  them, the Jira-compatible favourite filters too.
+- T-311: the History tab keeps its opened pages when the ticket changes.
+- T-289: `bareEmpties` in design-offenders.ts is empty.
+- A new check, `packages/testkit/src/sources.test.ts`, fails on a NUL byte in any source file.
+- Next on Windows: T-089f (the auto-scheduler), then T-089a. T-306's 18 questions wait on the user.
+
+### Earlier: T-291 to T-295 (2026-11-14, the Mac)
 
 On `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e).
 
