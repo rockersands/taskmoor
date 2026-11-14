@@ -364,6 +364,83 @@ export const EdgeMarkersHideTodaysLine: Story = {
   },
 };
 
+/** The fixture and a ticket done in early October: with today's line in view, its row has an Earlier marker. */
+const doneInOctober = (() => {
+  const data = timelineFixture();
+  return {
+    ...data,
+    items: [
+      ...data.items,
+      {
+        ...(data.items[5] as (typeof data.items)[number]),
+        id: 8,
+        key: 'LCH-8',
+        summary: 'Pick the caterer',
+        status: { name: 'Closed', stage: 'closed' as const },
+        start: '2026-10-01',
+        due: '2026-10-09',
+        dated: 'own' as const,
+      },
+    ],
+  };
+})();
+
+/**
+ * Scrolls the chart until today's line runs through the words of LCH-8's Earlier marker, beside
+ * the ticket column, then checks that the marker is what shows there: an opaque fill, drawn over
+ * the line. The lanes take no pointer, so for the look they are let take one, and the browser
+ * names what it draws on top where the two cross.
+ */
+async function earlierMarkerOverTodaysLine(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await canvas.findAllByRole('link', { name: /^LCH-\d+$/ });
+  const chart = canvasElement.querySelector<HTMLElement>('.timeline-scroll');
+  const corner = canvasElement.querySelector<HTMLElement>('.timeline-corner');
+  const lanes = canvasElement.querySelector<HTMLElement>('.timeline-lanes');
+  const line = canvasElement.querySelector<HTMLElement>('.timeline-today');
+  if (!chart || !corner || !lanes || !line)
+    throw new Error('the timeline draws today in its lanes');
+  const into = corner.getBoundingClientRect().right + 30;
+  chart.scrollLeft += line.getBoundingClientRect().left - into;
+  const marker = await canvas.findByRole('button', { name: /^Earlier: LCH-8 ends/ });
+  // In the window, where the browser can say what it draws.
+  marker.scrollIntoView({ block: 'center', inline: 'nearest' });
+  const box = marker.getBoundingClientRect();
+  const at = line.getBoundingClientRect();
+  const x = at.left + at.width / 2;
+  // A real crossing: the line runs through the marker, not beside it.
+  await expect({ left: box.left < x, right: x < box.right }).toEqual({ left: true, right: true });
+  await expect(opaque(marker)).toBe(true);
+  lanes.style.pointerEvents = 'auto';
+  try {
+    const top = document.elementFromPoint(x, box.top + box.height / 2);
+    await expect(top?.closest('.timeline-edge')).toBe(marker);
+  } finally {
+    lanes.style.pointerEvents = '';
+  }
+}
+
+/**
+ * AGL-015, PL-6: today's line falls under an Earlier marker beside the ticket column and runs
+ * behind its words, at a desktop's width (T-274: Plans' fix, kept by every timeline).
+ */
+export const TodaysLineUnderEarlier: Story = {
+  args: { client: fakeTimelineClient({ data: doneInOctober }) },
+  decorators: [narrow],
+  play: ({ canvasElement }) => earlierMarkerOverTodaysLine(canvasElement),
+};
+
+/** AGL-015, PL-6, ADR-033: the same on a phone's touch screen, where the marker is a finger tall. */
+export const TodaysLineUnderEarlierOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { client: fakeTimelineClient({ data: doneInOctober }) },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await earlierMarkerOverTodaysLine(canvasElement);
+  },
+};
+
 /** ADR-033: on a touch screen the Earlier and Later markers take a finger. */
 export const EdgeMarkersOnATouchScreen: Story = {
   decorators: [narrow],
