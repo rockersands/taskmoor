@@ -86,6 +86,8 @@ describe('the imports page (M1-097)', () => {
         name: 'Dry run',
       }),
     ).toBeEnabled();
+    // The button went with the old form: the new form's title has the focus, not the page.
+    expect(screen.getByRole('heading', { name: 'New import' })).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Start another import' })).toBeNull();
   });
 

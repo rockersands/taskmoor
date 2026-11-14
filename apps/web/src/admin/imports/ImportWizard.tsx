@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useId, useState } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
@@ -77,6 +77,7 @@ export function ImportWizard({
   onStarted,
   onDone,
   onAnother,
+  focusTitle = false,
 }: {
   client: ImportsClient;
   delta?: ImportRunView | null;
@@ -88,8 +89,18 @@ export function ImportWizard({
    * never beside a form that is still open.
    */
   onAnother?: () => void;
+  /**
+   * The form's title takes the focus when it shows: it replaces a form whose "Start another
+   * import" had the focus, which would otherwise fall to the page.
+   */
+  focusTitle?: boolean;
 }) {
   const t = useT();
+  const title = useRef<HTMLHeadingElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the form shows
+  useEffect(() => {
+    if (focusTitle) title.current?.focus();
+  }, []);
   const intl = useIntl();
   const id = useId();
   const fixed = delta ? (delta.importSource as Format) : null;
@@ -260,7 +271,7 @@ export function ImportWizard({
   return (
     <div className="glass-card account-section import-wizard">
       <form className="import-form" onSubmit={submit} aria-labelledby={`${id}-title`}>
-        <h2 id={`${id}-title`} className="facts-title">
+        <h2 id={`${id}-title`} ref={title} tabIndex={-1} className="facts-title">
           {delta
             ? t('admin.imports.wizard.deltaTitle', { id: delta.id })
             : t('admin.imports.wizard.title')}

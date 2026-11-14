@@ -85,7 +85,8 @@ below (an API token needs the admin scope; see [The REST API](rest-api.md)).
    and why, failures, how each configuration object was mapped, and the report to download as a
    page.
 
-Once an import has run, **Start another import** under its report opens a fresh wizard. Earlier
+Once an import has run, **Start another import** under its report opens a fresh wizard, its
+title focused so the keyboard and a screen reader start there. Earlier
 imports are listed below the wizard with their reports. A finished import of a backup or
 a Cloud site offers **Delta run**, which brings only what changed since; see
 [Delta runs for a cutover](#delta-runs-for-a-cutover).

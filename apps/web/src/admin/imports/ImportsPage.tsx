@@ -35,10 +35,12 @@ export function ImportsPage({
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [runs, setRuns] = useState<ImportRunView[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [wizard, setWizard] = useState<{ key: number; delta: ImportRunView | null }>({
-    key: 0,
-    delta: null,
-  });
+  // `focus`: the new form's title takes the focus, as the button that asked for it is gone.
+  const [wizard, setWizard] = useState<{
+    key: number;
+    delta: ImportRunView | null;
+    focus: boolean;
+  }>({ key: 0, delta: null, focus: false });
   const [shown, setShown] = useState<number | null>(null);
   const top = useRef<HTMLDivElement>(null);
 
@@ -57,8 +59,8 @@ export function ImportsPage({
   }, [reload, notAdmin]);
 
   const when = (iso: string) => intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
-  const fresh = (delta: ImportRunView | null) => {
-    setWizard((w) => ({ key: w.key + 1, delta }));
+  const fresh = (delta: ImportRunView | null, focus = false) => {
+    setWizard((w) => ({ key: w.key + 1, delta, focus }));
     setShown(null);
   };
 
@@ -83,7 +85,8 @@ export function ImportsPage({
               {...(pollMs !== undefined ? { pollMs } : {})}
               onStarted={() => void reload()}
               onDone={() => void reload()}
-              onAnother={() => fresh(null)}
+              focusTitle={wizard.focus}
+              onAnother={() => fresh(null, true)}
             />
           </div>
 
