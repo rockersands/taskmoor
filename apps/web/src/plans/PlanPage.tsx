@@ -12,7 +12,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { localDay } from '../timeline/client';
-import { AutoScheduleDialog, readChoices } from './AutoScheduleDialog';
+import { AutoScheduleDialog, type ScheduleAsked } from './AutoScheduleDialog';
 import {
   boardHref,
   GROUP_LABELS,
@@ -250,25 +250,26 @@ export function PlanPage({
     (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
     redirectRoute(here({ ...view, position: { ...view.position, ...change } }));
-  /** A run answered: hold its result with its choices, and open its scenario's changes. */
-  const scheduled = (result: ScheduleResult) => {
-    const asked = readChoices(id);
-    const releaseNames = new Map((result.names?.releases ?? []).map((r) => [r.id, r.name]));
-    const named = asked.releaseIds.flatMap((r) => releaseNames.get(r) ?? []);
+  /**
+   * A run answered: hold its result with what it was asked, as the dialog sent it (never read back
+   * from this browser's storage, which can be blocked or hold types no longer offered), and open
+   * its scenario's changes.
+   */
+  const scheduled = (result: ScheduleResult, asked: ScheduleAsked) => {
     const held: HeldRun = {
       result,
       choices: {
         keep: {
           inProgress: asked.keepInProgress,
           inActiveSprint: asked.keepInSprint,
-          query: asked.keepQuery || undefined,
+          query: asked.keepQuery.trim() || undefined,
         },
         leaveOut: {
-          types: [],
+          types: asked.types.length === asked.typeIds.length ? asked.types : [],
           typeCount: asked.typeIds.length,
-          releases: named.length === asked.releaseIds.length ? named : [],
+          releases: asked.releases.length === asked.releaseIds.length ? asked.releases : [],
           releaseCount: asked.releaseIds.length,
-          query: asked.leaveQuery || undefined,
+          query: asked.leaveQuery.trim() || undefined,
         },
       },
     };

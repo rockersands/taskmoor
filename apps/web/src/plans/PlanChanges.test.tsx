@@ -395,6 +395,41 @@ describe('the auto-scheduler’s proposals on the change list (PLN-004)', () => 
     expect(again).toHaveBeenCalledTimes(1);
   });
 
+  it('[PLN-004] says the choices the run was sent, though this browser keeps nothing', async () => {
+    // Site data blocked: nothing is remembered or read back.
+    const blocked = () => {
+      throw new Error('blocked');
+    };
+    const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+    try {
+      const user = userEvent.setup();
+      renderChanges('#/plans/12/changes?scenario=2');
+      await screen.findByRole('heading', { name: 'Changes in Faster' });
+      await user.click(screen.getByRole('button', { name: 'Auto-schedule…' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Auto-schedule' });
+      await user.click(within(dialog).getByRole('radio', { name: 'This scenario: Faster' }));
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Keep tickets in progress' }));
+      await user.click(
+        within(dialog).getByRole('checkbox', { name: 'Keep tickets in an active sprint' }),
+      );
+      await user.click(await within(dialog).findByRole('checkbox', { name: 'Chore' }));
+      const run = within(dialog).getByRole('button', { name: 'Run' });
+      await waitFor(() => expect(run).toBeEnabled());
+      await user.click(run);
+      const result = await screen.findByRole('region', { name: 'Auto-schedule' });
+      await user.click(within(result).getByRole('button', { name: 'Its choices' }));
+      expect(
+        within(result).getByText(
+          'From Nov 4, 6 periods. Tickets in progress and in an active sprint may move. Chore left out.',
+        ),
+      ).toBeVisible();
+    } finally {
+      read.mockRestore();
+      write.mockRestore();
+    }
+  });
+
   it('[PLN-004] holds the run’s result on its scenario’s changes while the plan stays open', async () => {
     const user = userEvent.setup();
     const { scenarios } = renderChanges('#/plans/12/changes?scenario=2');
