@@ -249,8 +249,17 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     const read = client.track;
     client.track = async (id) => ({ ...(await read(id)), archived: id === 4 });
     const session: Session = {
-      ...TRACK_ADMIN,
-      user: { ...TRACK_ADMIN.user, managesTracks: false },
+      status: 'signed-in',
+      user: {
+        id: 4,
+        name: 'Tam',
+        email: 'tam@example.com',
+        isSiteAdmin: false,
+        isConfigAdmin: false,
+        managesTracks: false,
+        timeZone: null,
+        locale: null,
+      },
     };
     renderOwn(4, { client, session });
     expect(
