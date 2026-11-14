@@ -20,10 +20,12 @@
 //   node cli.mjs field-values [--repair] checks the custom field side tables against the
 //                                       tickets' values (M1-011); --repair rewrites the ones
 //                                       that differ; exit 1 when some differ and are not repaired
-//   node cli.mjs workflow-moves         lists the workflows whose published version has no
-//        [--repair]                     transitions, from before free moving (T-237); --repair
-//                                       gives each its free moves as a new published version;
-//                                       exit 1 when some are left without
+//   node cli.mjs workflow-moves         checks for workflows whose published version has no
+//        [--repair]                     transitions (T-237); migration 0107 gave every one its
+//                                       free moves (T-246), so it finds only those free moves
+//                                       leave alone; --repair gives any other its free moves as
+//                                       a new published version; exit 1 when some are left
+//                                       without
 //   node cli.mjs export <dir>           the workspace in Taskmoor's export format (M1-098,
 //        [--tracks KEY,KEY]             docs/export-format.md) into a new folder <dir>; the
 //                                       last line is the manifest's summary as JSON
