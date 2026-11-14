@@ -581,13 +581,25 @@ function GridBody({
   // A card is 120 px unless its words need more (two facts and two marks, or larger text): the
   // tallest card drawn sets every card's height, so the window's rows stay one height.
   const [cardHeight, setCardHeight] = useState(CARD_ROW);
+  // The words' own height is measured (the open button, which the card does not stretch), never
+  // the card's overflow, so one measurement settles the height whatever the card's is now.
   useLayoutEffect(() => {
     if (!compact) return;
-    let need = cardHeight;
+    let need = 0;
     for (const card of scroller.current?.querySelectorAll<HTMLElement>('.plan-grid-card') ?? []) {
-      need = Math.max(need, cardHeight + card.scrollHeight - card.clientHeight);
+      const words = card.querySelector<HTMLElement>('.plan-grid-card-open');
+      if (!words) continue;
+      const style = getComputedStyle(card);
+      const px = (v: string) => Number.parseFloat(v) || 0;
+      const around =
+        px(style.paddingTop) +
+        px(style.paddingBottom) +
+        px(style.borderTopWidth) +
+        px(style.borderBottomWidth);
+      need = Math.max(need, words.offsetHeight + around);
     }
-    if (need > cardHeight) setCardHeight(Math.min(CARD_MOST, Math.ceil(need)));
+    const next = Math.min(CARD_MOST, Math.ceil(need));
+    if (next > cardHeight) setCardHeight(next);
   });
   const rowHeight = compact ? cardHeight : undefined;
   // The sticky header and "All rows" footer cover the scroller's top and foot: a row scrolled to
