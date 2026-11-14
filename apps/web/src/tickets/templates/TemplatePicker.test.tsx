@@ -63,6 +63,42 @@ const PICKER_FORM: TicketForm = {
   },
 };
 
+/** The bug form with custom person, group, team, release and area fields on it (T-276). */
+const CUSTOM_PICKER_FORM: TicketForm = {
+  ...BUG_FORM,
+  layout: {
+    ...BUG_FORM.layout,
+    tabs: BUG_FORM.layout.tabs.map((tab, i) =>
+      i === 0
+        ? {
+            ...tab,
+            sections: [
+              ...tab.sections,
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [61, 62, 63, 64, 65, 66].map((id) => ({
+                  key: `cf[${id}]`,
+                  required: false,
+                  description: null,
+                })),
+              },
+            ],
+          }
+        : tab,
+    ),
+  },
+  customFields: [
+    ...BUG_FORM.customFields,
+    { id: 61, name: 'Reviewer', description: '', type: 'user', multiple: false },
+    { id: 62, name: 'Owning groups', description: '', type: 'group', multiple: true },
+    { id: 63, name: 'Team', description: '', type: 'team', multiple: false },
+    { id: 64, name: 'Fixed in', description: '', type: 'release', multiple: false },
+    { id: 65, name: 'Parts', description: '', type: 'area', multiple: true },
+    { id: 66, name: 'Watchers', description: '', type: 'user', multiple: true },
+  ],
+};
+
 const pick = async (user: ReturnType<typeof userEvent.setup>, name = 'Release checklist') => {
   const picker = await screen.findByRole('combobox', { name: 'Start from a template' });
   await screen.findByLabelText('Summary (required)');
@@ -192,6 +228,64 @@ describe('starting a ticket from a template (CORE-030)', () => {
     const body = picker.applied[0]?.body as Record<string, unknown>;
     expect(body).toMatchObject({ areaIds: [31], targetReleaseIds: [42] });
     expect(body.omit).toEqual(['targetReleaseIds']);
+  });
+
+  it('[CORE-030] fills its custom people, groups, teams, releases and areas into the pickers; the form’s choice wins (T-276)', async () => {
+    const user = userEvent.setup();
+    const picker = fakePickerClient(
+      undefined,
+      {
+        summary: 'Release SHOP 2026-11-03',
+        dueDate: '2026-11-10',
+        fields: { '7': 70, '61': 21, '62': [41], '63': 51, '64': 5, '65': [7], '66': [21, 99] },
+      },
+      {},
+      {
+        'fields.61': [{ id: 21, name: 'Sam Rivera' }],
+        'fields.62': [{ id: 41, name: 'Operations' }],
+        'fields.63': [{ id: 51, name: 'Payments' }],
+        // Person 99 is someone this reader may not see: the template start leaves them unnamed.
+        'fields.66': [{ id: 21, name: 'Sam Rivera' }],
+      },
+    );
+    renderForm(picker, 'en', {
+      form: async () => CUSTOM_PICKER_FORM,
+      people: async () => [{ id: 22, name: 'Sasha Lee' }],
+      groups: async () => [{ id: 42, name: 'Ops leads' }],
+      teams: async () => [{ id: 52, name: 'Search' }],
+      releases: async () => [{ id: 5, name: 'Spring' }],
+      areas: async () => [
+        { id: 7, name: 'Checkout' },
+        { id: 8, name: 'Search' },
+      ],
+    });
+    await screen.findByRole('option', { name: 'Spring' });
+    await pick(user);
+    // In the pickers, by name, not in the list of what the form cannot show.
+    expect(screen.getByRole('list', { name: 'Reviewer' })).toHaveTextContent('Sam Rivera');
+    expect(screen.getByRole('list', { name: 'Owning groups' })).toHaveTextContent('Operations');
+    expect(screen.getByRole('list', { name: 'Team' })).toHaveTextContent('Payments');
+    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveValue('5');
+    expect(screen.getByRole('checkbox', { name: 'Checkout' })).toBeChecked();
+    const also = screen.getByRole('group', { name: 'Also from this template' });
+    for (const name of ['Reviewer', 'Owning groups', 'Team', 'Fixed in', 'Parts']) {
+      expect(within(also).queryByRole('checkbox', { name })).toBeNull();
+    }
+    // One of its watchers has no name for this person: the field stays in the list, unnamed
+    // there too, and the picker is left empty.
+    expect(within(also).getByRole('checkbox', { name: 'Watchers' })).toBeChecked();
+    expect(screen.queryByRole('list', { name: 'Watchers' })).toBeNull();
+    expect(screen.getByRole('searchbox', { name: 'Watchers' })).toHaveValue('');
+    // Another reviewer chosen in the form wins; the group cleared there is left out.
+    await user.click(screen.getByRole('button', { name: 'Remove Sam Rivera' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Reviewer' }), 'sa');
+    await user.click(await screen.findByRole('button', { name: 'Sasha Lee' }));
+    await user.click(screen.getByRole('button', { name: 'Remove Operations' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeInTheDocument();
+    const body = picker.applied[0]?.body as Record<string, unknown>;
+    expect(body.fields).toEqual({ 7: 70, 61: 22, 63: 51, 64: 5, 65: [7] });
+    expect(body.omit).toEqual(['fields.62']);
   });
 
   it('[CORE-030] says what was left out and which subtickets failed', async () => {

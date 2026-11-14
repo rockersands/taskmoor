@@ -257,5 +257,7 @@ const ERRORS: Record<string, MessageId> = {
   not_assignable: 'tickets.error.notAssignable',
   wrong_level: 'tickets.error.wrongLevel',
   other_track: 'tickets.error.otherTrack',
+  // A release or area archived since it was offered (the create route's placement check; T-276).
+  archived: 'tickets.error.archived',
 };
 export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';

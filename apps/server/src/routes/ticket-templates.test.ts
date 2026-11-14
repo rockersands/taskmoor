@@ -445,6 +445,85 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
     expect(made.ticket.assignee).toMatchObject({ id: users.carol.id });
   });
 
+  it('[CORE-030] names the people, groups and teams a template starts with, only to those who may see them (T-276)', async () => {
+    const key = await track();
+    const field = async (name: string, type: string, multiple = false) =>
+      ok(
+        await call('admin', 'POST', '/api/v1/fields', {
+          name: `${name} ${key}`,
+          type,
+          ...(multiple ? { multiple } : {}),
+        }),
+        201,
+      ).field as { id: number };
+    const reviewer = await field('Reviewer', 'user');
+    const watchers = await field('Watchers', 'user', true);
+    const owners = await field('Owners', 'group');
+    const team = await field('Team', 'team');
+    const [group] = await database.db
+      .insertInto('user_group')
+      .values({ workspace_id: 1, name: `Owners of ${key}` })
+      .returning('id')
+      .execute();
+    const [squad] = await database.db
+      .insertInto('team')
+      .values({ workspace_id: 1, name: `Squad ${key}` })
+      .returning('id')
+      .execute();
+    const gone = await database.db
+      .insertInto('app_user')
+      .values({
+        workspace_id: 1,
+        email: `gone-${key.toLowerCase()}@example.com`,
+        name: 'Gone',
+        deactivated_at: new Date(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const tpl = (
+      await template('carol', {
+        track: key,
+        name: 'Named',
+        summary: 'Named',
+        defaults: {
+          fields: {
+            [reviewer.id]: users.carol.id,
+            [watchers.id]: [users.alice.id, gone.id],
+            [owners.id]: group?.id,
+            [team.id]: squad?.id,
+          },
+        },
+      })
+    ).template;
+    const read = ok(await call('alice', 'GET', `/api/v1/ticket-templates/${tpl.id}?track=${key}`));
+    expect(read.names).toEqual({
+      [`fields.${reviewer.id}`]: [{ id: users.carol.id, name: 'Carol' }],
+      // A deactivated person is no one a picker offers: unnamed, the value stays in the list.
+      [`fields.${watchers.id}`]: [{ id: users.alice.id, name: 'Alice' }],
+      [`fields.${owners.id}`]: [{ id: group?.id, name: `Owners of ${key}` }],
+      [`fields.${team.id}`]: [{ id: squad?.id, name: `Squad ${key}` }],
+    });
+    // Without "Browse users and groups" no person or group is named; teams still are.
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      const blind = ok(
+        await call('alice', 'GET', `/api/v1/ticket-templates/${tpl.id}?track=${key}`),
+      );
+      expect(blind.names).toEqual({
+        [`fields.${team.id}`]: [{ id: squad?.id, name: `Squad ${key}` }],
+      });
+      expect(blind.start.fields[reviewer.id]).toBe(users.carol.id);
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
+    // Read without a track, the template has no start and no names.
+    const plain = ok(await call('alice', 'GET', `/api/v1/ticket-templates/${tpl.id}`));
+    expect(plain.names).toBeUndefined();
+  });
+
   it('[CORE-030] (2) leaves out an assignee who cannot be assigned here', async () => {
     const key = await track();
     const tpl = (

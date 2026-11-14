@@ -2788,6 +2788,7 @@ export const messagesEn = {
   'tickets.error.notAssignable': 'This person cannot be given tickets in this track.',
   'tickets.error.wrongLevel': 'A ticket of this type cannot sit under that ticket.',
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
+  'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',
@@ -2796,7 +2797,6 @@ export const messagesEn = {
   'tickets.create.removeParent': 'Remove {key} as parent',
   'tickets.create.noReleases': 'This track has no releases to choose.',
   'tickets.create.noAreas': 'This track has no areas to choose.',
-  'tickets.create.noTeams': 'The site has no teams to choose.',
   'tickets.create.requesterHint': 'Type a name to find someone. Left empty, you are the requester.',
   'tickets.create.restrictedHint': 'Type a name. Only the people this field allows are offered.',
   'tickets.create.parentHintLevel':
@@ -2814,6 +2814,9 @@ export const messagesEn = {
   'tickets.pickers.groupHint': 'Type a name to find a group.',
   'tickets.pickers.noGroups': 'No group matches.',
   'tickets.pickers.groupsFound': '{count, plural, one {# group found} other {# groups found}}',
+  'tickets.pickers.teamHint': 'Type a name to find a team.',
+  'tickets.pickers.noTeams': 'No team matches.',
+  'tickets.pickers.teamsFound': '{count, plural, one {# team found} other {# teams found}}',
   'workflow.check.fieldRequired': '{field} is required.',
   'workflow.check.fieldModified': 'Change {field} first.',
   'workflow.check.fieldSingleValue': '{field} takes one value only.',

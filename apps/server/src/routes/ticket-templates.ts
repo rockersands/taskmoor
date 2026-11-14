@@ -41,7 +41,11 @@ import { ticketRoutes } from './tickets';
  *   whether the caller may change it (`mayEdit`).
  * - `GET /api/v1/ticket-templates/:id[?track=KEY]` reads one; with a track, also the values
  *   it starts a ticket there with for this person (`start`): the summary pattern filled in, the
- *   dates counted from today in their time zone.
+ *   dates counted from today in their time zone. `names` gives the names of the people, groups
+ *   and teams its custom values name, by body key (`fields.12`), so a form can show them in its
+ *   pickers (T-276): only those the reader may see, as the pickers would offer them. People and
+ *   groups need "Browse users and groups" and people must be active; teams are seen by everyone
+ *   signed in. A value the reader may not see has no name there.
  * - Track templates are seen by those who browse the track and changed by its administrators
  *   ("Administer track") and configuration administrators; templates for every track are seen
  *   by everyone signed in and changed by configuration administrators.
@@ -411,8 +415,79 @@ export function registerTicketTemplateRoutes(
     if (start.description !== undefined) {
       start.description = writeRichText(start.description as JsonValue, format);
     }
-    return { template: view, start };
+    return { template: view, start, names: await startNames(request, start) };
   });
+
+  /**
+   * The names of the people, groups and teams a template's custom values name, by body key, as
+   * far as the reader may see them (T-276): the same people and groups the create form's
+   * pickers offer (those who hold "Browse users and groups"; active people only), and the
+   * site's teams. A value left unnamed is never told apart from one that is gone.
+   */
+  async function startNames(
+    request: FastifyRequest,
+    start: Record<string, unknown>,
+  ): Promise<Record<string, { id: number; name: string }[]>> {
+    const values = (start.fields ?? {}) as Record<string, unknown>;
+    const ws = request.workspaceId;
+    const catalog = await catalogs.get(ws);
+    const wanted: { key: string; kind: 'user' | 'group' | 'team'; ids: number[] }[] = [];
+    for (const [id, value] of Object.entries(values)) {
+      const kind = catalog.fields.get(Number(id))?.type;
+      if (kind !== 'user' && kind !== 'group' && kind !== 'team') continue;
+      const ids = (Array.isArray(value) ? value : [value]).filter(
+        (v): v is number => Number.isInteger(v) && (v as number) > 0 && (v as number) <= MAX_INT,
+      );
+      if (ids.length > 0) wanted.push({ key: `fields.${id}`, kind, ids });
+    }
+    if (wanted.length === 0) return {};
+    const browse = await request.authz.hasGlobal('browse_users');
+    const of = (kind: 'user' | 'group' | 'team') => [
+      ...new Set(wanted.filter((w) => w.kind === kind).flatMap((w) => w.ids)),
+    ];
+    const people = browse ? of('user') : [];
+    const groups = browse ? of('group') : [];
+    const teams = of('team');
+    const named = new Map<string, string>();
+    if (people.length > 0) {
+      const rows = await db
+        .selectFrom('app_user')
+        .select(['id', 'name'])
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', people)
+        .where('deactivated_at', 'is', null)
+        .where('kind', '=', 'person')
+        .execute();
+      for (const r of rows) named.set(`user:${r.id}`, r.name);
+    }
+    if (groups.length > 0) {
+      const rows = await db
+        .selectFrom('user_group')
+        .select(['id', 'name'])
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', groups)
+        .execute();
+      for (const r of rows) named.set(`group:${r.id}`, r.name);
+    }
+    if (teams.length > 0) {
+      const rows = await db
+        .selectFrom('team')
+        .select(['id', 'name'])
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', teams)
+        .execute();
+      for (const r of rows) named.set(`team:${r.id}`, r.name);
+    }
+    const out: Record<string, { id: number; name: string }[]> = {};
+    for (const { key, kind, ids } of wanted) {
+      const list = ids.flatMap((id) => {
+        const name = named.get(`${kind}:${id}`);
+        return name === undefined ? [] : [{ id, name }];
+      });
+      if (list.length > 0) out[key] = list;
+    }
+    return out;
+  }
 
   const patternValues = (
     user: { name: string; timeZone: string | null },

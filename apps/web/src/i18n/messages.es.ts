@@ -2872,6 +2872,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.notAssignable': 'A esta persona no se le pueden dar tickets en este track.',
   'tickets.error.wrongLevel': 'Un ticket de este tipo no puede ir debajo de ese ticket.',
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
+  'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',
@@ -2880,7 +2881,6 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.create.removeParent': 'Quitar {key} como padre',
   'tickets.create.noReleases': 'Este track no tiene versiones para elegir.',
   'tickets.create.noAreas': 'Este track no tiene áreas para elegir.',
-  'tickets.create.noTeams': 'El sitio no tiene equipos para elegir.',
   'tickets.create.requesterHint':
     'Escribe un nombre para buscar a alguien. Si lo dejas vacío, el solicitante eres tú.',
   'tickets.create.restrictedHint':
@@ -2902,6 +2902,10 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.pickers.noGroups': 'Ningún grupo coincide.',
   'tickets.pickers.groupsFound':
     '{count, plural, one {# grupo encontrado} other {# grupos encontrados}}',
+  'tickets.pickers.teamHint': 'Escribe un nombre para buscar un equipo.',
+  'tickets.pickers.noTeams': 'Ningún equipo coincide.',
+  'tickets.pickers.teamsFound':
+    '{count, plural, one {# equipo encontrado} other {# equipos encontrados}}',
   'workflow.check.fieldRequired': '{field} es obligatorio.',
   'workflow.check.fieldModified': 'Cambia primero {field}.',
   'workflow.check.fieldSingleValue': '{field} admite un solo valor.',
