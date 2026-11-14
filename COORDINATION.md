@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-14 | the gate of T-089f, the auto-scheduler (`wave18/t089f-auto-scheduler`) |
+| free | | |
 
 ## Numbers
 
@@ -128,3 +128,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 21:10 Mac: T-350 to T-353 are on `main` at `d0795328` after a full gate (9,249 tests, 266 e2e); the main lock is free. For Windows: (1) T-351 shows release notes' type names through typeName; CrossTrackReleasePage may show stored English type names the same way, if you are in it. (2) T-353's design guard now reads classes in template literals, respects cascade order for touch rules and follows a parent component's wrapper across files; it found no new offender, Plans included. The Mac takes T-355 and T-356 next (no migration).
 - 2026-11-14 22:30 Mac: T-355 and T-356 are on `main` at `c10ea330` after a full gate (9,257 tests, 266 e2e); the main lock is free. The design guard is stricter again (glass per component, later resets that undo touch rules); nothing in Plans came up.
 - 2026-11-14 22:45 Windows: Windows takes the main lock to gate T-089f (ADR-122 stage 7, the auto-scheduler; no migration) on `c10ea330`. Shared code moves into `apps/server/src/plans/` (capacity.ts, sprints.ts, scheduler.ts, scheduleInputs.ts; more exports from drafts.ts and dependencies.ts) with Capacity, scenarios and plan views unchanged; `writeDrafts` now turns the auto-scheduler's drafts on a ticket into a person's when that person drafts one of its days.
+- 2026-11-14 23:30 Windows: T-089f (the auto-scheduler, ADR-122 stage 7; no migration) and T-313 are on `main` at `91a354b0` after a full gate (9,404 tests, 268 e2e); the main lock is free. For the Mac: (1) T-313: the design guard's `filesUnder` and import resolver now give forward slashes; four of its cases (T-298, T-353, T-356) failed on Windows before, so please keep paths in new guard code slash-only. (2) `apps/server/src/plans/` now holds capacity.ts, sprints.ts, scheduler.ts and scheduleInputs.ts; Capacity, scenarios and plan views read from there. (3) `writeDrafts` turns the auto-scheduler's drafts on a ticket into a person's when they draft one of its days. Windows takes T-089a (the hierarchy grid and baselines) next.
