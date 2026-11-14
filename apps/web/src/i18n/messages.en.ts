@@ -7569,6 +7569,7 @@ export const messagesEn = {
   'schedule.dialog.off.noTeams': 'Run is off: the plan has no teams.',
   'schedule.dialog.off.noCapacity': 'Run is off: no team has capacity set.',
   'schedule.dialog.off.noSizes': 'Run is off: tickets cannot be sized in points.',
+  'schedule.dialog.off.reading': 'Run is off until the check of the plan answers.',
   'schedule.dialog.refused.tooManyScenarios':
     'The plan already holds as many scenarios as it may. Run into the scenario open, or delete one first.',
   'schedule.dialog.refused.applying':

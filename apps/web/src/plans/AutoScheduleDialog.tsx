@@ -176,7 +176,9 @@ export function AutoScheduleDialog({
   const [leaveQuery, setLeaveQuery] = useState(first.leaveQuery);
   const [from, setFrom] = useState(today);
   const [periods, setPeriods] = useState(first.periods);
-  const [readiness, setReadiness] = useState<ScheduleReadiness | null>(null);
+  // The last readiness read, with the choices it answers; `readiness` is it only while those are
+  // still the choices, so a run never starts on an answer for other ones.
+  const [read, setRead] = useState<{ key: string; value: ScheduleReadiness } | null>(null);
   const [readinessFailed, setReadinessFailed] = useState(false);
   const [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -184,24 +186,38 @@ export function AutoScheduleDialog({
 
   const into = target === 'this' && active ? active.id : copyFrom ? Number(copyFrom) : undefined;
   const day = from || today;
+  const readKey = JSON.stringify([planId, into ?? null, day, periods]);
+  const readiness = read?.key === readKey ? read.value : null;
+  // What the leave-out lists offer and the limits hold: the last answer, whatever it was asked.
+  const known = read?.value ?? null;
   // Readiness for the run as chosen: its periods, and the scenario's earlier proposals.
   const asked = useRef(0);
   const reader = useRef(client);
   reader.current = client;
   useEffect(() => {
     const call = ++asked.current;
+    const key = JSON.stringify([planId, into ?? null, day, periods]);
     setReadinessFailed(false);
     reader.current
       .readiness(planId, { ...(into === undefined ? {} : { scenario: into }), from: day, periods })
       .then((r) => {
-        if (call === asked.current) setReadiness(r);
+        if (call === asked.current) setRead({ key, value: r });
       })
       .catch(() => {
         if (call === asked.current) setReadinessFailed(true);
       });
   }, [planId, into, day, periods]);
 
-  const limits = readiness?.limits;
+  // After a refused run, the field it names takes the focus; else Run keeps it.
+  const focusNext = useRef<string | null>(null);
+  useEffect(() => {
+    const target = focusNext.current;
+    if (!target) return;
+    focusNext.current = null;
+    document.getElementById(target)?.focus();
+  });
+
+  const limits = known?.limits;
   const maxPeriods = limits?.periods ?? MAX_PERIODS;
   const maxLeftOut = limits?.leftOut ?? MAX_LEFT_OUT;
   const maxQuery = limits?.query ?? MAX_QUERY;
@@ -217,42 +233,38 @@ export function AutoScheduleDialog({
   const withCapacity = teams.filter((x) => x.withCapacity);
   const noSizes = readiness?.unit === 'points' && readiness.pointsField === null;
   const blocked =
-    readiness && !readiness.editable
-      ? t('schedule.dialog.off.notEditor')
-      : (target === 'new' && newOff) || (target === 'this' && thisOff)
-        ? t('schedule.dialog.off.nowhere')
-        : readiness && teams.length === 0
-          ? t('schedule.dialog.off.noTeams')
-          : readiness && withCapacity.length === 0
-            ? t('schedule.dialog.off.noCapacity')
-            : noSizes
-              ? t('schedule.dialog.off.noSizes')
-              : null;
+    !readiness && !readinessFailed
+      ? t('schedule.dialog.off.reading')
+      : readiness && !readiness.editable
+        ? t('schedule.dialog.off.notEditor')
+        : (target === 'new' && newOff) || (target === 'this' && thisOff)
+          ? t('schedule.dialog.off.nowhere')
+          : readiness && teams.length === 0
+            ? t('schedule.dialog.off.noTeams')
+            : readiness && withCapacity.length === 0
+              ? t('schedule.dialog.off.noCapacity')
+              : noSizes
+                ? t('schedule.dialog.off.noSizes')
+                : null;
 
-  const choices = (): Choices => ({
-    periods,
-    keepInProgress,
-    keepInSprint,
-    keepQuery,
-    typeIds,
-    releaseIds,
-    leaveQuery,
-  });
+  // Only what the dialog offers counts and is sent: a type or release remembered from before
+  // that the plan no longer offers is neither left out unseen nor kept for next time.
+  const offeredTypes = typeIds.filter((one) => known?.types?.some((o) => o.id === one));
+  const offeredReleases = releaseIds.filter((one) => known?.releases?.some((o) => o.id === one));
 
   const run = async () => {
     if (running || blocked) return;
     const trimmed = name.trim();
     if (target === 'new' && trimmed === '') {
+      focusNext.current = `${id}-name`;
       setFields({ name: 'required' });
       setProblem(null);
       return;
     }
     const keepText = keepQuery.trim();
     const leaveText = leaveQuery.trim();
-    // Only what the dialog shows is sent: a type or release remembered from before that the plan
-    // no longer offers is not left out unseen.
-    const leftTypes = typeIds.filter((one) => readiness?.types?.some((o) => o.id === one));
-    const leftReleases = releaseIds.filter((one) => readiness?.releases?.some((o) => o.id === one));
+    const leftTypes = offeredTypes;
+    const leftReleases = offeredReleases;
     const body: ScheduleRequest = {
       into:
         target === 'this' && active
@@ -287,22 +299,40 @@ export function AutoScheduleDialog({
           v,
         ]),
       );
-      const known = ['name', 'keep.query', 'leaveOut.query'].some((k) => k in named);
+      const field = (
+        [
+          ['name', `${id}-name`],
+          ['keep.query', `${id}-keep-query`],
+          ['leaveOut.query', `${id}-leave-query`],
+        ] as const
+      ).find(([k]) => k in named);
+      focusNext.current = field ? field[1] : null;
       setFields(named);
-      if (answer.code !== 'invalid_fields' || !known) setProblem(scheduleRefusal(t, answer));
+      if (answer.code !== 'invalid_fields' || !field) setProblem(scheduleRefusal(t, answer));
       return;
     }
-    const chosen = choices();
+    // An answer naming no scenario cannot be opened: the scenario went as the run finished.
+    if (!answer.value.scenario) {
+      setProblem(t('schedule.dialog.refused.gone'));
+      return;
+    }
+    const chosen: Choices = {
+      periods,
+      keepInProgress,
+      keepInSprint,
+      keepQuery,
+      typeIds: leftTypes,
+      releaseIds: leftReleases,
+      leaveQuery,
+    };
     saveChoices(planId, chosen);
     const nameOf = (options: { id: number; name: string }[] | undefined, ids: number[]) =>
       ids.flatMap((one) => options?.find((o) => o.id === one)?.name ?? []);
     onDone(answer.value, {
       ...chosen,
       from: day,
-      typeIds: leftTypes,
-      releaseIds: leftReleases,
-      types: nameOf(readiness?.types, leftTypes),
-      releases: nameOf(readiness?.releases, leftReleases),
+      types: nameOf(known?.types, leftTypes),
+      releases: nameOf(known?.releases, leftReleases),
     });
   };
 
@@ -342,7 +372,6 @@ export function AutoScheduleDialog({
     >
       <form
         className="form"
-        aria-busy={running || undefined}
         onSubmit={(event) => {
           event.preventDefault();
           void run();
@@ -548,8 +577,8 @@ export function AutoScheduleDialog({
             id={`${id}-types`}
             legend={t('schedule.dialog.leaveTypes')}
             empty={t('schedule.dialog.leaveTypesNone')}
-            options={readiness?.types ?? []}
-            chosen={typeIds}
+            options={known?.types ?? []}
+            chosen={offeredTypes}
             max={maxLeftOut}
             onToggle={(one, on) => setTypeIds((ids) => toggle(ids, one, on))}
           />
@@ -557,13 +586,13 @@ export function AutoScheduleDialog({
             id={`${id}-releases`}
             legend={t('schedule.dialog.leaveReleases')}
             empty={t('schedule.dialog.leaveReleasesNone')}
-            options={(readiness?.releases ?? []).map((r) => ({
+            options={(known?.releases ?? []).map((r) => ({
               id: r.id,
               name: r.date
                 ? t('schedule.dialog.releaseOn', { name: r.name, day: shortDay(r.date) })
                 : r.name,
             }))}
-            chosen={releaseIds}
+            chosen={offeredReleases}
             max={maxLeftOut}
             onToggle={(one, on) => setReleaseIds((ids) => toggle(ids, one, on))}
           />
@@ -634,10 +663,13 @@ export function AutoScheduleDialog({
             : ''}
         </p>
         <div className="form-actions">
+          {/* While it runs, Run stays focusable (aria-disabled): a disabled button would drop the
+              focus out of the dialog. */}
           <button
             type="submit"
             className="button-primary"
-            disabled={running || blocked !== null}
+            disabled={blocked !== null}
+            aria-disabled={running || undefined}
             aria-describedby={blocked ? `${id}-off` : undefined}
           >
             {running ? t('schedule.dialog.runningButton') : t('schedule.dialog.run')}

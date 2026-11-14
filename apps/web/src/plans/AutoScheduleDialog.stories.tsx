@@ -99,8 +99,10 @@ export const NotReady: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await dialogOf(canvasElement);
     const run = within(dialog).getByRole('button', { name: 'Run' });
-    await waitFor(() => expect(run).toBeDisabled());
-    await expect(run).toHaveAccessibleDescription('Run is off: no team has capacity set.');
+    await waitFor(() =>
+      expect(run).toHaveAccessibleDescription('Run is off: no team has capacity set.'),
+    );
+    await expect(run).toBeDisabled();
   },
 };
 
@@ -117,14 +119,19 @@ export const ReRun: Story = {
   },
 };
 
-/** Running: Run says so and is off, a status line counts the tickets, and the dialog stays. */
+/**
+ * Running: Run says so and is off (`aria-disabled`, keeping the focus), a status line counts the
+ * tickets, and the dialog stays.
+ */
 export const Running: Story = {
   args: { client: client({ holdSchedule: true }) },
   play: async ({ canvasElement, args }) => {
     const dialog = await dialogOf(canvasElement);
     await within(dialog).findByText(/^Web has capacity\./);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Run' }));
-    await expect(within(dialog).getByRole('button', { name: 'Scheduling…' })).toBeDisabled();
+    const busy = within(dialog).getByRole('button', { name: 'Scheduling…' });
+    await expect(busy).toHaveAttribute('aria-disabled', 'true');
+    await expect(busy).toHaveFocus();
     await expect(within(dialog).getByRole('status')).toHaveTextContent('Scheduling 4 tickets.');
     await userEvent.keyboard('{Escape}');
     await expect(args.onClose).not.toHaveBeenCalled();

@@ -7748,6 +7748,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Ejecutar no está disponible: ningún equipo tiene capacidad fijada.',
   'schedule.dialog.off.noSizes':
     'Ejecutar no está disponible: los tickets no se pueden dimensionar en puntos.',
+  'schedule.dialog.off.reading':
+    'Ejecutar no está disponible hasta que responda la comprobación del plan.',
   'schedule.dialog.refused.tooManyScenarios':
     'El plan ya tiene todos los escenarios que puede. Ejecútala en el escenario abierto o elimina uno antes.',
   'schedule.dialog.refused.applying':

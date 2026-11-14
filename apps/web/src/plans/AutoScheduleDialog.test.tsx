@@ -8,6 +8,7 @@ import { PLAN_PERIOD } from './capacityFixtures';
 import { fakePlanClient } from './fixtures';
 import type { ScenarioList } from './scenarioClient';
 import { type FakeScenarioOptions, fakeScenarioClient } from './scenarioFixtures';
+import { scheduleRunFixture } from './scheduleResultFixture';
 
 /**
  * Auto-schedule's dialog (T-089f; PLN-004; ADR-122 stage 7) over the fake plan "Spring launch":
@@ -190,6 +191,26 @@ describe('Auto-schedule’s dialog (PLN-004)', () => {
     expect(await within(dialog).findByRole('checkbox', { name: 'Feature' })).toBeChecked();
   });
 
+  it('[PLN-004] counts only the remembered choices the plan still offers, and forgets the rest', async () => {
+    const user = userEvent.setup();
+    // Twenty types remembered from earlier runs, none of which the plan offers any more.
+    window.localStorage.setItem(
+      'taskmoor.autoSchedule.12',
+      JSON.stringify({ typeIds: Array.from({ length: 20 }, (_, i) => 101 + i) }),
+    );
+    const { dialog, scenarios, onDone } = await renderDialog();
+    const chore = await within(dialog).findByRole('checkbox', { name: 'Chore' });
+    expect(chore).toBeEnabled();
+    expect(within(dialog).queryByText(/^At most 20/)).toBeNull();
+    await user.click(chore);
+    await user.click(within(dialog).getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(scenarios.runs[0]?.leaveOut?.typeIds).toEqual([2]);
+    expect(onDone.mock.calls[0]?.[1]).toMatchObject({ typeIds: [2], types: ['Chore'] });
+    const kept = JSON.parse(window.localStorage.getItem('taskmoor.autoSchedule.12') ?? '{}');
+    expect(kept.typeIds).toEqual([2]);
+  });
+
   it('[PLN-004] [PLN-002] says a re-run in the open scenario replaces only the auto-scheduler’s proposals', async () => {
     const user = userEvent.setup();
     const { dialog, scenarios, onDone } = await renderDialog();
@@ -217,8 +238,14 @@ describe('Auto-schedule’s dialog (PLN-004)', () => {
     const { dialog, onClose } = await renderDialog({ holdSchedule: true });
     await within(dialog).findByText(/^Web has capacity/);
     await user.click(within(dialog).getByRole('button', { name: 'Run' }));
-    expect(within(dialog).getByRole('button', { name: 'Scheduling…' })).toBeDisabled();
-    expect(within(dialog).getByRole('status')).toHaveTextContent('Scheduling 4 tickets.');
+    // Run is off but keeps the focus, so it stays in the dialog.
+    const busy = within(dialog).getByRole('button', { name: 'Scheduling…' });
+    expect(busy).toHaveAttribute('aria-disabled', 'true');
+    expect(busy).toHaveFocus();
+    const status = within(dialog).getByRole('status');
+    expect(status).toHaveTextContent('Scheduling 4 tickets.');
+    // Nothing around the status says busy, which would hold its words back from a screen reader.
+    expect(status.closest('[aria-busy="true"]')).toBeNull();
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
     await user.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();
@@ -233,6 +260,7 @@ describe('Auto-schedule’s dialog (PLN-004)', () => {
     await user.type(field, 'nope nope');
     await user.click(within(dialog).getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
+    expect(field).toHaveFocus();
     expect(field).toHaveAccessibleDescription(
       'This does not read as a query. Check its words and quotes. A query, as in search. Tickets it finds keep their days.',
     );
@@ -251,6 +279,60 @@ describe('Auto-schedule’s dialog (PLN-004)', () => {
       'This run would place 12,480 tickets, and one run places at most 10,000. Leave some out and run again.',
     );
     expect(within(dialog).getByRole('button', { name: 'Run' })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: 'Run' })).toHaveFocus();
+  });
+
+  it('[PLN-004] says a run whose scenario went as it finished, and opens nothing', async () => {
+    const user = userEvent.setup();
+    const base = fakeScenarioClient(fakePlanClient());
+    const gone = scheduleRunFixture().result;
+    const { dialog, onDone } = await renderDialog(
+      {},
+      {
+        client: {
+          readiness: base.readiness,
+          schedule: async () => ({ ok: true, value: { ...gone, scenario: null as never } }),
+        },
+      },
+    );
+    await within(dialog).findByText(/^Web has capacity/);
+    await user.click(within(dialog).getByRole('button', { name: 'Run' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'The plan or the scenario no longer exists.',
+    );
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it('[PLN-004] keeps Run off while readiness for changed choices is read, and drops the old answer', async () => {
+    const user = userEvent.setup();
+    const base = fakeScenarioClient(fakePlanClient());
+    let calls = 0;
+    let answer: (() => void) | undefined;
+    const { dialog } = await renderDialog(
+      {},
+      {
+        client: {
+          schedule: base.schedule,
+          readiness: async (planId, at) => {
+            calls++;
+            const r = await base.readiness(planId, at);
+            if (calls > 1) await new Promise<void>((done) => (answer = done));
+            return r;
+          },
+        },
+      },
+    );
+    await within(dialog).findByText(/^Web has capacity/);
+    const run = within(dialog).getByRole('button', { name: 'Run' });
+    expect(run).toBeEnabled();
+    await user.selectOptions(within(dialog).getByLabelText('Look ahead'), '3 periods');
+    await waitFor(() => expect(run).toBeDisabled());
+    expect(run).toHaveAccessibleDescription('Run is off until the check of the plan answers.');
+    expect(within(dialog).queryByText(/^Web has capacity/)).toBeNull();
+    expect(within(dialog).getByText('Checking the plan…')).toBeVisible();
+    await act(async () => answer?.());
+    await waitFor(() => expect(run).toBeEnabled());
+    expect(within(dialog).getByText(/^Web has capacity/)).toBeVisible();
   });
 
   it('[PLN-004] asks for a name for the new scenario', async () => {
