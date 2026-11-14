@@ -102,7 +102,7 @@ test('[NTF-015] whoever runs a track turns checklist notices on, and a follower 
   // Lead opens the track's Manage page and turns the notices on from the keyboard.
   await signInAs(api, emails.lead, PASSWORD);
   await visit(page, `#/manage/tracks/${track.track.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Notices to followers' })).toBeVisible();
   const box = page.getByRole('checkbox', { name: 'Tell followers when a checklist changes' });
   await expect(box).not.toBeChecked();

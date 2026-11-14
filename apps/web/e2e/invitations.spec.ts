@@ -119,7 +119,7 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await page.getByRole('link', { name: 'Tracks you run' }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Tracks you run' })).toBeVisible();
   await page.getByRole('link', { name: `Manage track ${key}` }).click();
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await expect(page.getByText(/Inviting is off for this track/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Invite people' })).toHaveCount(0);
 

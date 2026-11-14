@@ -137,7 +137,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   // The site administrator gives the role with the box ticked.
   await signInAs(api, ADMIN.email, ADMIN.password as string);
   await visit(page, `#/manage/tracks/${made.track.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await page.getByLabel('Role', { exact: true }).selectOption({ label: 'Administrators' });
   await expect(page.getByRole('checkbox', { name: BOX })).toBeChecked();
   expect(await seriousAxeViolations(page)).toEqual([]);
@@ -156,7 +156,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
 
   // Holding it, they are offered the box too; unticked, the next manager gets the role alone.
   await visit(page, `#/manage/tracks/${made.track.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await appoint(page, people.next, false);
   await expectSaidUnderSearch(page, `${people.next} now holds Administrators.`);
   expect(await noSidewaysScroll(page)).toBe(true);
@@ -165,7 +165,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   await signInAs(api, emails.next, PASSWORD);
   expect(await mayCreate(api)).toBe(false);
   await visit(page, `#/manage/tracks/${made.track.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await page.getByLabel('Role', { exact: true }).selectOption({ label: 'Administrators' });
   await expect(page.getByRole('checkbox', { name: BOX })).toHaveCount(0);
   const refused = await api.post(`${BASE}/api/v1/tracks`, {
@@ -178,7 +178,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 740 });
   await signInAs(api, ADMIN.email, ADMIN.password as string);
   await visit(page, `?locale=es#/manage/tracks/${made.track.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   await page.getByLabel('Rol', { exact: true }).selectOption({ label: 'Administrators' });
   await expect(page.getByRole('checkbox', { name: 'Permitir también crear tracks' })).toBeChecked();
   expect(await noSidewaysScroll(page)).toBe(true);
