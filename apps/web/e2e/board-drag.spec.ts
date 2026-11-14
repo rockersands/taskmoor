@@ -101,9 +101,13 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
   // A finger on the card itself is the browser's: it scrolls, and the card stays where it is.
   // That scroll goes on after the finger lifts, gliding and then snapping to a column. The
   // columns scroll back only once it has ended: sooner, the snap would carry them off again,
-  // as it did under load (T-013a).
+  // as it did under load (T-013a). Chromium on Windows never sends `scrollend` for a scroll a
+  // simulated finger started, so a scroll that has stood still for half a second has ended too.
   const browserScroll = await columns.evaluateHandle((el) => {
-    const scroll = { ended: false };
+    const scroll = { ended: false, moved: 0 };
+    el.addEventListener('scroll', () => {
+      scroll.moved = performance.now();
+    });
     el.addEventListener(
       'scrollend',
       () => {
@@ -113,6 +117,10 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
     );
     return scroll;
   });
+  const scrollEnded = () =>
+    browserScroll.evaluate(
+      (scroll) => scroll.ended || (scroll.moved > 0 && performance.now() - scroll.moved > 500),
+    );
   const card = (await link.boundingBox()) as NonNullable<typeof region>;
   const swipe = await finger(page);
   await swipe.down({ x: card.x + card.width / 2, y: card.y + card.height / 2 });
@@ -120,7 +128,7 @@ test('[AGL-002] [NFR-007] a finger drags a card by its grip to a column off the 
   await swipe.up();
   await expect(page.locator('.board-card.is-dragging')).toHaveCount(0);
   expect(await status()).toBe('New');
-  await expect.poll(() => browserScroll.evaluate((scroll) => scroll.ended)).toBe(true);
+  await expect.poll(scrollEnded).toBe(true);
   await columns.evaluate((el) => el.scrollTo({ left: 0 }));
   await expect.poll(scrolled).toBe(0);
 
