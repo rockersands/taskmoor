@@ -171,6 +171,9 @@ permanently** then:
   role, that person keeps it, as their own from then on, so the track still has someone to run
   it. Someone sharing a group with the person while the erasure runs either finishes
   first, and the erasure removes that share too, or is refused as for anyone deactivated;
+- removes a permission to create tracks that came with a role, from the person and from anyone the
+  roles taken back leave running no track, as deactivating does; one given on the Permissions page
+  stays;
 - deactivates the account for good: it cannot be edited, reactivated or signed in to.
 
 It cannot be undone, so download the person's data first when they asked for it. Taskmoor
@@ -183,7 +186,8 @@ The audit log is never rewritten, so it stays verifiable (`node cli.mjs audit-ve
 records keep the account's number, which now shows the placeholder, and when the log is read,
 searched, exported or sent to syslog it hides the name, email and addresses those records hold
 about the erased person, and shows their capacity notes in a plan's records empty (they are
-marked as masked). The stored records leave with the audit
+marked as masked). Those notes are empty in anyone's data download too, for example that of the
+person who typed them. The stored records leave with the audit
 retention period. Both the download and the erasure are audited (`personal_data.export_requested`
 and `user.erased`).
 

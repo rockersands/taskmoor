@@ -76,7 +76,10 @@ administrators only, in one transaction, emitting `user.erased`:
 - Their capacity in Multi-track plans goes with its notes (ADR-122), and the scrub job below
   empties those notes in the plans' `plan.capacity_set` events (T-089j).
 - Kept: tickets, comments, time, attachments, group and team memberships, grants, saved searches
-  and dashboards they own, all attributed to the placeholder.
+  and dashboards they own, all attributed to the placeholder. The exception is a permission to
+  create tracks that came with a role, which goes as on any deactivation, from the person and from
+  anyone whose last role their shares took back; `user.erased` lists it
+  (`createTracksGrantsRemoved`; ADR-118, T-087b).
 - Domain events about the person (created, updated, provisioned) have the old name and email
   replaced in their payload, in the same transaction, while the old values are still known.
 - Names copied into other records are replaced by a job (`privacy.scrub`), which finds them by
@@ -99,7 +102,8 @@ the address of every request the erased person made. Such records are marked `ma
 their `hash` covers the stored record, which `audit-verify` checks unchanged. The stored values
 leave with the partition that holds them when retention drops it (ADR-034). The same applies to
 an erased person's capacity notes in a plan's `plan.capacity_set` records, whose subject is the
-plan: they are shown empty (T-089j). This is the
+plan: they are shown empty (T-089j), there and in the `audit.ndjson` of anyone's data download
+(`audit/query.ts` `withoutErasedCapacityNotes`). This is the
 exception GDPR article 17 (3) allows for records kept for security and legal claims; the
 manual says so.
 

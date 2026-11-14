@@ -190,33 +190,40 @@ the role leaves the grant"). When someone loses the manager role, the permission
 that came with it goes too:
 
 - **Which grant.** Only one that came with a role: a `global_grant` whose id a
-  `track_role.actor_added`, `track_invitation.created` or `track_invitation.accepted` event names
-  as `createTracksGrantId`. The events are the record of where it came from; no column was added.
+  `track_role.actor_added`, `track_invitation.created`, `track_invitation.resent` or
+  `track_invitation.accepted` event names as `createTracksGrantId`. The events are the record of where it came from; no column was added.
   **A grant given separately stays**: one a site administrator gave on **Global permissions**, and
   one the person already held when the box was ticked (no second grant is written, so the event
   names none). A site administrator removes those as before. A site administrator who wants a
   former manager to keep creating tracks gives the permission again there, and it then stays.
 - **When.** Once the person runs no track: they hold `administer_track` on no live track through a
   role (their own, a group's, nested groups included, or one a shared track group gave), a grant
-  to them or a group of theirs, or as an owner (the ways `trackKeepsAdministrator` counts), or they
-  are deactivated. Someone who still runs another track keeps it: they are still a manager.
+  to them, a group of theirs, every signed-in person or anyone, or as an owner (the ways
+  `trackKeepsAdministrator` counts), or they are deactivated. Someone who still runs another track keeps it: they are still a manager.
 - **Where.** Every change that can take that last role away, in its own transaction: taking a
   person's or a group's role on the People page, withdrawing an invitation that gave the role at
   once, removing someone from a group, taking a group out of another, deleting a group, deactivating
-  a person (Administration, SCIM `active: false` or DELETE, a directory sync's removal), and a SCIM
-  group's members or deletion.
+  a person (Administration, SCIM `active: false` or DELETE, and every directory deactivation: an
+  entry removed or disabled, an account linked to a disabled entry, a directory deleted, all through
+  `ldap/accounts.ts` `deactivateAccount`), a SCIM group's members or deletion, every take-back of
+  what shared track groups gave (a share taken back, a group left or deleted, a track moved out of
+  a shared group, and an erasure, through `trackgroups/access.ts` `releaseShares`; ADR-121), and the
+  erasure of the person themselves, who is deactivated with it.
 - **One event.** The change's own event lists what went, `createTracksGrantsRemoved: [{ userId,
   grantId }]`, on `track_role.actor_removed`, `track_invitation.revoked`, `group.member_removed`,
-  `group.unnested`, `group.deleted`, `user.deactivated`, `scim.user_updated`, `scim.user_removed`,
-  `scim.group_updated`, `scim.group_deleted` and `directory.user_removed`, and so its audit record;
-  no `global_grant.removed` beside it (M1-005). Optional, so older events still match.
+  `group.unnested`, `group.deleted`, `user.deactivated`, `user.erased`, `scim.user_updated`,
+  `scim.user_removed`, `scim.group_updated`, `scim.group_deleted`, `directory.user_removed`,
+  `directory.user_updated`, `directory.user_created`, `directory.deleted`, `track_group.unshared`,
+  `track_group.left`, `track_group.deleted`, `track_group.created` and `track_group.track_moved`,
+  and so its audit record; no `global_grant.removed` beside it (M1-005). Optional, so older
+  events still match.
 - **Cost.** The check reads the events only for a person who holds a grant of their own and runs
   no track any more; it scans `domain_event` by type, which a site with many events may notice on
   those rare changes. A column on `global_grant` saying where it came from would make it one read;
   that needs a migration, left for when one is due.
 - **Not covered**, since they take no person's role away directly: a role losing `administer_track`
-  in an access policy, a track moved to another policy, a track deleted, a role deleted, a shared
-  track group taken back, and a directory sync's or single sign-on's group changes. Those leave the
+  in an access policy, a track moved to another policy, a track deleted, a role deleted, and a
+  directory sync's or single sign-on's group changes for a person who stays active. Those leave the
   grant until the person's next change of the kinds above or a site administrator removes it.
   Reactivating a person does not give it back.
 

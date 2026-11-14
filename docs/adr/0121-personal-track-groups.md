@@ -98,6 +98,12 @@ and surfaces (ADR-114) and nothing else.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.
+- **The permission to create tracks goes with the last role** (T-087b; ADR-118). Every take-back
+  (a share taken back, a group left or deleted, a track moved out of a shared group, an erasure)
+  runs through `releaseShares`, which removes the create-tracks grant that came with a role from
+  anyone the roles it removed leave running no track. The change's one event lists it as
+  `createTracksGrantsRemoved` (`track_group.unshared`, `.left`, `.deleted`, `.created` when it
+  takes tracks out of other groups, `.track_moved`, and `user.erased`).
 - **People.** A group goes only to an active person of the workspace other than its owner;
   a deactivated person is refused (`person_inactive`) and gets nothing. A share made before
   someone was deactivated stays, shows them as inactive, and can be taken back as usual. The
@@ -175,7 +181,8 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
 ### Events, audit and tokens
 
 - One event per change, `track_group.*`, with ids and names only and the roles a change gave or
-  took (`given`, `removed`). The audit log records those that can change access (`created`,
+  took (`given`, `removed`), and any create-tracks grants that went with them
+  (`createTracksGrantsRemoved`, above). The audit log records those that can change access (`created`,
   `deleted`, `track_moved`, `shared`, `unshared`, `left`, `copied`); renaming, minimizing and ordering
   are a person's own arrangement and are not audited.
 - Every route is read for GET and write otherwise. Sharing gives roles, as the People page does

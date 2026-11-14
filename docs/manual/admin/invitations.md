@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -99,8 +99,10 @@ this track.
 - **The permission goes with the role.** When the person no longer runs any track, the permission
   that came with the box goes too: when you take their role away under **Who does what**, take a
   group's role that was how they ran it, withdraw the invitation that gave it, remove them from
-  that group (or the group, or its place inside another group), or deactivate them (here, through
-  SCIM or a directory sync). Someone who still runs another track keeps it.
+  that group (or the group, or its place inside another group), take back the shared group of
+  tracks that gave them their last role there (or they leave it, or it is deleted, or its owner is
+  erased), or deactivate them (here, through SCIM, or when a directory removes or disables them).
+  Someone who still runs another track keeps it, including a track every signed-in person runs.
 - **A permission given separately stays.** If a site administrator gave it on **Settings** >
   **Permissions** > **Global permissions**, or the person had it before you ticked the box, losing
   the role leaves it; remove it there, where each person who holds it is listed by name. To let a
@@ -109,12 +111,13 @@ this track.
 The grant shows in the audit log inside the event that gave the role: `createTracksGrantId` on
 `track_role.actor_added`, `track_invitation.created`, `.resent` or `.accepted`. Its removal shows
 inside the event of the change that took it, as `createTracksGrantsRemoved` (for example on
-`track_role.actor_removed`, `group.member_removed` or `user.deactivated`).
+`track_role.actor_removed`, `group.member_removed`, `track_group.unshared`, `user.deactivated` or
+`directory.user_updated`).
 
 Changes that take no one's role away directly leave the permission until a site administrator
 removes it: an access policy's administer permission taken from a role, a track deleted or given
-another policy, a shared group of tracks taken back, and group changes that come from a directory
-sync or single sign-on.
+another policy, and group changes that come from a directory sync or single sign-on for someone
+who stays active.
 
 ### A track keeps someone to run it
 

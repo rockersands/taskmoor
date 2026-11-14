@@ -314,7 +314,8 @@ take on.
   that changed `user:<id>` and empties the notes of those changes, before and after; the amounts
   and other subjects' notes stay. The audit log is append-only and never rewritten (ADR-034), so
   it keeps the stored words but shows them empty when read or exported, with `masked: true`, as it
-  masks an erased person's name (`audit/query.ts`); `audit-verify` still checks the stored
+  masks an erased person's name (`audit/query.ts`), and in a personal data download's
+  `audit.ndjson`, whoever downloads it; `audit-verify` still checks the stored
   records. Notes should still say "Leave", not why: until the erasure they are as typed.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
