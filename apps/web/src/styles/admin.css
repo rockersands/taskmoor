@@ -93,8 +93,11 @@
 }
 
 /* Beside the page while it scrolls, never longer than the window, so it no longer sets the
-   page's length (D18). */
-.admin-nav-side {
+   page's length (D18). With the glass card's class too: `.glass-card { position: relative }`
+   comes later in the cascade with the same weight, and made the list scroll away with the page
+   and sit lower than the breadcrumb by its `top` (AD-11). It starts in line with the breadcrumb,
+   at the top of the section's row, and stops in line with the app's sidebar. */
+.admin-nav-side.glass-card {
   position: sticky;
   top: calc(var(--topbar-height) + 2 * var(--shell-gap));
   max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
