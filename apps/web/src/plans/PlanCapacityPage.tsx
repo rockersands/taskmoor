@@ -17,7 +17,7 @@ import type {
   PlanPeriod,
 } from './client';
 import { DownloadMenu } from './DownloadMenu';
-import { fileName, saveBlob } from './download';
+import { csvBlob, fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { capacityCsv } from './planExport';
 
@@ -330,7 +330,7 @@ export function PlanCapacityPage({
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'capacity', today, 'csv');
-                saveBlob(name, new Blob([capacityCsv(t, data)], { type: 'text/csv' }));
+                saveBlob(name, csvBlob(capacityCsv(t, data)));
                 return name;
               },
             },

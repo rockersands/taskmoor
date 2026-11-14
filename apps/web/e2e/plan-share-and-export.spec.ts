@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, type Download, expect, type Page, test } from '@playwright/test';
+import { cellText, records } from '@taskmoor/server/testing';
 
 /**
  * Copying, linking and downloading a plan end to end (T-089g; PLN-014; ADR-122 stage 8). Ori owns a
@@ -72,6 +73,18 @@ const firstColumn = (csv: string) =>
     .split('\r\n')
     .slice(1)
     .map((line) => line.split(',')[0]);
+
+/**
+ * A CSV file's rows as the CSV importer reads them, after checking it starts with the UTF-8
+ * byte-order mark exactly once (T-252): what Excel on Windows needs, and what an import takes off.
+ */
+function readBack(body: Buffer): string[][] {
+  expect([...body.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  expect([...body.subarray(3, 6)]).not.toEqual([0xef, 0xbb, 0xbf]);
+  const rows = [...records(body, ',')].map((r) => r.fields.map(cellText));
+  expect(rows[0]?.[0]).not.toMatch(/^\uFEFF/);
+  return rows;
+}
 
 test('[PLN-014] a plan copied, linked and downloaded: hidden work only counted, a link giving no access', async ({
   page,
@@ -172,6 +185,10 @@ test('[PLN-014] a plan copied, linked and downloaded: hidden work only counted, 
   expect(timeline).not.toContain(secret.ticket.key);
   expect(timeline).not.toContain('hidden from Vera');
   expect(timeline).toContain(`"'=HYPERLINK(""http://example.test"")"`);
+  const timelineRows = readBack(csv.body);
+  expect(timelineRows[0]?.[0]).toBe('Key');
+  expect(timelineRows.slice(1).map((r) => r[0])).toEqual(firstColumn(timeline));
+  expect(timelineRows.some((r) => r[1] === '=HYPERLINK("http://example.test")')).toBe(true);
 
   const image = await download(page, 'Image (PNG)');
   expect(image.file.suggestedFilename()).toMatch(/\.png$/);
@@ -187,6 +204,7 @@ test('[PLN-014] a plan copied, linked and downloaded: hidden work only counted, 
   expect(list.file.suggestedFilename()).toMatch(/^Shared-.+-list-\d{4}-\d{2}-\d{2}\.csv$/);
   expect(list.body.toString('utf8')).not.toContain(secret.ticket.key);
   expect(firstColumn(list.body.toString('utf8'))).toContain(risky.ticket.key);
+  expect(readBack(list.body)[0]?.[0]).toBe('key');
 
   for (const [tab, name] of [
     ['Summary', 'summary'],
@@ -199,6 +217,7 @@ test('[PLN-014] a plan copied, linked and downloaded: hidden work only counted, 
     expect(file.file.suggestedFilename()).toContain(`-${name}-`);
     expect(file.body.toString('utf8')).not.toContain(secret.ticket.key);
     expect(file.body.toString('utf8')).not.toContain(keys.hidden);
+    expect(readBack(file.body).length, name).toBeGreaterThan(0);
     expect(await noSidewaysScroll(page)).toBe(true);
   }
 

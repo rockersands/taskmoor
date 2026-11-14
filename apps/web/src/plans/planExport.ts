@@ -1,3 +1,4 @@
+import { csvFile } from '@taskmoor/webconfig';
 import type { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { typeName } from '../shell/seededNames';
@@ -20,29 +21,19 @@ import type {
  * else: what is hidden from the person stays numbers, as the view words it. The List's file comes
  * from the server instead (`GET /plans/:id/export`), as it holds every ticket.
  *
- * Headers are in the person's language. RFC 4180 quoting, CRLF, no byte-order mark, like the
- * server's exports.
+ * Headers are in the person's language. RFC 4180 quoting, CRLF and a UTF-8 byte-order mark first
+ * (T-252), like the server's exports.
  */
 type T = ReturnType<typeof useT>;
 type Cell = string | number | null | undefined;
 
 /**
- * One cell, the same rule as the server's (`audit/query.ts`, tested with the same table): RFC 4180
- * quoting, and text a spreadsheet would run as a formula (starting with =, +, -, @, tab or carriage
- * return, or their full-width forms) gets a leading apostrophe. A semicolon is quoted too: where a
- * list separator is a semicolon, as in Spanish settings, a spreadsheet would split the cell there
- * and read what follows as a new cell. A number stays a number, so -3 is not a formula.
+ * Rows as one file's text, by the rule every CSV export shares with the server's
+ * (`@taskmoor/webconfig` `csv.ts`, tested there with one table): RFC 4180 quoting, a leading
+ * apostrophe on text a spreadsheet would run as a formula, a semicolon quoted, a number left a
+ * number, and the UTF-8 byte-order mark first, once, so Excel on Windows reads accented headers.
  */
-export function csvField(value: Cell): string {
-  if (value === null || value === undefined) return '';
-  let text = typeof value === 'string' ? value : String(value);
-  if (typeof value === 'string' && /^[=+\-@\t\r＝＋－＠]/.test(text)) text = `'${text}`;
-  return /[",;\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-/** Rows as one file's text. */
-export const csvText = (rows: readonly (readonly Cell[])[]): string =>
-  rows.map((row) => `${row.map(csvField).join(',')}\r\n`).join('');
+export const csvText = (rows: readonly (readonly Cell[])[]): string => csvFile(rows);
 
 const header = (t: T, ids: readonly MessageId[]) => ids.map((id) => t(id));
 const trackKeys = (tracks: readonly { id: number; key: string }[]) =>

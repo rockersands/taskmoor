@@ -767,8 +767,9 @@ holds of how many.
 - **The other views:** built on the page by one pure function per view from the view's own answer,
   so the file is what the view shows (RPT-009 (1) is the same idea), including what only the view
   knows: sprint-derived days, roll-ups and blocker counts on the Timeline. Headers are in the
-  person's language, each cell through a `csvField` kept the same as the server's and tested with
-  the same table. RFC 4180; no byte-order mark, like the existing exports.
+  person's language, each cell through the one `csvField` the server's exports use too
+  (`@taskmoor/webconfig` `csv.ts`). RFC 4180, and a UTF-8 byte-order mark first, as on every CSV
+  export (see the byte-order mark below).
   - **Timeline:** key, summary, type, track, status, start, due, where the days come from, roll-up,
     late, and `blockersElsewhere` as its two numbers. First 10,000, with a line beneath the button
     saying so when `truncated`.
@@ -888,8 +889,23 @@ touch drags), and how the image looks, which needs a person to look at it.
   characters beside their key, with an ellipsis; the file's CSV has them whole.
 - **Text XML cannot hold is taken out, not escaped:** control characters and lone surrogates would
   stop the whole picture from loading, so a ticket's odd title cannot cost someone their image.
-- **The cell guard is tested with one table** (`plans/csvGuardTable.json`) read by the web test and
-  by the server's `audit/query.test.ts`, so the two functions cannot drift apart unseen.
+- **One CSV rule for every export** (T-252): `csvField`, `csvLine`, `csvFile`, `withBom` and
+  `bomLength` live in `@taskmoor/webconfig` (`csv.ts`), which the server and the page both import,
+  so the search export, the List, the audit log and the views' files cannot drift apart. Its cell
+  guard is tested with one table (`csvGuardTable.json` beside it).
+- **A UTF-8 byte-order mark on every CSV file** (question 7 below, the user's answer of
+  2026-11-13): the three bytes EF BB BF come first, exactly once, so Excel on Windows opened by a
+  double-click reads the file as UTF-8 and accented headers such as "Versión" come out whole.
+  Streamed exports put it before the header in their first chunk (`withBom` leaves text that
+  already has one as it is); the views' files get it from `csvFile`, and `csvBlob` makes sure of it
+  again when the page hands the file over, typed `text/csv; charset=utf-8`. The separator stays a
+  comma: a Spanish Excel that wants semicolons still needs its import from text, which the mark does
+  not change. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
+  start reading after it, through `bomLength`, so an exported file imports as it is. Tests: each
+  export's bytes start EF BB BF once (`search-export.test.ts`, `plans.test.ts`, `audit.test.ts`,
+  `PlanShare.test.tsx`), and each reads back through the importer, the search export as a whole
+  CSV import (`search-export.test.ts`) and the downloaded files in the e2e specs
+  (`search-results`, `audit`, `plan-share-and-export`).
 - **The picture's colours are listed in the design guard's ALLOWED list,** with the reason: a file
   must not change with the skin.
 - **Tests by name:** the page's flows are in `plans/PlanShare.test.tsx`, and the file functions' in
@@ -912,7 +928,8 @@ touch drags), and how the image looks, which needs a person to look at it.
 7. **A byte-order mark on the CSV files:** none, like the existing exports; or one, so that Excel on
    Windows reads accented headers such as "Versión" when the file is opened by a double-click. A
    Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
-   Excel.
+   Excel. **Answered 2026-11-13: a mark on every CSV export, not only a plan's; separators as they
+   are. Built in T-252** (above).
 
 ### Later stages
 

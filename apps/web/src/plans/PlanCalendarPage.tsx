@@ -5,7 +5,7 @@ import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { dayNumber, isoDay, localDay } from '../timeline/client';
 import type { PlanCalendar } from './client';
 import { DownloadMenu } from './DownloadMenu';
-import { fileName, saveBlob } from './download';
+import { csvBlob, fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { calendarCsv } from './planExport';
 
@@ -93,7 +93,7 @@ export function PlanCalendarPage({
                     true,
                   );
                   const name = fileName(plan.name, 'calendar', isoDay(month).slice(0, 7), 'csv');
-                  saveBlob(name, new Blob([calendarCsv(t, fresh)], { type: 'text/csv' }));
+                  saveBlob(name, csvBlob(calendarCsv(t, fresh)));
                   return name;
                 },
               },

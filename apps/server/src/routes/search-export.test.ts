@@ -1,11 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { CSV_BOM } from '@taskmoor/webconfig';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { type CsvRow, CsvSource, csvSource } from '../import/csv';
 import { EXPORT_PAGE } from './search-export';
 
 /** Generated per run: no credential is kept in the repository. */
@@ -24,8 +26,14 @@ function sessionCookie(header: string | string[] | undefined): string {
   );
 }
 
-/** RFC 4180 records, for checking what the export wrote. */
-function parseCsv(text: string): string[][] {
+/**
+ * RFC 4180 records, for checking what the export wrote, after the byte-order mark every CSV file
+ * starts with exactly once (T-252).
+ */
+function parseCsv(file: string): string[][] {
+  expect(file.startsWith(CSV_BOM)).toBe(true);
+  const text = file.slice(1);
+  expect(text.startsWith(CSV_BOM)).toBe(false);
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -210,6 +218,49 @@ describe('search export (M1-042)', () => {
     // The raw text: quotes doubled, the line break kept inside the quoted cell.
     expect(res.body).toContain('"Commas, ""quotes"" and more"');
     expect(res.body).toContain('"First line\nsecond line"');
+  });
+
+  it('[QRY-015] [IMP-012] starts the file with one UTF-8 byte-order mark, and the CSV importer reads it back', async () => {
+    const res = await exported('alice', {
+      q: 'track = EXP ORDER BY key ASC',
+      format: 'csv',
+      columns: 'key,summary,labels,description',
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    // EF BB BF, then the header itself: the mark comes once, before the first page of rows.
+    expect([...res.rawPayload.subarray(0, 6)]).toEqual([0xef, 0xbb, 0xbf, ...Buffer.from('key')]);
+    expect(res.rawPayload.indexOf(Buffer.from([0xef, 0xbb, 0xbf]), 3)).toBe(-1);
+    // An export imports as it is: the mapping names the header's first column without the mark.
+    const source = new CsvSource(
+      csvSource.parse({
+        format: 'csv',
+        data: res.rawPayload.toString('utf8'),
+        mapping: {
+          columns: [
+            { column: 'key', to: 'key' },
+            { column: 'summary', to: 'summary' },
+            { column: 'labels', to: 'labels' },
+            { column: 'description', to: 'description' },
+          ],
+        },
+      }),
+    );
+    source.check();
+    const rows = await source.read('ticket', null, 100);
+    const summaries = [
+      '=HYPERLINK("http://example.test")',
+      'Commas, "quotes" and more',
+      '-minus first',
+      'Plain words',
+    ];
+    expect(rows.map((r) => r.id)).toEqual(summaries.map((name) => keys[name]));
+    const back = rows.map((r) => r.data as unknown as CsvRow);
+    expect(back.map((r) => r.values.summary?.[0])).toEqual(summaries);
+    expect(back[0]?.values.labels).toEqual(['urgent; web']);
+    expect(back[1]?.values.description).toEqual(['First line\nsecond line']);
+    // The JSON export has no mark.
+    const json = await exported('alice', { q: 'track = EXP', format: 'json', columns: 'key' });
+    expect(json.rawPayload[0]).toBe('['.charCodeAt(0));
   });
 
   it('[QRY-015] [QRY-008] exports exactly what the search shows the person', async () => {
