@@ -240,6 +240,49 @@ describe('the ticket template form names custom release and area values (CORE-02
     expect(body.defaults).toEqual(HOTFIX_TEMPLATE.defaults);
   });
 
+  it('[CORE-029] reads ids in the API’s object form, and a save after a name change keeps them', async () => {
+    const user = userEvent.setup();
+    const template: SavedTemplate = {
+      ...HOTFIX_TEMPLATE,
+      defaults: { fields: { '12': [{ id: 41 }, 42], '13': { id: 31 }, '99': 'kept' } },
+    };
+    const { client, form } = renderForm(template);
+    const fixedIn = within(form).getByRole('list', { name: 'Fixed in' });
+    expect(
+      within(fixedIn)
+        .getAllByRole('listitem')
+        .map((li) => li.firstChild?.textContent),
+    ).toEqual(['1.0', '0.9 (archived)']);
+    expect(
+      within(within(form).getByRole('list', { name: 'Owning area' })).getByText('Checkout'),
+    ).toBeVisible();
+    const name = within(form).getByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Hotfix now');
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.defaults.fields).toEqual({
+      '12': [41, 42],
+      '13': 31,
+      '99': 'kept',
+    });
+  });
+
+  it('[CORE-029] keeps a value it cannot read whole as saved, and counts it', () => {
+    const fields = TEMPLATE_OPTIONS.fields;
+    const template: SavedTemplate = {
+      ...HOTFIX_TEMPLATE,
+      defaults: { fields: { '12': [41, { key: 'x' }], '13': 'Checkout', '99': 'kept' } },
+    };
+    renderForm(template);
+    expect(
+      screen.getByText('3 values of fields this form cannot show stay as they are.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Fixed in' })).toBeNull();
+    const body = bodyOf(draftOf(template, fields), template, fields, 'SHOP');
+    expect(body.defaults.fields).toEqual(template.defaults.fields);
+  });
+
   it('passes every string through the pseudo-locale', async () => {
     const { form } = renderForm(HOTFIX_TEMPLATE, {
       locale: 'en-XA',

@@ -54,10 +54,37 @@ export interface TemplateDraft {
 
 const asText = (value: number | undefined) => (value === undefined ? '' : String(value));
 
-/** The ids a custom release or area value holds: an id, or ids for a multiple field. */
-function idsOf(value: unknown): number[] {
+const MAX_ID = 2_147_483_647;
+
+/** A release or area id as the API reads one: a number, a string of digits, or `{"id": n}`. */
+function idOf(input: unknown): number | null {
+  if (input !== null && typeof input === 'object' && !Array.isArray(input) && 'id' in input) {
+    return idOf((input as { id: unknown }).id);
+  }
+  if (typeof input === 'number') {
+    return Number.isInteger(input) && input > 0 && input <= MAX_ID ? input : null;
+  }
+  if (typeof input === 'string' && /^[1-9][0-9]{0,9}$/.test(input)) {
+    const n = Number(input);
+    return n <= MAX_ID ? n : null;
+  }
+  return null;
+}
+
+/**
+ * The ids a custom release or area value holds (an id, or ids for a multiple field; none for an
+ * empty list), or null when the form cannot read every one of them: such a value stays as saved,
+ * as one the form does not show, so that a save never drops what it could not list.
+ */
+function idsOf(value: unknown): number[] | null {
   const list = Array.isArray(value) ? value : [value];
-  return list.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  const ids: number[] = [];
+  for (const item of list) {
+    const id = idOf(item);
+    if (id === null) return null;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 function fieldText(field: FieldChoice, value: unknown): string | string[] {
@@ -79,8 +106,9 @@ export function draftOf(
     const field = fields.find((f) => String(f.id) === id);
     if (field && FORM_FIELD_TYPES.has(field.type) && value != null) {
       values[id] = fieldText(field, value);
-    } else if (field && TRACK_VALUE_TYPES.has(field.type) && idsOf(value).length > 0) {
-      trackValues[id] = idsOf(value);
+    } else if (field && TRACK_VALUE_TYPES.has(field.type)) {
+      const ids = idsOf(value);
+      if (ids && ids.length > 0) trackValues[id] = ids;
     }
   }
   return {
@@ -114,11 +142,14 @@ function fieldValue(field: FieldChoice, raw: string | string[]): unknown {
   return raw.trim();
 }
 
-/** Whether the form shows a custom field's value: a control for it, or its releases or areas. */
-function shown(field: FieldChoice | undefined): boolean {
-  return (
-    field !== undefined && (FORM_FIELD_TYPES.has(field.type) || TRACK_VALUE_TYPES.has(field.type))
-  );
+/**
+ * Whether the form shows a saved custom field value: a control for it, or its releases or areas
+ * when it can read each of their ids.
+ */
+function shown(field: FieldChoice | undefined, value: unknown): boolean {
+  if (field === undefined) return false;
+  if (FORM_FIELD_TYPES.has(field.type)) return true;
+  return TRACK_VALUE_TYPES.has(field.type) && (value == null || idsOf(value) !== null);
 }
 
 /**
@@ -150,7 +181,7 @@ function defaultsOf(
   const custom: Record<string, unknown> = {};
   for (const [id, value] of Object.entries(before.fields ?? {})) {
     const field = fields.find((f) => String(f.id) === id);
-    if (!shown(field)) custom[id] = value;
+    if (!shown(field, value)) custom[id] = value;
   }
   for (const [id, ids] of Object.entries(draft.trackValues)) {
     const field = fields.find((f) => String(f.id) === id);
@@ -193,8 +224,12 @@ export function bodyOf(
 
 /** How many of a saved template's custom field values the form does not show. */
 export function keptValues(saved: SavedTemplate | null, fields: readonly FieldChoice[]): number {
-  return Object.keys(saved?.defaults.fields ?? {}).filter(
-    (id) => !shown(fields.find((f) => String(f.id) === id)),
+  return Object.entries(saved?.defaults.fields ?? {}).filter(
+    ([id, value]) =>
+      !shown(
+        fields.find((f) => String(f.id) === id),
+        value,
+      ),
   ).length;
 }
 

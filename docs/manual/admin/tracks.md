@@ -377,7 +377,8 @@ API. A custom release or area field set that way shows under **Custom fields** w
 name, an archived one marked **(archived)** and one the track does not have named by its number,
 each with **Remove**; the form adds none. An archived release or area the template already holds
 also stays chosen, marked, in **Areas**, **Target releases** and **Found in releases**. For the
-other types the form says how many values it cannot show, and saving keeps them.
+other types, and for a release or area value it cannot read as ids, the form says how many values
+it cannot show, and saving keeps them as they are.
 
 When a save is refused over a value, the reason shows under that value, in the words the create
 form uses (for example "This release or area is archived. Choose another." or "This track does not
