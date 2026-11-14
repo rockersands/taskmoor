@@ -1,10 +1,23 @@
-import type { Database, PlanCapacityUnit } from '@taskmoor/db';
+import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import {
+  type Capacity,
+  capacityOf,
+  capacityRows,
+  type Elsewhere,
+  elsewhereWork,
+  estimateSql,
+  membersOf,
+  periodIndex,
+  pointsField,
+  round,
+  teamCapacity,
+} from '../plans/capacity';
 import { draftOverlay } from '../plans/drafts';
 import { type CapacityEntry, capacityBody, capacityQuery, idParam } from '../plans/model';
 import {
@@ -16,7 +29,6 @@ import {
   periodsBefore,
   periodsFrom,
   samePeriods,
-  weekThursday,
 } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
@@ -54,11 +66,7 @@ import { searchRefusal } from './search';
  * the sum of its members' when any has one. Over capacity: what the row's people have due in the
  * period, here and elsewhere, is more than that.
  */
-type Db = Kysely<Database> | Transaction<Database>;
-
 const DEFAULT_PERIODS = 6;
-/** Names a number field goes by when it holds a ticket's points (as boards read them). */
-const POINTS_NAMES = ['points', 'story points', 'puntos'];
 const UNSCHEDULED = 'stage != closed AND due IS EMPTY';
 
 interface Work {
@@ -66,22 +74,11 @@ interface Work {
   amount: number;
   unestimated: number;
 }
-interface Elsewhere {
-  count: number;
-  amount: number;
-}
-interface Capacity {
-  amount: number;
-  note: string;
-}
-type CapacityFrom = 'period' | 'default' | 'members' | null;
-
 export interface PlanCapacityOptions {
   catalogs: FieldCatalogs;
   timeoutMs?: number;
 }
 
-const round = (n: number) => Math.round(n * 100) / 100;
 const none = (): Work => ({ count: 0, amount: 0, unestimated: 0 });
 const add = (a: Work, b: Work): Work => ({
   count: a.count + b.count,
@@ -137,52 +134,6 @@ export function registerPlanCapacityRoutes(
     return { ...plan, editable: admin || plan.owner_id === request.user?.id };
   }
 
-  /** The members of each team, in name order; everyone `membersOf("id:<team>")` returns. */
-  async function membersOf(q: Db, ws: number, teamIds: readonly number[]) {
-    if (teamIds.length === 0)
-      return new Map<number, { id: number; name: string; active: boolean }[]>();
-    const rows = await q
-      .selectFrom('team_member as m')
-      .innerJoin('app_user as u', 'u.id', 'm.user_id')
-      .select(['m.team_id', 'u.id', 'u.name', 'u.deactivated_at'])
-      .where('m.workspace_id', '=', ws)
-      .where('m.team_id', 'in', [...teamIds])
-      .orderBy(sql`lower(u.name)`)
-      .orderBy('u.id')
-      .execute();
-    const out = new Map<number, { id: number; name: string; active: boolean }[]>();
-    for (const r of rows) {
-      const list = out.get(r.team_id) ?? [];
-      list.push({ id: r.id, name: r.name, active: r.deactivated_at === null });
-      out.set(r.team_id, list);
-    }
-    return out;
-  }
-
-  /** The workspace's own Points field: the oldest shared number field of that name. */
-  async function pointsField(ws: number) {
-    return (
-      (await db
-        .selectFrom('field')
-        .select(['id', 'name'])
-        .where('workspace_id', '=', ws)
-        .where('track_id', 'is', null)
-        .where('type', '=', 'number')
-        .where(sql<boolean>`lower(trim(name)) = ANY(${POINTS_NAMES}::text[])`)
-        .orderBy('id')
-        .executeTakeFirst()) ?? null
-    );
-  }
-
-  /** A ticket's estimate in the plan's unit, null for none. */
-  function estimate(unit: PlanCapacityUnit, fieldId: number | null): RawBuilder<number | null> {
-    if (unit === 'hours') return sql`(k.original_estimate / 3600.0)`;
-    if (fieldId === null) return sql`NULL::numeric`;
-    const key = String(fieldId);
-    return sql`(CASE WHEN jsonb_typeof(k.fields -> ${key}::text) = 'number'
-                     THEN (k.fields ->> ${key}::text)::numeric END)`;
-  }
-
   app.get('/api/v1/plans/:id/capacity', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = idParam.safeParse(request.params);
@@ -212,13 +163,7 @@ export function registerPlanCapacityRoutes(
       const periods = periodsFrom(setting, first, count ?? DEFAULT_PERIODS);
       const windowStart = periods[0]?.start as string;
       const windowEnd = periods.at(-1)?.end as string;
-      const periodAt = (due: string) => {
-        const n = dayNumber(due);
-        return periods.findIndex((x) => n >= dayNumber(x.start) && n <= dayNumber(x.end));
-      };
-      // Work elsewhere goes by whole weeks: those whose Thursday is in view, Monday to Sunday.
-      const weeksStart = isoDay(dayNumber(windowStart) - 3);
-      const weeksEnd = isoDay(dayNumber(windowEnd) + 3);
+      const periodAt = (due: string) => periodIndex(periods, due);
 
       const teams = await planTeams(db, plan.id);
       const members = await membersOf(
@@ -227,8 +172,8 @@ export function registerPlanCapacityRoutes(
         teams.map((t) => t.id),
       );
       const people = [...new Set([...members.values()].flat().map((m) => m.id))];
-      const field = plan.capacity_unit === 'points' ? await pointsField(ws) : null;
-      const value = estimate(plan.capacity_unit, field?.id ?? null);
+      const field = plan.capacity_unit === 'points' ? await pointsField(db, ws) : null;
+      const value = estimateSql(plan.capacity_unit, field?.id ?? null);
       const where = tickets.where;
 
       const counted = await readOnly(db, timeoutMs, async (trx) => {
@@ -272,29 +217,12 @@ export function registerPlanCapacityRoutes(
               ).rows
             : [];
         // The rest of the members' work due in the weeks in view: outside the plan, filtered out
-        // or hidden from the viewer. Counted, never named. The trash and archived tracks hold none.
-        const elsewhere =
-          people.length === 0
-            ? []
-            : (
-                await sql<{ assignee_id: number; due: string; n: number; amount: number }>`
-                  SELECT k.assignee_id, k.due_date::text AS due, count(*)::int AS n,
-                         COALESCE(sum(${value}), 0)::float8 AS amount
-                    FROM ticket k JOIN track t ON t.id = k.track_id
-                   WHERE k.workspace_id = ${ws}::int AND k.assignee_id = ANY(${people}::int[])
-                     AND k.due_date BETWEEN ${weeksStart}::date AND ${weeksEnd}::date
-                     AND k.deleted_at IS NULL AND t.deleted_at IS NULL AND t.archived_at IS NULL
-                     ${where ? sql`AND (${where}) IS NOT TRUE` : sql``}
-                   GROUP BY k.assignee_id, k.due_date`.execute(trx)
-              ).rows;
+        // or hidden from the viewer. Counted, never named, by whole weeks.
+        const elsewhere = await elsewhereWork(trx, { ws, people, where, value, periods });
         return { planned, elsewhere, moved };
       });
 
-      const capacityRows = await db
-        .selectFrom('plan_capacity')
-        .select(['team_id', 'user_id', 'period_start', 'amount', 'note'])
-        .where('plan_id', '=', plan.id)
-        .execute();
+      const capacitySet = await capacityRows(db, plan.id);
 
       // Per person (null: unassigned): work per period, and open work without a due day.
       const byPerson = new Map<number | null, { cells: Work[]; unscheduled: Work }>();
@@ -316,17 +244,7 @@ export function registerPlanCapacityRoutes(
         const at = periodAt(r.due);
         if (at >= 0) row.cells[at] = add(row.cells[at] as Work, work);
       }
-      const away = new Map<number, Elsewhere[]>();
-      for (const r of counted.elsewhere) {
-        const list = away.get(r.assignee_id) ?? periods.map(() => ({ count: 0, amount: 0 }));
-        const at = periodAt(weekThursday(r.due));
-        const cell = list[at];
-        if (cell) {
-          cell.count += r.n;
-          cell.amount += Number(r.amount);
-        }
-        away.set(r.assignee_id, list);
-      }
+      const away = counted.elsewhere;
 
       // Per person (null: unassigned), how many drafted tickets move into or out of each cell
       // (index -1: open work without a due day).
@@ -350,27 +268,6 @@ export function registerPlanCapacityRoutes(
         return n === 0 ? {} : { drafts: n, clause: null };
       };
 
-      /** The capacity set for a subject: every period's, and each period's own. */
-      const capacityOf = (subject: { teamId?: number; userId?: number }) => {
-        const rows = capacityRows.filter((c) =>
-          subject.teamId ? c.team_id === subject.teamId : c.user_id === subject.userId,
-        );
-        const of = (row: (typeof rows)[number] | undefined): Capacity | null =>
-          row ? { amount: Number(row.amount), note: row.note } : null;
-        const fallback = of(rows.find((c) => c.period_start === null));
-        return {
-          default: fallback,
-          periods: periods.map((x) => {
-            const own = of(rows.find((c) => c.period_start === x.start));
-            const set = own ?? fallback;
-            return {
-              amount: set?.amount ?? null,
-              note: set?.note ?? '',
-              from: (own ? 'period' : fallback ? 'default' : null) as CapacityFrom,
-            };
-          }),
-        };
-      };
       const cellsOf = (
         work: Work[],
         elsewhere: Elsewhere[],
@@ -392,7 +289,7 @@ export function registerPlanCapacityRoutes(
 
       const personRow = (m: { id: number; name: string; active: boolean }) => {
         const work = byPerson.get(m.id) ?? { cells: periods.map(none), unscheduled: none() };
-        const capacity = capacityOf({ userId: m.id });
+        const capacity = capacityOf(capacitySet, periods, { userId: m.id });
         return {
           id: m.id,
           name: m.name,
@@ -406,25 +303,11 @@ export function registerPlanCapacityRoutes(
       };
       const teamRows = teams.map((team) => {
         const people = (members.get(team.id) ?? []).map(personRow);
-        const own = capacityOf({ teamId: team.id });
         // Without its own capacity in a period, a team has its members' when any has one.
-        const capacity = {
-          default: own.default,
-          periods: own.periods.map((c, i) => {
-            if (c.amount !== null) return c;
-            const set = people.flatMap((m) => {
-              const x = m.capacity.periods[i]?.amount;
-              return x === null || x === undefined ? [] : [x];
-            });
-            return set.length === 0
-              ? c
-              : {
-                  amount: round(set.reduce((a, b) => a + b, 0)),
-                  note: '',
-                  from: 'members' as const,
-                };
-          }),
-        };
+        const capacity = teamCapacity(
+          capacityOf(capacitySet, periods, { teamId: team.id }),
+          people.map((m) => m.capacity),
+        );
         const work = periods.map((_, i) =>
           people.reduce((sum, m) => add(sum, m.work.cells[i] as Work), none()),
         );
