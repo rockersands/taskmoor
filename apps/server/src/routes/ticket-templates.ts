@@ -7,6 +7,7 @@ import type { Authorizer } from '../authz/authorizer';
 import { refusedKeys } from '../clone/run';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { type FieldShape, parseValue, referencedIds } from '../fields/types';
 import {
   createTemplateBody,
   expandSummary,
@@ -318,34 +319,70 @@ export function registerTicketTemplateRoutes(
         problems[`defaults.${key}`] = 'track_only';
         continue;
       }
-      const found = new Set(
+      const found = new Map(
         (
           await db
             .selectFrom(table)
-            .select('id')
+            .select(['id', 'archived_at'])
             .where('track_id', '=', trackId)
-            .where('archived_at', 'is', null)
             .where('id', 'in', list)
             .execute()
-        ).map((r) => r.id),
+        ).map((r) => [r.id, r.archived_at !== null]),
       );
+      // An archived one is refused with the create route's code (T-287), as a ticket would be.
       list.forEach((v, i) => {
-        if (!found.has(v)) problems[`defaults.${key}.${i}`] = 'not_found';
+        const archived = found.get(v);
+        if (archived === undefined) problems[`defaults.${key}.${i}`] = 'not_found';
+        else if (archived) problems[`defaults.${key}.${i}`] = 'archived';
       });
     }
     if (defaults.fields) {
       const catalog = await catalogs.get(workspaceId);
-      for (const key of Object.keys(defaults.fields)) {
-        const type = catalog.fields.get(Number(key))?.type;
-        if (type === undefined) problems[`defaults.fields.${key}`] = 'not_found';
-        else if (type === 'formula' || type === 'read-only-text') {
+      for (const [key, raw] of Object.entries(defaults.fields)) {
+        const field = catalog.fields.get(Number(key));
+        const type = field?.type;
+        if (field === undefined || type === undefined) {
+          problems[`defaults.fields.${key}`] = 'not_found';
+        } else if (type === 'formula' || type === 'read-only-text') {
           problems[`defaults.fields.${key}`] = 'read_only';
-        } else if (trackId === null && (type === 'area' || type === 'release')) {
-          problems[`defaults.fields.${key}`] = 'track_only';
+        } else if (type === 'area' || type === 'release') {
+          if (trackId === null) problems[`defaults.fields.${key}`] = 'track_only';
+          else {
+            const problem = await trackValueProblem(workspaceId, trackId, field, raw);
+            if (problem !== null) problems[`defaults.fields.${key}`] = problem;
+          }
         }
       }
     }
     return problems;
+  }
+
+  /**
+   * Why a custom release or area value cannot start a ticket in the track, with the create
+   * route's codes (T-287): a value that does not read, one of another track ('not_in_track'),
+   * or an archived one ('archived'), which no ticket takes anew (CORE-015, CORE-016).
+   */
+  async function trackValueProblem(
+    workspaceId: number,
+    trackId: number,
+    field: FieldShape,
+    raw: unknown,
+  ): Promise<string | null> {
+    const parsed = parseValue(field, raw);
+    if (!parsed.ok) return parsed.problem;
+    if (parsed.value === undefined) return null;
+    const ids = [...new Set(referencedIds(field, parsed.value))];
+    if (ids.length === 0) return null;
+    const table = field.type === 'area' ? 'area' : 'release';
+    const rows = await db
+      .selectFrom(table)
+      .select(['id', 'archived_at'])
+      .where('workspace_id', '=', workspaceId)
+      .where('track_id', '=', trackId)
+      .where('id', 'in', ids)
+      .execute();
+    if (rows.length !== ids.length) return 'not_in_track';
+    return rows.some((r) => r.archived_at !== null) ? 'archived' : null;
   }
 
   /** A description outline in the request's format, as stored; a problem by name otherwise. */
