@@ -11,6 +11,7 @@ import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import { IconSelect } from '../shell/IconSelect';
 import { PageHeader } from '../shell/PageHeader';
 import { priorityName } from '../shell/priorityName';
@@ -1187,7 +1188,7 @@ export function CreateTicketPage({
         </p>
       )}
       {tracks.status === 'loaded' && tracks.value.length === 0 && (
-        <p className="page-note">{t('tickets.create.noTracks')}</p>
+        <EmptyState compact title={t('tickets.create.noTracks')} />
       )}
       {tracks.status === 'loaded' && tracks.value.length > 0 && (
         <form

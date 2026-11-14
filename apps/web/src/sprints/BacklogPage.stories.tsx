@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { gripsTooSmall, notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
 import type { BacklogTicket, SprintClient } from './client';
@@ -253,5 +253,32 @@ export const SelectionBoxesOnATouchScreen: Story = {
     await expect(corner).toBe(label);
     await userEvent.click(label);
     await expect(box).toBeChecked();
+  },
+};
+
+/** A sprint row's grip, as the page draws it (MoveMenu's, in the row's own place). */
+const SPRINT_ROW_GRIP = '.sprint-ticket-grip .move-grip-handle';
+
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every sprint row's grip is a
+ * finger's size (T-290): a finger drags a row only by it.
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, [SPRINT_ROW_GRIP])).toEqual([]);
+  },
+};
+
+/** The same on a phone, with nothing sideways. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, [SPRINT_ROW_GRIP])).toEqual([]);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
   },
 };

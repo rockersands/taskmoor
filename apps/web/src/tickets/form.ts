@@ -264,3 +264,15 @@ const ERRORS: Record<string, MessageId> = {
   not_in_track: 'tickets.error.notInTrack',
 };
 export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';
+
+/**
+ * The message for a refusal outside the create form (the ticket page's edits, a bulk change's
+ * tickets) whose fields name a choice the track does not offer or an archived release or area,
+ * as the create form names them (T-287); null for any other refusal.
+ */
+export function placementRefusal(fields: Record<string, string> | undefined): MessageId | null {
+  const codes = Object.values(fields ?? {});
+  if (codes.includes('not_in_track')) return ERRORS.not_in_track ?? null;
+  if (codes.includes('archived')) return ERRORS.archived ?? null;
+  return null;
+}

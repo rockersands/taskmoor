@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { DRAGGED_WHOLE, GRIP_SELECTORS } from '../test/grips';
 import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
 
 /**
@@ -261,7 +262,19 @@ export function selectorsOf(list: string): string[] {
   return parts.map((p) => p.trim().replace(/\s+/g, ' ')).filter(Boolean);
 }
 
-const isTouchRule = (d: Declaration) => d.atRules.some((at) => at.includes('pointer: coarse'));
+/** A media query that holds only at some sizes of screen: every one of its alternatives asks for one. */
+const sizeGated = (at: string) =>
+  at.startsWith('@media') &&
+  at
+    .slice('@media'.length)
+    .split(',')
+    .every((query) => /\b(width|height)\b/.test(query));
+/**
+ * A rule for every touch screen: under `(pointer: coarse)` and under no query of the screen's
+ * size, which once hid a grip's finger size from wide touch screens with every test green (T-231).
+ */
+const isTouchRule = (d: Declaration) =>
+  d.atRules.some((at) => at.includes('pointer: coarse')) && !d.atRules.some(sizeGated);
 const FINGER = /var\(--hit-target-touch\)|^44px$/;
 
 /**
@@ -281,6 +294,61 @@ export function shortOnTouch(sources: string[]): string[] {
     .filter((d) => d.value === 'var(--hit-target)')
     .flatMap((d) => selectorsOf(d.selector));
   return [...new Set(short)].filter((selector) => !fingers.has(selector)).sort();
+}
+
+/** A cursor that says "drag me": a grab, a grabbing hand or a move, whatever its fallbacks. */
+const GRAB_CURSOR = /^(?:-webkit-|-moz-)?(?:grab|grabbing|move)(?:\s*!important)?$/;
+
+/**
+ * Grips no touch check knows of (T-290): every selector with both `touch-action: none` and a grab
+ * cursor, read across all the stylesheets and their at-rules, whose element is not one of `listed`
+ * (GRIP_SELECTORS and DRAGGED_WHOLE). Such a selector is a grip: a finger drags by it, so it needs a
+ * finger's size, which the stories measure only for the grips they are told of. A listed grip in a
+ * place of its own, or in a state (`.x .move-grip-handle:hover`), is the same grip.
+ */
+export function unlistedGrips(sources: string[], listed: readonly string[]): string[] {
+  // A selector without its trailing states, so a grip's `:hover` is the grip.
+  const element = (part: string) => part.replace(/(?::{1,2}[\w-]+(?:\([^)]*\))?)+$/, '');
+  const pinned = new Set<string>();
+  const grabbed = new Set<string>();
+  for (const d of sources.flatMap(cssDeclarations)) {
+    const value = d.value.toLowerCase();
+    const parts = selectorsOf(d.selector).map(element);
+    if (d.property === 'touch-action' && /^none\b/.test(value)) {
+      for (const part of parts) pinned.add(part);
+    }
+    if (d.property === 'cursor' && value.split(',').some((v) => GRAB_CURSOR.test(v.trim()))) {
+      for (const part of parts) grabbed.add(part);
+    }
+  }
+  const known = (part: string) => {
+    const subject = part.split(/[\s>+~]+/).at(-1) ?? '';
+    return listed.some((grip) =>
+      new RegExp(`${grip.replaceAll('.', '\\.')}(?![\\w-])`).test(subject),
+    );
+  };
+  return [...pinned].filter((part) => grabbed.has(part) && !known(part)).sort();
+}
+
+/**
+ * What is wrong with `checkedBy` (`file#Story`, the file under `root`) as the story that checks a
+ * dragged-whole element's finger's size (T-290): no such file, no such story exported from it, or a
+ * story that does not run on a real touch screen. Undefined when it is that story.
+ */
+export function touchStoryProblem(root: string, checkedBy: string): string | undefined {
+  const [file, story] = checkedBy.split('#');
+  if (!file || !story) return `${checkedBy} is not file#Story`;
+  const path = join(root, file);
+  if (!/\.stories\.tsx$/.test(file) || !existsSync(path)) return `${file} is not a story file`;
+  const source = readFileSync(path, 'utf8');
+  const start = source.search(new RegExp(`export const ${story}\\b`));
+  if (start < 0) return `${file} exports no ${story}`;
+  const next = source.slice(start + 1).search(/\nexport const /);
+  const body = next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
+  if (!/beforeEach:\s*onARealTouchScreen\b/.test(body)) {
+    return `${checkedBy} does not run on a real touch screen`;
+  }
+  return undefined;
 }
 
 /* ---------------------------------------- TSX ---------------------------------------- */
@@ -344,7 +412,8 @@ export interface JsxFacts {
 const STRING_COLOUR = /^#[0-9a-fA-F]{3,8}$|^(?:rgba?|hsla?)\(\s*[\d.]/;
 /** Elements whose words are a sentence of their own: a "none" there is a list's empty state. */
 const SENTENCES = new Set(['p', 'li', 'div', 'td', 'dd']);
-const EMPTY_ID = /none|empty/i;
+/** A message ID for "there are none": `x.none`, `x.empty`, `x.noTabs` (but not `x.notes`). */
+const EMPTY_ID = /[Nn]one|[Ee]mpty|\.no[A-Z]/;
 
 /** What the stylesheets say: `.parent button` lets a bare button sit under `.parent`. */
 export interface StyledBy {
@@ -848,6 +917,9 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       'x.empty',
     ]);
     expect(see(`<li>{t('x.none')}</li>`).bareEmpties).toEqual(['x.none']);
+    // A `noX` sentence is one too (T-222); a word that only starts with "no" is not.
+    expect(see(`<p>{t('x.noTabs')}</p>`).bareEmpties).toEqual(['x.noTabs']);
+    expect(see(`<p>{t('x.notes')}</p>`).bareEmpties).toEqual([]);
     // An EmptyState is the fix; a choice in a list and a link are not sentences.
     expect(see(`<div><EmptyState compact title={t('x.none')} /></div>`).bareEmpties).toEqual([]);
     expect(see(`<div><select><option>{t('x.none')}</option></select></div>`).bareEmpties).toEqual(
@@ -885,6 +957,66 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(
       short('.a { min-height: var(--hit-target); } .a { min-height: var(--hit-target-touch); }'),
     ).toEqual(['.a']);
+    // A finger's height on touch screens of some widths only, whichever way the query is written
+    // (T-231); a query that holds on any touch screen is no gate.
+    const mouse = '.a { min-height: var(--hit-target); }';
+    const finger = '.a { min-height: var(--hit-target-touch); }';
+    expect(short(`${mouse} @media (pointer: coarse) and (max-width: 767px) { ${finger} }`)).toEqual(
+      ['.a'],
+    );
+    expect(
+      short(`${mouse} @media (width < 768px) { @media (pointer: coarse) { ${finger} } }`),
+    ).toEqual(['.a']);
+    expect(
+      short(`${mouse} @media (pointer: coarse) { @media (min-height: 30rem) { ${finger} } }`),
+    ).toEqual(['.a']);
+    expect(short(`${mouse} @media (max-width: 767px), (pointer: coarse) { ${finger} }`)).toEqual(
+      [],
+    );
+  });
+
+  it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
+    const grips = (css: string, listed: string[] = []) => unlistedGrips([css], listed);
+    expect(grips('.a { cursor: grab; touch-action: none; }')).toEqual(['.a']);
+    expect(grips('.a { cursor: grab; touch-action: none; }', ['.a'])).toEqual([]);
+    // Read across rules, at-rules and sheets, as the browser puts them together.
+    expect(
+      unlistedGrips(
+        ['.a { cursor: grab; }', '@media (pointer: coarse) { .a { touch-action: none; } }'],
+        [],
+      ),
+    ).toEqual(['.a']);
+    // Every hand that says "drag me", behind its fallbacks too.
+    for (const cursor of ['grabbing', '-webkit-grab', 'move', 'url(hand.svg) 4 4, grab']) {
+      expect(grips(`.a { cursor: ${cursor}; touch-action: none; }`)).toEqual(['.a']);
+    }
+    // One without the other is no grip: a row a mouse drags, a canvas a finger pans.
+    expect(
+      grips(
+        '.a { cursor: grab; } .b { touch-action: none; } .c { touch-action: pan-y; cursor: grab; }',
+      ),
+    ).toEqual([]);
+    // A listed grip in a place of its own or in a state is the same grip; a longer name is not.
+    expect(
+      grips('.row .a:hover, .a.big { cursor: grabbing; touch-action: none; }', ['.a']),
+    ).toEqual([]);
+    expect(grips('.a-wide, .b { cursor: grab; touch-action: none; }', ['.a'])).toEqual([
+      '.a-wide',
+      '.b',
+    ]);
+  });
+
+  it('[NFR-007] holds what is dragged whole to a story on a real touch screen (T-290)', () => {
+    const story = (name: string) =>
+      touchStoryProblem(SRC, `timeline/TimelinePage.stories.tsx#${name}`);
+    expect(story('ThinBarOnATouchScreen')).toBeUndefined();
+    // A story that runs under a mouse, a story that is not there, a file that is not a story file.
+    expect(story('Timeline')).toContain('does not run on a real touch screen');
+    expect(story('ThinBar')).toContain('exports no ThinBar');
+    expect(touchStoryProblem(SRC, 'timeline/TimelinePage.tsx#TimelinePage')).toContain(
+      'is not a story file',
+    );
+    expect(touchStoryProblem(SRC, 'the side panel')).toContain('is not file#Story');
   });
 
   it('[NFR-005] holds a list to what is there, in both directions', () => {
@@ -940,6 +1072,18 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
 
   it("[NFR-005] gives every mouse-sized target a finger's height on touch (ADR-033)", () => {
     expect(shortOnTouch(cssSources.map(([, source]) => source))).toEqual([]);
+  });
+
+  it('[NFR-007] lists every grip for the touch checks, or why it is dragged whole (T-290)', () => {
+    const sources = cssSources.map(([, source]) => source);
+    expect(unlistedGrips(sources, [...GRIP_SELECTORS, ...Object.keys(DRAGGED_WHOLE)])).toEqual([]);
+    // What is let through is still there to let through, each with its reason.
+    expect(unlistedGrips(sources, GRIP_SELECTORS)).toEqual(Object.keys(DRAGGED_WHOLE).sort());
+    // Each says why, and names the story that checks its finger's size on a real touch screen.
+    for (const [grip, { reason, checkedBy }] of Object.entries(DRAGGED_WHOLE)) {
+      expect(reason.length, grip).toBeGreaterThan(20);
+      expect(touchStoryProblem(SRC, checkedBy), grip).toBeUndefined();
+    }
   });
 
   it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {

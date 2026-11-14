@@ -416,22 +416,20 @@
 }
 
 /*
- * A choice asked over the board (which transition, or the fields one needs): a dialog, so opaque
- * with no blur (D3), in the overlay rule of surfaces.css, and drawn at the end of the body
- * (OverlayLayer) so no blurred surface of the page holds it. It floats near the bottom edge.
+ * A choice asked over the board (which transition, or the fields one needs): a modal dialog
+ * (ModalDialog, T-222), so opaque with no blur (D3) and drawn at the end of the body over a veil.
+ * Unlike the create dialog it floats near the bottom edge, on phones too, and is only as tall as
+ * its few choices.
  */
-.board-choice {
-  position: fixed;
+.create-dialog.board-choice {
   inset: auto var(--space-4) var(--space-4) var(--space-4);
-  z-index: 80;
-  box-sizing: border-box;
+  width: auto;
+  height: auto;
   max-width: 28rem;
+  max-height: calc(100dvh - 2 * var(--space-4));
   margin: 0 auto;
   padding: var(--space-4);
-  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  box-shadow: var(--glass-highlight), var(--shadow-3);
-  isolation: isolate;
 }
 
 .board-choice h2 {

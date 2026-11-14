@@ -635,7 +635,7 @@ export function LayoutCanvas({ draft, onChange, fieldKeys, fieldName }: LayoutCa
       </section>
       <div className="layout-board">
         {draft.tabs.length === 0 ? (
-          <p className="page-note">{t('layouts.noTabs')}</p>
+          <EmptyState compact title={t('layouts.noTabs')} />
         ) : (
           <ol className="layout-tabs" aria-label={t('layouts.tabs')}>
             {draft.tabs.map(tabCard)}

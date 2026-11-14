@@ -1100,6 +1100,7 @@ export const messagesEn = {
   'mcp.intro':
     'AI agents and assistants connect to Taskmoor through the Model Context Protocol with a person’s API token. They can only do what that person and token may, and every tool call is in the audit log.',
   'mcp.failed': 'The MCP settings could not be loaded.',
+  'mcp.forbidden': 'Only site administrators change the MCP server’s settings.',
   'mcp.formLabel': 'MCP settings',
   'mcp.enabled': 'Let agents connect',
   'mcp.profile': 'Tools agents get',
@@ -4581,6 +4582,7 @@ export const messagesEn = {
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',
   'boards.choose.cancel': 'Cancel',
+  'boards.choose.close': 'Close without moving',
   'boards.sprint.complete': 'Complete {name}',
   'boards.list.title': 'Boards',
   'boards.list.failed': 'The boards could not be loaded.',
@@ -5478,12 +5480,13 @@ export const messagesEn = {
   'calendar.thisMonth': 'This month',
   'calendar.hint':
     'Drag a ticket to another day to move it, with a mouse from anywhere on it or by its grip; its start moves along. Its grip also opens a menu of moves. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens the ticket.',
-  // A calendar entry's grip and its drag by pointer events (T-162b).
+  // A calendar entry's grip and its drag by pointer events (T-162b). A quick flick from the grip
+  // scrolls the page, so the finger rests first (T-228).
   'calendar.hintTouch':
-    'Drag a ticket by its grip to another day, or tap the grip for a menu of moves. Its start moves along.',
+    'Touch and hold a ticket’s grip, then drag it to another day, or tap the grip for a menu of moves. Its start moves along.',
   // A phone's list of days (D9): a drag reaches only the days listed, the grip's menu any day.
   'calendar.hintList':
-    'Drag a ticket by its grip to one of the days listed, or tap the grip for a menu that moves it a day or a week at a time, to any day. Its start moves along.',
+    'Touch and hold a ticket’s grip, then drag it to one of the days listed, or tap the grip for a menu that moves it a day or a week at a time, to any day. Its start moves along.',
   'calendar.about':
     'Each ticket shows on its due day, and on its start day too when that is another day. Sprints run as bands across their days and releases sit on theirs. Move a ticket to another day to change its dates; its start moves along, keeping its length.',
   'calendar.emptyMonth': 'Nothing is due or starts this month.',

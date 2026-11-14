@@ -46,7 +46,7 @@ import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
-import { splitLabels } from '../form';
+import { placementRefusal, splitLabels } from '../form';
 import { ChecklistsPanel } from '../tools/ChecklistsPanel';
 import { pickerQuery, type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
@@ -438,6 +438,9 @@ export function TicketView({
           return t('ticketView.problem.transition');
         }
         if (body?.fields) {
+          // A choice the track does not offer, or an archived one, as the create form says it.
+          const placement = placementRefusal(body.fields);
+          if (placement) return t(placement);
           return t('ticketView.problem.fields', { fields: Object.keys(body.fields).join(', ') });
         }
       }

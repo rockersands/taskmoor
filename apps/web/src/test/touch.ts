@@ -1,3 +1,6 @@
+import { expect, waitFor } from 'storybook/test';
+import type { GRIP_SELECTORS } from './grips';
+
 /**
  * Measuring a story as on a touch screen (ADR-033). The stories' browser has a mouse, so the page's
  * touch rules are put in force by hand: the rules inside its `(pointer: coarse)` blocks, as they are
@@ -36,6 +39,26 @@ export function tooSmallForAFinger(root: Element, selectors: readonly string[]):
       return [`${selector} "${text}": ${Math.round(width)} x ${Math.round(height)}`];
     });
   });
+}
+
+export type GripSelector = (typeof GRIP_SELECTORS)[number];
+
+/** A grip, or one in a place of its own: `.sprint-ticket-grip .move-grip-handle`. */
+export type GripIn = GripSelector | `${string} ${GripSelector}`;
+
+/**
+ * The grips that are too small for a finger, as `tooSmallForAFinger` names them, once each of
+ * `selectors` is drawn (a page may still be loading). For a story on a real touch screen
+ * (`onARealTouchScreen`): with a mouse a grip is smaller, as it should be.
+ */
+export async function gripsTooSmall(
+  root: Element,
+  selectors: readonly GripIn[],
+): Promise<string[]> {
+  await waitFor(() =>
+    expect(selectors.filter((selector) => !root.querySelector(selector))).toEqual([]),
+  );
+  return tooSmallForAFinger(root, selectors);
 }
 
 /** What the story tests' setup lends a story: the browser's own touch emulation, on or off. */

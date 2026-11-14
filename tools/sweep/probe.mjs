@@ -188,13 +188,27 @@ export function measureControls(minimum) {
     }
   };
 
-  /** Text a person can read on the element: not what is hidden, not a select's options. */
-  const readable = (el) => {
+  /**
+   * What the control's aria-describedby names: a hint there describes it and is no part of its
+   * name, even inside its label (the appearance radios' hints, T-287).
+   */
+  const described = (el) =>
+    (el.getAttribute('aria-describedby') ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((id) => document.getElementById(id))
+      .filter((hint) => hint !== null);
+  /**
+   * Text a person can read on the element: not what is hidden, not a select's options, not what
+   * is inside one of `left` (the control's descriptions).
+   */
+  const readable = (el, left = []) => {
     const parts = [];
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const parent = node.parentElement;
       if (!parent || parent.closest('select, textarea, option')) continue;
+      if (left.some((hint) => hint.contains(parent))) continue;
       const box = parent.getBoundingClientRect();
       if (box.width <= 1 || box.height <= 1) continue;
       if (!parent.checkVisibility({ visibilityProperty: true })) continue;
@@ -206,15 +220,16 @@ export function measureControls(minimum) {
     if (el.matches('input[type="button"], input[type="submit"], input[type="reset"]')) {
       return el.value;
     }
+    const hints = described(el);
     // What a field holds is its value, not its label: only its label is held against its name.
     if (
       el.matches(
         'input, select, textarea, [contenteditable="true"], [role="textbox"], [role="searchbox"], [role="combobox"], [role="slider"], [role="spinbutton"]',
       )
     ) {
-      return [...(el.labels ?? [])].map(readable).join(' ');
+      return [...(el.labels ?? [])].map((label) => readable(label, hints)).join(' ');
     }
-    return readable(el);
+    return readable(el, hints);
   };
   const words = (text) =>
     (text ?? '')

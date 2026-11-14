@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { PageHeader } from '../shell/PageHeader';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
@@ -41,13 +41,23 @@ export function CalendarPage({
   const [failed, setFailed] = useState(false);
   const { first, last } = monthWeeks(month);
 
+  /**
+   * Counts readings: only the latest one's answer is drawn, however they come back. A move to a
+   * month not drawn asks for the old weeks and the new month's at once (T-229), and the old ones
+   * must not cover the new.
+   */
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const asked = ++latest.current;
     client.calendar(trackKey, isoDay(first), isoDay(last)).then(
       (d) => {
+        if (asked !== latest.current) return;
         setData(d);
         setFailed(false);
       },
-      () => setFailed(true),
+      () => {
+        if (asked === latest.current) setFailed(true);
+      },
     );
   }, [client, trackKey, first, last]);
   useEffect(load, [load]);

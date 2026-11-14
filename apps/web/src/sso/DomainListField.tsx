@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { CloseIcon } from '../shell/icons';
 import { normalizeDomain } from './client';
 
@@ -70,7 +71,7 @@ export function DomainListField({
         {t('admin.sso.form.domainsHint')}
       </p>
       {domains.length === 0 ? (
-        <p className="form-hint">{t('admin.sso.form.noDomains')}</p>
+        <EmptyState compact title={t('admin.sso.form.noDomains')} />
       ) : (
         <ul className="sso-chips" aria-label={t('admin.sso.form.domainList')}>
           {domains.map((domain) => (

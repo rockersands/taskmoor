@@ -22,7 +22,28 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: draft changes and scenarios on main (2026-11-14, Windows)
+### Latest: the phone and accessibility pass closed (2026-11-14, the Mac)
+
+- **On `main` (`77c00547`, full gate: 9,078 tests, 262 e2e):** T-222, T-226, T-228, T-229 and T-231,
+  closing T-164 (the wave 8 phone pass). New: T-288 (for the user: try the calendar grip on real
+  phones), T-289, T-290.
+
+### Earlier: lists read past their first page; plans.css at full lint (2026-11-14, Windows)
+
+- **On `main` (`ee3aed97`, full gate on Windows: 9,035 tests, 262 e2e):** T-305 (every list read
+  for "all" follows its pages: track pickers and lists, a ticket's work log, the Jira-compatible
+  project list, MCP `list_tracks`, a track's waiting invitations) and T-285 (plans.css passes
+  Biome with no override; a calendar grip fits its chip). Reviewed: 6 faults fixed with tests.
+- **New for Windows:** T-307 to T-310, lists the sweep found cut short; then T-287's releases part,
+  T-089f and T-089a.
+
+### Earlier: T-282 and the wave 8 phone tickets checked (2026-11-14, the Mac)
+
+- **On `main` (`34a7bb37`, full gate: 9,004 tests, 262 e2e):** T-282's small follow-ups. The wave 8
+  phone tickets came back from Windows: T-212 and T-221 are done; T-222, T-226, T-228, T-229 and
+  T-231 are the Mac's next. New: T-286 (for the user) and T-287.
+
+### Earlier: draft changes and scenarios on main (2026-11-14, Windows)
 
 - **On `main` (`8e0d4c9c`, full gate on Windows: 9,001 tests, 262 e2e):** T-089e, draft changes
   and scenarios (ADR-122 stage 6, PLN-002 and PLN-003 now M1, migration 0110). A plan's editors

@@ -229,7 +229,10 @@ it, hand it on or move it to another status, the controls follow at once.
 | **Created**, **Updated** | Read |
 
 Each change saves at once and the page says **Saved.** If someone changed the ticket since you
-opened it, the page says so: read it again and retry.
+opened it, the page says so: read it again and retry. A choice the track does not offer, or a
+release or area archived meanwhile, is refused with the create form's words: **This track does
+not offer this choice. Choose one of its own.** or **This release or area is archived. Choose
+another.**
 
 Number fields on the ticket's edit form, such as **Points**, show in the details too, reading
 **None** while empty: type a value and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
@@ -513,7 +516,8 @@ administrators change as **Tickets per bulk change** on the guardrails page. A c
 result for every ticket stay readable for 14 days after it finishes. The web app shows its progress at an address
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
-changed with the reason. Above the progress, a line says what the change was: each field it set
+changed with the reason; a value the ticket's track does not offer, or an archived release or
+area, is named as the create form names it. Above the progress, a line says what the change was: each field it set
 and the new value (**The change: Priority set to High.**), the track a move went to, or the
 status a transition took the tickets to (**The change: moved to the Done status.**). Once it
 finishes, **Tickets that were changed** links each changed ticket (for a clone, each copy), and

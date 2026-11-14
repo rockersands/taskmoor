@@ -304,6 +304,8 @@
   border-radius: var(--radius-mark);
   background: var(--glass-surface-strong);
   opacity: 0;
+  /* No long-press menu of the browser's own over a grip (T-228). */
+  -webkit-touch-callout: none;
   transition:
     opacity var(--motion-fast) var(--ease-soft),
     background-color var(--motion-fast) var(--ease-soft);
@@ -409,6 +411,13 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     opacity: 1;
+    /*
+     * A flick up or down that starts on a grip scrolls the page, as anywhere else in the month; a
+     * finger that rests first, or moves sideways, drags the ticket (T-228; `scrollFirst` in
+     * pointerDrag.ts, which holds the page still under a pen). Under a mouse the grip keeps
+     * drag.css's `touch-action: none`, so a pen or a finger on such a screen drags at once as before.
+     */
+    touch-action: pan-y;
   }
 }
 

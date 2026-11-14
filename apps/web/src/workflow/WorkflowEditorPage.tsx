@@ -250,17 +250,23 @@ export function WorkflowEditorPage({
       forbidden: <p className="page-note">{t('admin.workflows.forbidden')}</p>,
       loaded: null,
     };
+    // The way back to the list is a pill after the note, as on other pages (T-222); someone who
+    // may not manage workflows is told only so, as the list would tell them too.
     return (
       <section className="page page-full workflow-editor" aria-labelledby={`${id}-title`}>
-        <p className="workflow-back">
-          <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
-        </p>
         <PageHeader
           titleId={`${id}-title`}
           title={t('admin.workflows.title')}
           {...(load.status === 'forbidden' ? {} : { purpose: t('purpose.workflowEditor') })}
         />
         {notes[load.status]}
+        {load.status !== 'forbidden' && (
+          <p className="workflow-back">
+            <a className="button-secondary" href={routeHref('#/admin/workflows')}>
+              {t('admin.workflow.back')}
+            </a>
+          </p>
+        )}
       </section>
     );
   }

@@ -1,6 +1,12 @@
-import { fireEvent } from '@testing-library/react';
+import { createEvent, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DRAG_START, followPointerDrag, type PointerDragHandlers } from './pointerDrag';
+import {
+  DRAG_BEGAN,
+  DRAG_START,
+  followPointerDrag,
+  HOLD,
+  type PointerDragHandlers,
+} from './pointerDrag';
 
 /** A handle on the page, pressed by pointer 7 at (10, 10). */
 function press(pointerType: 'mouse' | 'touch' = 'mouse') {
@@ -250,5 +256,124 @@ describe('a press that may become a drag (T-162)', () => {
     fireEvent.pointerUp(window, at(80, 10));
     expect(calls).toEqual(['start 40,10', 'move 40,10', 'end']);
     expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+});
+
+/** The presses below still followed, let go of after each test. */
+const following: Array<() => void> = [];
+
+/**
+ * A press by pointer 7 at (10, 10) at time 1,000 on a handle that leaves scrolling up and down to
+ * the page (T-228), and its moves at times of the test's choosing.
+ */
+function pressScrollFirst(pointerType: 'mouse' | 'pen' | 'touch' = 'touch') {
+  const box = document.createElement('div');
+  const handle = document.createElement('button');
+  box.append(handle);
+  document.body.append(box);
+  const calls: string[] = [];
+  const down = new PointerEvent('pointerdown', { clientX: 10, clientY: 10, pointerId: 7 });
+  Object.defineProperty(down, 'target', { value: handle });
+  Object.defineProperty(down, 'pointerType', { value: pointerType });
+  Object.defineProperty(down, 'timeStamp', { value: 1_000 });
+  const stop = followPointerDrag(
+    down,
+    {
+      start: (x, y) => calls.push(`start ${x},${y}`),
+      move: () => {},
+      drop: (x, y) => calls.push(`drop ${x},${y}`),
+      cancel: () => calls.push('cancel'),
+      end: () => calls.push('end'),
+    },
+    { scrollFirst: true },
+  );
+  following.push(stop);
+  const moveTo = (x: number, y: number, time: number) => {
+    const move = createEvent.pointerMove(window, {
+      clientX: x,
+      clientY: y,
+      pointerId: 7,
+      buttons: 1,
+    });
+    Object.defineProperty(move, 'timeStamp', { value: time });
+    fireEvent(window, move);
+  };
+  /** Whether the page would hold still under the finger's next move. */
+  const touchMoveHeld = () => {
+    const touch = new Event('touchmove', { cancelable: true });
+    window.dispatchEvent(touch);
+    return touch.defaultPrevented;
+  };
+  return { box, calls, moveTo, touchMoveHeld };
+}
+
+describe('a finger on a handle that lets the page scroll (T-228)', () => {
+  afterEach(() => {
+    for (const stop of following.splice(0)) stop();
+  });
+
+  it('[NFR-007] a quick flick up or down is the page’s scroll: no drag, and the page is left to scroll', () => {
+    const { calls, moveTo, touchMoveHeld } = pressScrollFirst();
+    moveTo(12, 40, 1_050);
+    expect(touchMoveHeld()).toBe(false);
+    moveTo(60, 60, 1_500);
+    fireEvent.pointerUp(window, { clientX: 60, clientY: 60, pointerId: 7 });
+    expect(calls).toEqual(['end']);
+    expect(document.body).not.toHaveClass('is-pointer-dragging');
+  });
+
+  it('[NFR-007] after a rest, a move up or down drags, and the page holds still under it', () => {
+    const { calls, moveTo, touchMoveHeld } = pressScrollFirst();
+    const menu = new Event('contextmenu', { cancelable: true });
+    window.dispatchEvent(menu);
+    // A finger resting is a drag about to begin, not a call for the browser's own menu.
+    expect(menu.defaultPrevented).toBe(true);
+    moveTo(10, 40, 1_000 + HOLD);
+    expect(touchMoveHeld()).toBe(true);
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 60, pointerId: 7 });
+    expect(calls).toEqual(['start 10,40', 'drop 10,60', 'end']);
+    // Over: the page scrolls as usual again.
+    expect(touchMoveHeld()).toBe(false);
+  });
+
+  it('[NFR-007] a move at least as far sideways as up or down drags at once', () => {
+    const { calls, moveTo, touchMoveHeld } = pressScrollFirst();
+    moveTo(30, 28, 1_020);
+    expect(touchMoveHeld()).toBe(true);
+    expect(calls).toEqual(['start 30,28']);
+  });
+
+  it('[NFR-005] a mouse drags at once in any direction', () => {
+    const { calls, moveTo } = pressScrollFirst('mouse');
+    moveTo(10, 40, 1_010);
+    expect(calls).toEqual(['start 10,40']);
+  });
+
+  it('[NFR-005] a pen drags at once straight down, and the page never pans under it', () => {
+    const { calls, moveTo, touchMoveHeld } = pressScrollFirst('pen');
+    // `touch-action: pan-y` applies to a pen's touches too: from its very first move, before the
+    // press has become a drag, the page is held still, or the browser pans and cancels the press.
+    expect(touchMoveHeld()).toBe(true);
+    moveTo(10, 40, 1_010);
+    expect(touchMoveHeld()).toBe(true);
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 60, pointerId: 7 });
+    expect(calls).toEqual(['start 10,40', 'drop 10,60', 'end']);
+    // Over: the page scrolls as usual again.
+    expect(touchMoveHeld()).toBe(false);
+  });
+
+  it('[NFR-005] a mouse leaves the page’s touches alone', () => {
+    const { moveTo, touchMoveHeld } = pressScrollFirst('mouse');
+    moveTo(10, 40, 1_010);
+    expect(touchMoveHeld()).toBe(false);
+  });
+
+  it('[NFR-005] a press that becomes a drag says so on the element pressed, once', () => {
+    const { box, moveTo } = pressScrollFirst();
+    const began = vi.fn();
+    box.addEventListener(DRAG_BEGAN, began);
+    moveTo(30, 10, 1_020);
+    moveTo(60, 10, 1_040);
+    expect(began).toHaveBeenCalledOnce();
   });
 });

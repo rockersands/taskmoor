@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
+import type { TrackListItem } from '../tracks/client';
 import type { TrackGroup, TrackGroupClient } from './client';
 import { fakeTrackGroupClient, GROUP_TRACKS, ownGroup, sharedGroup } from './fixtures';
 import { ShareGroupDialog } from './ShareGroupDialog';
@@ -89,9 +91,111 @@ export const ByKeyboard: Story = {
   },
 };
 
-/** Phones: one column, the grips 44px under a finger. */
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every group's and track's grip is
+ * a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
+  },
+};
+
+/** Phones: one column, nothing sideways, the grips 44px under a finger (T-231). */
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1' } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.move-grip-handle'])).toEqual([]);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** Tracks whose names fill a phone's card: words that wrap, and one word that cannot. */
+const LONG_TRACKS: TrackListItem[] = [
+  {
+    id: 7,
+    key: 'NORTH',
+    name: 'Customer onboarding and identity checks for the northern warehouses',
+    owner: { id: 2, name: 'Grace Hopper' },
+  },
+  { id: 8, key: 'INTL', name: 'Internationalisationandlocalisationprogramme', owner: null },
+];
+const asGroupTrack = ({ id, key, name }: TrackListItem) => ({ id, key, name });
+
+/**
+ * What of a track card enters the room its end keeps for the grip: the grip itself, if the room is
+ * too narrow for it, and every line of the card's words that runs into it. Nothing, on a card that
+ * keeps its promise. Read in a left-to-right page.
+ */
+function intoTheGripsRoom(root: Element): string[] {
+  return Array.from(root.querySelectorAll('.track-card')).flatMap((card) => {
+    // The room is the end padding, inside the card's edge; the grip is placed from that edge too.
+    const style = getComputedStyle(card);
+    const end = (value: string) => Number.parseFloat(value) || 0;
+    const room =
+      card.getBoundingClientRect().right -
+      end(style.borderInlineEndWidth) -
+      end(style.paddingInlineEnd);
+    const grip = card.querySelector('.move-grip-handle')?.getBoundingClientRect();
+    const name = card.querySelector('.tracks-item-name')?.textContent ?? '';
+    if (!grip) return [`${name}: no grip`];
+    const found: string[] = [];
+    if (grip.left < room - 0.5) {
+      found.push(`${name}: the grip starts ${Math.round(room - grip.left)} px before its room`);
+    }
+    const words = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (let node = words.nextNode(); node; node = words.nextNode()) {
+      if (node.parentElement?.closest('.move-grip')) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const line of Array.from(range.getClientRects())) {
+        if (line.right > room + 0.5) {
+          found.push(`"${node.textContent}": ${Math.round(line.right - room)} px into the room`);
+        }
+        const across = Math.min(line.right, grip.right) - Math.max(line.left, grip.left);
+        const down = Math.min(line.bottom, grip.bottom) - Math.max(line.top, grip.top);
+        if (across > 0.5 && down > 0.5) found.push(`"${node.textContent}": under the grip`);
+      }
+    }
+    return found;
+  });
+}
+
+/**
+ * NFR-007, ADR-033: on a phone under a real coarse pointer, a long track name wraps before the
+ * room the card keeps at its end for its 44 px grip, and never runs under the grip (T-290).
+ */
+export const LongNamesOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  args: {
+    tracks: [...GROUP_TRACKS, ...LONG_TRACKS],
+    groups: [
+      ownGroup(1, 'Launch', [], {
+        tracks: [
+          asGroupTrack(LONG_TRACKS[0] as TrackListItem),
+          asGroupTrack(GROUP_TRACKS[0] as TrackListItem),
+        ],
+      }),
+    ],
+    client: fakeTrackGroupClient(),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('button', { name: 'Move Internationalisationandlocalisationprogramme' }),
+    ).toBeVisible();
+    await expect(await gripsTooSmall(canvasElement, ['.track-card .move-grip-handle'])).toEqual([]);
+    await expect(intoTheGripsRoom(canvasElement)).toEqual([]);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
 };
 
 const dialogArgs = (client: TrackGroupClient) => ({

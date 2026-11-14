@@ -83,6 +83,22 @@ export const Directory: Story = {
   ),
 };
 
+/** A search of the directory that matches no track says so as an empty state (T-289). */
+export const DirectoryFindsNothing: Story = {
+  render: () => (
+    <main>
+      <TracksPage client={fakeTrackClient()} />
+    </main>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText('Find a track'), 'zzz');
+    await expect(await canvas.findByText('No track has that name or key.')).toHaveClass(
+      'empty-state-title',
+    );
+  },
+};
+
 /** The directory for someone who may make a track. */
 export const DirectoryWithNewTrack: Story = {
   render: () => (

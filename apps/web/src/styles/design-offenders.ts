@@ -23,6 +23,10 @@ const PRINTED =
 const GOOGLE_MARK =
   "Google's G on its sign-in button (T-061): the colours Google requires, which no skin may change";
 const CARET_MENU = 'a line in the small menu at the caret, which closes as the person types on';
+const NO_CHOICE = 'a setting with nothing to choose from, said beside or in place of its picker';
+const MISSING_SETUP = 'something the site lacks, said where it would be used, with who can add it';
+const ONE_READING = 'one of the readings of a line that says something else when there is a value';
+const ALERT = 'a failure, in an alert';
 
 export const ALLOWED = {
   /** `<file> <literal>`: colours that are data, not styles. */
@@ -91,6 +95,51 @@ export const ALLOWED = {
   /** `<file> <message ID>`: a "none" that is no empty list, or says more than an empty list would. */
   bareEmpties: {
     'admin/AiSettingsPage.tsx ai.keyStorageNone': 'a failure, in an alert: no key can be kept',
+    // `noX` sentences (T-222): matched since the guard reads them too.
+    'admin/AiUsagePage.tsx admin.aiUsage.noPrice': FACT,
+    'admin/imports/ImportWizard.tsx admin.imports.files.noFolder': MISSING_SETUP,
+    'ai/SummaryPanel.tsx ai.summary.noCitations': ONE_READING,
+    'boards/BoardPage.tsx boards.column.noStatus':
+      'a warning on a column no card can enter, with where to fix it',
+    'builder/MissingBuild.tsx builder.noBuild': ALERT,
+    'dashboards/WidgetSettings.tsx dashboards.setting.noBoards': NO_CHOICE,
+    'layouts/LayoutCanvas.tsx layouts.noSections':
+      'a hint on how to place the fields still waiting: the list beside it is not empty',
+    'people/TeamsPage.tsx admin.teams.noLead': FACT,
+    'permissions/PermissionExplainerPage.tsx admin.explain.noGrant':
+      'one answer of the permission explainer, beside the others it can give',
+    'permissions/PermissionExplainerPage.tsx admin.explain.noLevel': ONE_READING,
+    'plans/PlanCapacityPage.tsx plans.capacity.noPointsField': MISSING_SETUP,
+    'plans/PlanListPage.tsx list.group.noValue': 'the heading of the group of rows with no value',
+    'plans/PlanSettingsPage.tsx plans.settings.noLinkTypes': NO_CHOICE,
+    'plans/ProgramBoardPage.tsx programBoard.noField': ONE_READING,
+    'plans/ProgramBoardsPage.tsx programBoard.noField': ONE_READING,
+    'plans/ProgramBoardsPage.tsx programBoards.noField': MISSING_SETUP,
+    'plans/ScenarioCompare.tsx scenario.compare.noTeamField': MISSING_SETUP,
+    'releases/CrossTrackReleasePage.tsx crossTrack.new.noMove':
+      'what linking a release does to its dates, not a list',
+    'releases/NewCrossTrackDialog.tsx crossTrack.new.noMove':
+      'what linking a release does to its dates, not a list',
+    'releases/ReleasePage.tsx crossTrack.new.noMove':
+      'what linking a release does to its dates, not a list',
+    'releases/ReleasePage.tsx release.noDate': FACT,
+    'reports/ScopeReports.tsx reports.scope.noForecast': ONE_READING,
+    'reports/ScopeReports.tsx reports.release.noForecast': ONE_READING,
+    'reports/ScopeReports.tsx reports.outcome.noEstimate': FACT,
+    'shell/CommandPalette.tsx palette.noResults':
+      'a line in the command palette, which changes as the person types on',
+    'sprints/SprintSettingsSection.tsx sprints.settings.noFields': NO_CHOICE,
+    'tickets/tools/SubticketsPanel.tsx ticketTools.subtickets.noType': MISSING_SETUP,
+    'tickets/view/InfoPanel.tsx ticketInfo.noComments': FACT,
+    'tickets/view/InfoPanel.tsx ticketInfo.noResponse': FACT,
+    'timeline/TimelineView.tsx timeline.noDate': 'a day not set, inside a sentence on the dates',
+    'timeline/TimelineView.tsx timeline.panel.noRollup': ONE_READING,
+    'trackgroups/ShareGroupDialog.tsx trackGroups.noRolesToGive': NO_CHOICE,
+    'tracks/TrackNumbers.tsx summary.noPriority': 'the name of the row of tickets with no priority',
+    'workflow/RuleEditor.tsx admin.workflow.transition.noGuards':
+      'what a transition with no guards allows, said where its guards are added',
+    'workflow/WorkflowImport.tsx admin.workflows.report.noProblems':
+      'the verdict of an import report, under its heading',
     'ai/DataStatement.tsx ai.statement.none': 'one word inside a sentence on what is masked',
     'dashboards/WidgetEditor.tsx dashboards.column.empty':
       'the drop zone of a column being edited: it says where to drop, and has the shape of one',
@@ -132,7 +181,13 @@ export const OFFENDERS = {
   /** `<fieldset>` classes that no stylesheet names. */
   fieldsetsWithoutRule: {} as Ratchet,
   /** "None" sentences outside an EmptyState; bodies are ready as `empty.*`. */
-  bareEmpties: {} as Ratchet,
+  bareEmpties: {
+    // `noX` sentences the guard reads since T-222: empty lists, and filters that match nothing.
+    'plans/PlanCapacityPage.tsx': 1,
+    'plans/PlanPage.tsx': 1,
+    'releases/CrossTrackReleasePage.tsx': 1,
+    'releases/NewCrossTrackDialog.tsx': 1,
+  } as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,
 };

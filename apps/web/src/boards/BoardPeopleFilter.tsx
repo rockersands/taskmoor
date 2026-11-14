@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { Popover } from '../shell/Popover';
 import type { BoardPeople } from './client';
 
@@ -117,7 +118,7 @@ export function BoardPeopleFilter({ people, chosen, onChange }: BoardPeopleFilte
                 </li>
               ))}
             </ul>
-            {listed.length === 0 && <p className="page-note">{t('boards.people.noMatch')}</p>}
+            {listed.length === 0 && <EmptyState compact title={t('boards.people.noMatch')} />}
             {people.more && (
               <p className="page-note">
                 {t('boards.people.more', { count: people.assignees.length })}

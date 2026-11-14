@@ -15,10 +15,10 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
+import { ModalDialog } from '../shell/ModalDialog';
 import { useMoreSides } from '../shell/moreSides';
 import { playMotion } from '../shell/motion';
 import { NotFoundPage } from '../shell/NotFoundPage';
-import { OverlayLayer } from '../shell/OverlayLayer';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { followPointerDrag } from '../shell/pointerDrag';
@@ -447,6 +447,16 @@ export function BoardPage({
   useEffect(() => {
     if (choice) firstChoice.current?.focus();
   }, [choice]);
+
+  // The fields a move asks for start on the first of them, a list or a picker.
+  useEffect(() => {
+    if (!asking) return;
+    document
+      .getElementById(askingTitleId)
+      ?.closest('[role="dialog"]')
+      ?.querySelector<HTMLElement>('select, [role="combobox"]')
+      ?.focus();
+  }, [asking, askingTitleId]);
 
   useEffect(() => {
     if (editing !== null || pencilAfter.current === null) return;
@@ -1180,101 +1190,75 @@ export function BoardPage({
           }}
         />
       )}
-      {/* Choices asked over the board: overlays, opaque (D3) and drawn at the body's end. */}
+      {/*
+       * Choices asked over the board: modal dialogs (T-222) with a veil, Tab kept inside and focus
+       * back on the card, opaque (D3), drawn at the body's end and floating near the bottom edge.
+       */}
       {asking && (
-        <OverlayLayer>
-          <div
-            className="board-choice"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={askingTitleId}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setAsking(null);
-                links.current.get(asking.card.id)?.focus();
-              }
+        <ModalDialog
+          className="board-choice"
+          labelledBy={askingTitleId}
+          closeLabel={t('boards.choose.close')}
+          onClose={() => setAsking(null)}
+          restoreFocus={() => links.current.get(asking.card.id)?.focus()}
+        >
+          <h2 id={askingTitleId}>
+            {t('boards.choose.title', { key: asking.card.key, column: asking.column.name })}
+          </h2>
+          <p>{t('boards.asking.intro', { name: asking.transition.name })}</p>
+          <TransitionForm
+            transition={asking.transition}
+            client={client}
+            onRun={(fields) => {
+              void move(
+                asking.card,
+                { ...asking.move, transitionId: asking.transition.id, fields },
+                t('boards.moved', { key: asking.card.key, column: asking.column.name }),
+              );
             }}
-            ref={(el) => {
-              if (el && !el.contains(document.activeElement)) {
-                el.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
-              }
-            }}
-          >
-            <h2 id={askingTitleId}>
-              {t('boards.choose.title', { key: asking.card.key, column: asking.column.name })}
-            </h2>
-            <p>{t('boards.asking.intro', { name: asking.transition.name })}</p>
-            <TransitionForm
-              transition={asking.transition}
-              client={client}
-              onRun={(fields) => {
-                void move(
-                  asking.card,
-                  { ...asking.move, transitionId: asking.transition.id, fields },
-                  t('boards.moved', { key: asking.card.key, column: asking.column.name }),
-                );
-              }}
-              onCancel={() => {
-                setAsking(null);
-                links.current.get(asking.card.id)?.focus();
-              }}
-            />
-          </div>
-        </OverlayLayer>
+            onCancel={() => setAsking(null)}
+          />
+        </ModalDialog>
       )}
       {choice && (
-        <OverlayLayer>
-          <div
-            className="board-choice"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={choiceTitleId}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setChoice(null);
-                links.current.get(choice.card.id)?.focus();
-              }
-            }}
-          >
-            <h2 id={choiceTitleId}>
-              {t('boards.choose.title', { key: choice.card.key, column: choice.column.name })}
-            </h2>
-            <p>{t('boards.choose.intro')}</p>
-            <ul>
-              {choice.transitions.map((transition, i) => (
-                <li key={transition.id}>
-                  <button
-                    type="button"
-                    className="button-primary"
-                    ref={i === 0 ? firstChoice : undefined}
-                    onClick={() =>
-                      void move(
-                        choice.card,
-                        { ...choice.move, transitionId: transition.id },
-                        t('boards.moved', { key: choice.card.key, column: choice.column.name }),
-                      )
-                    }
-                  >
-                    {t('boards.choose.option', {
-                      name: transition.name,
-                      status: transition.to.name,
-                    })}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => {
-                setChoice(null);
-                links.current.get(choice.card.id)?.focus();
-              }}
-            >
-              {t('boards.choose.cancel')}
-            </button>
-          </div>
-        </OverlayLayer>
+        <ModalDialog
+          className="board-choice"
+          labelledBy={choiceTitleId}
+          closeLabel={t('boards.choose.close')}
+          onClose={() => setChoice(null)}
+          restoreFocus={() => links.current.get(choice.card.id)?.focus()}
+        >
+          <h2 id={choiceTitleId}>
+            {t('boards.choose.title', { key: choice.card.key, column: choice.column.name })}
+          </h2>
+          <p>{t('boards.choose.intro')}</p>
+          <ul>
+            {choice.transitions.map((transition, i) => (
+              <li key={transition.id}>
+                <button
+                  type="button"
+                  className="button-primary"
+                  ref={i === 0 ? firstChoice : undefined}
+                  onClick={() =>
+                    void move(
+                      choice.card,
+                      { ...choice.move, transitionId: transition.id },
+                      t('boards.moved', { key: choice.card.key, column: choice.column.name }),
+                    )
+                  }
+                >
+                  {t('boards.choose.option', {
+                    name: transition.name,
+                    status: transition.to.name,
+                  })}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="button-secondary" onClick={() => setChoice(null)}>
+            {t('boards.choose.cancel')}
+          </button>
+        </ModalDialog>
       )}
     </section>
   );

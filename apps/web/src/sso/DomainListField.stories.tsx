@@ -28,7 +28,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Empty: Story = {};
+export const Empty: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('No domains yet.')).toHaveClass('empty-state-title');
+  },
+};
 
 export const WithDomains: Story = {
   args: { initial: ['corp.example', 'corp.example.org', 'a-much-longer-subsidiary-name.example'] },

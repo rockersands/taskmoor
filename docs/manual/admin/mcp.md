@@ -38,7 +38,8 @@ administrators change this on **Administration**, then **MCP server**:
   working until it ends.
 
 Select **Save MCP settings**. The change applies to the next request; there is nothing to
-restart.
+restart. Anyone else who opens the page sees only its title and that site administrators change
+these settings.
 
 The list of allowed clients matches the name a client gives about itself. It keeps unexpected
 tools out, but it is not a credential: the token is.

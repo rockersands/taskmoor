@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeSprintClient } from '../sprints/fixtures';
 import { expectWithinBudget } from '../test/budget';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, longColumn, manyCards, ONE_LANE, SCRUM_BOARD } from './fixtures';
 
@@ -95,6 +96,32 @@ export const Board: Story = {
   },
 };
 
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every card's grip and the pencil
+ * beside it are a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(
+      await gripsTooSmall(canvasElement, ['.board-card-grip', '.board-card-move']),
+    ).toEqual([]);
+  },
+};
+
+/** The same on a phone. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(
+      await gripsTooSmall(canvasElement, ['.board-card-grip', '.board-card-move']),
+    ).toEqual([]);
+  },
+};
+
 /** A card's title being edited in place: Enter saves, Escape cancels (AGL-006). */
 export const EditingATitle: Story = {
   args: { client: fakeBoardClient() },
@@ -176,6 +203,23 @@ export const ChooseTransition: Story = {
     await expect(getComputedStyle(dialog).backdropFilter).toBe('none');
     // An opaque fill: Chrome writes a colour with any transparency as rgba().
     await expect(getComputedStyle(dialog).backgroundColor).toMatch(/^rgb\(/);
+    // A modal dialog (T-222): a veil over the page, and Tab goes round the choices, never out.
+    const veil = within(document.body).getByRole('button', { name: 'Close without moving' });
+    await expect(veil).toBeVisible();
+    await expect(veil.classList.contains('create-backdrop')).toBe(true);
+    for (let i = 0; i < 5; i++) {
+      await userEvent.tab();
+      await expect(dialog.contains(document.activeElement)).toBe(true);
+    }
+    // It still floats near the bottom edge, as wide as its choices need.
+    const box = dialog.getBoundingClientRect();
+    await expect(window.innerHeight - box.bottom).toBeLessThan(40);
+    const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    await expect(box.width).toBeLessThanOrEqual(28 * rem + 1);
+    // Escape closes it and gives focus back to the card it was about.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    await expect(document.activeElement).toBe(canvas.getByRole('link', { name: /SHOP-23/ }));
   },
 };
 

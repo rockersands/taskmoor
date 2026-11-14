@@ -37,7 +37,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const NoMappings: Story = {};
+export const NoMappings: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('No mappings.')).toHaveClass('empty-state-title');
+  },
+};
 
 export const WithMappings: Story = {
   args: { initial: [mappingRow('finance', 3), mappingRow('platform-engineering', 7)] },
@@ -51,7 +56,13 @@ export const AddingAMapping: Story = {
   },
 };
 
-export const NoGroups: Story = { args: { groups: [] } };
+export const NoGroups: Story = {
+  args: { groups: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/^There are no groups yet\./)).toHaveClass('empty-state-title');
+  },
+};
 
 export const GroupsUnavailable: Story = { args: { groups: null } };
 

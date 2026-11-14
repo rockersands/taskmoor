@@ -1,5 +1,6 @@
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { type KeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect } from 'react';
 import { leaveMotion } from './motion';
+import { DRAG_BEGAN } from './pointerDrag';
 import { useMenuButton } from './useMenuButton';
 
 /** Six dots: a handle's grip, drawn here. */
@@ -42,7 +43,8 @@ export interface MoveMenuProps {
  * finger, or press it for a menu of the same moves; Alt and the arrow keys move it too. Every
  * drag has this keyboard path. The Tracks page's groups (CORE-034) and the backlog use it. With
  * no moves to offer, a press opens nothing: the grip says it is unavailable, and still drags,
- * since a drop may have somewhere to go that its menu does not list.
+ * since a drop may have somewhere to go that its menu does not list. A press that becomes a drag
+ * closes the menu, which would otherwise stay open over the drag (T-228).
  */
 export function MoveMenu({
   label,
@@ -56,6 +58,15 @@ export function MoveMenu({
   const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
     useMenuButton();
   const none = items.length === 0;
+  // A press on the grip with its menu open is still the grip's: once it becomes a drag
+  // (`followPointerDrag` says so), the menu goes, and the keyboard stays where the drag leaves it.
+  useEffect(() => {
+    const box = container.current;
+    if (!open || !box) return;
+    const onDrag = () => close(false);
+    box.addEventListener(DRAG_BEGAN, onDrag);
+    return () => box.removeEventListener(DRAG_BEGAN, onDrag);
+  }, [open, close, container]);
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const step =
       event.key === 'ArrowUp' || event.key === 'ArrowLeft'

@@ -13,6 +13,16 @@ import { WebhooksPage } from '../webhooks/WebhooksPage';
 import { AdminOverviewPage } from './AdminOverviewPage';
 import { AiLimitsPage } from './AiLimitsPage';
 import { ADMIN, CONFIG_ADMIN, MEMBER } from './fixtures';
+import { type McpClient, McpPage } from './McpPage';
+
+/** MCP settings a site administrator would read; `refused` answers as the server does to others. */
+const mcp = (refused = false): McpClient => ({
+  load: async () => {
+    if (refused) throw new ApiError(403, { error: 'forbidden' });
+    return { enabled: true, allowedClients: [], profile: 'planner', oauthRegistration: true };
+  },
+  save: async (settings) => settings,
+});
 
 /**
  * Someone who may not use a page is told so, without the rest (docs/manual/admin/administration.md):
@@ -40,6 +50,7 @@ describe('a page someone may not use says only so (T-144)', () => {
   it.each([
     ['Webhooks', <WebhooksPage key="w" />, /^Only site administrators/],
     ['AI limits and prices', <AiLimitsPage key="a" />, /^Only site administrators manage AI/],
+    ['MCP server', <McpPage key="m" client={mcp()} />, /^Only site administrators change the MCP/],
     ['Visibility policies', <VisibilityPage key="v" />, /^Only site administrators use this page/],
     [
       'Permission explainer',
@@ -80,6 +91,21 @@ describe('a page someone may not use says only so (T-144)', () => {
     // The refusal reaches the page's header one render after the words, so a loaded machine can
     // catch the moment between them.
     await waitFor(() => expect(container.querySelector('.page-purpose')).toBeNull());
+  });
+
+  it('[NFR-005] the MCP server, when the server refuses its settings', async () => {
+    // A session read before the right was taken away: the server's answer decides.
+    await refusedOnly(
+      open(<McpPage client={mcp(true)} />, ADMIN),
+      'MCP server',
+      /^Only site administrators change the MCP/,
+    );
+  });
+
+  it('[NFR-005] an administrator still sees what the MCP server is for', async () => {
+    const container = open(<McpPage client={mcp()} />, ADMIN);
+    expect(await screen.findByRole('radio', { name: /Planner/ })).toBeChecked();
+    expect(container.querySelector('.page-purpose')).not.toBeNull();
   });
 
   it('[NFR-005] an administrator still sees what each is for', async () => {
