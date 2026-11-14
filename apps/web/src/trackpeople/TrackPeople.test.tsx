@@ -75,6 +75,15 @@ describe('a track manager without site administration (IAM-030)', () => {
     ]);
   });
 
+  it('[IAM-030] is titled like the track’s other own pages, with no link repeating the breadcrumb (S3-TR-9)', async () => {
+    renderPeople();
+    await screen.findByText('Kalo Reyes: Administrators');
+    const title = screen.getByRole('heading', { level: 1 });
+    expect(title).toHaveTextContent('People of the track');
+    expect(screen.getByText('SHOP · Shop')).toHaveClass('page-eyebrow');
+    expect(screen.queryByRole('link', { name: 'All the tracks you run' })).toBeNull();
+  });
+
   it('[IAM-028] without the appointing permission that role can be neither given nor taken', async () => {
     renderPeople({ appointLocked: true });
     await screen.findByText('Kalo Reyes: Administrators');
@@ -545,6 +554,9 @@ describe('the permission to create tracks with the role that runs the track (IAM
     expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
     expect(box()).toBeChecked();
     expect(box()).toHaveAccessibleDescription(/permission for the whole site/);
+    // The permission goes with the role (T-087b, S3-TR-1): the hint never says it stays.
+    expect(box()).toHaveAccessibleDescription(/It goes with the role: once they run no track/);
+    expect(box()).not.toHaveAccessibleDescription(/does not remove it/);
     await user.type(screen.getByLabelText('Find a person by name'), 'ana');
     await user.click(
       await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),

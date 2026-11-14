@@ -106,6 +106,7 @@ this track.
   tracks that gave them their last role there (or they leave it, or it is deleted, or its owner is
   erased), or deactivate them (here, through SCIM, or when a directory removes or disables them).
   Someone who still runs another track keeps it, including a track every signed-in person runs.
+  The hint under the box says so before you give it.
 - **A permission given separately stays.** If a site administrator gave it on **Settings** >
   **Permissions** > **Global permissions**, or the person had it before you ticked the box, losing
   the role leaves it; remove it there, where each person who holds it is listed by name. To let a
