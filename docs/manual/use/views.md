@@ -193,7 +193,7 @@ it is long; on a phone the summary sits under the key.
 - **Dependencies**: "blocks" links between listed tickets show as lines. A line turns dashed
   and red when the blocked ticket starts on or before the day its blocker is due, unless one of
   the two is already closed.
-- **No dates** marks a ticket without any, at today.
+- **No dates** marks a ticket without any, just after today's line.
 
 Under the chart, **What the bars mean** explains each of these styles, listing only those the
 timeline draws.
@@ -201,7 +201,9 @@ timeline draws.
 The **Zoom** buttons switch between **Weeks**, **Months** and **Quarters**. **Today** scrolls
 to the current day. The month's name stays in view at the left of the days while you scroll. When
 a ticket's bar lies wholly before or after the days in view, its row shows **Earlier** or
-**Later** at that edge instead of looking empty; choose it to scroll to the bar. When more rows
+**Later** at that edge instead of looking empty; choose it to scroll to the bar. These markers are
+solid, so today's line passes behind their words. On a phone the ticket's key sits over its
+summary, and a tap anywhere on the two opens the ticket. When more rows
 wait below the chart's lower edge, the last ones fade out: scroll the chart, which you can also
 reach with Tab and scroll with the arrow keys.
 

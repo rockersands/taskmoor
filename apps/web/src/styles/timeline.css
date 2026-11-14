@@ -414,7 +414,10 @@ button.timeline-bar:focus-visible {
   background: var(--color-flow-last);
 }
 
-/* Just after today's line, never across it, and over the lines behind the rows (TR-9). */
+/*
+ * Just after today's line, with a gap so the line never runs along its edge, and over the lines
+ * behind the rows (TR-9). Its fill is opaque, so no line behind it shows through its words.
+ */
 .timeline-unscheduled {
   position: absolute;
   top: 10px;
@@ -423,7 +426,7 @@ button.timeline-bar:focus-visible {
   padding: 0 var(--space-2);
   border: 1px dashed var(--color-field-border);
   border-radius: var(--radius-mark);
-  background: var(--glass-surface-sunken);
+  background: var(--color-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -433,7 +436,8 @@ button.timeline-bar:focus-visible {
  * A bar wholly before or after the days in view (PL-6): a marker at that edge of the lanes says
  * which way it lies, and scrolls to it. Its arrow is drawn, so the name is only its words. It sits
  * in its lane's flow, at the lane's start or end, and sticks to that edge of the lanes in view
- * (beside the ticket column, or at the card's right), so scrolling never has to place it.
+ * (beside the ticket column, or at the card's right), so scrolling never has to place it. Today's
+ * line can fall anywhere under it, so its fill is opaque and the line passes behind its words.
  */
 .timeline-edge {
   position: sticky;
@@ -449,7 +453,7 @@ button.timeline-bar:focus-visible {
   padding: 0 var(--space-2);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--glass-surface-strong);
+  background: var(--color-surface-raised);
   color: var(--color-text-muted);
   font: inherit;
   font-size: var(--font-size-200);
@@ -730,13 +734,21 @@ button.timeline-bar:focus-visible {
 
 /*
  * On a phone's touch screen the key sits over its summary, so the link cannot be a row tall: it
- * reaches over the whole name instead, which is a row tall and as wide as the column. (Nested, so
- * the stories' touch rules, taken from the top-level `(pointer: coarse)` blocks, leave it out.)
+ * reaches over the whole name instead, which is a row tall and as wide as the column. The rule
+ * between rows is drawn inside them, so the name is the full 44 px, not 43 above a border. (Nested,
+ * so `asOnATouchScreen`, which takes the top-level `(pointer: coarse)` blocks, leaves it out; the
+ * story KeyPressAreaOnAPhone checks it on the browser's own touch emulation.)
  */
 @media (max-width: 767px) {
   @media (pointer: coarse) {
+    .timeline-row {
+      border-bottom: 0;
+      box-shadow: inset 0 -1px 0 var(--glass-edge);
+    }
+
     .timeline-label {
       isolation: isolate;
+      box-shadow: inset 0 -1px 0 var(--glass-edge);
     }
 
     .timeline-key {

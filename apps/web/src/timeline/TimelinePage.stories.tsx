@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 import { expectWithinBudget } from '../test/budget';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeTimelineClient, manyItems, timelineFixture } from './fixtures';
 import { TimelinePage } from './TimelinePage';
 
@@ -179,6 +179,48 @@ const crowded = (() => {
   };
 })();
 
+/**
+ * ADR-033, TR-21: on a phone's touch screen the key sits over its summary and is one line tall,
+ * but a finger anywhere on the name presses it: the press area is the whole name cell, a row
+ * (44 px) tall, and the toggle beside it still takes its own presses. This is the nested
+ * phone-and-touch block of timeline.css, which only the browser's own touch emulation applies.
+ */
+export const KeyPressAreaOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { client: fakeTimelineClient({ data: crowded }) },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    const keys = await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    const toggled = keys.find((key) => key.closest('.timeline-label')?.querySelector('button'));
+    if (!toggled) throw new Error('a row with children has a toggle');
+    for (const key of [toggled, keys.at(-1) as HTMLElement]) {
+      key.scrollIntoView({ block: 'center' });
+      const cell = key.closest('.timeline-label')?.getBoundingClientRect();
+      const own = key.getBoundingClientRect();
+      if (!cell) throw new Error('a key sits in its name cell');
+      // The key's own box is a line of text; its press area is not.
+      await expect(own.height).toBeLessThan(44);
+      await expect(cell.height).toBeGreaterThanOrEqual(43.5);
+      const points = [
+        [own.left + 2, cell.top + 2],
+        [own.left + 2, cell.bottom - 2],
+        [cell.right - 4, cell.top + 2],
+        [cell.right - 4, cell.bottom - 2],
+      ] as const;
+      for (const [x, y] of points) {
+        const hit = document.elementFromPoint(x, y)?.closest('.timeline-key');
+        await expect({ x, y, key: hit?.textContent }).toEqual({ x, y, key: key.textContent });
+      }
+    }
+    const toggle = toggled.closest('.timeline-label')?.querySelector('button');
+    if (!toggle) throw new Error('the row has its toggle');
+    const box = toggle.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    await expect(hit?.closest('button')).toBe(toggle);
+  },
+};
+
 /** TR-9: a long summary is cut, never the key, which reads whole in its column. */
 export const KeysNeverCut: Story = {
   args: { client: fakeTimelineClient({ data: crowded }) },
@@ -212,7 +254,16 @@ export const MonthStaysInView: Story = {
   },
 };
 
-/** TR-9: today's line never runs through a "No dates" chip, which sits just after it. */
+/** Whether a surface hides what is behind it: a fill with no transparency. */
+const opaque = (element: Element) => {
+  const parts = getComputedStyle(element).backgroundColor.match(/[\d.]+/g) ?? [];
+  return parts.length === 3 || (parts.length === 4 && Number(parts[3]) === 1);
+};
+
+/**
+ * TR-9: today's line never runs through a "No dates" chip, nor along its edge: the chip sits a
+ * gap after it, above it, and its fill hides any line behind its words.
+ */
 export const TodayClearOfNoDates: Story = {
   play: async ({ canvasElement }) => {
     const chip = await within(canvasElement).findByRole('button', {
@@ -221,8 +272,9 @@ export const TodayClearOfNoDates: Story = {
     const line = canvasElement.querySelector('.timeline-today')?.getBoundingClientRect();
     if (!line) throw new Error('the timeline marks today');
     const box = chip.getBoundingClientRect();
-    await expect(line.right <= box.left + 0.5 || line.left >= box.right - 0.5).toBe(true);
+    await expect(box.left - line.right).toBeGreaterThanOrEqual(3.5);
     await expect(Number(getComputedStyle(chip).zIndex)).toBeGreaterThan(0);
+    await expect(opaque(chip)).toBe(true);
   },
 };
 
@@ -294,6 +346,21 @@ export const EdgeMarkersAtTheEdges: Story = {
       const box = marker.getBoundingClientRect();
       await expect(box.right).toBeLessThanOrEqual(right + 0.5);
       await expect(box.right).toBeGreaterThan(right - 12);
+    }
+  },
+};
+
+/**
+ * TR-9, PL-6: today's line may fall anywhere under an Earlier or Later marker (on a phone it ran
+ * through every "Earlier"), so each marker lies above the lines and hides them behind its words.
+ */
+export const EdgeMarkersHideTodaysLine: Story = {
+  decorators: [narrow],
+  play: async ({ canvasElement }) => {
+    const { markers } = await scrolledTo(canvasElement, 'end');
+    for (const marker of markers) {
+      await expect(opaque(marker)).toBe(true);
+      await expect(Number(getComputedStyle(marker).zIndex)).toBeGreaterThan(0);
     }
   },
 };
