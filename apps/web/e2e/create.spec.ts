@@ -268,6 +268,147 @@ test('[CORE-008] [CORE-013] [IAM-010] the create dialog sets the assignee a layo
   expect(ticket.fields?.[String(field.id)]).toEqual({ id: me.id, name: me.name });
 });
 
+test('[CORE-008] [CORE-010] [CORE-009] [CORE-006] the create dialog sets the requester and group, team, release and area fields, offering only valid parents and allowed people', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  const api = async (method: 'post' | 'patch' | 'get' | 'put', path: string, data?: unknown) => {
+    const res = await page.request[method](`${BASE}/api/v1${path}`, data ? { data } : {});
+    expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBe(true);
+    return res.status() === 204 ? null : res.json();
+  };
+  const me = (await api('get', '/session')).user as { id: number; name: string };
+
+  // A track of its own; someone else to be the requester and the only one who may approve.
+  const key = uniqueKey('Q', testInfo);
+  const { track } = await api('post', '/tracks', {
+    key,
+    name: `More pickers ${testInfo.project.name}`,
+    mode: 'shared',
+  });
+  const rae = (
+    await api('post', '/users', {
+      email: `rae.${key.toLowerCase()}@attach.test`,
+      name: `Rae ${key}`,
+    })
+  ).user as { id: number; name: string };
+  const { group } = await api('post', '/groups', { name: `Approvers ${key}` });
+  await api('put', `/groups/${group.id}/members/${rae.id}`);
+  const { team } = await api('post', '/teams', { name: `Ledger team ${key}` });
+  await api('post', `/tracks/${track.id}/releases`, { name: 'Autumn' });
+  await api('post', `/tracks/${track.id}/areas`, { name: 'Billing' });
+  const { ticketTypes } = (await api('get', `/tracks/${key}/ticket-types`)) as {
+    ticketTypes: { id: number; name: string }[];
+  };
+  const outcomeType = ticketTypes.find((t) => t.name === 'Outcome');
+  const child = ticketTypes.find((t) => t.name === 'Feature');
+  if (!outcomeType || !child) throw new Error('the track needs an Outcome and a Feature');
+  // Two tickets whose summaries match: only the Outcome may hold a Feature.
+  const { ticket: outcome } = await api('post', '/tickets', {
+    track: key,
+    ticketTypeId: outcomeType.id,
+    summary: `Ledger rework ${key}`,
+  });
+  const { ticket: sibling } = await api('post', '/tickets', {
+    track: key,
+    ticketTypeId: child.id,
+    summary: `Ledger cleanup ${key}`,
+  });
+  const context = { trackIds: [track.id] };
+  const made = async (name: string, type: string, more: Record<string, unknown> = {}) =>
+    (await api('post', '/fields', { name: `${name} ${key}`, type, context, ...more })).field as {
+      id: number;
+      name: string;
+    };
+  const approver = await made('Approver', 'user', {
+    context: { ...context, config: { userGroupId: group.id } },
+  });
+  const owning = await made('Owning group', 'group');
+  const ledgerTeam = await made('Team', 'team');
+  const fixedIn = await made('Fixed in', 'release');
+  const parts = await made('Parts', 'area', { multiple: true });
+  const { layoutSet } = await api('post', '/layout-sets', {
+    name: `Layouts ${key}`,
+    layouts: [
+      {
+        ticketTypeId: child.id,
+        operation: 'create',
+        definition: {
+          tabs: [
+            {
+              name: 'Who and what',
+              sections: [
+                {
+                  fields: [
+                    'summary',
+                    'requester',
+                    'parent',
+                    ...[approver, owning, ledgerTeam, fixedIn, parts].map((f) => `cf[${f.id}]`),
+                  ],
+                },
+              ],
+            },
+          ],
+          others: 'omit',
+        },
+      },
+    ],
+  });
+  await api('patch', `/tracks/${track.id}`, { layoutSetId: layoutSet.id });
+
+  await page.goto(`${BASE}/#/home`);
+  await expect(page.getByRole('button', { name: 'New ticket' })).toBeVisible();
+  await page.keyboard.press('c');
+  const dialog = page.getByRole('dialog', { name: 'Create ticket' });
+  await expect(dialog).toBeVisible();
+  await chooseTrack(dialog, key);
+  await dialog.getByLabel('Ticket type').click();
+  await dialog.getByRole('option', { name: child.name, exact: true }).click();
+  await expect(dialog.getByRole('region', { name: 'Who and what' })).toBeVisible();
+  await dialog.getByLabel('Summary (required)').fill(`Split invoices ${testInfo.project.name}`);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // The requester: someone else than the person creating.
+  await dialog.getByRole('searchbox', { name: 'Requester' }).fill(rae.name);
+  await dialog.getByRole('button', { name: rae.name, exact: true }).click();
+  await expect(dialog.getByRole('list', { name: 'Requester' })).toContainText(rae.name);
+  // The parent: the Outcome is offered, the Feature beside it is not.
+  await dialog.getByRole('combobox', { name: 'Parent' }).fill(`Ledger ${key}`);
+  await expect(dialog.getByRole('option', { name: new RegExp(outcome.key) })).toBeVisible();
+  await expect(dialog.getByRole('option', { name: new RegExp(sibling.key) })).toHaveCount(0);
+  await dialog.getByRole('option', { name: new RegExp(outcome.key) }).click();
+  // The approver: only the group's people, so not the person creating.
+  const approverSearch = dialog.getByRole('searchbox', { name: approver.name });
+  await approverSearch.fill(me.name);
+  await expect(dialog.getByText('No one matches.')).toBeVisible();
+  await approverSearch.fill(rae.name);
+  await dialog.getByRole('button', { name: rae.name, exact: true }).click();
+  // A group by name; a team and a release from a list; an area ticked.
+  await dialog.getByRole('searchbox', { name: owning.name }).fill(`Approvers ${key}`);
+  await dialog.getByRole('button', { name: `Approvers ${key}`, exact: true }).click();
+  await dialog.getByRole('combobox', { name: ledgerTeam.name }).selectOption(team.name);
+  await dialog.getByRole('combobox', { name: fixedIn.name }).selectOption('Autumn');
+  await dialog.getByRole('group', { name: parts.name }).getByLabel('Billing').check();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  const madeText = dialog.getByText(new RegExp(`^${key}-\\d+ was created\\.$`));
+  await expect(madeText).toBeVisible();
+  const ticketKey = ((await madeText.textContent()) ?? '').split(' ')[0] as string;
+  const { ticket } = await api('get', `/tickets/${ticketKey}`);
+  expect(ticket.requester?.id).toBe(rae.id);
+  expect(ticket.parent?.key).toBe(outcome.key);
+  expect(ticket.fields?.[String(approver.id)]).toEqual({ id: rae.id, name: rae.name });
+  expect(ticket.fields?.[String(owning.id)]).toEqual({ id: group.id, name: `Approvers ${key}` });
+  expect(ticket.fields?.[String(ledgerTeam.id)]).toEqual({ id: team.id, name: team.name });
+  expect(ticket.fields?.[String(fixedIn.id)]).toMatchObject({ name: 'Autumn' });
+  expect(ticket.fields?.[String(parts.id)]).toMatchObject([{ name: 'Billing' }]);
+});
+
 test('[AGL-019] the home page lists what is assigned to me, what I opened and what I follow', async ({
   page,
 }, testInfo) => {
