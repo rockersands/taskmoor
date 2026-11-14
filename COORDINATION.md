@@ -59,7 +59,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-253 to T-255, T-257, T-258 (wave 12 follow-ups, the sweep tool) | Mac | `wave14m/*` | 2026-11-14 | In progress (T-258 after T-257) |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | `wave14/t089d-program-board` | 2026-11-13 | In progress |
 | T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
-| Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | `wave14/windows-bugs` | 2026-11-14 | In progress (T-203 takes migration 0116) |
+| Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | `wave14/windows-bugs` | 2026-11-14 | In progress (T-203 takes migration 0109) |
 | T-242: the speed limits Windows missed | Windows | | 2026-11-13 | Held: the user said on 2026-11-14 to leave benchmarking for now, only bugs and new features |
 
 The Mac's HANDOFF lists Multi-track after wave 13. Windows takes it now because it built stages 4
