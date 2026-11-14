@@ -108,6 +108,8 @@ export const ALLOWED = {
     'layouts/LayoutCanvas.tsx layouts.noSections':
       'a hint on how to place the fields still waiting: the list beside it is not empty',
     'people/TeamsPage.tsx admin.teams.noLead': FACT,
+    'tickets/templates/TemplateForm.tsx tickets.templates.noTrackValues':
+      "a field's value, read where its list of values would be: the template holds none (T-291)",
     'permissions/PermissionExplainerPage.tsx admin.explain.noGrant':
       'one answer of the permission explainer, beside the others it can give',
     'permissions/PermissionExplainerPage.tsx admin.explain.noLevel': ONE_READING,
