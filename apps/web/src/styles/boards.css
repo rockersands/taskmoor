@@ -630,6 +630,12 @@
   .board-row {
     grid-template-columns: repeat(var(--board-columns, 3), minmax(0, min(80vw, 18rem)));
   }
+
+  /* A phone shows about one column at a time: each ends at its last card, never at the length of
+     the longest column beside it, so a short column is not a screen of empty frame. */
+  .board-row:not(.board-heads) {
+    align-items: start;
+  }
 }
 
 @media (pointer: coarse) {

@@ -367,6 +367,29 @@ export const PersonFilterAtPhoneWidth: Story = {
 };
 
 /**
+ * A Kanban board on a phone (NFR-007; the second sweep's long Closed column): each column ends at
+ * its last card, so a short one is not a screen and more of empty frame beside a long one.
+ */
+export const ShortColumnBesideALongOneOnAPhone: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const todo = await canvas.findByRole('list', { name: 'To do' });
+    const doing = canvas.getByRole('list', { name: 'Doing' });
+    await expect(matchMedia('(max-width: 640px)').matches).toBe(true);
+    const cards = within(doing).getAllByRole('listitem');
+    await expect(cards).toHaveLength(2);
+    const last = cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0;
+    // The cell's own padding below its last card, and no more.
+    await expect(doing.getBoundingClientRect().bottom - last).toBeLessThan(24);
+    await expect(todo.getBoundingClientRect().height).toBeGreaterThan(
+      doing.getBoundingClientRect().height * 3,
+    );
+  },
+};
+
+/**
  * A Scrum board with an active sprint, for someone who manages its sprints (T-106; AGL-010):
  * Complete sprint opens a pop-up that counts its done and open tickets from the board.
  */
