@@ -27,11 +27,14 @@ import { entryQuery, entryView, visibleTo } from './time';
  * the field applies to the ticket where it is now, so the reader sees the field on it. `limit` counts history rows; a change set
  * is never split across pages, so a page can hold a few more rows.
  *
- * A ticket's `kind=all` page also carries its time entries (`timeEntries`, newest first, those
- * the reader may see, as the time entries list shows them), by when the work started: those of
- * the stretch of time its rows cover, from its oldest row up to the row the cursor names (the
- * first page: up to now; the last: back to the start). A time entry may have no history row
- * (an import writes none), and its row says neither whose work it was nor when it began (T-309).
+ * A ticket's `kind=all` page also carries time entries (`timeEntries`, those the reader may see,
+ * as the time entries list shows them), newest first by when the work started, `limit` of them
+ * at most (T-309): those after the cursor's entry back to the start of the stretch of time the
+ * page's history rows cover (the last page: back to the start). A time entry may have no history
+ * row (an import writes none), and its row says neither whose work it was nor when it began. Its
+ * cursor names the history row and the time entry it stops at (`<row>.<µs>.<entry>`, row `0`
+ * once the history is read), so each time entry comes once across the pages, whatever order
+ * the history rows' times are in, and no page holds more than `limit` of either.
  */
 const MAX_INT = 2_147_483_647;
 const RICH_TEXT = new Set(['description', 'environment']);
@@ -41,10 +44,12 @@ const cursorParam = z
   .string()
   .regex(/^[1-9][0-9]{0,18}$/)
   .optional();
+/** A `kind=all` cursor: the history row, then the time entry (its start in µs, its id). */
+const ALL_CURSOR = /^(0|[1-9][0-9]{0,18})(?:\.(-?[0-9]{1,17})\.([1-9][0-9]{0,17}))?$/;
 const ticketQuery = z
   .object({
     kind: z.enum(KINDS).default('all'),
-    cursor: cursorParam,
+    cursor: z.string().regex(ALL_CURSOR).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(50),
   })
   .strict();
@@ -241,7 +246,14 @@ export function registerActivityRoutes(
     if (ticket.deleted_at && !(await request.authz.canTicket('delete_tickets', ticket))) {
       return notFound(reply);
     }
-    const { kind, cursor, limit } = q.data;
+    const { kind, limit } = q.data;
+    const parts = q.data.cursor === undefined ? null : ALL_CURSOR.exec(q.data.cursor);
+    // Only an All page's cursor names a time entry (and the end of the history).
+    if (parts && kind !== 'all' && (parts[2] !== undefined || parts[1] === '0')) {
+      return invalid(reply);
+    }
+    const cursor = parts?.[1];
+    const afterEntry = parts?.[2] === undefined ? null : { us: parts[2], id: parts[3] as string };
     const select = (extra: RawBuilder<boolean>, max: number) =>
       sql<ChangeRow>`
         SELECT ${COLUMNS}
@@ -269,28 +281,40 @@ export function registerActivityRoutes(
     );
     const activity = await entries(request, result.rows);
     if (kind !== 'all') return { activity, next: result.next };
-    // The time entries of the stretch this page covers, so that page by page each comes once.
-    let upper: Date | null = null;
-    if (cursor !== undefined) {
-      const named = await db
-        .selectFrom('ticket_change')
-        .select('at')
-        .where('id', '=', cursor)
-        .where('ticket_id', '=', ticket.id)
-        .where('workspace_id', '=', ws)
-        .executeTakeFirst();
-      if (!named) return { activity, timeEntries: [], next: result.next };
-      upper = named.at;
-    }
+    // Time entries past the cursor's, back to the oldest row of this page (the last page: all),
+    // `limit` at most; the next page goes on from the last one looked at.
     const oldest = result.next === null ? null : result.rows[result.rows.length - 1];
-    let query = entryQuery(db).where('e.ticket_id', '=', ticket.id);
-    if (upper !== null) query = query.where('e.started_at', '<', upper);
+    let query = entryQuery(db)
+      .select(
+        sql<string>`(extract(epoch FROM e.started_at) * 1000000)::bigint::text`.as('started_us'),
+      )
+      .where('e.ticket_id', '=', ticket.id);
+    if (afterEntry) {
+      query = query.where(
+        sql<boolean>`(e.started_at, e.id) < (TIMESTAMPTZ 'epoch' + ${afterEntry.us}::bigint * INTERVAL '1 microsecond', ${afterEntry.id}::bigint)`,
+      );
+    }
     if (oldest) query = query.where('e.started_at', '>=', oldest.at);
-    const inStretch = await query.orderBy('e.started_at', 'desc').orderBy('e.id', 'desc').execute();
+    const inStretch = await query
+      .orderBy('e.started_at', 'desc')
+      .orderBy('e.id', 'desc')
+      .limit(limit + 1)
+      .execute();
+    const looked = inStretch.slice(0, limit);
     const sees = await visibleTo(request, ticket.track_id);
     const timeEntries = [];
-    for (const e of inStretch) if (await sees(e)) timeEntries.push(entryView(e));
-    return { activity, timeEntries, next: result.next };
+    for (const e of looked) if (await sees(e)) timeEntries.push(entryView(e));
+    const last = looked[looked.length - 1];
+    const entryPart = last
+      ? `.${last.started_us}.${last.id}`
+      : afterEntry
+        ? `.${afterEntry.us}.${afterEntry.id}`
+        : '';
+    const next =
+      result.next === null && inStretch.length <= limit
+        ? null
+        : `${result.next ?? '0'}${entryPart}`;
+    return { activity, timeEntries, next };
   });
 
   app.get('/api/v1/tracks/:id/activity', async (request, reply) => {

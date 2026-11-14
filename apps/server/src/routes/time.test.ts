@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -438,9 +439,106 @@ describe('time tracking (M1-019)', () => {
     const first = (await get('carol', `/api/v1/tickets/${ticket.id}/activity`)).json();
     expect(first.timeEntries.length).toBe(6);
     expect(first.timeEntries[0]).toMatchObject({ author: { name: expect.any(String) } });
-    const stray = await get('carol', `/api/v1/tickets/${ticket.id}/activity?cursor=999999999`);
-    expect(stray.json().timeEntries).toEqual([]);
     const history = await get('carol', `/api/v1/tickets/${ticket.id}/activity?kind=history`);
     expect(history.json().timeEntries).toBeUndefined();
+  });
+
+  /** Every page of a ticket's All activity, as `who` reads them. */
+  async function allPages(who: string, ticket: TicketJson, limit: number) {
+    const pages: { activity: unknown[]; timeEntries: EntryJson[] }[] = [];
+    let cursor: string | null = null;
+    do {
+      const res = await get(
+        who,
+        `/api/v1/tickets/${ticket.id}/activity?kind=all&limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`,
+      );
+      expect(res.statusCode, res.body).toBe(200);
+      const body = res.json() as {
+        activity: unknown[];
+        timeEntries: EntryJson[];
+        next: string | null;
+      };
+      pages.push(body);
+      cursor = body.next;
+      expect(pages.length).toBeLessThan(50);
+    } while (cursor !== null);
+    return pages;
+  }
+  const importEntries = (ticket: TicketJson, starts: Date[]) =>
+    database.db
+      .insertInto('time_entry')
+      .values(
+        starts.map((at) => ({
+          workspace_id: 1,
+          ticket_id: ticket.id,
+          author_id: users.dave?.id as number,
+          started_at: at,
+          duration: 15 * 60,
+          description: 'Imported',
+          visible_role_id: null,
+          visible_group_id: null,
+          created_by: users.dave?.id as number,
+          created_at: at,
+        })),
+      )
+      .returning('id')
+      .execute();
+
+  // A page of the All activity holds `limit` time entries at most, however many fall in the
+  // stretch of time its history rows cover: an import writes entries and no history rows.
+  it("[CORE-022] [TIM-001] holds at most `limit` time entries on a page of a ticket's activity", async () => {
+    const ticket = await create();
+    const soon = Date.now() + 60_000;
+    const imported = await importEntries(
+      ticket,
+      Array.from({ length: 120 }, (_, i) => new Date(soon + i * 60_000)),
+    );
+    const first = (await get('carol', `/api/v1/tickets/${ticket.id}/activity?kind=all`)).json();
+    expect(first.timeEntries.length).toBe(50);
+    // Its cursor names the entry it stopped at, which only an All page takes.
+    expect(first.next).toMatch(/^[0-9]+\.-?[0-9]+\.[0-9]+$/);
+    const other = await get(
+      'carol',
+      `/api/v1/tickets/${ticket.id}/activity?kind=history&cursor=${first.next}`,
+    );
+    expect(other.statusCode).toBe(400);
+    const pages = await allPages('carol', ticket, 20);
+    for (const p of pages) expect(p.timeEntries.length).toBeLessThanOrEqual(20);
+    const seen = pages.flatMap((p) => p.timeEntries.map((e) => e.id));
+    expect(seen.length).toBe(120);
+    expect(new Set(seen)).toEqual(new Set(imported.map((e) => e.id)));
+    // Newest first across the pages too, and the history comes along.
+    const starts = pages.flatMap((p) => p.timeEntries.map((e) => e.startedAt));
+    expect(starts).toEqual([...starts].sort().reverse());
+    expect(pages.flatMap((p) => p.activity).length).toBeGreaterThan(0);
+  });
+
+  // History rows whose times run against their order (an import's, or two writes at once) must
+  // not hand a time entry out twice: each page goes on from the entry the page before stopped at.
+  it("[CORE-022] [TIM-001] gives a time entry once when a ticket's history times are out of order", async () => {
+    const ticket = await create();
+    for (const at of ['2026-01-01T12:00:00Z', '2026-01-10T12:00:00Z', '2026-01-05T12:00:00Z']) {
+      await database.db
+        .insertInto('ticket_change')
+        .values({
+          workspace_id: 1,
+          ticket_id: ticket.id,
+          change_set: sql<string>`nextval('ticket_change_set_seq')`,
+          at: new Date(at),
+          actor_id: users.alice?.id as number,
+          field: 'labels',
+          from_value: null,
+          to_value: at.slice(0, 10),
+          from_display: null,
+          to_display: null,
+          transition_id: null,
+        })
+        .execute();
+    }
+    const [between] = await importEntries(ticket, [new Date('2026-01-07T12:00:00Z')]);
+    const seen = (await allPages('carol', ticket, 1)).flatMap((p) =>
+      p.timeEntries.map((e) => e.id),
+    );
+    expect(seen).toEqual([between?.id]);
   });
 });
