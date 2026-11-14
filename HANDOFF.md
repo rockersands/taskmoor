@@ -22,7 +22,25 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: baselines, the critical path and evening out load (2026-11-15, Windows)
+### Latest: the hierarchy grid (2026-11-15, Windows)
+
+On `main` at `152f666b` after a full gate (9,718 tests, 271 e2e). Migration 0112; the next is 0113.
+
+- ADR-122 stage 10 (T-089a, PLN-010): a plan's Grid section. A structure (`plan_structure`, up to
+  20 a plan) holds steps and columns, never tickets; the tree is built per viewer
+  (`plans/structureTree.ts`, pure; `routes/plan-structures.ts`: CRUD with versions, the skeleton,
+  `POST /plans/:id/grid/tickets` for the cells in view). Hidden children and linked tickets are
+  counted, never named. Up to 100,000 rows; a read that runs too long answers 503 `query_timeout`.
+- Totals, progress and formula columns are computed in the browser (`apps/web/src/plans/grid/
+  compute.ts`, `tree.ts`; the web app now depends on `@taskmoor/formula`).
+- The page: `PlanGridPage.tsx`, `grid/rowWindow.ts`, `StructureDialog.tsx`, `MoveUnderDialog.tsx`
+  (drag, the row menu and Shift+F10). Reads are ordered by the page's own read number; the
+  server's `generation` is no longer compared.
+- The grid's test trees live in `apps/web/src/test/gridTrees.ts` (the boundary rules).
+- Deferred while benchmarking is paused: the budgets of stages 9 and 10.
+- T-089a is done; every multi-track stage of ADR-122 is on `main`.
+
+### Earlier: baselines, the critical path and evening out load (2026-11-15, Windows)
 
 On `main` at `9201af30` after a full gate (9,575 tests, 270 e2e). Migration 0111; the next is 0112 (claimed for stage 10).
 
