@@ -51,7 +51,7 @@ migration is 0107, as the Mac planned.
 | Work | Session | Branch | Since | State |
 |---|---|---|---|---|
 | Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | merged | 2026-11-13 | Done: `main` `d9061d06` (migration 0107 taken) |
-| T-253 to T-255, T-257, T-258 (wave 12 follow-ups, the sweep tool) | Mac | | 2026-11-13 | Next after wave 13 |
+| T-253 to T-255, T-257, T-258 (wave 12 follow-ups, the sweep tool) | Mac | `wave14m/*` | 2026-11-14 | In progress (T-258 after T-257) |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | `wave14/t089d-program-board` | 2026-11-13 | In progress |
 | T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
 | T-242: the speed limits Windows missed | Windows | | 2026-11-13 | Held: the user said on 2026-11-14 to leave benchmarking for now, only bugs and new features |
