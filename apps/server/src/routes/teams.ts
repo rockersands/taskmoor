@@ -8,7 +8,13 @@ import { findTeam } from '../teams';
 
 type Db = Kysely<Database> | Transaction<Database>;
 
-const listQuery = z.object({ query: z.string().trim().max(200).optional() }).strict();
+const listQuery = z
+  .object({
+    query: z.string().trim().max(200).optional(),
+    /** At most this many, for a picker (T-282); every team without it, for the admin pages. */
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+  })
+  .strict();
 const leadId = z.number().int().positive().max(2_147_483_647).nullable();
 const teamBody = z
   .object({
@@ -79,8 +85,9 @@ const view = (r: TeamRow): TeamView => ({
 
 /**
  * Teams (M1-123; CORE-027; ADR-076): site-wide, with members, a lead and a description.
- * Everyone signed in reads them, for pickers and the Team field; site administrators make,
- * change and delete them and choose their members. A team grants nothing: groups do that.
+ * Everyone signed in reads them, for pickers and the Team field (`?query=` part of a name,
+ * `?limit=` at most that many, by name); site administrators make, change and delete them and
+ * choose their members. A team grants nothing: groups do that.
  * Boards, areas and Team fields name a team by id, so a rename shows everywhere at once.
  */
 export function registerTeamRoutes(app: FastifyInstance, db: Kysely<Database>): void {
@@ -99,7 +106,9 @@ export function registerTeamRoutes(app: FastifyInstance, db: Kysely<Database>): 
       const like = `%${parsed.data.query.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       query = query.where(sql`lower(t.name)`, 'like', like);
     }
-    const rows = await query.orderBy(sql`lower(t.name)`).orderBy('t.id').execute();
+    query = query.orderBy(sql`lower(t.name)`).orderBy('t.id');
+    if (parsed.data.limit !== undefined) query = query.limit(parsed.data.limit);
+    const rows = await query.execute();
     return { teams: rows.map(view) };
   });
 
