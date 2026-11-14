@@ -267,6 +267,8 @@ export function SavedSearchBar({
           <button
             type="button"
             className="button-secondary saved-state"
+            // Starred, it looks as Subscribed does: filled, in the accent (PL-32).
+            data-on={opened.starred || undefined}
             aria-pressed={opened.starred}
             disabled={busy}
             onClick={star}

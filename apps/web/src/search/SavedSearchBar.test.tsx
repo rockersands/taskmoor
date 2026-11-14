@@ -67,6 +67,8 @@ describe('the saved searches bar (M1-063)', () => {
     const star = screen.getByRole('button', { name: 'Star' });
     expect(star).toHaveAttribute('aria-pressed', 'true');
     expect(star).toHaveTextContent('★');
+    // Starred looks as Subscribed does, filled in the accent (PL-32).
+    expect(star).toHaveAttribute('data-on');
     const subscribe = screen.getByRole('button', { name: 'Subscribe' });
     expect(subscribe).not.toHaveAttribute('data-on');
     // Like Star, Subscribe carries a mark and a pressed state either way (PL-32).
@@ -89,6 +91,7 @@ describe('the saved searches bar (M1-063)', () => {
     await waitFor(() => expect(asked).toHaveBeenCalledWith(2, 2));
     expect(screen.getByRole('button', { name: 'Star' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Star' })).toHaveTextContent('☆');
+    expect(screen.getByRole('button', { name: 'Star' })).not.toHaveAttribute('data-on');
   });
 });
 

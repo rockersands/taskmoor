@@ -323,7 +323,8 @@ and how to make the first.
   **Anyone, also without signing in**, then **Save sharing**. Sharing needs the **Share saved
   searches** permission. Sharing with particular people, groups or tracks is done through the
   [REST API](../admin/rest-api.md); saving here replaces such shares.
-- **Star** marks a saved search. A starred one shows a filled star and the button looks pressed.
+- **Star** marks a saved search. A starred one shows a filled star and its button is filled in the
+  accent, as **Subscribed** is; an outline star means it is not starred.
 - **Subscribe** emails you its results: **How often** (**Every day**, **Every week** on a chosen
   day, or **Every month** on a day from 1 to 28), **At** an hour, and **Only when something
   matches**. Press **Subscribe by email**; the page says when the first email goes out. Once
