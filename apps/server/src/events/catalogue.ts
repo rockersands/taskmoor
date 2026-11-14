@@ -1187,6 +1187,42 @@ export const EVENT_TYPES = {
       origin: z.enum(['person', 'scheduler']),
     }),
   },
+  /**
+   * A run of the auto-scheduler (PLN-004; ADR-122 stage 7): the scenario it wrote into (made by
+   * it or not), its first day, periods and choices, and its counts. Ids, days and numbers only:
+   * never a query's text or a ticket's name. Its drafts come in `plan.drafts_set` with origin
+   * `scheduler`, emitted before it.
+   */
+  'plan.schedule_ran': {
+    subject: 'plan',
+    payload: z.object({
+      scenarioId: id,
+      created: z.boolean(),
+      from: z.string(),
+      periods: z.number().int().positive(),
+      leftOut: z.object({
+        typeIds: z.array(id),
+        releaseIds: z.array(id),
+        query: z.boolean(),
+      }),
+      keep: z.object({
+        inProgress: z.boolean(),
+        inActiveSprint: z.boolean(),
+        query: z.boolean(),
+      }),
+      counts: z.object({
+        placed: z.number().int().nonnegative(),
+        unchanged: z.number().int().nonnegative(),
+        withdrawn: z.number().int().nonnegative(),
+        changedMeanwhile: z.number().int().nonnegative(),
+        kept: z.record(z.string(), z.number().int().nonnegative()),
+        notPlaced: z.record(z.string(), z.number().int().nonnegative()),
+        leftOut: z.record(z.string(), z.number().int().nonnegative()),
+        warnings: z.record(z.string(), z.number().int().nonnegative()),
+        notShown: z.number().int().nonnegative(),
+      }),
+    }),
+  },
   'plan.drafts_discarded': {
     subject: 'plan',
     payload: z.object({

@@ -537,4 +537,44 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     process.stdout.write(`PLN-007 a move of 100 releases: median ${Math.round(m)} ms\n`);
     expectWithinBudget(m, 1000, 'a move of 100 linked releases, with its 101 events, median (ms)');
   }, 900_000);
+
+  it(`[PLN-004] [PLN-012] checks readiness in under a second and runs the auto-scheduler over ${TICKETS} tickets in under 5 s`, async () => {
+    // Three points on every feature: the member's are placed or find no room, the rest have no one.
+    const points = await database.db
+      .selectFrom('field')
+      .select('id')
+      .where('name', '=', 'Points')
+      .where('track_id', 'is', null)
+      .executeTakeFirstOrThrow();
+    await sql`
+      UPDATE ticket SET fields = fields || jsonb_build_object(${String(points.id)}::text, 3)
+       WHERE summary LIKE 'Feature %'`.execute(database.db);
+    const ready = await timed('auto-schedule readiness', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/schedule?from=2027-03-01&periods=6`,
+    });
+    expect((ready.tickets as { open: number }).open).toBeGreaterThan(0);
+    const started = performance.now();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/plans/${plan}/schedule`,
+      payload: { into: { newScenario: { name: 'At size' } }, from: '2027-03-01', periods: 6 },
+      remoteAddress: nextAddress(),
+      headers: { cookie: adminCookie },
+    });
+    const ms = performance.now() - started;
+    process.stdout.write(`PLN-004 a run over ${TICKETS} tickets: ${Math.round(ms)} ms
+`);
+    if (LARGE) {
+      // Past 10,000 tickets to move, a run is refused before it writes anything.
+      expect(res.statusCode, res.body).toBe(409);
+      expect(res.json().error).toBe('too_many_to_schedule');
+    } else {
+      expect(res.statusCode, res.body).toBe(201);
+      const counts = res.json().counts as { placed: number; notPlaced: Record<string, number> };
+      expect(counts.placed).toBeGreaterThan(0);
+      expect(counts.notPlaced.no_room).toBeGreaterThan(0);
+    }
+    expectWithinBudget(ms, 5000, `auto-schedule run, ${TICKETS} tickets (ms)`);
+  }, 900_000);
 });
