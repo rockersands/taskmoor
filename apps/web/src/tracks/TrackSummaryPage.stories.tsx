@@ -84,7 +84,8 @@ export const SectionsEndAtTheirContent: Story = {
     const empty = sections.map((section) => {
       const last = section.lastElementChild?.getBoundingClientRect().bottom ?? 0;
       const style = getComputedStyle(section);
-      const edge = Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth);
+      const edge =
+        Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth);
       return Math.round(section.getBoundingClientRect().bottom - edge - last);
     });
     await expect(empty).toEqual(sections.map(() => 0));
