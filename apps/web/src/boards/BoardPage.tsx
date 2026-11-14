@@ -300,6 +300,8 @@ export function BoardPage({
   const pencilAfter = useRef<number | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
+  /** A change made elsewhere came while a card was being moved here, and waits to be read. */
+  const missed = useRef(false);
 
   /** After a change of person, the page says how many cards there are once they are here. */
   const sayShown = useRef(false);
@@ -309,6 +311,8 @@ export function BoardPage({
   const load = useCallback(
     async (active: readonly string[], chosen: readonly string[]) => {
       const mine = ++generation.current;
+      // This read sees whatever changed before it, a change it was waiting for too.
+      missed.current = false;
       try {
         // A Scrum board shows its active sprints' tickets (M1-044); the rest are in the backlog.
         const b = await client.board(boardId);
@@ -364,14 +368,19 @@ export function BoardPage({
 
   // Changes made elsewhere reach the local copy through the socket (NTF-008 (1): on the board
   // within a second): the board reads its data again, at most once in 100 ms, and
-  // not while a card is being moved here.
+  // not while a card is being moved here. A change that came while a card was held is read once
+  // the move is over, whether the card moved or not (T-230).
   const engine = useSyncEngine();
   const moving = useRef(false);
   moving.current = busy || dragging !== null;
   const boardRef = useRef(board);
   boardRef.current = board;
   const readCards = useCallback(() => {
-    if (moving.current) return;
+    if (moving.current) {
+      missed.current = true;
+      return;
+    }
+    missed.current = false;
     // The first read is still on its way and brings the cards with the board; a read here would
     // take its place and leave the page with no board at all.
     if (!boardRef.current) return;
@@ -404,6 +413,9 @@ export function BoardPage({
   }, [engine, readCards]);
   // An edit in the ticket pop-up over this board shows at once, socket or no socket.
   useTicketChanges(readCards);
+  useEffect(() => {
+    if (!busy && dragging === null && missed.current) readCards();
+  }, [busy, dragging, readCards]);
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;

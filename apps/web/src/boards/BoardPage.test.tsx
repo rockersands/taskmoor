@@ -948,6 +948,39 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     await waitFor(() => expect(client.moves).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Forward to Doing' })).toBeNull();
   });
+
+  it('[AGL-006] shows a change made elsewhere while a card was held, after a cancel or a drop on its own place (T-230)', async () => {
+    const client = fakeBoardClient();
+    const read = client.data;
+    let title = 'Renamed elsewhere';
+    client.data = async (...args) => {
+      const data = await read(...args);
+      return {
+        ...data,
+        cards: data.cards.map((card) => (card.id === 121 ? { ...card, summary: title } : card)),
+      };
+    };
+    renderBoard(client);
+    await page();
+    await screen.findByRole('link', { name: 'SHOP-21 Renamed elsewhere' });
+    // Someone renames SHOP-21 while SHOP-19 is in hand; the board waits for the drag to end.
+    title = 'Renamed while held';
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    act(() => announceTicketChange());
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    letGo();
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'SHOP-21 Renamed while held' })).toBeVisible();
+    // A drop on the card's own place moves nothing, and the change shows all the same.
+    title = 'Renamed while dropped';
+    const drop = pointerDrag(linkOf('SHOP-19'), cardOf('SHOP-19'), { y: -1, up: false });
+    act(() => announceTicketChange());
+    drop();
+    expect(client.moves).toEqual([]);
+    expect(
+      await screen.findByRole('link', { name: 'SHOP-21 Renamed while dropped' }),
+    ).toBeVisible();
+  });
 });
 
 describe('completing a sprint from the board (T-106)', () => {
