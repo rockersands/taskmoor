@@ -27,7 +27,11 @@ import {
  */
 type Db = Kysely<Database> | Transaction<Database>;
 export type FieldValues = Record<string, JsonValue>;
-export type Channel = 'ui' | 'rest' | 'automation';
+/**
+ * Who writes the values: the web app, the REST API, automation, or an import, which carries
+ * history over and so keeps an archived release or area as the system fields' import does.
+ */
+export type Channel = 'ui' | 'rest' | 'automation' | 'import';
 
 /** The name history and the query language give a custom field (ADR-010). */
 export const historyName = (fieldId: number) => `cf[${fieldId}]`;
@@ -135,6 +139,7 @@ export async function checkCustomValues(
         context,
         context.defaultValue,
         undefined,
+        channel,
       );
       if (problem === null) next[key] = context.defaultValue as JsonValue;
     }
@@ -148,6 +153,7 @@ export async function checkCustomValues(
       context,
       value,
       current[field.id],
+      channel,
     );
     if (problem !== null) errors[errorKey(field.id)] = problem;
   }
@@ -162,7 +168,8 @@ export async function checkCustomValues(
  * Why a value's references do not hold where the ticket sits, or null. An option must be one of
  * the context's (a cascade's child under its parent) and enabled, unless the ticket already has
  * it (CORE-009 (3)); people must be active and, where the context says so, in its group or track
- * role (CORE-009 (2)); releases and areas must be the ticket's track's.
+ * role (CORE-009 (2)); releases and areas must be the ticket's track's and, unless the ticket
+ * already has them or an import writes them, not archived (CORE-015, CORE-016).
  */
 export async function referenceProblem(
   db: Db,
@@ -172,6 +179,7 @@ export async function referenceProblem(
   context: ContextDef,
   value: Stored,
   had: JsonValue | undefined,
+  channel: Channel,
 ): Promise<string | null> {
   const ref = REFERENCE_OF[field.type];
   if (ref === undefined) return null;
@@ -216,12 +224,16 @@ export async function referenceProblem(
     case 'area': {
       const rows = await db
         .selectFrom(ref)
-        .select('id')
+        .select(['id', 'archived_at'])
         .where('workspace_id', '=', at.workspaceId)
         .where('track_id', '=', at.trackId)
         .where('id', 'in', ids)
         .execute();
-      return rows.length === ids.length ? null : 'not_in_track';
+      if (rows.length !== ids.length) return 'not_in_track';
+      // An archived one stays on a ticket that has it; no ticket takes it anew, as the system
+      // release and area fields refuse it (T-282), except from an import, which carries history.
+      if (channel === 'import') return null;
+      return rows.some((r) => r.archived_at !== null && !kept.has(r.id)) ? 'archived' : null;
     }
   }
 }

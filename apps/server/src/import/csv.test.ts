@@ -464,4 +464,51 @@ describe('CSV import (M1-098)', () => {
     });
     expect(member.statusCode).toBe(403);
   });
+
+  it('[IMP-012] keeps an archived release in a custom release field, as in the system one (T-282)', async () => {
+    const admin = async (method: 'POST', url: string, payload?: Record<string, unknown>) => {
+      const res = await as('admin', { method, url, ...(payload ? { payload } : {}) });
+      expect(res.statusCode, res.body).toBeLessThan(300);
+      return res.json();
+    };
+    const track = await database.db
+      .selectFrom('track')
+      .select('id')
+      .where('key', '=', 'CSV')
+      .executeTakeFirstOrThrow();
+    const old = (await admin('POST', `/api/v1/tracks/${track.id}/releases`, { name: '0.9' }))
+      .release;
+    await admin('POST', `/api/v1/releases/${old.id}/archive`);
+    const shippedIn = (
+      await admin('POST', '/api/v1/fields', { name: 'Shipped in', type: 'release' })
+    ).field.id as number;
+    const { id } = await run({
+      source: {
+        format: 'csv',
+        system: 'archived-release',
+        data: 'Summary,Fix version,Shipped in\nOld work,0.9,0.9\n',
+        mapping: {
+          track: 'CSV',
+          columns: [
+            { column: 'Summary', to: 'summary' },
+            { column: 'Fix version', to: 'targetRelease' },
+            { column: 'Shipped in', to: 'field', field: shippedIn },
+          ],
+        },
+      },
+    });
+    const made = await database.db
+      .selectFrom('ticket')
+      .select(['id', 'fields'])
+      .where('summary', '=', 'Old work')
+      .executeTakeFirstOrThrow();
+    expect(made.fields).toMatchObject({ [shippedIn]: old.id });
+    const target = await database.db
+      .selectFrom('ticket_release')
+      .select('release_id')
+      .where('ticket_id', '=', made.id)
+      .execute();
+    expect(target.map((r) => r.release_id)).toEqual([old.id]);
+    expect(await problems(id, '?outcome=warned')).toEqual([]);
+  });
 });

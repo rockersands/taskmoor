@@ -1226,7 +1226,8 @@ async function referenceByText(
 /**
  * Custom values given as text (CSV) read against the target's fields: names of options, people
  * (by email), groups, teams, releases and areas become ids, then the values go through the same check
- * as a REST edit (`checkCustomValues`). A value that does not read is left out with a warning.
+ * as a REST edit (`checkCustomValues`), except that an archived release or area is kept, as the
+ * system fields' are. A value that does not read is left out with a warning.
  */
 async function customFromTexts(
   ctx: LoadContext,
@@ -1292,7 +1293,7 @@ async function customFromTexts(
     ctx.trx,
     ctx.catalog,
     { workspaceId: ctx.workspaceId, trackId: at.trackId, ticketTypeId: at.typeId },
-    'rest',
+    'import',
     current,
     input,
     creating,
@@ -1308,7 +1309,7 @@ async function customFromTexts(
     ctx.trx,
     ctx.catalog,
     { workspaceId: ctx.workspaceId, trackId: at.trackId, ticketTypeId: at.typeId },
-    'rest',
+    'import',
     current,
     input,
     creating,
