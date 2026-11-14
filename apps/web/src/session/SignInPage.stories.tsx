@@ -201,3 +201,57 @@ export const AtPhoneWidth: Story = {
     await fitsPhoneWidth(canvas);
   },
 };
+
+/** A desktop's column, whatever the test window's width: the stand-alone column's 40 rem fits. */
+const atDesktopWidth = (Story: () => ReactElement) => (
+  <div style={{ width: 1000 }}>
+    <Story />
+  </div>
+);
+
+/** The inside width of an element: its box less its padding and borders. */
+const insideWidth = (element: Element) => {
+  const style = getComputedStyle(element);
+  const sides = [
+    style.paddingLeft,
+    style.paddingRight,
+    style.borderLeftWidth,
+    style.borderRightWidth,
+  ].reduce((sum, value) => sum + Number.parseFloat(value), 0);
+  return element.getBoundingClientRect().width - sides;
+};
+
+/**
+ * The form fills its card (AC-16, D24): the fields and the button span the card's inside, as on
+ * the password link page, rather than Account's narrower reading width.
+ */
+export const FillsItsCard: Story = {
+  decorators: [atDesktopWidth, ...(anonymous as [])],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const email = await canvas.findByLabelText('Email');
+    const card = email.closest('.sign-in-card') as HTMLElement;
+    const inside = insideWidth(card);
+    await expect(inside).toBeGreaterThan(560);
+    await expect(Math.abs(email.getBoundingClientRect().width - inside)).toBeLessThanOrEqual(1);
+    const button = canvas.getByRole('button', { name: 'Sign in' });
+    await expect(Math.abs(button.getBoundingClientRect().width - inside)).toBeLessThanOrEqual(1);
+  },
+};
+
+/** A failed single sign-on's alert and the fields below it are one width (AC-16). */
+export const SingleSignOnFailedFillsItsCard: Story = {
+  args: { ssoClient: providers },
+  decorators: [atDesktopWidth, ...(anonymous as [])],
+  parameters: { hash: '/sign-in?sso_error=no_account' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const alert = await canvas.findByRole('alert');
+    // The same person to ask as the line under the form (D12, D15).
+    await expect(alert).toHaveTextContent('Ask a site administrator to create one.');
+    const field = canvas.getByLabelText('Email').getBoundingClientRect();
+    const box = alert.getBoundingClientRect();
+    await expect(Math.abs(field.left - box.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(field.right - box.right)).toBeLessThanOrEqual(1);
+  },
+};

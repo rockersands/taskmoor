@@ -55,6 +55,7 @@ The link opens **Set up Taskmoor**. Fill in:
 | | **Password**, **Confirm password** | At least 12 characters and at most 128; refused when it is common, predictable, or contains your name, your email address or the product name |
 | **Outgoing mail (optional)** | **Configure outgoing mail now** | Shows **SMTP host**, **SMTP port** (587), **Use TLS from the start (SMTPS)**, **SMTP user name** and **Sender address** |
 
+The three parts sit on one card, with **Finish setup** at its foot.
 **Finish setup** creates the account as a site administrator, records the site name, marks
 setup as done, deletes the token, signs you in and opens **Home**. On the new site only site
 administrators may create tracks, until they give that permission to someone

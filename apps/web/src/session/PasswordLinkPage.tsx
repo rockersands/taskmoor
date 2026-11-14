@@ -3,7 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute } from '../routing/router';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages, tooManyAttemptsMessage } from './errors';
 import { PasswordField } from './PasswordField';
 import { type SessionUser, useSession } from './SessionProvider';
@@ -152,11 +152,9 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
             title={t('passwordLink.title')}
             {...(state.status === 'checking' ? { purpose: t('purpose.passwordLink') } : {})}
           />
-          <div className="glass-card account-section">
-            <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-              {note}
-            </p>
-          </div>
+          <StandaloneNote kind={state.status === 'checking' ? 'checking' : 'problem'}>
+            {note}
+          </StandaloneNote>
         </main>
       </StandaloneFrame>
     );

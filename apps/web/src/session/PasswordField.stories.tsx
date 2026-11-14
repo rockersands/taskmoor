@@ -50,8 +50,24 @@ export const NewPasswordWithHint: Story = {
   },
 };
 
+/**
+ * A field marked wrong is marked whole: the show-password end takes the field's red edge rather
+ * than keeping its grey one (the sign-in page after a miss).
+ */
 export const Invalid: Story = {
   args: { invalid: true, describedBy: 'story-error' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText('Password');
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    const red = getComputedStyle(input).borderTopColor;
+    const toggle = getComputedStyle(canvas.getByRole('button', { name: 'Show password' }));
+    await expect([
+      toggle.borderTopColor,
+      toggle.borderRightColor,
+      toggle.borderBottomColor,
+    ]).toEqual([red, red, red]);
+  },
 };
 
 /** Phones get 44px targets for the toggle. */

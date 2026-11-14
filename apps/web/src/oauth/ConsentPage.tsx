@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute } from '../routing/router';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 import { hashParam } from '../sso/client';
 import {
   type ConsentClient,
@@ -82,17 +82,17 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
       </p>
     );
   } else if (state.status === 'no-request') {
-    body = <p className="page-note">{t('consent.noRequest')}</p>;
+    body = t('consent.noRequest');
   } else if (state.status === 'error' && !state.request) {
-    body = (
-      <p className="page-note">
-        {state.failure === 'signed-out'
-          ? t('consent.signedOut')
-          : state.failure === 'gone'
-            ? t('consent.gone')
-            : t('consent.failed')}
-      </p>
-    );
+    // Signing in is the way on, not a fault: a note; an unknown or failed request is an alert.
+    body =
+      state.failure === 'signed-out' ? (
+        <p className="page-note">{t('consent.signedOut')}</p>
+      ) : state.failure === 'gone' ? (
+        t('consent.gone')
+      ) : (
+        t('consent.failed')
+      );
   } else {
     const request = (state as { request: ConsentRequest }).request;
     const place = redirectPlace(request.redirectUri);
@@ -161,6 +161,9 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
           `/api/v1/oauth/authorize?request=${encodeURIComponent(requestId)}`,
         )}`
       : '#/sign-in';
+  const problem =
+    state.status === 'no-request' ||
+    (state.status === 'error' && !state.request && state.failure !== 'signed-out');
   // The intro is for a request that can be answered; with a problem it would contradict it.
   const purpose =
     'request' in state && state.request
@@ -172,7 +175,12 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
     <StandaloneFrame signInRoute={signInRoute}>
       <main className="setup">
         <PageHeader title={title} {...(purpose ? { purpose } : {})} />
-        <div className="glass-card account-section">{body}</div>
+        {/* A request that cannot be answered is an alert, as on every link page (D24). */}
+        {problem ? (
+          <StandaloneNote kind="problem">{body}</StandaloneNote>
+        ) : (
+          <div className="glass-card account-section">{body}</div>
+        )}
       </main>
     </StandaloneFrame>
   );
