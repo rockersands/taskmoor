@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
@@ -291,15 +292,69 @@ describe('a plan (PLN-001, PLN-012)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Someone changed this plan meanwhile',
     );
-    // Deleting is a danger, and it asks first, saying what happens (D13).
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const remove = screen.getByRole('button', { name: 'Delete plan' });
-    expect(remove).toHaveClass('button-danger');
-    await user.click(remove);
-    expect(confirm).toHaveBeenCalledWith(
-      'Delete the plan “Spring” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
+  });
+
+  it('[PLN-001] deletes a plan only after asking in the page what goes, by keyboard too (D13)', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm');
+    const { client } = renderPlan('settings', '#/plans/12/settings');
+    const trigger = await screen.findByRole('button', { name: 'Delete plan' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // The question says what goes, offers the plan's deletion by name, and focuses Cancel.
+    const outcome =
+      'Delete the plan “Spring launch” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.';
+    let question = screen.getByRole('group', { name: outcome });
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: outcome })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete plan' })).toHaveFocus();
+    expect(client.removed).toEqual([]);
+    // A refusal says why and keeps the question; the second answer, by keyboard, deletes it.
+    const remove = vi.spyOn(client, 'remove').mockRejectedValueOnce(new Error('down'));
+    await user.keyboard('{Enter}');
+    question = screen.getByRole('group', { name: outcome });
+    await user.click(within(question).getByRole('button', { name: 'Delete Spring launch' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The plan could not be deleted. Try again.',
     );
+    expect(screen.getByRole('group', { name: outcome })).toBeVisible();
+    remove.mockRestore();
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toHaveFocus();
+    await user.keyboard('{Enter}');
     await waitFor(() => expect(client.removed).toEqual([12]));
+    await waitFor(() => expect(window.location.hash).toBe('#/plans'));
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  // jsdom lays nothing out, so the width is measured in a real browser: the stories
+  // SettingsAskingOnAPhone and SettingsDeletingALongNameOnAPhone, and plans.spec.ts.
+  it('[PLN-001] asks on a phone too, in the shared question whose answers wrap (D13)', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    renderPlan('settings', '#/plans/12/settings');
+    await user.click(await screen.findByRole('button', { name: 'Delete plan' }));
+    const question = screen.getByRole('group', { name: /Delete the plan “Spring launch”/ });
+    expect(question).toHaveClass('danger-confirm');
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    setViewportWidth(1280);
+  });
+
+  it('[PLN-001] says a plan someone else deleted first is gone, not to try again (D13)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPlan('settings', '#/plans/12/settings');
+    vi.spyOn(client, 'remove').mockRejectedValue(new ApiError(404, { error: 'not_found' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete plan' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Spring launch' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Someone has already deleted this plan. Go back to Plans.',
+    );
+    // Nothing to try again: the question closes, the focus back on Delete plan.
+    expect(screen.queryByRole('group', { name: /Delete the plan/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete plan' })).toHaveFocus();
+    expect(window.location.hash).toBe('#/plans/12/settings');
   });
 
   it('[PLN-001] [PLN-005] settings read as the rest of the app: “Only me”, shared boxes, a written date (PL-41)', async () => {
@@ -351,6 +406,83 @@ describe('a plan (PLN-001, PLN-012)', () => {
     bar.scrollLeft = 10;
     showCurrentTab(bar);
     expect(bar.scrollLeft).toBe(10);
+  });
+
+  it('[PLN-012] fades its tab bar at the edge where more tabs wait (PL-17)', async () => {
+    // A phone's bar: 343 pixels in view of 800, so tabs wait past its right edge.
+    const sizes = (element: Element, wide: number) =>
+      element.tagName === 'NAV' && element.closest('.plan-page') ? wide : 0;
+    const restore = [
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return sizes(this, 800);
+      }),
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return sizes(this, 343);
+      }),
+    ];
+    try {
+      renderPlan('summary', '#/plans/12');
+      const bar = await screen.findByRole('navigation', { name: 'Sections of Spring launch' });
+      await waitFor(() => expect(bar).toHaveAttribute('data-more', 'end'));
+      // Scrolled along, tabs wait past both edges, and the bar says so.
+      bar.scrollLeft = 200;
+      bar.dispatchEvent(new Event('scroll'));
+      await waitFor(() => expect(bar).toHaveAttribute('data-more', 'both'));
+    } finally {
+      for (const spy of restore) spy.mockRestore();
+    }
+  });
+
+  it('[PLN-001] asks a plan that is not there for nothing more: no choices, one failed request (D4)', async () => {
+    window.location.hash = '#/plans/99';
+    const client = fakePlanClient();
+    const get = vi.fn(async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    });
+    client.get = get;
+    const choices = vi.spyOn(client, 'choices');
+    const search = fakeListSearch();
+    render(
+      <I18nProvider locale="en">
+        <PlanPage
+          id={99}
+          section="summary"
+          client={client}
+          search={search}
+          list={fakeListClient(search)}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Plan not found' })).toBeVisible();
+    // Long enough for a request made at the start to have gone out.
+    await new Promise((done) => setTimeout(done, 20));
+    expect(choices).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('[PLN-012] asks for its filter choices once the plan has loaded', async () => {
+    window.location.hash = '#/plans/12';
+    const client = fakePlanClient();
+    const choices = vi.spyOn(client, 'choices');
+    const search = fakeListSearch();
+    render(
+      <I18nProvider locale="en">
+        <PlanPage
+          id={12}
+          section="summary"
+          client={client}
+          search={search}
+          list={fakeListClient(search)}
+        />
+      </I18nProvider>,
+    );
+    await screen.findByRole('heading', { name: 'Spring launch' });
+    await waitFor(() => expect(choices).toHaveBeenCalledTimes(1));
+    expect(choices).toHaveBeenCalledWith(12);
   });
 
   it('[PLN-012] fits a phone: no sideways scroll, filters stacked', async () => {

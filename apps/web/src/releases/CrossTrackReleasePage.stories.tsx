@@ -93,6 +93,29 @@ export const AtPhoneWidth: Story = {
   },
 };
 
+/**
+ * Deleting one whose name is one long word, at a phone's width (PLN-007, D13, ADR-033): the answer
+ * "Delete <name>" wraps inside the question instead of pushing the page sideways.
+ */
+export const DeletingALongNameAtPhoneWidth: Story = {
+  args: {
+    client: fakeCrossTrackClient({ name: 'PlataformaDeMigracionInfraestructura2027Global' }),
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete' }));
+    const question = canvas.getByRole('group', { name: /PlataformaDeMigracion/ });
+    const answer = within(question).getByRole('button', {
+      name: 'Delete PlataformaDeMigracionInfraestructura2027Global',
+    });
+    await expect(answer.getBoundingClientRect().right).toBeLessThanOrEqual(
+      question.getBoundingClientRect().right,
+    );
+    await fitsPhoneWidth(canvas);
+  },
+};
+
 /** A finger reaches the choice to end when its work completes (ADR-033). */
 export const EditOnATouchScreen: Story = {
   beforeEach: asOnATouchScreen,

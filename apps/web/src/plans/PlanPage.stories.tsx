@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
-import { fakePlanClient, manyPlanItems } from './fixtures';
+import { asOnATouchScreen, notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import type { PlanTimelineItem } from './client';
+import { fakePlanClient, manyPlanItems, planItems } from './fixtures';
 import { PlanPage } from './PlanPage';
 
 const search = fakeListSearch();
@@ -78,6 +79,20 @@ export const SummaryAtPhoneWidth: Story = {
   },
 };
 
+/**
+ * On a phone more tabs wait past the bar's right edge (PL-17; PLN-012): that edge fades, as a
+ * track's tab bar does, so the cut tab reads as "more this way".
+ */
+export const TabBarFadesOnAPhone: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole('navigation', { name: 'Sections of Spring launch' });
+    await waitFor(() => expect(bar).toHaveAttribute('data-more', 'end'));
+    await expect(getComputedStyle(bar).maskImage).toContain('linear-gradient');
+  },
+};
+
 /** The Timeline across two tracks, grouped by track, Ana's tickets only. */
 export const TimelineByTrack: Story = {
   args: { section: 'timeline' },
@@ -108,6 +123,44 @@ export const TimelineDependencies: Story = {
   },
 };
 
+/** SHOP-9, all of it long before the days in view: its row has an "Earlier" marker. */
+const earlyItem = (): PlanTimelineItem => ({
+  id: 9,
+  key: 'SHOP-9',
+  summary: 'Pick the payment provider',
+  type: 'Feature',
+  level: { rank: 0, kind: 'standard' },
+  parentId: null,
+  status: { name: 'Closed', stage: 'closed' },
+  start: '2026-03-02',
+  due: '2026-03-06',
+  dated: 'own',
+  rollup: null,
+  trackId: 1,
+  assignee: null,
+  priority: 'Medium',
+});
+
+/**
+ * The "Earlier" marker of a ticket before the days in view is opaque (PLN-012; PL-6): today's
+ * line, which runs under the rows, never shows through its words on a phone (the second sweep's
+ * plan-timeline--375--dark).
+ */
+export const TimelineEdgeOverTodaysLine: Story = {
+  args: { section: 'timeline', client: fakePlanClient({ items: [...planItems(), earlyItem()] }) },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/timeline';
+    return onARealTouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const edge = await canvas.findByRole('button', { name: /^Earlier: SHOP-9 ends/ });
+    await expect(canvasElement.querySelector('.timeline-today')).not.toBeNull();
+    // An opaque fill: the browser writes a colour with any transparency as rgba().
+    await expect(getComputedStyle(edge).backgroundColor).toMatch(/^rgb\(/);
+  },
+};
+
 /** The List as a search, grouped by track. */
 export const ListByTrack: Story = {
   args: { section: 'list' },
@@ -131,6 +184,41 @@ export const Calendar: Story = {
     await expect(
       await canvas.findByRole('link', { name: 'OPS-4 Scale the servers, due this day' }),
     ).toBeVisible();
+  },
+};
+
+/**
+ * The Calendar on a phone's touch screen (PLN-012, ADR-033): a ticket's chip keeps a finger's
+ * height beside its grip, and its words sit in the middle of it, not at its top (the second
+ * sweep's plan-calendar--375).
+ */
+export const CalendarChipsOnATouchScreen: Story = {
+  args: { section: 'calendar' },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/calendar';
+    return onARealTouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('link', { name: 'OPS-4 Scale the servers, due this day' });
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.calendar-entry .calendar-chip',
+        '.calendar-grip button',
+      ]),
+    ).toEqual([]);
+    const off: string[] = [];
+    for (const chip of canvasElement.querySelectorAll<HTMLElement>(
+      '.calendar-entry .calendar-chip',
+    )) {
+      const words = document.createRange();
+      words.selectNodeContents(chip);
+      const text = words.getBoundingClientRect();
+      const box = chip.getBoundingClientRect();
+      const by = text.top + text.height / 2 - (box.top + box.height / 2);
+      if (Math.abs(by) > 2) off.push(`${chip.textContent}: ${Math.round(by)} px from the middle`);
+    }
+    await expect(off).toEqual([]);
   },
 };
 
@@ -194,6 +282,91 @@ export const Settings: Story = {
     // Teams and capacity (PLN-005): the site's teams, the unit and the periods.
     await expect(await canvas.findByRole('checkbox', { name: 'Web (2 people)' })).toBeChecked();
     await expect(canvas.getByLabelText('Count work in')).toHaveValue('points');
+  },
+};
+
+/**
+ * Settings at a phone's width on a touch screen, a new unit about to be saved and Delete plan
+ * pressed: each asks in its own place what goes (D13), its answers wrapping and big enough for a
+ * finger (ADR-033), nothing sticking out.
+ */
+export const SettingsAskingOnAPhone: Story = {
+  args: { section: 'settings', client: fakePlanClient() },
+  decorators: [atPhoneWidth],
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/settings';
+    return asOnATouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const unit = await canvas.findByLabelText('Count work in');
+    await userEvent.selectOptions(unit, 'hours');
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete plan' }));
+    await expect(
+      canvas.getByRole('group', {
+        name: 'Change the unit? Every capacity set in this plan will be cleared.',
+      }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('group', { name: /Delete the plan/ })).toBeVisible();
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.danger-confirm .button-danger',
+        '.danger-confirm .button-secondary',
+      ]),
+    ).toEqual([]);
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * Deleting a plan whose name is one long word, on a phone (PLN-001, D13, ADR-033): the answer
+ * "Delete <name>" wraps inside the question instead of pushing the page sideways.
+ */
+export const SettingsDeletingALongNameOnAPhone: Story = {
+  args: {
+    section: 'settings',
+    client: fakePlanClient({ name: 'PlataformaDeMigracionInfraestructura2027Global' }),
+  },
+  decorators: [atPhoneWidth],
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/settings';
+    return asOnATouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete plan' }));
+    const question = canvas.getByRole('group', { name: /Delete the plan/ });
+    const answer = within(question).getByRole('button', {
+      name: 'Delete PlataformaDeMigracionInfraestructura2027Global',
+    });
+    await expect(answer.getBoundingClientRect().right).toBeLessThanOrEqual(
+      question.getBoundingClientRect().right,
+    );
+    await expect(tooSmallForAFinger(canvasElement, ['.danger-confirm .button-danger'])).toEqual([]);
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * Settings on a phone's touch screen (PLN-001, ADR-033): every check box is the shared 28 px square,
+ * as on Search, and its row with the label takes the finger (the second sweep's
+ * plan-settings--375: the boxes were 28 x 44).
+ */
+export const SettingsBoxesOnATouchScreen: Story = {
+  args: { section: 'settings' },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/settings';
+    return onARealTouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('checkbox', { name: 'DATA · Data' });
+    await canvas.findByRole('checkbox', { name: 'Web (2 people)' });
+    await expect(notSized(canvasElement, '.plan-settings input[type="checkbox"]', 28)).toEqual([]);
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.plan-settings .form-field-inline label']),
+    ).toEqual([]);
   },
 };
 

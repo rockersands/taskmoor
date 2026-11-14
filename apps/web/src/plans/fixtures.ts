@@ -167,6 +167,8 @@ export interface FakePlanOptions {
   noTeams?: boolean;
   /** Answer capacity changes with this code instead of saving them. */
   refuseCapacity?: string;
+  /** Another name than "Spring launch", such as one long word. */
+  name?: string;
   /**
    * The plan's dependency options (PLN-013): with Precedes (3) chosen, SHOP-3 precedes OPS-4; with
    * the sprint flag, SHOP-2 and SHOP-3 are in one sprint. `linkTypes` names the plan's chosen types
@@ -216,7 +218,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   let exportReads = 0;
   let planReads = 0;
   let version = 1;
-  let name = 'Spring launch';
+  let name = options.name ?? 'Spring launch';
   let dependencies = {
     linkTypeIds: options.dependencies?.linkTypeIds ?? [],
     sameSprint: options.dependencies?.sameSprint ?? false,

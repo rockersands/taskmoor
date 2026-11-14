@@ -284,6 +284,15 @@
   min-width: 0;
 }
 
+/* An answer that names the release, "Delete <name>", wraps a name of one long word inside the
+   question rather than pushing a phone's page sideways (D13, ADR-033). */
+.cross-track-page .danger-confirm-actions > button {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .cross-track-row {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 2fr);
 }

@@ -114,4 +114,31 @@ describe('a plan’s Releases tab (PLN-007)', () => {
     expect(within(operations).getByText('Shipped on Aug 18, 2026')).toBeVisible();
     expect(within(operations).getByText('Due on Jan 15, 2027')).toBeVisible();
   });
+
+  it('[PLN-007] says a release with no tickets has none, not “0 of 0 tickets closed”', async () => {
+    const client = fakePlanClient();
+    const read = client.releases;
+    client.releases = async (id, track) => {
+      const answer = await read(id, track);
+      answer.tracks[0]?.releases.push({
+        id: 26,
+        name: 'Ops 2.0',
+        releaseDate: '2027-03-01',
+        shipped: false,
+        archived: false,
+        overdue: false,
+        outOfStep: false,
+        progress: { tickets: 0, closed: 0, open: 0 },
+      });
+      return answer;
+    };
+    renderTab(undefined, {}, client);
+    const operations = await screen.findByRole('region', { name: 'Operations' });
+    const empty = within(operations).getByRole('link', { name: 'Ops 2.0' }).closest('li');
+    if (!empty) throw new Error('each release is a row');
+    expect(within(empty).getByText('No tickets in it yet')).toBeVisible();
+    expect(screen.queryByText(/0 of 0/)).toBeNull();
+    // A release with tickets still counts them.
+    expect(within(operations).getByText('1 of 4 tickets closed')).toBeVisible();
+  });
 });

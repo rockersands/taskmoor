@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { ModalDialog } from '../shell/ModalDialog';
 import { PageHeader } from '../shell/PageHeader';
@@ -101,15 +102,18 @@ export function CrossTrackReleasePage({
     linkedHeading.current?.focus();
     load();
   };
+  // Asked first by DangerAction (D13); a refusal keeps the question open, the reason above it.
   const remove = async () => {
-    if (!window.confirm(t('crossTrack.delete.confirm', { name: data.name }))) return;
+    setProblem(null);
     const answer = await client.remove(id);
-    if (answer.ok) navigate('#/cross-track-releases');
-    else {
-      setProblem(
-        answer.code === UNREACHABLE ? t('crossTrack.unreachable') : t('crossTrack.delete.failed'),
-      );
+    if (answer.ok) {
+      navigate('#/cross-track-releases');
+      return;
     }
+    setProblem(
+      answer.code === UNREACHABLE ? t('crossTrack.unreachable') : t('crossTrack.delete.failed'),
+    );
+    throw new Error(answer.code);
   };
 
   return (
@@ -211,9 +215,12 @@ export function CrossTrackReleasePage({
                 <button type="button" className="button-secondary" onClick={() => setEditing(true)}>
                   {t('crossTrack.edit.open')}
                 </button>
-                <button type="button" className="button-secondary" onClick={() => void remove()}>
-                  {t('crossTrack.delete')}
-                </button>
+                <DangerAction
+                  label={t('crossTrack.delete')}
+                  outcome={t('crossTrack.delete.confirm', { name: data.name })}
+                  confirmLabel={t('crossTrack.deleteNamed', { name: data.name })}
+                  onConfirm={remove}
+                />
               </>
             )}
           </div>

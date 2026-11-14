@@ -74,7 +74,11 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
   }
   if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
 
-  const share = (p: Progress) => t('releases.progress', { closed: p.closed, count: p.tickets });
+  // A release with no tickets says so, not "0 of 0 tickets closed".
+  const share = (p: Progress) =>
+    p.tickets === 0
+      ? t('plans.releases.noTickets')
+      : t('releases.progress', { closed: p.closed, count: p.tickets });
   const rows = (releases: PlanRelease[]) => (
     <ul className="release-list">
       {byDate(releases).map((r) => (
