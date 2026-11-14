@@ -188,6 +188,50 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(grid.store.get(44)?.fields).toEqual({ '41': 8 });
   });
 
+  it('[PLN-010] after an edit, formula columns read the stored fields of the rows above as read again', async () => {
+    const user = userEvent.setup();
+    // Points of an Outcome is a stored formula the server recomputes when a child's changes.
+    const spec = {
+      ...ESTIMATES,
+      columns: [
+        ...ESTIMATES.columns,
+        {
+          kind: 'formula' as const,
+          name: 'Own tens',
+          expression: '{cf[41]} * 10',
+          output: 'number' as const,
+          decimals: 0,
+        },
+      ],
+    };
+    const grid = fakeGridClient({ structures: [{ id: 3, name: 'Estimates', spec }] });
+    const edit = grid.search.edit;
+    grid.search.edit = async (id, change) => {
+      const saved = await edit(id, change);
+      const outcome = grid.store.get(1) as (typeof saved & { fields: object }) | undefined;
+      if (outcome) grid.store.set(1, { ...outcome, fields: { '41': 99 } });
+      return saved;
+    };
+    render(
+      <I18nProvider locale="en">
+        <PlanGridPage
+          planId={12}
+          view={{ filters: {}, group: null }}
+          scenario={null}
+          client={grid}
+          search={grid.search}
+        />
+      </I18nProvider>,
+    );
+    await screen.findByRole('treegrid');
+    await user.click(await screen.findByRole('button', { name: 'Edit Points of SHOP-44' }));
+    const field = screen.getByRole('spinbutton', { name: 'Edit Points of SHOP-44' });
+    await user.clear(field);
+    await user.type(field, '8{Enter}');
+    await waitFor(() => expect(cellsOf(rowOf('SHOP-1')).map((c) => c.textContent)).toContain('99'));
+    await waitFor(() => expect(cellsOf(rowOf('SHOP-1')).at(-1)).toHaveTextContent('990'));
+  });
+
   it('[PLN-010] scrolls 100,000 rows to the last and saves an edit there, drawing only a window', async () => {
     const errors = vi.spyOn(console, 'error');
     const user = userEvent.setup();

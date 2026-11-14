@@ -29,6 +29,7 @@ import { GROUP_LABELS, type PlanGroup, type PlanView, planHref } from './address
 import { type GridClient, isTimeout, type LevelName, savedTicketOf } from './grid/client';
 import {
   applyEdit,
+  applyEdits,
   type ColumnProblem,
   columnProblems,
   computeGrid,
@@ -581,6 +582,12 @@ function GridBody({
   // The tickets of the rows drawn, read by window, 500 at a time; about 5,000 are kept.
   const cache = useRef(new Map<number, SearchTicket>());
   const pending = useRef(new Set<number>());
+  // Tickets of the rows above an edit, read again because the server recomputed their stored
+  // formula fields: when they arrive, their values replace the skeleton's, so formula columns
+  // that read those fields agree with the ticket columns beside them.
+  const restale = useRef(new Set<number>());
+  const gridNow = useRef(grid);
+  gridNow.current = grid;
   const [cells, setCells] = useState(0);
   const wanted = runs
     .map((i) => skeleton.rows.ticket[visible[i] as number] as number)
@@ -607,6 +614,13 @@ function GridBody({
           (tickets) => {
             for (const ticket of batch) pending.current.delete(ticket);
             for (const ticket of tickets) cache.current.set(ticket.id, ticket);
+            const now = gridNow.current;
+            const edits = tickets.flatMap((ticket) => {
+              if (!restale.current.delete(ticket.id)) return [];
+              const row = now.skeleton.rows.ticket.indexOf(ticket.id);
+              return row < 0 ? [] : [editOfTicket(now, row, savedTicketOf(ticket))];
+            });
+            if (edits.length > 0) applyEdits(now, edits);
             const keep = new Set(wanted);
             for (const held of cache.current.keys()) {
               if (cache.current.size <= CELL_CACHE) break;
@@ -633,7 +647,10 @@ function GridBody({
         for (const r of touched) {
           if (r === row || r >= n) continue;
           const above = skeleton.rows.ticket[r] as number;
-          if (above > 0) cache.current.delete(above);
+          if (above > 0) {
+            cache.current.delete(above);
+            restale.current.add(above);
+          }
         }
       }
       setTick((v) => v + 1);
