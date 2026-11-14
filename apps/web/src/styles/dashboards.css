@@ -370,6 +370,45 @@
   }
 }
 
+/* A Summary's own filter (T-075a): the field with its buttons beside it on a wide screen, under it
+   on a phone; the note and the line saying what is filtered take the whole width. */
+.summary-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.summary-filter input {
+  font-family: var(--font-mono);
+}
+
+.summary-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.summary-filter > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.summary-filter-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.summary-filter-on {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .summary-filter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* A `glass-card`, and in a widget, which is glass already, a well with no blur of its own. */
 .summary-section {
   display: grid;

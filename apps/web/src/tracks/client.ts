@@ -62,7 +62,8 @@ export interface TrackSections {
 export interface TrackClient {
   /** Whether the track has a backlog and sprints, for its tabs and reports. */
   sections(key: string): Promise<TrackSections>;
-  summary(key: string): Promise<TrackSummary>;
+  /** The track's numbers; with `filter`, only the tickets that also match it (T-075a). */
+  summary(key: string, filter?: string): Promise<TrackSummary>;
   /** The customized Summary, if any, and whether the person may change it. */
   summaryLayout(key: string): Promise<TrackSummaryLayout>;
   saveSummaryLayout(
@@ -71,8 +72,11 @@ export interface TrackClient {
   ): Promise<SaveSummaryOutcome>;
   /** Goes back to the default Summary. */
   resetSummaryLayout(key: string): Promise<void>;
-  /** A widget of the customized Summary as the viewer sees it; its shape depends on the kind. */
-  summaryWidget(key: string, widgetId: string): Promise<unknown>;
+  /**
+   * A widget of the customized Summary as the viewer sees it; its shape depends on the kind. With
+   * `filter`, the viewer's own filter narrows what it reads (T-075a).
+   */
+  summaryWidget(key: string, widgetId: string, filter?: string): Promise<unknown>;
   /** A report of the track's tickets; always the track, always as the viewer sees it. */
   statistics(key: string, kind: StatisticKind, settings: StatisticSettings): Promise<unknown>;
   /**
@@ -104,10 +108,29 @@ export interface TrackOutcome {
   progress: { total: number; closed: number };
 }
 
+/**
+ * What the person may do from the Outcomes section (T-082), from their roles in the track; the
+ * ticket routes check each change again. Nothing on an archived track.
+ */
+export interface OutcomeRights {
+  /** Create an outcome: they may create tickets and the track has an outcome-level type. */
+  create: boolean;
+  /** Change an outcome's summary. */
+  edit: boolean;
+  /** Change its dates and its place in the order. */
+  schedule: boolean;
+  /** Move it to a closed status. */
+  close: boolean;
+  /** The outcome-level types, to create one with. */
+  types: { id: number; name: string }[];
+}
+
 export interface TrackOutcomes {
   track: { id: number; key: string; name: string };
   /** The track's ticket types at the outcome level, which make an outcome. */
   outcomeTypes: string[];
+  /** What the person may manage here; a server from before T-082 does not say. */
+  manage?: OutcomeRights;
   /** Open ones first, then closed ones, each in rank order. */
   outcomes: TrackOutcome[];
   /** The cursor of the next page, or null on the last. */
@@ -147,6 +170,9 @@ export const GROUPABLE_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 const trackPath = (key: string) => `/tracks/${encodeURIComponent(key)}`;
+/** The viewer's own Summary filter as a query string, or nothing without one (T-075a). */
+const filterParam = (filter: string | undefined) =>
+  filter?.trim() ? `?${new URLSearchParams({ filter: filter.trim() }).toString()}` : '';
 
 export const trackClient: TrackClient = {
   sections: async (key) => {
@@ -155,7 +181,8 @@ export const trackClient: TrackClient = {
     );
     return { ...track.sections, name: track.name };
   },
-  summary: (key) => api<TrackSummary>(`/tracks/${encodeURIComponent(key)}/summary`),
+  summary: (key, filter) =>
+    api<TrackSummary>(`/tracks/${encodeURIComponent(key)}/summary${filterParam(filter)}`),
   summaryLayout: (key) => api<TrackSummaryLayout>(`${trackPath(key)}/summary-layout`),
   saveSummaryLayout: async (key, layout) => {
     try {
@@ -175,10 +202,10 @@ export const trackClient: TrackClient = {
   resetSummaryLayout: async (key) => {
     await api(`${trackPath(key)}/summary-layout`, { method: 'DELETE' });
   },
-  summaryWidget: async (key, widgetId) =>
+  summaryWidget: async (key, widgetId, filter) =>
     (
       await api<{ data: unknown }>(
-        `${trackPath(key)}/summary-layout/widgets/${encodeURIComponent(widgetId)}`,
+        `${trackPath(key)}/summary-layout/widgets/${encodeURIComponent(widgetId)}${filterParam(filter)}`,
       )
     ).data,
   statistics: async (key, kind, settings) => {
