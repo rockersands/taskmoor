@@ -2689,9 +2689,10 @@ of the baseline's rows whose ticket is not in the reader's `unfiltered` plan.
   then, none now), and `notShown`: rows whose ticket the reader is not shown in the plan now,
   hidden or gone from the plan, as one number that never says which (decisions row 134). Tickets
   the page's filters leave out are simply not compared.
-- **`planEnd`:** `{ then, now, delay }`, the latest end on each side over the tickets compared.
+- **`planEnd`:** `{ was, now, delay }`, the latest end on each side over the tickets compared.
+  (The baseline's side is `was`, not `then`: Biome's `noThenProperty` refuses a `then` property.)
 - **`tickets`:** 200 a page, `show=slipped` (the default), `earlier`, `added` or `all`, ordered by
-  delay, largest first, then rank and id; each `{ id, key, summary, level, closed, then: { start,
+  delay, largest first, then rank and id; each `{ id, key, summary, level, closed, was: { start,
   due, dated }, now: { start, due, dated }, delay, startShift }`, where `startShift` is the start's
   difference in days. `next` is an opaque cursor.
 - Delay is `dayNumber(end now) − dayNumber(end then)` (`plans/periods.ts:17`), the same for open
