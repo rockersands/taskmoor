@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts
-accessed: 2026-11-13
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts
+accessed: 2026-11-14
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -75,9 +75,14 @@ On a track's summary:
 - the sprint widgets read the track's board, and need it to be a Scrum board; a Kanban track's
   editor offers every other widget, the time and workload ones included.
 
-**Back to the default** removes the customization for everyone, after asking. If someone else saved
-a change while you were editing, saving says so, and nothing is overwritten. An archived track's
-summary cannot be changed until the track is restored.
+**Back to the default** removes the customization for everyone, so it asks first. Its button has the
+danger colour of an action that removes something; pressing it does nothing yet, and in its place
+the page says that the track's summary returns to the default for everyone, that the widgets chosen
+for it are removed, and that this cannot be undone. **Reset the summary of** and the track's name
+does it; **Cancel** or Escape leaves everything as it was. Afterwards the page says the track shows
+its default summary again. If you may not change the summary, it says so and the question stays
+open. If someone else saved a change while you were editing, saving says so, and nothing is
+overwritten. An archived track's summary cannot be changed until the track is restored.
 
 A customized summary is not a dashboard: it belongs to the track, and it does not appear under
 **Dashboards**.
