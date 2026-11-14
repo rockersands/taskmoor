@@ -22,7 +22,23 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: template pickers, dates in history, a strict lint step (2026-11-14, the Mac)
+### Latest: draft changes and scenarios on main (2026-11-14, Windows)
+
+- **On `main` (`8e0d4c9c`, full gate on Windows: 9,001 tests, 262 e2e):** T-089e, draft changes
+  and scenarios (ADR-122 stage 6, PLN-002 and PLN-003 now M1, migration 0110). A plan's editors
+  draft start and due days and the Team value in named scenarios, compare two of them, and apply
+  the main scenario's drafts ticket by ticket with the applier's permissions. A review found 22
+  faults (two promotions at once, an apply freeing another's hold, focus after actions, Spanish
+  plurals and more); all are fixed with tests that fail without them.
+- **Found by the gate:** T-305, the create dialog offered only the first 100 tracks; it now reads
+  every page (`everyTrack()` in `apps/web/src/api/tracks.ts`). Six other pickers still read one
+  page (100, 200 or 500 tracks): T-305's rest, Windows' next.
+- **For the user:** T-306, the scenarios design's 18 questions (end of ADR-122 stage 6); each is
+  built on its first answer.
+- **Next on Windows:** T-305's rest, T-285 (plans.css lint), then T-089f (auto-scheduler) and
+  T-089a (hierarchy grid, baselines).
+
+### Earlier: template pickers, dates in history, a strict lint step (2026-11-14, the Mac)
 
 - **On `main` (`4155d809`, full gate: 8,876 tests, 260 e2e):** T-276, T-277 and T-281. **The lint step
   now fails on any Biome warning**; plans.css's warnings are lowered to info for that file until
