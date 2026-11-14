@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Who may create tracks (IAM-033): on a new site only site administrators do. A site
@@ -92,8 +93,8 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now()}`;
-  const key = `C${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
+  const stamp = uniqueStamp(testInfo);
+  const key = uniqueKey('C', testInfo);
   const api = page.request;
 
   // A site administrator makes a track and two people through the API.
@@ -158,7 +159,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   await page.getByLabel('Role', { exact: true }).selectOption({ label: 'Administrators' });
   await expect(page.getByRole('checkbox', { name: BOX })).toHaveCount(0);
   const refused = await api.post(`${BASE}/api/v1/tracks`, {
-    data: { key: `${key}X`, name: 'Not allowed', mode: 'local' },
+    data: { key: uniqueKey('CX', testInfo), name: 'Not allowed', mode: 'local' },
   });
   expect(refused.status()).toBe(403);
 

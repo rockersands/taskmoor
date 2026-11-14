@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * Ticket templates end to end (CORE-029, CORE-030; ADR-113): from a track's summary to its
@@ -47,7 +48,7 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
     expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBe(true);
     return res.json();
   };
-  const key = `T${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('T', testInfo);
   const name = `Templates ${key}`;
   const { track } = await api('post', '/tracks', { key, name, mode: 'shared' });
 

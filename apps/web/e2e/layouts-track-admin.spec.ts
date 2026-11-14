@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * A track's own layout sets and configuration sets, for someone who runs the track (T-163a;
@@ -83,10 +84,8 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
   page,
 }, testInfo) => {
   test.setTimeout(120_000);
-  const project = testInfo.project.name.replace(/\W/g, '');
-  const stamp = `${project}${Date.now()}`;
-  const suffix = `${project[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
-  const keys = { mine: `LM${suffix}`, theirs: `LT${suffix}` };
+  const stamp = uniqueStamp(testInfo);
+  const keys = { mine: uniqueKey('LM', testInfo), theirs: uniqueKey('LT', testInfo) };
   const api = page.request;
 
   // A site administrator makes two tracks with their own configuration, a person who runs only

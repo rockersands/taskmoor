@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * Releases end to end (M1-050; CORE-016): from a track's summary to its releases hub, two
@@ -39,7 +40,7 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const key = `R${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('R', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Shop ${key}`, mode: 'shared' },
   });

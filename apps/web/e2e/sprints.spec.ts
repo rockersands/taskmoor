@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Sprints end to end (M1-044; AGL-008, AGL-010, AGL-011): on a Scrum board made through the
@@ -41,8 +42,8 @@ test('[AGL-010] [AGL-008] a sprint planned, started, reported and completed from
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const word = `spr${testInfo.project.name}${Date.now().toString(36)}`;
-  const key = `S${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const word = `spr${uniqueStamp(testInfo)}`;
+  const key = uniqueKey('S', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Sprint ${word}`, mode: 'shared' },
   });
@@ -122,8 +123,8 @@ test('[AGL-010] a sprint completed from its board, after a pop-up that counts it
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const word = `end${testInfo.project.name}${Date.now().toString(36)}`;
-  const key = `E${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const word = `end${uniqueStamp(testInfo)}`;
+  const key = uniqueKey('E', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Finish ${word}`, mode: 'shared' },
   });

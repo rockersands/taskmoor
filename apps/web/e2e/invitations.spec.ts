@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Inviting people into a track (IAM-027, IAM-028, IAM-030): a site administrator lets a track's
@@ -52,8 +53,8 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   browser,
 }, testInfo) => {
   test.setTimeout(90_000);
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now()}`;
-  const key = `I${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
+  const stamp = uniqueStamp(testInfo);
+  const key = uniqueKey('I', testInfo);
   const api = page.request;
 
   // A site administrator sets the scene through the API.
