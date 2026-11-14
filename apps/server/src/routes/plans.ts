@@ -19,6 +19,7 @@ import {
   sourceKey,
   updateBody,
 } from '../plans/model';
+import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import { samePeriods } from '../plans/periods';
 import {
   browsedTracks,
@@ -191,12 +192,20 @@ export function registerPlanRoutes(
     return row.owner_id === request.user?.id || (await request.authz.isSiteAdmin());
   }
 
-  /** The plan's capacity settings and teams (PLN-005), the same for every viewer. */
-  async function settingsView(row: Row) {
+  /**
+   * The plan's capacity settings and teams (PLN-005) and its dependency options (PLN-013), the
+   * same for every viewer: everyone signed in reads teams and link types.
+   */
+  async function settingsView(row: Row, ws: number) {
+    const deps = await dependencyOptions(db, row.id);
     return {
       capacityUnit: row.capacity_unit,
       period: periodOf(row),
       teams: await planTeams(db, row.id),
+      dependencies: {
+        linkTypes: await linkTypesNamed(db, ws, deps.linkTypeIds),
+        sameSprint: deps.sameSprint,
+      },
     };
   }
 
@@ -204,7 +213,7 @@ export function registerPlanRoutes(
   async function view(request: FastifyRequest, row: Row, tickets: PlanTickets) {
     const shares = (await sharesOf(db, PLAN_SHARES, [row.id])).get(row.id) ?? [];
     return {
-      ...(await settingsView(row)),
+      ...(await settingsView(row, request.workspaceId)),
       id: row.id,
       name: row.name,
       description: row.description,
@@ -317,6 +326,43 @@ export function registerPlanRoutes(
     );
     for (const [i, id] of teams.entries()) if (!found.has(id)) fields[`teams.${i}`] = 'not_found';
     return fields;
+  }
+
+  /**
+   * Field errors for the link types a plan counts (PLN-013): duplicates, types the workspace does
+   * not have, and blocking ones, which are always counted.
+   */
+  async function dependencyErrors(ws: number, ids: readonly number[]) {
+    const fields: Record<string, string> = {};
+    if (new Set(ids).size !== ids.length) fields['dependencies.linkTypeIds'] = 'duplicate';
+    const found = new Map(
+      (ids.length === 0
+        ? []
+        : await db
+            .selectFrom('link_type')
+            .select(['id', 'outward'])
+            .where('workspace_id', '=', ws)
+            .where('id', 'in', [...ids])
+            .execute()
+      ).map((t) => [t.id, t.outward]),
+    );
+    for (const [i, id] of ids.entries()) {
+      const outward = found.get(id);
+      if (outward === undefined) fields[`dependencies.linkTypeIds.${i}`] = 'not_found';
+      else if (outward.trim().toLowerCase() === 'blocks') {
+        fields[`dependencies.linkTypeIds.${i}`] = 'always_counted';
+      }
+    }
+    return fields;
+  }
+
+  async function writeDependencyTypes(trx: Db, ws: number, planId: number, ids: readonly number[]) {
+    await trx.deleteFrom('plan_dependency_type').where('plan_id', '=', planId).execute();
+    if (ids.length === 0) return;
+    await trx
+      .insertInto('plan_dependency_type')
+      .values(ids.map((id) => ({ workspace_id: ws, plan_id: planId, link_type_id: id })))
+      .execute();
   }
 
   /**
@@ -526,6 +572,7 @@ export function registerPlanRoutes(
       const current = await sourceRows(trx, [row.id]);
       const sources = current.map(inputOf).filter((s) => allowed.has(sourceKey(s)));
       const teams = (await planTeams(trx, row.id)).map((t) => t.id);
+      const deps = await dependencyOptions(trx, row.id);
       const copy = await trx
         .insertInto('plan')
         .values({
@@ -537,11 +584,13 @@ export function registerPlanRoutes(
           period_kind: held.period_kind,
           period_weeks: held.period_weeks,
           period_anchor: held.period_anchor,
+          flag_same_sprint: deps.sameSprint,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
       await writeSources(trx, ws, copy.id, sources);
       await writeTeams(trx, ws, copy.id, teams);
+      await writeDependencyTypes(trx, ws, copy.id, deps.linkTypeIds);
       const hiddenSources = current.length - sources.length;
       await emit(trx, by(request), {
         type: 'plan.duplicated',
@@ -732,6 +781,10 @@ export function registerPlanRoutes(
       const fields = await teamErrors(ws, body.teams);
       if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
     }
+    if (body.dependencies !== undefined) {
+      const fields = await dependencyErrors(ws, body.dependencies.linkTypeIds);
+      if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
+    }
     const outcome = await db.transaction().execute(async (trx) => {
       const locked = await trx
         .selectFrom('plan')
@@ -745,6 +798,7 @@ export function registerPlanRoutes(
       }
       const teamsBefore =
         body.teams === undefined ? [] : (await planTeams(trx, row.id)).map((t) => t.id);
+      const depsBefore = await dependencyOptions(trx, row.id);
       const before = {
         name: row.name,
         description: row.description,
@@ -753,6 +807,8 @@ export function registerPlanRoutes(
         teams: teamsBefore,
         capacityUnit: locked.capacity_unit,
         period: periodOf(locked),
+        dependencyTypes: depsBefore.linkTypeIds,
+        sameSprint: depsBefore.sameSprint,
       };
       const after = {
         ...(body.name !== undefined ? { name: body.name } : {}),
@@ -762,6 +818,12 @@ export function registerPlanRoutes(
         ...(body.teams !== undefined ? { teams: body.teams } : {}),
         ...(body.capacityUnit !== undefined ? { capacityUnit: body.capacityUnit } : {}),
         ...(body.period !== undefined ? { period: body.period } : {}),
+        ...(body.dependencies !== undefined
+          ? {
+              dependencyTypes: [...body.dependencies.linkTypeIds].sort((a, b) => a - b),
+              sameSprint: body.dependencies.sameSprint,
+            }
+          : {}),
       };
       const changes = diff(before as Record<string, unknown>, after as Record<string, unknown>);
       if (Object.keys(changes).length === 0) return { unchanged: true as const };
@@ -797,11 +859,17 @@ export function registerPlanRoutes(
                   period_anchor: body.period.anchor,
                 }
             : {}),
+          ...(body.dependencies !== undefined
+            ? { flag_same_sprint: body.dependencies.sameSprint }
+            : {}),
           version: locked.version + 1,
           updated_at: new Date(),
         })
         .where('id', '=', row.id)
         .execute();
+      if (changes.dependencyTypes && body.dependencies !== undefined) {
+        await writeDependencyTypes(trx, ws, row.id, body.dependencies.linkTypeIds);
+      }
       if (sources !== undefined) await writeSources(trx, ws, row.id, sources);
       if (body.shares !== undefined) await writeShares(trx, PLAN_SHARES, ws, row.id, body.shares);
       await emit(trx, by(request), {

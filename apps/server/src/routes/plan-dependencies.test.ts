@@ -24,7 +24,9 @@ function sessionCookie(header: string | string[] | undefined): string {
 
 interface Timeline {
   items: { id: number; key: string; summary: string }[];
-  links: { from: number; to: number }[];
+  links: { from: number; to: number; linkTypeId: number; sameSprint?: true }[];
+  linkTypes: { id: number; name: string; outward: string }[];
+  sameSprint: boolean;
   blockersElsewhere: { id: number; outside: number; unlisted: number }[];
   truncated: boolean;
 }
@@ -44,6 +46,7 @@ describe('a plan’s dependencies (PLN-006)', () => {
   const tracks: Record<string, number> = {};
   const t: Record<string, { id: number; key: string }> = {};
   let planId = 0;
+  let blocks = 0;
 
   const as = (who: string, options: InjectOptions) =>
     app.inject({
@@ -154,6 +157,7 @@ describe('a plan’s dependencies (PLN-006)', () => {
         .execute();
     }
     const ana = users.ana?.id;
+    blocks = await linkType('blocks');
     t.design = await ticket('DPA', 'Design', { startDate: '2027-03-01', dueDate: '2027-03-10' });
     t.build = await ticket('DPA', 'Build', {
       startDate: '2027-03-08',
@@ -205,9 +209,11 @@ describe('a plan’s dependencies (PLN-006)', () => {
     const { answer } = await timeline('admin');
     expect(answer.items.map((i) => i.summary).sort()).toEqual(['Build', 'Design', 'Ship']);
     expect(answer.links).toEqual([
-      { from: t.design?.id, to: t.build?.id },
-      { from: t.design?.id, to: t.ship?.id },
+      { from: t.design?.id, to: t.build?.id, linkTypeId: blocks },
+      { from: t.design?.id, to: t.ship?.id, linkTypeId: blocks },
     ]);
+    expect(answer.linkTypes.map((l) => l.outward)).toEqual(['blocks']);
+    expect(answer.sameSprint).toBe(false);
     // Invoice run (outside the plan) and Secret core work: two, whoever may see them.
     expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
   });
@@ -263,7 +269,11 @@ describe('a plan’s dependencies (PLN-006)', () => {
     });
     try {
       const { answer } = await timeline('ana');
-      expect(answer.links).toContainEqual({ from: t.invoice?.id, to: t.ship?.id });
+      expect(answer.links).toContainEqual({
+        from: t.invoice?.id,
+        to: t.ship?.id,
+        linkTypeId: blocks,
+      });
       // Secret core work stays outside for her, and only counted.
       expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 1, unlisted: 0 }]);
     } finally {
@@ -273,5 +283,129 @@ describe('a plan’s dependencies (PLN-006)', () => {
         payload: { sources: [{ kind: 'track', trackId: tracks.DPA }] },
       });
     }
+  });
+  describe('dependency options (PLN-013)', () => {
+    const options = (linkTypeIds: number[], sameSprint: boolean) =>
+      as('admin', {
+        method: 'PATCH',
+        url: `/api/v1/plans/${planId}`,
+        payload: { dependencies: { linkTypeIds, sameSprint } },
+      });
+    afterAll(async () => {
+      await options([], false);
+    });
+
+    it('[PLN-013] counts a chosen link type as a dependency, the source first, and none when not chosen', async () => {
+      const relates = await linkType('relates to');
+      const docs = await ticket('DPA', 'Docs', { startDate: '2027-03-01', dueDate: '2027-03-12' });
+      await link(docs, t.build as { key: string }, 'relates to');
+      // Not chosen: only blocking links, as before.
+      let { answer } = await timeline('admin');
+      expect(answer.links.some((l) => l.from === docs.id)).toBe(false);
+      expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
+
+      expect((await options([relates], false)).statusCode).toBe(200);
+      ({ answer } = await timeline('admin'));
+      // Docs relates to Build: Build waits for Docs, late as PLN-006 judges it.
+      expect(answer.links).toContainEqual({ from: docs.id, to: t.build?.id, linkTypeId: relates });
+      // Related only (DPB, outside the plan) relates to Ship: now counted, never named.
+      expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 3, unlisted: 0 }]);
+      expect(answer.linkTypes.map((l) => l.outward).sort()).toEqual(['blocks', 'relates to']);
+      const plan = await call('admin', { method: 'GET', url: `/api/v1/plans/${planId}` });
+      expect(plan.plan.dependencies).toEqual({
+        linkTypes: [expect.objectContaining({ id: relates, outward: 'relates to' })],
+        sameSprint: false,
+      });
+
+      // Ana sees the same lines; Secret core work stays a count.
+      const seen = await timeline('ana');
+      expect(seen.answer.links).toContainEqual({
+        from: docs.id,
+        to: t.build?.id,
+        linkTypeId: relates,
+      });
+      expect(seen.body).not.toContain('Secret core work');
+
+      // Taken away again: the line and the count go.
+      await options([], false);
+      ({ answer } = await timeline('admin'));
+      expect(answer.links.some((l) => l.from === docs.id)).toBe(false);
+      expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
+    });
+
+    it('[PLN-013] refuses blocking types, which are always counted, and types that do not exist', async () => {
+      const refused = await options([blocks, 999_999], false);
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json().fields).toEqual({
+        'dependencies.linkTypeIds.0': 'always_counted',
+        'dependencies.linkTypeIds.1': 'not_found',
+      });
+      expect((await as('ana', { method: 'PATCH', url: `/api/v1/plans/${planId}`, payload: { dependencies: { linkTypeIds: [], sameSprint: true } } })).statusCode).toBe(403);
+    });
+
+    it('[PLN-013] marks a dependency within one open sprint only when the plan asks', async () => {
+      const board = await database.db
+        .insertInto('board')
+        .values({
+          workspace_id: 1,
+          name: 'DPA board',
+          kind: 'scrum',
+          location_track_id: tracks.DPA as number,
+          location_user_id: null,
+          filter_query: 'track = DPA',
+          sub_filter_query: null,
+          columns: JSON.stringify([]),
+          swimlanes: JSON.stringify({ kind: 'none' }),
+          card_rules: JSON.stringify([]),
+          created_by: null,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const sprint = await database.db
+        .insertInto('sprint')
+        .values({
+          workspace_id: 1,
+          board_id: board.id,
+          name: 'DPA 1',
+          sequence: 1,
+          state: 'active',
+          started_at: new Date(),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await database.db
+        .insertInto('sprint_ticket')
+        .values([
+          { workspace_id: 1, sprint_id: sprint.id, ticket_id: t.design?.id as number },
+          { workspace_id: 1, sprint_id: sprint.id, ticket_id: t.build?.id as number },
+        ])
+        .execute();
+      try {
+        let { answer } = await timeline('admin');
+        expect(answer.links.filter((l) => l.sameSprint)).toEqual([]);
+
+        expect((await options([], true)).statusCode).toBe(200);
+        ({ answer } = await timeline('admin'));
+        expect(answer.sameSprint).toBe(true);
+        expect(answer.links).toEqual([
+          { from: t.design?.id, to: t.build?.id, linkTypeId: blocks, sameSprint: true },
+          { from: t.design?.id, to: t.ship?.id, linkTypeId: blocks },
+        ]);
+
+        // A completed sprint marks nothing.
+        await database.db
+          .updateTable('sprint')
+          .set({ state: 'closed', completed_at: new Date() })
+          .where('id', '=', sprint.id)
+          .execute();
+        ({ answer } = await timeline('admin'));
+        expect(answer.links.filter((l) => l.sameSprint)).toEqual([]);
+      } finally {
+        await options([], false);
+        await database.db.deleteFrom('sprint_ticket').where('sprint_id', '=', sprint.id).execute();
+        await database.db.deleteFrom('sprint').where('id', '=', sprint.id).execute();
+        await database.db.deleteFrom('board').where('id', '=', board.id).execute();
+      }
+    });
   });
 });

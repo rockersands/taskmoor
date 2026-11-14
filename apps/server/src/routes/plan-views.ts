@@ -13,6 +13,7 @@ import {
   type PlanFilters,
   timelineQuery,
 } from '../plans/model';
+import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
 import {
   browsedTracks,
   filterText,
@@ -386,6 +387,8 @@ export function registerPlanViewRoutes(
         query: tickets.query,
         items: [],
         links: [],
+        linkTypes: [],
+        sameSprint: false,
         blockersElsewhere: [],
         tracks: [],
         markers: { sprints: [], releases: [] },
@@ -395,6 +398,7 @@ export function registerPlanViewRoutes(
       const unfiltered = tickets.unfiltered;
       if (!where || !unfiltered) return none;
       const filtered = filterText(filters) !== null;
+      const options = await dependencyOptions(db, plan.id);
       // The viewer's tickets of any track, for roll-ups beyond the plan.
       const seen = await compileQuery(db, tickets.scope, '', new Date());
       const answer = await readOnly(db, timeoutMs, async (trx) => {
@@ -405,7 +409,15 @@ export function registerPlanViewRoutes(
         ).rows.map((r) => r.id);
         const ids = chosen.slice(0, LISTED);
         if (ids.length === 0) {
-          return { rows: [], rollups: [], links: [], elsewhere: [], ids, more: false };
+          return {
+            rows: [],
+            rollups: [],
+            links: [],
+            elsewhere: [],
+            linkTypeIds: [] as number[],
+            ids,
+            more: false,
+          };
         }
         const more = chosen.length > LISTED;
         const rows = (
@@ -451,40 +463,17 @@ export function registerPlanViewRoutes(
              WHERE tree.depth > 0
              GROUP BY tree.root`.execute(trx)
         ).rows;
-        // Every blocker of a listed ticket, outside the trash: drawn when listed, else counted.
-        const blocking = (
-          await sql<{ from: number; to: number }>`
-            SELECT DISTINCT l.source_id AS from, l.target_id AS to
-              FROM ticket_link l JOIN link_type lt ON lt.id = l.link_type_id
-              JOIN ticket b ON b.id = l.source_id
-             WHERE l.workspace_id = ${ws}::int AND lower(lt.outward) = 'blocks'
-               AND l.target_id = ANY(${ids}::int[]) AND b.deleted_at IS NULL
-             ORDER BY l.source_id, l.target_id`.execute(trx)
-        ).rows;
-        const listed = new Set(ids);
-        const links = blocking.filter((l) => listed.has(l.from));
-        const others = blocking.filter((l) => !listed.has(l.from));
-        // Which of the others are the plan's for this viewer, left out by the filters or the
-        // 10,000. Without either, every ticket of the plan is listed, so none is.
-        const blockers = [...new Set(others.map((l) => l.from))];
-        const inPlan = new Set(
-          (filtered || more) && blockers.length > 0
-            ? (
-                await sql<{ id: number }>`
-                  SELECT k.id FROM ticket k
-                   WHERE k.id = ANY(${blockers}::int[]) AND ${unfiltered}`.execute(trx)
-              ).rows.map((r) => r.id)
-            : [],
-        );
-        const counted = new Map<number, { id: number; outside: number; unlisted: number }>();
-        for (const l of others) {
-          const entry = counted.get(l.to) ?? { id: l.to, outside: 0, unlisted: 0 };
-          if (inPlan.has(l.from)) entry.unlisted++;
-          else entry.outside++;
-          counted.set(l.to, entry);
-        }
-        const elsewhere = [...counted.values()].sort((a, b) => a.id - b.id);
-        return { rows, rollups, links, elsewhere, ids, more };
+        // Every dependency of a listed ticket, outside the trash: drawn when listed, else counted
+        // (PLN-006, PLN-013). Without a filter or the cut at 10,000, every ticket of the plan is
+        // listed, so no counted blocker is the plan's.
+        const deps = await readDependencies(trx, ws, ids, options, {
+          unfiltered,
+          checkPlan: filtered || more,
+        });
+        const links = deps.links;
+        const elsewhere = deps.elsewhere;
+        const linkTypeIds = deps.linkTypeIds;
+        return { rows, rollups, links, elsewhere, linkTypeIds, ids, more };
       });
       if (answer.rows.length === 0) return none;
       const parents = [
@@ -530,6 +519,8 @@ export function registerPlanViewRoutes(
           };
         }),
         links: answer.links,
+        linkTypes: await linkTypesNamed(db, ws, answer.linkTypeIds),
+        sameSprint: options.sameSprint,
         blockersElsewhere: answer.elsewhere,
         tracks: extra.tracks,
         markers: extra.markers,

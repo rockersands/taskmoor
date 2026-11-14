@@ -80,6 +80,14 @@ export const updateBody = z
     capacityUnit: z.enum(CAPACITY_UNITS).optional(),
     /** Changing it clears the capacity set for single periods; that for every period stays. */
     period: periodInput.optional(),
+    /**
+     * Link types counted as dependencies beside blocking links, and whether dependencies within
+     * one sprint are marked (PLN-013).
+     */
+    dependencies: z
+      .object({ linkTypeIds: z.array(idNum).max(20), sameSprint: z.boolean() })
+      .strict()
+      .optional(),
     version: z.number().int().positive().optional(),
   })
   .strict();
