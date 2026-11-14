@@ -179,6 +179,18 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     ]);
   });
 
+  it('[NFR-005] keyboard focus goes to the note that the track uses the set, not to the page (T-225)', async () => {
+    const user = userEvent.setup();
+    renderOwn(4);
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    const use = await screen.findByRole('button', { name: 'Use this set for OPS' });
+    use.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('OPS now uses Ops rules.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+    expect(await screen.findByText('Used by OPS.')).toHaveFocus();
+  });
+
   it('[CORE-003] adds rule sets for the track, with its own fields, and makes the track use one', async () => {
     const user = userEvent.setup();
     const client = renderOwn(4);

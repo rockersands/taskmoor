@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
@@ -689,6 +689,15 @@ function RuleSetPanel({
   const [set, setSet] = useState<RuleSet | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [confirming, setConfirming] = useState(false);
+  // "Use this set for KEY" goes away once the track uses the set; the note that says so takes
+  // the keyboard focus it had, rather than the page (T-225).
+  const usedByNote = useRef<HTMLParagraphElement>(null);
+  const [focusUsedBy, setFocusUsedBy] = useState(false);
+  useEffect(() => {
+    if (!focusUsedBy) return;
+    usedByNote.current?.focus();
+    setFocusUsedBy(false);
+  }, [focusUsedBy]);
   const keys = [...SYSTEM_FIELDS, ...fields.map((f) => `cf[${f.id}]`)];
   const show = (found: RuleSet) => {
     setSet(found);
@@ -778,7 +787,7 @@ function RuleSetPanel({
         );
       })}
       {set.usedBy.length > 0 && (
-        <p className="page-note">
+        <p ref={usedByNote} tabIndex={-1} className="page-note">
           {t('admin.sets.usedBy', { tracks: set.usedBy.map((tr) => tr.key).join(', ') })}
         </p>
       )}
@@ -795,6 +804,7 @@ function RuleSetPanel({
                 .then(() => client.ruleSet(id))
                 .then((fresh) => {
                   setSet(fresh);
+                  setFocusUsedBy(true);
                   said(t('admin.sets.usedFor', { key: track.key, name: fresh.name }));
                 }, failed)
             }
