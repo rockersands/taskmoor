@@ -22,7 +22,14 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: Plans' confirmations and the sweep's Plans rows on main (2026-11-14, Windows)
+### Latest: the create form, one date format and the demo loader (2026-11-14, the Mac)
+
+- **On `main` (`89c4433b`, full gate: 8,862 tests, 260 e2e):** T-265 (the create form sets every field
+  it lists), T-240 (one date format in the person's locale; TR-29 gone), T-239 (`pnpm demo
+  --tickets` loads tickets.md into a demo), T-247 (the image's install is bounded) and T-270.
+  New: T-276 to T-281 (T-278 to T-280 for the user). Windows: T-089e (migration 0110).
+
+### Earlier: Plans' confirmations and the sweep's Plans rows on main (2026-11-14, Windows)
 
 - **On `main` (`72db5a6e`, full gate on Windows: 8,790 tests, 258 e2e):** T-266 (Plans ask in the
   page before deleting or clearing capacity) and T-304 (the `plan-` rows of the second sweep), with
