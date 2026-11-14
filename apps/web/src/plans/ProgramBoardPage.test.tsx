@@ -592,7 +592,7 @@ describe('a program board in a scenario (PLN-002)', () => {
 
   function renderInFaster() {
     const asked: (number | undefined)[] = [];
-    const inner = fakeBoardClient({ readWith: () => inFaster() });
+    const inner = fakeBoardClient({ readWith: () => Promise.resolve(inFaster()) });
     const client = {
       ...inner,
       read: (...args: Parameters<typeof inner.read>) => {

@@ -15,6 +15,8 @@ export interface ScenarioCompareProps {
   a?: string | undefined;
   b?: string | undefined;
   onChange: (sides: { a: string; b: string }) => void;
+  /** The phone's layout whatever the width (stories, whose browser is not a phone). */
+  phone?: boolean;
 }
 
 const DAY_MS = 86_400_000;
@@ -36,11 +38,12 @@ export function ScenarioCompare({
   a: askedA,
   b: askedB,
   onChange,
+  phone = false,
 }: ScenarioCompareProps) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
-  const compact = useMediaQuery(COMPACT_QUERY);
+  const compact = useMediaQuery(COMPACT_QUERY) || phone;
   const fallbackB = String(scenarios.find((s) => s.main)?.id ?? scenarios[0]?.id ?? 'live');
   const a = askedA ?? 'live';
   const b = askedB ?? fallbackB;

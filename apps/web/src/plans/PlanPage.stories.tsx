@@ -8,6 +8,7 @@ import { asOnATouchScreen, notSized, onARealTouchScreen, tooSmallForAFinger } fr
 import type { PlanTimelineItem } from './client';
 import { fakePlanClient, manyPlanItems, planItems } from './fixtures';
 import { PlanPage } from './PlanPage';
+import { fakeScenarioClient } from './scenarioFixtures';
 
 const search = fakeListSearch();
 
@@ -492,5 +493,54 @@ export const ReleasesAtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole('region', { name: 'Launch across tracks' });
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** A plan whose scenario "Faster" drafts SHOP-2 due a day later (ADR-122 stage 6). */
+const inFaster = () => {
+  const client = fakePlanClient();
+  const scenarios = fakeScenarioClient(client, {
+    scenarios: [
+      { name: 'Main plan' },
+      { name: 'Faster', drafts: [{ ticketId: 2, dueDate: '2026-11-11' }] },
+    ],
+  });
+  return { client, scenarios };
+};
+
+/**
+ * The Timeline in a scenario: the scenario bar says edits are drafts, the drafted bar has a Draft
+ * tag in words and a dashed edge, and its name says its days drafted and now.
+ */
+export const TimelineInAScenario: Story = {
+  args: { section: 'timeline', ...inFaster() },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/timeline?scenario=2';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole('button', { name: /^SHOP-2, draft: / });
+    await expect(bar).toHaveClass('is-draft');
+    await expect(getComputedStyle(bar).outlineStyle).toBe('dashed');
+    await expect(canvas.getByText(/^Drafting in Faster: 1 change\./)).toBeVisible();
+  },
+};
+
+/** The Calendar in a scenario on a phone's touch screen: a drafted entry begins with "Draft". */
+export const CalendarInAScenarioOnATouchScreen: Story = {
+  args: { section: 'calendar', ...inFaster() },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/calendar?scenario=2';
+    return onARealTouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const chip = await canvas.findByRole('link', {
+      name: 'Draft SHOP-2 Build the shop page, due this day',
+    });
+    await expect(chip).toHaveTextContent(/^Draft SHOP-2/);
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.scenario-bar select', '.calendar-entry .calendar-chip']),
+    ).toEqual([]);
   },
 };

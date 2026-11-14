@@ -9,7 +9,7 @@ import { PlanPage } from './PlanPage';
 import { type FakeScenarioOptions, fakeScenarioClient } from './scenarioFixtures';
 
 /** "Spring launch" with its main scenario and Faster, which drafts SHOP-2 due a day later. */
-const TWO: FakeScenarioOptions['scenarios'] = [
+const TWO: NonNullable<FakeScenarioOptions['scenarios']> = [
   { name: 'Main plan', drafts: [{ ticketId: 3, dueDate: '2026-11-25' }] },
   { name: 'Faster', drafts: [{ ticketId: 2, dueDate: '2026-11-11' }] },
 ];

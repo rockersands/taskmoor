@@ -25,6 +25,8 @@ export interface PlanScenariosPageProps {
   onChanged: () => void;
   /** The sides compared, kept in the page's address. */
   onCompare: (sides: { a: string; b: string }) => void;
+  /** The phone's layout whatever the width (stories, whose browser is not a phone). */
+  phone?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export function PlanScenariosPage({
   view,
   onChanged,
   onCompare,
+  phone = false,
 }: PlanScenariosPageProps) {
   const t = useT();
   const intl = useIntl();
@@ -214,6 +217,7 @@ export function PlanScenariosPage({
           a={view.compare?.a}
           b={view.compare?.b}
           onChange={onCompare}
+          phone={phone}
         />
       ) : null}
       {making && (

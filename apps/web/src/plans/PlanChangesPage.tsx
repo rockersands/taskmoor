@@ -25,6 +25,8 @@ export interface PlanChangesPageProps {
   view: PlanView;
   /** Drafts were applied, discarded or kept, or a scenario made main: the counts are read again. */
   onChanged: () => void;
+  /** The phone's layout whatever the width (stories, whose browser is not a phone). */
+  phone?: boolean;
 }
 
 /** What an apply has done so far, and what it said of each refused ticket. */
@@ -53,10 +55,11 @@ export function PlanChangesPage({
   client,
   view,
   onChanged,
+  phone = false,
 }: PlanChangesPageProps) {
   const t = useT();
   const id = useId();
-  const compact = useMediaQuery(COMPACT_QUERY);
+  const compact = useMediaQuery(COMPACT_QUERY) || phone;
   const [data, setData] = useState<ChangeList | null>(null);
   const [failed, setFailed] = useState(false);
   const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
