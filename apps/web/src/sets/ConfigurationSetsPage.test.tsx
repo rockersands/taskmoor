@@ -186,6 +186,18 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     ]);
   });
 
+  it('[NFR-005] keyboard focus goes to the note that the track uses the set, not to the page (T-225)', async () => {
+    const user = userEvent.setup();
+    renderOwn(4);
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    const use = await screen.findByRole('button', { name: 'Use this set for OPS' });
+    use.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('OPS now uses Ops rules.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+    expect(await screen.findByText('Used by OPS.')).toHaveFocus();
+  });
+
   it('[CORE-003] adds rule sets for the track, with its own fields, and makes the track use one', async () => {
     const user = userEvent.setup();
     const client = renderOwn(4);
@@ -238,6 +250,40 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     ).toBeVisible();
   });
 
+  it('[IAM-030] tells someone whose only track is archived that it is archived, not that they may not be here (T-224)', async () => {
+    // The tracks someone runs leave out archived ones, so the session says they run none.
+    const client = fakeSetsClient({ runs: [] });
+    const read = client.track;
+    client.track = async (id) => ({ ...(await read(id)), archived: id === 4 });
+    const session: Session = {
+      status: 'signed-in',
+      user: {
+        id: 4,
+        name: 'Tam',
+        email: 'tam@example.com',
+        isSiteAdmin: false,
+        isConfigAdmin: false,
+        managesTracks: false,
+        timeZone: null,
+        locale: null,
+      },
+    };
+    renderOwn(4, { client, session });
+    expect(
+      await screen.findByText('OPS is archived: its configuration changes once it is restored.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Only site and configuration administrators/)).toBeNull();
+    expect(screen.queryByText('Ops rules')).toBeNull();
+    // A track that is not archived still refuses them as before.
+    cleanup();
+    renderOwn(6, { client, session });
+    expect(
+      await screen.findByText(
+        'Only site and configuration administrators, and the people who run a track with its own configuration, manage configuration sets.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[CORE-013] keeps the rule of a field that does not reach the track when it saves the set', async () => {
     const user = userEvent.setup();
     const client = fakeSetsClient();
@@ -259,6 +305,39 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     expect(await screen.findByText('Ops rules was saved.')).toBeInTheDocument();
     expect(client.calls.find((c) => c.action === 'updateRuleSet')?.args[1]).toEqual({
       rules: [elsewhere],
+    });
+  });
+
+  it('[CORE-013] keeps the rule of a field that reached the track while the panel was open (T-223)', async () => {
+    const user = userEvent.setup();
+    const client = fakeSetsClient();
+    const arrived = {
+      ticketTypeId: null,
+      field: 'cf[99]',
+      required: true,
+      hidden: false,
+      description: null,
+      editableBy: null,
+    };
+    const read = client.ruleSet;
+    client.ruleSet = async (id) => ({ ...(await read(id)), rules: [arrived] });
+    const fields = client.customFields;
+    let reached = false;
+    client.customFields = async (trackId) => [
+      ...(await fields(trackId)),
+      ...(reached ? [{ id: 99, name: 'Region' }] : []),
+    ];
+    renderOwn(4, { client });
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    const panel = await screen.findByRole('form', { name: 'Settings of Ops rules' });
+    // Someone gives the field to the track; the page reads the fields again after the assignment.
+    reached = true;
+    await user.click(within(panel).getByRole('button', { name: 'Use this set for OPS' }));
+    expect(await screen.findByText('OPS now uses Ops rules.')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Ops rules was saved.')).toBeInTheDocument();
+    expect(client.calls.find((c) => c.action === 'updateRuleSet')?.args[1]).toEqual({
+      rules: [arrived],
     });
   });
 

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
 import { finger } from './touch';
+import { uniqueKey } from './unique';
 
 /**
  * List and calendar views end to end (M1-049; AGL-016, AGL-017), on tracks of their own:
@@ -59,7 +60,7 @@ test('[AGL-016] fifty rows edited in place, grouped, and coloured by a rule', as
   test.setTimeout(180_000);
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const key = `V${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('V', testInfo);
   await track(page, key, `List ${key}`);
   const keys: string[] = [];
   for (let n = 1; n <= 50; n++) {
@@ -125,7 +126,7 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const key = `C${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('C', testInfo);
   await track(page, key, `Calendar ${key}`);
   // The 10th of this month, moved to the 17th.
   const day = (n: number) => `2026-11-${String(n).padStart(2, '0')}`;

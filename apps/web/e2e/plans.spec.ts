@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Plans end to end (T-088; PLN-001, PLN-012; ADR-122): two tracks of their own, an outcome
@@ -51,7 +52,7 @@ test('[PLN-012] a plan over two tracks: its numbers, its timeline and a ticket r
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const stamp = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const stamp = uniqueRun(testInfo);
   const keys = [`MA${stamp}`, `MB${stamp}`];
   const ids: number[] = [];
   for (const key of keys) {

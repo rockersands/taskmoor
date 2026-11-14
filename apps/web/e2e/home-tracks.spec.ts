@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Home's "Your tracks" (T-194; AGL-019; ADR-046) end to end, on a desktop and a phone: a person
@@ -65,7 +66,7 @@ test('[AGL-019] Your tracks shows the tracks a person belongs to, not every trac
 }, testInfo) => {
   test.setTimeout(90_000);
   const api = page.request;
-  const run = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const run = uniqueRun(testInfo);
   const person = {
     email: `mina-${run}@home.test`.toLowerCase(),
     name: `Mina ${run}`,

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Checklist notices end to end (T-196a; NTF-015; ADR-120): the person who runs a track turns them
@@ -63,12 +64,12 @@ test('[NTF-015] whoever runs a track turns checklist notices on, and a follower 
 }, testInfo) => {
   test.setTimeout(120_000);
   const phone = testInfo.project.name !== 'desktop';
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now().toString(36)}`;
+  const stamp = uniqueStamp(testInfo);
   const api = page.request;
 
   // The administrator makes a track and three people: Lead runs it, Doer and Fan are members.
   await signInAs(api, ADMIN.email, ADMIN.password as string);
-  const key = `CN${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('CN', testInfo);
   const track = await ok<{ track: { id: number } }>(
     api.post(`${BASE}/api/v1/tracks`, {
       data: { key, name: `Notices ${stamp}`, mode: 'shared' },

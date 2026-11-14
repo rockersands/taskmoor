@@ -486,7 +486,13 @@ export function registerChecklistRoutes(app: FastifyInstance, db: Kysely<Databas
         if (changes.length === 0) return { code: 200 };
         await trx
           .updateTable('ticket_checklist_item')
-          .set({ ...next, updated_at: new Date() })
+          .set({
+            ...next,
+            // Whose words the item holds now (T-203): a person's data download lists only their
+            // own. A tick leaves the words as their writer left them.
+            ...(next.text !== item.text ? { edited_by: request.user?.id ?? null } : {}),
+            updated_at: new Date(),
+          })
           .where('id', '=', itemId)
           .execute();
         const what: ChecklistChange = next.state !== item.state ? 'item_state' : 'item_edited';

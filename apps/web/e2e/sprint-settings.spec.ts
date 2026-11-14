@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Sprint settings end to end (M1-044, M1-045; AGL-007, AGL-012): on a Scrum board made through
@@ -39,8 +40,8 @@ test('[AGL-012] [AGL-007] a cycle turned on in the board settings and read back'
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const word = `cyc${testInfo.project.name}${Date.now().toString(36)}`;
-  const key = `C${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const word = `cyc${uniqueStamp(testInfo)}`;
+  const key = uniqueKey('C', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Cycle ${word}`, mode: 'shared' },
   });

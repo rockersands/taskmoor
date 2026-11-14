@@ -18,6 +18,7 @@ import { Authorizer } from '../authz/authorizer';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { copyChecklists } from '../tickets/checklists';
 import { erasedEmail, erasedName, registerEraseJobs } from './erase';
 import { expirePersonalExports, registerPersonalExportJobs } from './export';
 
@@ -470,6 +471,99 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     expect((await get('ada', `/api/v1/users/${mi}/data-exports/${id}/download`)).statusCode).toBe(
       409,
     );
+  });
+
+  it('[CORE-033] [IAM-008] a checklist item someone else rewrote leaves its new words out of its creator’s download and in its writer’s', async () => {
+    const made = await post('kalo', '/api/v1/tickets', { track: 'PRV', summary: 'Toner runs out' });
+    expect(made.statusCode, made.body).toBe(201);
+    const ticket = made.json().ticket as { id: number };
+    const listed = await post('kalo', `/api/v1/tickets/${ticket.id}/checklists`, {
+      name: 'Toner steps',
+      items: ['Order toner', 'Shake the cartridge'],
+    });
+    expect(listed.statusCode, listed.body).toBe(201);
+    const list = listed.json().checklists[0] as { id: number; items: { id: number }[] };
+    const [ordered, shaken] = list.items.map((i) => i.id) as [number, number];
+    const edit = (who: string, itemId: number, payload: Record<string, unknown>) =>
+      as(who, {
+        method: 'PATCH',
+        url: `/api/v1/tickets/${ticket.id}/checklists/${list.id}/items/${itemId}`,
+        payload,
+      });
+    // Mi rewrites one item's words and only ticks the other.
+    expect((await edit('mi', ordered, { text: 'Order the cheap toner' })).statusCode).toBe(200);
+    expect((await edit('mi', shaken, { state: 'done' })).statusCode).toBe(200);
+
+    const download = async (who: string) => {
+      const asked = await post(who, '/api/v1/account/data-exports');
+      expect(asked.statusCode, asked.body).toBe(202);
+      await work();
+      const res = await get(who, `/api/v1/account/data-exports/${asked.json().export.id}/download`);
+      expect(res.statusCode, res.body).toBe(200);
+      const file = (await unzip(res.rawPayload))['checklist-items.ndjson'];
+      return { file: String(file), items: lines(file).filter((i) => i.ticketId === ticket.id) };
+    };
+    const kalos = await download('kalo');
+    expect(kalos.items).toEqual([
+      // Kalo added it, but the words are Mi's now: the item, its state and date, not the words.
+      expect.objectContaining({ id: ordered, rewrittenByOthers: true, state: 'open' }),
+      // A tick leaves Kalo's words Kalo's.
+      expect.objectContaining({ id: shaken, text: 'Shake the cartridge', state: 'done' }),
+    ]);
+    expect(kalos.items[0]).not.toHaveProperty('text');
+    expect(kalos.file).not.toMatch(/cheap toner/);
+    // The words are in Mi's download, who wrote them; the item Mi only ticked is not.
+    const mis = await download('mi');
+    expect(mis.items).toEqual([
+      expect.objectContaining({ id: ordered, text: 'Order the cheap toner', state: 'open' }),
+    ]);
+  });
+
+  it('[CORE-033] [IAM-008] a cloned ticket’s checklist items keep their words their writer’s, not the cloner’s, in a data download', async () => {
+    const made = await post('kalo', '/api/v1/tickets', { track: 'PRV', summary: 'Moving day' });
+    expect(made.statusCode, made.body).toBe(201);
+    const source = made.json().ticket as { id: number };
+    const listed = await post('kalo', `/api/v1/tickets/${source.id}/checklists`, {
+      name: 'Calls',
+      items: ['Call the landlord at 555', 'Book the van'],
+    });
+    expect(listed.statusCode, listed.body).toBe(201);
+    const list = listed.json().checklists[0] as { id: number; items: { id: number }[] };
+    const van = list.items[1]?.id as number;
+    const rewrote = await as('mi', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${source.id}/checklists/${list.id}/items/${van}`,
+      payload: { text: 'Book the big van' },
+    });
+    expect(rewrote.statusCode, rewrote.body).toBe(200);
+    // Mi clones the ticket: the clone job copies its checklists as Mi.
+    const target = (
+      await post('mi', '/api/v1/tickets', { track: 'PRV', summary: 'Moving day (copy)' })
+    ).json().ticket as { id: number };
+    await database.db
+      .transaction()
+      .execute((trx) => copyChecklists(trx, 1, source.id, target.id, users.mi?.id as number));
+
+    const download = async (who: string) => {
+      const asked = await post(who, '/api/v1/account/data-exports');
+      expect(asked.statusCode, asked.body).toBe(202);
+      await work();
+      const res = await get(who, `/api/v1/account/data-exports/${asked.json().export.id}/download`);
+      expect(res.statusCode, res.body).toBe(200);
+      const file = (await unzip(res.rawPayload))['checklist-items.ndjson'];
+      return { file: String(file), items: lines(file).filter((i) => i.ticketId === target.id) };
+    };
+    const mis = await download('mi');
+    // Mi added the copies; the words of the one Kalo wrote are not Mi's.
+    expect(mis.items).toEqual([
+      expect.objectContaining({ rewrittenByOthers: true, state: 'open' }),
+      expect.objectContaining({ text: 'Book the big van', state: 'open' }),
+    ]);
+    expect(mis.file).not.toMatch(/landlord/);
+    const kalos = await download('kalo');
+    expect(kalos.items).toEqual([
+      expect.objectContaining({ text: 'Call the landlord at 555', state: 'open' }),
+    ]);
   });
 
   it('[IAM-008] ASVS 8.3.2: erasure asks for the email, refuses oneself, the last administrator and managed accounts', async () => {

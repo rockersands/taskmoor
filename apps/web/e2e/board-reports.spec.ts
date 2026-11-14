@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Board flow reports end to end (M1-061; RPT-001): on a board made through the API, one card
@@ -46,8 +47,8 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const word = `flw${testInfo.project.name}${Date.now().toString(36)}`;
-  const key = `F${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const word = `flw${uniqueStamp(testInfo)}`;
+  const key = uniqueKey('F', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Flow ${word}`, mode: 'shared' },
   });

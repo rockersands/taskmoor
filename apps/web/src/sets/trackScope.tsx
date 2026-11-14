@@ -72,21 +72,25 @@ export function useSetScope(trackId: number | null, client: TrackScopeClient): S
   const expired = useSessionExpiry();
   const [read, setRead] = useState<SetScope>({ status: 'waiting' });
   const admin = access === 'site' || access === 'setup';
-  const reads = access !== null && access !== 'none' && (trackId !== null || !admin);
+  // Someone who runs no track that is not archived still reads a track's own page: the track
+  // they ran may be archived, and the page says so rather than refusing them (T-224).
+  const reads = access !== null && (trackId !== null || (access !== 'none' && !admin));
+  const runsNone = access === 'none';
   useEffect(() => {
     if (!reads) return;
     let live = true;
     setRead({ status: 'waiting' });
     const work = async (): Promise<SetScope> => {
       // Someone who is no administrator sees only the tracks they run.
-      const runs = admin ? null : await client.managedTracks();
+      const runs = admin ? null : runsNone ? [] : await client.managedTracks();
       if (trackId === null) {
         return { status: 'choose', tracks: (runs ?? []).filter((t) => t.mode === 'local') };
       }
       const track = await client.track(trackId);
       if (runs && !runs.some((t) => t.id === trackId)) {
         // The tracks someone runs leave out archived ones, so one may still be theirs.
-        return track.archived ? { status: 'archived', track } : { status: 'notYours' };
+        if (track.archived) return { status: 'archived', track };
+        return { status: runsNone ? 'none' : 'notYours' };
       }
       if (track.mode !== 'local') return { status: 'shared', track };
       if (track.archived) return { status: 'archived', track };
@@ -99,16 +103,15 @@ export function useSetScope(trackId: number | null, client: TrackScopeClient): S
       (error: unknown) => {
         if (!live || expired(error)) return;
         const refused = error instanceof ApiError && (error.status === 403 || error.status === 404);
-        setRead({ status: refused ? 'notYours' : 'failed' });
+        setRead({ status: refused ? (runsNone ? 'none' : 'notYours') : 'failed' });
       },
     );
     return () => {
       live = false;
     };
-  }, [reads, admin, trackId, client, expired]);
+  }, [reads, admin, runsNone, trackId, client, expired]);
   if (access === null) return { status: 'waiting' };
-  if (access === 'none') return { status: 'none' };
-  if (!reads) return { status: 'all' };
+  if (!reads) return { status: access === 'none' ? 'none' : 'all' };
   return read;
 }
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * Board-managed workflows end to end (M1-126; WF-010; ADR-116): a local-mode track's board has
@@ -14,8 +15,8 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
 }, testInfo) => {
   test.setTimeout(90_000);
   expect((await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
-  const suffix = `${testInfo.workerIndex}${Date.now().toString(36)}`.toUpperCase().slice(-6);
-  const key = `BW${suffix}`;
+  const key = uniqueKey('BW', testInfo);
+  const suffix = key.slice(2);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Board workflow ${suffix}`, mode: 'local' },
   });

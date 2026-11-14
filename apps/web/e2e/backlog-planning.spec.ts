@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Planning on the backlog end to end (M1-047; AGL-008, AGL-009, AGL-010): on a Scrum board of a
@@ -41,8 +42,8 @@ test('[AGL-008] [AGL-009] [AGL-010] tickets planned into a sprint, an outcome an
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const stamp = Date.now().toString(36).toUpperCase().slice(-6);
-  const key = `P${testInfo.project.name.slice(0, 1).toUpperCase()}${stamp}`;
+  const stamp = uniqueRun(testInfo);
+  const key = `P${stamp}`;
   const word = `bpl${testInfo.project.name}${stamp.toLowerCase()}`;
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Planning ${key}`, mode: 'shared' },

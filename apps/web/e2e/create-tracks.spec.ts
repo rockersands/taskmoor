@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Who may create tracks (IAM-033): on a new site only site administrators do. A site
@@ -36,6 +37,16 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 
 const noSidewaysScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+
+/**
+ * A dialog fits the screen: its own box, since it sits in a fixed backdrop whose overflow never
+ * widens the page, so the page's scroll width cannot tell (T-249).
+ */
+const dialogFits = (dialog: Locator) =>
+  dialog.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return box.left >= -0.5 && box.right <= innerWidth + 0.5 && el.scrollWidth <= el.clientWidth;
+  });
 
 async function ok<T>(answer: ReturnType<APIRequestContext['post']>): Promise<T> {
   const res = await answer;
@@ -92,8 +103,8 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now()}`;
-  const key = `C${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
+  const stamp = uniqueStamp(testInfo);
+  const key = uniqueKey('C', testInfo);
   const api = page.request;
 
   // A site administrator makes a track and two people through the API.
@@ -158,7 +169,25 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   await page.getByLabel('Role', { exact: true }).selectOption({ label: 'Administrators' });
   await expect(page.getByRole('checkbox', { name: BOX })).toHaveCount(0);
   const refused = await api.post(`${BASE}/api/v1/tracks`, {
-    data: { key: `${key}X`, name: 'Not allowed', mode: 'local' },
+    data: { key: uniqueKey('CX', testInfo), name: 'Not allowed', mode: 'local' },
   });
   expect(refused.status()).toBe(403);
+
+  // In Spanish, whose words run longer, the box and the invite dialog that offers it still fit
+  // the screen (ADR-033; T-249), on a phone at the narrowest width supported.
+  if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 740 });
+  await signInAs(api, ADMIN.email, ADMIN.password as string);
+  await visit(page, `?locale=es#/manage/tracks/${made.track.id}`);
+  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await page.getByLabel('Rol', { exact: true }).selectOption({ label: 'Administrators' });
+  await expect(page.getByRole('checkbox', { name: 'Permitir también crear tracks' })).toBeChecked();
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await page.getByRole('button', { name: 'Invitar personas' }).click();
+  const dialog = page.getByRole('dialog', { name: `Invitar personas a ${key}` });
+  await dialog.getByLabel('Rol').selectOption({ label: 'Administrators' });
+  await expect(
+    dialog.getByRole('checkbox', { name: 'Permitir también crear tracks' }),
+  ).toBeChecked();
+  expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await dialogFits(dialog)).toBe(true);
 });

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
 import { chooseTrack } from './pickers';
+import { uniqueKey } from './unique';
 
 /**
  * The create dialog honours layouts per ticket type (M1-052; CORE-008, CORE-013): a track of
@@ -49,7 +50,7 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   };
 
   // A track of its own, so other tests' tracks keep their forms.
-  const key = `L${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
+  const key = uniqueKey('L', testInfo);
   const { track } = await api('post', '/tracks', {
     key,
     name: `Layouts ${testInfo.project.name}`,

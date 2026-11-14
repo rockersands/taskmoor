@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * The ticket pop-up end to end (AGL-018, NFR-005), on tracks of their own: opened from a board
@@ -35,11 +36,11 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 }
 
 /** A track of this run's own, with a ticket assigned to Ada, and its board open with "Me" on. */
-async function boardWithFilter(page: Page, prefix: string, projectName: string) {
+async function boardWithFilter(page: Page, prefix: string, testInfo: TestInfo) {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const me = (await signIn.json()).user.id as number;
-  const key = `${prefix}${projectName.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey(prefix, testInfo);
   const made = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Popup ${key}`, mode: 'shared' },
   });
@@ -70,11 +71,7 @@ test('[AGL-018] [NFR-005] a ticket opens over its board, and everything about th
   context,
   isMobile,
 }, testInfo) => {
-  const { ticketKey, board, card, boardAddress } = await boardWithFilter(
-    page,
-    'U',
-    testInfo.project.name,
-  );
+  const { ticketKey, board, card, boardAddress } = await boardWithFilter(page, 'U', testInfo);
 
   // A plain click: the ticket over the board, at the ticket's own address.
   await card.click();
@@ -174,7 +171,7 @@ test('[NFR-005] unsaved text asks before it goes, and Escape closes only what is
   page,
   isMobile,
 }, testInfo) => {
-  const { ticketKey, card, boardAddress } = await boardWithFilter(page, 'W', testInfo.project.name);
+  const { ticketKey, card, boardAddress } = await boardWithFilter(page, 'W', testInfo);
   await card.click();
   const dialog = page.getByRole('dialog', { name: `${ticketKey} Refund totals` });
   await expect(dialog.getByRole('button', { name: /^Follow \(/ })).toBeVisible();
@@ -221,11 +218,7 @@ test('[NFR-005] unsaved text asks before it goes, and Escape closes only what is
 test('[CORE-023] [CORE-014] clone, copy a link and set the priority from the pop-up', async ({
   page,
 }, testInfo) => {
-  const { key, ticketKey, card, boardAddress } = await boardWithFilter(
-    page,
-    'X',
-    testInfo.project.name,
-  );
+  const { key, ticketKey, card, boardAddress } = await boardWithFilter(page, 'X', testInfo);
   await card.click();
   const dialog = page.getByRole('dialog', { name: `${ticketKey} Refund totals` });
   await expect(dialog.getByRole('button', { name: /^Follow \(/ })).toBeVisible();

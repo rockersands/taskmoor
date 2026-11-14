@@ -8,24 +8,34 @@ import type { Transition, WorkflowDefinition } from './model';
  * clears the reason. Nothing else: no form, no required field, no check and no guard. Why a ticket
  * moved goes in a comment.
  */
-export const freeMoveEffects = (closes: boolean, completedId: number | null): EffectDef[] =>
-  closes && completedId !== null
-    ? [{ type: 'update-system-field', field: 'close-reason', value: String(completedId) }]
+export const freeMoveEffects = (...move: FreeMove): EffectDef[] =>
+  move[0]
+    ? [{ type: 'update-system-field', field: 'close-reason', value: String(move[1]) }]
     : [{ type: 'clear-field', field: 'close-reason' }];
+
+/**
+ * Whether a free move closes, and the reason it closes with. A move that closes always has one
+ * (T-249): a closing status with no reason to close with gets no free move, never one that closes
+ * with none, so `[true, null]` is not a free move. One that does not close may be handed the reason
+ * and ignores it.
+ */
+export type FreeMove =
+  | [closes: true, completedId: number]
+  | [closes: false, completedId?: number | null];
 
 /** One global transition into a status. The status id names it unless `id` says otherwise. */
 export const freeTransition = (
   statusId: number,
   name: string,
-  closes: boolean,
-  completedId: number | null,
-  id: number = statusId,
+  ...[closes, completedId, id = statusId]:
+    | [closes: true, completedId: number, id?: number]
+    | [closes: false, completedId?: number | null, id?: number]
 ): Transition => ({
   id,
   name,
   from: 'any',
   to: statusId,
-  effects: freeMoveEffects(closes, completedId),
+  effects: closes ? freeMoveEffects(true, completedId) : freeMoveEffects(false),
 });
 
 /**
@@ -39,10 +49,8 @@ export const freeTransitions = (
   completedId: number | null,
 ): Transition[] =>
   statuses.flatMap((s) => {
-    const closes = s.stage === 'closed';
-    return closes && completedId === null
-      ? []
-      : [freeTransition(s.id, s.name, closes, completedId)];
+    if (s.stage !== 'closed') return [freeTransition(s.id, s.name, false)];
+    return completedId === null ? [] : [freeTransition(s.id, s.name, true, completedId)];
   });
 
 /**
@@ -106,7 +114,7 @@ export function followingStage(
       return t;
     }
     changed = true;
-    return { ...t, effects: freeMoveEffects(closes, completedId) };
+    return { ...t, effects: closes ? freeMoveEffects(true, completedId) : freeMoveEffects(false) };
   });
   return changed ? { ...definition, transitions } : null;
 }

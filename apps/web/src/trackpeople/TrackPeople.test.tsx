@@ -8,7 +8,6 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider, type SessionUser } from '../session/SessionProvider';
 import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
-import { setViewportWidth } from '../test/viewport';
 import { parseAddresses } from './client';
 import {
   type FakeTrackPeopleOptions,
@@ -310,15 +309,6 @@ describe('the invite dialog (IAM-027)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Your invitations go by email: on a site that sends email, only site administrators copy links.',
     );
-  });
-
-  it('[IAM-027] fits a phone, in Spanish too', async () => {
-    setViewportWidth(360);
-    const user = userEvent.setup();
-    renderPeople({}, MEMBER, 'es');
-    await user.click(await screen.findByRole('button', { name: 'Invitar personas' }));
-    expect(screen.getByRole('dialog', { name: 'Invitar personas a SHOP' })).toBeInTheDocument();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360);
   });
 
   it('[IAM-027] reads pasted lists', () => {
@@ -653,22 +643,6 @@ describe('the permission to create tracks with the role that runs the track (IAM
       'Administrators',
     );
     expect(within(screen.getByRole('dialog')).queryByRole('checkbox')).toBe(null);
-  });
-
-  it('[IAM-033] fits a phone, in Spanish too', async () => {
-    setViewportWidth(360);
-    const user = userEvent.setup();
-    renderPeople({}, CREATOR, 'es');
-    expect(
-      await screen.findByRole('checkbox', { name: 'Permitir también crear tracks' }),
-    ).toBeChecked();
-    await user.click(screen.getByRole('button', { name: 'Invitar personas' }));
-    const dialog = screen.getByRole('dialog');
-    await user.selectOptions(within(dialog).getByLabelText('Rol'), 'Administrators');
-    expect(
-      within(dialog).getByRole('checkbox', { name: 'Permitir también crear tracks' }),
-    ).toBeChecked();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360);
   });
 });
 

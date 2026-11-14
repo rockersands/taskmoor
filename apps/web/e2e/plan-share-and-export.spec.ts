@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, type Download, expect, type Page, test } from '@playwright/test';
 import { cellText, records } from '@taskmoor/server/testing';
+import { uniqueRun } from './unique';
 
 /**
  * Copying, linking and downloading a plan end to end (T-089g; PLN-014; ADR-122 stage 8). Ori owns a
@@ -93,7 +94,7 @@ test('[PLN-014] a plan copied, linked and downloaded: hidden work only counted, 
   test.setTimeout(180_000);
   const api = page.request;
   await signInAs(api, ADMIN.email, ADMIN.password);
-  const run = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const run = uniqueRun(testInfo);
   const person = async (who: string) => {
     const email = `${who}-${run}@share.test`.toLowerCase();
     const id = (

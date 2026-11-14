@@ -58,7 +58,9 @@ async function authorizedFetch(url: string, init: RequestInit): Promise<Response
     if (token) headers.set('authorization', `Bearer ${token}`);
     return fetch(url, { ...init, headers, credentials: 'omit' });
   };
-  const token = await client.accessToken();
+  // A request kept alive past the page (keepalive) is sent with the token in hand while it is
+  // still good: the early refresh is a round trip the closing page may never finish (T-245).
+  const token = (init.keepalive ? client.currentToken() : null) ?? (await client.accessToken());
   const response = await send(token);
   if (response.status !== 401 || token === null) return response;
   const fresh = await client.forceRefresh();
@@ -106,9 +108,15 @@ export const socketToken: (() => Promise<string>) | null = oauthClient
 
 export async function api<T>(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    /** The request goes on even if the page closes meanwhile (a small save made on the way out). */
+    keepalive?: boolean;
+  } = {},
 ): Promise<T> {
   const request: RequestInit = { method: init.method ?? 'GET' };
+  if (init.keepalive) request.keepalive = true;
   if (init.body !== undefined) {
     request.headers = { 'content-type': 'application/json' };
     request.body = JSON.stringify(init.body);

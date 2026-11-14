@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Page, type TestInfo, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * A track's Summary and Statistics end to end (ADR-116; RPT-002, RPT-006), on a Kanban track of
@@ -70,9 +71,9 @@ async function searchCount(api: APIRequestContext, q: string) {
  * A Kanban track of this run's own with four tickets: estimates of 2h and 3h and none, an hour
  * logged on one, one closed. Returns its key and id.
  */
-async function newTrack(api: APIRequestContext, projectName: string) {
+async function newTrack(api: APIRequestContext, testInfo: TestInfo) {
   await signInAs(api, ADMIN.email, ADMIN.password as string);
-  const key = `R${projectName.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('R', testInfo);
   const made = await ok<{ track: { id: number } }>(
     api.post(`${BASE}/api/v1/tracks`, { data: { key, name: `Reports ${key}`, mode: 'shared' } }),
   );
@@ -119,7 +120,7 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
 }, testInfo) => {
   test.setTimeout(90_000);
   const api = page.request;
-  const { key, id } = await newTrack(api, testInfo.project.name);
+  const { key, id } = await newTrack(api, testInfo);
 
   // The administrator customizes: today's numbers stay, and the workload joins them.
   await visit(page, `#/tracks/${key}`);
@@ -141,7 +142,7 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
   await expect(workload.getByRole('row', { name: /None/ }).first()).toContainText('4h');
 
   // A member of the track, made through the API, reads the same Summary and cannot change it.
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now()}`;
+  const stamp = uniqueStamp(testInfo);
   const email = `member.${stamp}@reports.test`.toLowerCase();
   const person = await ok<{ user: { id: number } }>(
     api.post(`${BASE}/api/v1/users`, {
@@ -178,7 +179,7 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
 }, testInfo) => {
   test.setTimeout(90_000);
   const api = page.request;
-  const { key } = await newTrack(api, testInfo.project.name);
+  const { key } = await newTrack(api, testInfo);
 
   await visit(page, `#/tracks/${key}/statistics/group-by`);
   if (isMobile) {

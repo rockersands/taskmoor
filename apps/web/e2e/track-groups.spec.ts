@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
+import { uniqueKey, uniqueStamp } from './unique';
 
 /**
  * Personal track groups end to end (CORE-034, IAM-034): a person drags two tracks together and
@@ -120,7 +121,7 @@ test('[CORE-034] [IAM-034] groups of tracks: made by dragging, arranged by keybo
 }, testInfo) => {
   test.setTimeout(120_000);
   const touch = testInfo.project.name !== 'desktop';
-  const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now().toString(36)}`;
+  const stamp = uniqueStamp(testInfo);
   const api = page.request;
 
   // The administrator makes three tracks and two people. Lead runs two of the tracks and only
@@ -129,7 +130,7 @@ test('[CORE-034] [IAM-034] groups of tracks: made by dragging, arranged by keybo
   const names = { one: `Alpha ${stamp}`, two: `Beta ${stamp}`, three: `Gamma ${stamp}` };
   const tracks: Record<string, { id: number; key: string }> = {};
   for (const [which, name] of Object.entries(names)) {
-    const key = `G${which[0]?.toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+    const key = uniqueKey('G', testInfo);
     const made = await ok<{ track: { id: number } }>(
       api.post(`${BASE}/api/v1/tracks`, { data: { key, name, mode: 'shared' } }),
     );
@@ -278,7 +279,7 @@ test('[IAM-034] a person told of a group shared with them leaves it, and what it
 }, testInfo) => {
   test.setTimeout(120_000);
   // Its own first letter, so no name here contains a name of the test above, run alongside.
-  const stamp = `x${testInfo.project.name.replace(/\W/g, '')}${Date.now().toString(36)}`;
+  const stamp = `x${uniqueStamp(testInfo)}`;
   const api = page.request;
 
   // The administrator makes two tracks that Lead runs, and two people; Mate has nothing.
@@ -286,7 +287,7 @@ test('[IAM-034] a person told of a group shared with them leaves it, and what it
   const names = { one: `Delta ${stamp}`, two: `Echo ${stamp}` };
   const tracks: Record<string, { id: number; key: string }> = {};
   for (const [which, name] of Object.entries(names)) {
-    const key = `L${which[0]?.toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+    const key = uniqueKey('L', testInfo);
     const made = await ok<{ track: { id: number } }>(
       api.post(`${BASE}/api/v1/tracks`, { data: { key, name, mode: 'shared' } }),
     );

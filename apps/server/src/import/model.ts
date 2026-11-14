@@ -700,6 +700,8 @@ export interface ChecklistCommand {
     state: 'open' | 'in_progress' | 'done' | 'rejected';
     position: number;
     creator: Ref | null;
+    /** Who wrote the words as they read now, when not the creator (T-203). */
+    editor: Ref | null;
     createdAt: string;
     updatedAt: string;
   }[];

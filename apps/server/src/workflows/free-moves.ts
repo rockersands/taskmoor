@@ -50,9 +50,10 @@ export async function withFreeMoves(
   let next = Math.max(Number(used.rows[0]?.n ?? 0), ...draft.transitions.map((t) => t.id)) + 1;
   const added = wanting.flatMap((statusId) => {
     const status = info.get(statusId);
-    const closes = status?.stage === 'closed';
-    if (!status || (closes && closing === null)) return [];
-    return [freeTransition(statusId, status.name, closes, closing, next++)];
+    if (!status) return [];
+    if (status.stage !== 'closed')
+      return [freeTransition(statusId, status.name, false, null, next++)];
+    return closing === null ? [] : [freeTransition(statusId, status.name, true, closing, next++)];
   });
   if (added.length === 0) return draft;
   const shaped = { ...draft, transitions: [...draft.transitions, ...added] };

@@ -25,7 +25,7 @@ import { personalTrackGroups } from '../trackgroups/privacy';
  *   and those shared with them (owner, role, tracks and the roles the share gave);
  * - `tickets.ndjson`: tickets the person reported, created or is assigned, with their roles;
  * - `comments.ndjson`, `checklist-items.ndjson`, `time-entries.ndjson`: what they wrote and
- *   logged;
+ *   logged (a checklist item's words only while they are the last to have written them);
  * - `attachments.ndjson` and `attachments/`: the files they uploaded that passed the scan;
  * - `audit.ndjson`: audit records they caused or that are about them; the address of a record
  *   someone else caused is left out (it is that person's);
@@ -571,10 +571,12 @@ export async function writePersonalData(
               'c.name as checklist',
               'i.text',
               'i.state',
+              'i.created_by',
+              'i.edited_by',
               'i.created_at',
             ])
             .where('i.workspace_id', '=', ws)
-            .where('i.created_by', '=', userId)
+            .where((eb) => eb.or([eb('i.created_by', '=', userId), eb('i.edited_by', '=', userId)]))
             .where('i.id', '>', Number(after))
             .orderBy('i.id')
             .limit(limit)
@@ -584,7 +586,9 @@ export async function writePersonalData(
           options.heartbeat?.();
           // The list's name and the item's words as they read now are the ticket's content:
           // anyone who may edit the ticket renames a list or rewrites an item. On a ticket the
-          // person no longer sees, the item appears with its state and date only.
+          // person no longer sees, the item appears with its state and date only. The items are
+          // those they added or whose words they last wrote; the words are theirs only when they
+          // wrote them last (T-203), and an item someone else has rewritten since says so.
           yield rows.map((r) =>
             named.has(r.ticket_id)
               ? {
@@ -592,7 +596,9 @@ export async function writePersonalData(
                   ticketId: r.ticket_id,
                   ticketKey: named.get(r.ticket_id) ?? null,
                   checklist: r.checklist,
-                  text: r.text,
+                  ...((r.edited_by ?? r.created_by) === userId
+                    ? { text: r.text }
+                    : { rewrittenByOthers: true }),
                   state: r.state,
                   createdAt: iso(r.created_at),
                 }

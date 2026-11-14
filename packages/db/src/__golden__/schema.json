@@ -2392,10 +2392,12 @@
       "position integer not null",
       "created_by integer",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "edited_by integer"
     ],
     "indexes": [
       "CREATE INDEX ticket_checklist_item_creator_idx ON public.ticket_checklist_item USING btree (created_by) WHERE (created_by IS NOT NULL)",
+      "CREATE INDEX ticket_checklist_item_editor_idx ON public.ticket_checklist_item USING btree (edited_by) WHERE (edited_by IS NOT NULL)",
       "CREATE INDEX ticket_checklist_item_list_idx ON public.ticket_checklist_item USING btree (checklist_id, \"position\")",
       "CREATE UNIQUE INDEX ticket_checklist_item_pkey ON public.ticket_checklist_item USING btree (id)"
     ]

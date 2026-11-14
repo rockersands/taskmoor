@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Track templates end to end (M1-054; CORE-002 (1)): the administrator adds a track from each
@@ -46,11 +47,10 @@ test('[CORE-002] each template makes a working track', async ({ page }, testInfo
   test.setTimeout(90_000);
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const stamp = Date.now().toString(36).toUpperCase().slice(-5);
-  const project = testInfo.project.name.slice(0, 1).toUpperCase();
+  const stamp = uniqueRun(testInfo);
 
   for (const [i, template] of TEMPLATES.entries()) {
-    const key = `T${project}${i}${stamp}`;
+    const key = `T${i}${stamp}`;
     const name = `Template ${template.id} ${stamp}`;
     await page.goto(`${BASE}/#/admin/tracks`);
     await page.getByRole('button', { name: 'New track' }).click();

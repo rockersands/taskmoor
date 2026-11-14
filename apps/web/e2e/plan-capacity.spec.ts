@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Teams and capacity in a Multi-track plan end to end (T-089b; PLN-005, PLN-009; ADR-122): a
@@ -59,7 +60,7 @@ test('[PLN-005] [PLN-009] a plan’s capacity: a team’s person over capacity i
   test.setTimeout(90_000);
   const api = page.request;
   expect((await api.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
-  const run = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const run = uniqueRun(testInfo);
   const name = `Cap ${run}`;
   const person = (
     await ok<{ user: { id: number } }>(

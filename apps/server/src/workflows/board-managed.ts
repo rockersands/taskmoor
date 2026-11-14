@@ -392,7 +392,9 @@ export function boardDefinition(
   const closes = closingIndex(columns, closing);
   // The status id names its transition, so it stays the same while the column does.
   const transitions: Transition[] = columns.map((column, index) =>
-    freeTransition(statusIds[index] as number, column.name, index === closes, completedId),
+    index === closes
+      ? freeTransition(statusIds[index] as number, column.name, true, completedId)
+      : freeTransition(statusIds[index] as number, column.name, false),
   );
   return {
     initialStatusId: statusIds[0] as number,
@@ -735,6 +737,26 @@ export async function columnReach(
 }
 
 /**
+ * The workflow a column's path goes to (T-249): the track's only workflow, read inside the path's
+ * transaction with the track's map held (update), after the board and before the status list and
+ * the workflow, in the order a board's sync holds them. A map changed meanwhile is waited for and
+ * then read; read before the transaction, the path went to the workflow the track had before. Null
+ * when the track's tickets have more than one workflow, or none.
+ */
+export async function columnPathWorkflow(
+  trx: Trx,
+  ws: number,
+  trackId: number,
+  columns: readonly Column[],
+): Promise<number | null> {
+  const mapId = await trackMapId(trx, ws, trackId);
+  if (mapId === undefined) return null;
+  await loadMap(trx, ws, mapId, 'update');
+  const reach = await columnReach(trx, ws, trackId, columns);
+  return reach?.workflow && reach.singleWorkflow ? reach.workflow.id : null;
+}
+
+/**
  * Lets cards reach a column on a workflow that stays an ordinary one: a status for the column if it
  * has none, a transition from any status to it, and steps out of it to the other columns. A new
  * version of the workflow; other tracks using it see the new status too, which the page says first.
@@ -778,9 +800,11 @@ export async function addColumnPath(
     // it (T-237). The workflow's other statuses are held with it, in id order, as the version
     // written next holds them.
     const info = await heldStatusInfo(trx, by.workspaceId, [...statusIdsOf(current), statusId]);
-    const closes = info.get(statusId)?.stage === 'closed';
-    const completedId = closes ? await completedReasonId(trx, by) : null;
-    transitions.push(freeTransition(statusId, column.name, closes, completedId, id++));
+    transitions.push(
+      info.get(statusId)?.stage === 'closed'
+        ? freeTransition(statusId, column.name, true, await completedReasonId(trx, by), id++)
+        : freeTransition(statusId, column.name, false, null, id++),
+    );
   }
   // Out again: a global transition already leaves from it; the others get a step each.
   for (const other of stored) {

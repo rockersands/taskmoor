@@ -153,6 +153,25 @@ describe('signing in at a backend on another site (M1-107)', () => {
     expect(signedOut).toBe(1);
   });
 
+  it('[IAM-024] hands a request that outlives the page the token it holds until that runs out, without an early refresh (T-245)', async () => {
+    const tab = page(`${APP}/`);
+    const client = new OAuthClient(API, '/', tab.env);
+    await client.begin();
+    const state = new URL(tab.state.assigned).searchParams.get('state');
+    const back = page(`${APP}/?code=abc&state=${state}`, tab.storage);
+    back.answer(200, tokens(1));
+    const signedIn = new OAuthClient(API, '/', back.env);
+    await signedIn.complete();
+    const asked = back.requests.length;
+    // Within the early-refresh margin the token still signs a request in, and nothing is asked.
+    back.tick(590_000);
+    expect(signedIn.currentToken()).toBe('tma_access1');
+    // Once it has run out there is none: the request waits for a refresh after all.
+    back.tick(10_000);
+    expect(signedIn.currentToken()).toBeNull();
+    expect(back.requests).toHaveLength(asked);
+  });
+
   it('[IAM-024] (3) keeps the refresh token out of storage while the page lives, never in localStorage', async () => {
     const tab = page(`${APP}/`);
     const client = new OAuthClient(API, '/', tab.env);

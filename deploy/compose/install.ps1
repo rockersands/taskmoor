@@ -60,6 +60,17 @@ if (-not $ready) {
 
 $logs = docker compose -f $file logs --no-log-prefix taskmoor 2>$null | Out-String
 $link = [regex]::Matches($logs, '"link":"([^"]*)"') | Select-Object -Last 1 | ForEach-Object { $_.Groups[1].Value }
+# Without PUBLIC_URL the backend names its own port in the container, 8080, in the link; the
+# browser reaches it on the published one.
+$public = $env:PUBLIC_URL
+if (-not $public) {
+  $publicLine = Get-Content .env | Where-Object { $_ -match '^PUBLIC_URL=' } | Select-Object -First 1
+  if ($publicLine) { $public = ($publicLine -split '=', 2)[1] }
+}
+$inside = 'http://localhost:8080/'
+if ($link -and -not $public -and $link.StartsWith($inside, [System.StringComparison]::Ordinal)) {
+  $link = "http://localhost:$port/" + $link.Substring($inside.Length)
+}
 Write-Host ''
 Write-Host "Taskmoor is running on port $port."
 if ($link) {

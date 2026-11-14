@@ -948,6 +948,39 @@ describe('dragging cards (M1-046; by pointer events since T-162b)', () => {
     await waitFor(() => expect(client.moves).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Forward to Doing' })).toBeNull();
   });
+
+  it('[AGL-006] shows a change made elsewhere while a card was held, after a cancel or a drop on its own place (T-230)', async () => {
+    const client = fakeBoardClient();
+    const read = client.data;
+    let title = 'Renamed elsewhere';
+    client.data = async (...args) => {
+      const data = await read(...args);
+      return {
+        ...data,
+        cards: data.cards.map((card) => (card.id === 121 ? { ...card, summary: title } : card)),
+      };
+    };
+    renderBoard(client);
+    await page();
+    await screen.findByRole('link', { name: 'SHOP-21 Renamed elsewhere' });
+    // Someone renames SHOP-21 while SHOP-19 is in hand; the board waits for the drag to end.
+    title = 'Renamed while held';
+    const letGo = pointerDrag(linkOf('SHOP-19'), doing(), { up: false });
+    act(() => announceTicketChange());
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    letGo();
+    expect(screen.getByText('SHOP-19 stays where it was.')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'SHOP-21 Renamed while held' })).toBeVisible();
+    // A drop on the card's own place moves nothing, and the change shows all the same.
+    title = 'Renamed while dropped';
+    const drop = pointerDrag(linkOf('SHOP-19'), cardOf('SHOP-19'), { y: -1, up: false });
+    act(() => announceTicketChange());
+    drop();
+    expect(client.moves).toEqual([]);
+    expect(
+      await screen.findByRole('link', { name: 'SHOP-21 Renamed while dropped' }),
+    ).toBeVisible();
+  });
 });
 
 describe('completing a sprint from the board (T-106)', () => {
@@ -1056,6 +1089,39 @@ describe('completing a sprint from the board (T-106)', () => {
     // No Backlog pill on a track's board (D7): focus goes to the columns.
     expect(screen.getByRole('region', { name: 'Columns' })).toHaveFocus();
     expect(screen.getByText('Checkout Sprint 1 completed.')).toBeInTheDocument();
+  });
+
+  it('[AGL-010] keeps the newer list of sprints when an older answer arrives after it (T-243)', async () => {
+    const user = userEvent.setup();
+    const sprints = fakeSprints([sprint(10, 'Old', 'closed'), ACTIVE, PLANNED]);
+    const read = sprints.boardSprints;
+    let reads = 0;
+    let answerSecond: () => void = () => {};
+    const second = new Promise<void>((done) => {
+      answerSecond = done;
+    });
+    // The second read, made when the pop-up closes, answers only after the third.
+    sprints.boardSprints = async () => {
+      const mine = ++reads;
+      const answer = await read();
+      if (mine === 2) await second;
+      return answer;
+    };
+    open(scrumBoard(), sprints);
+    const board = await page();
+    await user.click(await board.findByRole('button', { name: 'Complete sprint' }));
+    await user.keyboard('{Escape}');
+    await user.click(board.getByRole('button', { name: 'Complete sprint' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Complete sprint' }),
+    );
+    await waitFor(() =>
+      expect(board.queryByRole('button', { name: 'Complete sprint' })).toBeNull(),
+    );
+    expect(reads).toBe(3);
+    await act(async () => answerSecond());
+    await act(async () => {});
+    expect(board.queryByRole('button', { name: 'Complete sprint' })).toBeNull();
   });
 
   it('[AGL-010] shows a refusal in plain words and keeps the pop-up open', async () => {

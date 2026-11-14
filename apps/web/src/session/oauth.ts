@@ -188,6 +188,15 @@ export class OAuthClient {
     return this.refresh();
   }
 
+  /**
+   * The access token this page holds while it is still good, without refreshing it early; null
+   * once it has run out. A request that must leave before the page closes (keepalive) goes with
+   * it at once, rather than wait for a refresh the page may not live to finish (T-245).
+   */
+  currentToken(): string | null {
+    return this.access && this.access.expiresAt > this.env.now() ? this.access.token : null;
+  }
+
   /** A new access token now: the backend refused the one this page had. */
   forceRefresh(): Promise<string | null> {
     this.access = null;

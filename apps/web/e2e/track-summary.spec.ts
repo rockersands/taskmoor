@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * A track's summary end to end (M1-064: "summary counts equal query counts"): on a track of its
@@ -12,7 +13,7 @@ const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATT
 test('[RPT-006] a track’s summary counts what its searches find', async ({ page }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const key = `S${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const key = uniqueKey('S', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Summary ${key}`, mode: 'shared' },
   });

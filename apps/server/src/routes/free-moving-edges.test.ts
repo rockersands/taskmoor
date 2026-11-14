@@ -1268,6 +1268,139 @@ describe('free moving at its edges (WF-008)', () => {
       expect(after.transitions[0]?.checks).toEqual(ASSIGNEE_REQUIRED);
       expect(into(after, made)?.from).toBe('any');
     });
+
+    it("[WF-010] a column's path goes to the workflow the track has once the board is held, and keeps the columns as they stand then (T-249)", async () => {
+      const { workflowId, board } = await ordinaryTrackWorkflow('BPWHO', []);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const added = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Audited by whom', statusIds: [] }],
+      });
+      expect(added.statusCode, added.body).toBe(200);
+      const before = added.json().board as Board;
+      const column = before.columns.at(-1) as Column;
+      expect(column.statusIds).toEqual([]);
+      // The workflow the track is given meanwhile, with the statuses of the board's columns.
+      const given = await freeWorkflow(
+        'Given while the path waits',
+        before.columns.flatMap((c) => c.statusIds),
+      );
+      const track = await database.db
+        .selectFrom('track')
+        .select('workflow_map_id')
+        .where('key', '=', 'BPWHO')
+        .executeTakeFirstOrThrow();
+
+      // Someone holds the board while they give its track another workflow and add a column.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        const held = await trx
+          .selectFrom('board')
+          .select(['columns', 'version'])
+          .where('id', '=', board.id)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+        const columns = held.columns as unknown as Column[];
+        await trx
+          .updateTable('board')
+          .set({
+            columns: JSON.stringify([
+              ...columns,
+              { ...columns[0], id: 'added-meanwhile', name: 'Added meanwhile', statusIds: [] },
+            ]),
+            version: held.version + 1,
+          })
+          .where('id', '=', board.id)
+          .execute();
+        await trx
+          .updateTable('workflow_map')
+          .set({ default_workflow_id: given })
+          .where('id', '=', track.workflow_map_id as number)
+          .execute();
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const pathing = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      await lockWaits(1);
+      finished.open();
+      await holder;
+      const pathed = await pathing;
+      expect(pathed.statusCode, pathed.body).toBe(200);
+      const after = pathed.json().board as Board;
+      // The column added meanwhile stays, and the version counts both changes.
+      expect(after.columns.map((c) => c.name)).toContain('Added meanwhile');
+      expect(after.version).toBe(before.version + 2);
+      const made = after.columns.find((c) => c.id === column.id)?.statusIds[0] as number;
+      expect(made).toBeGreaterThan(0);
+      // The path is in the workflow the track has now; the one it had before is as it was.
+      expect(into((await view(given)).published.definition, made)?.from).toBe('any');
+      expect(into((await view(workflowId)).published.definition, made)).toBeUndefined();
+    });
+
+    it("[WF-010] a column's path waits for a change of the track's workflow made without the board, and goes to the workflow given (T-249)", async () => {
+      const { workflowId, board } = await ordinaryTrackWorkflow('BPMAP', []);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const added = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Signed off', statusIds: [] }],
+      });
+      expect(added.statusCode, added.body).toBe(200);
+      const before = added.json().board as Board;
+      const column = before.columns.at(-1) as Column;
+      const given = await freeWorkflow(
+        'Given from the track settings',
+        before.columns.flatMap((c) => c.statusIds),
+      );
+      const track = await database.db
+        .selectFrom('track')
+        .select('workflow_map_id')
+        .where('key', '=', 'BPMAP')
+        .executeTakeFirstOrThrow();
+
+      // The track's workflow is changed where the board is not held, as its settings do.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await trx
+          .selectFrom('workflow_map')
+          .select('id')
+          .where('id', '=', track.workflow_map_id as number)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+        await trx
+          .updateTable('workflow_map')
+          .set({ default_workflow_id: given })
+          .where('id', '=', track.workflow_map_id as number)
+          .execute();
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const pathing = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      // The path holds the board, then waits for the map rather than read the one being changed.
+      await lockWaits(1);
+      finished.open();
+      await holder;
+      const pathed = await pathing;
+      expect(pathed.statusCode, pathed.body).toBe(200);
+      const after = pathed.json().board as Board;
+      const made = after.columns.find((c) => c.id === column.id)?.statusIds[0] as number;
+      expect(made).toBeGreaterThan(0);
+      expect(into((await view(given)).published.definition, made)?.from).toBe('any');
+      expect(into((await view(workflowId)).published.definition, made)).toBeUndefined();
+    });
   });
 
   describe("a board's sync and a draft taking a column's status at the same time (T-237)", () => {

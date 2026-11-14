@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * The timeline end to end (M1-048; AGL-015): on a track of its own, an outcome with two dated
@@ -47,7 +48,7 @@ test('[AGL-015] a bar dragged a week later moves the ticket’s dates', async ({
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const key = `L${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const key = uniqueKey('L', testInfo);
   const track = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Launch ${key}`, mode: 'shared' },
   });

@@ -127,6 +127,10 @@ them.
         would after a takeover. A column's path on a workflow the board does not manage holds the
         list (when the column needs a status made), then the workflow, and builds the new version
         on the published one read after that, so a version published meanwhile is kept.
+        *2026-11-13 (T-249):* the path's route reads the board, its columns and which workflow the
+        track has inside its transaction, with the board and then the track's map held (update),
+        as a sync holds them, before the list and the workflow: read before, a column added
+        meanwhile was lost and the path went to the workflow the track had before.
         *2026-11-08 (T-237):* the sync then holds the statuses it may rename or settle (update, in
         id order): its columns' statuses and any status named as a column, which a column may take
         by that name. It checks whether another workflow has each only once it holds it, and

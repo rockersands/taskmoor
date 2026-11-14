@@ -676,6 +676,15 @@ function RuleSetPanel({
   const formId = useId();
   const [set, setSet] = useState<RuleSet | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  // "Use this set for KEY" goes away once the track uses the set; the note that says so takes
+  // the keyboard focus it had, rather than the page (T-225).
+  const usedByNote = useRef<HTMLParagraphElement>(null);
+  const [focusUsedBy, setFocusUsedBy] = useState(false);
+  useEffect(() => {
+    if (!focusUsedBy) return;
+    usedByNote.current?.focus();
+    setFocusUsedBy(false);
+  }, [focusUsedBy]);
   const keys = [...SYSTEM_FIELDS, ...fields.map((f) => `cf[${f.id}]`)];
   const show = (found: RuleSet) => {
     setSet(found);
@@ -703,7 +712,11 @@ function RuleSetPanel({
         event.preventDefault();
         // The every-type rules are the rows. Rules for one ticket type are kept as they are, and
         // so are those of a field with no row, such as a shared field that does not reach the track.
-        const kept = set.rules.filter((r) => r.ticketTypeId !== null || !keys.includes(r.field));
+        // The rows shown decide, not the fields as they are now: the fields refresh while the panel
+        // is open, and a field that reached the track since has a rule here but no row (T-223).
+        const kept = set.rules.filter(
+          (r) => r.ticketTypeId !== null || !rows.some((row) => row.field === r.field),
+        );
         const shown: FieldRule[] = rows
           .filter((r) => !FIXED_FIELDS.has(r.field) || r.description)
           .filter((r) => r.required || r.hidden || r.description || r.editableBy)
@@ -761,7 +774,7 @@ function RuleSetPanel({
         );
       })}
       {set.usedBy.length > 0 && (
-        <p className="page-note">
+        <p ref={usedByNote} tabIndex={-1} className="page-note">
           {t('admin.sets.usedBy', { tracks: set.usedBy.map((tr) => tr.key).join(', ') })}
         </p>
       )}
@@ -778,6 +791,7 @@ function RuleSetPanel({
                 .then(() => client.ruleSet(id))
                 .then((fresh) => {
                   setSet(fresh);
+                  setFocusUsedBy(true);
                   said(t('admin.sets.usedFor', { key: track.key, name: fresh.name }));
                 }, failed)
             }

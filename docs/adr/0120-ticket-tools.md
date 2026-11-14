@@ -65,7 +65,13 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
 - Clone copies the lists with every item open, since a copy starts in the first status of its
   workflow. Export writes one record per checklist with its items; an export from before this has
   no such file and imports as before. Erasure leaves the items, whose author becomes the placeholder
-  account like any other record; the person's own items are in their data download.
+  account like any other record; the person's own items are in their data download. An item keeps
+  who last rewrote its words (`edited_by`, migration 0109; T-203), so that download holds the words
+  of the items a person added or rewrote only where they wrote them last; ticks and moves do not
+  change it. Items rewritten before the migration take the writer from the ticket's history rows
+  (`checklistItem`), which a rewrite made together with a tick also wrote. A clone keeps each
+  item's writer (the cloner adds the copy, the words stay whose they were), and the export writes
+  it as the item's `editor`, which the import sets again.
 - Limits: 20 checklists a ticket, 200 items a checklist, 200 and 1,000 characters.
 
 ### Checklist notices (NTF-015)

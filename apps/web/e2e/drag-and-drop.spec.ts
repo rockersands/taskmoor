@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Drag and drop beyond the board, end to end (T-162; ADR-114, section 12): on the backlog a
@@ -166,8 +167,8 @@ test('[AGL-008] [AGL-009] the backlog by drag: into a sprint and ranked, Escape 
   test.setTimeout(90_000);
   const touch = testInfo.project.name !== 'desktop';
   await signIn(page);
-  const stamp = Date.now().toString(36).toUpperCase().slice(-6);
-  const key = `D${testInfo.project.name.slice(0, 1).toUpperCase()}${stamp}`;
+  const stamp = uniqueRun(testInfo);
+  const key = `D${stamp}`;
   const word = `dnd${testInfo.project.name}${stamp.toLowerCase()}`;
   const made = await ok<{ track: { id: number } }>(
     page.request.post(`${BASE}/api/v1/tracks`, {

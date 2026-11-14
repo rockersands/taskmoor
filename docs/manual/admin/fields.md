@@ -440,4 +440,5 @@ configuration administrators; the server refuses the rest whatever the page show
 pages, **Administration** > **Layout sets** and **Configuration sets**, show someone who runs
 tracks but is no administrator only links to the tracks they run that have their own
 configuration. A track in shared mode owns no sets, and its page says so: whoever runs it, or works
-in it, gains nothing here. An archived track's sets wait until it is restored.
+in it, gains nothing here. An archived track's sets wait until it is restored, and its pages say
+so, also to someone who runs no other track.

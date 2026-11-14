@@ -592,6 +592,107 @@ describe('upgrade from earlier releases', () => {
     });
   });
 
+  describe('who wrote a checklist item’s words (0109)', () => {
+    it('[CORE-033] names the last person who wrote an item’s present words from its history, also when they ticked it in the same edit, and nobody when that was its creator', async () => {
+      const database = await createDatabase(testPgAdminUrl());
+      const db = createDb({ connectionString: database.url, maxConnections: 2 });
+      try {
+        for (const name of all.slice(0, all.indexOf('0107_workflows_left_without_moves') + 1)) {
+          await migrateTo(db, name);
+          await UPGRADE_SEEDS[name]?.seed(db as never);
+        }
+        const person = async (email: string) =>
+          (
+            await sql<{ id: number }>`
+              INSERT INTO app_user (workspace_id, email, name, password_hash)
+              VALUES (1, ${email}, ${email}, 'scrypt$x') RETURNING id`.execute(db)
+          ).rows[0]?.id as number;
+        const kalo = await person('kalo@example.com');
+        const mi = await person('mi@example.com');
+        const zed = await person('zed@example.com');
+        const list = (
+          await sql<{ id: number; ticket_id: number }>`
+            SELECT id, ticket_id FROM ticket_checklist WHERE name = 'Seed checklist'`.execute(db)
+        ).rows[0] as { id: number; ticket_id: number };
+        const item = async (text: string, position: number) =>
+          (
+            await sql<{ id: number }>`
+              INSERT INTO ticket_checklist_item (workspace_id, checklist_id, text, position,
+                  created_by, created_at)
+              VALUES (1, ${list.id}, ${text}, ${position}, ${kalo}, '2026-10-31T10:00:00Z')
+              RETURNING id`.execute(db)
+          ).rows[0]?.id as number;
+        const toner = await item('Order the good toner', 1);
+        const ticked = await item('Call the landlord', 2);
+        const twice = await item('Rewritten twice', 3);
+        const tickOnly = await item('Ticked only', 4);
+        let set = 0;
+        // What the PATCH route wrote for one request: the history rows and its one event.
+        const edit = async (
+          actor: number,
+          itemId: number,
+          at: string,
+          words: [string, string] | null,
+          state: [string, string] | null,
+        ) => {
+          set += 1;
+          const rows: [string, string, string][] = [];
+          if (words) rows.push(['checklistItem', ...words]);
+          if (state) rows.push(['checklistItemState', ...state]);
+          for (const [field, from, to] of rows) {
+            await sql`
+              INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
+                  from_value, to_value)
+              VALUES (1, ${list.ticket_id}, ${set}, ${at}::timestamptz, ${actor}, ${field},
+                      ${from}, ${to})`.execute(db);
+          }
+          await sql`
+            INSERT INTO domain_event (workspace_id, type, actor_id, subject_type, subject_id,
+                payload, occurred_at)
+            VALUES (1, 'ticket.checklist_changed', ${actor}, 'ticket', ${String(list.ticket_id)},
+                    ${JSON.stringify({ change: state ? 'item_state' : 'item_edited', checklistId: list.id, itemId })}::jsonb,
+                    ${at}::timestamptz)`.execute(db);
+        };
+        // Mi rewrites Kalo's item; Kalo then rewrites it again and ticks it in one request.
+        await edit(mi, toner, '2026-11-01T10:00:00Z', ['Order toner', 'Order cheap toner'], null);
+        await edit(
+          kalo,
+          toner,
+          '2026-11-02T10:00:00Z',
+          ['Order cheap toner', 'Order the good toner'],
+          ['open', 'done'],
+        );
+        // Mi's only rewrite came with a tick.
+        await edit(
+          mi,
+          ticked,
+          '2026-11-02T10:00:00Z',
+          ['Call him', 'Call the landlord'],
+          ['open', 'done'],
+        );
+        await edit(mi, twice, '2026-11-01T10:00:00Z', ['Draft', 'Second draft'], null);
+        await edit(zed, twice, '2026-11-02T10:00:00Z', ['Second draft', 'Rewritten twice'], null);
+        // A later tick by someone else leaves the words as their last writer left them.
+        await edit(mi, twice, '2026-11-03T10:00:00Z', null, ['open', 'done']);
+        await edit(mi, tickOnly, '2026-11-03T10:00:00Z', null, ['open', 'done']);
+
+        await migrateTo(db, '0109_checklist_item_edited_by');
+        const { rows } = await sql<{ text: string; edited_by: number | null }>`
+          SELECT text, edited_by FROM ticket_checklist_item ORDER BY position`.execute(db);
+        expect(rows).toEqual([
+          { text: 'Seed item', edited_by: null },
+          { text: 'Order the good toner', edited_by: null },
+          { text: 'Call the landlord', edited_by: mi },
+          { text: 'Rewritten twice', edited_by: zed },
+          { text: 'Ticked only', edited_by: null },
+        ]);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+  });
+
   it('[OPS-006] reports a database migrated by a newer release as unknown', async () => {
     const database = await createDatabase(testPgAdminUrl());
     const db = createDb({ connectionString: database.url, maxConnections: 1 });

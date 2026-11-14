@@ -102,8 +102,7 @@ The script:
 
 It is safe to run again: it only starts or updates what is there. On Windows run
 `powershell -ExecutionPolicy Bypass -File install.ps1`, which does the same except the port
-check; without `PUBLIC_URL` its setup link names port 8080 even when `TASKMOOR_PORT` is another,
-so change the port in the link to match.
+check. Its setup link names the host port in the same way.
 
 #### Encryption between the backend and PostgreSQL
 

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Page, type TestInfo, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * A track's Outcomes section end to end (AGL-024), on tracks of this run's own: outcomes with their
@@ -35,8 +36,8 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 }
 
 /** A track of this run's own, so the desktop and phone runs never see each other's outcomes. */
-async function newTrack(request: APIRequestContext, prefix: string, projectName: string) {
-  const key = `${prefix}${projectName.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
+async function newTrack(request: APIRequestContext, prefix: string, testInfo: TestInfo) {
+  const key = uniqueKey(prefix, testInfo);
   const made = await request.post(`${BASE}/api/v1/tracks`, {
     data: { key, name: `Outcomes ${key}`, mode: 'shared' },
   });
@@ -79,7 +80,7 @@ test.beforeEach(async ({ page }) => {
 test('[AGL-024] lists outcomes with their progress and opens one over the list', async ({
   page,
 }, testInfo) => {
-  const { key } = await newTrack(page.request, 'O', testInfo.project.name);
+  const { key } = await newTrack(page.request, 'O', testInfo);
   const outcomeType = await typeAt(page.request, key, 1);
   const standard = await typeAt(page.request, key, 0);
   const goal = await makeTicket(page.request, {
@@ -141,7 +142,7 @@ test('[AGL-024] lists outcomes with their progress and opens one over the list',
 test('[AGL-024] a Kanban track lists its outcomes too, and an empty one explains them', async ({
   page,
 }, testInfo) => {
-  const { key, id } = await newTrack(page.request, 'K', testInfo.project.name);
+  const { key, id } = await newTrack(page.request, 'K', testInfo);
   const board = await page.request.post(`${BASE}/api/v1/boards`, {
     data: { name: `Flow ${key}`, kind: 'kanban', trackId: id, source: { query: `track = ${key}` } },
   });
@@ -177,7 +178,7 @@ test('[AGL-024] a Kanban track lists its outcomes too, and an empty one explains
 test('[AGL-024] a Kanban track manages its outcomes from the Outcomes tab (T-082)', async ({
   page,
 }, testInfo) => {
-  const { key, id } = await newTrack(page.request, 'M', testInfo.project.name);
+  const { key, id } = await newTrack(page.request, 'M', testInfo);
   const board = await page.request.post(`${BASE}/api/v1/boards`, {
     data: { name: `Flow ${key}`, kind: 'kanban', trackId: id, source: { query: `track = ${key}` } },
   });

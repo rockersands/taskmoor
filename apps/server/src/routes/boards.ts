@@ -49,6 +49,7 @@ import {
   addColumnPath,
   type BoardWorkflowChange,
   BoardWorkflowError,
+  columnPathWorkflow,
   columnReach,
   mayManageWorkflow,
   syncBoardWorkflow,
@@ -1272,16 +1273,28 @@ export function registerBoardRoutes(
     if (!(await isConfigAdmin(request))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'edit_workflow' });
     }
-    const columns = row.columns as unknown as Column[];
-    const reach = await columnReach(db, request.workspaceId, row.location_track_id, columns);
-    if (!columns.some((c) => c.id === columnId)) return notFound(reply);
-    if (!reach?.workflow || !reach.singleWorkflow) {
-      return reply.code(409).send({ error: 'per_type_workflows' });
-    }
-    const workflowId = reach.workflow.id;
     try {
+      // The board, its columns and the track's workflow are read once the board is held (T-249):
+      // read before, a change made meanwhile was overwritten and the path went to the workflow
+      // the track had before.
       const updated = await db.transaction().execute(async (trx) => {
-        await trx.selectFrom('board').select('id').where('id', '=', row.id).forUpdate().execute();
+        const held = await trx
+          .selectFrom('board')
+          .select(['id', 'columns', 'version', 'location_track_id'])
+          .where('id', '=', row.id)
+          .forUpdate()
+          .executeTakeFirst();
+        const columns = (held?.columns ?? []) as unknown as Column[];
+        if (!held || held.location_track_id === null || !columns.some((c) => c.id === columnId)) {
+          return 'not_found' as const;
+        }
+        const workflowId = await columnPathWorkflow(
+          trx,
+          request.workspaceId,
+          held.location_track_id,
+          columns,
+        );
+        if (workflowId === null) return 'per_type_workflows' as const;
         const { columns: stored, change } = await addColumnPath(
           trx,
           by(request),
@@ -1293,7 +1306,7 @@ export function registerBoardRoutes(
           .updateTable('board')
           .set({
             columns: JSON.stringify(stored),
-            version: row.version + 1,
+            version: held.version + 1,
             updated_at: new Date(),
           })
           .where('id', '=', row.id)
@@ -1305,6 +1318,10 @@ export function registerBoardRoutes(
         });
         return row.id;
       });
+      if (updated === 'not_found') return notFound(reply);
+      if (updated === 'per_type_workflows') {
+        return reply.code(409).send({ error: 'per_type_workflows' });
+      }
       const next = await boardQuery(db, request.workspaceId)
         .where('b.id', '=', updated)
         .executeTakeFirstOrThrow();

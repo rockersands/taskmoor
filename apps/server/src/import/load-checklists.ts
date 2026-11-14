@@ -13,6 +13,7 @@ interface ChecklistData {
     state: string;
     position: number;
     creator: number | null;
+    editor: number | null;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -46,6 +47,7 @@ export const checklists: Loader<ChecklistCommand> = {
         state: item.state,
         position: item.position,
         creator: optional(ctx, item.creator, 'itemCreator'),
+        editor: optional(ctx, item.editor, 'itemEditor'),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
       })),
@@ -103,6 +105,8 @@ export const checklists: Loader<ChecklistCommand> = {
             state: item.state,
             position: item.position,
             created_by: item.creator,
+            // Whose words the item holds (T-203), so a data download here lists them as there.
+            edited_by: item.editor,
             created_at: item.createdAt,
             updated_at: item.updatedAt,
           })),
