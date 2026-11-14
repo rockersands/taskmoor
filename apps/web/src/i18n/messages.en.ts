@@ -113,6 +113,8 @@ export const messagesEn = {
   'track.outcomes.manage.onPage':
     'Closing {key} asks for more than can be filled in here: open it and close it from its page.',
   'track.outcomes.manage.forbidden': 'You may not make this change to this outcome.',
+  'track.outcomes.manage.stale':
+    'The change was made, but the list could not be read again. Reload the page to see it as it is now.',
   'popover.done': 'Done',
   'dialog.close': 'Close',
   'danger.cancel': 'Cancel',

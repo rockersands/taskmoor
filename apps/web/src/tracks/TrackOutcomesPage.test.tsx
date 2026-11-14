@@ -367,6 +367,105 @@ describe("managing a track's outcomes from the Outcomes tab (AGL-024; T-082)", (
     expect(screen.getByRole('textbox', { name: 'Summary' })).toHaveFocus();
   });
 
+  it('[AGL-024] keeps the focus in the row as editing opens, saves and is cancelled', async () => {
+    const { user } = await managing();
+    const edit = () => within(tools('SHOP-51')).getByRole('button', { name: 'Edit' });
+    await user.click(edit());
+    const form = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    expect(within(form).getByLabelText('Summary')).toHaveFocus();
+    await user.click(within(form).getByRole('button', { name: 'Cancel' }));
+    expect(edit()).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    const again = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    await user.type(within(again).getByLabelText('Summary'), '!{Enter}');
+    expect(await screen.findByText('Saved SHOP-51.')).toBeVisible();
+    expect(edit()).toHaveFocus();
+  });
+
+  it('[AGL-024] keeps the focus in the row as it closes, by one way or by choosing', async () => {
+    const ways = [
+      ...OUTCOME_WAYS,
+      {
+        id: 3,
+        name: 'Drop',
+        to: { id: 4, name: 'Dropped', stage: 'closed' },
+        layout: ['close-reason'],
+      },
+    ];
+    const { user } = await managing({ ways });
+    const close = () => within(tools('SHOP-51')).getByRole('button', { name: 'Close' });
+    await user.click(close());
+    const how = await screen.findByRole('group', { name: 'How to close SHOP-51' });
+    expect(within(how).getByRole('button', { name: 'Done' })).toHaveFocus();
+    await user.click(within(how).getByRole('button', { name: 'Cancel' }));
+    expect(close()).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    const again = await screen.findByRole('group', { name: 'How to close SHOP-51' });
+    await user.click(within(again).getByRole('button', { name: 'Drop' }));
+    const form = await screen.findByRole('form', { name: /Drop/ });
+    expect(within(form).getByLabelText('Close reason')).toHaveFocus();
+    await waitFor(() => expect(within(form).getByRole('button', { name: 'Drop' })).toBeEnabled());
+    await user.click(within(form).getByRole('button', { name: 'Drop' }));
+    expect(await screen.findByText('Closed SHOP-51.')).toBeVisible();
+    // Closed, it has no Close; its Edit takes the focus.
+    expect(within(tools('SHOP-51')).getByRole('button', { name: 'Edit' })).toHaveFocus();
+  });
+
+  it('[AGL-024] keeps the focus on a closed outcome when its one way closes it at once', async () => {
+    const { user } = await managing({
+      rights: { create: false, edit: false, schedule: false, close: true, types: [] },
+    });
+    await user.click(within(tools('SHOP-50')).getByRole('button', { name: 'Close' }));
+    expect(await screen.findByText('Closed SHOP-50.')).toBeVisible();
+    // No tool left to it: its link takes the focus.
+    expect(
+      screen.getByRole('link', { name: 'SHOP-50 Card payments in every market' }),
+    ).toHaveFocus();
+  });
+
+  it('[AGL-024] keeps the focus on the moved outcome, at the top or the bottom too', async () => {
+    const { user } = await managing();
+    await user.click(within(tools('SHOP-51')).getByRole('button', { name: 'Move up' }));
+    expect(await screen.findByText('Moved SHOP-51 up.')).toBeVisible();
+    // At the top it has no Move up: Move down takes the focus.
+    expect(within(tools('SHOP-51')).getByRole('button', { name: 'Move down' })).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Moved SHOP-51 down.')).toBeVisible();
+    expect(keys()).toEqual(['SHOP-50', 'SHOP-51', 'SHOP-52', 'SHOP-47']);
+    expect(within(tools('SHOP-51')).getByRole('button', { name: 'Move down' })).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Moved SHOP-51 down.')).toBeVisible();
+    expect(keys()).toEqual(['SHOP-50', 'SHOP-52', 'SHOP-51', 'SHOP-47']);
+    expect(within(tools('SHOP-51')).getByRole('button', { name: 'Move up' })).toHaveFocus();
+  });
+
+  it('[AGL-024] reports a change as made when only reading the list again fails', async () => {
+    const user = userEvent.setup();
+    const made = managedOutcomes(SHOP_OUTCOMES);
+    const client = fakeTrackClient();
+    let reads = 0;
+    client.outcomes = async (key, cursor) => {
+      reads += 1;
+      if (reads > 1) throw new Error('offline');
+      return made.outcomes(key, cursor);
+    };
+    show(<TrackOutcomesPage trackKey="SHOP" client={client} manager={made.manager} />);
+    await user.click(await screen.findByRole('button', { name: 'Manage outcomes' }));
+    const panel = screen.getByRole('region', { name: 'Manage outcomes' });
+    await user.type(within(panel).getByLabelText('Summary'), 'Loyalty points{Enter}');
+    expect(await screen.findByText('Created SHOP-60.')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The change was made, but the list could not be read again.',
+    );
+    // Not offered again as if it had failed: the field is cleared, and one outcome was made.
+    expect(within(panel).getByLabelText('Summary')).toHaveValue('');
+    expect(made.calls).toEqual([['create', 'SHOP', 9, 'Loyalty points']]);
+  });
+
   it('[AGL-024] fits a phone with the panel open, without sideways scrolling', async () => {
     setViewportWidth(375);
     const { user } = await managing();

@@ -126,6 +126,8 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.manage.onPage':
     'Cerrar {key} pide más de lo que se puede rellenar aquí: ábrelo y ciérralo desde su página.',
   'track.outcomes.manage.forbidden': 'No puedes hacer este cambio en este objetivo.',
+  'track.outcomes.manage.stale':
+    'El cambio se hizo, pero la lista no se pudo volver a leer. Recarga la página para verla como está ahora.',
   'popover.done': 'Listo',
   'dialog.close': 'Cerrar',
   'danger.cancel': 'Cancelar',

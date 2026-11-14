@@ -40,6 +40,26 @@ type Working =
   | { kind: 'edit'; id: number }
   | { kind: 'close'; id: number; ways: Transition[]; asking: Transition | null };
 
+/** A row's tools, as `data-tool` names them. */
+type Tool = 'edit' | 'up' | 'down' | 'close';
+
+/** The row to put the focus back in, on the first of these tools it shows (its link otherwise). */
+interface Refocus {
+  id: number;
+  tools: Tool[];
+}
+
+/** Puts the focus on the first control in a container when it appears. */
+function useFocusFirst<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    ref.current
+      ?.querySelector<HTMLElement>('input, select, textarea, button:not([disabled])')
+      ?.focus();
+  }, []);
+  return ref;
+}
+
 /**
  * A track's outcomes and how far along each is (AGL-024): the closed tickets under it of all those
  * the person may see, as a bar and in numbers, with its status and dates. Open ones come first, in
@@ -70,6 +90,9 @@ export function TrackOutcomesPage({
   const [problem, setProblem] = useState<string | null>(null);
   /** Asks the panel to put the focus in its new outcome's summary. */
   const [focusNew, setFocusNew] = useState(0);
+  /** Where the focus goes once a row's controls have changed under it. */
+  const [refocus, setRefocus] = useState<Refocus | null>(null);
+  const list = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     let live = true;
@@ -121,25 +144,59 @@ export function TrackOutcomesPage({
     [t],
   );
 
-  /** Runs a change, then reads the list again from the top, as the server now orders it. */
-  const change = async (work: () => Promise<string>) => {
+  /**
+   * Runs a change, then reads the list again from the top, as the server now orders it, and puts
+   * the focus back on the row (`after`). A change that went through is reported as made even when
+   * the list cannot be read again, so nobody is invited to make it twice.
+   */
+  const change = async (work: () => Promise<string>, after?: Refocus) => {
     if (saving) return false;
     setSaving(true);
     setProblem(null);
     setStatus(null);
+    let done: string;
     try {
-      const done = await work();
-      setRead(await client.outcomes(trackKey));
-      setWorking(null);
-      setStatus(done);
-      return true;
+      done = await work();
     } catch (error) {
       setProblem(refusal(error));
-      return false;
-    } finally {
       setSaving(false);
+      return false;
     }
+    try {
+      setRead(await client.outcomes(trackKey));
+    } catch {
+      setProblem(t('track.outcomes.manage.stale'));
+    }
+    setWorking(null);
+    setStatus(done);
+    setRefocus(after ?? null);
+    setSaving(false);
+    return true;
   };
+
+  /** Ends editing or closing a row, the focus back on the tool that began it. */
+  const stopWorking = () => {
+    if (working) {
+      setRefocus({
+        id: working.id,
+        tools: working.kind === 'edit' ? ['edit', 'close'] : ['close', 'edit'],
+      });
+    }
+    setWorking(null);
+  };
+
+  // A row's controls are swapped or moved as it is changed: the focus goes to the first of the
+  // wanted tools the row still shows, or else to its link, never left on the page's body.
+  useEffect(() => {
+    if (!refocus) return;
+    const row = list.current?.querySelector(`[data-outcome="${refocus.id}"]`);
+    const target =
+      refocus.tools
+        .map((tool) => row?.querySelector<HTMLElement>(`[data-tool="${tool}"]`))
+        .find(Boolean) ?? row?.querySelector<HTMLElement>('a');
+    target?.focus();
+    setRefocus(null);
+  }, [refocus]);
 
   const day = (date: string) =>
     intl.formatDate(new Date(`${date}T00:00:00Z`), { dateStyle: 'medium', timeZone: 'UTC' });
@@ -148,11 +205,15 @@ export function TrackOutcomesPage({
   const mayManage = rights.create || rights.edit || rights.schedule || rights.close;
   const open = (read?.outcomes ?? []).filter((o) => o.status.stage !== 'closed');
 
+  // Closed, it has no Close: the focus goes to its Edit, or its link.
   const closeWith = (outcome: TrackOutcome, way: Transition, fields?: Record<string, unknown>) =>
-    change(async () => {
-      await manager.transition(outcome.id, way.id, fields);
-      return t('track.outcomes.manage.closed', { key: outcome.key });
-    });
+    change(
+      async () => {
+        await manager.transition(outcome.id, way.id, fields);
+        return t('track.outcomes.manage.closed', { key: outcome.key });
+      },
+      { id: outcome.id, tools: ['edit'] },
+    );
   const startClosing = async (outcome: TrackOutcome) => {
     setProblem(null);
     setStatus(null);
@@ -185,13 +246,20 @@ export function TrackOutcomesPage({
     const at = open.findIndex((o) => o.id === outcome.id);
     const next = open[direction === 'up' ? at - 1 : at + 1];
     if (!next) return;
-    void change(async () => {
-      await manager.rank(outcome.id, direction === 'up' ? { before: next.id } : { after: next.id });
-      return t(
-        direction === 'up' ? 'track.outcomes.manage.movedUp' : 'track.outcomes.manage.movedDown',
-        { key: outcome.key },
-      );
-    });
+    // At the top or the bottom now, the other way is the one left to it.
+    void change(
+      async () => {
+        await manager.rank(
+          outcome.id,
+          direction === 'up' ? { before: next.id } : { after: next.id },
+        );
+        return t(
+          direction === 'up' ? 'track.outcomes.manage.movedUp' : 'track.outcomes.manage.movedDown',
+          { key: outcome.key },
+        );
+      },
+      { id: outcome.id, tools: direction === 'up' ? ['up', 'down'] : ['down', 'up'] },
+    );
   };
 
   return (
@@ -286,7 +354,7 @@ export function TrackOutcomesPage({
         </EmptyState>
       )}
       {read && read.outcomes.length > 0 && (
-        <ul className="glass-card track-outcomes-list" aria-labelledby={`${id}-title`}>
+        <ul ref={list} className="glass-card track-outcomes-list" aria-labelledby={`${id}-title`}>
           {read.outcomes.map((outcome) => {
             const at = open.findIndex((o) => o.id === outcome.id);
             const row = working?.id === outcome.id ? working : null;
@@ -306,16 +374,19 @@ export function TrackOutcomesPage({
                       setWorking({ kind: 'edit', id: outcome.id });
                     }}
                     onSave={(edit) =>
-                      change(async () => {
-                        await manager.edit(outcome.id, edit);
-                        return t('track.outcomes.manage.saved', { key: outcome.key });
-                      })
+                      change(
+                        async () => {
+                          await manager.edit(outcome.id, edit);
+                          return t('track.outcomes.manage.saved', { key: outcome.key });
+                        },
+                        { id: outcome.id, tools: ['edit', 'close'] },
+                      )
                     }
                     onMove={(direction) => move(outcome, direction)}
                     onClose={() => void startClosing(outcome)}
                     onCloseWith={(way, fields) => void closeWith(outcome, way, fields)}
                     onAsk={(way) => row?.kind === 'close' && setWorking({ ...row, asking: way })}
-                    onCancel={() => setWorking(null)}
+                    onCancel={stopWorking}
                   />
                 )}
               </OutcomeRow>
@@ -475,35 +546,25 @@ function OutcomeTools({
     );
   }
   if (working?.kind === 'close') {
-    if (working.asking) {
+    const asking = working.asking;
+    if (asking) {
       return (
-        <div className="track-outcome-tools">
-          <TransitionForm
-            transition={working.asking}
-            client={manager}
-            onRun={(fields) => working.asking && onCloseWith(working.asking, fields)}
-            onCancel={onCancel}
-          />
-        </div>
+        <AskClose
+          key={asking.id}
+          way={asking}
+          manager={manager}
+          onRun={(fields) => onCloseWith(asking, fields)}
+          onCancel={onCancel}
+        />
       );
     }
     return (
-      <fieldset className="track-outcome-tools">
-        <legend>{t('track.outcomes.manage.closeHow', { key: outcome.key })}</legend>
-        {working.ways.map((way) => (
-          <button
-            key={way.id}
-            type="button"
-            className="button-secondary"
-            onClick={() => (way.layout.length > 0 ? onAsk(way) : onCloseWith(way))}
-          >
-            {way.name}
-          </button>
-        ))}
-        <button type="button" className="button-quiet" onClick={onCancel}>
-          {t('dashboards.cancel')}
-        </button>
-      </fieldset>
+      <CloseWays
+        outcome={outcome}
+        ways={working.ways}
+        onPick={(way) => (way.layout.length > 0 ? onAsk(way) : onCloseWith(way))}
+        onCancel={onCancel}
+      />
     );
   }
   const busy = saving || undefined;
@@ -513,7 +574,13 @@ function OutcomeTools({
         {t('track.outcomes.manage.tools', { key: outcome.key })}
       </legend>
       {(rights.edit || rights.schedule) && (
-        <button type="button" className="button-quiet" aria-disabled={busy} onClick={onEdit}>
+        <button
+          type="button"
+          className="button-quiet"
+          data-tool="edit"
+          aria-disabled={busy}
+          onClick={onEdit}
+        >
           {t('track.outcomes.manage.edit')}
         </button>
       )}
@@ -521,6 +588,7 @@ function OutcomeTools({
         <button
           type="button"
           className="button-quiet"
+          data-tool="up"
           aria-disabled={busy}
           onClick={() => onMove('up')}
         >
@@ -531,6 +599,7 @@ function OutcomeTools({
         <button
           type="button"
           className="button-quiet"
+          data-tool="down"
           aria-disabled={busy}
           onClick={() => onMove('down')}
         >
@@ -538,11 +607,66 @@ function OutcomeTools({
         </button>
       )}
       {rights.close && !closed && (
-        <button type="button" className="button-quiet" aria-disabled={busy} onClick={onClose}>
+        <button
+          type="button"
+          className="button-quiet"
+          data-tool="close"
+          aria-disabled={busy}
+          onClick={onClose}
+        >
           {t('track.outcomes.manage.close')}
         </button>
       )}
     </fieldset>
+  );
+}
+
+/** The ways the workflow offers to close an outcome; the focus on the first as it appears. */
+function CloseWays({
+  outcome,
+  ways,
+  onPick,
+  onCancel,
+}: {
+  outcome: TrackOutcome;
+  ways: Transition[];
+  onPick: (way: Transition) => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const ref = useFocusFirst<HTMLFieldSetElement>();
+  return (
+    <fieldset ref={ref} className="track-outcome-tools">
+      <legend>{t('track.outcomes.manage.closeHow', { key: outcome.key })}</legend>
+      {ways.map((way) => (
+        <button key={way.id} type="button" className="button-secondary" onClick={() => onPick(way)}>
+          {way.name}
+        </button>
+      ))}
+      <button type="button" className="button-quiet" onClick={onCancel}>
+        {t('dashboards.cancel')}
+      </button>
+    </fieldset>
+  );
+}
+
+/** What a closing way asks for (a close reason, a priority); the focus on its first field. */
+function AskClose({
+  way,
+  manager,
+  onRun,
+  onCancel,
+}: {
+  way: Transition;
+  manager: OutcomeManager;
+  onRun: (fields: Record<string, unknown>) => void;
+  onCancel: () => void;
+}) {
+  const ref = useFocusFirst<HTMLDivElement>();
+  return (
+    <div ref={ref} className="track-outcome-tools">
+      <TransitionForm transition={way} client={manager} onRun={onRun} onCancel={onCancel} />
+    </div>
   );
 }
 
@@ -562,11 +686,13 @@ function EditOutcome({
 }) {
   const t = useT();
   const field = useId();
+  const ref = useFocusFirst<HTMLFormElement>();
   const [summary, setSummary] = useState(outcome.summary);
   const [start, setStart] = useState(outcome.startDate ?? '');
   const [due, setDue] = useState(outcome.dueDate ?? '');
   return (
     <form
+      ref={ref}
       className="track-outcome-tools track-outcome-edit"
       aria-label={t('track.outcomes.manage.editOf', { key: outcome.key })}
       onSubmit={(event) => {
@@ -644,7 +770,7 @@ function OutcomeRow({
   const { closed, total } = outcome.progress;
   const percent = percentOf(closed, total);
   return (
-    <li className="track-outcome" data-stage={outcome.status.stage}>
+    <li className="track-outcome" data-stage={outcome.status.stage} data-outcome={outcome.id}>
       <div className="track-outcome-head">
         <TypeIcon name={outcome.type} />
         {/* The key never breaks, and the summary wraps beside the icon, never under it (TR-16). */}
