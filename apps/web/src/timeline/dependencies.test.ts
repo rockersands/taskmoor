@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TimelineItem } from './client';
 import { blockerCount, dependenciesOf, dependencyState } from './dependencies';
@@ -47,6 +49,38 @@ describe('when a dependency is late (PLN-006)', () => {
       rollup: { start: '2026-11-01', due: '2026-11-15', total: 2, closed: 0 },
     });
     expect(dependencyState(parent, dated(2, '2026-11-12', '2026-11-20'))).toBe('late');
+  });
+});
+
+/**
+ * The late rule's table of cases, shared with the server's `isLate` (the auto-scheduler, ADR-122
+ * stage 7), read from the repository root or from the app.
+ */
+interface LateSide {
+  start: string | null;
+  due: string | null;
+  closed: boolean;
+}
+const lateRule = (() => {
+  const file = 'apps/server/src/plans/__cases__/late-rule.json';
+  const path = [file, `../../${file}`]
+    .map((p) => resolve(process.cwd(), p))
+    .find((p) => existsSync(p));
+  return JSON.parse(readFileSync(path ?? file, 'utf8')) as {
+    cases: { name: string; blocker: LateSide; blocked: LateSide; state: string }[];
+  };
+})();
+
+describe('the late rule’s shared cases (PLN-006, PLN-004)', () => {
+  const side = (id: number, s: LateSide) =>
+    item(id, {
+      start: s.start,
+      due: s.due,
+      dated: s.start || s.due ? 'own' : null,
+      ...(s.closed ? closed : {}),
+    });
+  it.each(lateRule.cases.map((c) => [c.name, c] as const))('[PLN-006] [PLN-004] %s', (_name, c) => {
+    expect(dependencyState(side(1, c.blocker), side(2, c.blocked))).toBe(c.state);
   });
 });
 

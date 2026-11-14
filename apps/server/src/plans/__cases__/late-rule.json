@@ -1,0 +1,77 @@
+{
+  "about": "When a dependency is late (PLN-006; ADR-122 stages 2 and 7): one table of cases for the web's dependencyState (apps/web/src/timeline/dependencies.ts) and the server's isLate (apps/server/src/plans/scheduler.ts). A side's days are its own start and due; a single day counts as both start and end.",
+  "cases": [
+    {
+      "name": "the blocked ticket starts before the blocker ends",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2026-11-09", "due": "2026-11-20", "closed": false },
+      "state": "late"
+    },
+    {
+      "name": "the blocked ticket starts on the day the blocker ends",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2026-11-10", "due": "2026-11-20", "closed": false },
+      "state": "late"
+    },
+    {
+      "name": "the blocked ticket starts the day after the blocker ends",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2026-11-11", "due": "2026-11-20", "closed": false },
+      "state": "onTime"
+    },
+    {
+      "name": "a blocker with a due day only ends on it",
+      "blocker": { "start": null, "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2026-11-10", "due": "2026-11-20", "closed": false },
+      "state": "late"
+    },
+    {
+      "name": "a blocker with a start day only ends on it",
+      "blocker": { "start": "2026-11-10", "due": null, "closed": false },
+      "blocked": { "start": "2026-11-11", "due": null, "closed": false },
+      "state": "onTime"
+    },
+    {
+      "name": "a blocked ticket with a due day only starts on it",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": null, "due": "2026-11-10", "closed": false },
+      "state": "late"
+    },
+    {
+      "name": "a blocker whose due is before its start ends on its start",
+      "blocker": { "start": "2026-11-12", "due": "2026-11-08", "closed": false },
+      "blocked": { "start": "2026-11-11", "due": "2026-11-20", "closed": false },
+      "state": "late"
+    },
+    {
+      "name": "a blocked ticket whose start is long after the blocker ends",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2027-01-04", "due": "2027-01-08", "closed": false },
+      "state": "onTime"
+    },
+    {
+      "name": "a closed blocker holds nothing up, whatever its days",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": true },
+      "blocked": { "start": "2026-11-09", "due": "2026-11-20", "closed": false },
+      "state": "closed"
+    },
+    {
+      "name": "a closed blocked ticket is never late",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": "2026-11-09", "due": "2026-11-20", "closed": true },
+      "state": "onTime"
+    },
+    {
+      "name": "a blocker without days",
+      "blocker": { "start": null, "due": null, "closed": false },
+      "blocked": { "start": "2026-11-09", "due": "2026-11-20", "closed": false },
+      "state": "undated"
+    },
+    {
+      "name": "a blocked ticket without days",
+      "blocker": { "start": "2026-11-02", "due": "2026-11-10", "closed": false },
+      "blocked": { "start": null, "due": null, "closed": false },
+      "state": "undated"
+    }
+  ]
+}
