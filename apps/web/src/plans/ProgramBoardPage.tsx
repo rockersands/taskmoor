@@ -36,8 +36,11 @@ export interface ProgramBoardPageProps {
   now?: () => Date;
 }
 
-/** How long the page waits after the local copy moves before it reads again (ms). */
-const SETTLE_MS = 100;
+/**
+ * How long the page waits after the local copy moves before it reads again (ms): enough to take a
+ * burst of changes as one read, short enough that another person's move shows within a second.
+ */
+const SETTLE_MS = 30;
 /** Without a local copy (storage refused), how often the board reads again while open (ms). */
 const POLL_MS = 15_000;
 
@@ -115,7 +118,7 @@ function movedLocally(board: ProgramBoard, id: number, from: Place, to: Place): 
  * button (the keyboard's, a screen reader's and a phone's way); either sends the ticket's own
  * change with the version read, so a card someone else moved meanwhile is refused and shown where
  * it now is. Changes made elsewhere arrive through the local copy (ADR-013): the board reads again
- * within 100 ms of it moving, not while a card is held or a move waits. On a phone it shows one
+ * within 30 ms of it moving, not while a card is held or a move waits. On a phone it shows one
  * team at a time, each period a list. Its dependencies are badges on the cards and a list below,
  * the blockers it does not show only counted.
  */
@@ -165,7 +168,7 @@ export function ProgramBoardPage({
   useEffect(() => load(false), [load]);
 
   // Moves made elsewhere reach the local copy through the socket: read again, at most once in
-  // 100 ms, and not while a card is held or a move waits (its own answer reads again).
+  // 30 ms, and not while a card is held or a move waits (its own answer reads again).
   const engine = useSyncEngine();
   useEffect(() => {
     if (!engine) {
@@ -372,6 +375,7 @@ export function ProgramBoardPage({
     const key = `${row.team?.id ?? 'none'}:${column}`;
     const to: Place = { team: row.team?.id ?? null, column };
     return {
+      'data-cell': key,
       className: `program-cell${over === key ? ' is-drop-target' : ''}${columns[column]?.current ? ' is-current' : ''}`,
       onDragOver: (event: React.DragEvent) => {
         if (dragging === null) return;
