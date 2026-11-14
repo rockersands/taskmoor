@@ -147,7 +147,8 @@ describe('the layout editor (UI-T15)', () => {
     await waitFor(() => expect(previewed()).toContain('Labels'));
     // The create form never shows them, so neither does its preview.
     expect(previewed()).not.toContain('Close reason');
-    expect(previewed()).not.toContain('Requester');
+    // The requester has its picker on the create form now (T-265), so the preview shows it.
+    expect(previewed()).toContain('Requester');
     expect(
       within(preview()).getByText(
         'Close reason: it is set on the ticket once it exists, so the create form leaves it out.',
