@@ -429,7 +429,9 @@ ticket where it is now reads as "a custom field". **Show older changes** reads f
 
 The **All** tab mixes comments, changes and time entries in one stream, newest first: a time
 entry stands where its work started. On a busy ticket the newest come first and **Show older
-activity** reads further back, to the ticket's first change.
+activity** reads further back, to the ticket's first change. What it brought stays when the
+ticket changes, yours or someone else's change, and once the oldest are in, the keyboard focus
+goes to the first of them. A change to a description says a line of its text, before and after.
 
 ### Printing a ticket
 

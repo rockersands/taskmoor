@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Comment, CommentClient } from '../../comments/client';
@@ -201,5 +201,99 @@ describe('a busy ticket’s All feed (T-309)', () => {
     all.changed(1);
     expect(await within(all).findByText(/^Changed Summary from/)).toBeVisible();
     expect(client.calls.filter((c) => c.action === 'activity').length).toBe(2);
+  });
+
+  /** The busy ticket, with the activity reads it was asked for and a way to hold them. */
+  function heldTicket() {
+    const busy = busyTicket();
+    const asked: (string | undefined)[] = [];
+    const held: (() => void)[] = [];
+    let holding = false;
+    const client: TicketClient = {
+      ...busy.client,
+      activity: async (id, cursor) => {
+        asked.push(cursor);
+        if (holding) await new Promise<void>((resolve) => held.push(resolve));
+        return busy.client.activity(id, cursor);
+      },
+    };
+    return {
+      client,
+      said: busy.said,
+      asked,
+      hold: (on: boolean) => {
+        holding = on;
+      },
+      /** Lets the oldest held read answer. */
+      release: async () => {
+        await act(async () => held.shift()?.());
+      },
+    };
+  }
+  const older = (all: HTMLElement) =>
+    within(all).getByRole('button', { name: 'Show older activity' });
+  async function openOlder(user: ReturnType<typeof userEvent.setup>, all: HTMLElement) {
+    const shown = within(all).getAllByRole('listitem').length;
+    await user.click(older(all));
+    await waitFor(() => expect(within(all).getAllByRole('listitem').length).toBeGreaterThan(shown));
+  }
+
+  it('[CORE-022] keeps the older pages a reader opened when the ticket changes', async () => {
+    const user = userEvent.setup();
+    const ticket = heldTicket();
+    const all = renderAll(ticket.client, ticket.said);
+    await within(all).findByText('Commenter 120');
+    await openOlder(user, all);
+    await openOlder(user, all);
+    const shown = within(all).getAllByRole('listitem').length;
+    expect(within(all).getByText('Changed Summary from v79 to v80')).toBeVisible();
+    all.changed(1);
+    // The three pages shown are read again, and stay.
+    await waitFor(() => expect(ticket.asked.length).toBe(6));
+    await waitFor(() => expect(within(all).getAllByRole('listitem').length).toBe(shown));
+    expect(within(all).getByText('Changed Summary from v79 to v80')).toBeVisible();
+    expect(older(all)).toBeVisible();
+  });
+
+  it('[CORE-022] leaves no gap when Show older activity is pressed while the feed reads again', async () => {
+    const user = userEvent.setup();
+    const ticket = heldTicket();
+    const all = renderAll(ticket.client, ticket.said);
+    await within(all).findByText('Commenter 120');
+    await openOlder(user, all);
+    // A live update starts a fresh read; the reader asks for the third page before it ends.
+    ticket.hold(true);
+    all.changed(1);
+    await waitFor(() => expect(ticket.asked.length).toBe(3));
+    await user.click(older(all));
+    await waitFor(() => expect(ticket.asked.length).toBe(4));
+    ticket.hold(false);
+    await ticket.release();
+    await ticket.release();
+    // Pages one to three, the second included: nothing between them is missing.
+    await waitFor(() =>
+      expect(within(all).getByText('Changed Summary from v79 to v80')).toBeVisible(),
+    );
+    await waitFor(() => expect(within(all).getAllByRole('listitem').length).toBe(151));
+    expect(within(all).getByText('Commenter 50')).toBeVisible();
+    expect(within(all).getByText('Commenter 21')).toBeVisible();
+  });
+
+  it('[CORE-022] puts the focus on the first row the last page brought, as its button goes', async () => {
+    const user = userEvent.setup();
+    const all = renderAll();
+    await within(all).findByText('Commenter 120');
+    older(all).focus();
+    for (let i = 0; i < 3; i++) {
+      const shown = within(all).getAllByRole('listitem').length;
+      await user.keyboard('{Enter}');
+      await waitFor(() =>
+        expect(within(all).getAllByRole('listitem').length).toBeGreaterThan(shown),
+      );
+      if (i < 2) expect(older(all)).toHaveFocus();
+    }
+    expect(within(all).queryByRole('button', { name: 'Show older activity' })).toBeNull();
+    const row = within(all).getByText('Changed Summary from v49 to v50').closest('li');
+    await waitFor(() => expect(row).toHaveFocus());
   });
 });

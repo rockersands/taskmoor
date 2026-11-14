@@ -438,9 +438,10 @@ interface FeedItem {
 /**
  * Comments, history and time entries in one stream, newest first (CORE-022 "All"), read from the
  * ticket's activity a page at a time (T-309): a busy ticket's newest comments and its oldest
- * changes are all there, the older ones behind "Show older activity". A page carries the time
- * entries that started in the stretch of time its changes cover, so the stream stays in order
- * as pages are added. Read again when the ticket changes, live updates included.
+ * changes are all there, the older ones behind "Show older activity". A page carries time
+ * entries too, and the stream is put in order by time as pages are added. Read again when the
+ * ticket changes, live updates included: as many pages as were shown, so a reader keeps their
+ * place. The focus goes to the first row the last page brought, as its button goes.
  */
 function AllActivity({
   ticket,
@@ -460,8 +461,24 @@ function AllActivity({
   const [failed, setFailed] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
   const [reading, setReading] = useState(false);
-  /** Bumped by every fresh read, so a page asked for before it is dropped. */
+  /** The row the focus goes to once the last page is drawn and its button gone. */
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const list = useRef<HTMLOListElement>(null);
+  /** Bumped by every fresh read, so an older one never replaces it. */
   const reads = useRef(0);
+  const readingMore = useRef(false);
+  /** What is shown now, for reads that end later: the ticket, its pages, the next cursor. */
+  const shown = useRef<{ ticket: number; pages: ActivityPage[]; next: string | null }>({
+    ticket: ticket.id,
+    pages: [],
+    next: null,
+  });
+  const show = (list: ActivityPage[]) => {
+    const cursor = list[list.length - 1]?.next ?? null;
+    shown.current = { ticket: ticket.id, pages: list, next: cursor };
+    setPages(list);
+    setNext(cursor);
+  };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
@@ -469,70 +486,96 @@ function AllActivity({
     const read = ++reads.current;
     setFailed(false);
     setMoreFailed(false);
-    client.activity(ticket.id).then(
-      (page) => {
+    // As many pages as are shown, one Show older activity adds meanwhile included.
+    const wanted = () => (shown.current.ticket === ticket.id ? shown.current.pages.length : 1);
+    (async () => {
+      const fresh: ActivityPage[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.activity(ticket.id, cursor);
         if (!live || read !== reads.current) return;
-        setPages([page]);
-        setNext(page.next);
-      },
-      () => live && setFailed(true),
-    );
+        fresh.push(page);
+        cursor = page.next ?? undefined;
+      } while (cursor !== undefined && fresh.length < wanted());
+      show(fresh);
+    })().catch(() => {
+      if (live && read === reads.current) setFailed(true);
+    });
     return () => {
       live = false;
     };
   }, [client, ticket.id, revision]);
 
+  useEffect(() => {
+    if (focusKey === null) return;
+    list.current?.querySelector<HTMLElement>(`[data-key="${focusKey}"]`)?.focus();
+  }, [focusKey]);
+
+  const someone = t('ticketView.someone');
+  const feed = (from: readonly ActivityPage[]): FeedItem[] => {
+    const items: FeedItem[] = [];
+    const timeSeen = new Set<number>();
+    for (const page of from) {
+      for (const entry of page.activity) {
+        entry.changes.forEach((c, index) => {
+          const key = `h${entry.changeSet}-${index}`;
+          const actor = entry.actor?.name ?? someone;
+          if (c.field === 'comment') {
+            // A comment shows while it is there; its deletion and deleted ones do not.
+            if (c.to.value !== null && entry.comment && entry.comment.excerpt !== null) {
+              items.push({ key, at: entry.at, actor, text: t('ticketView.all.comment') });
+            }
+            return;
+          }
+          // Time entries show as themselves, below.
+          if (c.field === 'timeEntry') return;
+          items.push({ key, at: entry.at, actor, text: text(c) });
+        });
+      }
+      for (const e of page.timeEntries) {
+        if (timeSeen.has(e.id)) continue;
+        timeSeen.add(e.id);
+        items.push({
+          key: `t${e.id}`,
+          at: e.startedAt,
+          actor: e.author.name,
+          text: t('ticketView.all.time', {
+            hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
+          }),
+        });
+      }
+    }
+    return items.sort((a, b) => b.at.localeCompare(a.at));
+  };
+
   const more = async () => {
-    if (next === null || reading) return;
-    const read = reads.current;
+    // One page at a time, from where the pages shown now end.
+    const cursor = shown.current.next;
+    if (cursor === null || readingMore.current) return;
+    readingMore.current = true;
     setReading(true);
     setMoreFailed(false);
+    setFocusKey(null);
     try {
-      const page = await client.activity(ticket.id, next);
-      if (read !== reads.current) return;
-      setPages((p) => [...(p ?? []), page]);
-      setNext(page.next);
+      const page = await client.activity(ticket.id, cursor);
+      // A fresh read replaced the pages meanwhile: this one goes on from a page no longer shown.
+      if (shown.current.next !== cursor || shown.current.ticket !== ticket.id) return;
+      const before = new Set(feed(shown.current.pages).map((item) => item.key));
+      const after = [...shown.current.pages, page];
+      show(after);
+      if (page.next === null) {
+        const items = feed(after);
+        setFocusKey((items.find((item) => !before.has(item.key)) ?? items.at(-1))?.key ?? null);
+      }
     } catch {
-      if (read === reads.current) setMoreFailed(true);
+      if (shown.current.next === cursor) setMoreFailed(true);
     } finally {
+      readingMore.current = false;
       setReading(false);
     }
   };
 
-  const someone = t('ticketView.someone');
-  const items: FeedItem[] = [];
-  const timeSeen = new Set<number>();
-  for (const page of pages ?? []) {
-    for (const entry of page.activity) {
-      entry.changes.forEach((c, index) => {
-        const key = `h${entry.changeSet}-${index}`;
-        const actor = entry.actor?.name ?? someone;
-        if (c.field === 'comment') {
-          // A comment shows while it is there; its deletion and deleted ones do not.
-          if (c.to.value !== null && entry.comment && entry.comment.excerpt !== null) {
-            items.push({ key, at: entry.at, actor, text: t('ticketView.all.comment') });
-          }
-          return;
-        }
-        // Time entries show as themselves, below.
-        if (c.field === 'timeEntry') return;
-        items.push({ key, at: entry.at, actor, text: text(c) });
-      });
-    }
-    for (const e of page.timeEntries) {
-      if (timeSeen.has(e.id)) continue;
-      timeSeen.add(e.id);
-      items.push({
-        key: `t${e.id}`,
-        at: e.startedAt,
-        actor: e.author.name,
-        text: t('ticketView.all.time', {
-          hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
-        }),
-      });
-    }
-  }
-  items.sort((a, b) => b.at.localeCompare(a.at));
+  const items = feed(pages ?? []);
 
   if (failed) return <p className="page-note">{t('ticketView.all.failed')}</p>;
   if (pages === null) return <p className="page-note">{t('ticketView.loading')}</p>;
@@ -542,9 +585,14 @@ function AllActivity({
   return (
     <>
       {items.length > 0 && (
-        <ol className="ticket-feed">
+        <ol ref={list} className="ticket-feed">
           {items.map((item) => (
-            <li key={item.key} className="ticket-feed-item">
+            <li
+              key={item.key}
+              data-key={item.key}
+              className="ticket-feed-item"
+              tabIndex={item.key === focusKey ? -1 : undefined}
+            >
               <p className="ticket-feed-meta">
                 <span className="ticket-feed-actor">{item.actor}</span>
                 <span className="ticket-feed-date">{when(item.at)}</span>
@@ -563,7 +611,9 @@ function AllActivity({
         <button
           type="button"
           className="button-secondary"
+          // Not disabled: the focus stays on it while the page loads.
           aria-busy={reading}
+          aria-disabled={reading || undefined}
           onClick={() => void more()}
         >
           {t('ticketView.all.more')}
