@@ -989,7 +989,7 @@ describe('the page an invitation leads to (IAM-027, IAM-029)', () => {
     await user.type(screen.getByLabelText('New password'), 'another otter lantern');
     await user.type(screen.getByLabelText('Confirm new password'), 'another otter lantern');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByText(/signs in through its organization/)).toBeInTheDocument();
+    expect(await screen.findByText(/signs in through its organisation/)).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Sign in' })).toBeChecked();
   });
 });

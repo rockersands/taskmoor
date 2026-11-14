@@ -154,7 +154,7 @@ describe('a track’s statistics (ADR-116)', () => {
   it('[RPT-001] offers those who may configure the board the way to change its kind', () => {
     const { container } = open('velocity', { ...KANBAN, mayConfigure: true });
     expect(
-      within(container).getByRole('link', { name: "Change the board's kind" }),
+      within(container).getByRole('link', { name: 'Change the board’s kind' }),
     ).toHaveAttribute('href', `#/boards/${KANBAN.id}/settings`);
   });
 

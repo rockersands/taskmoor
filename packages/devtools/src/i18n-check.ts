@@ -105,3 +105,60 @@ export function checkWebStrings(root: string): StringFinding[] {
     findHardCodedStrings(readFileSync(join(root, file), 'utf8'), file),
   );
 }
+
+/**
+ * The English catalogue's house style (TR-34 and the second page sweep), the way most of it was
+ * already written: the curly apostrophe (’), never the straight one, and British spellings
+ * (colour, organisation, customise, minimise, summarise), never the American ones. Placeholders
+ * such as `{key}` and other products' names, such as Jira Data Center, are not ours to spell.
+ */
+const US_SPELLINGS: readonly RegExp[] = [
+  // -ize, -ized, -izing, -ization and the like, but not size, prize or seize.
+  /\b(?!(?:re|over|down)?siz|pri[sz]|sei[sz])[a-z]+iz(?:e|es|ed|ing|ation|ations|er|ers)\b/i,
+  /\b[a-z]+yz(?:e|es|ed|ing)\b/i,
+  /\b(?:colors?|colored|colorful|behaviors?|favorites?|neighbors?|neighboring|honors?)\b/i,
+  /\b(?:labeled|labeling|canceled|canceling|traveled|traveling|modeling|grays?|catalogs?)\b/i,
+  /\bcent(?:er|ers|ered)\b/i,
+];
+const NOT_OURS = [/\{[A-Za-z]+\}/g, /\bJira Data Center\b/g, /\bGoogle Workspace\b/g];
+
+/** What breaks the house style in one English message, said in a few words; none when it keeps it. */
+export function styleProblems(text: string): string[] {
+  let ours = text;
+  for (const name of NOT_OURS) ours = ours.replace(name, ' ');
+  const problems: string[] = [];
+  if (ours.includes("'")) problems.push("a straight apostrophe (')");
+  for (const spelling of US_SPELLINGS) {
+    const found = spelling.exec(ours);
+    if (found) problems.push(`the American spelling '${found[0]}'`);
+  }
+  return problems;
+}
+
+/** The messages of a catalogue source (an object of string literals) that break the house style. */
+export function findCatalogueStyle(source: string, file: string): StringFinding[] {
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const findings: StringFinding[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAssignment(node) && ts.isStringLiteralLike(node.initializer)) {
+      const problems = styleProblems(node.initializer.text);
+      if (problems.length > 0) {
+        const line = sf.getLineAndCharacterOfPosition(node.initializer.getStart(sf)).line;
+        findings.push({
+          file,
+          line: line + 1,
+          text: `${node.name.getText(sf)}: ${problems.join(', ')}`,
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return findings;
+}
+
+/** The English catalogue's messages that break the house style. */
+export function checkCatalogueStyle(root: string): StringFinding[] {
+  const file = 'apps/web/src/i18n/messages.en.ts';
+  return findCatalogueStyle(readFileSync(join(root, file), 'utf8'), file);
+}

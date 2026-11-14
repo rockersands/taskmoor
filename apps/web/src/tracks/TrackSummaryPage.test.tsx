@@ -46,7 +46,7 @@ describe('a Summary on a Kanban track (ADR-116)', () => {
     );
     expect(await screen.findByText('Open bugs')).toBeVisible();
     expect(screen.queryByText('Our burndown')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    await user.click(screen.getByRole('button', { name: 'Customise' }));
     expect(await screen.findByText('Our burndown')).toBeVisible();
     const offered = within(screen.getByRole('combobox', { name: 'Widget to add' }))
       .getAllByRole('option')
@@ -146,7 +146,7 @@ describe('a customized track summary (ADR-116)', () => {
   it('[RPT-006] someone who may only read sees no way to change it', async () => {
     open();
     await screen.findByRole('heading', { level: 1 });
-    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Customise' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Back to the default' })).toBeNull();
   });
 
@@ -157,14 +157,14 @@ describe('a customized track summary (ADR-116)', () => {
     expect(screen.getByText('Releases go out on Thursdays.')).toBeVisible();
     expect(await screen.findByRole('link', { name: '26' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Customise' })).toBeNull();
   });
 
   it('[RPT-006] customizing starts from today’s numbers, so nothing is lost', async () => {
     const user = userEvent.setup();
     const { client } = open('en', customizable());
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
-    const numbers = await screen.findByRole('article', { name: "This track's numbers" });
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
+    const numbers = await screen.findByRole('article', { name: 'This track’s numbers' });
     expect(await within(numbers).findByRole('link', { name: '26' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Save the summary' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
@@ -180,7 +180,7 @@ describe('a customized track summary (ADR-116)', () => {
   it('[RPT-005] [RPT-006] adds a widget with the settings of its kind, an empty query meaning the track', async () => {
     const user = userEvent.setup();
     const { client } = open('en', customizable());
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
     await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'Two columns');
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Widget to add' }),
@@ -209,7 +209,7 @@ describe('a customized track summary (ADR-116)', () => {
   it('[RPT-002] [RPT-006] adds a workload as a pie, by the measure chosen, for the open tickets only', async () => {
     const user = userEvent.setup();
     const { client } = open('en', customizable());
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
     await user.selectOptions(screen.getByRole('combobox', { name: 'Widget to add' }), 'Workload');
     await user.click(screen.getByRole('button', { name: 'Add widget' }));
     const form = await screen.findByRole('form', { name: /Workload/ });
@@ -244,7 +244,7 @@ describe('a customized track summary (ADR-116)', () => {
   it('[RPT-006] moves and removes widgets, keeping the version it read', async () => {
     const user = userEvent.setup();
     const { client } = open('en', customizable({ custom: CUSTOM }));
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
     await user.click(
       await screen.findByRole('button', { name: /Open bugs.*left|left.*Open bugs/i }),
     );
@@ -267,16 +267,16 @@ describe('a customized track summary (ADR-116)', () => {
     const user = userEvent.setup();
     const stale = customizable({ custom: CUSTOM, saveError: 'version_conflict' });
     const first = open('en', stale);
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
     await user.click(screen.getByRole('button', { name: 'Save the summary' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Someone changed this summary');
     first.container.remove();
     const refused = customizable({ custom: CUSTOM, saveError: 'forbidden' });
     const second = open('en', refused);
-    await user.click(await within(second.container).findByRole('button', { name: 'Customize' }));
+    await user.click(await within(second.container).findByRole('button', { name: 'Customise' }));
     await user.click(within(second.container).getByRole('button', { name: 'Save the summary' }));
     expect(await within(second.container).findByRole('alert')).toHaveTextContent(
-      "Only the track's owner and administrators",
+      'Only the track’s owner and administrators',
     );
   });
 
@@ -306,7 +306,7 @@ describe('a customized track summary (ADR-116)', () => {
     setViewportWidth(375);
     const user = userEvent.setup();
     open('en', customizable({ custom: CUSTOM }));
-    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(await screen.findByRole('button', { name: 'Customise' }));
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });
@@ -326,7 +326,7 @@ describe('filtering a track summary for oneself (RPT-006; T-075a)', () => {
     const { client } = open();
     expect(await screen.findByRole('link', { name: '26' })).toBeVisible();
     // A member reads it and may filter it, but not customize it.
-    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Customise' })).toBeNull();
     const form = screen.getByRole('form', { name: 'Filter this summary for yourself' });
     await user.click(within(form).getByRole('button', { name: 'My tickets' }));
     // The filter is in the page's address, the person's own.
@@ -401,7 +401,7 @@ describe('filtering a track summary for oneself (RPT-006; T-075a)', () => {
     // The numbers widget and the list both read with the filter.
     await waitFor(() => expect(client.filters.filter((f) => f === MINE)).toHaveLength(2));
 
-    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    await user.click(screen.getByRole('button', { name: 'Customise' }));
     // While customizing, the widgets read as everyone will see them, and the filter steps aside.
     expect(screen.queryByRole('form', { name: 'Filter this summary for yourself' })).toBeNull();
     await waitFor(() => expect(client.filters.at(-1)).toBe(''));

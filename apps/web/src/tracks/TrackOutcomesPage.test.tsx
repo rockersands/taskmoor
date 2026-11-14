@@ -136,7 +136,7 @@ describe("a track's outcomes (AGL-024)", () => {
     client.outcomes = outcomePages([], 100, []);
     show(<TrackOutcomesPage trackKey="SHOP" client={client} />);
     expect(
-      await screen.findByText(/None of this track's ticket types is at the outcome level/),
+      await screen.findByText(/None of this track’s ticket types is at the outcome level/),
     ).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Create a ticket' })).toBeNull();
   });
@@ -323,7 +323,7 @@ describe("managing a track's outcomes from the Outcomes tab (AGL-024; T-082)", (
     const { user, calls } = await managing({ ways: start });
     await user.click(within(tools('SHOP-52')).getByRole('button', { name: 'Close' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "SHOP-52's workflow offers no way to a closed status from where it is now.",
+      'SHOP-52’s workflow offers no way to a closed status from where it is now.',
     );
     expect(calls).toEqual([['transitions', 52]]);
   });

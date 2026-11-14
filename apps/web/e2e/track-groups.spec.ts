@@ -210,7 +210,7 @@ test('[CORE-034] [IAM-034] groups of tracks: made by dragging, arranged by keybo
   expect(await noSidewaysScroll(page)).toBe(true);
 
   // Minimized, it is the size of a card with a count; the server remembers it.
-  await page.getByRole('button', { name: `Minimize ${group}` }).click();
+  await page.getByRole('button', { name: `Minimise ${group}` }).click();
   await expect(bubble.getByText('3 tracks')).toBeVisible();
   await expect(bubble.getByRole('link')).toHaveCount(0);
   await visit(page, '#/tracks');

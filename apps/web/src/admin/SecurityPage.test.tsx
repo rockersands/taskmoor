@@ -79,7 +79,7 @@ describe('security settings: two-factor policy', () => {
       'PUT /security/two-factor': (body) => jsonResponse(200, body),
     });
     const domains = await screen.findByRole('textbox', {
-      name: 'Your organization’s email domains',
+      name: 'Your organisation’s email domains',
     });
     expect(domains).toHaveValue('example.com');
     expect(domains).toHaveAccessibleDescription(

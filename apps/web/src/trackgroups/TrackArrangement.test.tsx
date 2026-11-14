@@ -216,7 +216,7 @@ describe('the Tracks page in groups (CORE-034)', () => {
     await user.click(screen.getByRole('button', { name: 'Open Back office' }));
     await waitFor(() => expect(linksIn('Back office')).toEqual(['OPS', 'HR']));
     expect(client.calls).toContainEqual({ method: 'update', args: [2, { minimized: false }] });
-    await user.click(screen.getByRole('button', { name: 'Minimize Launch' }));
+    await user.click(screen.getByRole('button', { name: 'Minimise Launch' }));
     await waitFor(() => expect(linksIn('Launch')).toEqual([]));
   });
 
