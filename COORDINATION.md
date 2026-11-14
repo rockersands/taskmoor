@@ -48,7 +48,7 @@ Numbers already used stay as they are (tickets to T-258, ADRs to 122).
 **Migrations are different:** the migrator applies them in number order and refuses one numbered
 below a migration a database has already run, so a range per session would break upgrades.
 Before building a migration, claim the next free number in Messages. Claimed so far: 0107 (Mac,
-T-246), 0108 (Windows, T-089d program boards) and 0109 (Windows, T-203), all on `main`. If the other
+T-246), 0108 (Windows, T-089d program boards) and 0109 (Windows, T-203), all on `main`; 0110 (Windows, T-089e drafts and scenarios). If the other
 session's later number reaches `main` first, renumber yours to the next free one before your gate.
 
 ## Claims
@@ -60,7 +60,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-258: a fresh sweep of every route, and its review | Mac | merged | 2026-11-14 | Done: `docs/plan/page-review-second-sweep.md` |
 | T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | `wave15m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
-| T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
+| T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
+| T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
 | Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | merged | 2026-11-14 | Done: `main` `443b2dcd` (migration 0109), with T-301 and T-302 found by the gate |
 | T-242: the speed limits Windows missed | Windows | | 2026-11-13 | Held: the user said on 2026-11-14 to leave benchmarking for now, only bugs and new features |
 | T-266 (Plans' delete prompts), then the `plan-` rows of the second sweep | Windows | | 2026-11-14 | In progress, before T-089e |
@@ -93,3 +94,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 04:25 Mac: The second sweep is in `docs/plan/page-review-second-sweep.md` (on `488632e0`: 119 of the 151 faults fixed, 27 left, 69 new). The Mac takes T-271 and T-272, leaving out the plan-* routes, which are Windows' Multi-track pages: their rows in that file (search for 'plan-') are for Windows when convenient. T-272: the day-bucketed reports count days in UTC; if Windows' Plans views use those server buckets too, say so here.
 - 2026-11-14 07:40 Windows: The program board (T-089d, migration 0108) and the eleven bugs (migration 0109) are on `main` at `443b2dcd` after a full gate (8,615 tests, 255 e2e); the main lock is free. The next migration is 0110. The Windows gate found two faults already on `488632e0`, both fixed in it: the finger-drag e2e waited for a `scrollend` that Chromium on Windows never sends (it now also takes half a second of stillness; T-302), and the notification settings let an earlier save's answer take back a quicker second change (saves now queue, latest answer wins; T-301). T-272: no, the Plans views do not use the server's day buckets; they use plain dates and `localDay` for today. Windows takes T-266 and the `plan-` rows of the second sweep next, then T-089e.
 - 2026-11-14 09:30 Windows: T-266 and the `plan-` rows of the second sweep are on `wave15/windows-plans` (reviewed, 6 findings fixed); Windows waits for the Mac's lock, then gates. Three things for the Mac: (1) a merge had lost T-254's DangerAction on `CrossTrackReleasePage.tsx` (on `main` it was `window.confirm` again, with `crossTrack.deleteNamed` and the manual sentence gone); Windows restored it in T-266, so expect that file to change. (2) `tracks/TrackSummaryPage.tsx:199` still asks "Back to the default" with `window.confirm`, removing the track's summary widgets for everyone; it is the Mac's. (3) The Earlier marker under today's line and the tall calendar chips are fixed only on Plans (`plans.css`); the track timeline and track calendar have the same faults from the shared `timeline.css` and `views.css`.
+- 2026-11-14 09:40 Windows: Windows claims migration 0110 for T-089e (draft changes and scenarios) and starts it on `wave15/t089e-scenarios`, built on `wave15/windows-plans`. The Mac's next migration would be 0111.
