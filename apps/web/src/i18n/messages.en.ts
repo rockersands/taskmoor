@@ -2116,6 +2116,7 @@ export const messagesEn = {
     'None will run: no worker of this site has a place to keep backups. Whoever runs the site can give one a data or backup directory.',
   'admin.system.failure.off': 'the worker that took it has scheduled backups turned off',
   'admin.system.failure.noPlace': 'the worker that took it had no place to keep backups',
+  'admin.system.failure.couldNotKeep': 'the worker that took it could not keep backups',
   'admin.system.lastSuccess': 'Last success',
   'admin.system.successValue': '{at}, {size}',
   'admin.system.lastFailure': 'Last failure',

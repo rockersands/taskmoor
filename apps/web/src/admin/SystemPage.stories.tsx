@@ -67,9 +67,7 @@ export const NoWorkerTakesBackups: Story = {
     const canvas = within(canvasElement);
     const next = await canvas.findByText(/^None will run: every worker/);
     await expect(next).toHaveClass('status-warn');
-    await expect(
-      canvas.getByText(/the worker that took it has scheduled backups turned off$/),
-    ).toBeVisible();
+    await expect(canvas.getByText(/the worker that took it could not keep backups$/)).toBeVisible();
     await expect(canvasElement.textContent).not.toMatch(/TASKMOOR_BACKUP_DIR/);
   },
 };

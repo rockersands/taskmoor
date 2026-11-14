@@ -180,7 +180,7 @@ Under **Administration**, **System status**, site administrators see a **Schedul
 | **Schedule** | "Every day at 02:30 UTC, keeping the last 14", or **Off** |
 | **Next backup** | When the next one starts, that one is running, or a warning that none will run because no worker can take it |
 | **Last success** | Time and size of the last good backup |
-| **Last failure** | Time and error of the last failed one, in red until a backup succeeds after it; a run no worker could take gives its reason in words |
+| **Last failure** | Time and error of the last failed one, in red until a backup succeeds after it; a run no worker could take gives its reason in words (an older run that did not record whether backups were off or had no place says only that the worker could not keep backups) |
 | **Restore drill** | When the last drill passed and how long the restore took, or why it failed |
 
 The **Storage** section shows **Last backup** from the marker, with a warning once it is older

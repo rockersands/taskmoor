@@ -97,18 +97,28 @@ describe('system status page', () => {
     expect(fact('Scheduled backups', 'Next backup')).toBe(
       'None will run: every worker of this site has scheduled backups turned off. Whoever runs the site can turn them on for one worker.',
     );
+    // The failure is from before runs kept their reason, so it names no cause that may be wrong.
     expect(fact('Scheduled backups', 'Last failure')).toMatch(
-      /: the worker that took it has scheduled backups turned off$/,
+      /: the worker that took it could not keep backups$/,
     );
-    expect(section('Scheduled backups').textContent).not.toMatch(/TASKMOOR_/);
-    // A site whose workers have no place at all says that instead.
+    expect(section('Scheduled backups').textContent).not.toMatch(/TASKMOOR_|no place/);
+    // A site whose workers have no place at all says that instead, and so does a run that kept
+    // that reason.
+    const failure = NO_BACKUP_WORKER.backups?.lastFailure;
     const nowhere = {
       ...NO_BACKUP_WORKER,
-      backups: { ...NO_BACKUP_WORKER.backups, workers: 'no-directory' as const },
+      backups: {
+        ...NO_BACKUP_WORKER.backups,
+        workers: 'no-directory' as const,
+        lastFailure: failure && { ...failure, details: { reason: 'no-directory' } },
+      },
     };
     stubSystem(() => jsonResponse(200, nowhere));
     await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh' }));
     expect(await screen.findByText(/^None will run: no worker/)).toHaveClass('status-warn');
+    expect(fact('Scheduled backups', 'Last failure')).toMatch(
+      /: the worker that took it had no place to keep backups$/,
+    );
   });
 
   it('[OPS-010] tells other users the page is for administrators, without asking the backend', async () => {

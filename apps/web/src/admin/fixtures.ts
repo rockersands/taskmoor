@@ -107,7 +107,9 @@ export const STALE_BACKUP: SystemInfo = {
 
 /**
  * Every worker has scheduled backups turned off (TASKMOOR_BACKUP_DIR=off, as the demo runs), and
- * a run from before workers declined the job failed for it (S3-AC-1).
+ * a run from before workers declined the job failed for it (S3-AC-1). Such a run kept no reason
+ * and its message was the same for `off` and for no directory, so the server labels it
+ * `could-not-keep`.
  */
 export const NO_BACKUP_WORKER: SystemInfo = {
   ...HEALTHY,
@@ -122,8 +124,9 @@ export const NO_BACKUP_WORKER: SystemInfo = {
       kind: 'scheduled',
       state: 'failed',
       startedAt: '2026-10-12T02:30:00.000Z',
-      details: { reason: 'off' },
-      error: 'scheduled backups are off on this worker (TASKMOOR_BACKUP_DIR=off)',
+      details: { reason: 'could-not-keep' },
+      error:
+        'this worker has no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR, or turn scheduled backups off',
     }),
     lastDrill: null,
     kept: 0,

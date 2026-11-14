@@ -18,7 +18,7 @@ import { SESSION_COOKIE } from '../auth';
 import type { BackupManifest, backup } from '../backup';
 import { enqueue, JobRunner } from '../events/queue';
 import { writeSetting } from '../setup';
-import { BackupBusyError, failStaleRuns, startRun } from './runs';
+import { BackupBusyError, failStaleRuns, finishRun, startRun } from './runs';
 import {
   BACKUP_TASK,
   backupDirectory,
@@ -284,6 +284,29 @@ describe('scheduled backups (M1-101, OPS-008)', () => {
     expect(run).toMatchObject({ kind: 'scheduled', state: 'failed', details: { reason: 'off' } });
     expect(run?.error).toMatch(/off on this worker/);
     expect(run?.error).not.toMatch(/TASKMOOR_DATA/);
+  });
+
+  it('[OPS-008] names no cause for an older run no worker could keep, which may have been off (S3-AC-1)', async () => {
+    // Before workers declined the job, one message was written for TASKMOOR_BACKUP_DIR=off and
+    // for a worker with no directory alike, and the run kept no reason.
+    const runId = await startRun(database.db, 'scheduled', null, at('2026-10-12T02:30:00Z'));
+    await finishRun(database.db, runId, {
+      state: 'failed',
+      error:
+        'this worker has no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR, or turn scheduled backups off',
+    });
+    const status = await backupStatus(database.db, at('2026-10-12T03:00:00Z'));
+    expect(status.lastFailure?.details).toEqual({ reason: 'could-not-keep' });
+    // A run that kept its reason keeps it.
+    await runScheduledBackup(database.db, {
+      databaseUrl: database.url,
+      backupDir: null,
+      declined: 'off',
+      version: 'test',
+      now: () => at('2026-10-13T02:30:00Z'),
+    });
+    const later = await backupStatus(database.db, at('2026-10-13T03:00:00Z'));
+    expect(later.lastFailure?.details).toEqual({ reason: 'off' });
   });
 
   it('[OPS-008] leaves the backup to a worker that has a place for it, and promises none when no worker has (S3-AC-1)', async () => {

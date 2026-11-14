@@ -293,7 +293,9 @@ function Backups({
       ? t('admin.system.failure.off')
       : reason === 'no-directory'
         ? t('admin.system.failure.noPlace')
-        : null;
+        : reason === 'could-not-keep'
+          ? t('admin.system.failure.couldNotKeep')
+          : null;
   };
   const restoreSeconds = (run: BackupRun) => {
     const seconds = (run.details as { seconds?: { restore?: unknown } } | null)?.seconds?.restore;
