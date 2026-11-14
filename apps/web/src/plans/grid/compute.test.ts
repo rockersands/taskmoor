@@ -1,6 +1,7 @@
 import { dayOfIso } from '@taskmoor/formula';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
+import { TREE_FIELDS, treeRows } from '../../test/gridTrees';
 import {
   applyEdit,
   applyEdits,
@@ -14,7 +15,6 @@ import {
   totalCell,
 } from './compute';
 import { bigSkeleton, type FixtureRow, skeletonOf } from './fixtures';
-import { TREE_FIELDS, treeRows } from './testTrees';
 import { buildTree, moveSubtree, visibleRows } from './tree';
 import type { StructureColumn } from './types';
 

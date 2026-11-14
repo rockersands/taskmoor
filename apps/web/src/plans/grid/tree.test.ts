@@ -1,7 +1,7 @@
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
+import { treeRows } from '../../test/gridTrees';
 import { bigSkeleton, type FixtureRow, skeletonOf } from './fixtures';
-import { treeRows } from './testTrees';
 import {
   allCollapsible,
   ancestors,

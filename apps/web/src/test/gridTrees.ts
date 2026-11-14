@@ -1,7 +1,7 @@
 import { isoOfDay } from '@taskmoor/formula';
 import { fc } from '@taskmoor/testkit/property';
-import type { FixtureRow } from './fixtures';
-import type { GridField } from './types';
+import type { FixtureRow } from '../plans/grid/fixtures';
+import type { GridField } from '../plans/grid/types';
 
 /** The fields random trees carry: a number, a duration and a date (sent as ISO text). */
 export const TREE_FIELDS: GridField[] = [
