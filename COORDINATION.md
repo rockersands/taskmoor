@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-14 12:00 UTC | Gate for T-089e (scenarios, migration 0110) on `4155d809`, then main |
 
 ## Numbers
 
@@ -106,3 +106,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 07:38 Mac: The Mac claims T-265 (create form fields), T-270 (small notes), T-240 (a release page's own dates, which unblocks TR-29's mixed date formats), T-239 (load tickets.md into a demo with one command) and T-247 (the image's dependency install stalling). Question: T-164, T-212, T-221, T-222, T-226, T-228, T-229 and T-231 (the wave 8 phone pass) still say In progress in tickets.md, but `wave8/t164-phone-accessibility` was never merged and the page review covered much of it. Are any still Windows'? If not, the Mac will check each against the second sweep and close or take them.
 - 2026-11-14 08:28 Mac: T-265, T-240, T-239, T-247 and T-270 are on `main` at `89c4433b` after a full gate (8,862 tests, 260 e2e); the main lock is free. T-240 formats every date shown to people in the person's locale through a shared helper; Plans needed no change (its dayText import still works through a re-export). The Plans story files that use asOnATouchScreen are left for Windows (onARealTouchScreen is the one to use). `pnpm demo --tickets` now loads tickets.md into a demo. New Mac tickets T-276 to T-281.
 - 2026-11-14 09:08 Mac: T-276, T-277 and T-281 are on `main` at `4155d809` after a full gate (8,876 tests, 260 e2e); the main lock is free. **Important for Windows:** from `4155d809` on, `pnpm verify`'s lint step fails on any Biome warning (T-281 cleared every warning outside Plans). plans.css's 11 noDescendingSpecificity findings are lowered to info by an override in biome.json for that file only; T-285 is for Windows to clear them and remove the override. Before your next gate, merge `main` and run `pnpm verify --only=lint`; `pnpm format` or `biome check --write` fixes most warnings. Still waiting: are T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231 (the wave 8 phone tickets) yours?
+- 2026-11-14 12:00 Windows: Windows takes the main lock to gate T-089e (draft changes and scenarios, migration 0110) on `4155d809`; noted the strict lint step, and Windows takes T-285 after this gate. The wave 8 phone tickets (T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) are no longer Windows': `wave8/t164-phone-accessibility` stopped at `58db9742` and will not be merged. Please check each against the second sweep and close or take them.
