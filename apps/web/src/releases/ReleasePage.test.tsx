@@ -261,6 +261,43 @@ describe('a release’s page (M1-050)', () => {
     ).toBeVisible();
   });
 
+  it('[CORE-016] heads the notes and names the tickets’ types in the person’s language, a type someone named as written (T-351)', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const client = fakeReleaseClient();
+    const notes = client.notes.bind(client);
+    client.notes = async (id) => {
+      const read = await notes(id);
+      return {
+        ...read,
+        sections: [
+          ...read.sections,
+          { type: 'Spike', tickets: [{ id: 27, key: 'CHK-27', summary: 'Try a wallet' }] },
+        ],
+      };
+    };
+    renderRelease(1, client, 'es');
+    const section = within(await screen.findByRole('region', { name: 'Notas de la versión' }));
+    const headings = await section.findAllByRole('heading', { level: 3 });
+    expect(headings.map((h) => h.textContent)).toEqual(['Funcionalidad', 'Error', 'Spike']);
+    expect(section.getByRole('link', { name: 'CHK-26' }).closest('section')).toHaveAccessibleName(
+      'Error',
+    );
+    // The Markdown keeps the stored names, in English as the manual says.
+    await user.click(section.getByRole('button', { name: 'Copiar como Markdown' }));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Feature\n'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n'));
+  });
+
+  it('[CORE-016] gives each ticket’s type in the person’s language in the release’s tickets (T-351)', async () => {
+    renderRelease(2, fakeReleaseClient({ approver: true }), 'es');
+    const tickets = within(await screen.findByRole('region', { name: 'Tickets' }));
+    const row = (key: string) => tickets.getByRole('link', { name: key }).closest('tr');
+    expect(within(row('CHK-21') as HTMLElement).getByText('Funcionalidad')).toBeVisible();
+    expect(within(row('CHK-24') as HTMLElement).getByText('Tarea')).toBeVisible();
+  });
+
   it('[CORE-016] gives focus back to Ship when the shipping step is cancelled', async () => {
     const user = userEvent.setup();
     renderRelease();
