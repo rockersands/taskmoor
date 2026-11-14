@@ -7362,6 +7362,85 @@ export const messagesEn = {
     '{key}, draft, auto-scheduled: {start} to {due}. Now {nowStart} to {nowDue}.',
   'timeline.bar.autoDraftStale':
     '{key}, draft, auto-scheduled: {start} to {due}. Now {nowStart} to {nowDue}. Changed since drafted.',
+  // The auto-scheduler's result panel and its words (T-089f; ADR-122 stage 7).
+  'schedule.result.title': 'Auto-schedule',
+  'schedule.result.counts':
+    '{placed} placed, {kept} kept, {notPlaced} not placed, {withdrawn, plural, one {# earlier proposal} other {# earlier proposals}} removed.',
+  'schedule.result.yours':
+    '{count, plural, one {# of your drafts stays} other {# of your drafts stay}}.',
+  'schedule.result.leftOut': '{count, plural, one {# ticket was} other {# tickets were}} left out.',
+  'schedule.result.changedMeanwhile':
+    '{count, plural, one {# ticket} other {# tickets}} changed while the run worked; run again.',
+  'schedule.result.notShown':
+    '{count, plural, one {# earlier proposal stays} other {# earlier proposals stay}} on tickets this plan does not show you.',
+  'schedule.result.in': 'Into {scenario}.',
+  'schedule.result.made': 'Into {scenario}, a new scenario.',
+  'schedule.result.show': 'Show',
+  'schedule.result.placed': 'Placed ({count})',
+  'schedule.result.notPlaced': 'Not placed ({count})',
+  'schedule.result.kept': 'Kept ({count})',
+  'schedule.result.list': 'Tickets {which}',
+  'schedule.result.none': 'No tickets here.',
+  'schedule.result.more':
+    '{count, plural, one {# more ticket is} other {# more tickets are}} counted but not listed.',
+  'schedule.result.compareMain': 'Compare with main',
+  'schedule.result.compareLive': 'Compare with Live',
+  'schedule.result.again': 'Run again…',
+  'schedule.result.choices': 'Its choices',
+  'schedule.choices.from': 'From {day}, {count, plural, one {# period} other {# periods}}.',
+  'schedule.choices.inProgress': 'Tickets in progress kept.',
+  'schedule.choices.inSprint': 'Tickets in an active sprint kept.',
+  'schedule.choices.moveAll': 'Tickets in progress and in an active sprint may move.',
+  'schedule.choices.keepQuery': 'Tickets matching “{query}” kept.',
+  'schedule.choices.types': '{types} left out.',
+  'schedule.choices.releases': 'Releases {releases} left out.',
+  'schedule.choices.typeCount':
+    '{count, plural, one {# ticket type} other {# ticket types}} left out.',
+  'schedule.choices.releaseCount': '{count, plural, one {# release} other {# releases}} left out.',
+  'schedule.choices.leaveQuery': 'Tickets matching “{query}” left out.',
+  'schedule.why': 'Why: {why}',
+  'schedule.name.ticket': 'another ticket',
+  'schedule.name.team': 'a team',
+  'schedule.name.person': 'its assignee',
+  'schedule.name.someone': 'its people',
+  'schedule.name.more': '{count, plural, one {# more} other {# more}}',
+  'schedule.reason.fits': 'Placed in {start} to {end}: {subject} had {free} of {capacity} free.',
+  'schedule.reason.fitsAfter':
+    'Placed in {start} to {end}: {subject} had {free} of {capacity} free after {count, plural, one {# higher-ranked ticket} other {# higher-ranked tickets}}.',
+  'schedule.reason.afterBlocker':
+    'Starts {day}, the day after {blocker} ends; {blocker} blocks it.',
+  'schedule.reason.afterHigherRanked':
+    'Placed from {start}: higher-ranked tickets of {subject} come first.',
+  'schedule.reason.firstForBlocked': 'Placed early because it blocks {ticket}.',
+  'schedule.reason.already': 'Placed where it already is: nothing to change.',
+  'schedule.reason.personDraft': 'Kept: your draft in this scenario.',
+  'schedule.reason.mayNotSchedule': 'Kept: you may not schedule tickets in {track}.',
+  'schedule.reason.keptByQuery': 'Kept: it matches the tickets to keep.',
+  'schedule.reason.inProgress': 'Kept: it is in progress.',
+  'schedule.reason.inSprint': 'Kept: it is in an active sprint.',
+  'schedule.reason.noEstimate': 'Not placed: no estimate.',
+  'schedule.reason.noAssignee': 'Not placed: nobody is assigned.',
+  'schedule.reason.noTeam': 'Not placed: {person} is in none of the plan’s teams.',
+  'schedule.reason.noCapacity':
+    'Not placed: {teams} {count, plural, one {has} other {have}} no capacity set.',
+  'schedule.reason.tooBig': 'Not placed: bigger than {subject}’s {capacity} in any period.',
+  'schedule.reason.cycle': 'Not placed: in a circle with {tickets}.',
+  'schedule.reason.hiddenBlocker': 'Not placed: waits on a ticket this plan does not show you.',
+  'schedule.reason.blockerUndated': 'Not placed: {blocker} blocks it and has no dates.',
+  'schedule.reason.blockerNotPlaced':
+    'Not placed: {blocker} blocks it, was not placed and has no dates.',
+  'schedule.reason.noRoom': 'Not placed: no room for {subject} up to {until}.',
+  'schedule.reason.noRoomAnyone': 'Not placed: no room up to {until}.',
+  'schedule.reason.unknown': 'No reason given.',
+  'schedule.warning.afterRelease':
+    'Note: due {days, plural, one {# day} other {# days}} after its release {release} ({date}).',
+  'schedule.warning.afterTargetRelease':
+    'Note: due {days, plural, one {# day} other {# days}} after its target release ({date}).',
+  'schedule.warning.lateAgainstKept':
+    'Note: it blocks {tickets}, which {count, plural, one {is not moved and starts} other {are not moved and start}} on or before its due day; that dependency stays late.',
+  'schedule.warning.overWhereKept':
+    'Note: where it is, it takes {subject} over capacity in the period from {start}.',
+  'schedule.warning.unknown': 'Note: check its days.',
   'timeline.drafted': 'Draft: {key} {start} to {due} in {scenario}. Nothing changed yet.',
   'timeline.undone': 'The draft of {key} in {scenario} is undone.',
   'timeline.bar.draft': '{key}, draft: {start} to {due}. Now {nowStart} to {nowDue}.',

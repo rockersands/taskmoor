@@ -7529,6 +7529,88 @@ export const messagesEs: Record<MessageId, string> = {
     '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',
   'timeline.bar.autoDraftStale':
     '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}. Cambió desde el borrador.',
+  'schedule.result.title': 'Programación automática',
+  'schedule.result.counts':
+    '{placed} colocados, {kept} conservados, {notPlaced} sin colocar, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
+  'schedule.result.yours':
+    '{count, plural, one {# de tus borradores se queda} other {# de tus borradores se quedan}}.',
+  'schedule.result.leftOut':
+    '{count, plural, one {# ticket quedó fuera} other {# tickets quedaron fuera}}.',
+  'schedule.result.changedMeanwhile':
+    '{count, plural, one {# ticket cambió} other {# tickets cambiaron}} mientras se ejecutaba; vuelve a ejecutarlo.',
+  'schedule.result.notShown':
+    '{count, plural, one {# propuesta anterior se queda} other {# propuestas anteriores se quedan}} en tickets que este plan no te muestra.',
+  'schedule.result.in': 'En {scenario}.',
+  'schedule.result.made': 'En {scenario}, un escenario nuevo.',
+  'schedule.result.show': 'Mostrar',
+  'schedule.result.placed': 'Colocados ({count})',
+  'schedule.result.notPlaced': 'Sin colocar ({count})',
+  'schedule.result.kept': 'Conservados ({count})',
+  'schedule.result.list': 'Tickets: {which}',
+  'schedule.result.none': 'No hay tickets aquí.',
+  'schedule.result.more':
+    '{count, plural, one {# ticket más se cuenta} other {# tickets más se cuentan}} pero no se lista.',
+  'schedule.result.compareMain': 'Comparar con el principal',
+  'schedule.result.compareLive': 'Comparar con En vivo',
+  'schedule.result.again': 'Volver a ejecutar…',
+  'schedule.result.choices': 'Sus opciones',
+  'schedule.choices.from': 'Desde el {day}, {count, plural, one {# periodo} other {# periodos}}.',
+  'schedule.choices.inProgress': 'Se conservan los tickets en curso.',
+  'schedule.choices.inSprint': 'Se conservan los tickets de un sprint activo.',
+  'schedule.choices.moveAll': 'Los tickets en curso y de un sprint activo pueden moverse.',
+  'schedule.choices.keepQuery': 'Se conservan los tickets que coinciden con “{query}”.',
+  'schedule.choices.types': '{types}: fuera.',
+  'schedule.choices.releases': 'Versiones {releases}: fuera.',
+  'schedule.choices.typeCount':
+    '{count, plural, one {# tipo de ticket queda fuera} other {# tipos de ticket quedan fuera}}.',
+  'schedule.choices.releaseCount':
+    '{count, plural, one {# versión queda fuera} other {# versiones quedan fuera}}.',
+  'schedule.choices.leaveQuery': 'Quedan fuera los tickets que coinciden con “{query}”.',
+  'schedule.why': 'Por qué: {why}',
+  'schedule.name.ticket': 'otro ticket',
+  'schedule.name.team': 'un equipo',
+  'schedule.name.person': 'su responsable',
+  'schedule.name.someone': 'su gente',
+  'schedule.name.more': '{count, plural, one {# más} other {# más}}',
+  'schedule.reason.fits':
+    'Colocado del {start} al {end}: {subject} tenía {free} de {capacity} libres.',
+  'schedule.reason.fitsAfter':
+    'Colocado del {start} al {end}: {subject} tenía {free} de {capacity} libres tras {count, plural, one {# ticket de mayor rango} other {# tickets de mayor rango}}.',
+  'schedule.reason.afterBlocker':
+    'Empieza el {day}, el día después de que termine {blocker}; {blocker} lo bloquea.',
+  'schedule.reason.afterHigherRanked':
+    'Colocado desde el {start}: primero van los tickets de mayor rango de {subject}.',
+  'schedule.reason.firstForBlocked': 'Colocado antes porque bloquea {ticket}.',
+  'schedule.reason.already': 'Colocado donde ya está: no hay nada que cambiar.',
+  'schedule.reason.personDraft': 'Conservado: tu borrador en este escenario.',
+  'schedule.reason.mayNotSchedule': 'Conservado: no puedes programar tickets en {track}.',
+  'schedule.reason.keptByQuery': 'Conservado: coincide con los tickets que se conservan.',
+  'schedule.reason.inProgress': 'Conservado: está en curso.',
+  'schedule.reason.inSprint': 'Conservado: está en un sprint activo.',
+  'schedule.reason.noEstimate': 'Sin colocar: no tiene estimación.',
+  'schedule.reason.noAssignee': 'Sin colocar: no tiene responsable.',
+  'schedule.reason.noTeam': 'Sin colocar: {person} no está en ningún equipo del plan.',
+  'schedule.reason.noCapacity':
+    'Sin colocar: {teams} no {count, plural, one {tiene} other {tienen}} capacidad definida.',
+  'schedule.reason.tooBig':
+    'Sin colocar: es mayor que los {capacity} de {subject} en cualquier periodo.',
+  'schedule.reason.cycle': 'Sin colocar: está en un círculo con {tickets}.',
+  'schedule.reason.hiddenBlocker': 'Sin colocar: espera a un ticket que este plan no te muestra.',
+  'schedule.reason.blockerUndated': 'Sin colocar: {blocker} lo bloquea y no tiene fechas.',
+  'schedule.reason.blockerNotPlaced':
+    'Sin colocar: {blocker} lo bloquea, no se colocó y no tiene fechas.',
+  'schedule.reason.noRoom': 'Sin colocar: no hay hueco para {subject} hasta el {until}.',
+  'schedule.reason.noRoomAnyone': 'Sin colocar: no hay hueco hasta el {until}.',
+  'schedule.reason.unknown': 'Sin motivo indicado.',
+  'schedule.warning.afterRelease':
+    'Nota: vence {days, plural, one {# día} other {# días}} después de su versión {release} ({date}).',
+  'schedule.warning.afterTargetRelease':
+    'Nota: vence {days, plural, one {# día} other {# días}} después de su versión objetivo ({date}).',
+  'schedule.warning.lateAgainstKept':
+    'Nota: bloquea {tickets}, que no se {count, plural, one {mueve y empieza} other {mueven y empiezan}} en su fecha de vencimiento o antes; esa dependencia sigue con retraso.',
+  'schedule.warning.overWhereKept':
+    'Nota: donde está, deja a {subject} por encima de su capacidad en el periodo desde el {start}.',
+  'schedule.warning.unknown': 'Nota: revisa sus fechas.',
   'timeline.drafted': 'Borrador: {key} del {start} al {due} en {scenario}. Aún no cambió nada.',
   'timeline.undone': 'Se deshizo el borrador de {key} en {scenario}.',
   'timeline.bar.draft': '{key}, borrador: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',

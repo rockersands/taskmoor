@@ -11,6 +11,8 @@ import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
+import { localDay } from '../timeline/client';
+import { AutoScheduleDialog, readChoices } from './AutoScheduleDialog';
 import {
   boardHref,
   GROUP_LABELS,
@@ -40,12 +42,15 @@ import { ProgramBoardsPage } from './ProgramBoardsPage';
 import type { ProgramBoardClient } from './programBoardClient';
 import { ScenarioBar } from './ScenarioBar';
 import { NewScenarioDialog } from './ScenarioDialogs';
+import type { HeldRun } from './ScheduleResult';
 import {
   type ScenarioClient,
   type ScenarioList,
   type ScenarioRow,
+  type ScheduleResult,
   scenarioClient,
 } from './scenarioClient';
+import { scheduleLookup } from './scheduleWords';
 
 export interface PlanPageProps {
   id: number;
@@ -94,7 +99,8 @@ const STAGES = [
  * the address too, replacing its entry, so a link holds it and back still undoes filters, not every
  * step (PLN-014). The plan shows only what the person may see; the page says when some of its
  * sources are hidden from them or no longer run. Every tab offers a link to the view and a copy of
- * the plan, and each view its own file.
+ * the plan, and each view its own file. The plan's editors get Auto-schedule… (ADR-122 stage 7);
+ * a run's result is held for its scenario while the plan stays open, on top of its Changes tab.
  */
 export function PlanPage({
   id,
@@ -131,6 +137,12 @@ export function PlanPage({
   const [scenarioVersion, setScenarioVersion] = useState(0);
   const [making, setMaking] = useState(false);
   const scenariosChanged = () => setScenarioVersion((v) => v + 1);
+  // Auto-schedule (ADR-122 stage 7): its dialog, and each run's result per scenario while this
+  // plan stays open (question 18): it is not stored, so leaving the plan lets it go.
+  const [scheduling, setScheduling] = useState(false);
+  const [runs, setRuns] = useState<{ planId: number; byScenario: ReadonlyMap<number, HeldRun> }>(
+    () => ({ planId: id, byScenario: new Map() }),
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again after each change to them
   useEffect(() => {
     if (!shown) return;
@@ -238,6 +250,38 @@ export function PlanPage({
     (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
     redirectRoute(here({ ...view, position: { ...view.position, ...change } }));
+  /** A run answered: hold its result with its choices, and open its scenario's changes. */
+  const scheduled = (result: ScheduleResult) => {
+    const asked = readChoices(id);
+    const releaseNames = new Map((result.names?.releases ?? []).map((r) => [r.id, r.name]));
+    const named = asked.releaseIds.flatMap((r) => releaseNames.get(r) ?? []);
+    const held: HeldRun = {
+      result,
+      choices: {
+        keep: {
+          inProgress: asked.keepInProgress,
+          inActiveSprint: asked.keepInSprint,
+          query: asked.keepQuery || undefined,
+        },
+        leaveOut: {
+          types: [],
+          typeCount: asked.typeIds.length,
+          releases: named.length === asked.releaseIds.length ? named : [],
+          releaseCount: asked.releaseIds.length,
+          query: asked.leaveQuery || undefined,
+        },
+      },
+    };
+    setRuns((was) => {
+      const byScenario = new Map(was.planId === id ? was.byScenario : []);
+      byScenario.set(result.scenario.id, held);
+      return { planId: id, byScenario };
+    });
+    setScheduling(false);
+    scenariosChanged();
+    navigate(planHref(id, 'changes', { ...view, scenario: result.scenario.id }));
+  };
+  const run = active && runs.planId === id ? runs.byScenario.get(active.id) : undefined;
   const viewProps = {
     id,
     plan,
@@ -273,12 +317,26 @@ export function PlanPage({
           changesHref={planHref(id, 'changes', view)}
           onChoose={(scenario) => go({ ...view, scenario: scenario ?? undefined })}
           onNew={() => setMaking(true)}
+          onAutoSchedule={() => setScheduling(true)}
         />
       )}
       {scenariosFailed && asked !== undefined && (
         <p className="board-problem" role="alert">
           {t('scenario.listFailed')}
         </p>
+      )}
+      {scheduling && scenarioList?.editable && (
+        <AutoScheduleDialog
+          planId={id}
+          client={scenarios}
+          list={scenarioList}
+          active={active}
+          period={plan.period}
+          today={localDay(now())}
+          capacityHref={planHref(id, 'capacity', view)}
+          onDone={scheduled}
+          onClose={() => setScheduling(false)}
+        />
       )}
       {making && (
         <NewScenarioDialog
@@ -397,6 +455,17 @@ export function PlanPage({
               client={scenarios}
               view={view}
               onChanged={scenariosChanged}
+              schedule={
+                run && {
+                  run,
+                  unit: plan.capacityUnit,
+                  names: scheduleLookup(run.result, {
+                    teams: plan.teams,
+                    people: choices?.assignees,
+                  }),
+                  onRunAgain: () => setScheduling(true),
+                }
+              }
             />
           )}
           {problem !== 'failed' && section === 'scenarios' && (
@@ -408,6 +477,7 @@ export function PlanPage({
               view={view}
               onChanged={scenariosChanged}
               onCompare={(compare) => redirectRoute(here({ ...view, compare }))}
+              onAutoSchedule={() => setScheduling(true)}
             />
           )}
         </div>

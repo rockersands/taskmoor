@@ -1,13 +1,16 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
 import { type FakePlanOptions, fakePlanClient, manyPlanItems } from './fixtures';
+import { PlanChangesPage } from './PlanChangesPage';
 import { PlanPage } from './PlanPage';
 import type { ScenarioClient } from './scenarioClient';
 import { type FakeScenarioOptions, fakeScenarioClient } from './scenarioFixtures';
+import { scheduleRunFixture } from './scheduleResultFixture';
+import { scheduleLookup } from './scheduleWords';
 
 /**
  * The change list of a scenario (T-089e; PLN-002; ADR-122 stage 6). "Main plan", the main
@@ -300,5 +303,113 @@ describe('the change list (PLN-002)', () => {
       'href',
       '#/plans/12/scenarios',
     );
+  });
+});
+
+describe('the auto-scheduler’s proposals on the change list (PLN-004)', () => {
+  /** "Main plan" with SHOP-2's and SHOP-3's drafts the auto-scheduler's, OPS-4's a person's. */
+  async function withRun(onRunAgain = () => {}) {
+    const plans = fakePlanClient();
+    const base = fakeScenarioClient(plans, { scenarios: [{ name: 'Main plan', drafts: DRAFTS }] });
+    const client: ScenarioClient = {
+      ...base,
+      changes: async (planId, sid, page) => {
+        const list = await base.changes(planId, sid, page);
+        return {
+          ...list,
+          changes: list.changes.map((c) =>
+            c.key === 'OPS-4' ? c : { ...c, origin: 'scheduler' as const },
+          ),
+        };
+      },
+    };
+    const list = await base.list(12);
+    const main = list.scenarios[0] as (typeof list.scenarios)[number];
+    const run = scheduleRunFixture({
+      scenario: { id: main.id, name: main.name, main: true, version: 1 },
+    });
+    render(
+      <I18nProvider locale="en">
+        <PlanChangesPage
+          planId={12}
+          scenario={main}
+          list={list}
+          client={client}
+          view={{ filters: {}, group: null, scenario: main.id }}
+          onChanged={() => {}}
+          schedule={{ run, unit: 'points', names: scheduleLookup(run.result), onRunAgain }}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it('[PLN-004] [PLN-002] says the run’s why on each proposal it made, with a warning after Note:', async () => {
+    await withRun();
+    expect(
+      await screen.findByRole('heading', { name: 'Changes in Main plan, the main scenario' }),
+    ).toBeVisible();
+    const shop2 = rowOf('SHOP-2');
+    expect(within(shop2).getByText('Proposed by the auto-scheduler')).toBeVisible();
+    expect(
+      within(shop2).getByText(
+        'Why: Placed in Nov 9 to Nov 20: Atlas had 8 of 20 points free after 4 higher-ranked tickets.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(rowOf('SHOP-3')).getByText(
+        'Why: Starts Nov 21, the day after SHOP-2 ends; SHOP-2 blocks it. Note: due 9 days after its release 2.1 (Nov 25).',
+      ),
+    ).toBeVisible();
+    // A person's draft has no why, though the run kept it.
+    expect(within(rowOf('OPS-4')).queryByText(/^Why:/)).toBeNull();
+  });
+
+  it('[PLN-004] [PLN-003] puts the result on top, compares the main scenario with Live and runs again', async () => {
+    const again = vi.fn();
+    await withRun(again);
+    const result = await screen.findByRole('region', { name: 'Auto-schedule' });
+    expect(within(result).getByRole('heading', { name: 'Auto-schedule' })).toHaveFocus();
+    expect(within(result).getByRole('link', { name: 'Compare with Live' })).toHaveAttribute(
+      'href',
+      '#/plans/12/scenarios?scenario=1&a=live&b=1',
+    );
+    await userEvent.click(within(result).getByRole('button', { name: 'Run again…' }));
+    expect(again).toHaveBeenCalledTimes(1);
+  });
+
+  it('[PLN-004] holds the run’s result on its scenario’s changes while the plan stays open', async () => {
+    const user = userEvent.setup();
+    const { scenarios } = renderChanges('#/plans/12/changes?scenario=2');
+    await screen.findByRole('heading', { name: 'Changes in Faster' });
+    await user.click(screen.getByRole('button', { name: 'Auto-schedule…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Auto-schedule' });
+    await user.click(within(dialog).getByRole('radio', { name: 'This scenario: Faster' }));
+    const run = within(dialog).getByRole('button', { name: 'Run' });
+    await waitFor(() => expect(run).toBeEnabled());
+    await user.click(run);
+    // The page opens the scenario's changes with the result on top, which takes the focus.
+    const result = await screen.findByRole('region', { name: 'Auto-schedule' });
+    await waitFor(() =>
+      expect(within(result).getByRole('heading', { name: 'Auto-schedule' })).toHaveFocus(),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(scenarios.runs).toHaveLength(1);
+    expect(within(result).getByText(/^\d+ placed, \d+ kept, \d+ not placed, /)).toBeVisible();
+    // The list was read again: the run's proposals are there, each with its why.
+    const shop3 = await waitFor(() => rowOf('SHOP-3'));
+    expect(within(shop3).getByText('Proposed by the auto-scheduler')).toBeVisible();
+    expect(within(shop3).getByText(/^Why: /)).toBeVisible();
+
+    // Another scenario has no result; back in Faster the result is still there.
+    act(() => {
+      window.location.hash = '#/plans/12/changes?scenario=1';
+    });
+    await screen.findByRole('heading', { name: 'Changes in Main plan, the main scenario' });
+    expect(screen.queryByRole('region', { name: 'Auto-schedule' })).toBeNull();
+    act(() => {
+      window.location.hash = '#/plans/12/changes?scenario=2';
+    });
+    const again = await screen.findByRole('region', { name: 'Auto-schedule' });
+    expect(within(again).getByRole('heading', { name: 'Auto-schedule' })).not.toHaveFocus();
   });
 });
