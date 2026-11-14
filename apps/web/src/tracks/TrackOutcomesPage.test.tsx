@@ -353,6 +353,54 @@ describe("managing a track's outcomes from the Outcomes tab (AGL-024; T-082)", (
     expect(keys()).toEqual(['SHOP-50', 'SHOP-51', 'SHOP-52', 'SHOP-47']);
   });
 
+  it('[AGL-024][CORE-008] names the refused values by their labels, each with its reason, never by API keys (T-292)', async () => {
+    const { user } = await managing({
+      refuse: new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { dueDate: 'invalid', 'close-reason': 'not_found', 'fields.12': 'required' },
+      }),
+    });
+    await user.click(within(tools('SHOP-51')).getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Due date'), {
+      target: { value: '2027-02-26' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Check these values. Due date: This value is not valid here. ' +
+        'Close reason: This choice is not available. ' +
+        'A custom field: This field is required.',
+    );
+    for (const key of ['dueDate', 'close-reason', 'fields.12']) {
+      expect(alert).not.toHaveTextContent(key);
+    }
+  });
+
+  it('[AGL-024][CORE-008] names the refused values by their labels in Spanish too (T-292)', async () => {
+    const { user, container } = await managing(
+      {
+        refuse: new ApiError(400, {
+          error: 'invalid_fields',
+          fields: { summary: 'too_long', startDate: 'invalid' },
+        }),
+      },
+      'es',
+    );
+    await user.click(
+      container.querySelector('[data-outcome="51"] [data-tool="edit"]') as HTMLElement,
+    );
+    const form = screen.getByRole('form', { name: 'Editar SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Fecha de inicio'), {
+      target: { value: '2027-01-04' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Guardar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Revisa estos valores. Resumen: Este valor es demasiado largo. ' +
+        'Fecha de inicio: Este valor no es válido aquí.',
+    );
+  });
+
   it('[AGL-024] opens the panel from an empty list, ready for a summary', async () => {
     const user = userEvent.setup();
     const made = managedOutcomes([]);

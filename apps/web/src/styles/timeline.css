@@ -685,7 +685,6 @@ button.timeline-bar:focus-visible {
 }
 
 @media (pointer: coarse) {
-  .timeline-bar,
   .timeline-unscheduled {
     top: 0;
     height: var(--hit-target-touch);
@@ -704,14 +703,20 @@ button.timeline-bar:focus-visible {
     line-height: var(--hit-target-touch);
   }
 
-  /* A bar narrower than a finger still takes one: its press area reaches past its ends (TR-21). */
+  /*
+   * A bar takes a finger without looking any taller (T-293, ADR-033): it keeps its 24 px, centred
+   * in its row, and its press area is a finger's height, the row's own, so it reaches no other row.
+   * One narrower than a finger reaches past its ends as well (TR-21). A press there is on the bar:
+   * it drags it, and a tap opens its days.
+   */
   .timeline-bar::after {
     content: "";
     position: absolute;
-    inset-block: 0;
+    top: 50%;
     left: 50%;
     width: max(100%, var(--hit-target-touch));
-    transform: translateX(-50%);
+    height: var(--hit-target-touch);
+    transform: translate(-50%, -50%);
   }
 
   .timeline-toggle,

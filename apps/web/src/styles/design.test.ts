@@ -11,8 +11,9 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *
  * What it holds: no raw colour outside tokens.css; no opaque surface token on anything but a field
  * or a place with a named reason; menus, pop-overs, the command palette and dialogs on the one
- * opaque overlay fill with no blur (D3); links in the accent; a finger's height wherever a mouse's is set;
- * radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
+ * opaque overlay fill with no blur (D3); links in the accent; a finger's height on touch wherever a
+ * mouse's is set, and for every target given a fixed height under a finger's (T-294); every grip,
+ * in a stylesheet or styled in a script, known to the touch checks (T-290, T-294); radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
  * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
  * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
  * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card;
@@ -29,8 +30,11 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *   that show rows through them: the same pass. It reads text, and these are only seen when drawn.
  * - A failure a page draws in a component of its own, or by a word other than `role="alert"` or
  *   `board-problem`: a person. It reads the returns of the page's own function.
- * - A control that sets its height with no `--hit-target`, a link short only by its words: the
- *   touch stories, which measure what they cover.
+ * - A control whose height comes from its words, padding or place rather than a fixed height, a
+ *   class put on a control only through a component of ours (`<Link className>`) or built at
+ *   runtime, a touch rule that sizes it under another selector than the one that made it short, a
+ *   press area drawn by `::after` that is placed elsewhere: the touch stories, which measure what
+ *   they cover.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
  * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
  *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
@@ -276,58 +280,188 @@ const sizeGated = (at: string) =>
 const isTouchRule = (d: Declaration) =>
   d.atRules.some((at) => at.includes('pointer: coarse')) && !d.atRules.some(sizeGated);
 const FINGER = /var\(--hit-target-touch\)|^44px$/;
+const FINGER_PX = 44;
+/** What sets a box's height, written either way. */
+const HEIGHT = /^(min-)?(height|block-size)$/;
 
 /**
- * Selectors with a mouse's height that no `(pointer: coarse)` rule gives a finger's: the height a
- * touch screen needs is one line away in the same stylesheets (ADR-033). A touch rule that asks for
- * the mouse's height is the same mistake.
+ * Custom properties the stylesheets set to a fixed length outside any at-rule (`--hit-target`,
+ * `--space-3`), in pixels, so a height written with one reads as the length it is.
  */
-export function shortOnTouch(sources: string[]): string[] {
+function fixedSizes(declarations: Declaration[]): Map<string, number> {
+  const sizes = new Map<string, number>();
+  for (const d of declarations) {
+    if (!d.property.startsWith('--') || d.atRules.length > 0 || sizes.has(d.property)) continue;
+    const px = pixels(d.value, new Map());
+    if (px !== undefined) sizes.set(d.property, px);
+  }
+  return sizes;
+}
+
+/**
+ * A length in pixels when it is fixed: px, rem and em (at the 16 px the app is set in), or a custom
+ * property of `sizes`. Undefined for anything that grows with what is around it: a percentage, a
+ * calc(), auto, a viewport unit.
+ */
+function pixels(value: string, sizes: Map<string, number>): number | undefined {
+  const plain = value.replace(/\s*!important$/, '').trim();
+  const token = /^var\((--[\w-]+)\)$/.exec(plain);
+  if (token) return sizes.get(token[1] as string);
+  const length = /^(\d*\.?\d+)(px|r?em)$/.exec(plain);
+  if (!length) return plain === '0' ? 0 : undefined;
+  return Number(length[1]) * (length[2] === 'px' ? 1 : 16);
+}
+
+/** The last compound of a selector, the element it styles, with a comma or space in `:is()` kept. */
+export function subjectOf(part: string): string {
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < part.length; i++) {
+    const c = part[i] as string;
+    if (c === '(' || c === '[') depth++;
+    if (c === ')' || c === ']') depth--;
+    if (depth === 0 && /[\s>+~]/.test(c)) start = i + 1;
+  }
+  return part.slice(start);
+}
+
+/** The class names a compound selector asks for itself, leaving out what `:not()` and `:has()` ask. */
+const classesIn = (compound: string) =>
+  Array.from(
+    compound
+      .replace(/:(?:not|has)\((?:[^()]|\([^()]*\))*\)/g, '')
+      .matchAll(/\.(-?[_a-zA-Z][\w-]*)/g),
+    (m) => m[1] as string,
+  );
+
+/** Elements a finger presses by their nature, and the roles that make any element one. */
+const CONTROL_TAG = /(?:^|[\s(,])(?:button|a|input|select|textarea|summary)(?![\w-])/;
+const CONTROL_ROLE =
+  /^(?:button|link|tab|checkbox|radio|switch|menuitem(?:checkbox|radio)?|option|slider|spinbutton|combobox|treeitem)$/;
+const ROLE_SELECTOR =
+  /\[role=["']?(?:button|link|tab|checkbox|radio|switch|menuitem\w*|option|slider)["']?\]/;
+
+/**
+ * Whether a selector styles something a finger presses (T-294): a button, link, field or summary;
+ * an element given a control's role; a class written on one of those in the app's components
+ * (`controls`, from `jsxFacts`); or a grip or what is dragged whole (`grips`, class names). A
+ * pseudo-element is drawn, never pressed, so `.x::before` is no target, whatever `.x` is.
+ */
+export function isTargetSelector(
+  part: string,
+  controls: ReadonlySet<string>,
+  grips: ReadonlySet<string>,
+): boolean {
+  const subject = subjectOf(part);
+  if (subject.includes('::')) return false;
+  const own = subject.replace(/:(?:not|has)\((?:[^()]|\([^()]*\))*\)/g, '');
+  if (CONTROL_TAG.test(own.replace(/\[[^\]]*\]|"[^"]*"|'[^']*'/g, '')) || ROLE_SELECTOR.test(own)) {
+    return true;
+  }
+  return classesIn(own).some((c) => controls.has(c) || grips.has(c));
+}
+
+/**
+ * Selectors with less than a finger's height that no `(pointer: coarse)` rule gives a finger's: the
+ * height a touch screen needs is one line away in the same stylesheets (ADR-033). Two kinds:
+ * - anything sized with `var(--hit-target)`, a mouse's height by name;
+ * - a target (`isTarget`, see `isTargetSelector`) given a fixed height under 44 px, however it is
+ *   written (`24px`, `1.5rem`, `var(--space-6)`), which once let the timeline bar's 24 px through
+ *   with every test green (T-294). A height of 1 px or none hides a control, it does not size it.
+ * A touch rule that asks for less is the same mistake. A touch rule that gives the selector's
+ * `::before` or `::after` a finger's height counts as the finger's: a press area drawn over the
+ * control, so it can keep its look (T-293).
+ */
+export function shortOnTouch(
+  sources: string[],
+  isTarget: (selector: string) => boolean = () => false,
+): string[] {
   const declarations = sources.flatMap(cssDeclarations);
-  const sized = declarations.filter((d) => d.property === 'min-height' || d.property === 'height');
+  const sizes = fixedSizes(declarations);
+  const sized = declarations.filter((d) => HEIGHT.test(d.property));
   const fingers = new Set(
     sized
-      .filter((d) => isTouchRule(d) && FINGER.test(d.value))
-      .flatMap((d) => selectorsOf(d.selector)),
+      .filter(
+        (d) =>
+          isTouchRule(d) && (FINGER.test(d.value) || (pixels(d.value, sizes) ?? 0) >= FINGER_PX),
+      )
+      .flatMap((d) => selectorsOf(d.selector))
+      .map((selector) => selector.replace(/::(?:before|after)$/, '')),
   );
-  const short = sized
-    .filter((d) => d.value === 'var(--hit-target)')
-    .flatMap((d) => selectorsOf(d.selector));
+  const short = sized.flatMap((d) => {
+    const parts = selectorsOf(d.selector);
+    if (d.value === 'var(--hit-target)') return parts;
+    const px = pixels(d.value, sizes);
+    if (px === undefined || px <= 1 || px >= FINGER_PX) return [];
+    return parts.filter(isTarget);
+  });
   return [...new Set(short)].filter((selector) => !fingers.has(selector)).sort();
 }
 
 /** A cursor that says "drag me": a grab, a grabbing hand or a move, whatever its fallbacks. */
 const GRAB_CURSOR = /^(?:-webkit-|-moz-)?(?:grab|grabbing|move)(?:\s*!important)?$/;
+const isGrabCursor = (value: string) =>
+  value
+    .toLowerCase()
+    .split(',')
+    .some((v) => GRAB_CURSOR.test(v.trim()));
+const PINNED = /^none\b/;
 
 /**
- * Grips no touch check knows of (T-290): every selector with both `touch-action: none` and a grab
- * cursor, read across all the stylesheets and their at-rules, whose element is not one of `listed`
- * (GRIP_SELECTORS and DRAGGED_WHOLE). Such a selector is a grip: a finger drags by it, so it needs a
- * finger's size, which the stories measure only for the grips they are told of. A listed grip in a
- * place of its own, or in a state (`.x .move-grip-handle:hover`), is the same grip.
+ * Every grip of the stylesheets (T-290): a selector with both `touch-action: none` and a grab
+ * cursor, read across all the sheets and their at-rules, without its trailing states, so a grip's
+ * `:hover` is the grip.
  */
-export function unlistedGrips(sources: string[], listed: readonly string[]): string[] {
-  // A selector without its trailing states, so a grip's `:hover` is the grip.
+export function cssGrips(sources: string[]): string[] {
   const element = (part: string) => part.replace(/(?::{1,2}[\w-]+(?:\([^)]*\))?)+$/, '');
   const pinned = new Set<string>();
   const grabbed = new Set<string>();
   for (const d of sources.flatMap(cssDeclarations)) {
-    const value = d.value.toLowerCase();
     const parts = selectorsOf(d.selector).map(element);
-    if (d.property === 'touch-action' && /^none\b/.test(value)) {
+    if (d.property === 'touch-action' && PINNED.test(d.value.toLowerCase())) {
       for (const part of parts) pinned.add(part);
     }
-    if (d.property === 'cursor' && value.split(',').some((v) => GRAB_CURSOR.test(v.trim()))) {
+    if (d.property === 'cursor' && isGrabCursor(d.value)) {
       for (const part of parts) grabbed.add(part);
     }
   }
+  return [...pinned].filter((part) => grabbed.has(part)).sort();
+}
+
+/**
+ * Grips no touch check knows of (T-290): every grip of `cssGrips` whose element is not one of
+ * `listed` (GRIP_SELECTORS and DRAGGED_WHOLE). Such a selector is a grip: a finger drags by it, so
+ * it needs a finger's size, which the stories measure only for the grips they are told of. A listed
+ * grip in a place of its own, or in a state (`.x .move-grip-handle:hover`), is the same grip.
+ */
+export function unlistedGrips(sources: string[], listed: readonly string[]): string[] {
   const known = (part: string) => {
     const subject = part.split(/[\s>+~]+/).at(-1) ?? '';
     return listed.some((grip) =>
       new RegExp(`${grip.replaceAll('.', '\\.')}(?![\\w-])`).test(subject),
     );
   };
-  return [...pinned].filter((part) => grabbed.has(part) && !known(part)).sort();
+  return cssGrips(sources).filter((part) => !known(part));
+}
+
+/** A grip styled in a script (T-294): what says so, and the classes of the element it styles. */
+export interface InlineGrip {
+  what: string;
+  /** The classes written on the element whose `style` it is; none when it is not in a `style`. */
+  classes: string[];
+}
+
+/**
+ * Grips styled in a script that no touch check knows of (T-294). The grip guard reads stylesheets,
+ * so a `touchAction: 'none'` or a grab cursor written in a component's `style`, in a style object
+ * kept aside, or set on an element's `style` from script would make a grip it never sees. Each must
+ * be on an element with a class from `listed` (GRIP_SELECTORS and DRAGGED_WHOLE): a grip styled
+ * inline is still that grip, measured by its touch story. Anything else should be a class in a
+ * stylesheet, where the guard sees it.
+ */
+export function unlistedInlineGrips(found: InlineGrip[], listed: readonly string[]): string[] {
+  const names = new Set(listed.flatMap((grip) => classesIn(subjectOf(grip))));
+  return found.filter((grip) => !grip.classes.some((c) => names.has(c))).map((grip) => grip.what);
 }
 
 /**
@@ -407,6 +541,85 @@ export interface JsxFacts {
   literalSizes: string[];
   /** Components rendered here, by tag. */
   rendered: Set<string>;
+  /** Classes written on a control: a button, link, field or summary, or an element with a control's role. */
+  controls: Set<string>;
+  /** `touchAction: 'none'` and grab cursors written here, in a style or set on one. */
+  inlineGrips: InlineGrip[];
+}
+
+/** The tag names of a control a finger presses; an `<input type="hidden">` is none. */
+const CONTROLS = new Set(['button', 'a', 'input', 'select', 'textarea', 'summary']);
+const isControl = (node: ts.JsxOpeningLikeElement) => {
+  const literal = (name: string) => {
+    const init = attribute(node, name)?.initializer;
+    return init && ts.isStringLiteral(init) ? init.text : '';
+  };
+  if (CONTROLS.has(tagName(node))) return literal('type') !== 'hidden';
+  return CONTROL_ROLE.test(literal('role'));
+};
+
+/** The string literals in an expression, conditional branches and fallbacks included. */
+function literalsIn(node: ts.Node): string[] {
+  if (ts.isStringLiteralLike(node)) return [node.text];
+  const found: string[] = [];
+  ts.forEachChild(node, (child) => {
+    found.push(...literalsIn(child));
+  });
+  return found;
+}
+
+/** Whether a style property and its possible values make a grip: no panning, or a grab cursor. */
+function gripStyle(property: string, values: string[]): boolean {
+  if (/^(touchAction|touch-action)$/.test(property)) {
+    return values.some((v) => PINNED.test(v.trim().toLowerCase()));
+  }
+  return property === 'cursor' && values.some(isGrabCursor);
+}
+
+/**
+ * A grip styled in a script at `node`, if it is one: `touchAction: 'none'` or a grab cursor in an
+ * object literal (a JSX `style`, or a style object kept aside), assigned to an element's `style`,
+ * or set with `style.setProperty`.
+ */
+function inlineGripAt(node: ts.Node): InlineGrip | undefined {
+  if (ts.isPropertyAssignment(node)) {
+    const property = node.name.getText().replace(/^['"]|['"]$/g, '');
+    if (!gripStyle(property, literalsIn(node.initializer))) return undefined;
+    // In `style={{ ... }}`: the object, its braces, the attribute, the attributes, the element.
+    const attr = node.parent.parent?.parent;
+    const element = attr?.parent?.parent;
+    const inStyle =
+      attr &&
+      ts.isJsxAttribute(attr) &&
+      attr.name.getText() === 'style' &&
+      element &&
+      (ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element));
+    return {
+      what: inStyle ? `<${tagName(element)}> ${node.getText()}` : node.getText(),
+      classes: inStyle ? classesOf(element) : [],
+    };
+  }
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    ts.isPropertyAccessExpression(node.left) &&
+    /\.style$|^style$/.test(node.left.expression.getText()) &&
+    gripStyle(node.left.name.text, literalsIn(node.right))
+  ) {
+    return { what: node.getText(), classes: [] };
+  }
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.name.text === 'setProperty' &&
+    node.arguments[0] &&
+    ts.isStringLiteralLike(node.arguments[0]) &&
+    node.arguments[1] &&
+    gripStyle(node.arguments[0].text, literalsIn(node.arguments[1]))
+  ) {
+    return { what: node.getText(), classes: [] };
+  }
+  return undefined;
 }
 
 const STRING_COLOUR = /^#[0-9a-fA-F]{3,8}$|^(?:rgba?|hsla?)\(\s*[\d.]/;
@@ -465,6 +678,8 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
     opaqueSurfaces: [],
     literalSizes: [],
     rendered: new Set(),
+    controls: new Set(),
+    inlineGrips: [],
   };
   const visit = (
     node: ts.Node,
@@ -480,6 +695,7 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
       const own = classesOf(node);
       const unstyled = !attribute(node, 'className') && !hasSpread(node);
       for (const c of own) facts.allClasses.add(c);
+      if (isControl(node)) for (const c of own) facts.controls.add(c);
       if (tag === 'h1' || own.includes('page-title')) facts.titles.push(tag);
       if (tag === 'PageHeader') {
         facts.pageHeaders++;
@@ -534,6 +750,8 @@ export function jsxFacts(file: string, source: string, styled: StyledBy): JsxFac
     ) {
       facts.bareEmpties.push(node.arguments[0].text);
     }
+    const grip = inlineGripAt(node);
+    if (grip) facts.inlineGrips.push(grip);
     if (ts.isStringLiteralLike(node)) {
       if (STRING_COLOUR.test(node.text)) facts.rawColours.push(node.text);
       if (OPAQUE_SURFACE.test(node.text)) facts.opaqueSurfaces.push(node.text);
@@ -746,6 +964,17 @@ const fromCss = (kind: Kind) =>
   );
 const fromScripts = (pick: (f: JsxFacts) => string[]) =>
   nonEmpty(scripts.map((file) => [name(file), pick(factsOf(file))]));
+/** Every grip the touch checks know of: GRIP_SELECTORS and what is dragged whole. */
+const LISTED_GRIPS = [...GRIP_SELECTORS, ...Object.keys(DRAGGED_WHOLE)];
+/** The stylesheet that gives a selector its height, for a list kept per file. */
+const sheetSizing = (selector: string) =>
+  name(
+    cssSources.find(([, source]) =>
+      cssDeclarations(source).some(
+        (d) => HEIGHT.test(d.property) && selectorsOf(d.selector).includes(selector),
+      ),
+    )?.[0] ?? SRC,
+  );
 /** Both, for a rule that holds in stylesheets and in scripts alike. */
 const both = (kind: Kind, pick: (f: JsxFacts) => string[]) =>
   new Map([...fromCss(kind), ...fromScripts(pick)]);
@@ -975,6 +1204,121 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     );
   });
 
+  it("[NFR-005] finds a target of a fixed height under a finger's, however it is written (T-294)", () => {
+    // What a finger presses: controls by tag or role, classes written on them, grips.
+    const target = (part: string) =>
+      isTargetSelector(part, new Set(['chip']), new Set(['timeline-bar']));
+    for (const part of [
+      'button',
+      '.zoom button:hover',
+      '.list > a',
+      '.form input[type="checkbox"]',
+      ':where(input:is([type="checkbox"], [type="radio"]))',
+      'summary',
+      '.menu [role="menuitem"]',
+      '.chip',
+      '.row .chip.is-on',
+      '.timeline-bar',
+      '.chip:not(.x)',
+    ]) {
+      expect(target(part), part).toBe(true);
+    }
+    for (const part of [
+      '.chip::before',
+      '.timeline-bar::after',
+      '.chip-count',
+      '.card:has(button)',
+      '.card:not(.chip)',
+      '[data-kind="button"]',
+      '.panel a .icon',
+      '.area',
+    ]) {
+      expect(target(part), part).toBe(false);
+    }
+    expect(subjectOf('.a :is(b c) > .d:not(.e f)')).toBe('.d:not(.e f)');
+
+    const short = (css: string) => shortOnTouch([css], target);
+    // The timeline bar of T-293: 24 px, with nothing for a finger on a touch screen.
+    expect(short('.timeline-bar { height: 24px; }')).toEqual(['.timeline-bar']);
+    // In rem, em or a token the sheets set; a min-height or block-size alike; the selector's
+    // other parts that are no target are no business of this check.
+    expect(
+      short(`
+        :root { --space-6: 24px; }
+        .chip { height: 1.5rem; } button { min-block-size: var(--space-6); }
+        .area, .panel button { min-height: 2em; }
+      `),
+    ).toEqual(['.chip', '.panel button', 'button']);
+    // A finger's height on a touch screen, or a press area of one drawn over it, keeps its look.
+    expect(
+      short(`
+        .chip, .timeline-bar { height: 24px; }
+        @media (pointer: coarse) {
+          .chip { min-height: var(--hit-target-touch); }
+          .timeline-bar::after { content: ""; height: var(--hit-target-touch); }
+        }
+      `),
+    ).toEqual([]);
+    // A touch rule that asks for less is the same mistake; a press area under a phone's width
+    // only is none for a tablet.
+    expect(short('@media (pointer: coarse) { button { height: 28px; } }')).toEqual(['button']);
+    expect(
+      short(`
+        .timeline-bar { height: 24px; }
+        @media (max-width: 767px) { @media (pointer: coarse) { .timeline-bar::after { height: 44px; } } }
+      `),
+    ).toEqual(['.timeline-bar']);
+    // What grows with its contents or its place, a finger's height or more, a control hidden by a
+    // 1 px box, and what no finger presses pass.
+    expect(
+      short(`
+        button { height: 100%; min-height: calc(var(--space-5) + 1rem); }
+        .chip { height: 48px; }
+        .visually-hidden, input.file { height: 1px; }
+        .chip::before, .area { height: 8px; }
+      `),
+    ).toEqual([]);
+  });
+
+  it('[NFR-007] reads JSX for controls and for grips styled outside a stylesheet (T-294)', () => {
+    const see = (source: string) => jsxFacts('x.tsx', source, none);
+    expect([
+      ...see(`<>
+        <button className="a" /><a className="b" /><input className="c" type="checkbox" />
+        <div role="button" className="d" /><span role="img" className="e" />
+        <input type="hidden" className="f" /><div className="g" />
+      </>`).controls,
+    ]).toEqual(['a', 'b', 'c', 'd']);
+    const grips = (source: string) =>
+      unlistedInlineGrips(see(source).inlineGrips, ['.move-grip-handle', '.timeline-bar']);
+    // In a style, in a style object kept aside, set from script, conditional or not.
+    expect(grips(`<span className="handle" style={{ touchAction: 'none' }} />`)).toEqual([
+      "<span> touchAction: 'none'",
+    ]);
+    expect(grips(`<div style={{ cursor: dragging ? 'grabbing' : 'grab' }} />`)).toEqual([
+      "<div> cursor: dragging ? 'grabbing' : 'grab'",
+    ]);
+    expect(grips(`const grip = { 'touch-action': 'none' };`)).toEqual(["'touch-action': 'none'"]);
+    expect(grips(`el.style.touchAction = 'none';`)).toEqual(["el.style.touchAction = 'none'"]);
+    expect(grips(`el.style.setProperty('cursor', 'url(h.svg), move');`)).toEqual([
+      "el.style.setProperty('cursor', 'url(h.svg), move')",
+    ]);
+    // A listed grip or dragged-whole element styled inline is the grip its touch story measures.
+    expect(
+      grips(`<>
+        <span className="move-grip-handle" style={{ touchAction: 'none', cursor: 'grab' }} />
+        <button className={live ? 'timeline-bar is-dragging' : 'timeline-bar'} style={{ cursor: 'grabbing' }} />
+      </>`),
+    ).toEqual([]);
+    // A pointer and a pan are no grip; a cursor that is data is none either.
+    expect(
+      grips(`<>
+        <div style={{ cursor: 'pointer', touchAction: 'pan-y' }} />
+        <List query={{ cursor: next, limit: 50 }} />
+      </>`),
+    ).toEqual([]);
+  });
+
   it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
     const grips = (css: string, listed: string[] = []) => unlistedGrips([css], listed);
     expect(grips('.a { cursor: grab; touch-action: none; }')).toEqual(['.a']);
@@ -1070,8 +1414,26 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
     expect(links.map((d) => d.value)).toEqual(['var(--color-accent)']);
   });
 
-  it("[NFR-005] gives every mouse-sized target a finger's height on touch (ADR-033)", () => {
-    expect(shortOnTouch(cssSources.map(([, source]) => source))).toEqual([]);
+  it("[NFR-005] gives every target under a finger's height a finger's on touch (ADR-033, T-294)", () => {
+    const sources = cssSources.map(([, source]) => source);
+    const controls = new Set(scripts.flatMap((file) => [...factsOf(file).controls]));
+    const grips = new Set(
+      [...LISTED_GRIPS, ...cssGrips(sources)].flatMap((grip) => classesIn(subjectOf(grip))),
+    );
+    const short = shortOnTouch(sources, (part) => isTargetSelector(part, controls, grips));
+    // What is let through for good is still there to let through, each with its reason.
+    for (const selector of Object.keys(ALLOWED.shortTargets)) expect(short).toContain(selector);
+    const found = new Map<string, string[]>();
+    for (const selector of short.filter((s) => !(s in ALLOWED.shortTargets))) {
+      const sheet = sheetSizing(selector);
+      found.set(sheet, [...(found.get(sheet) ?? []), selector]);
+    }
+    expect(ratchet(found, OFFENDERS.shortTargets)).toEqual([]);
+  });
+
+  it('[NFR-007] lists every grip styled in a script for the touch checks too (T-294)', () => {
+    const found = fromScripts((f) => unlistedInlineGrips(f.inlineGrips, LISTED_GRIPS));
+    expect(ratchet(found, OFFENDERS.inlineGrips)).toEqual([]);
   });
 
   it('[NFR-007] lists every grip for the touch checks, or why it is dragged whole (T-290)', () => {

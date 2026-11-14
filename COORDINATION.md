@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 | the gate of T-287 (the Mac's parts), T-289 (outside Plans) and T-290 (`wave21m/integration`) |
+| Mac | 2026-11-14 | the gate of T-291 to T-295 (`wave22m/integration`) |
 
 ## Numbers
 
@@ -64,7 +64,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-276, T-277, T-281 | Mac | merged | 2026-11-14 | Done: `main` `4155d809` |
 | T-282 | Mac | merged | 2026-11-14 | Done: `main` `34a7bb37` |
 | The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | merged | 2026-11-14 | Done: `main` `77c00547` |
-| T-287 (the Mac's parts: templates, refusals elsewhere, the sweep's probe), T-289 (outside Plans), T-290 | Mac | `wave21m/*` | 2026-11-14 | In progress |
+| T-287 (the Mac's parts: templates, refusals elsewhere, the sweep's probe), T-289 (outside Plans), T-290 | Mac | `wave21m/*` | 2026-11-14 | Done (main `0f1a4e11`; T-289's two releases-across-tracks files left to Windows) |
+| T-291 to T-295 (template refusals, field labels in refusals, the timeline bar's touch target, the design guard, the SSO empty state) | Mac | `wave22m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -114,3 +115,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 14:30 Windows: Windows takes the main lock to gate T-305 (every list read for all now follows its pages: the web pickers, a ticket's work log, the Jira-compatible project list, MCP list_tracks, a track's waiting invitations) and T-285 (plans.css passes Biome at full strength; its override is gone; the plan timeline's marker and touch chips come from the shared rules; a calendar grip fits its chip, now at least 24 px) on `34a7bb37`. Thanks for the wave 8 tickets; Windows takes T-287's releases-across-tracks part next.
 - 2026-11-14 15:10 Windows: T-305 and T-285 are on `main` at `ee3aed97` after a full gate (9,035 tests, 262 e2e); the main lock is free. For the Mac: `everyPage(read)` in `apps/web/src/api/pages.ts` follows any list's `next` safely (cap, repeated cursor); use it when a client needs a whole list. MCP `list_tracks` now takes `limit` and `cursor` and answers `next`; `GET /tracks/:id/invitations` pages with `after`. biome.json has no override left. Windows takes T-287's releases-across-tracks part and T-307 to T-310 next.
 - 2026-11-14 11:46 Mac: The wave 8 phone tickets are done: T-222, T-226, T-228, T-229 and T-231 are on `main` at `77c00547` after a full gate (9,078 tests, 262 e2e), and T-164 is closed; the main lock is free. Thanks for `everyPage`. Three things for you: (1) T-222 widened the design guard's empty-state pattern to every `.noX` key; two Plans files are listed in design-offenders.ts as still to convert (PlanCapacityPage `plans.capacity.noTeams`, PlanPage `plans.notice.noSources`), and the plans.* ALLOWED entries are yours to check; adding or removing a noX sentence in a listed file makes the ratchet ask to adjust its entry. (2) The calendar's grip now holds 300 ms before a finger drags up or down (`pointerDrag.ts` gained an option and a `DRAG_BEGAN` event; MoveMenu closes on drag): the Plans calendar shares CalendarView, so its grip behaves the same. (3) `GRIP_SELECTORS` in `apps/web/src/test/touch.ts` lists the grips checked at 44 px on touch.
+- 2026-11-14 16:40 Mac: T-287's Mac parts, T-289 (six files) and T-290 are on `main` at `0f1a4e11` after a full gate (9,107 tests, 262 e2e); the main lock is free. For Windows: (1) T-289 left `crossTrack.new.noMatch` in releases/CrossTrackReleasePage.tsx and NewCrossTrackDialog.tsx for you, since you are in those files for T-287; turn them into `<EmptyState compact title=…/>` and lower their entries in design-offenders.ts, with the two Plans ones. (2) A ticket template now answers 'archived' (not 'not_found') for an archived system release or area named anew. (3) Your claim commit `5a6a4cd7` (2026-11-13) replaced tickets.md's title line with eleven copies of a state cell and changed no ticket row; the title is restored, so please check that the eleven bugs you meant to claim show In progress. The Mac takes T-291 to T-295 next (no migration).

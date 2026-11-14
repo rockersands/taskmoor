@@ -2467,8 +2467,9 @@ export const messagesEn = {
   'admin.sso.form.removeMapping': 'Remove',
   'admin.sso.form.removeMappingNamed': 'Remove mapping {number}',
   'admin.sso.form.noMappings': 'No mappings.',
-  'admin.sso.form.noGroups':
-    'There are no groups yet. Create groups first to map claim values to them.',
+  'admin.sso.form.noGroups': 'No groups yet',
+  'admin.sso.form.noGroupsBody':
+    'A claim value maps to a group, so the groups come first: create them under Groups in Administration.',
   'admin.sso.form.groupsFailed':
     'The groups could not be read, so the mapping cannot be changed now.',
   'admin.sso.form.create': 'Add provider',
@@ -3632,6 +3633,8 @@ export const messagesEn = {
   'clone.left':
     'The copy is without what you may not set there or its track does not take: {fields}.',
   'clone.customField': 'a custom field',
+  // Something left out of a copy that this client cannot name (T-292).
+  'clone.otherValue': 'another value',
   'clone.open': 'Open {key}',
   'clone.details': 'See each ticket’s result',
   'clone.problem.forbidden': 'You may not create tickets in that track.',
@@ -3719,7 +3722,9 @@ export const messagesEn = {
   'ticketView.problem.forbidden': 'You may not make this change to this ticket.',
   'ticketView.problem.stale': 'Someone changed this ticket meanwhile. Read it again and retry.',
   'ticketView.problem.transition': 'The workflow does not let this transition happen now.',
-  'ticketView.problem.fields': 'Check these values: {fields}.',
+  'ticketView.problem.fields': 'Check these values. {fields}',
+  // A custom field a refusal names when the page has no name for it (T-292).
+  'refusal.field.custom': 'A custom field',
   'ticketView.problem.layout':
     'This transition asks for {fields}, which this page cannot fill in yet.',
   'ticketView.problem.other': 'That did not work. Try again in a moment.',
@@ -6624,6 +6629,17 @@ export const messagesEn = {
     'Some values cannot be used. Check the days, the fields and the subtickets.',
   'tickets.templates.problem.forbidden': 'You may not change this template.',
   'tickets.templates.problem.other': 'That did not work. Try again in a moment.',
+  'tickets.templates.problem.marked':
+    'Some values cannot be used. The reason is under each of them.',
+  'tickets.templates.problem.trackOnly':
+    'Only a track’s template can hold this value: a template for every track cannot.',
+  'tickets.templates.archivedValue': '{name} (archived)',
+  'tickets.templates.valueNotInTrack':
+    '{type, select, area {Area {id}, not in this track} other {Release {id}, not in this track}}',
+  'tickets.templates.removeValue': 'Remove {value} from {field}',
+  'tickets.templates.trackValuesHint':
+    'Set through the API. Removing one leaves it off the tickets made from this template.',
+  'tickets.templates.noTrackValues': 'None: saving leaves this field empty.',
   'tickets.templates.pick': 'Start from a template',
   'tickets.templates.pickNone': 'No template',
   'tickets.templates.pickFailed': 'That template could not be loaded. Try again in a moment.',

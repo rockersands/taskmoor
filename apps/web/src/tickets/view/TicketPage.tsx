@@ -46,7 +46,8 @@ import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
-import { placementRefusal, splitLabels } from '../form';
+import { splitLabels } from '../form';
+import { refusedFieldLabel, refusedFieldsMessage } from '../refusedFields';
 import { ChecklistsPanel } from '../tools/ChecklistsPanel';
 import { pickerQuery, type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
@@ -329,6 +330,30 @@ export function TicketView({
   const loaded = state.status === 'loaded' && !state.partial ? state.ticket : null;
   const ticketId = state.status === 'loaded' ? state.ticket.id : null;
 
+  // The number fields on its edit form: Details shows them, and a refusal names them (T-292).
+  const [numberFields, setNumberFields] = useState<NumberField[]>([]);
+  // The form depends on the ticket's type and its status's edit lock.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when either changes
+  useEffect(() => {
+    // Another ticket, or one still loading: none until its own are read.
+    if (loaded === null) {
+      setNumberFields((had) => (had.length === 0 ? had : []));
+      return;
+    }
+    let live = true;
+    client.numberFields?.(loaded.id).then(
+      (list) => live && setNumberFields(list),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, loaded?.id, loaded?.ticketType.id, loaded?.status.id]);
+  const customNames = useMemo(
+    () => new Map(numberFields.map((field) => [field.id, field.name])),
+    [numberFields],
+  );
+
   // The pop-up is named after its ticket, whatever the view is showing or editing at the time.
   const shownKey = state.status === 'loaded' ? state.ticket.key : null;
   // Files dropped anywhere on the ticket go to its attachments (T-162).
@@ -438,15 +463,15 @@ export function TicketView({
           return t('ticketView.problem.transition');
         }
         if (body?.fields) {
-          // A choice the track does not offer, or an archived one, as the create form says it.
-          const placement = placementRefusal(body.fields);
-          if (placement) return t(placement);
-          return t('ticketView.problem.fields', { fields: Object.keys(body.fields).join(', ') });
+          // Each field by its label with the server's reason, as the create form says it: a
+          // choice the track does not offer, an archived one (T-287), and so on (T-292).
+          const named = refusedFieldsMessage(t, body.fields, customNames);
+          if (named) return named;
         }
       }
       return t('ticketView.problem.other');
     },
-    [t],
+    [t, customNames],
   );
 
   // The answer to an edit or a transition says what the reader may change now, as reading does
@@ -484,7 +509,9 @@ export function TicketView({
         setAsking(to);
         return;
       }
-      setProblem(t('ticketView.problem.layout', { fields: to.layout.join(', ') }));
+      // The fields by their labels, not the workflow model's names (T-292).
+      const fields = to.layout.map((f) => refusedFieldLabel(t, f, customNames) ?? f).join(', ');
+      setProblem(t('ticketView.problem.layout', { fields }));
       return;
     }
     try {
@@ -923,6 +950,7 @@ export function TicketView({
                   ticket={loaded}
                   me={me}
                   client={client}
+                  numberFields={numberFields}
                   when={when}
                   onEdit={edit}
                   onAssignToMe={assignToMe}
@@ -1069,10 +1097,13 @@ function Details({
   when,
   onEdit,
   onAssignToMe,
+  numberFields,
 }: {
   ticket: TicketDetails;
   me: { id: number; name: string };
   client: TicketClient;
+  /** The number fields on its edit form, as the page has read them. */
+  numberFields: NumberField[];
   when: (iso: string) => string;
   onEdit: (change: TicketEdit) => Promise<boolean>;
   onAssignToMe: () => void;
@@ -1108,19 +1139,6 @@ function Details({
     value
       ? intl.formatDate(new Date(`${value}T00:00:00Z`), { dateStyle: 'medium', timeZone: 'UTC' })
       : none;
-  const [numberFields, setNumberFields] = useState<NumberField[]>([]);
-  // The form depends on the ticket's type and its status's edit lock.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when either changes
-  useEffect(() => {
-    let live = true;
-    client.numberFields?.(ticket.id).then(
-      (list) => live && setNumberFields(list),
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [client, ticket.id, ticket.ticketType.id, ticket.status.id]);
 
   return (
     <dl className="ticket-facts">

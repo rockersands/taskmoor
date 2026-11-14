@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx
-accessed: 2026-11-13
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Single sign-on
@@ -324,6 +324,10 @@ the sign-in page explains why:
 At every sign-in, the person joins each mapped group whose claim value the provider lists, and
 leaves each mapped group whose value it no longer lists. Groups without a mapping are left
 alone, so groups you manage by hand are safe.
+
+A mapping pairs a claim value with a group that already exists, so with no groups yet the form
+shows **No groups yet** in place of the mapping, and says to create them first under **Groups**
+in Administration.
 
 ## Enforcing single sign-on
 

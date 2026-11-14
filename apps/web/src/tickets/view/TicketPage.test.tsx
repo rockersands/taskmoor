@@ -27,6 +27,7 @@ import {
   SHOP_41,
   SHOP_41_SOME_FIELDS,
   type TicketAccess,
+  TRANSITIONS,
 } from './fixtures';
 import { TicketPage, ticketEditorTools } from './TicketPage';
 
@@ -227,12 +228,101 @@ describe('the ticket view (M1-051)', () => {
         'This release or area is archived. Choose another.',
       ),
     );
-    // Any other refused value still names the fields to check.
+    // Any other refused value still names the fields to check, by their labels (T-292).
     refuse('invalid');
     await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
     await user.click(screen.getByRole('option', { name: 'Highest' }));
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Check these values: priorityId.'),
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Check these values. Priority: This value is not valid here.',
+      ),
+    );
+  });
+
+  it('[CORE-008] names refused fields by their labels and says why each was refused, never by API keys (T-292)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    await heading();
+    // Points is on the ticket's edit form, so the page knows its name.
+    await within(details()).findByRole('spinbutton', { name: 'Points' });
+    client.edit = async () => {
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: {
+          dueDate: 'invalid',
+          'fields.31': 'out_of_range',
+          'fields.77': 'required',
+          targetReleaseIds: 'archived',
+          // A key the page cannot name is left out, never shown as it is.
+          weird: 'unknown',
+        },
+      });
+    };
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Check these values. Due date: This value is not valid here. ' +
+        'Points: This number is out of range. ' +
+        'A custom field: This field is required. ' +
+        'Target releases: This release or area is archived. Choose another.',
+    );
+    for (const key of ['dueDate', 'fields.', 'targetReleaseIds', 'weird']) {
+      expect(alert).not.toHaveTextContent(key);
+    }
+    // Only keys it cannot name: the general message.
+    client.edit = async () => {
+      throw new ApiError(400, { error: 'invalid_fields', fields: { weird: 'unknown' } });
+    };
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Medium' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'That did not work. Try again in a moment.',
+      ),
+    );
+  });
+
+  it('[CORE-008][WF-006] names a refused transition value, and fields a transition asks for, by their labels in Spanish (T-292)', async () => {
+    const user = userEvent.setup();
+    const asking: typeof TRANSITIONS = [
+      ...TRANSITIONS,
+      {
+        id: 6,
+        name: 'Plan',
+        to: { id: 6, name: 'Planned', stage: 'active' },
+        layout: ['target-release', 'due-date'],
+      },
+    ];
+    const { client } = renderPage({ transitions: asking }, 'es');
+    await heading();
+    await within(screen.getByRole('region', { name: 'Detalles' })).findByRole('spinbutton', {
+      name: 'Puntos',
+    });
+    client.transition = async () => {
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { 'close-reason': 'not_found', 'fields.31': 'required' },
+      });
+    };
+    await user.click(await screen.findByRole('button', { name: /^Estado: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'Closed' }));
+    const form = await screen.findByRole('form', { name: /Close/ });
+    await waitFor(() => expect(within(form).getByRole('button', { name: 'Close' })).toBeEnabled());
+    await user.click(within(form).getByRole('button', { name: 'Close' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Revisa estos valores. Motivo de cierre: Esta opción no está disponible. ' +
+        'Puntos: Este campo es obligatorio.',
+    );
+    expect(alert).not.toHaveTextContent('close-reason');
+    // A transition that asks for what the page cannot fill in names those fields by label.
+    await user.click(screen.getByRole('button', { name: /^Estado: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'Planned' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Esta transición pide Versiones objetivo, Fecha límite, que esta página aún no puede rellenar.',
+      ),
     );
   });
 

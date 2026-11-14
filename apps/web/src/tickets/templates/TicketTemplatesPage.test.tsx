@@ -203,8 +203,8 @@ describe('ticket templates page (CORE-029)', () => {
     await user.click(screen.getByRole('button', { name: 'Edit template Incident report' }));
     const form = screen.getByRole('form', { name: 'Edit template Incident report' });
     expect(within(form).queryByRole('searchbox', { name: 'Assignee' })).toBeNull();
-    expect(within(form).queryByRole('listbox', { name: 'Area' })).toBeNull();
-    expect(within(form).queryByRole('listbox', { name: 'Target release' })).toBeNull();
+    expect(within(form).queryByRole('listbox', { name: 'Areas' })).toBeNull();
+    expect(within(form).queryByRole('listbox', { name: 'Target releases' })).toBeNull();
     await user.click(within(form).getByRole('button', { name: 'Save the template' }));
     await screen.findByText('Template Incident report was saved.');
     expect(client.saved[0]?.body.defaults).toEqual({ labels: ['incident'] });

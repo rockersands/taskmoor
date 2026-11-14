@@ -7,6 +7,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { TypeIcon } from '../shell/TicketIcons';
+import { refusedFieldsMessage } from '../tickets/refusedFields';
 import { ProgressBar, percentOf } from '../tickets/tools/Progress';
 import type { Transition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
@@ -136,7 +137,9 @@ export function TrackOutcomesPage({
           return t('ticketView.problem.transition');
         }
         if (body?.fields) {
-          return t('ticketView.problem.fields', { fields: Object.keys(body.fields).join(', ') });
+          // Each field by its label with the server's reason, never its API key (T-292).
+          const named = refusedFieldsMessage(t, body.fields);
+          if (named) return named;
         }
       }
       return t('ticketView.problem.other');
