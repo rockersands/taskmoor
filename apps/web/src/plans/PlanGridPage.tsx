@@ -568,10 +568,19 @@ function GridBody({
     .map((i) => skeleton.rows.ticket[visible[i] as number] as number)
     .filter((ticket) => ticket > 0 && !cache.current.has(ticket) && !pending.current.has(ticket));
   const wantedKey = wanted.join(',');
+  // Cells that arrive draw the grid again while it is shown, even after the rows wanted changed:
+  // once a read is sent its tickets are pending, so the rows wanted change at the next drawing,
+  // and the answer must not be dropped then, or those rows would stay loading.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when the rows wanted change
   useEffect(() => {
     if (wanted.length === 0) return;
-    let live = true;
     const timer = window.setTimeout(() => {
       for (const ticket of wanted) pending.current.add(ticket);
       for (let at = 0; at < wanted.length; at += CELL_BATCH) {
@@ -585,7 +594,7 @@ function GridBody({
               if (cache.current.size <= CELL_CACHE) break;
               if (!keep.has(held)) cache.current.delete(held);
             }
-            if (live) setCells((c) => c + 1);
+            if (mounted.current) setCells((c) => c + 1);
           },
           () => {
             for (const ticket of batch) pending.current.delete(ticket);
@@ -593,10 +602,7 @@ function GridBody({
         );
       }
     }, CELL_DEBOUNCE);
-    return () => {
-      live = false;
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [wantedKey, client, planId]);
 
   /** A cell saved: the totals above recompute; the cells in view of the rows above are read again. */
@@ -1237,14 +1243,16 @@ function GridBody({
                     <span className="plan-grid-card-leaf" />
                   )}
                   {isTicket ? (
+                    // Named by its words, "Open" and the key first: a name that left out the
+                    // summary and facts it shows would not match what a speaking user reads.
                     <button
                       type="button"
                       className="plan-grid-card-open"
-                      aria-label={t('grid.openCard', { key: label })}
                       onClick={() => setSheet(row)}
                     >
+                      <span className="visually-hidden">{t('grid.openCard', { key: label })}</span>
                       <span className="plan-grid-card-key">
-                        {label}
+                        <span aria-hidden="true">{label}</span>
                         {depth > CARD_LEVELS && (
                           <span className="plan-grid-card-level">
                             {levelName(skeleton.rows.level[row] as number)}

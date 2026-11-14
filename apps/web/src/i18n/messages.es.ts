@@ -8196,7 +8196,7 @@ export const messagesEs: Record<MessageId, string> = {
   'grid.edit': 'Editar estructura…',
   'grid.saveDefault': 'Guardar como estructura…',
   'grid.delete': 'Eliminar estructura',
-  'grid.delete.label': 'Eliminar {name}',
+  'grid.delete.label': 'Eliminar estructura {name}',
   'grid.delete.ask':
     'Elimina la estructura {name} para todos los que ven este plan. Sus tickets quedan como están.',
   'grid.delete.done': 'Se eliminó {name}.',

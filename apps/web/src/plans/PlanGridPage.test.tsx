@@ -270,8 +270,9 @@ describe('a plan’s Grid (PLN-010)', () => {
     const cards = await screen.findByRole('list', { name: '9 rows' });
     expect(screen.queryByRole('treegrid')).toBeNull();
     await user.click(within(cards).getByRole('button', { name: 'Collapse SHOP-1' }));
-    expect(within(cards).queryByRole('button', { name: 'Open SHOP-41' })).toBeNull();
-    await user.click(within(cards).getByRole('button', { name: 'Open SHOP-70' }));
+    // A card is named by its words, "Open" and the key first.
+    expect(within(cards).queryByRole('button', { name: /^Open SHOP-41(?!\d)/ })).toBeNull();
+    await user.click(within(cards).getByRole('button', { name: /^Open SHOP-70(?!\d)/ }));
     const sheet = await screen.findByRole('dialog', { name: /^SHOP-70/ });
     expect(
       within(sheet).getByRole('rowheader', { name: 'Sum of Original estimate' }),

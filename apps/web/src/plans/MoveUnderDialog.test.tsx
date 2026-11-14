@@ -296,7 +296,7 @@ describe('moving a row of the Grid (PLN-010)', () => {
     const user = userEvent.setup();
     const { grid } = renderGrid();
     const cards = await screen.findByRole('list', { name: '9 rows' });
-    await user.click(within(cards).getByRole('button', { name: 'Open SHOP-44' }));
+    await user.click(within(cards).getByRole('button', { name: /^Open SHOP-44(?!\d)/ }));
     const sheet = await screen.findByRole('dialog', { name: /^SHOP-44/ });
     await user.click(within(sheet).getByRole('button', { name: 'Move under…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Move SHOP-44 under…' });

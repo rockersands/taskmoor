@@ -8001,7 +8001,7 @@ export const messagesEn = {
   'grid.edit': 'Edit structure…',
   'grid.saveDefault': 'Save as a structure…',
   'grid.delete': 'Delete structure',
-  'grid.delete.label': 'Delete {name}',
+  'grid.delete.label': 'Delete structure {name}',
   'grid.delete.ask':
     'Deletes the structure {name} for everyone who sees this plan. Its tickets stay as they are.',
   'grid.delete.done': 'Deleted {name}.',
