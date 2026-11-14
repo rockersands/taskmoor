@@ -1343,6 +1343,64 @@ describe('free moving at its edges (WF-008)', () => {
       expect(into((await view(given)).published.definition, made)?.from).toBe('any');
       expect(into((await view(workflowId)).published.definition, made)).toBeUndefined();
     });
+
+    it("[WF-010] a column's path waits for a change of the track's workflow made without the board, and goes to the workflow given (T-249)", async () => {
+      const { workflowId, board } = await ordinaryTrackWorkflow('BPMAP', []);
+      await publishChanged(workflowId, (d) => ({
+        ...d,
+        transitions: d.transitions.map((t, i) =>
+          i === 0 ? { ...t, checks: ASSIGNEE_REQUIRED } : t,
+        ),
+      }));
+      const added = await patch(`/api/v1/boards/${board.id}`, {
+        version: board.version,
+        columns: [...board.columns, { name: 'Signed off', statusIds: [] }],
+      });
+      expect(added.statusCode, added.body).toBe(200);
+      const before = added.json().board as Board;
+      const column = before.columns.at(-1) as Column;
+      const given = await freeWorkflow(
+        'Given from the track settings',
+        before.columns.flatMap((c) => c.statusIds),
+      );
+      const track = await database.db
+        .selectFrom('track')
+        .select('workflow_map_id')
+        .where('key', '=', 'BPMAP')
+        .executeTakeFirstOrThrow();
+
+      // The track's workflow is changed where the board is not held, as its settings do.
+      const holding = gate();
+      const finished = gate();
+      const holder = database.db.transaction().execute(async (trx) => {
+        await trx
+          .selectFrom('workflow_map')
+          .select('id')
+          .where('id', '=', track.workflow_map_id as number)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+        await trx
+          .updateTable('workflow_map')
+          .set({ default_workflow_id: given })
+          .where('id', '=', track.workflow_map_id as number)
+          .execute();
+        holding.open();
+        await finished.opened;
+      });
+      await holding.opened;
+      const pathing = post(`/api/v1/boards/${board.id}/columns/${column.id}/path`);
+      // The path holds the board, then waits for the map rather than read the one being changed.
+      await lockWaits(1);
+      finished.open();
+      await holder;
+      const pathed = await pathing;
+      expect(pathed.statusCode, pathed.body).toBe(200);
+      const after = pathed.json().board as Board;
+      const made = after.columns.find((c) => c.id === column.id)?.statusIds[0] as number;
+      expect(made).toBeGreaterThan(0);
+      expect(into((await view(given)).published.definition, made)?.from).toBe('any');
+      expect(into((await view(workflowId)).published.definition, made)).toBeUndefined();
+    });
   });
 
   describe("a board's sync and a draft taking a column's status at the same time (T-237)", () => {
