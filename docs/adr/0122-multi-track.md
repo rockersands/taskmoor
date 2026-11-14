@@ -2200,6 +2200,13 @@ scenarios prove it by passing unchanged.
   replaces only the proposals on tickets they are shown; the rest stay and are counted in
   `notShown` ("2 earlier proposals stay on tickets this plan does not show you"), as stage 6's
   question 14 keeps drafts.
+- **What a run's drafts say to others** (found in review, 2026-11-14): "no drafted day says
+  anything about it" holds for the runner only. A run plans around every blocker its runner sees,
+  so when a site administrator runs it, a ticket other viewers are shown can be proposed to start
+  the day after a blocker hidden from them ends, and that drafted start bounds the hidden
+  blocker's end (exactly, when nothing else held the ticket back). A person drafting by hand can
+  say as much, and a run by someone who sees less withdraws such proposals as `hidden_blocker`.
+  The build leaves it so and the manual says it; question 24 asks the user.
 
 #### The pages, on a desktop and on a phone
 
@@ -2438,33 +2445,57 @@ from the design above, or settles what it left open:
   runner is not shown. A listed ticket left out of the write carries `changedMeanwhile: true`.
   `too_many_to_schedule` is checked after the engine (it takes about 0.1 s), from its counts.
 - **An earlier proposal stays on any ticket a person drafted a day of** under the lock, not only on
-  those kept for `person_draft` (a ticket left out by the run can have one).
+  those kept for `person_draft` (a ticket left out by the run can have one). Since the review this
+  arises only from drafts written before it: a person's day draft takes over the ticket's other
+  day (below).
+- **Changed meanwhile, with what follows it** (review): under the lock the run also reads again
+  the blockers of the tickets it places, and leaves out of the write every proposal placed after a
+  ticket that changed meanwhile, directly or through other proposals, so no late link is written.
+  `changedMeanwhile` counts all of them, and the page lists them apart from the placed. A
+  changed ticket's load can still sit in a cell the run filled, until the next run.
+- **The answer's scenario** is read inside the run's transaction, under its lock, so it is never
+  null.
 - **Refusals:** a query that does not compile answers 400 `{ error: 'invalid_fields', fields:
   { 'keep.query' | 'leaveOut.query': 'invalid_query' }, messages }`; `into.newScenario.from` of
   another plan answers 400 `{ 'into.newScenario.from': 'not_found' }`; readiness with `scenario=`
-  of another plan answers 400 `{ scenario: 'not_found' }`, while a run into one answers 404. The
-  open tickets are counted first, with `LIMIT 50,001`, before `plan_too_large`.
+  missing or of another plan answers 404 word for word as a missing id, as a run into one does
+  (built as 400 at first; fixed in review). The open tickets are counted first, with `LIMIT
+  50,001`, before `plan_too_large`.
 - **Drafts:** `clearSchedulerDrafts` also clears the refusal of a ticket that lost a draft, as
   `writeDrafts` does; `createScenario` returns `main` too; `MAX_DRAFT_WRITE` (2,000) is the chunk
   size. `sprintDay` and `inActiveSprint` read the ticket as `k`.
 - **A dragged proposal:** a person who moves one end of a proposed bar resends the other day
-  unchanged, and `writeDrafts` keeps a resent value with its origin. The run reads that ticket as
-  the person's draft and keeps it, but `DraftMark.origin` and the change list still say
-  `scheduler` until both days are the person's, so the bar keeps "Draft, auto-scheduled" beside
-  the notice "Your draft now". Left as found; the fix belongs in `writeDrafts` or in how the
-  origin is said.
+  unchanged, or does not send it (the Calendar's start chip). `writeDrafts` with origin `person`
+  therefore turns the auto-scheduler's drafts of the days of every ticket a person drafts a day of
+  into the person's (fixed in review: before, the run read only the moved day while the scenario
+  kept the scheduler's other one, so what it blocked could be placed before it ended, and the bar
+  said "Draft, auto-scheduled" beside "Your draft now"). The change emits nothing more: the values
+  do not change.
 - **The web app:** the dialog remembers its choices per plan in `localStorage`
   (`taskmoor.autoSchedule.<planId>`), apart from the first day and the target; it is the target
   "This scenario" by default only when the plan holds 20 scenarios. Escape does not close it while
-  a run works. "Its choices" counts the ticket types left out rather than naming them. The result
-  is kept per scenario while the plan page is open. `ScheduleReadiness.types` and `.releases`,
-  `ScheduleResult.names` and `ScheduleEntry.summary` are optional in the client and not yet sent
-  by the route, so the Leave out lists offer nothing until readiness sends them, and result rows
-  show keys without summaries.
+  a run works. "Its choices" is built from the request the dialog sent, never read back from
+  storage, and names the types and releases left out. The lists count and remember only what
+  readiness still offers. Run is off until readiness answers for the choices as they are, and
+  says it is running with `aria-disabled`, keeping the focus; a refusal naming a field moves the
+  focus there. The result is kept per scenario while the plan page is open. Readiness sends
+  `types` (of the reader's open level-0 tickets, at most 200) and `releases` (those they target,
+  neither shipped nor archived, of tracks the reader browses, as the views show releases); a run's
+  answer sends `names` (the plan's teams, people and releases its reasons name, and the keys of
+  tickets named but not listed). `ScheduleEntry.summary` is still not sent, so result rows show
+  keys without summaries.
+- **Words:** the panel says "N drafts people made stay" and a kept ticket "Kept: a person drafted
+  its days in this scenario.": scenarios are shared, so the drafts are anyone's (review).
 - **Measured** on this machine, budgets not enforced (the user's hold on benchmarking): the engine
   alone on 10,000 tickets, 20,000 links, 50 teams, 300 people and 12 periods, 87 ms; readiness's
-  median 26 ms and a whole run over 10,000 tickets 503 ms (`plans.large.test.ts`), which at the
-  100,000 size expects `too_many_to_schedule`.
+  median 26 ms and a whole run over 10,000 tickets 503 ms (`plans.large.test.ts`). At the 100,000
+  size the whole plan is refused with `plan_too_large` before the engine (the open tickets are
+  counted first), so the case then measures a run over nine of the tracks, 45,000 tickets, which
+  ends in `too_many_to_schedule`; not yet run at that size.
+- **The e2e** departs from "Tests": the run makes the plan's first scenario, Proposal, so it is
+  main from the start; the result compares it with Live and nobody makes a scenario main. Both runs
+  set **Schedule from** to the day the fixture computed, so a test that crosses midnight still
+  plans the weeks it checks.
 
 #### Questions for the user (the design takes the first answer each time)
 
@@ -2515,6 +2546,11 @@ from the design above, or settles what it left open:
 22. **Who may run it:** the plan's owner and site administrators, who draft today; or everyone who
     sees the plan, into a scenario of their own.
 23. **Its name:** "Auto-schedule"; or "Schedule work"; or "Suggest dates".
+24. **A runner who sees more than the plan's other viewers** (asked after the build, 2026-11-14):
+    their proposals may start the day after a blocker the others cannot see, as built; or a run
+    treats as hidden every blocker some viewer of the plan may not see (fewer placements, and the
+    plan's viewers read on every run); or the proposals record what their runner saw and other
+    viewers see them only as a count.
 
 ### Later stages
 

@@ -366,7 +366,8 @@ tickets the plan shows you:
   in one of the plan's teams.
 
 **Run** is off, with the reason beside it, when the plan has no teams, no team has capacity, tickets
-cannot be sized, or there is nowhere to write the result.
+cannot be sized, or there is nowhere to write the result. It is also off while the dialog checks the
+plan again for choices you changed, so a run never starts on what was said for other ones.
 
 Then you choose:
 
@@ -378,14 +379,16 @@ Then you choose:
   so.
 - **What it may move:** **Keep tickets in progress** and **Keep tickets in an active sprint** (both
   ticked at first), **Also keep tickets matching** a query, **Leave out ticket types** and **Leave
-  out releases** (up to 20 of each), and **Also leave out tickets matching** a query. The queries
-  are written as in search. One that does not read as a query is pointed out under its field, and
-  nothing runs.
+  out releases** (up to 20 of each), and **Also leave out tickets matching** a query. The types
+  offered are those of the open tickets the plan shows you; the releases, those they target that
+  are neither shipped nor archived, in tracks you can browse. The queries are written as in
+  search. One that does not read as a query is pointed out under its field, which takes the
+  focus, and nothing runs.
 - **When:** **Schedule from**, today at first, and **Look ahead**, 1 to 12 of the plan's periods
   (6 at first). The dialog names the span, for example "6 periods of 2 weeks: Nov 17 to Feb 8."
 
 The dialog remembers your choices for this plan in this browser, apart from the first day and where
-the result goes. When you run again into a scenario that already holds proposals, it says how many
+the result goes; a type or release the plan no longer offers is forgotten. When you run again into a scenario that already holds proposals, it says how many
 the run will replace and how many drafts people made there, which stay. While the run works,
 **Run** reads "Scheduling…", a line says how many tickets it is scheduling, and the dialog stays
 open until the run has answered.
@@ -427,24 +430,26 @@ whole weeks.
 ### Reading the result
 
 After a run the page opens the scenario's **Changes** tab, with an **Auto-schedule** section on top,
-for example "180 placed, 14 kept, 9 not placed, 22 earlier proposals removed. 3 of your drafts
-stay." **Placed**, **Not placed** and **Kept** each show their tickets, the key a link, with the
+for example "180 placed, 14 kept, 9 not placed, 22 earlier proposals removed. 3 drafts people
+made stay." **Placed**, **Not placed** and **Kept** each show their tickets, the key a link, with the
 reason in words; the section opens on Not placed when there are any. **Compare with main**, or
 **Compare with Live** when this scenario is main or the plan has none, opens the comparison. **Run
-again…** opens the dialog, and **Its choices** says what the run was asked. The section stays while
+again…** opens the dialog, and **Its choices** says what the run was asked, naming the ticket
+types and releases it left out. The section stays while
 the plan is open; it is not saved, so nobody else sees it.
 
 In the change list, each change the run made says **Proposed by the auto-scheduler** and, while
 the result is on the page, why. On the Timeline and the Calendar such a draft says "Draft,
-auto-scheduled". Moving it makes it your draft: the page says "Your draft now: a re-run will plan
-around it." Capacity, opened in the scenario, shows how the run filled each period.
+auto-scheduled". Moving it, even only one of its ends, makes both its days your draft: the page
+says "Your draft now: a re-run will plan around it." Capacity, opened in the scenario, shows how the run filled each period.
 
 The reasons read, for example:
 
 - **Placed:** "Placed in Dec 1 to Dec 14: Atlas had 8 of 20 points free after 4 higher-ranked
   tickets.", "Starts Dec 9, the day after SPA-10 ends; SPA-10 blocks it.", "Placed early because
   it blocks SPA-3.", or "Placed where it already is: nothing to change."
-- **Kept:** "Kept: your draft in this scenario.", "Kept: you may not schedule tickets in OPS.",
+- **Kept:** "Kept: a person drafted its days in this scenario." (anyone's draft, as scenarios are
+  shared), "Kept: you may not schedule tickets in OPS.",
   "Kept: it is in progress.", "Kept: it is in an active sprint." or "Kept: it matches the tickets to
   keep."
 - **Not placed**, keeping its days: no estimate in the plan's unit; nobody assigned; an assignee in
@@ -463,11 +468,12 @@ someone over capacity in a period the run filled.
 ### Running again
 
 A run in a scenario replaces only the auto-scheduler's own earlier proposals there, and only on
-tickets the plan shows you. Drafts people made stay, and the run plans around them; on a ticket
-where someone drafted one day, the run's earlier proposal for the other day stays too, so its start
-never ends up after its due. An earlier proposal on a ticket the run no longer places is removed.
-Running again on tickets that have not changed changes nothing. A ticket someone changed while the
-run was working is left as it was and counted: "1 ticket changed while the run worked; run again."
+tickets the plan shows you. Drafts people made stay, and the run plans around them, after both
+their days. An earlier proposal on a ticket the run no longer places is removed. Running again on
+tickets that have not changed changes nothing. A ticket someone changed while the run was working is
+left as it was, and so is every ticket the run placed after it; they are listed apart, never as
+placed, and counted: "1 ticket was left as it was: it or a ticket blocking it changed while the run
+worked. Run again."
 
 ### What a run sees
 
@@ -481,6 +487,10 @@ run was working is left as it was and counted: "1 ticket changed while the run w
   earlier proposals stay on tickets this plan does not show you."
 - Others see the run's drafts as they see any draft: on the tickets the plan shows them, the rest
   counted.
+- A run plans around every blocker its runner sees. When someone who sees more than you runs it,
+  a site administrator for example, a ticket you see may be proposed to start the day after a
+  blocker you cannot see ends, so its proposed start can hint at when that blocker ends. Your own
+  run in the scenario withdraws such proposals.
 
 A run stops before writing anything when it would move more than 10,000 tickets (leave some out and
 run again), when the plan has more than 50,000 open tickets, or when the scenario would end up with
