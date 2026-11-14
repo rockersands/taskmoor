@@ -8,7 +8,7 @@ import { fakeReportClient, REPORT_BOARD, SCRUM_REPORT_BOARD } from '../reports/f
 import { fakeSprintClient } from '../sprints/fixtures';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakeTrackClient } from './fixtures';
+import { fakeTrackClient, TWO_DIMENSIONAL } from './fixtures';
 import { type TrackReport, TrackStatisticsPage } from './TrackStatisticsPage';
 
 const inTrack = (board: Board): Board => ({
@@ -470,6 +470,17 @@ describe('a track’s statistics (ADR-116)', () => {
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
     ).toEqual(['Status', 'High', 'None', 'Total']);
+    cleanup();
+    // A custom field's rows are headed with its own name, as the server gives it.
+    const client = fakeTrackClient();
+    client.statistics = async () => ({
+      ...TWO_DIMENSIONAL,
+      fields: { x: 'cf[9]', y: 'priority' },
+      fieldNames: { x: 'Team', y: null },
+    });
+    open('two-dimensional', KANBAN, { client });
+    const custom = await screen.findByRole('region', { name: 'Two-dimensional statistics' });
+    expect(within(custom).getAllByRole('columnheader')[0]).toHaveTextContent('Team');
   });
 
   it('[RPT-002] a release’s workload explains a track with no releases', async () => {

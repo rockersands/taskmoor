@@ -141,6 +141,10 @@
         1
       ]
     ],
+    "fieldNames": {
+      "x": null,
+      "y": "Team"
+    },
     "fields": {
       "x": "priority",
       "y": "cf[2]"
