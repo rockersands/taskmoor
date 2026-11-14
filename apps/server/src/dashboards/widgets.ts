@@ -116,6 +116,35 @@ const DAY = 86_400_000;
 const fieldName = (axis: Axis, s: Scope) =>
   axis.kind === 'custom' ? { fieldName: s.catalog.fields.get(axis.fieldId)?.name ?? null } : {};
 
+/** A value as the query language reads it: a quoted string with its quotes escaped. */
+const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+/** The catalogues whose names are unique on the site, so a search may name their values. */
+const NAMED_AXES: ReadonlySet<string> = new Set(['status', 'priority', 'type', 'closeReason']);
+
+/**
+ * The search that finds every ticket of one value of a grouped report (S3-ST-2): the report's own
+ * query, narrowed to the value. A name where the catalogue's names are unique, a label's text, and
+ * an id where names may repeat (people, releases, areas, options); no value is `IS EMPTY`. The rest
+ * gathered as other has no single search: null.
+ */
+export function valueQuery(
+  query: string,
+  field: string,
+  axis: Axis,
+  value: { id: string | null; name: string | null; kind: 'value' | 'none' | 'other' },
+): string | null {
+  if (value.kind === 'other' || axis.kind === 'all') return null;
+  if (value.kind === 'none' || value.id === null) return narrowQuery(query, `${field} IS EMPTY`);
+  const text = axis.kind === 'system' ? axis.field === 'labels' : axis.values === 'label';
+  const literal = text
+    ? quoted(value.id)
+    : axis.kind === 'system' && NAMED_AXES.has(axis.field) && value.name !== null
+      ? quoted(value.name)
+      : value.id;
+  return narrowQuery(query, `${field} = ${literal}`);
+}
+
 /** The viewer's time zone: their browser's, else their profile's, else UTC (T-272). */
 const zoneOf = (request: FastifyRequest): string => viewerTimeZone(request);
 
@@ -362,8 +391,12 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
         return { unavailable: 'field' } satisfies Unavailable;
       }
       const condition = await compileQuery(db, s, c.query, new Date());
+      const custom = (a: Axis) =>
+        a.kind === 'custom' ? (s.catalog.fields.get(a.fieldId)?.name ?? null) : null;
       return {
         fields: { x: c.x, y: c.y },
+        // A custom field's name heads its rows or columns; a system field's name is the app's.
+        fieldNames: { x: custom(x), y: custom(y) },
         ...(await read((trx) => twoDimensional(trx, { workspaceId: ws, scope: condition, x, y }))),
       };
     }
@@ -397,12 +430,18 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       const axis = parseAxis(c.field, s);
       if (typeof axis === 'string') return { unavailable: 'field' } satisfies Unavailable;
       const condition = await compileQuery(db, s, c.query, new Date());
+      const grouped = await read((trx) =>
+        groupBy(trx, { workspaceId: ws, scope: condition, axis, limit: c.limit }),
+      );
       return {
         field: c.field,
         ...fieldName(axis, s),
-        ...(await read((trx) =>
-          groupBy(trx, { workspaceId: ws, scope: condition, axis, limit: c.limit }),
-        )),
+        ...grouped,
+        // Each group names the search that finds all of it, past the tickets listed (S3-ST-2).
+        values: grouped.values.map((v) => ({
+          ...v,
+          query: valueQuery(c.query, c.field, axis, v),
+        })),
       };
     }
     case 'workload': {
