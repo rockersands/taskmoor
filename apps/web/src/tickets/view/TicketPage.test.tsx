@@ -252,6 +252,8 @@ describe('the ticket view (M1-051)', () => {
           dueDate: 'invalid',
           'fields.31': 'out_of_range',
           'fields.77': 'required',
+          // Not in the track's field catalogue either.
+          'fields.99': 'invalid',
           targetReleaseIds: 'archived',
           // A key the page cannot name is left out, never shown as it is.
           weird: 'unknown',
@@ -264,7 +266,8 @@ describe('the ticket view (M1-051)', () => {
     expect(alert).toHaveTextContent(
       'Check these values. Due date: This value is not valid here. ' +
         'Points: This number is out of range. ' +
-        'A custom field: This field is required. ' +
+        'Customer tier: This field is required. ' +
+        'A custom field: This value is not valid here. ' +
         'Target releases: This release or area is archived. Choose another.',
     );
     for (const key of ['dueDate', 'fields.', 'targetReleaseIds', 'weird']) {
@@ -279,6 +282,89 @@ describe('the ticket view (M1-051)', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
         'That did not work. Try again in a moment.',
+      ),
+    );
+  });
+
+  it("[CORE-008] names a custom field off the edit form from the track's catalogue, read once while the page is open (T-297)", async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    await heading();
+    await within(details()).findByRole('spinbutton', { name: 'Points' });
+    const refuse = (fields: Record<string, string>) => {
+      client.edit = async () => {
+        throw new ApiError(400, { error: 'invalid_fields', fields });
+      };
+    };
+    const choose = async (priority: string) => {
+      await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+      await user.click(screen.getByRole('option', { name: priority }));
+    };
+    const reads = () => client.calls.filter((c) => c.action === 'fieldNames');
+    // A field the edit form names needs no read.
+    refuse({ 'fields.31': 'required' });
+    await choose('Highest');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Check these values. Points: This field is required.',
+    );
+    expect(reads()).toEqual([]);
+    // One it does not: the track's catalogue (by its id) is read for its name.
+    refuse({ 'fields.77': 'required' });
+    await choose('Medium');
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Check these values. Customer tier: This field is required.',
+      ),
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('A custom field');
+    // Again: named at once from what was read.
+    refuse({ 'fields.77': 'invalid' });
+    await choose('Highest');
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Check these values. Customer tier: This value is not valid here.',
+      ),
+    );
+    expect(reads()).toEqual([{ action: 'fieldNames', args: [3] }]);
+  });
+
+  it("[CORE-008] says 'A custom field' only when the track's catalogue cannot be read (T-297)", async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage({ fields: new ApiError(404, { error: 'not_found' }) });
+    await heading();
+    await within(details()).findByRole('spinbutton', { name: 'Points' });
+    client.edit = async () => {
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { 'fields.31': 'out_of_range', 'fields.77': 'required' },
+      });
+    };
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Check these values. Points: This number is out of range. ' +
+        'A custom field: This field is required.',
+    );
+  });
+
+  it('[WF-006] names a custom field a transition asks for by its name from the catalogue (T-297)', async () => {
+    const user = userEvent.setup();
+    const asking: typeof TRANSITIONS = [
+      ...TRANSITIONS,
+      {
+        id: 6,
+        name: 'Plan',
+        to: { id: 6, name: 'Planned', stage: 'active' },
+        layout: ['cf[77]', 'due-date'],
+      },
+    ];
+    renderPage({ transitions: asking });
+    await heading();
+    await user.click(await screen.findByRole('button', { name: /^Status: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'Planned' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This transition asks for Customer tier, Due date, which this page cannot fill in yet.',
       ),
     );
   });

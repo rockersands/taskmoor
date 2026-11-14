@@ -1,5 +1,6 @@
 import { fromMarkdown } from '@taskmoor/richtext';
 import { ApiError } from '../../api/client';
+import type { NamedField } from '../customFieldNames';
 import type {
   HistoryEntry,
   Priority,
@@ -112,6 +113,12 @@ export const PRIORITIES: Priority[] = [
   { id: 3, name: 'Medium' },
 ];
 
+/** The Shop track's custom fields in the field catalogue: Points is on the edit form, the rest not. */
+export const SHOP_FIELDS: NamedField[] = [
+  { id: 31, name: 'Points' },
+  { id: 77, name: 'Customer tier' },
+];
+
 export interface FakeTicketClient extends TicketClient {
   calls: { action: string; args: unknown[] }[];
 }
@@ -130,6 +137,8 @@ export function fakeTicketClient(
     transitions?: Transition[];
     missing?: boolean;
     access?: (ticket: TicketDetails) => TicketAccess;
+    /** The track's custom fields in the field catalogue, or the error reading them answers. */
+    fields?: NamedField[] | Error;
   } = {},
 ): FakeTicketClient {
   const { mayEdit, editableFields, ...stored } = structuredClone(start.ticket ?? SHOP_41);
@@ -250,6 +259,12 @@ export function fakeTicketClient(
     info: async () => structuredClone(INFO),
     priorities: async () => structuredClone(PRIORITIES),
     numberFields: async () => [{ id: 31, name: 'Points', locked: false }],
+    fieldNames: async (trackId) => {
+      calls.push({ action: 'fieldNames', args: [trackId] });
+      const fields = start.fields ?? SHOP_FIELDS;
+      if (fields instanceof Error) throw fields;
+      return structuredClone(fields);
+    },
     closeReasons: async () => [
       { id: 1, name: 'Done' },
       { id: 2, name: "Won't do" },

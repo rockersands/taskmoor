@@ -46,8 +46,14 @@ import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
+import { useCustomFieldNames } from '../customFieldNames';
 import { splitLabels } from '../form';
-import { refusedFieldLabel, refusedFieldsMessage } from '../refusedFields';
+import {
+  type CustomFieldNames,
+  refusedFieldKeys,
+  refusedFieldLabel,
+  refusedFieldsMessage,
+} from '../refusedFields';
 import { ChecklistsPanel } from '../tools/ChecklistsPanel';
 import { pickerQuery, type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
@@ -353,6 +359,13 @@ export function TicketView({
     () => new Map(numberFields.map((field) => [field.id, field.name])),
     [numberFields],
   );
+  // Any other custom field a refusal names, from the track's field catalogue, read the first time
+  // one is needed and kept while the page is open (T-297).
+  const nameFields = useCustomFieldNames(
+    state.status === 'loaded' ? state.ticket.track.id : null,
+    client.fieldNames,
+    customNames,
+  );
 
   // The pop-up is named after its ticket, whatever the view is showing or editing at the time.
   const shownKey = state.status === 'loaded' ? state.ticket.key : null;
@@ -445,7 +458,7 @@ export function TicketView({
   );
 
   const refusal = useCallback(
-    (error: unknown) => {
+    (error: unknown, custom: CustomFieldNames) => {
       if (error instanceof ApiError) {
         const body = error.body as {
           error?: string;
@@ -465,14 +478,17 @@ export function TicketView({
         if (body?.fields) {
           // Each field by its label with the server's reason, as the create form says it: a
           // choice the track does not offer, an archived one (T-287), and so on (T-292).
-          const named = refusedFieldsMessage(t, body.fields, customNames);
+          const named = refusedFieldsMessage(t, body.fields, custom);
           if (named) return named;
         }
       }
       return t('ticketView.problem.other');
     },
-    [t, customNames],
+    [t],
   );
+  /** Shows why a change did not go through, once any custom field it names has its name. */
+  const refuse = (error: unknown) =>
+    nameFields(refusedFieldKeys(error), (custom) => setProblem(refusal(error, custom)));
 
   // The answer to an edit or a transition says what the reader may change now, as reading does
   // (T-191): a new assignee or status can change it, so nothing is kept from the read before.
@@ -497,7 +513,7 @@ export function TicketView({
       changed(await client.edit(loaded.id, change), t('ticketView.saved'));
       return true;
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
       return false;
     }
   };
@@ -509,9 +525,12 @@ export function TicketView({
         setAsking(to);
         return;
       }
-      // The fields by their labels, not the workflow model's names (T-292).
-      const fields = to.layout.map((f) => refusedFieldLabel(t, f, customNames) ?? f).join(', ');
-      setProblem(t('ticketView.problem.layout', { fields }));
+      // The fields by their labels, not the workflow model's names (T-292), a custom one by its
+      // name (T-297).
+      nameFields(to.layout, (custom) => {
+        const fields = to.layout.map((f) => refusedFieldLabel(t, f, custom) ?? f).join(', ');
+        setProblem(t('ticketView.problem.layout', { fields }));
+      });
       return;
     }
     try {
@@ -520,7 +539,7 @@ export function TicketView({
       changed(next, t('ticketView.moved', { status: next.status.name }));
       void refreshAround(next.id);
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
     }
   };
 
@@ -532,7 +551,7 @@ export function TicketView({
       setFollowing(await client.following(loaded.id));
       setMessage(t(following.mine ? 'ticketView.unfollowed' : 'ticketView.followed'));
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
     }
   };
   const toggleVote = async () => {
@@ -542,7 +561,7 @@ export function TicketView({
       await client.vote(loaded.id, !votes.mine);
       setVotes(await client.votes(loaded.id));
     } catch (error) {
-      setProblem(refusal(error));
+      refuse(error);
     }
   };
   /** The ticket's full address, for the clipboard; refused, the page shows it to copy by hand. */

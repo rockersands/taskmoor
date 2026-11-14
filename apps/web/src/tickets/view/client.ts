@@ -2,6 +2,7 @@ import type { PmJson } from '@taskmoor/richtext';
 import { api } from '../../api/client';
 import { everyPage } from '../../api/pages';
 import { lockOfField } from '../../locks/useLockText';
+import type { NamedField, ReadFieldNames } from '../customFieldNames';
 import type { TicketForm } from '../form';
 
 export interface Person {
@@ -170,6 +171,11 @@ export interface TicketClient {
   closeReasons: () => Promise<Priority[]>;
   /** The number fields on its edit form; without it the page shows none. */
   numberFields?: (id: number) => Promise<NumberField[]>;
+  /**
+   * The custom fields of a track (by its id), from the field catalogue: a refusal names them
+   * (T-297). Without it a field the page has no name for reads 'A custom field'.
+   */
+  fieldNames?: ReadFieldNames;
 }
 
 export const ticketClient: TicketClient = {
@@ -235,4 +241,10 @@ export const ticketClient: TicketClient = {
   },
   closeReasons: async () =>
     (await api<{ closeReasons: Priority[] }>('/close-reasons')).closeReasons,
+  // The catalogue narrowed to the track: every field a refusal there can name, whatever the form.
+  fieldNames: async (trackId) =>
+    (await api<{ fields: NamedField[] }>(`/fields?trackId=${trackId}`)).fields.map((f) => ({
+      id: f.id,
+      name: f.name,
+    })),
 };
