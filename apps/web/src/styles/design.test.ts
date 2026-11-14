@@ -1584,10 +1584,26 @@ export function jsxFacts(
         facts.reexports.add('*');
       }
     }
+    // What a portal draws lands elsewhere (`document.body`): none of the elements around the call
+    // are around it (T-353).
+    if (isPortal(node)) {
+      ts.forEachChild(node, (child) => visit(child, [], false, null, []));
+      return;
+    }
     ts.forEachChild(node, (child) => visit(child, classes, note, around, within));
   };
   visit(sourceFile, [], false, null, []);
   return facts;
+}
+
+/** A call that draws its JSX somewhere else: `createPortal(...)`, `ReactDOM.createPortal(...)`. */
+function isPortal(node: ts.Node): node is ts.CallExpression {
+  if (!ts.isCallExpression(node)) return false;
+  const callee = node.expression;
+  return (
+    (ts.isIdentifier(callee) && callee.text === 'createPortal') ||
+    (ts.isPropertyAccessExpression(callee) && callee.name.text === 'createPortal')
+  );
 }
 
 /**
@@ -1636,11 +1652,13 @@ function isReference(node: ts.Identifier): boolean {
  * The component of a file whose returned JSX holds `node` with nothing between (T-353): the JSX
  * outermost around it is returned by that component (or is its arrow's body), through brackets, a
  * condition's branch or `&&`. JSX kept in a variable, made by another function, or put elsewhere by
- * a call (`createPortal`) has none: where it lands, no one reads here.
+ * a portal (`createPortal`, wherever the call stands in the returned JSX) has none: where it lands,
+ * no one reads here.
  */
 function rootIn(node: ts.Node, components: Map<ts.Node, string>): string | undefined {
   let top = node;
   for (let p = node.parent; p; p = p.parent) {
+    if (isPortal(p)) return undefined;
     if (ts.isJsxElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxFragment(p)) top = p;
   }
   for (let at: ts.Node = top; ; ) {
@@ -2694,6 +2712,15 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
         'a/child.tsx': `${child()}\nexport const Bar = () => (<div className="zoom">{on ? <Zoomed /> : null}</div>);`,
       }),
     ).toEqual([]);
+    // A list's items are drawn in place: only a portal's call puts them elsewhere.
+    expect(
+      short({
+        'a/child.tsx': child(
+          '<i>{ids.map((id) => <button key={id} className="zoom-btn" type="button" />)}</i>',
+        ),
+        'a/bar.tsx': inZoom,
+      }),
+    ).toEqual([]);
     // A child is a child of the element around its component only, not of one further out.
     const direct =
       '.zoom-btn { height: 24px; } @media (pointer: coarse) { .zoom > button { min-height: 44px; } }';
@@ -2713,6 +2740,17 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       {
         'a/child.tsx': child('createPortal(<button className="zoom-btn" />, document.body)'),
         'a/bar.tsx': inZoom,
+      },
+      {
+        'a/child.tsx': child(
+          '<div>{on && createPortal(<button className="zoom-btn" />, document.body)}</div>',
+        ),
+        'a/bar.tsx': inZoom,
+      },
+      {
+        'a/child.tsx': child(
+          '<div className="zoom">{on ? ReactDOM.createPortal(<span><button className="zoom-btn" /></span>, document.body) : null}</div>',
+        ),
       },
       {
         'a/child.tsx':
