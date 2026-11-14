@@ -3106,11 +3106,16 @@ the build differs from the design above, or settles what it left open:
 - **The page's even-out count:** an even-out answer's `counts` carry `moved` (tickets moved or
   pushed whose proposal stands), since the list of tickets is cut at 2,000 with those not moved
   first; the result reads it rather than counting the list.
-- **Not yet done:** the budgets in `plans.large.test.ts` (a capture and a comparison of 50,000
-  tickets; `criticalPath` on 50,000 tickets and 100,000 links, and its route); a contract scenario
-  with `mode: 'even_out'` (the existing one checks the new payload fields with `'fill'`);
-  `fakeScenarioClient`'s run ignores `mode`; a `TimelinePage` story with the critical marks on. `docs/api` lists the five baseline routes and the critical
-  path's, all internal.
+- **The leftovers, done:** the event contract has a second schedule scenario with `mode:
+  'even_out'` (`events/contract.test.ts`), whose event says `even_out` and `overLeft`;
+  `fakeScenarioClient` honours `mode`, evening out Web's load by these rules over the fake plan
+  (with a `capacity` option; `scenarioFixtures.test.ts`); the plan's Timeline has a story with the
+  critical path on (`PlanPage.stories.tsx`, `TimelineCriticalPath`, through `withCriticalPath`);
+  and the comparison's **Download CSV** is `aria-disabled` while it reads, so focus stays on it.
+- **Not yet done (deferred while benchmarking is paused):** the budgets in `plans.large.test.ts`
+  (a capture and a comparison of 50,000 tickets; `criticalPath` on 50,000 tickets and 100,000
+  links, and its route). `docs/api` lists the five baseline routes and the critical path's, all
+  internal.
 
 #### Questions for the user (the design takes the first answer each time)
 
