@@ -74,7 +74,10 @@ export const Full: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Capture baseline…' })).toBeDisabled();
+    await expect(await canvas.findByRole('button', { name: 'Capture baseline…' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   },
 };
 

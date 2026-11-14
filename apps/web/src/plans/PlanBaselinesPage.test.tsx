@@ -148,11 +148,31 @@ describe('a plan’s baselines (PLN-011)', () => {
     renderBaselines('#/plans/12/baselines', {
       baselines: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, name: `B${i + 1}` })),
     });
+    const user = userEvent.setup();
     const capture = await screen.findByRole('button', { name: 'Capture baseline…' });
-    expect(capture).toBeDisabled();
+    // Off, yet focusable, so its reason is in reach of the keyboard.
+    expect(capture).toHaveAttribute('aria-disabled', 'true');
+    expect(capture).not.toBeDisabled();
     expect(capture).toHaveAccessibleDescription(
       'A plan holds at most 10 baselines. Delete one to capture another.',
     );
+    await user.click(capture);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('[PLN-011] keeps focus on Capture when the tenth capture turns it off', async () => {
+    const user = userEvent.setup();
+    renderBaselines('#/plans/12/baselines', {
+      baselines: Array.from({ length: 9 }, (_, i) => ({ id: i + 1, name: `B${i + 1}` })),
+    });
+    const capture = await screen.findByRole('button', { name: 'Capture baseline…' });
+    capture.focus();
+    await user.keyboard('{Enter}');
+    const dialog = screen.getByRole('dialog', { name: 'Capture baseline' });
+    await user.click(within(dialog).getByRole('button', { name: 'Capture' }));
+    await screen.findByText('Baseline Nov 4 is captured: 6 tickets.');
+    await waitFor(() => expect(capture).toHaveAttribute('aria-disabled', 'true'));
+    expect(capture).toHaveFocus();
   });
 
   it('[PLN-011] lets everyone who sees the plan read and compare, and only editors change', async () => {

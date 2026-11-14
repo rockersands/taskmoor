@@ -130,12 +130,16 @@ export function PlanBaselinesPage({
         </h2>
         {list.editable && (
           <div className="scenario-item-actions">
+            {/* Off at the limit, yet focusable (`aria-disabled`): focus comes back here when the
+                tenth capture's dialog closes, and the reason stays in reach of the keyboard. */}
             <button
               type="button"
               className="button-primary"
-              disabled={full}
+              aria-disabled={full || undefined}
               aria-describedby={full ? `${id}-full` : undefined}
-              onClick={() => setCapturing(true)}
+              onClick={() => {
+                if (!full) setCapturing(true);
+              }}
             >
               {t('baselines.capture')}
             </button>
