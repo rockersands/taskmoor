@@ -8,6 +8,7 @@ import {
   choose,
   combosFor,
   imageName,
+  laterWindowsIn,
   MAX_WINDOWS,
   namesIn,
   notCovered,
@@ -290,6 +291,29 @@ describe('addresses and choices', () => {
     expect(imageName('home', 375, 'dark')).toBe('home--375--dark.png');
     expect(imageName('home', 375, 'dark', 1)).toBe('home--375--dark.png');
     expect(imageName('home', 375, 'dark', 3)).toBe('home--375--dark--3.png');
+  });
+
+  it("[NFR-007] finds an earlier run's later windows of a route, and nothing else", () => {
+    const files = [
+      'track-backlog--375--light.png',
+      'track-backlog--375--light--2.png',
+      'track-backlog--375--light--10.png',
+      'track-backlog--375--dark--2.png',
+      'track-backlog--1280--light.png',
+      'track-backlog-columns--375--light--2.png',
+      'board-backlog--375--light--2.png',
+      'track-backlog--375--light--2.png.tmp',
+      'track-backlog--375--light--x.png',
+      'measurements.json',
+    ];
+    expect(laterWindowsIn(files, 'track-backlog', 375, 'light')).toEqual([
+      'track-backlog--375--light--2.png',
+      'track-backlog--375--light--10.png',
+    ]);
+    expect(laterWindowsIn(files, 'track-backlog', 375, 'dark')).toEqual([
+      'track-backlog--375--dark--2.png',
+    ]);
+    expect(laterWindowsIn(files, 'home', 375, 'light')).toEqual([]);
   });
 });
 

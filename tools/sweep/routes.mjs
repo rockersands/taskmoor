@@ -16,7 +16,7 @@
 // set and forgotten, and the browser's state is kept in .cache/sweep/state.json (git ignores
 // .cache). Sample data the demo lacks is added through the API (seed.mjs). Nothing here prints or
 // writes a link, password or token: every line that leaves goes through redact.mjs.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -29,6 +29,7 @@ import {
   DESKTOP,
   GROUPS,
   imageName,
+  laterWindowsIn,
   notCovered,
   PHONE,
   parseSweepArgs,
@@ -299,6 +300,16 @@ const atMost = (ms, work) =>
 const SHOT = { animations: 'disabled', caret: 'hide' };
 
 /**
+ * Removes an earlier run's later window pictures of this route, so the folder holds only what this
+ * capture takes: a page that got shorter, or a state now pictured in one window, leaves none behind.
+ */
+function removeLaterWindows(slug, combo) {
+  for (const file of laterWindowsIn(readdirSync(OUT), slug, combo.width, combo.skin)) {
+    rmSync(join(OUT, file), { force: true });
+  }
+}
+
+/**
  * The phone's window, scrolled through the page and pictured each time. Chromium's whole-page
  * capture resizes the page without its touch emulation, so controls lost their 44 px and the
  * skin's fixed background ended in a flat band; a window picture keeps both as a phone shows them.
@@ -389,6 +400,7 @@ async function capture(pages, entry, combo, locale, slug) {
       : redact(new URL(page.url()).pathname + new URL(page.url()).search);
     if (combo.phone) {
       record.pointer = await page.evaluate(pointerState);
+      removeLaterWindows(slug, combo);
       if (inWindow) {
         await page.screenshot({ path: join(OUT, image), ...SHOT });
       } else {

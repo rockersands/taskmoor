@@ -278,6 +278,18 @@ export const imageName = (slug, width, skin, window = 1) =>
   `${slug}--${width}--${skin}${window > 1 ? `--${window}` : ''}.png`;
 
 /**
+ * The later window pictures (`--2`, `--3` ...) of this route, width and skin among `files`: an
+ * earlier run's, which a new capture with fewer windows would otherwise leave beside its own.
+ */
+export function laterWindowsIn(files, slug, width, skin) {
+  const stem = imageName(slug, width, skin).slice(0, -'.png'.length);
+  return files.filter((file) => {
+    if (!file.startsWith(`${stem}--`) || !file.endsWith('.png')) return false;
+    return /^\d+$/.test(file.slice(stem.length + 2, -'.png'.length));
+  });
+}
+
+/**
  * Where each window of a phone picture starts, scrolling as a person would. A bar stuck to the top
  * or the bottom of the window covers what is under it, so each step is the window less those bars
  * and a little more, so nothing is left unseen between two pictures and a line cut at the foot of
