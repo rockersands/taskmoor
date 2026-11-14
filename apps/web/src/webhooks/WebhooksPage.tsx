@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
@@ -69,7 +70,7 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
     | { status: 'failed' }
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
-  const [creating, setCreating] = useState(false);
+  const creating = useNewForm();
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -104,15 +105,14 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
           : { purpose: t('webhooks.purpose'), about: t('webhooks.about') })}
         {...(state.status === 'loaded'
           ? {
+              // In the one place every administration page has it (D11, AD-18).
               actions: (
-                <button
-                  type="button"
-                  className="button-primary"
-                  aria-expanded={creating}
-                  onClick={() => setCreating(!creating)}
-                >
-                  {t('webhooks.new')}
-                </button>
+                <NewButton
+                  label={t('webhooks.new')}
+                  open={creating.open}
+                  onToggle={creating.toggle}
+                  ref={creating.button}
+                />
               ),
             }
           : {})}
@@ -135,14 +135,14 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
               {t('webhooks.loadFailed')}
             </p>
           )}
-          {creating && (
+          {creating.open && (
             <WebhookForm
               label={t('webhooks.new')}
               submitLabel={t('webhooks.create')}
-              onCancel={() => setCreating(false)}
+              onCancel={creating.close}
               onSave={async (input) => {
                 await client.create(input);
-                setCreating(false);
+                creating.close();
                 said(t('webhooks.created', { name: input.name }));
               }}
             />

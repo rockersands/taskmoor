@@ -69,6 +69,41 @@ export const Editing: Story = {
   },
 };
 
+/**
+ * The "New template" button in the place every administration page has it (D11, AD-18): under the
+ * title and its purpose line, at the start, and still there while a template is being edited. It
+ * once sat in a row of its own under the header, hidden while a form was open.
+ */
+export const NewButtonUnderThePurposeLine: Story = {
+  args: {
+    trackKey: undefined as never,
+    client: fakeTemplateClient([INCIDENT_TEMPLATE], { options: EVERY_TRACK_OPTIONS }),
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 1200 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: 'New template' });
+    const header = button.closest('header') as HTMLElement;
+    await expect(header).not.toBeNull();
+    const title = within(header).getByRole('heading', { level: 1 });
+    const purpose = header.querySelector('.page-purpose') as HTMLElement;
+    await expect(Math.round(button.getBoundingClientRect().left)).toBe(
+      Math.round(title.getBoundingClientRect().left),
+    );
+    await expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      purpose.getBoundingClientRect().bottom,
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit template Incident report' }));
+    await expect(canvas.getByRole('button', { name: 'New template' })).toBeVisible();
+  },
+};
+
 /** A track's templates on a phone: the track's name over the title, the line saying what it covers. */
 export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
