@@ -22,7 +22,24 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-296 to T-299 (2026-11-14, the Mac)
+### Latest: T-350 to T-353 (2026-11-14, the Mac)
+
+On `main` at `d0795328` after a full gate (9,249 tests, 266 e2e; the local-embedding speed limit
+missed on this Mac, not enforced, benchmarking set aside).
+
+- T-350: the template form adds person, group and team values with the create form's searches.
+  A restricted person field in a template for every track says to set it on a track's template;
+  whether to add a site-level search is the user's question T-354 (decisions.csv).
+- T-351: release notes' headings and the release's Type column read through typeName.
+- T-352: the clone dialog names a left-out custom field (target track's catalogue, then the
+  original's).
+- T-353: the design guard reads template-literal classes, respects the cascade for touch rules
+  and follows a parent's wrapper across files. The phone sweep of the timeline confirms T-296:
+  the bar is no longer listed.
+- Next on the Mac: T-355 and T-356 (the sweep's partly covered press areas; the guard's glass
+  per component and resets).
+
+### Earlier: T-296 to T-299 (2026-11-14, the Mac)
 
 On `main` at `e9adbd70` after a full gate (9,226 tests, 264 e2e), with Windows' T-287 part,
 T-289's last four and T-307 to T-311 already there.
