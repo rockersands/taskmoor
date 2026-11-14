@@ -47,22 +47,28 @@ export function ScenarioCompare({
   const fallbackB = String(scenarios.find((s) => s.main)?.id ?? scenarios[0]?.id ?? 'live');
   const a = askedA ?? 'live';
   const b = askedB ?? fallbackB;
-  const [data, setData] = useState<Comparison | null>(null);
+  // A comparison is shown only for the sides and filters it was read for: another pair waits for
+  // its own, never showing the last one's numbers under the new names.
+  const [read, setRead] = useState<{ key: string; value: Comparison } | null>(null);
   const [failed, setFailed] = useState(false);
   const filterKey = JSON.stringify(filters);
+  const sidesKey = JSON.stringify([a, b, filterKey]);
+  const data = read?.key === sidesKey ? read.value : null;
+  // Read again when a scenario is made main, deleted or drafted in: its counts and ends change.
+  const listKey = scenarios.map((s) => `${s.id}:${s.version}:${s.drafts}:${s.notShown}`).join();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values, and the scenarios by `listKey`
   useEffect(() => {
     let live = true;
     setFailed(false);
     client.compare(planId, a, b, filters).then(
-      (c) => live && setData(c),
+      (c) => live && setRead({ key: sidesKey, value: c }),
       () => live && setFailed(true),
     );
     return () => {
       live = false;
     };
-  }, [client, planId, a, b, filterKey]);
+  }, [client, planId, sidesKey, listKey]);
 
   const sideName = (side: string) =>
     side === 'live'

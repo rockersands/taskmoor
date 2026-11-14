@@ -184,6 +184,40 @@ describe('a plan’s scenarios (PLN-003)', () => {
     );
   });
 
+  it('[PLN-003] never shows one pair’s comparison under another’s names, and reads it again once a scenario changes', async () => {
+    const user = userEvent.setup();
+    const { scenarios } = renderScenarios('#/plans/12/scenarios?a=1&b=2');
+    await screen.findByRole('table', { name: 'The plan compared' });
+    const compare = scenarios.compare;
+    let calls = 0;
+    let answer: (() => void) | undefined;
+    scenarios.compare = async (...args) => {
+      calls++;
+      await new Promise<void>((resolve) => {
+        answer = resolve;
+      });
+      return compare(...args);
+    };
+    // Faster against Live: until its answer comes, Main plan's numbers are not shown as Live's.
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Compare' }),
+      'Live (tickets as they are)',
+    );
+    expect(await screen.findByText('Loading the report…')).toBeVisible();
+    expect(screen.queryByRole('table', { name: 'The plan compared' })).toBeNull();
+    await act(async () => answer?.());
+    await screen.findByRole('table', { name: 'The plan compared' });
+    // Making Faster main changes what it holds: the comparison is read again.
+    const before = calls;
+    const faster = itemOf('Faster');
+    await user.click(within(faster).getByRole('button', { name: 'Make Faster main' }));
+    await user.click(
+      within(within(faster).getByRole('group')).getByRole('button', { name: 'Make Faster main' }),
+    );
+    await waitFor(() => expect(calls).toBeGreaterThan(before));
+    await act(async () => answer?.());
+  });
+
   it('[PLN-003] compares as a card per measure and per team on a phone', async () => {
     act(() => setViewportWidth(360));
     renderScenarios('#/plans/12/scenarios?a=1&b=2');
