@@ -26,7 +26,9 @@ import {
   planViewKey,
   readView,
 } from './address';
+import { type BaselineClient, baselineClient } from './baselineClient';
 import { type Plan, type PlanChoices, type PlanClient, planClient } from './client';
+import { PlanBaselinesPage } from './PlanBaselinesPage';
 import { PlanCalendarPage } from './PlanCalendarPage';
 import { PlanCapacityPage } from './PlanCapacityPage';
 import { PlanChangesPage } from './PlanChangesPage';
@@ -62,6 +64,8 @@ export interface PlanPageProps {
   boards?: ProgramBoardClient;
   /** Scenarios and draft changes (ADR-122 stage 6); the real client by default. */
   scenarios?: ScenarioClient;
+  /** Baselines (ADR-122 stage 9); the real client by default. */
+  baselines?: BaselineClient;
   search?: SearchClient;
   list?: ListClient;
   /** Today, for the Timeline and the Calendar. */
@@ -109,6 +113,7 @@ export function PlanPage({
   client = planClient,
   boards,
   scenarios = scenarioClient,
+  baselines = baselineClient,
   search = searchClient,
   list = listClient,
   now = () => new Date(),
@@ -480,6 +485,16 @@ export function PlanPage({
               onChanged={scenariosChanged}
               onCompare={(compare) => redirectRoute(here({ ...view, compare }))}
               onAutoSchedule={() => setScheduling(true)}
+            />
+          )}
+          {problem !== 'failed' && section === 'baselines' && (
+            <PlanBaselinesPage
+              planId={id}
+              planName={plan.name}
+              client={baselines}
+              view={view}
+              scenario={active ? { id: active.id, name: active.name } : null}
+              now={now}
             />
           )}
         </div>

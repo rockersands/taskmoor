@@ -7581,6 +7581,111 @@ export const messagesEs: Record<MessageId, string> = {
   // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
   'plans.section.changes': 'Cambios',
   'plans.section.scenarios': 'Escenarios',
+  'plans.section.baselines': 'Líneas base',
+  'baselines.title': 'Líneas base',
+  'baselines.intro':
+    'Una línea base guarda los días de los tickets del plan tal como están en un momento, para ver después qué se movió. Cada persona ve sus días solo en los tickets que este plan le muestra.',
+  'baselines.capture': 'Capturar línea base…',
+  'baselines.full':
+    'Un plan guarda como mucho {count} líneas base. Elimina una para capturar otra.',
+  'baselines.readOnly':
+    'Solo el propietario del plan y los administradores del sitio capturan, renombran y eliminan líneas base.',
+  'baselines.empty': 'Aún no hay líneas base',
+  'baselines.emptyBody':
+    'Captura una antes de que el trabajo se mueva y compárala después con los días de entonces.',
+  'baselines.fromLive': 'Desde En vivo',
+  'baselines.fromScenario': 'Desde {name}',
+  'baselines.madeBy': 'Capturada por {name} el {when}',
+  'baselines.tickets': '{count, plural, =0 {Ningún ticket} one {# ticket} other {# tickets}}',
+  'baselines.open': 'Comparar',
+  'baselines.open.label': 'Comparar con {name}',
+  'baselines.rename': 'Renombrar',
+  'baselines.rename.label': 'Renombrar {name}',
+  'baselines.rename.title': 'Renombrar {name}',
+  'baselines.rename.save': 'Guardar nombre',
+  'baselines.rename.done': 'La línea base ahora se llama {name}.',
+  'baselines.delete': 'Eliminar',
+  'baselines.delete.label': 'Eliminar {name}',
+  'baselines.delete.ask': '{name} y los días que guarda se van. Ningún ticket cambia.',
+  'baselines.delete.done': '{name} se eliminó.',
+  'baselines.capture.title': 'Capturar línea base',
+  'baselines.capture.intro':
+    'Guarda los días de inicio y vencimiento de cada ticket que este plan te muestra, o los días de su sprint, tal como están ahora. Nada cambia en los tickets.',
+  'baselines.name': 'Nombre',
+  'baselines.capture.default': 'Línea base {day}',
+  'baselines.capture.sourceLive': 'Lo que muestra ahora el cronograma: En vivo',
+  'baselines.capture.sourceScenario':
+    'Lo que muestra ahora el cronograma: {name}, borradores sin aplicar',
+  'baselines.capture.save': 'Capturar',
+  'baselines.capture.done':
+    '{name} está capturada: {count, plural, =0 {ningún ticket} one {# ticket} other {# tickets}}.',
+  'baselines.cancel': 'Cancelar',
+  'baselines.nameRequired': 'Dale un nombre a la línea base.',
+  'baselines.refused.tooMany': 'Un plan guarda como mucho {count} líneas base. Elimina una antes.',
+  'baselines.refused.tooLarge':
+    'El plan tiene más de {count} tickets, demasiados para capturarlos en una línea base.',
+  'baselines.refused.conflict':
+    'Alguien cambió esta línea base mientras tanto. La lista se vuelve a leer; inténtalo otra vez.',
+  'baselines.refused.forbidden':
+    'Solo el propietario del plan y los administradores del sitio pueden cambiar sus líneas base.',
+  'baselines.refused.gone': 'Esta línea base o este escenario ya no existe.',
+  'baselines.refused.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'baselines.listFailed': 'No se pudieron leer las líneas base. Inténtalo de nuevo en un momento.',
+  'baselines.compare.title': 'Comparado con {name}',
+  'baselines.compare.againstLive': 'Los días de ahora: En vivo.',
+  'baselines.compare.againstScenario': 'Los días de ahora: {name}, borradores sin aplicar.',
+  'baselines.compare.close': 'Cerrar la comparación',
+  'baselines.compare.later':
+    '{count, plural, =0 {Ningún ticket termina más tarde que en {name}} one {# ticket termina más tarde que en {name}, por {most, plural, one {# día} other {# días}}} other {# tickets terminan más tarde que en {name}, por hasta {most, plural, one {# día} other {# días}}}}',
+  'baselines.compare.sentence': '{later}; {earlier} antes; {same} igual.',
+  'baselines.compare.planLater':
+    'El plan termina {count, plural, one {# día} other {# días}} más tarde ({now}, era {was}).',
+  'baselines.compare.planEarlier':
+    'El plan termina {count, plural, one {# día} other {# días}} antes ({now}, era {was}).',
+  'baselines.compare.planSame': 'El plan termina el mismo día ({now}).',
+  'baselines.compare.planNone':
+    'Ningún ticket tiene días en ambos, así que el final del plan no se compara.',
+  'baselines.compare.notShown':
+    '{count, plural, one {# ticket de esta línea base no se te muestra.} other {# tickets de esta línea base no se te muestran.}}',
+  'baselines.compare.others':
+    '{added} añadidos desde entonces; {undatedThen} sin días entonces; {undatedNow} sin días ahora.',
+  'baselines.compare.yours':
+    'Los retrasos van en días naturales, sobre los tickets que este plan te muestra con los filtros de la página.',
+  'baselines.compare.show': 'Mostrar',
+  'baselines.compare.show.slipped': 'Más tarde ({count})',
+  'baselines.compare.show.earlier': 'Antes ({count})',
+  'baselines.compare.show.added': 'Añadidos desde entonces ({count})',
+  'baselines.compare.show.all': 'Todos',
+  'baselines.compare.list': 'Tickets: {which}',
+  'baselines.compare.none': 'No hay tickets aquí',
+  'baselines.compare.dayLater':
+    '{count, plural, one {# día más tarde} other {# días más tarde}}: {now}, era {was}',
+  'baselines.compare.dayEarlier':
+    '{count, plural, one {# día antes} other {# días antes}}: {now}, era {was}',
+  'baselines.compare.sameEnd': 'Mismo final: {now}',
+  'baselines.compare.due': 'vence el {day}',
+  'baselines.compare.ends': 'termina el {day}',
+  'baselines.compare.noDays': 'sin días',
+  'baselines.compare.addedLine': 'Añadido después de la línea base: {now}',
+  'baselines.compare.undatedThenLine': 'Sin días entonces; ahora {now}',
+  'baselines.compare.undatedNowLine': 'Sin días ahora; entonces {was}',
+  'baselines.compare.closed': '(cerrado)',
+  'baselines.compare.showMore': 'Mostrar más',
+  'baselines.compare.download': 'Descargar CSV',
+  'baselines.compare.downloadFailed':
+    'No se pudo crear el archivo. Inténtalo de nuevo en un momento.',
+  'baselines.compare.failed': 'No se pudo leer la comparación. Inténtalo de nuevo en un momento.',
+  'baselines.csv.baseline': 'Línea base: {name}',
+  'baselines.csv.startThen': 'Inicio entonces',
+  'baselines.csv.dueThen': 'Vencimiento entonces',
+  'baselines.csv.datedThen': 'Días entonces según',
+  'baselines.csv.startNow': 'Inicio ahora',
+  'baselines.csv.dueNow': 'Vencimiento ahora',
+  'baselines.csv.datedNow': 'Días ahora según',
+  'baselines.csv.delay': 'Retraso (días)',
+  'baselines.csv.startShift': 'Inicio movido (días)',
+  'baselines.csv.own': 'Sus propios días',
+  'baselines.csv.sprint': 'Su sprint',
   'draft.tag': 'Borrador',
   'draft.stale':
     'Cambió desde el borrador: el ticket ya no tiene los valores de los que partió este borrador.',

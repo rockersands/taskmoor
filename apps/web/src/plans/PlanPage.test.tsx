@@ -53,6 +53,7 @@ describe('a plan (PLN-001, PLN-012)', () => {
       'Program boards',
       'Changes',
       'Scenarios',
+      'Baselines',
       'Settings',
     ]);
     const searched = (link: HTMLElement) =>
