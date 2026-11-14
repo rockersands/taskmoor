@@ -37,7 +37,12 @@ test.describe('desktop', () => {
 
   test('navigation changes the page', async ({ page }) => {
     await page.goto(`${BASE}/`);
-    await page.getByRole('link', { name: 'Tracks' }).click();
+    // The sidebar's link: Home's "All tracks" (T-194) shows once a person has more tracks than
+    // its panel lists, as the shared e2e database does after a few specs.
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Tracks', exact: true })
+      .click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tracks');
     await expect(page).toHaveURL(/#\/tracks$/);
   });
