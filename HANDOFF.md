@@ -22,7 +22,26 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
+### Latest: baselines, the critical path and evening out load (2026-11-15, Windows)
+
+On `main` at `9201af30` after a full gate (9,575 tests, 270 e2e). Migration 0111; the next is 0112 (claimed for stage 10).
+
+- ADR-122 stage 9 (T-089a, PLN-011): a plan's Baselines section captures up to 10 baselines from Live
+  or a scenario (`routes/plan-baselines.ts`, tables `plan_baseline` and `plan_baseline_day`) and
+  compares one with today's days: slipped, earlier, not in the baseline, the plan's end then and now.
+  The answer names the old days `was` (Biome refuses a `then` property).
+- The critical path: `plans/criticalPath.ts` (slack per ticket, chains, circles) and
+  `GET /plans/:id/critical-path`; the Timeline's toggle (`critical=1`) and a list in words.
+  Tarjan and the heap moved to `plans/graph.ts`; `classify` is exported from `scheduler.ts`.
+- Even out load: `plans/evenOut.ts`, the auto-schedule run's `mode: 'even_out'`, writing drafts like
+  a fill run; answers carry `overLeft` and `counts.moved`.
+- `plans/access.ts` holds `planEditable` for every plan route.
+- T-316: ten of the third sweep's eleven Plans faults; S3-PL-9 stays with the Mac's T-359.
+- The user took Claude's recommendation for every question of T-306, T-312, T-314 and T-315.
+- Deferred while benchmarking is paused: the stage's budgets in `plans.large.test.ts`.
+- Next on Windows: stage 10, the hierarchy grid (T-089a, PLN-010).
+
+### Earlier: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
 
 The Mac's last push to `main` was `c10ea330` (T-355 and T-356, full gate: 9,257 tests, 266 e2e);
 Windows has pushed since (`91a354b0`). The main lock is free and nothing of the Mac's is running.
