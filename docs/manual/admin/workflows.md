@@ -221,7 +221,8 @@ in Administration does. The address of a workflow that does not exist, or no lon
   transition, such as "Transition: Approve", so it is never taken for a status, and the one open
   is marked as the current one. On a touch screen each label is at least a finger's height. A transition from any
   status sits in a tab above its status; when it is the only one there, the tab takes the free
-  room beside the box so its name shows whole. On phones the picture waits behind **Show the
+  room beside the box so its name shows whole. Two or more sit side by side, with the next column
+  moved over to make room, and no tab ever covers another. On phones the picture waits behind **Show the
   diagram**. The page's breadcrumb ends at the workflow's name, under **Workflows**, and **Name
   and description** opens with a chevron.
 - **Text** mode shows the definition as JSON, with a key from status ids to names. Switching

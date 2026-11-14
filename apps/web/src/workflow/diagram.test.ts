@@ -56,6 +56,76 @@ describe('workflow diagram layout (M1-030)', () => {
     expect([tab(4)?.width, tab(5)?.width]).toEqual([TAB_WIDTH, TAB_WIDTH]);
   });
 
+  it('[WF-002] keeps a lone global tab clear of the tabs of a neighbour with two or more (T-255)', () => {
+    // New, Active and Review in one row; Active has two global transitions, Review one.
+    const definition: WorkflowDefinition = {
+      initialStatusId: 1,
+      statuses: [{ statusId: 1 }, { statusId: 2 }, { statusId: 3 }],
+      transitions: [
+        t(1, [1], 2),
+        t(2, [2], 3),
+        t(3, 'any', 2),
+        t(4, 'any', 2),
+        t(5, 'any', 2),
+        t(6, 'any', 3),
+        t(7, 'any', 1),
+      ],
+    };
+    const diagram = layoutDiagram(definition);
+    const span = (id: number) => {
+      const label = diagram.edges.find((e) => e.transitionId === id)?.label;
+      return label ? [label.x - label.width / 2, label.x + label.width / 2] : [0, 0];
+    };
+    const node = (id: number) => diagram.nodes.find((n) => n.statusId === id);
+    // Active's three tabs end before Review's box and Review's lone tab starts after them.
+    const [, activeEnd] = span(5);
+    const [reviewStart] = span(6);
+    expect(activeEnd).toBeLessThan(node(3)?.x ?? 0);
+    expect(reviewStart).toBeGreaterThan(activeEnd);
+    // New's lone tab stops before Active's first tab.
+    expect(span(7)[1]).toBeLessThan(span(3)[0]);
+    // The lone tabs keep a shared tab's width at least.
+    expect(span(6)[1] - span(6)[0]).toBeGreaterThanOrEqual(TAB_WIDTH);
+  });
+
+  it('[WF-002] global tabs in one row never overlap one another or another column’s box', () => {
+    fc.assert(
+      fc.property(workflowArb(), ({ definition }) => {
+        const diagram = layoutDiagram(definition);
+        const tabs = diagram.edges.flatMap((e) =>
+          e.kind === 'global' && e.label
+            ? [
+                {
+                  y: e.label.y,
+                  left: e.label.x - e.label.width / 2,
+                  right: e.label.x + e.label.width / 2,
+                },
+              ]
+            : [],
+        );
+        for (const [i, a] of tabs.entries()) {
+          for (const b of tabs.slice(i + 1)) {
+            if (a.y !== b.y) continue;
+            expect(a.right <= b.left || b.right <= a.left).toBe(true);
+          }
+        }
+        // A tab never reaches over a box in another column of its row.
+        for (const e of diagram.edges) {
+          if (e.kind !== 'global' || !e.label) continue;
+          const own = diagram.nodes.find(
+            (n) => n.statusId === definition.transitions.find((x) => x.id === e.transitionId)?.to,
+          );
+          for (const n of diagram.nodes) {
+            if (!own || n === own || n.y !== own.y) continue;
+            const left = e.label.x - e.label.width / 2;
+            const right = e.label.x + e.label.width / 2;
+            expect(right <= n.x || n.x + NODE_WIDTH <= left).toBe(true);
+          }
+        }
+      }),
+    );
+  });
+
   it('[WF-012] marks statuses no path reaches', () => {
     const definition: WorkflowDefinition = {
       initialStatusId: 1,
