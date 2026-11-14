@@ -946,6 +946,7 @@ export const messagesEn = {
   'auth.challengeExpired':
     'The sign-in took too long or had too many wrong codes. Enter your password again.',
   'auth.sso.signInWith': 'Sign in with {name}',
+  'auth.sso.google': 'Sign in with Google',
   'auth.sso.others': 'Other ways to sign in',
   'auth.sso.organisation': 'This address signs in with {name}.',
   'auth.sso.error.invalidState':
@@ -2982,6 +2983,8 @@ export const messagesEn = {
   'trackPeople.openPermissions': 'Open Permissions',
   'trackPeople.emailOff':
     'Email is not set up on this site, so Taskmoor cannot send anything. Make a link and pass it on yourself.',
+  'trackPeople.linksByEmail':
+    'Your invitations go by email: on a site that sends email, only site administrators copy links.',
   'trackPeople.holders': 'Who holds which role',
   'trackPeople.noHolders': 'Nobody holds a role in this track yet.',
   'trackPeople.appointLocked':
@@ -3008,7 +3011,7 @@ export const messagesEn = {
   'trackPeople.lapsed': 'No longer valid',
   'trackPeople.sendFailed': 'Email not sent',
   'trackPeople.resend': 'Send again',
-  'trackPeople.resendTo': 'Send the invitation to {who} again',
+  'trackPeople.resendTo': 'Send again to {who}',
   'trackPeople.resent': 'The invitation to {who} went out again.',
   'trackPeople.newLink': 'New link',
   'trackPeople.newLinkFor': 'Make a new link for {who}',

@@ -1,7 +1,7 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/styles/sso.css, docs/plan/decisions.csv
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -47,7 +47,7 @@ keep the saved one.
 | Field | Meaning |
 |---|---|
 | **Type of provider** | **OpenID Connect**, **SAML 2.0** or **Google** (OpenID Connect with its settings filled in), chosen when the provider is added |
-| **Name** | Shown on the sign-in button, such as "Staff accounts" |
+| **Name** | Shown on the sign-in button, such as "Staff accounts". A [Google](#the-google-button) provider's button says "Sign in with Google" whatever its name |
 | **Email domains** | The domains this provider serves; press Enter after each one |
 | **Enforce single sign-on for these domains** | People with these addresses cannot sign in with a password |
 | **Create accounts at a first sign-in** | On by default; off means only people who already have an account can sign in |
@@ -139,6 +139,24 @@ The choice fills in these settings, and you can change any of them:
 
 Then [invite people](invitations.md) by their Gmail address, and try it from a private window.
 
+### The Google button
+
+A provider at Google's issuer gets Google's own sign-in button on the sign-in page, as Google's
+[sign-in branding guidelines](https://developers.google.com/identity/branding-guidelines) describe
+it: Google's four-colour "G" at the left and **Sign in with Google** in the person's language
+(**Iniciar sesión con Google** in Spanish), whatever name you gave the provider. It follows the
+person's skin: Google's light button (white, with a grey edge) in the light skin, Google's dark
+button in the dark skin. It keeps Google's colours and shape rather than Taskmoor's, is 40 pixels
+high, and a finger's height on a touch screen. For a Gmail address it takes the place of the
+highlighted button under the email field. Where a Google provider has **Single sign-on required**
+(a Google Workspace domain, say), the form's one button, which the password field gives way to, is
+Google's button too, and pressing Enter in the email field leads there. Other providers keep
+Taskmoor's plain button.
+
+What decides it is the issuer, not the name: the button appears for an OpenID Connect provider
+whose **Issuer URL** is `https://accounts.google.com`, and the public provider list marks it with
+`brand: "google"`.
+
 ### Who gets in
 
 | Who | What happens |
@@ -214,9 +232,10 @@ What we could not confirm from Google's pages, so check it on your own account:
   mention sign-in. What an unverified client's consent screen shows in place of your app's name is not
   stated either.
 
-Taskmoor's button says "Sign in with Google" in plain text. Google's
-[branding guidelines](https://developers.google.com/identity/branding-guidelines) ask for its "G" logo
-and tie this to verification, so an operator who goes through verification may be asked about it.
+Taskmoor's button shows Google's "G" as Google's
+[branding guidelines](https://developers.google.com/identity/branding-guidelines) ask (see
+[The Google button](#the-google-button)). Google ties these guidelines to verification, so an
+operator who goes through verification may be asked about the button.
 
 Google's [OpenID Connect documentation](https://developers.google.com/identity/openid-connect/openid-connect)
 and its page on [what it speaks for](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
@@ -359,6 +378,6 @@ a password link to sign in.
 | `GET /api/v1/identity-providers` | Site administrator | Providers, and the redirect URI |
 | `POST /api/v1/identity-providers` | Site administrator | Add a provider (`protocol`: `oidc` or `saml`) |
 | `PATCH`, `DELETE /api/v1/identity-providers/:id` | Site administrator | Change or delete |
-| `GET /api/v1/auth/providers` | Anyone | Enabled providers for the sign-in page |
-| `POST /api/v1/auth/discover` | Anyone | Which methods an email's domain uses |
+| `GET /api/v1/auth/providers` | Anyone | Enabled providers for the sign-in page: `id`, `name`, `protocol`, and `brand: "google"` for a Google provider |
+| `POST /api/v1/auth/discover` | Anyone | Which methods an email's domain uses, its provider in the same form |
 | `GET /api/v1/auth/oidc/:id/start`, `GET /api/v1/auth/saml/:id/start` | Anyone | Start a sign-in |

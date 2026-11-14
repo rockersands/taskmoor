@@ -120,8 +120,15 @@ session. The inviter is told at the invitation, and the person on the page, from
 site's rules alone.
 
 **No mail server.** `emailAvailable` comes with the list; the dialog says so plainly and offers only
-links. A link can also be chosen where mail works. The answer carries it once, and the database
-never holds it.
+links. The answer carries it once, and the database never holds it.
+
+**Where mail works, only site administrators copy links** (the user's decision of 2026-11-13,
+T-053). A copied link skips the proof that the mailbox is the invited person's, so where the site
+sends email a link is for site administrators alone: anyone else who asks for one, on an invitation
+or a resend, is refused `403 email_invitations_only` before anything is written, and their
+invitations go by email. The list carries `canCopyLinks` so the web app hides **New link** and the
+choice of delivery, and says why in one line. Without a mail server nothing changes: a link is the
+only way, for everyone who may invite. Earlier, any inviter could choose a link where mail worked.
 
 **Single sign-on.** An invitation can be accepted by signing in through an enabled provider that
 vouches for that same address: the page's sign-in returns to the link, and `accept` does the rest.

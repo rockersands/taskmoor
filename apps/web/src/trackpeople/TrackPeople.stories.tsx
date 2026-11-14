@@ -76,6 +76,52 @@ export const NoMailServer: Story = {
   args: { client: fakeTrackPeopleClient({ emailAvailable: false }) },
 };
 
+/**
+ * Where the site sends email a manager's invitations go by email (T-053): no New link, and one
+ * line saying why.
+ */
+export const ManagerWhereEmailWorks: Story = {
+  args: { client: fakeTrackPeopleClient({ emailAvailable: true, canCopyLinks: false }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/Your invitations go by email: on a site that sends email/),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /Make a new link/ })).toBeNull();
+  },
+};
+
+/** A site administrator on the same site may still copy a link (T-053). */
+export const LinksForASiteAdministrator: Story = {
+  args: { client: fakeTrackPeopleClient({ emailAvailable: true, canCopyLinks: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Make a new link for nia@example.com' }),
+    ).toBeVisible();
+  },
+};
+
+/** The manager's dialog: email only, with the line that says why. */
+export const DialogEmailOnly: StoryObj<typeof InviteDialog> = {
+  render: () => (
+    <InviteDialog
+      track={{ id: 3, key: 'SHOP' }}
+      roles={ROLES}
+      emailAvailable
+      canCopyLinks={false}
+      client={fakeTrackPeopleClient()}
+      onClose={() => {}}
+      onSent={() => {}}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('radio')).toBeNull();
+    await expect(canvas.getByText(/only site administrators copy links/)).toBeVisible();
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1' } },
 };
@@ -392,6 +438,8 @@ const rowNamed = (list: HTMLElement, text: string) =>
 const twoWaiting = () =>
   fakeTrackPeopleClient({
     invitations: [WAITING, { ...WAITING, id: 22, email: 'oli@example.com' }],
+    // As for a site administrator, who may copy links where the site sends email (T-053).
+    canCopyLinks: true,
   });
 
 /**
@@ -461,7 +509,7 @@ export const InvitationAnswerInItsRow: Story = {
     const canvas = within(canvasElement);
     const card = await canvas.findByRole('region', { name: 'Invitations waiting' });
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Send the invitation to oli@example.com again' }),
+      await canvas.findByRole('button', { name: 'Send again to oli@example.com' }),
     );
     const list = within(card).getByRole('list');
     await expect(

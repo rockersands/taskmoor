@@ -38,6 +38,11 @@ export interface FakeTrackPeopleOptions {
   canInvite?: boolean;
   invitingGiven?: boolean;
   emailAvailable?: boolean;
+  /**
+   * Whether links may be copied; as the server answers when absent: only without email, since
+   * the fake cannot tell a site administrator (T-053).
+   */
+  canCopyLinks?: boolean;
   /** The manager lost the right to give the role that runs the track. */
   appointLocked?: boolean;
   invitations?: Invitation[];
@@ -84,6 +89,9 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
   ];
   let next = 100;
   let notices = options.checklistNotices ?? false;
+  const emailAvailable = options.emailAvailable ?? true;
+  const canCopyLinks = options.canCopyLinks ?? !emailAvailable;
+  const refuseLink = () => new ApiError(403, { error: 'email_invitations_only' });
   return {
     calls,
     managedTracks: async () => [SHOP, OPS],
@@ -133,10 +141,12 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
       invitations: structuredClone(invitations),
       canInvite: options.canInvite ?? true,
       invitingGiven: options.invitingGiven ?? true,
-      emailAvailable: options.emailAvailable ?? true,
+      emailAvailable,
+      canCopyLinks,
     }),
     invite: async (trackId, body) => {
       log('invite', trackId, body);
+      if (body.delivery === 'link' && !canCopyLinks) throw refuseLink();
       if (body.createTracks && options.refuseCreateTracks) {
         throw new ApiError(403, { error: 'forbidden', permission: 'create_local_tracks' });
       }
@@ -176,6 +186,7 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
     },
     resend: async (trackId, id, delivery) => {
       log('resend', trackId, id, delivery);
+      if (delivery === 'link' && !canCopyLinks) throw refuseLink();
       return delivery === 'link'
         ? { link: `https://taskmoor.example.com/#/invite?token=again-${id}` }
         : {};

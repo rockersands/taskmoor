@@ -207,7 +207,7 @@ describe('signing in with Google (IAM-031, IAM-032)', () => {
         payload: { email: 'nobody-here@gmail.com' },
       });
       expect(found.json()).toEqual({
-        provider: { id: providerId, name: 'Google', protocol: 'oidc' },
+        provider: { id: providerId, name: 'Google', protocol: 'oidc', brand: 'google' },
         password: true,
       });
       const elsewhere = await call(undefined, {
@@ -218,7 +218,7 @@ describe('signing in with Google (IAM-031, IAM-032)', () => {
       expect(elsewhere.json()).toEqual({ provider: null, password: true });
       const offered = await call(undefined, { method: 'GET', url: '/api/v1/auth/providers' });
       expect(offered.json().providers).toEqual([
-        { id: providerId, name: 'Google', protocol: 'oidc' },
+        { id: providerId, name: 'Google', protocol: 'oidc', brand: 'google' },
       ]);
     });
   });

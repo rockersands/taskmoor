@@ -139,6 +139,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
     if (body?.permission === 'create_local_tracks') return t('trackPeople.problem.createTracks');
     if (body?.error === 'too_many_invitations') return t('trackPeople.problem.tooMany');
     if (body?.error === 'email_not_set_up') return t('trackPeople.emailOff');
+    if (body?.error === 'email_invitations_only') return t('trackPeople.linksByEmail');
     if (body?.error === 'track_archived') return t('trackPeople.problem.archived');
     if (error.status === 403) return t('trackPeople.problem.forbidden');
     return t('trackPeople.problem.other');
@@ -300,6 +301,9 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
       )}
       {view.canInvite && !view.emailAvailable && (
         <p className="page-note">{t('trackPeople.emailOff')}</p>
+      )}
+      {view.canInvite && view.emailAvailable && !view.canCopyLinks && (
+        <p className="page-note">{t('trackPeople.linksByEmail')}</p>
       )}
 
       <section aria-labelledby={`${id}-holders`} className="glass-card people-card">
@@ -487,14 +491,16 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                               {t('trackPeople.resend')}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="button-secondary people-action"
-                            aria-label={t('trackPeople.newLinkFor', { who: invitation.email })}
-                            onClick={() => void resend(row, invitation, 'link')}
-                          >
-                            {t('trackPeople.newLink')}
-                          </button>
+                          {view.canCopyLinks && (
+                            <button
+                              type="button"
+                              className="button-secondary people-action"
+                              aria-label={t('trackPeople.newLinkFor', { who: invitation.email })}
+                              onClick={() => void resend(row, invitation, 'link')}
+                            >
+                              {t('trackPeople.newLink')}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="button-secondary people-action"
@@ -562,6 +568,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           track={track}
           roles={roles}
           emailAvailable={view.emailAvailable}
+          canCopyLinks={view.canCopyLinks}
           mayGrantCreateTracks={mayGrantCreateTracks}
           client={client}
           onSent={() => void load()}

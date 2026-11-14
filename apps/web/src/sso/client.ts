@@ -11,6 +11,8 @@ export interface SsoProviderSummary {
   name: string;
   /** Which start address it uses; OpenID Connect when absent. */
   protocol?: SsoProtocol;
+  /** A provider at Google's issuer: the page draws Google's own sign-in button (T-061). */
+  brand?: 'google';
 }
 
 /** Which sign-in methods an email's domain uses; the backend decides by the domain alone. */

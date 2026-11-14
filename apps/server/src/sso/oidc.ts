@@ -63,7 +63,7 @@ export const PROVIDER_COLUMNS = [
 /** Google's issuer, which the Google choice of the Single sign-on page fills in (ADR-119). */
 export const GOOGLE_ISSUER = 'https://accounts.google.com';
 
-function isGoogleIssuer(issuer: string): boolean {
+export function isGoogleIssuer(issuer: string): boolean {
   try {
     return new URL(issuer).origin === GOOGLE_ISSUER;
   } catch {
@@ -206,14 +206,36 @@ export function emailDomain(email: string): string {
 }
 
 /** The enabled provider that serves an email's domain, if any. */
+/**
+ * A provider as the sign-in page sees it (IAM-003): its name, its protocol and, for an OpenID
+ * Connect provider at Google's issuer, `brand: 'google'`, so the page draws Google's own sign-in
+ * button (T-061). Nothing else about the provider leaves the server.
+ */
+export function publicProvider(row: {
+  id: number;
+  name: string;
+  kind: 'oidc' | 'saml';
+  issuer: string;
+}): { id: number; name: string; protocol: 'oidc' | 'saml'; brand?: 'google' } {
+  return {
+    id: row.id,
+    name: row.name,
+    protocol: row.kind,
+    ...(row.kind === 'oidc' && isGoogleIssuer(row.issuer) ? { brand: 'google' as const } : {}),
+  };
+}
+
 export async function providerForDomain(
   db: Db,
   workspaceId: number,
   domain: string,
-): Promise<{ id: number; name: string; kind: 'oidc' | 'saml'; enforce_sso: boolean } | undefined> {
+): Promise<
+  | { id: number; name: string; kind: 'oidc' | 'saml'; issuer: string; enforce_sso: boolean }
+  | undefined
+> {
   return db
     .selectFrom('identity_provider')
-    .select(['id', 'name', 'kind', 'enforce_sso'])
+    .select(['id', 'name', 'kind', 'issuer', 'enforce_sso'])
     .where('workspace_id', '=', workspaceId)
     .where('enabled', '=', true)
     .where(sql<boolean>`${domain} = ANY(domains)`)
