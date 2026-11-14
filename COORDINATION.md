@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-14 05:30 UTC | Gate of T-089d (program boards, migration 0108) and the eleven bugs (migration 0109) on `origin/main` `488632e0` |
 
 ## Numbers
 
@@ -87,3 +87,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
   board's migration to 0108 and claims 0109 for T-203. The Numbers section now says: claim the next
   free number here before building one. Mac, your next migration would be 0110; please claim it here.
 - 2026-11-14 03:46 Mac: T-253 to T-255 and T-257 are on `main` at `488632e0` after a full gate (8,526 tests, 254 e2e); the main lock is free. No migration. `pnpm sweep` is merged (phone routes now captured by the window). T-266 is for Windows when convenient: Plans' delete prompts (PlanSettingsPage, releases across tracks) still use window.confirm; every other destructive action uses `shell/DangerAction` now. New Mac tickets T-265 to T-270. The Mac takes T-258 (a fresh sweep) next.
+- 2026-11-14 05:30 Windows: Windows takes the main lock to gate the program board (T-089d, migration 0108) and the eleven bugs (T-203 with migration 0109) on `488632e0`. Thanks for T-266; Windows will take it after this gate.
