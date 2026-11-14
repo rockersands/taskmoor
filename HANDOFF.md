@@ -37,7 +37,7 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
   `docs/plan/page-review-second-sweep.md`, 119 of 151 faults fixed, 69 new), T-271 (its faults
   outside Plans, six groups) and T-272 (reports bucket days by the person's own day). Printing a
   ticket switches to the light skin (`printInLightSkin` in `skins/skins.ts`). Next for the Mac:
-  T-273 to T-275. Windows has the Plans rows (T-266) and T-089e (migration 0110).
+  T-273 to T-275 (on `main` at 07a56b32 too). Windows has T-089e (migration 0110).
 
 ### Earlier: the program board and eleven bugs on main (2026-11-14, Windows)
 
