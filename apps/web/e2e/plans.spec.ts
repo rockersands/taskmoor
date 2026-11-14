@@ -46,6 +46,23 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 const noSidewaysScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
 
+/** The space between neighbouring parts of a plan's Summary, top to bottom, in pixels. */
+const spacesOnAPhone = (page: Page) =>
+  page.evaluate(() => {
+    const box = (selector: string) => {
+      const found = document.querySelector(selector);
+      if (!found) throw new Error(`no ${selector}`);
+      return found.getBoundingClientRect();
+    };
+    const space = (above: string, below: string) => box(below).top - box(above).bottom;
+    return {
+      'tabs to Filters': space('.plan-page > .track-tabs', '.plan-filters-toggle'),
+      'Filters to Download': space('.plan-filters-toggle', '.plan-summary .plan-view-tools'),
+      'Download to the count': space('.plan-summary .plan-view-tools', '.plan-total'),
+      'count to the numbers': space('.plan-total', '.plan-summary .report-stats'),
+    };
+  });
+
 test('[PLN-012] a plan over two tracks: its numbers, its timeline and a ticket rescheduled', async ({
   page,
   isMobile,
@@ -115,6 +132,17 @@ test('[PLN-012] a plan over two tracks: its numbers, its timeline and a ticket r
   await expect(page.getByRole('link', { name: `${keys[1]} 1, open the search` })).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
+  if (isMobile) {
+    // On a phone the parts follow each other at the page's small step: no empty band between the
+    // tabs and Filters, Filters and Download, or the count and the numbers (the second sweep's
+    // plan-summary--375).
+    const spaces = await spacesOnAPhone(page);
+    for (const [between, space] of Object.entries(spaces)) {
+      expect(space, `${between}: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(12.5);
+    }
+    // More tabs wait past the bar's right edge, and the edge fades to say so (PL-17).
+    await expect(page.locator('.plan-page > .track-tabs')).toHaveAttribute('data-more', 'end');
+  }
 
   // The Timeline: the outcome rolled up from its feature, the other track's ticket beside it.
   await page.getByRole('link', { name: 'Timeline', exact: true }).click();

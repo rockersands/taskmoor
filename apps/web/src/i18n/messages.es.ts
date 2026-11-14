@@ -7332,6 +7332,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Aquí solo se aplica el filtro de track: una versión no tiene responsable, tipo ni etapa.',
   'plans.releases.truncated':
     'Se muestran las primeras 200 versiones. Filtra por track para ver el resto.',
+  'plans.releases.noTickets': 'Aún no tiene tickets',
   'timeline.release.together': '{name}, {count, plural, one {# versión} other {# versiones}}',
   'timeline.release.outOfStep': '{name}, desalineada',
   'plans.download': 'Descargar',

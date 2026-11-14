@@ -52,6 +52,20 @@
   gap: var(--space-4);
 }
 
+/* The page's gap is the one space between the tab bar and what follows it: a margin on top of it
+   left an empty band on a phone. */
+.plan-page > .track-tabs {
+  margin-block: 0;
+}
+
+/* On a phone the plan's parts follow each other at the small step, so its work shows sooner. */
+@media (max-width: 767px) {
+  .page.plan-page,
+  .plan-summary {
+    gap: var(--space-3);
+  }
+}
+
 .plan-summary .summary-sections {
   align-items: start;
 }
@@ -60,8 +74,9 @@
   max-width: 16rem;
 }
 
+/* Only on the Summary, whose grid gap spaces it. */
 .plan-total {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   font-size: var(--font-size-400);
 }
 
@@ -429,6 +444,14 @@
   }
 }
 
+/*
+ * A ticket wholly before or after the days in view gets an Earlier or Later marker (PL-6): opaque,
+ * so today's line, drawn under the rows, never runs through its words.
+ */
+.plan-timeline .timeline-edge {
+  background: var(--color-surface-raised);
+}
+
 /* Copying, linking and downloading a plan (T-089g; PLN-014). */
 .plan-page .page-header-actions {
   align-items: flex-start;
@@ -452,6 +475,11 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-block-end: var(--space-3);
+}
+
+/* On the Summary the grid's gap spaces its parts; a margin on top of it left an empty band. */
+.plan-summary > .plan-view-tools {
+  margin-block: 0;
 }
 
 .plan-download {
@@ -494,7 +522,7 @@
   .capacity-count,
   .capacity-dialog input,
   .plan-capacity-settings select,
-  .plan-capacity-settings input {
+  .plan-capacity-settings input:not([type="checkbox"], [type="radio"]) {
     min-height: var(--hit-target-touch);
   }
 
@@ -512,12 +540,21 @@
     min-height: var(--hit-target-touch);
   }
 
+  /* Fields only: a check box keeps the shared 28 px square, and its row with the label takes the
+     finger (forms.css), as on Search. A 44 px height here drew the boxes as tall rectangles. */
   .plan-filters select,
   .plan-filters button,
-  .plan-source-group input,
-  .plan-sources input,
+  .plan-sources input:not([type="checkbox"], [type="radio"]),
   .calendar-more {
     min-height: var(--hit-target-touch);
+  }
+
+  /* A ticket's chip on the Calendar keeps a finger's height beside its grip, its one line of words
+     in the middle of it rather than at its top: a line as tall as the chip inside its border. */
+  .plan-calendar .calendar-entry .calendar-chip {
+    box-sizing: border-box;
+    padding-block: 0;
+    line-height: calc(var(--hit-target-touch) - 2px);
   }
 }
 

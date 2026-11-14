@@ -5,6 +5,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { type ListClient, listClient } from '../list/client';
 import { navigate, redirectRoute, routeHref, useRoute } from '../routing/router';
 import { type SearchClient, searchClient } from '../search/client';
+import { useMoreSides } from '../shell/moreSides';
 import { useMotionOnChange } from '../shell/motion';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
@@ -107,6 +108,10 @@ export function PlanPage({
   const loaded = plan !== null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: on each section, once the bar is drawn
   useLayoutEffect(() => showCurrentTab(tabBar.current), [section, loaded]);
+  // Where more tabs wait past an edge of the bar, that edge fades (PL-17), as a track's does.
+  const more = useMoreSides(tabBar, `${section}/${loaded}/${plan?.editable}`);
+  // The plan this page shows has loaded: a missing one is asked for nothing more (D4).
+  const shown = plan?.id === id;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the view in the address changes
   useEffect(() => {
@@ -134,6 +139,7 @@ export function PlanPage({
   }, [client, id, viewKey, version]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again after the settings are saved
   useEffect(() => {
+    if (!shown) return;
     let live = true;
     client.choices(id).then(
       (c) => live && setChoices(c),
@@ -142,7 +148,7 @@ export function PlanPage({
     return () => {
       live = false;
     };
-  }, [client, id, version]);
+  }, [client, id, version, shown]);
 
   if (problem === 'missing') {
     return <NotFoundPage title={t('notFound.plan')}>{t('plans.notFound')}</NotFoundPage>;
@@ -203,6 +209,7 @@ export function PlanPage({
       <nav
         ref={tabBar}
         className="track-tabs"
+        data-more={more}
         aria-label={t('plans.sections', { name: plan.name })}
       >
         <ul>

@@ -7165,6 +7165,7 @@ export const messagesEn = {
   'plans.releases.filtersNote':
     'Only the track filter applies here: a release has no assignee, type or stage.',
   'plans.releases.truncated': 'This lists the first 200 releases. Filter by track to see the rest.',
+  'plans.releases.noTickets': 'No tickets in it yet',
   'timeline.release.together': '{name}, {count, plural, one {# release} other {# releases}}',
   'timeline.release.outOfStep': '{name}, out of step',
   'plans.download': 'Download',

@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
@@ -389,6 +390,81 @@ describe('a plan (PLN-001, PLN-012)', () => {
     bar.scrollLeft = 10;
     showCurrentTab(bar);
     expect(bar.scrollLeft).toBe(10);
+  });
+
+  it('[PLN-012] fades its tab bar at the edge where more tabs wait (PL-17)', async () => {
+    // A phone's bar: 343 pixels in view of 800, so tabs wait past its right edge.
+    const sizes = (element: Element, wide: number) =>
+      element.tagName === 'NAV' && element.closest('.plan-page') ? wide : 0;
+    const restore = [
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return sizes(this, 800);
+      }),
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return sizes(this, 343);
+      }),
+    ];
+    try {
+      renderPlan('summary', '#/plans/12');
+      const bar = await screen.findByRole('navigation', { name: 'Sections of Spring launch' });
+      await waitFor(() => expect(bar).toHaveAttribute('data-more', 'end'));
+      // Scrolled along, tabs wait past both edges, and the bar says so.
+      bar.scrollLeft = 200;
+      bar.dispatchEvent(new Event('scroll'));
+      await waitFor(() => expect(bar).toHaveAttribute('data-more', 'both'));
+    } finally {
+      for (const spy of restore) spy.mockRestore();
+    }
+  });
+
+  it('[PLN-001] asks a plan that is not there for nothing more: no choices, one failed request (D4)', async () => {
+    window.location.hash = '#/plans/99';
+    const client = fakePlanClient();
+    client.get = async () => {
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    const choices = vi.spyOn(client, 'choices');
+    const search = fakeListSearch();
+    render(
+      <I18nProvider locale="en">
+        <PlanPage
+          id={99}
+          section="summary"
+          client={client}
+          search={search}
+          list={fakeListClient(search)}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Plan not found' })).toBeVisible();
+    // Long enough for a request made at the start to have gone out.
+    await new Promise((done) => setTimeout(done, 20));
+    expect(choices).not.toHaveBeenCalled();
+  });
+
+  it('[PLN-012] asks for its filter choices once the plan has loaded', async () => {
+    window.location.hash = '#/plans/12';
+    const client = fakePlanClient();
+    const choices = vi.spyOn(client, 'choices');
+    const search = fakeListSearch();
+    render(
+      <I18nProvider locale="en">
+        <PlanPage
+          id={12}
+          section="summary"
+          client={client}
+          search={search}
+          list={fakeListClient(search)}
+        />
+      </I18nProvider>,
+    );
+    await screen.findByRole('heading', { name: 'Spring launch' });
+    await waitFor(() => expect(choices).toHaveBeenCalledTimes(1));
+    expect(choices).toHaveBeenCalledWith(12);
   });
 
   it('[PLN-012] fits a phone: no sideways scroll, filters stacked', async () => {
