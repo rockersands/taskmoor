@@ -22,7 +22,13 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the create form, one date format and the demo loader (2026-11-14, the Mac)
+### Latest: template pickers, dates in history, a strict lint step (2026-11-14, the Mac)
+
+- **On `main` (`4155d809`, full gate: 8,876 tests, 260 e2e):** T-276, T-277 and T-281. **The lint step
+  now fails on any Biome warning**; plans.css's warnings are lowered to info for that file until
+  T-285. New: T-282 to T-285 (T-283 for the user).
+
+### Earlier: the create form, one date format and the demo loader (2026-11-14, the Mac)
 
 - **On `main` (`89c4433b`, full gate: 8,862 tests, 260 e2e):** T-265 (the create form sets every field
   it lists), T-240 (one date format in the person's locale; TR-29 gone), T-239 (`pnpm demo
