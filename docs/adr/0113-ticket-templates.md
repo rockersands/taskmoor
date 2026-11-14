@@ -70,6 +70,24 @@ presses Create.
 The form cannot edit people, areas and releases yet, so the template's values for those are
 listed under the picker with a checkbox each: there is no field to clear them in.
 
+### People, groups and teams on the template form (T-350)
+
+The template form adds a custom person, group or team value with the create form's picker and the
+create form's searches (`apps/web/src/tickets/pickerSources.ts`); no new server search was made.
+
+- A track's template finds people with the track's search. A person field limited to a group or a
+  role (CORE-009 (2)) asks `GET /fields/:id/people` once per context that limits it among the
+  ticket types the template fits (all of the track's types when it names none), picking each
+  type's context as the server does, and offers only those every one of them allows: a ticket
+  made from the template can be of any of those types.
+- A template for every track has no track, so it finds people with `GET /people/lookup`, which
+  those who may change such templates (configuration and site administrators) already use. A
+  person field limited in any context has no search there: the server says whom it allows only
+  for a track and a type. Such a value is still set through the API.
+- Groups and teams are the site's (`GET /fields/:id/groups`, `GET /teams`) everywhere.
+
+A value is still checked only when a ticket is made from the template, as above.
+
 ### Events and audit
 
 There is no template event on apply: each ticket made is its own `ticket.created`, with an
