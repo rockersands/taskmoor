@@ -245,28 +245,54 @@ function HistoryList({
   const [rows, setRows] = useState<HistoryEntry[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  /** Bumped by every fresh read, so an older one never replaces it. */
+  const reads = useRef(0);
+  /** What is shown now, for reads that end later: the ticket, its page count, the next cursor. */
+  const shown = useRef<{
+    ticket: number;
+    pages: number;
+    rows: HistoryEntry[];
+    next: string | null;
+  }>({ ticket: ticket.id, pages: 0, rows: [], next: null });
+  const show = (pages: number, list: HistoryEntry[], cursor: string | null) => {
+    shown.current = { ticket: ticket.id, pages, rows: list, next: cursor };
+    setRows(list);
+    setNext(cursor);
+  };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
     let live = true;
-    client.history(ticket.id).then(
-      (page) => {
-        if (!live) return;
-        setRows(page.changes);
-        setNext(page.next);
-      },
-      () => live && setFailed(true),
-    );
+    const read = ++reads.current;
+    // As many pages as are shown, so a change keeps the older rows the reader opened (T-311).
+    const wanted = () => (shown.current.ticket === ticket.id ? shown.current.pages : 1);
+    (async () => {
+      const fresh: HistoryEntry[] = [];
+      let pages = 0;
+      let cursor: string | undefined;
+      do {
+        const page = await client.history(ticket.id, cursor);
+        if (!live || read !== reads.current) return;
+        fresh.push(...page.changes);
+        pages++;
+        cursor = page.next ?? undefined;
+      } while (cursor !== undefined && pages < wanted());
+      show(pages, fresh, cursor ?? null);
+    })().catch(() => {
+      if (live && read === reads.current) setFailed(true);
+    });
     return () => {
       live = false;
     };
   }, [client, ticket.id, revision]);
 
   const more = async () => {
-    if (next === null) return;
-    const page = await client.history(ticket.id, next);
-    setRows((r) => [...(r ?? []), ...page.changes]);
-    setNext(page.next);
+    const cursor = shown.current.next;
+    if (cursor === null) return;
+    const page = await client.history(ticket.id, cursor);
+    // A fresh read replaced the rows meanwhile: this page goes on from one no longer shown.
+    if (shown.current.next !== cursor || shown.current.ticket !== ticket.id) return;
+    show(shown.current.pages + 1, [...shown.current.rows, ...page.changes], page.next);
   };
 
   if (failed) return <p className="page-note">{t('ticketView.history.failed')}</p>;

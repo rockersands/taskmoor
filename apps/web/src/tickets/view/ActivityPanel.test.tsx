@@ -297,3 +297,35 @@ describe('a busy ticket’s All feed (T-309)', () => {
     await waitFor(() => expect(row).toHaveFocus());
   });
 });
+
+describe('a busy ticket’s History tab (T-311)', () => {
+  it('[CORE-022] keeps the older pages a reader opened when the ticket changes', async () => {
+    const user = userEvent.setup();
+    const { client, said } = busyTicket();
+    const panel = (revision: number) => (
+      <I18nProvider locale="en">
+        <ActivityPanel
+          ticket={{ id: 41, key: 'SHOP-41' }}
+          client={client}
+          comments={said}
+          tab="history"
+          revision={revision}
+        />
+      </I18nProvider>
+    );
+    const { rerender } = render(panel(0));
+    const history = screen.getByRole('tabpanel', { name: 'History' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(50));
+    await user.click(within(history).getByRole('button', { name: 'Show older changes' }));
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(100));
+    await user.click(within(history).getByRole('button', { name: 'Show older changes' }));
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(150));
+    rerender(panel(1));
+    // The three pages shown are read again, and stay; the fourth is still a click away.
+    await act(async () => {});
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(150));
+    expect(within(history).getByRole('button', { name: 'Show older changes' })).toBeVisible();
+    await user.click(within(history).getByRole('button', { name: 'Show older changes' }));
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(200));
+  });
+});

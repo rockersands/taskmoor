@@ -428,7 +428,8 @@ The **History** tab lists every change, newest first: who, when and what, such a
 Priority from Normal to High". Dates read in your language, as on the ticket, a custom
 date-and-time field's with its time on your device's clock ("Set Cut-over to Oct 13, 2026,
 4:00 AM"). A custom field is named as the ticket shows it; one that no longer applies to the
-ticket where it is now reads as "a custom field". **Show older changes** reads further back.
+ticket where it is now reads as "a custom field". **Show older changes** reads further back, and what it brought stays when the
+ticket changes.
 
 The **All** tab mixes comments, changes and time entries in one stream, newest first: a time
 entry stands where its work started. On a busy ticket the newest come first and **Show older
