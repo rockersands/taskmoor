@@ -1787,7 +1787,13 @@ parts, and the manual's page its section. Where this differs from the design abo
   `planExport.test.tsx` (1) and `PlanPage.test.tsx`; stories for the bar, the dialogs, the change
   list, the Scenarios tab, the comparison and PlanPage's Timeline and Calendar in a scenario, with
   phone-width ones on a real touch screen; and `e2e/plan-scenarios.spec.ts` on a desktop and a
-  phone, whose refused ticket is a field lock, as on the server.
+  phone, whose refused ticket is a field lock, as on the server. The e2e departs from the plan
+  above in three ways: on a desktop it moves bars with Alt and an arrow rather than a drag (stage
+  1's e2e covers the drag itself); it reads the tickets' days through the API rather than on their
+  pages; and the phone's test does everything the desktop's does (applies two of three with the
+  refusal in words, makes a second scenario, compares it in cards and makes it main), through the
+  side panel, **Move…** and the bar at the bottom. Its keys and names come from `uniqueRun`
+  (T-244).
 
 #### Questions for the user (the design takes the first answer each time)
 

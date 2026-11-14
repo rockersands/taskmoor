@@ -262,8 +262,8 @@ words:
   it needs. **Only those I can apply** hides these.
 - **Refused**, with why: the last attempt to apply it was refused.
 
-On a phone each ticket is a card, and the actions stay in a bar at the bottom. The list shows 100
-tickets at a time; **Show more** brings the next ones.
+On a phone each ticket is a card, and the actions for the chosen tickets stay in a bar at the
+bottom. The list shows 100 tickets at a time; **Show more** brings the next ones.
 
 ### Applying
 
@@ -272,16 +272,18 @@ page asks first: "Change 3 tickets as you, with your permissions?" Applying is e
 change, made by you: your permissions in its track, its locks, its form and required fields, its
 history, its notifications and its followers all apply, as if you had changed it by hand, and
 applying makes you follow the tickets you change. A ticket's drafted fields are applied together.
-**Apply all** applies every draft you see. The page applies 100 tickets at a time and says how far
-it has got.
+On a computer, **Apply all** applies every draft you see; on a phone, choose **Select all** and then
+**Apply**. The page applies 100 tickets at a time and says how far it has got.
 
 One ticket refused never stops the others. The result says, for example, "3 applied, 1 refused",
 and each refused ticket stays chosen with its reason:
 
-- you may not schedule (or edit) tickets in its track;
+- you lack a permission it needs in its track (to schedule tickets for days, to edit them for a
+  Team value);
 - it is locked, by its status or a field rule, and the lock is named;
 - its track is archived;
-- it is no longer in this plan for you (deleted, hidden from you, or moved out of the plan);
+- it is no longer in this plan for you (deleted, hidden from you, or moved out of the plan); such a
+  ticket is listed by this reason alone, without its key;
 - it changed since drafted, with its values now;
 - the ticket does not take the value, for example a Team field that is not on its form;
 - something else went wrong: try again.
@@ -291,8 +293,8 @@ for a plan.
 
 ### Discarding
 
-**Discard** removes the chosen tickets' drafts, and **Discard all** every draft you see in the
-scenario; both ask first, and no ticket changes. Drafts on tickets the plan does not show you stay:
+**Discard** removes the chosen tickets' drafts, and **Discard all**, on a computer, every draft you
+see in the scenario; both ask first, and no ticket changes. Drafts on tickets the plan does not show you stay:
 you cannot remove what you cannot see.
 
 ### Scenarios and making one main
