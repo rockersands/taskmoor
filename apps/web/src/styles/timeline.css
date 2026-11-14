@@ -415,8 +415,8 @@ button.timeline-bar:focus-visible {
 }
 
 /*
- * Just after today's line, with a gap so the line never runs along its edge, and over the lines
- * behind the rows (TR-9). Its fill is opaque, so no line behind it shows through its words.
+ * Just after today's line, with a gap so the line never runs along its edge or behind its words,
+ * and over the lines behind the rows (TR-9). Glass, as at rest: the line is never under it.
  */
 .timeline-unscheduled {
   position: absolute;
@@ -426,7 +426,7 @@ button.timeline-bar:focus-visible {
   padding: 0 var(--space-2);
   border: 1px dashed var(--color-field-border);
   border-radius: var(--radius-mark);
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   white-space: nowrap;
@@ -436,8 +436,9 @@ button.timeline-bar:focus-visible {
  * A bar wholly before or after the days in view (PL-6): a marker at that edge of the lanes says
  * which way it lies, and scrolls to it. Its arrow is drawn, so the name is only its words. It sits
  * in its lane's flow, at the lane's start or end, and sticks to that edge of the lanes in view
- * (beside the ticket column, or at the card's right), so scrolling never has to place it. Today's
- * line can fall anywhere under it, so its fill is opaque and the line passes behind its words.
+ * (beside the ticket column, or at the card's right), so scrolling never has to place it. It is
+ * sticky, so the lanes and today's line scroll under it: its fill is opaque, as the sticky cells'
+ * are (design-offenders.ts), and the line passes behind its words.
  */
 .timeline-edge {
   position: sticky;

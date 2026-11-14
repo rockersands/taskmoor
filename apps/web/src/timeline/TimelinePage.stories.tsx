@@ -262,7 +262,7 @@ const opaque = (element: Element) => {
 
 /**
  * TR-9: today's line never runs through a "No dates" chip, nor along its edge: the chip sits a
- * gap after it, above it, and its fill hides any line behind its words.
+ * gap after it and above it, so its glass fill has no line of today's behind its words.
  */
 export const TodayClearOfNoDates: Story = {
   play: async ({ canvasElement }) => {
@@ -274,7 +274,6 @@ export const TodayClearOfNoDates: Story = {
     const box = chip.getBoundingClientRect();
     await expect(box.left - line.right).toBeGreaterThanOrEqual(3.5);
     await expect(Number(getComputedStyle(chip).zIndex)).toBeGreaterThan(0);
-    await expect(opaque(chip)).toBe(true);
   },
 };
 

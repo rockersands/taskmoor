@@ -60,6 +60,7 @@ export const ALLOWED = {
     '.timeline-head': STICKY,
     '.timeline-corner': STICKY,
     '.timeline-label': STICKY,
+    '.timeline-edge': STICKY,
     '.timeline-group .timeline-label': STICKY,
     '.capacity-table thead th': STICKY,
     '.capacity-table tbody th': STICKY,
