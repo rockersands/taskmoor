@@ -31,7 +31,7 @@ export const GRIP_SELECTORS = [
 export const DRAGGED_WHOLE: Readonly<Record<string, { reason: string; checkedBy: string }>> = {
   '.timeline-bar': {
     reason:
-      "A ticket's bar on the timeline is what moves. On a touch screen it is a finger's height, and a bar shorter than a finger's width still takes one: its press area reaches past its ends through ::after (TR-21), which the grip check, measuring the bar's own box, does not see.",
+      "A ticket's bar on the timeline is what moves. On a touch screen it keeps its 24 px look, and its press area, drawn by ::after, is a finger's height and reaches past the ends of a bar narrower than a finger (TR-21, T-293), which the grip check, measuring the bar's own box, does not see.",
     checkedBy: 'timeline/TimelinePage.stories.tsx#ThinBarOnATouchScreen',
   },
 };

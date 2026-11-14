@@ -27,6 +27,8 @@ const NO_CHOICE = 'a setting with nothing to choose from, said beside or in plac
 const MISSING_SETUP = 'something the site lacks, said where it would be used, with who can add it';
 const ONE_READING = 'one of the readings of a line that says something else when there is a value';
 const ALERT = 'a failure, in an alert';
+const IN_ITS_LABEL =
+  'a check box or radio, pressed through the label around it, which is a finger’s height on touch';
 
 export const ALLOWED = {
   /** `<file> <literal>`: colours that are data, not styles. */
@@ -160,6 +162,27 @@ export const ALLOWED = {
     'workflow/TransitionInspector.tsx admin.workflow.transition.fromNone':
       'a problem with a transition, shown with its rule',
   },
+  /**
+   * Selectors: what the finger-height guard takes for a target but no finger presses (T-294). Only
+   * genuine non-targets belong here; a control a finger presses gets a finger's height instead.
+   */
+  shortTargets: {
+    // Check boxes and radios: drawn at one size, 20 px and 24 or 28 px on touch (TR-24, AC-11,
+    // AC-12), inside a label that a finger presses and that is a finger's height on touch.
+    ':where(input:is([type="checkbox"], [type="radio"]))': IN_ITS_LABEL,
+    ':where(.check-row input:is([type="checkbox"], [type="radio"]))': IN_ITS_LABEL,
+    '.form-field-inline input:is([type="checkbox"], [type="radio"])': IN_ITS_LABEL,
+    '.appearance-option input': IN_ITS_LABEL,
+    '.notification-choice input': IN_ITS_LABEL,
+    '.notification-event input': IN_ITS_LABEL,
+    '.notification-events input': IN_ITS_LABEL,
+    '.board-settings-check input[type="checkbox"]': IN_ITS_LABEL,
+    '.sprint-select-all input': IN_ITS_LABEL,
+    '.sprint-ticket-select input': IN_ITS_LABEL,
+    '.checklist-item input[type="checkbox"]': IN_ITS_LABEL,
+    '.reports-check input': IN_ITS_LABEL,
+    '.tutorial-card-pick input': IN_ITS_LABEL,
+  },
   /** `<file> <component>`: rendered in a `glass-card`, and draws one only where it is not nested. */
   glassInGlass: {
     'admin/AdminOverviewPage.tsx AdminPageLinks':
@@ -190,4 +213,11 @@ export const OFFENDERS = {
   } as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,
+  /**
+   * Targets with a fixed height under a finger's and none on a touch screen (T-294): a min-height
+   * of `var(--hit-target-touch)` under `(pointer: coarse)`, or a press area drawn by `::after`.
+   */
+  shortTargets: {} as Ratchet,
+  /** Grips styled in a script on no element the touch checks know of (T-294): give them a class. */
+  inlineGrips: {} as Ratchet,
 };

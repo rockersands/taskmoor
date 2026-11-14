@@ -96,7 +96,13 @@ test('[AGL-015] a bar dragged a week later moves the ticket’s dates', async ({
 
   const bar = timeline.getByRole('button', { name: `${site}: Nov 2, 2026 to Nov 10, 2026` });
   if (isMobile) {
-    await bar.click();
+    // The bar keeps its look and takes a finger over and under it (T-293): a tap just over it,
+    // in its row, opens its days.
+    await bar.scrollIntoViewIfNeeded();
+    const box = await bar.boundingBox();
+    if (!box) throw new Error('the bar has no box');
+    expect(box.height).toBeLessThan(44);
+    await page.touchscreen.tap(box.x + box.width / 2, box.y - 6);
     const panel = timeline.getByRole('complementary', { name: `Days of ${site}` });
     await panel.getByLabel('Start date').fill('2026-11-09');
     await panel.getByLabel('Due date').fill('2026-11-17');
