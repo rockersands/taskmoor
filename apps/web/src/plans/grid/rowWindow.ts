@@ -63,7 +63,9 @@ export interface UseRowWindow extends RowWindow {
 
 /**
  * The window of a scrolling element's rows. `offset` is the space above the first row inside the
- * element (a sticky header row). Scrolling is read once a frame.
+ * element, held there by a sticky header row; `bottom` is the space a sticky footer row covers at
+ * the foot of the view. A row scrolled to shows whole between the two. Scrolling is read once a
+ * frame.
  */
 export function useRowWindow(
   scroller: RefObject<HTMLElement | null>,
@@ -73,7 +75,14 @@ export function useRowWindow(
     overscan = GRID_OVERSCAN,
     keep = -1,
     offset = 0,
-  }: { rowHeight?: number; overscan?: number; keep?: number; offset?: number } = {},
+    bottom = 0,
+  }: {
+    rowHeight?: number;
+    overscan?: number;
+    keep?: number;
+    offset?: number;
+    bottom?: number;
+  } = {},
 ): UseRowWindow {
   const [top, setTop] = useState(0);
   const [height, setHeight] = useState(0);
@@ -81,7 +90,7 @@ export function useRowWindow(
     const el = scroller.current;
     if (!el) return;
     const read = () => {
-      setTop(Math.max(0, el.scrollTop - offset));
+      setTop(el.scrollTop);
       setHeight(el.clientHeight);
     };
     read();
@@ -98,24 +107,26 @@ export function useRowWindow(
       el.removeEventListener('scroll', later);
       resized?.disconnect();
     };
-  }, [scroller, offset]);
+  }, [scroller]);
   const scrollToRow = useCallback(
     (index: number) => {
       const el = scroller.current;
       if (!el) return;
-      const view = Math.max(el.clientHeight - offset, rowHeight);
+      // Row i starts at offset + i * rowHeight; the header covers the view's top `offset` pixels
+      // and the footer its last `bottom`, so in rows' terms the view starts at scrollTop.
+      const view = Math.max(el.clientHeight - offset - bottom, rowHeight);
       const rowTop = index * rowHeight;
-      const shown = Math.max(0, el.scrollTop - offset);
+      const shown = el.scrollTop;
       let next = shown;
       if (rowTop < shown) next = rowTop;
       else if (rowTop + rowHeight > shown + view) next = rowTop + rowHeight - view;
-      if (next !== shown) el.scrollTop = next + offset;
+      if (next !== shown) el.scrollTop = next;
       setTop(next);
     },
-    [scroller, rowHeight, offset],
+    [scroller, rowHeight, offset, bottom],
   );
   return {
-    ...rowWindow({ count, top, height: height - offset, rowHeight, overscan, keep }),
+    ...rowWindow({ count, top, height: height - offset - bottom, rowHeight, overscan, keep }),
     scrollToRow,
   };
 }

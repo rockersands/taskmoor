@@ -1,6 +1,7 @@
 import { fc } from '@taskmoor/testkit/property';
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { GRID_OVERSCAN, GRID_ROW, rowWindow } from './rowWindow';
+import { GRID_OVERSCAN, GRID_ROW, rowWindow, useRowWindow } from './rowWindow';
 
 describe('the Grid’s row window (ADR-122 stage 10)', () => {
   it('[PLN-010] draws the rows in view with 20 to spare on each side, padding for the rest', () => {
@@ -44,5 +45,27 @@ describe('the Grid’s row window (ADR-122 stage 10)', () => {
         },
       ),
     );
+  });
+
+  it('[PLN-010] scrolls a row clear of the sticky header above and the footer below', () => {
+    // A view of 440 px: the header covers its top 50, the "All rows" footer its last 44.
+    const el = document.createElement('div');
+    Object.defineProperty(el, 'clientHeight', { value: 440 });
+    const scroller = { current: el };
+    const { result } = renderHook(() =>
+      useRowWindow(scroller, 100, { offset: 50, bottom: GRID_ROW }),
+    );
+    // Row 6 ends at 50 + 7 * 44 = 358, above the footer at 396: no scroll.
+    act(() => result.current.scrollToRow(6));
+    expect(el.scrollTop).toBe(0);
+    // Row 7 ends at 402: scrolled up 6 px, it ends where the footer starts.
+    act(() => result.current.scrollToRow(7));
+    expect(el.scrollTop).toBe(6);
+    // Back up to row 0: it starts right under the header.
+    act(() => result.current.scrollToRow(0));
+    expect(el.scrollTop).toBe(0);
+    // Row 50 from the top: 50 + 51 * 44 - (440 - 44) = 1898.
+    act(() => result.current.scrollToRow(50));
+    expect(el.scrollTop).toBe(50 + 51 * GRID_ROW - (440 - GRID_ROW));
   });
 });

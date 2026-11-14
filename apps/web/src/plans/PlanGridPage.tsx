@@ -557,9 +557,30 @@ function GridBody({
   const scrollTo = useRef<number | null>(focusTicket === null ? null : focus.row);
   const focusShown = Math.max(0, shownIndex(visible, focus.row));
   const scroller = useRef<HTMLDivElement>(null);
+  const table = useRef<HTMLTableElement>(null);
   const rowHeight = compact ? CARD_ROW : undefined;
+  // The sticky header and "All rows" footer cover the scroller's top and foot: a row scrolled to
+  // shows between them, and focus scrolls a row clear of them (scroll padding).
+  const [edges, setEdges] = useState({ top: 0, bottom: 0 });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: measured again when a phone's cards take the table's place, or give it back
+  useLayoutEffect(() => {
+    const el = table.current;
+    if (!el) return;
+    const measure = () => {
+      const top = el.tHead?.offsetHeight ?? 0;
+      const bottom = el.tFoot?.offsetHeight ?? 0;
+      setEdges((was) => (was.top === top && was.bottom === bottom ? was : { top, bottom }));
+    };
+    measure();
+    const resized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (el.tHead) resized?.observe(el.tHead);
+    if (el.tFoot) resized?.observe(el.tFoot);
+    return () => resized?.disconnect();
+  }, [compact]);
   const win = useRowWindow(scroller, visible.length, {
     keep: focusShown,
+    offset: edges.top,
+    bottom: edges.bottom,
     ...(rowHeight ? { rowHeight } : {}),
   });
   const runs = useMemo(() => {
@@ -911,7 +932,6 @@ function GridBody({
   }
 
   // Keyboard focus follows `focus` once the person moved it; the grid is one stop for Tab.
-  const table = useRef<HTMLTableElement>(null);
   // On each drawing, where focus is meant to be.
   useLayoutEffect(() => {
     const body = table.current?.tBodies[0];
@@ -1378,7 +1398,11 @@ function GridBody({
         onExpand={() => setAndKeep(new Set())}
         onCollapse={() => setAndKeep(allCollapsible(tree))}
       />
-      <div ref={scroller} className="glass-card glass-scroller plan-grid-scroll">
+      <div
+        ref={scroller}
+        className="glass-card glass-scroller plan-grid-scroll"
+        style={{ scrollPaddingBlock: `${edges.top}px ${edges.bottom}px` }}
+      >
         <table
           ref={table}
           // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a treegrid is a table whose rows open and close (ADR-122 stage 10)
