@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { emit, emitMany } from '../events/bus';
 import type { DomainEventInput } from '../events/catalogue';
 import type { FieldCatalogs } from '../fields/catalog';
+import { planEditable } from '../plans/access';
 import {
   applying,
   clearSchedulerDrafts,
@@ -319,7 +320,7 @@ export function registerPlanScheduleRoutes(
     if (!admin) q = q.where(planVisible(ws, request.user?.id as number));
     const plan = await q.executeTakeFirst();
     if (!plan) return null;
-    return { ...plan, editable: admin || plan.owner_id === request.user?.id };
+    return { ...plan, editable: await planEditable(request, plan.owner_id) };
   }
 
   const scenarioOf = (ws: number, planId: number, sid: number) =>

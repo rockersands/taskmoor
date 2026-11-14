@@ -3806,6 +3806,39 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         });
       },
     },
+    // Baselines (PLN-011; ADR-122 stage 9): ids and counts, never a name, a day or a key.
+    {
+      route: 'POST /api/v1/plans/:id/baselines',
+      expect: 'plan.baseline_captured',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/baselines`,
+          payload: { name: 'Contract baseline' },
+        });
+        state.baseline = res.json().baseline?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id/baselines/:bid',
+      expect: 'plan.baseline_renamed',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}/baselines/${state.baseline}`,
+          payload: { name: 'Contract baseline, renamed', version: 1 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id/baselines/:bid',
+      expect: 'plan.baseline_deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/plans/${state.plan}/baselines/${state.baseline}?version=2`,
+        }),
+    },
     // Releases across tracks (PLN-007; ADR-122 stage 4).
     {
       route: 'POST /api/v1/cross-track-releases',

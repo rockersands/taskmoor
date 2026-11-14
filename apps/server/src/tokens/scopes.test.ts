@@ -216,6 +216,12 @@ describe('token scopes per route (IAM-007)', () => {
     // [IAM-007] The auto-scheduler (PLN-004): readiness reads, a run writes its drafts.
     expect(classes['GET /api/v1/plans/:id/schedule']).toBe('read');
     expect(classes['POST /api/v1/plans/:id/schedule']).toBe('write');
+    // [IAM-007] Baselines (PLN-011): the list and the comparison read, the rest write.
+    expect(classes['GET /api/v1/plans/:id/baselines']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/baselines']).toBe('write');
+    expect(classes['PATCH /api/v1/plans/:id/baselines/:bid']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id/baselines/:bid']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/baselines/:bid/compare']).toBe('read');
     // [IAM-007] Releases across tracks (PLN-007): reads read, changes write.
     expect(classes['GET /api/v1/cross-track-releases']).toBe('read');
     expect(classes['GET /api/v1/cross-track-releases/candidates']).toBe('read');

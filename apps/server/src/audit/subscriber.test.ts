@@ -25,6 +25,16 @@ describe('what the audit log records (M1-003)', () => {
     expect(AUDITED_EVENTS).toContain('plan.drafts_set');
   });
 
+  it('[PLN-011] [IAM-013] audits capturing, renaming and deleting a baseline', () => {
+    for (const type of [
+      'plan.baseline_captured',
+      'plan.baseline_renamed',
+      'plan.baseline_deleted',
+    ] as const) {
+      expect(AUDITED_EVENTS).toContain(type);
+    }
+  });
+
   it('keeps the actions of records that are not events apart from event types', () => {
     for (const action of Object.values(AUDIT_ACTIONS)) {
       expect(Object.hasOwn(EVENT_TYPES, action), action).toBe(false);

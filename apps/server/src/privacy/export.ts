@@ -338,6 +338,7 @@ export async function writePersonalData(
     crossTrackReleases,
     scenarios,
     drafts,
+    baselines,
   ] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
@@ -415,6 +416,16 @@ export async function writePersonalData(
       .orderBy('ticket_id')
       .orderBy('field')
       .execute(),
+    // Baselines they captured in plans (PLN-011): by the plan's id, without days, as the plan or
+    // its tickets may be hidden from them now.
+    db
+      .selectFrom('plan_baseline')
+      .select(['id', 'plan_id', 'name', 'source', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('created_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('id')
+      .execute(),
   ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
@@ -470,6 +481,13 @@ export async function writePersonalData(
         draft: d.new_value,
         origin: d.origin,
         updatedAt: iso(d.updated_at),
+      })),
+      planBaselines: baselines.map((x) => ({
+        planId: x.plan_id,
+        baselineId: x.id,
+        name: x.name,
+        source: x.source,
+        createdAt: iso(x.created_at),
       })),
       crossTrackReleases: crossTrackReleases.map((c) => ({
         name: c.name,

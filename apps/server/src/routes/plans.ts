@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { planEditable } from '../plans/access';
 import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import {
   createBody,
@@ -188,10 +189,6 @@ export function registerPlanRoutes(
     return q.executeTakeFirst() as Promise<Row | undefined>;
   }
 
-  async function mayManage(request: FastifyRequest, row: Row): Promise<boolean> {
-    return row.owner_id === request.user?.id || (await request.authz.isSiteAdmin());
-  }
-
   /**
    * The plan's capacity settings and teams (PLN-005) and its dependency options (PLN-013), the
    * same for every viewer: everyone signed in reads teams and link types.
@@ -219,7 +216,7 @@ export function registerPlanRoutes(
       description: row.description,
       owner: { id: row.owner_id, name: row.owner_name },
       shares,
-      editable: await mayManage(request, row),
+      editable: await planEditable(request, row.owner_id),
       sources: tickets.sources,
       hiddenSources: tickets.hidden,
       query: tickets.query,
@@ -745,7 +742,7 @@ export function registerPlanRoutes(
     const ws = request.workspaceId;
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
-    if (!(await mayManage(request, row))) return forbidden(reply, 'edit_plan');
+    if (!(await planEditable(request, row.owner_id))) return forbidden(reply, 'edit_plan');
 
     const current = await sourceRows(db, [row.id]);
     let sources: SourceInput[] | undefined;
@@ -893,7 +890,7 @@ export function registerPlanRoutes(
     if (!p.success) return notFound(reply);
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
-    if (!(await mayManage(request, row))) return forbidden(reply, 'edit_plan');
+    if (!(await planEditable(request, row.owner_id))) return forbidden(reply, 'edit_plan');
     await db.transaction().execute(async (trx) => {
       await trx.deleteFrom('plan').where('id', '=', row.id).execute();
       await emit(trx, by(request), {

@@ -1241,6 +1241,20 @@ export const EVENT_TYPES = {
     }),
   },
   /**
+   * Baselines of a plan (PLN-011; ADR-122 stage 9): ids and counts, never a name, a day or a key.
+   * A capture says where its days came from and how many tickets it holds.
+   */
+  'plan.baseline_captured': {
+    subject: 'plan',
+    payload: z.object({
+      baselineId: id,
+      source: z.enum(['live', 'scenario']),
+      tickets: z.number().int().nonnegative(),
+    }),
+  },
+  'plan.baseline_renamed': { subject: 'plan', payload: z.object({ baselineId: id }) },
+  'plan.baseline_deleted': { subject: 'plan', payload: z.object({ baselineId: id }) },
+  /**
    * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
    * its old day, each it left with the reason, and how many were hidden from the mover; each
    * release moved also emits its own `release.updated`.
