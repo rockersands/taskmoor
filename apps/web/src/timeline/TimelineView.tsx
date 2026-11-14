@@ -312,6 +312,8 @@ export function TimelineView({
       timeZone: 'UTC',
     });
   const x = (day: number) => (day - range.from) * px;
+  /** Whether a ticket's days are drafted: a draft of its Team value alone leaves them live. */
+  const daysDrafted = (item: TimelineItem) => Boolean(item.draft?.startDate || item.draft?.dueDate);
   /** A drafted ticket's days now, live, in words: a day not drafted is the same in both. */
   const nowWords = (item: TimelineItem) => {
     const word = (day: string | null) => (day ? dayText(dayNumber(day)) : t('timeline.noDate'));
@@ -566,7 +568,7 @@ export function TimelineView({
               style={{ left: x(days.start), width: (days.due - days.start + 1) * px }}
               aria-describedby={badgeId ? `${id}-hint ${badgeId}` : `${id}-hint`}
               aria-label={
-                item.draft
+                item.draft && daysDrafted(item)
                   ? t(item.draft.stale ? 'timeline.bar.draftStale' : 'timeline.bar.draft', {
                       key: item.key,
                       start: dayText(days.start),
@@ -627,7 +629,7 @@ export function TimelineView({
               style={{ left: x(today) + px / 2 + 2 }}
               onClick={() => setSelected(item.id)}
               aria-label={
-                item.draft
+                item.draft && daysDrafted(item)
                   ? t('timeline.schedule.draft', { key: item.key, ...nowWords(item) })
                   : t('timeline.schedule', { key: item.key })
               }
@@ -896,8 +898,8 @@ export function TimelineView({
         </section>
         {chosen && (
           <SchedulePanel
-            // Drawn afresh when its days change, a draft undone included, so the fields hold them.
-            key={`${chosen.id}/${chosen.start}/${chosen.due}/${chosen.draft ? 'd' : ''}`}
+            // Kept while its ticket is chosen, so focus stays in it; its fields follow the days.
+            key={chosen.id}
             item={chosen}
             blocks={data.links
               .filter((l) => l.from === chosen.id)
@@ -912,7 +914,7 @@ export function TimelineView({
               ? {
                   draft: {
                     scenario: draft.scenario,
-                    now: nowWords(chosen),
+                    now: daysDrafted(chosen) ? nowWords(chosen) : null,
                     undo: () => void undo(chosen),
                   },
                 }
@@ -996,13 +998,31 @@ function SchedulePanel({
   blocked?: Blocked | undefined;
   onSave: (start: string | null, due: string | null) => void;
   onClose: () => void;
-  /** In a scenario: its days now, live, and how to undo its draft. */
-  draft?: { scenario: string; now: { nowStart: string; nowDue: string }; undo: () => void };
+  /** In a scenario: its days now, live, when they are drafted, and how to undo its draft. */
+  draft?: {
+    scenario: string;
+    now: { nowStart: string; nowDue: string } | null;
+    undo: () => void;
+  };
 }) {
   const t = useT();
   const id = useId();
   const [start, setStart] = useState(item.start ?? '');
   const [due, setDue] = useState(item.due ?? '');
+  // Read again after a save or an undo: the fields take the days as they are now.
+  useEffect(() => {
+    setStart(item.start ?? '');
+    setDue(item.due ?? '');
+  }, [item.start, item.due]);
+  const save = useRef<HTMLButtonElement>(null);
+  // Undo takes its own button away with the draft: focus goes to Save, beside it.
+  const undone = useRef(false);
+  const drafted = Boolean(item.draft);
+  useEffect(() => {
+    if (drafted || !undone.current) return;
+    undone.current = false;
+    save.current?.focus();
+  }, [drafted]);
   const bad = start !== '' && due !== '' && start > due;
   return (
     <aside className="glass-card timeline-panel" aria-labelledby={`${id}-title`}>
@@ -1015,10 +1035,19 @@ function SchedulePanel({
         <div className="timeline-panel-draft">
           <p>
             <span className="draft-tag">{t('draft.tag')}</span>{' '}
-            {t('timeline.panel.nowLive', { start: draft.now.nowStart, due: draft.now.nowDue })}
+            {draft.now
+              ? t('timeline.panel.nowLive', { start: draft.now.nowStart, due: draft.now.nowDue })
+              : t('timeline.panel.draftOther')}
           </p>
           {item.draft.stale && <p className="board-hint">{t('draft.stale')}</p>}
-          <button type="button" className="button-secondary" onClick={draft.undo}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => {
+              undone.current = true;
+              draft.undo();
+            }}
+          >
             {t('timeline.panel.undoDraft')}
           </button>
         </div>
@@ -1056,7 +1085,7 @@ function SchedulePanel({
         </label>
         {bad && <p className="form-error">{t('timeline.panel.order')}</p>}
         <div className="form-actions">
-          <button type="submit" className="button-primary" disabled={bad}>
+          <button ref={save} type="submit" className="button-primary" disabled={bad}>
             {t(draft ? 'timeline.panel.saveDraft' : 'timeline.panel.save')}
           </button>
           <button type="button" className="button-secondary" onClick={onClose}>

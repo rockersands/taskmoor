@@ -1776,8 +1776,13 @@ parts, and the manual's page its section. Where this differs from the design abo
   not be read, leaves the views live and says so.
 - **Drafting** on the Timeline, the Calendar and a board always asks the server; someone who may not
   draft is answered `edit_plan` and the page says "only the plan's owner and site administrators
-  can draft in a scenario". **Undo this draft** writes the live values back, which removes the
-  draft. The board reads again every 15 s only in a scenario; live it keeps the local copy, as
+  can draft in a scenario". **Undo this draft** writes the live values back, every drafted
+  field's (a Team value drafted on a board included), which removes the draft; a ticket whose team
+  alone is drafted keeps its bar's plain name and its panel says its team is drafted. The side
+  panel stays while its ticket is chosen, so a save or an undo keeps focus in it (Save, once Undo
+  goes), and its fields follow the days read again. (Built first redrawing the panel on every
+  change of days, which dropped focus to the page, and undoing only days, which a team-only draft
+  refused; fixed after review.) The board reads again every 15 s only in a scenario; live it keeps the local copy, as
   before.
 - **Summary and Releases** say they stay live in a scenario, as the List does.
 - **The change list** reads pages of 100 with **Show more**; it does not offer `only=`, and **Only

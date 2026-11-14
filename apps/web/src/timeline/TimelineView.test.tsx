@@ -42,6 +42,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('a ticket whose team alone is drafted (PLN-002)', () => {
+  it('[PLN-002] names its bar by its days alone, says its team is drafted and offers to undo it', () => {
+    const data = manyItems(3);
+    const second = data.items[1] as (typeof data.items)[number];
+    data.items[1] = { ...second, draft: { fields: { '5': { now: 7 } }, stale: false } };
+    render(
+      <I18nProvider locale="en">
+        <TimelineView
+          data={data}
+          reschedule={async () => ({ ok: true })}
+          reload={() => {}}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+          truncatedText="cut"
+          draft={{ scenario: 'Faster', undo: async () => ({ ok: true }) }}
+        />
+      </I18nProvider>,
+    );
+    const bar = screen.getByRole('button', { name: new RegExp(`^${second.key}: `) });
+    expect(bar).toHaveClass('is-draft');
+    fireEvent.click(bar);
+    const panel = screen.getByRole('complementary', { name: `Days of ${second.key}` });
+    expect(
+      within(panel).getByText('Its days are as they are now; its team is drafted.'),
+    ).toBeVisible();
+    expect(within(panel).getByRole('button', { name: 'Undo this draft' })).toBeVisible();
+  });
+});
+
 describe('a long timeline (PLN-012)', () => {
   it('[PLN-012] draws the rows where the list stands when it is windowed again', () => {
     const { rerender } = render(view(manyItems(300)));

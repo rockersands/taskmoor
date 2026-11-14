@@ -7278,6 +7278,7 @@ export const messagesEn = {
   'timeline.panel.draftHint':
     'Saving makes a draft in {scenario}; the ticket does not change until it is applied.',
   'timeline.panel.nowLive': 'Now: {start} to {due}',
+  'timeline.panel.draftOther': 'Its days are as they are now; its team is drafted.',
   'timeline.panel.saveDraft': 'Save draft',
   'timeline.panel.undoDraft': 'Undo this draft',
   'calendar.draftedDue': 'Draft: {key} due {date} in {scenario}. Nothing changed yet.',

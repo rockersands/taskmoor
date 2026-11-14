@@ -7446,6 +7446,7 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.panel.draftHint':
     'Guardar crea un borrador en {scenario}; el ticket no cambia hasta que se aplique.',
   'timeline.panel.nowLive': 'Ahora: del {start} al {due}',
+  'timeline.panel.draftOther': 'Sus días son los de ahora; su equipo está en borrador.',
   'timeline.panel.saveDraft': 'Guardar el borrador',
   'timeline.panel.undoDraft': 'Deshacer este borrador',
   'calendar.draftedDue': 'Borrador: {key} vence el {date} en {scenario}. Aún no cambió nada.',

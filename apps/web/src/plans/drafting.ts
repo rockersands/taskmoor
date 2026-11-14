@@ -40,11 +40,19 @@ export function draftCalls(
       key: string,
       days: { startDate?: string | null; dueDate?: string | null },
     ): Promise<Moved> => write(key, days),
-    /** Writes the live values back: a field set back to live loses its draft. */
-    undo: (item: Pick<TimelineItem, 'key' | 'draft'>) =>
-      write(item.key, {
+    /**
+     * Writes the live values back, every drafted field's (a Team value too): a field set back to
+     * live loses its draft, so the ticket has none left.
+     */
+    undo: (item: Pick<TimelineItem, 'key' | 'draft'>) => {
+      const fields = Object.entries(item.draft?.fields ?? {});
+      return write(item.key, {
         ...(item.draft?.startDate ? { startDate: item.draft.startDate.now } : {}),
         ...(item.draft?.dueDate ? { dueDate: item.draft.dueDate.now } : {}),
-      }),
+        ...(fields.length > 0
+          ? { fields: Object.fromEntries(fields.map(([id, value]) => [id, value.now])) }
+          : {}),
+      });
+    },
   };
 }

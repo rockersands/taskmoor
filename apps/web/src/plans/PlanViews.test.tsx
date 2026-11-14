@@ -191,13 +191,35 @@ describe('the views in a scenario (PLN-002)', () => {
       'Draft: SHOP-2 Nov 2, 2026 to Nov 12, 2026 in Faster. Nothing changed yet.',
     );
     expect(liveOf(plans, 'SHOP-2')?.due).toBe('2026-11-10');
-    const again = await screen.findByRole('complementary', { name: 'Days of SHOP-2' });
+    await screen.findByRole('button', { name: /^SHOP-2, draft: Nov 2, 2026 to Nov 12, 2026/ });
+    // The panel stays, and Save draft keeps the focus through the timeline read again.
+    const again = screen.getByRole('complementary', { name: 'Days of SHOP-2' });
+    expect(within(again).getByRole('button', { name: 'Save draft' })).toHaveFocus();
     await user.click(within(again).getByRole('button', { name: 'Undo this draft' }));
     await screen.findByText('The draft of SHOP-2 in Faster is undone.');
     expect(scenarios.writes.at(-1)).toEqual([{ ticketId: 2, dueDate: '2026-11-10' }]);
     expect(
       await screen.findByRole('button', { name: 'SHOP-2: Nov 2, 2026 to Nov 10, 2026' }),
     ).toBeVisible();
+    // Undo goes with the draft: Save, beside it, takes the focus, and the fields hold the days now.
+    await waitFor(() =>
+      expect(within(again).getByRole('button', { name: 'Save draft' })).toHaveFocus(),
+    );
+    expect(within(again).getByLabelText('Due date')).toHaveValue('2026-11-10');
+  });
+
+  it('[PLN-012] keeps the side panel, and focus on Save dates, when the live Timeline is read again after a save', async () => {
+    const user = userEvent.setup();
+    const { plans } = renderInScenario('timeline', '#/plans/12/timeline');
+    await user.click(await screen.findByRole('button', { name: /^SHOP-2: / }));
+    const panel = screen.getByRole('complementary', { name: 'Days of SHOP-2' });
+    await user.clear(within(panel).getByLabelText('Due date'));
+    await user.type(within(panel).getByLabelText('Due date'), '2026-11-13');
+    await user.click(within(panel).getByRole('button', { name: 'Save dates' }));
+    await screen.findByRole('button', { name: 'SHOP-2: Nov 2, 2026 to Nov 13, 2026' });
+    expect(liveOf(plans, 'SHOP-2')?.due).toBe('2026-11-13');
+    expect(within(panel).getByRole('button', { name: 'Save dates' })).toHaveFocus();
+    expect(within(panel).getByLabelText('Due date')).toHaveValue('2026-11-13');
   });
 
   it('[PLN-002] refuses a draft for someone who may not draft, in words', async () => {
