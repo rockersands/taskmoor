@@ -552,6 +552,22 @@ describe('a local-mode track’s own layout sets, for whoever runs the track (T-
     expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
   });
 
+  it('[NFR-005] keyboard focus goes to the note that the track uses the set, not to the page (T-225)', async () => {
+    const user = userEvent.setup();
+    renderOwn(TRACK_ADMIN, 4);
+    await editor('Ops layouts');
+    await user.click(screen.getByRole('button', { name: 'New layout set' }));
+    const add = screen.getByRole('form', { name: 'Add a layout set' });
+    await user.type(within(add).getByLabelText('New set name'), 'Ops intake');
+    await user.click(within(add).getByRole('button', { name: 'Add a layout set' }));
+    await editor('Ops intake');
+    screen.getByRole('button', { name: 'Use this set for OPS' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('OPS now uses Ops intake.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use this set for OPS' })).toBeNull();
+    expect(screen.getByText(/Used by OPS\./)).toHaveFocus();
+  });
+
   it('[CORE-008] places the track’s fields and previews only with its fields, rules and ticket types', async () => {
     const user = userEvent.setup();
     const client = renderOwn(TRACK_ADMIN, 4);

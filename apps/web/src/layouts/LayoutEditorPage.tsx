@@ -481,6 +481,15 @@ function SetEditor({
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [said, setSaid] = useState('');
+  // "Use this set for KEY" goes away once the track uses the set; the note that says which tracks
+  // use it takes the keyboard focus it had, rather than the page (T-225).
+  const usedByNote = useRef<HTMLParagraphElement>(null);
+  const [focusUsedBy, setFocusUsedBy] = useState(false);
+  useEffect(() => {
+    if (!focusUsedBy) return;
+    usedByNote.current?.focus();
+    setFocusUsedBy(false);
+  }, [focusUsedBy]);
 
   const dirty = name.trim() !== set.name || !sameLayouts(drafts, baseline);
   useEffect(() => {
@@ -606,9 +615,15 @@ function SetEditor({
     client
       .assignLayoutSet(track.id, set.id)
       .then(() => client.layoutSet(set.id))
-      .then(onAssigned, (error) => {
-        if (!expired(error)) setProblem(refusal(t, error));
-      });
+      .then(
+        (used) => {
+          onAssigned(used);
+          setFocusUsedBy(true);
+        },
+        (error) => {
+          if (!expired(error)) setProblem(refusal(t, error));
+        },
+      );
   };
 
   return (
@@ -638,7 +653,7 @@ function SetEditor({
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <p className="form-hint">
+        <p ref={usedByNote} tabIndex={-1} className="form-hint">
           {set.usedBy.length > 0
             ? t('layouts.usedBy', { tracks: set.usedBy.map((tr) => tr.key).join(', ') })
             : t('layouts.usedByNone')}
