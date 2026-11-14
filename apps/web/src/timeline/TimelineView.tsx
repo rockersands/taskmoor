@@ -18,6 +18,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import {
+  autoScheduled,
   dayNumber,
   isoDay,
   localDay,
@@ -342,9 +343,12 @@ export function TimelineView({
         start: start ? dayText(dayNumber(start)) : t('timeline.noDate'),
         due: due ? dayText(dayNumber(due)) : t('timeline.noDate'),
       };
+      // An auto-scheduled bar moved by a person becomes their draft, which a re-run keeps.
       setNotice(
         draft
-          ? t('timeline.drafted', { ...words, scenario: draft.scenario })
+          ? autoScheduled(item.draft)
+            ? `${t('timeline.drafted', { ...words, scenario: draft.scenario })} ${t('draft.yoursNow')}`
+            : t('timeline.drafted', { ...words, scenario: draft.scenario })
           : t('timeline.rescheduled', words),
       );
     } else {
@@ -556,7 +560,11 @@ export function TimelineView({
             </a>
             <span className="timeline-summary">{item.summary}</span>
           </span>
-          {item.draft && <span className="draft-tag">{t('draft.tag')}</span>}
+          {item.draft && (
+            <span className="draft-tag">
+              {t(autoScheduled(item.draft) ? 'draft.tagAuto' : 'draft.tag')}
+            </span>
+          )}
           {progress && (
             <span className="timeline-progress-text">
               {t('timeline.progress', { closed: progress.closed, count: progress.total })}
@@ -572,12 +580,21 @@ export function TimelineView({
               aria-describedby={badgeId ? `${id}-hint ${badgeId}` : `${id}-hint`}
               aria-label={
                 item.draft && daysDrafted(item)
-                  ? t(item.draft.stale ? 'timeline.bar.draftStale' : 'timeline.bar.draft', {
-                      key: item.key,
-                      start: dayText(days.start),
-                      due: dayText(days.due),
-                      ...nowWords(item),
-                    })
+                  ? t(
+                      autoScheduled(item.draft)
+                        ? item.draft.stale
+                          ? 'timeline.bar.autoDraftStale'
+                          : 'timeline.bar.autoDraft'
+                        : item.draft.stale
+                          ? 'timeline.bar.draftStale'
+                          : 'timeline.bar.draft',
+                      {
+                        key: item.key,
+                        start: dayText(days.start),
+                        due: dayText(days.due),
+                        ...nowWords(item),
+                      },
+                    )
                   : t('timeline.bar', {
                       key: item.key,
                       start: dayText(days.start),
@@ -1038,7 +1055,9 @@ function SchedulePanel({
       {draft && item.draft && (
         <div className="timeline-panel-draft">
           <p>
-            <span className="draft-tag">{t('draft.tag')}</span>{' '}
+            <span className="draft-tag">
+              {t(autoScheduled(item.draft) ? 'draft.tagAuto' : 'draft.tag')}
+            </span>{' '}
             {draft.now
               ? t('timeline.panel.nowLive', { start: draft.now.nowStart, due: draft.now.nowDue })
               : t('timeline.panel.draftOther')}

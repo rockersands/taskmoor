@@ -7355,6 +7355,13 @@ export const messagesEn = {
   'draft.stale':
     'Changed since drafted: the ticket no longer has the values this draft started from.',
   'draft.staleShort': 'changed since drafted',
+  // The auto-scheduler's drafts on the Timeline and Calendar (T-089f; ADR-122 stage 7).
+  'draft.tagAuto': 'Draft, auto-scheduled',
+  'draft.yoursNow': 'Your draft now: a re-run will plan around it.',
+  'timeline.bar.autoDraft':
+    '{key}, draft, auto-scheduled: {start} to {due}. Now {nowStart} to {nowDue}.',
+  'timeline.bar.autoDraftStale':
+    '{key}, draft, auto-scheduled: {start} to {due}. Now {nowStart} to {nowDue}. Changed since drafted.',
   'timeline.drafted': 'Draft: {key} {start} to {due} in {scenario}. Nothing changed yet.',
   'timeline.undone': 'The draft of {key} in {scenario} is undone.',
   'timeline.bar.draft': '{key}, draft: {start} to {due}. Now {nowStart} to {nowDue}.',

@@ -7523,6 +7523,12 @@ export const messagesEs: Record<MessageId, string> = {
   'draft.stale':
     'Cambió desde el borrador: el ticket ya no tiene los valores de los que partió este borrador.',
   'draft.staleShort': 'cambió desde el borrador',
+  'draft.tagAuto': 'Borrador, programado automáticamente',
+  'draft.yoursNow': 'Ahora es tu borrador: al volver a ejecutar se planificará a su alrededor.',
+  'timeline.bar.autoDraft':
+    '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',
+  'timeline.bar.autoDraftStale':
+    '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}. Cambió desde el borrador.',
   'timeline.drafted': 'Borrador: {key} del {start} al {due} en {scenario}. Aún no cambió nada.',
   'timeline.undone': 'Se deshizo el borrador de {key} en {scenario}.',
   'timeline.bar.draft': '{key}, borrador: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',

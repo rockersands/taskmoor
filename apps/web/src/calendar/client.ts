@@ -11,7 +11,10 @@ export interface CalendarTicket {
   stage: 'new' | 'active' | 'closed';
   start: string | null;
   due: string | null;
-  /** On a plan read in a scenario: the ticket's drafts, its days above being the drafted ones. */
+  /**
+   * On a plan read in a scenario: the ticket's drafts, its days above being the drafted ones, and
+   * whether they are the auto-scheduler's (`origin`, ADR-122 stage 7).
+   */
   draft?: DraftMark;
 }
 
