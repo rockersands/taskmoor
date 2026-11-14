@@ -416,6 +416,15 @@ a {
   overflow-y: auto;
 }
 
+/*
+ * While commands wait below the list's foot, its last line fades out, as the edge of a tab bar with
+ * more beyond it does, so a list that happens to end on a whole command still shows that more
+ * follow. The fade stays at the foot as the list scrolls, and goes at its end.
+ */
+.palette-list[data-more] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-8) * 2), transparent);
+}
+
 .palette-item,
 .palette-empty {
   padding: var(--space-2) var(--space-3);
