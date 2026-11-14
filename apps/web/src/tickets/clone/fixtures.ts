@@ -1,5 +1,6 @@
 import { ApiError } from '../../api/client';
 import type { BulkItem, BulkOperation } from '../../bulk/client';
+import type { NamedField } from '../customFieldNames';
 import type { CloneSource } from './CloneDialog';
 import type { CloneClient, CloneRequest, CloneTrack } from './client';
 
@@ -55,12 +56,28 @@ export const copied = (left: string[] = []): BulkItem => ({
 export interface FakeClone {
   client: CloneClient;
   requests: CloneRequest[];
+  /** The tracks (by id) whose field catalogue was read. */
+  fieldReads: number[];
 }
+
+/** The field catalogues of SHOP (1) and PAY (2): Risk applies to SHOP only. */
+export const FIELDS: Record<number, NamedField[]> = {
+  1: [
+    { id: 12, name: 'Story size' },
+    { id: 14, name: 'Risk' },
+    { id: 15, name: 'Points' },
+  ],
+  2: [
+    { id: 12, name: 'Story size' },
+    { id: 15, name: 'Points' },
+  ],
+};
 
 /**
  * A clone backend in memory: `start` answers an operation of `total` tickets (or `refuse`),
  * each progress read finishes `step` more, and the first item is `first` once it is done;
- * `failed` of them fail.
+ * `failed` of them fail. With `fields`, the field catalogue of each track (by id); `fields: 'refuse'`
+ * refuses every read.
  */
 export function fakeCloneClient(
   options: {
@@ -69,9 +86,12 @@ export function fakeCloneClient(
     failed?: number;
     first?: BulkItem;
     refuse?: ApiError;
+    fields?: Record<number, NamedField[]> | 'refuse';
   } = {},
 ): FakeClone {
   const requests: CloneRequest[] = [];
+  const fieldReads: number[] = [];
+  const catalogues = options.fields;
   const total = options.total ?? 5;
   const failed = options.failed ?? 0;
   let done = 0;
@@ -97,8 +117,17 @@ export function fakeCloneClient(
       return now();
     },
     first: async () => (done === total ? (options.first ?? copied()) : null),
+    ...(catalogues
+      ? {
+          fieldNames: async (trackId: number) => {
+            fieldReads.push(trackId);
+            if (catalogues === 'refuse') throw new ApiError(403, { error: 'forbidden' });
+            return catalogues[trackId] ?? [];
+          },
+        }
+      : {}),
   };
-  return { client, requests };
+  return { client, requests, fieldReads };
 }
 
 export const FORBIDDEN = new ApiError(403, { error: 'forbidden', permission: 'create_tickets' });

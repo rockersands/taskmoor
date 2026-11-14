@@ -8,7 +8,8 @@ import type { MessageId } from '../../i18n/messages.en';
 import { navigate, routeHref } from '../../routing/router';
 import { useLeaveMotion } from '../../shell/motion';
 import { TrackSelect } from '../../shell/TrackSelect';
-import { refusedFieldLabel } from '../refusedFields';
+import { useCustomFieldNames } from '../customFieldNames';
+import { type CustomFieldNames, customFieldOf, refusedFieldLabel } from '../refusedFields';
 import { type CloneClient, type CloneTrack, cloneClient } from './client';
 
 /** The ticket being cloned, as the ticket view knows it. */
@@ -41,6 +42,7 @@ const LEFT_LABELS: Record<string, MessageId> = {
 };
 
 const finished = (op: BulkOperation) => op.status === 'done' || op.status === 'cancelled';
+const NOTHING_LEFT: string[] = [];
 
 /**
  * Clone and deep clone (M1-124; CORE-023): copies the ticket into its own track or another,
@@ -185,14 +187,47 @@ export function CloneDialog({
     }
   };
 
+  // The custom fields the copy was made without, by their names (T-352): the catalogue of the
+  // track the copy went to first, then the original's for a field that does not apply there (the
+  // copy left it out for that reason, so the target's catalogue does not list it). Neither is
+  // read until the clone has left something out.
+  const targetId = op === null ? null : (tracks?.find((tr) => tr.key === track) ?? ticket.track).id;
+  const sourceId = op === null ? null : ticket.track.id;
+  const nameInTarget = useCustomFieldNames(targetId, client.fieldNames);
+  const nameInSource = useCustomFieldNames(sourceId, client.fieldNames);
+  /** The names, for the result they were read for: until then the list waits, as a refusal does. */
+  const [named, setNamed] = useState<{ keys: string[]; names: CustomFieldNames } | null>(null);
+  const leftKeys = first?.result?.left ?? NOTHING_LEFT;
+  useEffect(() => {
+    if (leftKeys.length === 0) return;
+    nameInTarget(leftKeys, (inTarget) => {
+      const unnamed = leftKeys.filter((key) => {
+        const field = customFieldOf(key);
+        return field !== null && !inTarget.has(field);
+      });
+      if (unnamed.length === 0 || targetId === sourceId) {
+        setNamed({ keys: leftKeys, names: inTarget });
+        return;
+      }
+      nameInSource(unnamed, (inSource) =>
+        setNamed({ keys: leftKeys, names: new Map([...inSource, ...inTarget]) }),
+      );
+    });
+  }, [leftKeys, nameInTarget, nameInSource, targetId, sourceId]);
+  const fieldNames = named?.keys === leftKeys ? named.names : null;
+
   const number = (n: number) => intl.formatNumber(n);
   const copyKey = first?.result?.ticket.key ?? null;
   // Each by its label, never the key the clone reports it under (T-292); one this client cannot
-  // name is said as something more.
-  const left = (first?.result?.left ?? []).map((key) => {
+  // name is said as something more, and a custom field no catalogue names (a read refused or
+  // failed, or a field since deleted) as 'a custom field'.
+  const left = (fieldNames === null ? NOTHING_LEFT : leftKeys).map((key) => {
     const own = Object.hasOwn(LEFT_LABELS, key) ? LEFT_LABELS[key] : undefined;
     if (own) return t(own);
-    return refusedFieldLabel(t, key, undefined, 'clone.customField') ?? t('clone.otherValue');
+    return (
+      refusedFieldLabel(t, key, fieldNames ?? undefined, 'clone.customField') ??
+      t('clone.otherValue')
+    );
   });
 
   return (
