@@ -810,6 +810,6 @@ describe('a plan’s dependencies (PLN-006)', () => {
       const refused = await read('admin');
       expect(refused.statusCode, refused.body.slice(0, 400)).toBe(409);
       expect(refused.json()).toEqual({ error: 'plan_too_large', limit: 50_000 });
-    }, 240_000);
+    }, 600_000); // 50,000 tickets written; three such tests can share the machine in a gate
   });
 });

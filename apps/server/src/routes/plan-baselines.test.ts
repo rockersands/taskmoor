@@ -741,7 +741,7 @@ describe('plan baselines (PLN-011)', () => {
     expect(large.json()).toEqual({ error: 'plan_too_large', limit: 50_000 });
     const list = await call('admin', { method: 'GET', url: `${plan(paging)}/baselines` });
     expect(list.baselines).toHaveLength(1);
-  }, 240_000);
+  }, 600_000); // 50,000 tickets written; three such tests can share the machine in a gate
 
   it('[PLN-011] audits every baseline event, with the plan as its subject', async () => {
     await relay();

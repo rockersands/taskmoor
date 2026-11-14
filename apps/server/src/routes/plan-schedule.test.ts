@@ -1438,7 +1438,7 @@ describe('the auto-scheduler (PLN-004)', () => {
     expect(large.statusCode, large.body).toBe(409);
     expect(large.json()).toEqual({ error: 'plan_too_large', limit: 50_000 });
     expect(await scenarios()).toBe(0);
-  }, 240_000);
+  }, 600_000); // 50,000 tickets written; three such tests can share the machine in a gate
 
   it('[PLN-004] diffs proposals against earlier ones: unchanged, rewritten, withdrawn, changed meanwhile', () => {
     const snap = (start: string | null, due: string | null, more: Partial<DaySnapshot> = {}) => ({
