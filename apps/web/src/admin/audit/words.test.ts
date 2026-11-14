@@ -1,18 +1,30 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
 import type { Translate } from '../../i18n/I18nProvider';
 import { messagesFor } from '../../i18n/locale';
 import { auditActionWords } from './words';
 
-/** The server's source, from the repository root or from the app (as the SSO tests read it). */
-const serverSource = (file: string) => {
-  const path = [`apps/server/src/${file}`, `../server/src/${file}`]
-    .map((p) => resolve(process.cwd(), p))
-    .find((p) => existsSync(p));
-  return readFileSync(path ?? file, 'utf8');
-};
+/** The server's source folder, from the repository root or from the app (as the SSO tests read it). */
+const SERVER_SRC =
+  ['apps/server/src', '../server/src'].map((p) => resolve(process.cwd(), p)).find(existsSync) ??
+  'apps/server/src';
+
+const serverSource = (file: string) => readFileSync(join(SERVER_SRC, file), 'utf8');
+
+/**
+ * Actions the server writes as a literal beside the lists (`action: 'audit.syslog_test'`), in any
+ * of its source files but the tests: a new one is held to words as soon as it is written.
+ */
+function literalActions(): string[] {
+  const files = readdirSync(SERVER_SRC, { recursive: true, encoding: 'utf8' }).filter(
+    (f) => f.endsWith('.ts') && !f.endsWith('.test.ts'),
+  );
+  return files.flatMap((file) =>
+    [...serverSource(file).matchAll(/\baction: '([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1] as string),
+  );
+}
 
 /** The literal strings of the block that starts with `start` and ends at the first `end`. */
 function codesIn(file: string, start: string, end: string, pattern: RegExp): string[] {
@@ -24,9 +36,10 @@ function codesIn(file: string, start: string, end: string, pattern: RegExp): str
 }
 
 /**
- * Every action the server can write to the audit log: the domain events it records, the records
- * written straight to the log, and repeated refusals of access (`audit/subscriber.ts`,
- * `audit/record.ts`, `security/alerts.ts`).
+ * Every action the server can write to the audit log or its syslog stream: the domain events it
+ * records, the records written straight to the log, repeated refusals of access
+ * (`audit/subscriber.ts`, `audit/record.ts`, `security/alerts.ts`) and the actions written as a
+ * literal, such as the syslog test message (`routes/audit.ts`).
  */
 const SERVER_ACTIONS = [
   ...codesIn(
@@ -47,6 +60,7 @@ const SERVER_ACTIONS = [
     ';',
     /'([a-z_]+\.[a-z_]+)'/g,
   ),
+  ...literalActions(),
 ];
 
 const translate = (locale: 'en' | 'es'): Translate => {
@@ -59,6 +73,7 @@ describe('the audit actions in words (D19)', () => {
     expect(SERVER_ACTIONS.length).toBeGreaterThan(250);
     expect(SERVER_ACTIONS).toContain('password_link.rejected');
     expect(SERVER_ACTIONS).toContain('access.refused_repeatedly');
+    expect(SERVER_ACTIONS).toContain('audit.syslog_test');
     for (const locale of ['en', 'es'] as const) {
       const t = translate(locale);
       const raw = SERVER_ACTIONS.filter((code) => {

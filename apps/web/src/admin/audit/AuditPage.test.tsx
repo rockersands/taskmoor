@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
+import { useTimeZone } from '../../test/timeZone';
 import { setViewportWidth } from '../../test/viewport';
 import { ADMIN, MEMBER } from '../fixtures';
 import { AuditPage } from './AuditPage';
@@ -151,24 +152,6 @@ describe('audit log page (M1-085)', () => {
     expect(within(last as HTMLElement).queryByText(/About:/)).toBeNull();
   });
 
-  it('[IAM-013] puts the day over the time and the address under who, beside the list (AD-2)', async () => {
-    renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
-    const table = await screen.findByRole('table');
-    expect(
-      within(table)
-        .getAllByRole('columnheader')
-        .map((h) => h.textContent),
-    ).toEqual(['When', 'Who, from where', 'Action', 'Subject']);
-    const cells = within(within(table).getAllByRole('row')[3] as HTMLElement).getAllByRole('cell');
-    const when = cells[0]?.querySelector('time');
-    expect(when).toHaveAttribute('dateTime', '2026-11-14T09:14:29Z');
-    expect(when?.querySelector('.audit-day')).toHaveTextContent('Nov 14, 2026');
-    expect(when?.querySelector('.audit-time')).toHaveTextContent(/\d:14:29/);
-    expect(cells[1]?.firstChild?.textContent).toBe('Eval Admin');
-    expect(within(cells[1] as HTMLElement).getByText('From 127.0.0.1')).toHaveClass('audit-from');
-    expect(cells[2]).toHaveTextContent('Ticket template created');
-  });
-
   it('[IAM-013] says which role was given and to whom, and a refused password link (S3-AD-1, S3-AD-4)', async () => {
     renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
     const table = await screen.findByRole('table');
@@ -219,4 +202,29 @@ describe('audit log page (M1-085)', () => {
       'gadget 3',
     ]);
   });
+});
+
+// The time on the person's clock: pinned to a zone half an hour off UTC, so the test reads the
+// same on every machine and shows the time is not UTC's (AD-2).
+describe('the audit log on the person’s clock (M1-085)', () => {
+  useTimeZone('Asia/Kolkata');
+
+    it('[IAM-013] puts the day over the time and the address under who, beside the list (AD-2)', async () => {
+      renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
+      const table = await screen.findByRole('table');
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((h) => h.textContent),
+      ).toEqual(['When', 'Who, from where', 'Action', 'Subject']);
+      const cells = within(within(table).getAllByRole('row')[3] as HTMLElement).getAllByRole('cell');
+      const when = cells[0]?.querySelector('time');
+      expect(when).toHaveAttribute('dateTime', '2026-11-14T09:14:29Z');
+      expect(when?.querySelector('.audit-day')).toHaveTextContent('Nov 14, 2026');
+      // On the person's clock, half an hour off any whole hour here.
+      expect(when?.querySelector('.audit-time')).toHaveTextContent('2:44:29 PM');
+      expect(cells[1]?.firstChild?.textContent).toBe('Eval Admin');
+      expect(within(cells[1] as HTMLElement).getByText('From 127.0.0.1')).toHaveClass('audit-from');
+      expect(cells[2]).toHaveTextContent('Ticket template created');
+    });
 });

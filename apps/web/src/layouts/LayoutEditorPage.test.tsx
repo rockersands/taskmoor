@@ -165,6 +165,7 @@ describe('the layout editor (UI-T15)', () => {
     );
     expect(row('Areas')).toHaveTextContent('On the form only when the track has areas.');
     expect(row('Labels')).not.toHaveTextContent('On the form only');
+    expect(row('Severity')).not.toHaveTextContent('On the form only');
     // Placed already, it can still be taken off; it is not offered again.
     expect(fieldsIn(SIDE)).toContain('Close reason');
     await choose(user, 'Move Close reason', 'Take off the layout');
@@ -172,6 +173,32 @@ describe('the layout editor (UI-T15)', () => {
     // The edit form sets it, so its layout offers it.
     await user.click(screen.getByRole('radio', { name: 'Edit' }));
     expect(unplaced()).toContain('Close reason');
+  });
+
+  it('[CORE-008] the create form’s preview says a custom list of releases or areas shows only when the track has some (T-359)', async () => {
+    // Customer as a field of type release and Severity as one of type area: the create form
+    // leaves either out on a track with none, as it does the built-in ones.
+    const client = fakeLayoutsClient(layoutSetsFixture());
+    const answer = client.preview.bind(client);
+    const types: Record<number, string> = { 12: 'area', 13: 'release' };
+    vi.spyOn(client, 'preview').mockImplementation(async (id, body) => {
+      const preview = await answer(id, body);
+      return {
+        ...preview,
+        customFields: preview.customFields.map((f) => ({ ...f, type: types[f.id] ?? f.type })),
+      };
+    });
+    renderPage(CONFIG_ADMIN, { client });
+    await editor();
+    await within(preview()).findByText('Preview of the create form for Feature');
+    await waitFor(() => expect(previewed()).toContain('Customer'));
+    const row = (name: string) =>
+      [...preview().querySelectorAll('.layout-preview-field')].find(
+        (li) => li.querySelector('.layout-preview-label')?.firstChild?.textContent === name,
+      ) as HTMLElement;
+    expect(row('Customer')).toHaveTextContent('On the form only when the track has releases.');
+    expect(row('Severity')).toHaveTextContent('On the form only when the track has areas.');
+    expect(row('Labels')).not.toHaveTextContent('On the form only');
   });
 
   it('[CORE-008] moves fields with the keyboard: Alt and the arrows, and each grip’s menu, each move announced', async () => {

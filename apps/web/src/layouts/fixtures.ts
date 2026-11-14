@@ -212,7 +212,7 @@ export function fakePreview(set: LayoutSet, body: PreviewRequest): Preview {
     source: own ? 'type' : every ? 'every_type' : 'none',
     layout: { operation: body.operation, tabs },
     leftOut,
-    customFields: LAYOUT_FIELDS.map((f) => ({ id: f.id, name: f.name })),
+    customFields: LAYOUT_FIELDS.map((f) => ({ id: f.id, name: f.name, type: 'text' })),
   };
 }
 

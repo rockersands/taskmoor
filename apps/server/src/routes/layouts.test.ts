@@ -363,7 +363,7 @@ describe('field rules and layouts (M1-012)', () => {
       source: 'type' | 'every_type' | 'none';
       layout: FormJson['layout'];
       leftOut: { field: string; reason: string }[];
-      customFields: { id: number; name: string }[];
+      customFields: { id: number; name: string; type: string }[];
     }
     const preview = async (who: string, setId: number, body: Record<string, unknown>) =>
       post(who, `/api/v1/layout-sets/${setId}/preview`, body);
@@ -483,8 +483,10 @@ describe('field rules and layouts (M1-012)', () => {
       });
       expect(saved.statusCode, saved.body).toBe(200);
       expect(saved.json().preview.layout.tabs[0].name).toBe('Saved');
+      // With its type, so the editor can say the create form shows a list of releases or areas
+      // only when the track has some (T-359).
       expect(saved.json().preview.customFields).toEqual([
-        { id: notes.id, name: `Preview notes ${key}` },
+        { id: notes.id, name: `Preview notes ${key}`, type: 'text' },
       ]);
       // Without a track: the fields every track has and the default rules.
       const anywhere = await preview('admin', set.id, {

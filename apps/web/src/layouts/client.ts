@@ -47,7 +47,8 @@ export interface Preview {
   };
   /** Fields the layout places that the form leaves out, and why. */
   leftOut: { field: string; reason: 'hidden' | 'not_applicable' | 'computed' }[];
-  customFields: Named[];
+  /** The custom fields the form names, with their type (`release`, `area`, `text`, ...). */
+  customFields: (Named & { type?: string })[];
 }
 
 export interface PreviewRequest {

@@ -50,12 +50,17 @@ const REASONS: Record<LeftOutReason, MessageId> = {
 
 /**
  * Optional fields the create form leaves out when the track has nothing to offer in them
- * (`CreateTicketPage`): the preview cannot know the track's releases and areas, so it says so
+ * (`CreateTicketPage`'s `listKindOf`): the built-in release and area fields, and custom fields of
+ * type release or area. The preview cannot know the track's releases and areas, so it says so
  * under them rather than promising a row the form may not show.
  */
 const ONLY_WHEN_LISTED: Partial<Record<string, MessageId>> = {
   targetRelease: 'layouts.preview.onlyWithReleases',
   foundInRelease: 'layouts.preview.onlyWithReleases',
+  area: 'layouts.preview.onlyWithAreas',
+};
+const ONLY_WHEN_LISTED_TYPE: Partial<Record<string, MessageId>> = {
+  release: 'layouts.preview.onlyWithReleases',
   area: 'layouts.preview.onlyWithAreas',
 };
 
@@ -157,10 +162,16 @@ export function LayoutPreview({
   // Why, in the catalogue's words; a refusal the editor does not know is said in general.
   const reason = state.status === 'refused' ? layoutRefusal(t, state.answer, knownName) : null;
   const typeName = types.find((x) => x.id === typeId)?.name ?? '';
-  const nameOf = (key: string) => {
+  const customOf = (key: string) => {
     const custom = /^cf\[(\d+)\]$/.exec(key)?.[1];
-    const found = custom ? shown?.customFields.find((f) => f.id === Number(custom)) : undefined;
-    return found?.name ?? fieldName(key);
+    return custom ? shown?.customFields.find((f) => f.id === Number(custom)) : undefined;
+  };
+  const nameOf = (key: string) => customOf(key)?.name ?? fieldName(key);
+  /** Why a row may be missing from the real create form, for a list of the track's own. */
+  const onlyWhenListed = (key: string): MessageId | undefined => {
+    const custom = customOf(key);
+    if (custom) return custom.type ? ONLY_WHEN_LISTED_TYPE[custom.type] : undefined;
+    return /^cf\[/.test(key) ? undefined : ONLY_WHEN_LISTED[key];
   };
 
   return (
@@ -305,9 +316,9 @@ export function LayoutPreview({
                                   )}
                                   {shown.layout.operation === 'create' &&
                                     !field.required &&
-                                    ONLY_WHEN_LISTED[field.key] && (
+                                    onlyWhenListed(field.key) && (
                                       <span className="form-hint">
-                                        {t(ONLY_WHEN_LISTED[field.key] as MessageId)}
+                                        {t(onlyWhenListed(field.key) as MessageId)}
                                       </span>
                                     )}
                                 </li>
