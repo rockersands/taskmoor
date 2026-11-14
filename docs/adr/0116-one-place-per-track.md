@@ -276,8 +276,25 @@ them.
   status other workflows share keeps its stage.
 
 - **Outcomes** (T-079, the user's decision of 2026-11-03; AGL-024) lists the track's outcomes
-  with their progress, on Scrum and Kanban tracks alike. How a Kanban track manages its outcomes
-  (T-082) is still the user's question; this section only lists them.
+  with their progress, on Scrum and Kanban tracks alike. Every track type manages them here too
+  (T-082, the user's decision of 2026-11-13): the section gains a manage panel.
+  - **The manage panel** creates an outcome (a summary, and a type when the track has more than one
+    at the outcome level), edits its summary and dates, moves an open one up or down among the open
+    ones, and closes one through its workflow (the one way into the closed stage at once; a choice
+    when there are several; the close reason or priority a way asks for, as the ticket page's
+    transition form; otherwise it sends the person to the outcome's page).
+  - **No new route and no new event.** The panel calls the ticket routes the ticket page and the
+    backlog use (`POST /tickets`, `PATCH /tickets/:id`, `PUT /tickets/:id/rank`,
+    `POST /tickets/:id/transitions`), which work on any track type, check each ticket again and emit
+    their own events (`ticket.created`, `ticket.updated`, `ticket.ranked`, `ticket.transitioned`),
+    so the audit and contract decisions are theirs. Moving up is a rank just before the open
+    outcome above, moving down just after the one below; the backlog's block rank stays Scrum-only.
+  - **What the page offers** comes with the list: `manage` says, from the person's roles in the
+    track, whether they may create (`create_tickets` and an outcome-level type, whose ids it lists),
+    edit (`edit_tickets`), schedule (`schedule_tickets`: dates and order) and close
+    (`transition_tickets`); all false on an archived track. It is a hint for the page; the ticket
+    routes decide. `track-outcomes.test.ts` runs the whole cycle on a Kanban track as a member, and
+    shows a viewer refused.
   - `GET /api/v1/tracks/:id/outcomes` reads a page of up to 100 in one statement: the outcomes and,
     in a second common table expression of the same statement, the counts under them. The person's
     ticket filter is in both, as in search (QRY-008), so a hidden outcome is not listed and a hidden
@@ -322,7 +339,7 @@ them.
     chart for an outcome, from the first day a ticket came under it, with its tickets as they
     stand: done, still open, and open without an estimate. Like the other release and outcome
     reports it follows the Scrum board's estimation and done columns, so a Kanban track does not
-    list it; how a Kanban track manages outcomes is still the user's question (T-082).
+    list it; a Kanban track manages its outcomes from the Outcomes section (T-082).
   - **Every number equals a search.** `track-reports.test.ts` checks each count against the search
     API, and each sum against the tickets that search finds, as two people a visibility level
     tells apart, on a Scrum and a Kanban track; and that a Summary widget with no query reads
@@ -334,10 +351,22 @@ them.
     against a budget of 1,000 ms each (RPT-002 (3) asks 3 s at a million tickets). Every gate
     reads a track of 10,000; `TASKMOOR_LARGE_TRACK_REPORTS=1` reads 100,000. No index or migration
     was needed.
-  - **Not done:** RPT-006 says members "view and filter" the Summary. Members read it as the
-    owner set it; a filter of their own over all its widgets is not built, as the user's decision
-    names only customizing by the owner. Numbers in the new reports are not links to their
-    searches yet, unlike the default Summary's.
+  - **Members filter it for themselves** (T-075a, the user's decision of 2026-11-13; RPT-006 "view
+    and filter"); only the owner and administrators customize it for everyone. The filter is a
+    condition in the query language that `GET /tracks/:id/summary` and
+    `GET /tracks/:id/summary-layout/widgets/:widgetId` take as `?filter=` (at most 2,000
+    characters). `narrowQuery` parses the widget's query and the filter and joins them with AND,
+    each kept whole, so an OR in the filter cannot widen past the track and a stray bracket is a
+    refused query, not an escape; the filter's own ORDER BY is ignored. Every number's query
+    carries it, so a number still equals the search it links to. Sprint widgets read a sprint, not
+    a query, and are not narrowed; the page says so.
+  - **Where the filter is kept: the page's address** (`#/tracks/KEY?filter=...`), not a stored
+    setting. That is per person by nature, survives a reload, can be bookmarked, needs no table, no
+    migration and no event, and cannot touch the shared layout, which a server test checks (a
+    member filtering changes neither the stored layout nor its version, and their `PUT` and
+    `DELETE` are still refused). Customizing shows the widgets unfiltered.
+  - **Not done:** numbers in the new reports are not links to their searches yet, unlike the
+    default Summary's.
 
 ## Options considered
 
