@@ -154,9 +154,9 @@ and the script was run again.
 
 ## Found, not fixed, and not done
 
-- **`install.ps1` still names port 8080 in the setup link** when `TASKMOOR_PORT` is another and
-  `PUBLIC_URL` is not set; `install.sh` no longer does. There is no PowerShell on this Mac to
-  run a change, so it waits for a Windows session; the manual's install page says so meanwhile.
+- **Fixed by T-235 (2026-11-13): `install.ps1` named port 8080 in the setup link** when
+  `TASKMOOR_PORT` was another and `PUBLIC_URL` was not set. It now names the host port as
+  `install.sh` does; `compose-install.test.ts` runs it with a stand-in for Docker on Windows.
 - **Fixed by T-236 (2026-11-06): corepack's download of pnpm had no retry**, so a dropped
   connection failed the build (once here) and a slow link could stall it. The Dockerfile now
   fetches pnpm in a step of its own: four attempts, each stopped after `PNPM_FETCH_TIMEOUT`
