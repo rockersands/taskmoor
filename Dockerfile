@@ -59,7 +59,7 @@ COPY packages/workflow/package.json packages/workflow/
 # one whose install layer Docker lost, downloads only what the store does not hold yet. None of
 # this changes what is installed (the lockfile is frozen and every package is checked against its
 # hash), and the arguments are declared here, after the manifests, so a changed value runs this
-# step again but keeps every layer above it.
+# step again but keeps every layer above it. pnpm does not ask the registry for a newer pnpm.
 ARG PNPM_INSTALL_TIMEOUT=1800
 ARG PNPM_INSTALL_FETCH_TIMEOUT=60
 ARG PNPM_INSTALL_FETCH_RETRIES=5
@@ -72,7 +72,8 @@ RUN --mount=type=secret,id=build_ca,required=false \
       npm_config_fetch_retries="$PNPM_INSTALL_FETCH_RETRIES" \
       npm_config_fetch_retry_mintimeout=10000 \
       npm_config_fetch_retry_maxtimeout=120000 \
-      npm_config_network_concurrency="$PNPM_INSTALL_NETWORK_CONCURRENCY"; \
+      npm_config_network_concurrency="$PNPM_INSTALL_NETWORK_CONCURRENCY" \
+      npm_config_update_notifier=false; \
     start=$(date +%s); \
     timeout "$PNPM_INSTALL_TIMEOUT" pnpm install --frozen-lockfile --ignore-scripts \
       --filter @taskmoor/server... --filter @taskmoor/web... || { \

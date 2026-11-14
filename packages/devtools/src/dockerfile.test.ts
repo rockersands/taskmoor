@@ -348,6 +348,7 @@ describe.skipIf(!hasSh || process.platform === 'win32')('the image’s install s
       'npm_config_fetch_timeout=60000',
       'npm_config_network_concurrency=8',
       'npm_config_store_dir=/pnpm/store',
+      'npm_config_update_notifier=false',
     ]);
   });
 
