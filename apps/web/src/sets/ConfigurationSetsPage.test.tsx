@@ -231,6 +231,31 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     ).toBeVisible();
   });
 
+  it('[IAM-030] tells someone whose only track is archived that it is archived, not that they may not be here (T-224)', async () => {
+    // The tracks someone runs leave out archived ones, so the session says they run none.
+    const client = fakeSetsClient({ runs: [] });
+    const read = client.track;
+    client.track = async (id) => ({ ...(await read(id)), archived: id === 4 });
+    const session: Session = {
+      ...TRACK_ADMIN,
+      user: { ...TRACK_ADMIN.user, managesTracks: false },
+    };
+    renderOwn(4, { client, session });
+    expect(
+      await screen.findByText('OPS is archived: its configuration changes once it is restored.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Only site and configuration administrators/)).toBeNull();
+    expect(screen.queryByText('Ops rules')).toBeNull();
+    // A track that is not archived still refuses them as before.
+    cleanup();
+    renderOwn(6, { client, session });
+    expect(
+      await screen.findByText(
+        'Only site and configuration administrators, and the people who run a track with its own configuration, manage configuration sets.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[CORE-013] keeps the rule of a field that does not reach the track when it saves the set', async () => {
     const user = userEvent.setup();
     const client = fakeSetsClient();
