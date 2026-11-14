@@ -176,5 +176,17 @@ export const PrintedOnWhite: Story = {
     await expect(lightness(getComputedStyle(document.body).backgroundColor)).toBeGreaterThan(0.95);
     await expect(getComputedStyle(document.body).backgroundImage).toBe('none');
     await expect(lightness(getComputedStyle(title).color)).toBeLessThan(0.3);
+    // The tones too: a high priority's glyph prints dark on white, its tint stays pale.
+    const page = dialog.querySelector('.ticket-page') ?? dialog;
+    for (const tone of ['danger', 'warning', 'success', 'blue', 'blush', 'butter']) {
+      const probe = document.createElement('span');
+      probe.style.color = `var(--color-${tone})`;
+      probe.style.backgroundColor = `var(--color-${tone}-soft)`;
+      page.append(probe);
+      const drawn = getComputedStyle(probe);
+      await expect(lightness(drawn.color), tone).toBeLessThan(0.5);
+      await expect(lightness(drawn.backgroundColor), `${tone}-soft`).toBeGreaterThan(0.85);
+      probe.remove();
+    }
   },
 };

@@ -29,6 +29,24 @@
     --glass-edge: GrayText;
     --color-accent: LinkText;
     --color-primary: CanvasText;
+    /*
+     * The tones (a high priority's glyph, a warning, a done state) take the light skin's values,
+     * which hold their contrast on white: the dark skin's pale tones and dark tints would print
+     * barely seen, or as dark blocks. Kept equal to tokens.css's light block.
+     */
+    --color-danger: #b3261e;
+    --color-danger-soft: #fbe4e1;
+    --color-success: #2c6a44;
+    --color-success-soft: #e0f2e6;
+    --color-warning: #8a5300;
+    --color-warning-soft: #fcefd6;
+    --color-blue: #2f5f8f;
+    --color-blue-soft: #e1edf9;
+    --color-blush: #9b3550;
+    --color-blush-soft: #fbe5ea;
+    --color-butter: #7a5a00;
+    --color-butter-soft: #fbf1d3;
+    --color-accent-soft: #fde6d9;
   }
 
   :root:has(.ticket-page) body {

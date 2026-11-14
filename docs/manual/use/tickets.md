@@ -409,7 +409,8 @@ comments, changes and time entries in one stream.
 ### Printing a ticket
 
 Printing a ticket's page (Ctrl P or Cmd P) prints only the ticket: its title, its details, its
-description and its comments, in one column, dark on white whatever the skin. A value chosen from
+description and its comments, in one column, dark on white whatever the skin; coloured marks,
+such as a high priority's icon, keep colours that read on white paper. A value chosen from
 a menu, such as the priority, prints as its name. The top bar, the navigation, the toolbars, the
 comment box, the buttons, the editor's save note and the date fields' calendar buttons are left
 out. With a ticket open in its pop-up, printing gives that
