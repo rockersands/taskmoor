@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
@@ -38,7 +38,9 @@ describe('the clone dialog (M1-124)', () => {
     const { onCloned } = open({ client: fake.client });
     const box = await dialog();
     expect(within(box).getByLabelText('Summary of the copy')).toHaveFocus();
-    expect(await within(box).findByRole('option', { name: 'PAY: Payments' })).toBeInTheDocument();
+    const track = within(box).getByRole('combobox', { name: 'Track' });
+    await waitFor(() => expect(track).toBeEnabled());
+    expect(track).toHaveTextContent('SHOP: Shop');
     for (const name of ['Subtickets', 'Attachments', 'Links and web links']) {
       expect(within(box).getByLabelText(name)).toBeChecked();
     }
@@ -58,7 +60,10 @@ describe('the clone dialog (M1-124)', () => {
     const summary = within(box).getByLabelText('Summary of the copy');
     await user.clear(summary);
     await user.type(summary, 'Checkout for the new store');
-    await user.selectOptions(await within(box).findByLabelText('Track'), 'PAY');
+    const track = await within(box).findByRole('combobox', { name: 'Track' });
+    await waitFor(() => expect(track).toBeEnabled());
+    await user.click(track);
+    await user.click(within(box).getByRole('option', { name: 'PAY: Payments' }));
     await user.click(
       within(box).getByLabelText('Everything below it, at every level (deep clone)'),
     );
@@ -142,7 +147,7 @@ describe('the clone dialog (M1-124)', () => {
     const user = userEvent.setup();
     const { onClose } = open({ ticket: SUBTICKET });
     const box = await screen.findByRole('dialog', { name: 'Clone SHOP-9' });
-    expect(within(box).getByLabelText('Track')).toBeDisabled();
+    expect(within(box).getByRole('combobox', { name: 'Track' })).toBeDisabled();
     expect(
       within(box).getByText('A subticket is copied into its own track, under its parent.'),
     ).toBeVisible();
@@ -162,8 +167,19 @@ describe('the clone dialog (M1-124)', () => {
   it('passes every string through the pseudo-locale', async () => {
     open({ locale: 'en-XA' });
     const box = await screen.findByRole('dialog');
-    await within(box).findAllByRole('option', { name: /PAY/ });
-    const data = new Set(['Checkout in one step', 'SHOP-7', 'Shop', 'Payments', 'SHOP', 'PAY']);
+    // The Track picker is ready once the tracks are here.
+    const track = await within(box).findByRole('combobox');
+    await waitFor(() => expect(track).toBeEnabled());
+    // The track's mark (its key's first letter) is data, as the key is.
+    const data = new Set([
+      'Checkout in one step',
+      'SHOP-7',
+      'Shop',
+      'Payments',
+      'SHOP',
+      'PAY',
+      'S',
+    ]);
     const texts = visibleTexts(box).filter((t) => !data.has(t) && !/^\[?(SHOP|PAY):/.test(t));
     expect(untranslated(texts)).toEqual([]);
   });

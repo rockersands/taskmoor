@@ -34,6 +34,14 @@ function onLayout(form: TicketForm): Set<string> {
   );
 }
 
+/**
+ * Whether the person may set a field here: on the layout, not locked to others, and not one their
+ * permissions withhold at create (IAM-010). Others are left out and the backend reports them.
+ */
+function settable(form: TicketForm, shown: ReadonlySet<string>, key: string): boolean {
+  return shown.has(key) && lockOfField(form.locks, key) === null && !form.withheld?.includes(key);
+}
+
 function customField(form: TicketForm, id: number): CustomField | undefined {
   return form.customFields.find((f) => f.id === id);
 }
@@ -82,7 +90,7 @@ function fillCustom(field: CustomField, key: string, value: unknown, fill: FormF
 export function fillForm(start: Record<string, unknown>, form: TicketForm): FormFill {
   const fill: FormFill = { values: {}, docs: {}, extras: [] };
   const shown = onLayout(form);
-  const free = (key: string) => shown.has(key) && lockOfField(form.locks, key) === null;
+  const free = (key: string) => settable(form, shown, key);
   for (const [bodyKey, value] of Object.entries(start)) {
     if (bodyKey === 'fields') {
       for (const [id, v] of Object.entries(value as Record<string, unknown>)) {
@@ -117,7 +125,7 @@ export function omitKeys(
 ): string[] {
   const out = new Set(turnedOff);
   const shown = onLayout(form);
-  const free = (key: string) => shown.has(key) && lockOfField(form.locks, key) === null;
+  const free = (key: string) => settable(form, shown, key);
   const given = (body.fields ?? {}) as Record<string, unknown>;
   for (const [bodyKey, value] of Object.entries(start)) {
     if (bodyKey === 'fields') {

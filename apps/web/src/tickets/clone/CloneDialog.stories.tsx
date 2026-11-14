@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { CloneDialog } from './CloneDialog';
 import { copied, FORBIDDEN, fakeCloneClient, OUTCOME, SUBTICKET } from './fixtures';
 
@@ -36,7 +36,7 @@ export const Subticket: Story = {
   args: { ticket: SUBTICKET },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await expect(await canvas.findByLabelText('Track')).toBeDisabled();
+    await expect(await canvas.findByRole('combobox', { name: 'Track' })).toBeDisabled();
     await expect(canvas.queryByLabelText('Subtickets')).toBeNull();
   },
 };
@@ -46,7 +46,10 @@ export const Copying: Story = {
   args: { client: fakeCloneClient({ total: 12, step: 0 }).client, pollMs: 60_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await userEvent.selectOptions(await canvas.findByLabelText('Track'), 'PAY');
+    const track = await canvas.findByRole('combobox', { name: 'Track' });
+    await waitFor(() => expect(track).toBeEnabled());
+    await userEvent.click(track);
+    await userEvent.click(canvas.getByRole('option', { name: 'PAY: Payments' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Clone' }));
     await expect(await canvas.findByText('Copying…')).toBeVisible();
     await expect(canvas.getByLabelText('0 of 12 tickets finished')).toBeVisible();

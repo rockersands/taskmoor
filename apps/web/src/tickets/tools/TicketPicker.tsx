@@ -19,6 +19,10 @@ export interface TicketPickerProps {
   autoFocus?: boolean;
   /** Escape in the field, with the list closed. */
   onCancel?: () => void;
+  /** More said about the field after the hint: help or a refusal (the create form's parent). */
+  describedBy?: string | undefined;
+  required?: boolean;
+  invalid?: boolean;
 }
 
 /**
@@ -35,6 +39,9 @@ export function TicketPicker({
   disabled = false,
   autoFocus = false,
   onCancel,
+  describedBy,
+  required = false,
+  invalid = false,
 }: TicketPickerProps) {
   const t = useT();
   const id = useId();
@@ -140,7 +147,11 @@ export function TicketPicker({
         aria-expanded={showing}
         aria-controls={showing ? listId : undefined}
         aria-activedescendant={showing ? `${listId}-${active}` : undefined}
-        aria-describedby={hint ? `${id}-hint` : undefined}
+        aria-describedby={
+          [hint ? `${id}-hint` : '', describedBy ?? ''].filter(Boolean).join(' ') || undefined
+        }
+        aria-required={required || undefined}
+        aria-invalid={invalid || undefined}
         disabled={disabled}
         value={text}
         onChange={(event) => setText(event.target.value)}

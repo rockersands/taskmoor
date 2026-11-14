@@ -30,6 +30,54 @@ describe('the create form data (M1-012)', () => {
     });
   });
 
+  it('[CORE-008] sends what the pickers chose as ids: people, the parent, releases and areas', () => {
+    const field = (key: string) => ({ key, required: false, description: null });
+    const form = {
+      layout: {
+        operation: 'create',
+        tabs: [
+          {
+            name: null,
+            sections: [
+              {
+                kind: 'main' as const,
+                hideWhenEmpty: false,
+                fields: ['summary', 'assignee', 'parent', 'targetRelease', 'foundInRelease', 'area']
+                  .concat(['cf[12]', 'cf[13]'])
+                  .map(field),
+              },
+            ],
+          },
+        ],
+      },
+      customFields: [
+        { id: 12, name: 'Reviewer', description: '', type: 'user', multiple: false },
+        { id: 13, name: 'Watchers', description: '', type: 'user', multiple: true },
+      ],
+    };
+    expect(
+      createBody('SHOP', 3, form, {
+        summary: 'Pay',
+        assignee: '21',
+        parent: '40',
+        targetRelease: ['5', '6'],
+        foundInRelease: [],
+        area: ['7'],
+        'cf[12]': '22',
+        'cf[13]': ['23', '24'],
+      }),
+    ).toEqual({
+      track: 'SHOP',
+      ticketTypeId: 3,
+      summary: 'Pay',
+      assigneeId: 21,
+      parent: 40,
+      targetReleaseIds: [5, 6],
+      areaIds: [7],
+      fields: { 12: 22, 13: [23, 24] },
+    });
+  });
+
   it('[CORE-008] puts the backend refusals on the fields they name', () => {
     expect(
       fieldErrors({ dueDate: 'required', 'fields.7': 'required', priorityId: 'not_found' }),

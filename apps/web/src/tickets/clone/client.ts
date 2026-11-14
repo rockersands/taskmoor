@@ -6,6 +6,8 @@ export interface CloneTrack {
   id: number;
   key: string;
   name: string;
+  /** Its colour, edging its mark in the Track picker (T-255). */
+  color?: string | null;
 }
 
 /** What `POST /api/v1/tickets/:id/clone` takes (M1-124; CORE-023). */

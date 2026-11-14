@@ -15,6 +15,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { priorityName } from '../shell/priorityName';
 import { fieldName, typeName } from '../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
+import { TrackSelect } from '../shell/TrackSelect';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
   type CustomField,
@@ -26,16 +27,28 @@ import {
   type FormField,
   type FormValues,
   fieldErrors,
+  PICKED_CUSTOM,
+  PICKED_SYSTEM,
   SYSTEM_FIELDS,
   type TicketForm,
 } from './form';
+import { PersonPicker, type PickedPerson } from './PersonPicker';
 import { type AppliedTemplate, type PickerClient, pickerClient } from './templates/client';
 import { omitKeys } from './templates/start';
 import { type PickedTemplate, TemplateOutcome, TemplatePicker } from './templates/TemplatePicker';
+import { type PickedTicket, pickerQuery, ticketToolsClient } from './tools/client';
+import { TicketPicker } from './tools/TicketPicker';
 
 export interface TrackChoice {
   id: number;
   key: string;
+  name: string;
+  /** The colour its administrators gave it, edging its mark in the Track picker (T-255). */
+  color?: string | null;
+}
+/** A release or an area the form offers. */
+export interface NamedChoice {
+  id: number;
   name: string;
 }
 export interface TypeChoice {
@@ -57,7 +70,26 @@ export interface CreateClient {
   mentions?: (track: string) => MentionSource;
   /** Ticket templates (CORE-030); the form offers them only when the client has them. */
   ticketTemplates?: PickerClient;
+  /**
+   * The pickers' sources (T-253). A field whose source the client lacks stays as one the form
+   * cannot set: people who may be given tickets in a track (the assignee); people for a custom
+   * person field; tickets for the parent, from a query `pickerQuery` wrote; a track's releases
+   * and areas.
+   */
+  assignable?: (track: string, typed: string) => Promise<PickedPerson[]>;
+  people?: (track: string, typed: string) => Promise<PickedPerson[]>;
+  tickets?: (query: string) => Promise<PickedTicket[]>;
+  releases?: (trackId: number) => Promise<NamedChoice[]>;
+  areas?: (trackId: number) => Promise<NamedChoice[]>;
 }
+
+/** People found by name in a track; only those who may be given tickets there, if asked. */
+const findPeople = async (track: string, typed: string, assignable: boolean) =>
+  (
+    await api<{ people: PickedPerson[] }>(
+      `/people/mentionable?track=${encodeURIComponent(track)}&q=${encodeURIComponent(typed)}&limit=8${assignable ? '&assignable=true' : ''}`,
+    )
+  ).people.map((p) => ({ id: p.id, name: p.name }));
 
 export const createClient: CreateClient = {
   tracks: async () => (await api<{ tracks: TrackChoice[] }>('/tracks')).tracks,
@@ -78,6 +110,19 @@ export const createClient: CreateClient = {
     (await api<{ ticket: { key: string } }>('/tickets', { method: 'POST', body })).ticket,
   mentions: (track) => mentionSource({ track }),
   ticketTemplates: pickerClient,
+  assignable: (track, typed) => findPeople(track, typed, true),
+  people: (track, typed) => findPeople(track, typed, false),
+  tickets: (query) => ticketToolsClient.pick(query),
+  releases: async (trackId) =>
+    (await api<{ releases: NamedChoice[] }>(`/tracks/${trackId}/releases`)).releases.map((r) => ({
+      id: r.id,
+      name: r.name,
+    })),
+  areas: async (trackId) =>
+    (await api<{ areas: NamedChoice[] }>(`/tracks/${trackId}/areas`)).areas.map((a) => ({
+      id: a.id,
+      name: a.name,
+    })),
   template: async (key) =>
     templateOf(
       (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,
@@ -132,27 +177,60 @@ function customField(form: TicketForm, key: string): CustomField | undefined {
   return id === null ? undefined : form.customFields.find((f) => f.id === id);
 }
 
-/** Whether the form edits a field: with a control of its own, or as a set of checkboxes. */
-function editability(field: FormField, custom: CustomField | undefined) {
-  const multiple = custom?.type === 'select' && custom.multiple;
-  const editable = custom
-    ? EDITABLE_CUSTOM.has(custom.type) && !multiple
-    : EDITABLE_SYSTEM.has(field.key);
-  return { editable, multiple };
+/**
+ * How the form sets a field: a control of its own, a set of checkboxes, a picker (people, the
+ * parent, releases, areas; T-253), or not at all: either the person may not (`withheld`, IAM-010)
+ * or the form has no way to (`unset`).
+ */
+type Kind = 'control' | 'multiple' | 'picker' | 'withheld' | 'unset';
+
+/** The system fields whose picker has a source in this client. */
+function pickableKeys(client: CreateClient): Set<string> {
+  const out = new Set<string>();
+  if (client.assignable) out.add('assignee');
+  if (client.tickets) out.add('parent');
+  if (client.releases) out.add('targetRelease').add('foundInRelease');
+  if (client.areas) out.add('area');
+  return out;
+}
+
+function kindOf(
+  form: TicketForm,
+  field: FormField,
+  custom: CustomField | undefined,
+  client: CreateClient,
+): Kind {
+  if (form.withheld?.includes(field.key)) return 'withheld';
+  if (custom) {
+    if (custom.type === 'select' && custom.multiple) return 'multiple';
+    if (EDITABLE_CUSTOM.has(custom.type)) return 'control';
+    return PICKED_CUSTOM.has(custom.type) && client.people ? 'picker' : 'unset';
+  }
+  if (EDITABLE_SYSTEM.has(field.key)) return 'control';
+  return PICKED_SYSTEM.has(field.key) && pickableKeys(client).has(field.key) ? 'picker' : 'unset';
 }
 
 /**
- * The fields that have a row on the form: those it edits, and those required at create that it
- * cannot edit yet (D30 leaves out only what is set after creation).
+ * The fields that have a row on the form: those it sets, and those required at create that it
+ * cannot set (D30 leaves out only what is set after creation).
  */
-function shownKeys(form: TicketForm): Set<string> {
+function shownKeys(form: TicketForm, client: CreateClient): Set<string> {
   const out = new Set<string>();
   for (const field of form.layout.tabs.flatMap((tab) => tab.sections.flatMap((s) => s.fields))) {
-    const { editable, multiple } = editability(field, customField(form, field.key));
-    if (editable || multiple || field.required) out.add(field.key);
+    const kind = kindOf(form, field, customField(form, field.key), client);
+    if (kind === 'control' || kind === 'multiple' || kind === 'picker' || field.required) {
+      out.add(field.key);
+    }
   }
   return out;
 }
+
+/** The release fields, whose picker lists the track's releases. */
+const RELEASE_KEYS = new Set(['targetRelease', 'foundInRelease']);
+
+/** The keys of a layout, to know which pickers need their lists. */
+const layoutKeys = (form: TicketForm) =>
+  new Set(form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key))));
 
 export interface CreateTicketPageProps {
   client?: CreateClient;
@@ -172,9 +250,11 @@ export interface CreateTicketPageProps {
 /**
  * Creating a ticket (#/create; M1-012, CORE-008, CORE-013): the create form of the chosen
  * track and ticket type as the backend lays it out, required fields marked, hidden ones absent,
- * and the backend's refusals shown at each field. Fields this form cannot edit yet (people,
- * releases, areas) are left out and set on the ticket once it exists (D30), unless the layout
- * requires them at create: those stay, saying the form cannot set them, so a refusal has a place.
+ * and the backend's refusals shown at each field. People, the parent, releases and areas are
+ * chosen with pickers (T-253): the assignee among those who may be given tickets in the track.
+ * Fields the person may not set at create (IAM-010), and those this form has no way to set, are
+ * left out and set on the ticket once it exists (D30), unless the layout requires them at
+ * create: those stay, saying why, so a refusal has a place.
  */
 export function CreateTicketPage({
   client = createClient,
@@ -195,6 +275,19 @@ export function CreateTicketPage({
   const [form, setForm] = useState<Loaded<TicketForm> | null>(null);
   const [priorities, setPriorities] = useState<{ id: number; name: string; level?: number }[]>([]);
   const [values, setValues] = useState<FormValues>({});
+  // People chosen in person pickers, by field key, and the parent chosen (T-253).
+  const [picks, setPicks] = useState<Record<string, PickedPerson[]>>({});
+  const [parent, setParent] = useState<PickedTicket | null>(null);
+  // Focus follows the parent's control as it swaps: to Remove once one is picked, back to the
+  // search field once it is removed, so keyboard and screen-reader users keep their place.
+  const focusParentRemove = useRef(false);
+  const [focusParentSearch, setFocusParentSearch] = useState(false);
+  useEffect(() => {
+    if (focusParentSearch) setFocusParentSearch(false);
+  }, [focusParentSearch]);
+  // The track's releases and areas, once a form that places them is here; null until then.
+  const [releases, setReleases] = useState<NamedChoice[] | null>(null);
+  const [areas, setAreas] = useState<NamedChoice[] | null>(null);
   // Rich text fields' documents, by field key; a new form key gives empty editors.
   const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
   // What rich text editors start with: a template's documents, until the next clear.
@@ -306,6 +399,36 @@ export function CreateTicketPage({
     void loadForm();
   }, [loadForm]);
 
+  // The track's releases and areas, asked for when the form places them (T-253). A list that
+  // fails to load offers nothing, and the backend still checks what is sent.
+  const placed = form?.status === 'loaded' ? layoutKeys(form.value) : new Set<string>();
+  const wantsReleases = placed.has('targetRelease') || placed.has('foundInRelease');
+  const wantsAreas = placed.has('area');
+  useEffect(() => {
+    setReleases(null);
+    if (trackId === undefined || !wantsReleases || !client.releases) return;
+    let live = true;
+    client.releases(trackId).then(
+      (list) => live && setReleases(list),
+      () => live && setReleases([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, trackId, wantsReleases]);
+  useEffect(() => {
+    setAreas(null);
+    if (trackId === undefined || !wantsAreas || !client.areas) return;
+    let live = true;
+    client.areas(trackId).then(
+      (list) => live && setAreas(list),
+      () => live && setAreas([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, trackId, wantsAreas]);
+
   const set = (key: string, value: string | string[]) => setValues((v) => ({ ...v, [key]: value }));
   const mentions = useMemo(
     () => (track === '' ? undefined : client.mentions?.(track)),
@@ -313,6 +436,8 @@ export function CreateTicketPage({
   );
   const clearForm = () => {
     setValues({});
+    setPicks({});
+    setParent(null);
     setDocs({});
     setSeed({});
     setFormKey((k) => k + 1);
@@ -333,6 +458,8 @@ export function CreateTicketPage({
       }
       setPicked(null);
       setValues(from.values);
+      setPicks({});
+      setParent(null);
       setDocs(from.docs);
       setSeed(from.docs);
       setFormKey((k) => k + 1);
@@ -353,7 +480,18 @@ export function CreateTicketPage({
     setOutcome(null);
     setErrors({});
     try {
-      const body = createBody(track, typeId, form.value, values, docs);
+      // What the pickers hold joins what was typed, as ids (T-253).
+      const chosen: FormValues = { ...values };
+      for (const [key, people] of Object.entries(picks)) {
+        const custom = customField(form.value, key);
+        chosen[key] = custom?.multiple
+          ? people.map((p) => String(p.id))
+          : people[0]
+            ? String(people[0].id)
+            : '';
+      }
+      if (parent) chosen.parent = String(parent.id);
+      const body = createBody(track, typeId, form.value, chosen, docs);
       let made: { key: string };
       if (picked && client.ticketTemplates) {
         const applied = await client.ticketTemplates.apply(picked.template.id, {
@@ -540,6 +678,121 @@ export function CreateTicketPage({
     );
   }
 
+  /** People, the parent, releases or areas (T-253): each with the picker the app has for it. */
+  function picker(
+    field: FormField,
+    custom: CustomField | undefined,
+    id: string,
+    label: string,
+    described: string,
+    locked: boolean,
+  ) {
+    const invalid = Boolean(errors[field.key]);
+    if (custom || field.key === 'assignee') {
+      const search = custom ? client.people : client.assignable;
+      return (
+        <PersonPicker
+          label={label}
+          search={(typed) => search?.(track, typed) ?? Promise.resolve([])}
+          chosen={picks[field.key] ?? []}
+          onChange={(people) => setPicks((p) => ({ ...p, [field.key]: people }))}
+          multiple={custom?.multiple ?? false}
+          describedBy={described}
+          required={field.required}
+          invalid={invalid}
+          disabled={locked}
+        />
+      );
+    }
+    if (field.key === 'parent') {
+      if (parent) {
+        return (
+          <fieldset aria-describedby={described || undefined} className="create-parent">
+            <legend className="form-label">{label}</legend>
+            <p className="create-parent-chosen">
+              <span>
+                {parent.key} {parent.summary}
+              </span>
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={locked}
+                aria-label={t('tickets.create.removeParent', { key: parent.key })}
+                ref={(button) => {
+                  if (!button || !focusParentRemove.current) return;
+                  focusParentRemove.current = false;
+                  button.focus();
+                }}
+                onClick={() => {
+                  setParent(null);
+                  setFocusParentSearch(true);
+                }}
+              >
+                {t('tickets.pickers.removeShort')}
+              </button>
+            </p>
+          </fieldset>
+        );
+      }
+      return (
+        <TicketPicker
+          label={label}
+          hint={t('tickets.create.parentHint')}
+          search={(typed) => {
+            const query = pickerQuery(typed);
+            return query && client.tickets ? client.tickets(query) : Promise.resolve([]);
+          }}
+          onPick={(ticket) => {
+            focusParentRemove.current = true;
+            setParent(ticket);
+          }}
+          autoFocus={focusParentSearch}
+          describedBy={described}
+          required={field.required}
+          invalid={invalid}
+          disabled={locked}
+        />
+      );
+    }
+    // Releases and areas: one checkbox each, as for a field that holds several options.
+    const options = field.key === 'area' ? areas : releases;
+    const chosen = values[field.key];
+    const list = Array.isArray(chosen) ? chosen : [];
+    const emptyId = `${id}-empty`;
+    const empty = options !== null && options.length === 0;
+    return (
+      <fieldset
+        className="create-choices"
+        aria-describedby={[empty ? emptyId : '', described].filter(Boolean).join(' ') || undefined}
+        disabled={locked}
+      >
+        <legend className="form-label">{label}</legend>
+        {(options ?? []).map((o) => (
+          <label key={o.id} className="create-choice">
+            <input
+              type="checkbox"
+              checked={list.includes(String(o.id))}
+              onChange={(e) =>
+                set(
+                  field.key,
+                  e.target.checked
+                    ? [...list, String(o.id)]
+                    : list.filter((x) => x !== String(o.id)),
+                )
+              }
+            />
+            {o.name}
+          </label>
+        ))}
+        {empty && (
+          <p id={emptyId} className="form-hint">
+            {t(field.key === 'area' ? 'tickets.create.noAreas' : 'tickets.create.noReleases')}
+          </p>
+        )}
+      </fieldset>
+    );
+  }
+
   function fieldRow(field: FormField, loaded: TicketForm) {
     const id = `${prefix}-${field.key}`;
     const custom = customField(loaded, field.key);
@@ -553,11 +806,16 @@ export function CreateTicketPage({
     const lockId = lock ? `${id}-lock` : '';
     const errorId = error ? `${id}-error` : '';
     const described = [helpId, lockId, errorId].filter(Boolean).join(' ');
-    const { editable, multiple } = editability(field, custom);
-    // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30).
-    if (!editable && !multiple && !field.required) return null;
-    if (!editable && !multiple) {
-      // Required at create, yet this form cannot set it: it stays, saying so, and the backend's
+    const kind = kindOf(loaded, field, custom, client);
+    const multiple = kind === 'multiple';
+    // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30),
+    // and so is one the person may not set at create (IAM-010).
+    if ((kind === 'unset' || kind === 'withheld') && !field.required) return null;
+    // A track with no releases or areas has nothing to offer: an optional row goes too.
+    const list = field.key === 'area' ? areas : RELEASE_KEYS.has(field.key) ? releases : null;
+    if (kind === 'picker' && list?.length === 0 && !field.required) return null;
+    if (kind === 'unset' || kind === 'withheld') {
+      // Required at create, yet not to be set here: it stays, saying why, and the backend's
       // refusal shows here rather than nowhere.
       const noteId = `${id}-note`;
       return (
@@ -568,7 +826,7 @@ export function CreateTicketPage({
         >
           <legend className="form-label">{label}</legend>
           <p id={noteId} className="form-hint">
-            {t('tickets.create.notSetHere')}
+            {t(kind === 'withheld' ? 'tickets.create.withheld' : 'tickets.create.notSetHere')}
           </p>
           {(help || hint) && (
             <p id={helpId || undefined} className="form-hint">
@@ -585,7 +843,9 @@ export function CreateTicketPage({
     }
     return (
       <div key={field.key} className="form-field create-field">
-        {multiple ? (
+        {kind === 'picker' ? (
+          picker(field, custom, id, label, described, lock !== null)
+        ) : multiple ? (
           <fieldset
             className="create-choices"
             aria-describedby={described || undefined}
@@ -722,27 +982,23 @@ export function CreateTicketPage({
               <label htmlFor={`${prefix}-track`} className="form-label">
                 {t('tickets.create.track')}
               </label>
-              <select
+              <TrackSelect
                 id={`${prefix}-track`}
+                tracks={tracks.value}
                 value={track}
-                onChange={(e) => {
+                label={(k) => t('tickets.create.trackName', { key: k.key, name: k.name })}
+                onChange={(next) => {
                   // The same track again changes nothing: its types are already here and
                   // would not load again (found by the fresh-install run, M1-113).
-                  if (e.target.value === track) return;
-                  setTrack(e.target.value);
+                  if (next === track) return;
+                  setTrack(next);
                   clearForm();
                   // The old track's types until the new ones arrive would let a choice made
                   // meanwhile be overwritten, or sent with a type of the wrong track.
                   setTypes([]);
                   setTypeId(null);
                 }}
-              >
-                {tracks.value.map((k) => (
-                  <option key={k.id} value={k.key}>
-                    {t('tickets.create.trackName', { key: k.key, name: k.name })}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div className="form-field">
               <label htmlFor={`${prefix}-type`} className="form-label">
@@ -771,6 +1027,8 @@ export function CreateTicketPage({
               onPick={(next, fill) => {
                 setPicked(next);
                 setValues(fill?.values ?? {});
+                setPicks({});
+                setParent(null);
                 setDocs(fill?.docs ?? {});
                 setSeed(fill?.docs ?? {});
                 setFormKey((k) => k + 1);
@@ -843,7 +1101,7 @@ export function CreateTicketPage({
               {/* Refusals of fields with no row on this form, by name. */}
               {form?.status === 'loaded' &&
                 Object.entries(errors)
-                  .filter(([key]) => !shownKeys(form.value).has(key))
+                  .filter(([key]) => !shownKeys(form.value, client).has(key))
                   .map(([key, code]) => (
                     <span key={key}>
                       {' '}

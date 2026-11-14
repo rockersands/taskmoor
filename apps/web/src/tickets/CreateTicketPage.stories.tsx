@@ -4,6 +4,46 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { type CreateClient, CreateTicketPage } from './CreateTicketPage';
 import { BUG_FORM, CHORE_FORM, LOCKED_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
+import type { TicketForm } from './form';
+
+const PEOPLE = [
+  { id: 21, name: 'Sam Rivera' },
+  { id: 22, name: 'Sasha Lee' },
+];
+
+/** The chore form with the fields set by pickers (T-253): the assignee required. */
+const PICKER_FORM: TicketForm = {
+  ...CHORE_FORM,
+  layout: {
+    ...CHORE_FORM.layout,
+    tabs: [
+      {
+        name: null,
+        sections: [
+          {
+            kind: 'main',
+            hideWhenEmpty: false,
+            fields: [
+              { key: 'summary', required: true, description: null },
+              { key: 'parent', required: false, description: null },
+              { key: 'cf[12]', required: false, description: null },
+            ],
+          },
+          {
+            kind: 'context',
+            hideWhenEmpty: false,
+            fields: [
+              { key: 'assignee', required: true, description: null },
+              { key: 'targetRelease', required: false, description: null },
+              { key: 'area', required: false, description: null },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  customFields: [{ id: 12, name: 'Reviewers', description: '', type: 'user', multiple: true }],
+};
 
 /** A backend in memory: Bugs need a due date and a severity, as the form says. */
 function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
@@ -13,6 +53,14 @@ function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
     ticketTypes: async () => ({ defaultTypeId: 3, types: TYPES }),
     form: async (_track, typeId) => (typeId === 3 ? BUG_FORM : CHORE_FORM),
     priorities: async () => PRIORITIES,
+    assignable: async () => PEOPLE,
+    people: async () => PEOPLE,
+    tickets: async () => [{ id: 40, key: 'SHOP-4', summary: 'Payments', status: { name: 'Open' } }],
+    releases: async () => [
+      { id: 5, name: 'Spring' },
+      { id: 6, name: 'Summer' },
+    ],
+    areas: async () => [{ id: 7, name: 'Checkout' }],
     create: async (body) => {
       const missing: Record<string, string> = {};
       if (body.ticketTypeId === 3 && !body.dueDate) missing.dueDate = 'required';
@@ -103,6 +151,61 @@ export const LockedFields: Story = {
     await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');
     await expect(canvas.getByLabelText('Labels')).toBeDisabled();
     await expect(canvas.getByLabelText('Summary (required)')).toBeEnabled();
+  },
+};
+
+const pickerClient = () =>
+  fakeClient({
+    ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
+    form: async () => PICKER_FORM,
+  });
+
+/** People, the parent, releases and areas chosen with pickers; the assignee is required (T-253). */
+export const WithPickers: Story = {
+  args: { client: pickerClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText('Summary (required)'), 'Card declined');
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Assignee (required)' }), 'sa');
+    await userEvent.click(await canvas.findByRole('button', { name: 'Sam Rivera' }));
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Summer' }));
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Checkout' }));
+    await userEvent.type(canvas.getByRole('combobox', { name: 'Parent' }), 'pay');
+    await userEvent.click(await canvas.findByRole('option', { name: /SHOP-4/ }));
+    await expect(canvas.getByRole('button', { name: 'Remove SHOP-4 as parent' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Create' }));
+    await expect(await canvas.findByText('SHOP-1 was created.')).toBeVisible();
+  },
+};
+
+export const WithPickersAtPhoneWidth: Story = {
+  args: { client: pickerClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      await canvas.findByRole('searchbox', { name: 'Assignee (required)' }),
+      'sa',
+    );
+    await canvas.findByRole('button', { name: 'Sasha Lee' });
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** What the person may not set at create (IAM-010): left out, or kept with the reason if required. */
+export const Withheld: Story = {
+  args: {
+    client: fakeClient({
+      ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
+      form: async () => ({ ...PICKER_FORM, withheld: ['assignee'] }),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const assignee = await canvas.findByRole('group', { name: 'Assignee (required)' });
+    await expect(assignee).toHaveAccessibleDescription(
+      /^You may not set this field on a new ticket\./,
+    );
   },
 };
 

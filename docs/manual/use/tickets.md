@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/shell/OverlayLayer.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md
+sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/shell/OverlayLayer.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md, apps/web/src/tickets/PersonPicker.tsx, apps/web/src/shell/TrackSelect.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/rich-text.ts
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -79,19 +79,32 @@ Open the create dialog with the **New ticket** button in the top bar, with the C
 outside a text field, or with **Create ticket** in the palette. Escape or a click outside closes
 it. The same form also has its own page at the address ending in `create`.
 
-1. Choose the **Track** and the **Ticket type**. The form then shows the fields that track and
-   type ask for. Required fields say **(required)**; fields hidden for the type are not shown.
-   Some fields sit under further tabs, such as **More fields**.
+1. Choose the **Track** and the **Ticket type**. Each track in the list shows its mark (the first
+   letter of its key), its key and its name. The form then shows the fields that track and type
+   ask for. Required fields say **(required)**; fields hidden for the type are not shown. Some
+   fields sit under further tabs, such as **More fields**.
 2. Fill in the fields. Rich text fields (description and environment) use the editor described
    in [Descriptions and rich text](#descriptions-and-rich-text). Separate labels with spaces or commas.
 3. Press **Create**. The dialog says **PAY-42 was created.** and offers **Open PAY-42**.
 
-Some fields cannot be set in this form yet, such as people, releases and areas, and **Close
-reason** never is. One that is not required is left out: set it on the ticket once it is
-created. One required at create stays on the form, with its name, and says that this form cannot
-set it yet: the ticket is created only if a default or the workflow fills it in, and if not, an
-administrator can make the field optional on the create form. In the dialog, **Create** stays in
-view at its foot while the form scrolls.
+People, the parent, releases and areas are chosen with pickers:
+
+| Field | How you choose it |
+|---|---|
+| **Assignee** | Type part of a name and pick the person from the matches. Only people who may be given tickets in the track are offered. **Remove** clears the choice so you can pick someone else. |
+| A custom person field | The same way, among the people of the site. A field that holds several people keeps its search field for the next one. |
+| **Parent** | Type the parent's key, such as `PAY-12`, or words from its summary, and pick it from the list with the mouse or the arrow keys and Enter. **Remove** clears it. |
+| **Target releases**, **Found in releases**, **Areas** | Tick each one that applies. A track with none leaves the field out, unless it is required: then the form says the track has none to choose. |
+
+Some fields are not set in this form. **Close reason** never is, and some others, such as
+**Requester** (you, unless changed later), team and group fields, are set on the ticket once it
+exists. Fields you do not have the permission to set on a new ticket, such as **Assignee** without
+the permission to assign tickets or the dates without the permission to schedule them, are left
+out too. One of these that is not required is simply left out. One required at create stays on
+the form, with its name, and says why: that this form cannot set it yet, or that you may not set
+it on a new ticket. The ticket is then created only if a default or the workflow fills it in; if
+not, ask an administrator of the track. In the dialog, **Create** stays in view at its foot while
+the form scrolls.
 
 To start from an existing ticket, enter its key under **Start from a ticket (its key)** and
 press **Copy its fields**. The form takes that ticket's track, type, summary, description,
@@ -106,8 +119,9 @@ clears what it filled in, and changing the ticket type lets go of the template a
 in the form.
 
 A template's summary can hold today's date, the track's key and your name, and its dates count from
-today. What the form cannot edit, such as the assignee, shows under **Also from this template**
-with a checkbox, as do its subtickets (**Create its 2 subtickets**).
+today. Its people, releases and areas are not filled into the form's pickers: they show under
+**Also from this template** with a checkbox, as do its subtickets (**Create its 2 subtickets**).
+One you choose in the form yourself, such as another assignee, takes the place of the template's.
 
 A template never gets round what you may do. Fields that are hidden for this type or that you may
 not set do not show, and they stay off the ticket. After **Create** the form names them: **Left
@@ -415,8 +429,8 @@ Tickets also move by dragging their cards on a [board](boards.md).
 you are: in the pop-up over the same page, with Back returning to the original. The dialog asks for:
 
 - **Summary of the copy**: the original's, until you change it.
-- **Track**: where the copy goes, the ticket's own track by default. You need permission to
-  create tickets there. A subticket is always copied into its own track, under its parent.
+- **Track**: where the copy goes, the ticket's own track by default, chosen from a list that shows
+  each track's mark, key and name. You need permission to create tickets there. A subticket is always copied into its own track, under its parent.
 - **Copy with it**: **Subtickets**, **Attachments** and **Links and web links**, all ticked at
   first. On an outcome, or a ticket at a level above it, **Everything below it, at every level
   (deep clone)** also copies every ticket below it, with their subtickets unless you untick

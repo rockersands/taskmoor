@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import {
@@ -48,7 +49,10 @@ import {
  *   never required and hidden together, a layout naming each field once.
  * - The default sets cannot be deleted; a set in use by a track is not deleted either.
  * - `GET /api/v1/tracks/:id/layout` and `GET /api/v1/tickets/:id/layout` give the form an
- *   operation shows, with required marks, help text and the custom fields it needs.
+ *   operation shows, with required marks, help text and the custom fields it needs. The track's
+ *   create form also says, in `withheld`, which of its fields the caller lacks the track
+ *   permission to set on a new ticket (Assign tickets, Schedule tickets and so on; IAM-010), so
+ *   the form leaves them out rather than offer what the create route would refuse.
  * - `POST /api/v1/layout-sets/:id/preview` gives the form a set's layouts, or a draft of them,
  *   would show for a ticket type and operation in a track (the layout editor's live preview,
  *   UI-T15; ADR-114). It checks a draft as a save would and stores nothing: a read. Anyone who
@@ -122,6 +126,18 @@ export const previewBody = z
   })
   .strict();
 const listQuery = z.object({ trackId: id.optional() }).strict();
+/**
+ * The fields the create route refuses unless the caller holds a track permission beyond Create
+ * tickets (`POST /api/v1/tickets` in tickets.ts): who may be named, dates and the close reason.
+ */
+const CREATE_PERMISSIONS: readonly (readonly [string, TrackPermission])[] = [
+  ['assignee', 'assign_tickets'],
+  ['requester', 'modify_requester'],
+  ['startDate', 'schedule_tickets'],
+  ['dueDate', 'schedule_tickets'],
+  ['closeReason', 'set_close_reason'],
+];
+
 const trackLayoutQuery = z
   .object({ ticketTypeId: id, operation: z.enum(OPERATIONS).default('create') })
   .strict();
@@ -694,8 +710,18 @@ export function registerLayoutRoutes(
     );
     // What the form preselects and offers, so it shows what a new ticket would get (CORE-014 (2)).
     const set = await trackPrioritySet(db, ws, trackId);
+    const keys = new Set(
+      form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key))),
+    );
+    const held = q.data.operation === 'create' ? await request.authz.track(trackId) : null;
+    const withheld = held
+      ? CREATE_PERMISSIONS.filter(([key, needs]) => keys.has(key) && !held.has(needs)).map(
+          ([key]) => key,
+        )
+      : [];
     return {
       ...form,
+      ...(held ? { withheld } : {}),
       priorities: {
         defaultId: set?.defaultPriorityId ?? null,
         offered: [...(set?.priorityIds ?? [])],

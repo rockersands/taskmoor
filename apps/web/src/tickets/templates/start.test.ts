@@ -85,6 +85,15 @@ describe('a template on the create form (CORE-030)', () => {
     expect(fill.extras).toEqual([]);
   });
 
+  it('[CORE-030] [IAM-010] neither fills nor lists what the person may not set at create', () => {
+    const fill = fillForm(
+      { summary: 'Release', assigneeId: 21, dueDate: '2026-11-10' },
+      { ...FORM, withheld: ['assignee', 'dueDate'] },
+    );
+    expect(fill.values).toEqual({ summary: 'Release' });
+    expect(fill.extras).toEqual([]);
+  });
+
   it('[CORE-030] leaves out only what the person cleared or turned off', () => {
     const start = {
       summary: 'Release',

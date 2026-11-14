@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { chooseTrack } from './pickers';
 
 /**
  * Clone and deep clone end to end (M1-124, CORE-023): the Clone action on the ticket view starts
@@ -262,7 +263,7 @@ test('[CORE-023] (2) deep-clones an objective with its outcome, features and sub
   await expect(page.getByRole('heading', { level: 1 })).toContainText(top.key);
   const copyKey = await cloneOnPage(page, top.key, async () => {
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Track').selectOption(to);
+    await chooseTrack(dialog, to);
     await dialog.getByLabel('Everything below it, at every level (deep clone)').check();
   });
   expect(copyKey).toMatch(new RegExp(`^${to}-\\d+$`));
