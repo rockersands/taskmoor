@@ -7993,6 +7993,7 @@ export const messagesEn = {
   'grid.timeout':
     'Reading this structure took too long, so nothing is shown rather than part of it. Narrow it with the filters or a query, or try again.',
   'grid.tryAgain': 'Try again',
+  'grid.cellsFailed': 'Some cells could not be read, so they show nothing yet.',
   'grid.structure': 'Structure',
   'grid.structure.broken': '{name} (partly broken)',
   'grid.structureGone': 'The structure in this link no longer exists; the plan’s first is shown.',

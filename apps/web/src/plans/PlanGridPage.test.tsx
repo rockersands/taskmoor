@@ -312,6 +312,35 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(await screen.findByRole('treegrid')).toBeVisible();
   });
 
+  it('[PLN-010] says when the cells could not be read, and reads them again on Try again', async () => {
+    const user = userEvent.setup();
+    const grid = fakeGridClient(saved);
+    const tickets = grid.tickets;
+    let fail = true;
+    grid.tickets = async (...args) => {
+      if (fail) throw new Error('offline');
+      return tickets(...args);
+    };
+    render(
+      <I18nProvider locale="en">
+        <PlanGridPage
+          planId={12}
+          view={{ filters: {}, group: null }}
+          scenario={null}
+          client={grid}
+          search={grid.search}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Some cells could not be read, so they show nothing yet.',
+    );
+    fail = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await within(rowOf('SHOP-41')).findByText('Refunds fail for expired cards');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('[PLN-010] says when a structure adds no rows, and when it stops at 100,000', async () => {
     renderGrid({ skeleton: 'empty' });
     expect(await screen.findByText('No rows in this structure')).toBeVisible();

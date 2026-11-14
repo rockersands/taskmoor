@@ -8187,6 +8187,7 @@ export const messagesEs: Record<MessageId, string> = {
   'grid.timeout':
     'Leer esta estructura tardó demasiado, así que no se muestra nada en lugar de una parte. Acótala con los filtros o una consulta, o inténtalo de nuevo.',
   'grid.tryAgain': 'Intentar de nuevo',
+  'grid.cellsFailed': 'Algunas celdas no se pudieron leer, así que aún no muestran nada.',
   'grid.structure': 'Estructura',
   'grid.structure.broken': '{name} (en parte rota)',
   'grid.structureGone':

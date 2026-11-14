@@ -641,6 +641,9 @@ function GridBody({
   const gridNow = useRef(grid);
   gridNow.current = grid;
   const [cells, setCells] = useState(0);
+  // A read of cells that failed says so, with Try again; the rows it held are asked for again.
+  const [cellsFailed, setCellsFailed] = useState(false);
+  const [cellTries, setCellTries] = useState(0);
   const wanted = runs
     .map((i) => skeleton.rows.ticket[visible[i] as number] as number)
     .filter((ticket) => ticket > 0 && !cache.current.has(ticket) && !pending.current.has(ticket));
@@ -682,12 +685,13 @@ function GridBody({
           },
           () => {
             for (const ticket of batch) pending.current.delete(ticket);
+            if (mounted.current) setCellsFailed(true);
           },
         );
       }
     }, CELL_DEBOUNCE);
     return () => window.clearTimeout(timer);
-  }, [wantedKey, client, planId]);
+  }, [wantedKey, client, planId, cellTries]);
 
   /** A cell saved: the totals above recompute; the cells in view of the rows above are read again. */
   const onSaved = useCallback(
@@ -1242,6 +1246,21 @@ function GridBody({
   const problemList = (
     <>
       {answer.more && <p className="board-hint">{t('grid.more', { count: n })}</p>}
+      {cellsFailed && (
+        <div className="board-problem" role="alert">
+          <p>{t('grid.cellsFailed')}</p>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => {
+              setCellsFailed(false);
+              setCellTries((n) => n + 1);
+            }}
+          >
+            {t('grid.tryAgain')}
+          </button>
+        </div>
+      )}
       {stepProblems.map((p) => (
         <p key={p.path} className="board-hint">
           {p.reason === 'invalid_query'
