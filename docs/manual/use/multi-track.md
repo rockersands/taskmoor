@@ -255,7 +255,8 @@ words:
 
 - **Ready**: it can be applied.
 - **Changed since drafted**: someone changed that field live since the draft was made, and the line
-  says the value now. **Keep my draft** keeps your draft against the value now. A ticket edited in
+  says the value now. **Keep my draft** keeps your draft against the value now; nothing else does,
+  so moving only a bar's end leaves its start marked if that is what changed. A ticket edited in
   other ways, a comment or a new summary for example, is not changed since drafted.
 - **Already so**: the ticket already has the drafted value; applying it changes nothing.
 - **You may not schedule tickets in SPA** (or edit them, for a Team value): you lack what applying
@@ -278,12 +279,13 @@ On a computer, **Apply all** applies every draft you see; on a phone, choose **S
 One ticket refused never stops the others. The result says, for example, "3 applied, 1 refused",
 and each refused ticket stays chosen with its reason:
 
-- you lack a permission it needs in its track (to schedule tickets for days, to edit them for a
-  Team value);
+- you may not schedule tickets in its track, for days ("You may not schedule tickets in SPA"), or
+  edit them, for a Team value ("You may not edit tickets in SPA"); a ticket that needs another
+  permission says "you lack a permission it needs in SPA";
 - it is locked, by its status or a field rule, and the lock is named;
-- its track is archived;
-- it is no longer in this plan for you (deleted, hidden from you, or moved out of the plan); such a
-  ticket is listed by this reason alone, without its key;
+- it is no longer in this plan for you (deleted, hidden from you, moved out of the plan, or its
+  track archived); such a ticket is listed by this reason alone, without its key;
+- its track is archived, when that happens in the moment it is applied;
 - it changed since drafted, with its values now;
 - the ticket does not take the value, for example a Team field that is not on its form;
 - something else went wrong: try again.

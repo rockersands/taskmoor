@@ -1691,4 +1691,194 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
       .where('id', '=', main.id)
       .execute();
   });
+  it('[PLN-002] moves no roll-up by a draft on a descendant the plan does not hold', async () => {
+    const rollups = await newPlan('Roll-ups');
+    const main = (await makeScenario('admin', 'Roll-up main', {}, rollups)).scenario;
+    const typeOf = async (name: string) =>
+      (
+        await database.db
+          .selectFrom('ticket_type')
+          .select('id')
+          .where('name', '=', name)
+          .where('owner_track_id', 'is', null)
+          .executeTakeFirstOrThrow()
+      ).id;
+    const goal = await ticket('SCB', 'Rolled-up goal', { ticketTypeId: await typeOf('Outcome') });
+    // A child in SCE, a track the plan does not hold, which the administrator sees.
+    const child = await ticket('SCE', 'Child elsewhere', {
+      ticketTypeId: await typeOf('Feature'),
+      parent: goal.key,
+      dueDate: '2027-10-05',
+    });
+    // A draft left on it, as one is on a ticket that has since moved out of the plan's tracks.
+    await sql`
+      INSERT INTO plan_draft (workspace_id, plan_id, scenario_id, ticket_id, field, new_value, updated_by)
+      VALUES (1, ${rollups}, ${main.id}, ${child.id}, 'dueDate', '"2027-12-31"'::jsonb, ${users.admin?.id})`.execute(
+      database.db,
+    );
+    try {
+      const rollup = async (q: string) =>
+        (
+          (await call('admin', { method: 'GET', url: `${plan(rollups)}/timeline${q}` })).items as {
+            id: number;
+            rollup: { due: string | null } | null;
+          }[]
+        ).find((i) => i.id === goal.id)?.rollup;
+      expect(await rollup('')).toMatchObject({ due: '2027-10-05', total: 1 });
+      expect(await rollup(`?scenario=${main.id}`)).toMatchObject({ due: '2027-10-05', total: 1 });
+    } finally {
+      await sql`DELETE FROM plan_draft WHERE ticket_id = ${child.id}`.execute(database.db);
+    }
+  });
+
+  it('[PLN-002] writes nothing of a request with one bad change among good ones', async () => {
+    const main = await mainScenario();
+    const good = await ticket('SCB', 'Good change', {
+      startDate: '2027-04-05',
+      dueDate: '2027-04-09',
+    });
+    const late = await ticket('SCB', 'Out of order', {
+      startDate: '2027-04-12',
+      dueDate: '2027-04-16',
+    });
+    const drafted = async () =>
+      (
+        await database.db
+          .selectFrom('plan_draft')
+          .select('ticket_id')
+          .where('scenario_id', '=', main.id)
+          .where('ticket_id', 'in', [good.id, late.id])
+          .execute()
+      ).length;
+    // A ticket that does not exist, checked before anything is written.
+    const missing = await as('admin', {
+      method: 'PUT',
+      url: scen(main.id, '/drafts'),
+      payload: {
+        changes: [
+          { ticketId: good.id, dueDate: '2027-04-20' },
+          { ticketId: 999_999, dueDate: '2027-04-20' },
+        ],
+      },
+    });
+    expect(missing.statusCode).toBe(400);
+    expect(missing.json()).toEqual({
+      error: 'invalid_fields',
+      fields: { 'changes.1.ticketId': 'not_found' },
+    });
+    // Days out of order, checked as the drafts are written.
+    const order = await as('admin', {
+      method: 'PUT',
+      url: scen(main.id, '/drafts'),
+      payload: {
+        changes: [
+          { ticketId: good.id, dueDate: '2027-04-20' },
+          { ticketId: late.id, dueDate: '2027-04-10' },
+        ],
+      },
+    });
+    expect(order.json()).toEqual({
+      error: 'invalid_fields',
+      fields: { 'changes.1.startDate': 'start_after_due' },
+    });
+    expect(await drafted()).toBe(0);
+  });
+
+  it('[PLN-002] checks a day’s order against the scenario’s draft of the other day, before the live one', async () => {
+    const main = await mainScenario();
+    const ordered = await ticket('SCB', 'Ordered', {
+      startDate: '2027-03-01',
+      dueDate: '2027-03-20',
+    });
+    await draft('admin', main.id, [{ ticketId: ordered.id, startDate: '2027-03-10' }]);
+    // 5 March comes after the live start (1 March) but before the drafted one (10 March).
+    const res = await as('admin', {
+      method: 'PUT',
+      url: scen(main.id, '/drafts'),
+      payload: { changes: [{ ticketId: ordered.id, dueDate: '2027-03-05' }] },
+    });
+    expect(res.json()).toEqual({
+      error: 'invalid_fields',
+      fields: { 'changes.0.startDate': 'start_after_due' },
+    });
+    const row = (await changes('admin', main.id)).changes.find((c) => c.ticketId === ordered.id);
+    expect(row?.fields.map((f) => [f.field, f.draft])).toEqual([['startDate', '2027-03-10']]);
+  });
+
+  it('[PLN-002] [PLN-005] keeps every Capacity number with a search equal to it in a scenario, for each viewer', async () => {
+    const main = await mainScenario();
+    const moved = await ticket('SCB', 'Moved in capacity', { dueDate: '2027-03-03' });
+    await draft('admin', main.id, [{ ticketId: moved.id, dueDate: '2027-03-16' }]);
+    let touched = 0;
+    for (const who of ['admin', 'ana']) {
+      const answer = await call(who, {
+        method: 'GET',
+        url: `${plan()}/capacity?from=2027-03-01&periods=4&scenario=${main.id}`,
+      });
+      type Row = { clause: string; cells: Cell[]; unscheduled: Cell };
+      const rows: Row[] = [
+        ...answer.teams.flatMap((team: Row & { members: Row[] }) => [team, ...team.members]),
+        answer.unassigned,
+        answer.others,
+      ];
+      let linked = 0;
+      for (const row of rows) {
+        const all: [string, Cell][] = [
+          [answer.unscheduledClause, row.unscheduled],
+          ...row.cells.map((c, i): [string, Cell] => [answer.periods[i]?.clause, c]),
+        ];
+        for (const [column, cell] of all) {
+          if (cell.clause === null) {
+            expect(cell.drafts, who).toBeGreaterThan(0);
+            if (who === 'admin') touched++;
+            continue;
+          }
+          expect(cell).not.toHaveProperty('drafts');
+          const q = `(${answer.query}) AND ${row.clause} AND ${column}`;
+          expect(await searchCount(who, q), `${who}: ${q}`).toBe(cell.count);
+          linked++;
+        }
+      }
+      expect(linked, who).toBeGreaterThan(0);
+    }
+    // The draft leaves the first week and joins the third: those two cells have no search.
+    expect(touched).toBe(2);
+  });
+
+  it('[PLN-002] refuses a drafted ticket whose track is archived as gone, without its key', async () => {
+    const track = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'SCR', name: 'Retired', mode: 'shared' },
+        },
+        201,
+      )
+    ).track.id as number;
+    const retired = await ticket('SCR', 'Retired work', { dueDate: '2027-05-03' });
+    const archive = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: { name: 'Archive', sources: [{ kind: 'track', trackId: track }] },
+        },
+        201,
+      )
+    ).plan.id as number;
+    const main = (await makeScenario('admin', 'Archive main', {}, archive)).scenario;
+    await draft('admin', main.id, [{ ticketId: retired.id, dueDate: '2027-05-10' }], 200, archive);
+    await call('admin', { method: 'POST', url: `/api/v1/tracks/${track}/archive` });
+    const result = await apply('admin', main.id, { tickets: [retired.id] }, 200, archive);
+    expect(result).toEqual({
+      applied: [],
+      refused: [{ ticketId: retired.id, key: null, reason: 'gone' }],
+      next: null,
+      notShown: 1,
+    });
+    expect((await live(retired.id)).due).toBe('2027-05-03');
+  });
 });
