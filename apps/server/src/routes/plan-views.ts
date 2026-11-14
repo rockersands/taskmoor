@@ -22,6 +22,7 @@ import {
   planTickets,
   sourceRows,
 } from '../plans/query';
+import { sprintDay } from '../plans/sprints';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { countBulkExport } from '../security/alerts';
 import { viewScenario } from './plan-scenarios';
@@ -97,13 +98,6 @@ export interface PlanViewOptions {
   catalogs: FieldCatalogs;
   timeoutMs?: number;
 }
-
-/** The sprint a ticket is dated by: an open one it is in, else the latest it was in. */
-const SPRINT_OF = (column: 'start_at' | 'end_at') => sql`(
-  SELECT (s.${sql.ref(column)} AT TIME ZONE 'UTC')::date FROM sprint_ticket st
-    JOIN sprint s ON s.id = st.sprint_id JOIN board b ON b.id = s.board_id AND b.kind = 'scrum'
-   WHERE st.ticket_id = k.id AND s.deleted_at IS NULL
-   ORDER BY st.open DESC, s.sequence DESC LIMIT 1)`;
 
 /** A value as the query language reads it: a quoted string with its quotes escaped. */
 const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -439,8 +433,8 @@ export function registerPlanViewRoutes(
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
                    h.rank AS level_rank, h.kind AS level_kind, k.parent_id, s.name AS status,
                    s.stage, ${over.start}::text AS start_date, ${over.due}::text AS due_date,
-                   ${SPRINT_OF('start_at')}::text AS sprint_start,
-                   ${SPRINT_OF('end_at')}::text AS sprint_end,
+                   ${sprintDay('start_at')}::text AS sprint_start,
+                   ${sprintDay('end_at')}::text AS sprint_end,
                    k.track_id, k.assignee_id, u.name AS assignee_name, pr.name AS priority
               FROM ticket k
               JOIN track t ON t.id = k.track_id
@@ -470,8 +464,8 @@ export function registerPlanViewRoutes(
                WHERE tree.depth < 10 AND ${seen}
             )
             SELECT tree.root AS id,
-                   min(COALESCE(${over.start}, ${SPRINT_OF('start_at')}))::text AS start,
-                   max(COALESCE(${over.due}, ${SPRINT_OF('end_at')}))::text AS due,
+                   min(COALESCE(${over.start}, ${sprintDay('start_at')}))::text AS start,
+                   max(COALESCE(${over.due}, ${sprintDay('end_at')}))::text AS due,
                    count(*)::int AS total,
                    count(*) FILTER (WHERE k.closed_at IS NOT NULL)::int AS closed
               FROM tree JOIN ticket k ON k.id = tree.id
