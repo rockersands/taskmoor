@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
+import { onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import {
   fakeTemplateClient,
   HOTFIX_TEMPLATE,
+  PEOPLE_TEMPLATE,
   RELEASE_TEMPLATE,
   TEMPLATE_OPTIONS,
 } from './fixtures';
@@ -74,4 +76,83 @@ export const Refused: Story = {
 export const RefusedOnAPhone: Story = {
   ...Refused,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** A custom release or area value added from the track's open ones, as the create form offers them (T-299). */
+export const AddingReleaseAndAreaValues: Story = {
+  args: { template: HOTFIX_TEMPLATE, client: fakeTemplateClient([HOTFIX_TEMPLATE]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(
+      canvas.getByRole('combobox', { name: 'Release to add to Fixed in' }),
+      '1.1',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Add to Fixed in' }));
+    await expect(canvas.getByRole('button', { name: 'Remove 1.1 from Fixed in' })).toHaveFocus();
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove Checkout from Owning area' }));
+    await expect(
+      canvas.getByRole('combobox', { name: 'Area to add to Owning area' }),
+    ).toBeVisible();
+  },
+};
+
+/** Custom person, group and team values by name, one hidden or gone by its number (T-299). */
+export const PeopleGroupsAndTeams: Story = {
+  args: { template: PEOPLE_TEMPLATE, client: fakeTemplateClient([PEOPLE_TEMPLATE]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const owners = await canvas.findByRole('list', { name: 'Owners' });
+    await expect(within(owners).getByText('Group 52, hidden from you or gone')).toBeVisible();
+    await expect(canvas.getByText('Checkout squad')).toBeVisible();
+  },
+};
+
+/** Editing a refused value takes its reason away; the others keep theirs (T-299). */
+export const RefusedThenEdited: Story = {
+  ...Refused,
+  play: async (context) => {
+    await Refused.play?.(context);
+    const canvas = within(context.canvasElement);
+    const target = canvas.getByRole('listbox', { name: 'Target releases' });
+    await userEvent.deselectOptions(target, '0.9 (archived)');
+    await expect(target).not.toHaveAttribute('aria-invalid');
+    await expect(canvas.getByRole('combobox', { name: 'Priority' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  },
+};
+
+/** A finger reaches each value's Remove and the lists to add from (ADR-033, T-299). */
+export const ValuesOnATouchScreen: Story = {
+  args: { template: HOTFIX_TEMPLATE, client: fakeTemplateClient([HOTFIX_TEMPLATE]) },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('combobox', { name: 'Release to add to Fixed in' });
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.ticket-template-values button',
+        '.ticket-template-row select',
+        '.ticket-template-row button',
+      ]),
+    ).toEqual([]);
+  },
+};
+
+/** At a phone's width, the lists to add from and the named values stay inside the form (T-299). */
+export const PeopleOnAPhone: Story = {
+  ...PeopleGroupsAndTeams,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async (context) => {
+    await PeopleGroupsAndTeams.play?.(context);
+    const form = within(context.canvasElement).getByRole('form');
+    const edge = form.getBoundingClientRect().right;
+    const out = [...form.querySelectorAll('*')]
+      .filter((el) => el.getBoundingClientRect().right > edge + 0.5)
+      .map((el) => `${el.tagName}.${el.className} ${el.getBoundingClientRect().right - edge}`);
+    await expect(out).toEqual([]);
+    const page = document.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
 };

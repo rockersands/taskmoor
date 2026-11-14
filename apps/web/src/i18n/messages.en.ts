@@ -6639,7 +6639,16 @@ export const messagesEn = {
     '{type, select, area {Area {id}, not in this track} other {Release {id}, not in this track}}',
   'tickets.templates.removeValue': 'Remove {value} from {field}',
   'tickets.templates.trackValuesHint':
+    'Add one of the track’s open ones, or remove one to leave it off the tickets made from this template.',
+  'tickets.templates.apiValuesHint':
     'Set through the API. Removing one leaves it off the tickets made from this template.',
+  'tickets.templates.loadingNames': 'Reading the names…',
+  'tickets.templates.unnamedValue':
+    '{type, select, user {Person {id}, hidden from you or gone} group {Group {id}, hidden from you or gone} other {Team {id}, gone}}',
+  'tickets.templates.addTrackValueLabel':
+    '{type, select, area {Area to add to {field}} other {Release to add to {field}}}',
+  'tickets.templates.addValue': 'Add',
+  'tickets.templates.addValueTo': 'Add to {field}',
   'tickets.templates.noTrackValues': 'None: saving leaves this field empty.',
   'tickets.templates.pick': 'Start from a template',
   'tickets.templates.pickNone': 'No template',

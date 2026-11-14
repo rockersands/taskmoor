@@ -65,10 +65,12 @@ export const TEMPLATE_OPTIONS: TemplateOptions = {
   areas: [
     { id: 31, name: 'Checkout' },
     { id: 32, name: 'Old storefront', archived: true },
+    { id: 33, name: 'Payments' },
   ],
   releases: [
     { id: 41, name: '1.0' },
     { id: 42, name: '0.9', archived: true },
+    { id: 43, name: '1.1' },
   ],
   fields: [
     { id: 7, name: 'Severity', type: 'select', multiple: false },
@@ -76,6 +78,9 @@ export const TEMPLATE_OPTIONS: TemplateOptions = {
     { id: 99, name: 'Secret formula', type: 'formula', multiple: false },
     { id: 12, name: 'Fixed in', type: 'release', multiple: true },
     { id: 13, name: 'Owning area', type: 'area', multiple: false },
+    { id: 14, name: 'Reviewer', type: 'user', multiple: false },
+    { id: 15, name: 'Owners', type: 'group', multiple: true },
+    { id: 16, name: 'Squad', type: 'team', multiple: false },
   ],
 };
 
@@ -91,6 +96,26 @@ export const HOTFIX_TEMPLATE: SavedTemplate = {
   defaults: {
     targetReleaseIds: [42],
     fields: { '12': [41, 42, 77], '13': 31, '99': 'kept' },
+  },
+};
+
+/**
+ * A track template whose custom person, group and team fields were set through the API (T-299):
+ * a group the reader may not see or that is gone (52) among them.
+ */
+export const PEOPLE_TEMPLATE: SavedTemplate = {
+  ...base(14, 'Review'),
+  purpose: 'A change someone reviews',
+  track: { id: 1, key: 'SHOP', name: 'Shop' },
+  defaults: { fields: { '14': 21, '15': [51, 52], '16': 61 } },
+};
+
+/** The names the API gives for each template's people, groups and teams, by template id. */
+export const TEMPLATE_NAMES: Record<number, Record<string, Named[]>> = {
+  14: {
+    'fields.14': [{ id: 21, name: 'Sam Rivera' }],
+    'fields.15': [{ id: 51, name: 'Support' }],
+    'fields.16': [{ id: 61, name: 'Checkout squad' }],
   },
 };
 
@@ -146,6 +171,7 @@ export function fakeTemplateClient(
       [{ id: 21, name: 'Sam Rivera' }].filter((p) =>
         p.name.toLowerCase().includes(query.toLowerCase()),
       ),
+    names: async (id) => structuredClone(TEMPLATE_NAMES[id] ?? {}),
     create: async (body) => {
       refuseTaken(body, null);
       saved.push({ id: null, body });

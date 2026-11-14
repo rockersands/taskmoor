@@ -6793,7 +6793,16 @@ export const messagesEs: Record<MessageId, string> = {
     '{type, select, area {Área {id}, no está en este track} other {Versión {id}, no está en este track}}',
   'tickets.templates.removeValue': 'Quitar {value} de {field}',
   'tickets.templates.trackValuesHint':
+    'Añade uno de los abiertos del track, o quita uno para que los tickets creados con esta plantilla no lo lleven.',
+  'tickets.templates.apiValuesHint':
     'Se pone a través de la API. Si quitas uno, los tickets creados con esta plantilla no lo llevan.',
+  'tickets.templates.loadingNames': 'Leyendo los nombres…',
+  'tickets.templates.unnamedValue':
+    '{type, select, user {Persona {id}, oculta para ti o que ya no está} group {Grupo {id}, oculto para ti o que ya no existe} other {Equipo {id}, que ya no existe}}',
+  'tickets.templates.addTrackValueLabel':
+    '{type, select, area {Área para añadir a {field}} other {Versión para añadir a {field}}}',
+  'tickets.templates.addValue': 'Añadir',
+  'tickets.templates.addValueTo': 'Añadir a {field}',
   'tickets.templates.noTrackValues': 'Ninguno: al guardar, este campo queda vacío.',
   'tickets.templates.pick': 'Empezar desde una plantilla',
   'tickets.templates.pickNone': 'Sin plantilla',
