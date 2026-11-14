@@ -1113,4 +1113,14 @@
     display: inline-flex;
     align-items: center;
   }
+
+  /* A card's or a differing ticket's link is the way into the ticket: a finger's target too. */
+  .scenario-card-title a,
+  .scenario-differing li > a {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.3em;
+    min-height: var(--hit-target-touch);
+  }
 }

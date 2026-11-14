@@ -120,6 +120,7 @@ export const OnAPhone: Story = {
         '.scenario-item-actions a',
         '.scenario-item-actions button',
         '.scenario-compare-sides select',
+        '.scenario-differing li > a',
       ]),
     ).toEqual([]);
   },

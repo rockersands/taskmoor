@@ -142,6 +142,7 @@ export const OnAPhone: Story = {
         '.scenario-tools button',
         '.scenario-only',
         '.scenario-keep',
+        '.scenario-card-title a',
       ]),
     ).toEqual([]);
     // The check boxes themselves are the shared square, all alike.
