@@ -77,7 +77,12 @@ const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '
  */
 export function pickerQuery(
   typed: string,
-  scope: { trackKey?: string | undefined; exclude?: string | undefined } = {},
+  scope: {
+    trackKey?: string | undefined;
+    exclude?: string | undefined;
+    /** Only tickets at this hierarchy level (CORE-006): a parent one level up (T-265). */
+    level?: number | undefined;
+  } = {},
 ): string | null {
   const text = typed.trim();
   if (text === '') return null;
@@ -94,6 +99,7 @@ export function pickerQuery(
   const where = [
     ...(scope.trackKey ? [`track = ${quoted(scope.trackKey)}`] : []),
     ...(scope.exclude ? [`key != ${quoted(scope.exclude)}`] : []),
+    ...(scope.level !== undefined ? [`hierarchyLevel = ${Math.trunc(scope.level)}`] : []),
     `(${clauses.join(' OR ')})`,
   ];
   return `${where.join(' AND ')} ORDER BY updated DESC`;

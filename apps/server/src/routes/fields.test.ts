@@ -450,6 +450,44 @@ describe('custom fields (M1-010)', () => {
     });
   });
 
+  it('[CORE-010] a group picker offers the site groups by name to those who may browse them (T-265)', async () => {
+    const [ops, design] = await database.db
+      .insertInto('user_group')
+      .values([
+        { workspace_id: 1, name: 'Picker ops' },
+        { workspace_id: 1, name: 'Picker design' },
+      ])
+      .returning(['id', 'name'])
+      .execute();
+    const f = await field({ name: 'Owning group', type: 'group' });
+    const all = await get('alice', `/api/v1/fields/${f.id}/groups?q=picker`);
+    expect(all.statusCode, all.body).toBe(200);
+    expect(all.json().groups).toEqual([
+      { id: design?.id, name: 'Picker design' },
+      { id: ops?.id, name: 'Picker ops' },
+    ]);
+    const narrowed = await get('alice', `/api/v1/fields/${f.id}/groups?q=OPS&limit=5`);
+    expect(narrowed.json().groups).toEqual([{ id: ops?.id, name: 'Picker ops' }]);
+    // What the picker offers, the create route takes.
+    expect((await ticket('XT', { fields: { [f.id]: ops?.id } })).fields[f.id]).toEqual({
+      id: ops?.id,
+      name: 'Picker ops',
+    });
+    // Only for a group field.
+    const text = await field({ name: 'Not groups', type: 'text' });
+    expect((await get('alice', `/api/v1/fields/${text.id}/groups`)).statusCode).toBe(404);
+    // Not to people without "Browse users and groups".
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      expect((await get('alice', `/api/v1/fields/${f.id}/groups`)).statusCode).toBe(403);
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
+  });
+
   it('[CORE-009] renames, reorders and disables options without changing stored ids', async () => {
     const f = await field({
       name: 'Browser',

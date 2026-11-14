@@ -167,22 +167,26 @@ describe('the create form (M1-012)', () => {
 
   it('[CORE-013] keeps a field required at create that it cannot set, so its refusal has a place (D30)', async () => {
     const user = userEvent.setup();
-    // An administrator put Requester, required, and Close reason on the create layout.
+    // An administrator put a formula, required, and Close reason on the create layout.
     const required = withFields(BUG_FORM, [
-      { key: 'requester', required: true, description: null },
+      { key: 'cf[30]', required: true, description: null },
       { key: 'closeReason', required: false, description: null },
     ]);
+    required.customFields = [
+      ...BUG_FORM.customFields,
+      { id: 30, name: 'Score', description: '', type: 'formula', multiple: false },
+    ];
     openCreate({
       'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () => jsonResponse(200, required),
       'POST /tickets': () =>
         jsonResponse(400, {
           error: 'invalid_fields',
           // Close reason is never on this form, so it has no row (PL-20, D30).
-          fields: { requesterId: 'required', closeReasonId: 'required' },
+          fields: { 'fields.30': 'required', closeReasonId: 'required' },
         }),
     });
-    const requester = await screen.findByRole('group', { name: 'Requester (required)' });
-    expect(requester).toHaveAccessibleDescription(/^This form cannot set this field yet\./);
+    const score = await screen.findByRole('group', { name: 'Score (required)' });
+    expect(score).toHaveAccessibleDescription(/^This form cannot set this field yet\./);
     expect(screen.queryByText('Close reason')).toBeNull();
     await user.type(screen.getByLabelText('Summary (required)'), 'Checkout fails');
     await user.click(screen.getByRole('button', { name: 'Create' }));
@@ -191,11 +195,11 @@ describe('the create form (M1-012)', () => {
     );
     expect(alert).toHaveAttribute('role', 'alert');
     // The refusal shows at the row; the one with no row is named in the alert.
-    expect(requester).toHaveAccessibleDescription(/This field is required\.$/);
+    expect(score).toHaveAccessibleDescription(/This field is required\.$/);
     expect(alert).toHaveTextContent(
       'Some fields need attention before the ticket can be created. Close reason: This field is required.',
     );
-    expect(alert).not.toHaveTextContent('Requester');
+    expect(alert).not.toHaveTextContent('Score');
   });
 
   it('[CORE-008] [IAM-010] a layout requiring Assignee creates the ticket with the person chosen', async () => {
@@ -368,6 +372,196 @@ describe('the create form (M1-012)', () => {
     expect(screen.getByRole('button', { name: 'Remove SHOP-4 as parent' })).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('combobox', { name: 'Parent' })).toHaveFocus();
+  });
+
+  it('[CORE-008] [IAM-010] sets the requester with the Change the requester permission, and leaves it out without (T-265)', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [{ key: 'requester', required: false, description: null }]);
+    let withheld: string[] = [];
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () =>
+        jsonResponse(200, { ...form, withheld }),
+      'GET /people/mentionable*': () =>
+        jsonResponse(200, { people: [{ id: 23, name: 'Robin Okafor', canView: true }] }),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    const requester = await screen.findByRole('searchbox', { name: 'Requester' });
+    expect(requester).toHaveAccessibleDescription(
+      'Type a name to find someone. Left empty, you are the requester.',
+    );
+    await user.type(screen.getByLabelText('Summary (required)'), 'Card declined');
+    await user.type(requester, 'rob');
+    await user.click(await screen.findByRole('button', { name: 'Robin Okafor' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).toMatchObject({ summary: 'Card declined', requesterId: 23 });
+    // Anyone may be the requester, not only those who may be given tickets.
+    const asked = calls.filter((c) => c.path.startsWith('/people/mentionable'));
+    expect(asked.every((c) => !c.path.includes('assignable=true'))).toBe(true);
+    // Without the permission the row is left out, as the create route would refuse it.
+    withheld = ['requester'];
+    await chooseType(user, 'Bug');
+    await screen.findByRole('region', { name: 'Report' });
+    await chooseType(user, 'Chore');
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Report' })).toBeNull());
+    await screen.findByLabelText('Summary (required)');
+    expect(screen.queryByRole('searchbox', { name: 'Requester' })).toBeNull();
+  });
+
+  it('[CORE-010] sets custom group, team, release and area fields with the pickers the form has (T-265)', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'cf[31]', required: false, description: null },
+      { key: 'cf[32]', required: true, description: null },
+      { key: 'cf[33]', required: false, description: null },
+      { key: 'cf[34]', required: false, description: null },
+    ]);
+    form.customFields = [
+      { id: 31, name: 'Owning groups', description: '', type: 'group', multiple: true },
+      { id: 32, name: 'Team', description: '', type: 'team', multiple: false },
+      { id: 33, name: 'Fixed in', description: '', type: 'release', multiple: false },
+      { id: 34, name: 'Parts', description: '', type: 'area', multiple: true },
+    ];
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /fields/31/groups?q=op&limit=8': () =>
+        jsonResponse(200, {
+          groups: [
+            { id: 41, name: 'Operations' },
+            { id: 42, name: 'Ops leads' },
+          ],
+        }),
+      'GET /teams': () =>
+        jsonResponse(200, {
+          teams: [{ id: 51, name: 'Payments', description: '', lead: null, memberCount: 3 }],
+        }),
+      'GET /tracks/1/releases': () => jsonResponse(200, { releases: [{ id: 5, name: 'Spring' }] }),
+      'GET /tracks/1/areas': () =>
+        jsonResponse(200, {
+          areas: [
+            { id: 7, name: 'Checkout' },
+            { id: 8, name: 'Search' },
+          ],
+        }),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Card declined');
+    // Groups are found by name, several kept.
+    const groups = screen.getByRole('searchbox', { name: 'Owning groups' });
+    expect(groups).toHaveAccessibleDescription('Type a name to find a group.');
+    await user.type(groups, 'op');
+    expect(await screen.findByText('2 groups found')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ops leads' }));
+    await user.type(groups, 'op');
+    await user.click(await screen.findByRole('button', { name: 'Operations' }));
+    // One team, one release: a list to choose one from; areas a checkbox each.
+    const team = await screen.findByRole('combobox', { name: 'Team (required)' });
+    expect(team).toHaveAttribute('aria-required', 'true');
+    await within(team).findByRole('option', { name: 'Payments' });
+    await user.selectOptions(team, 'Payments');
+    const release = screen.getByRole('combobox', { name: 'Fixed in' });
+    await within(release).findByRole('option', { name: 'Spring' });
+    await user.selectOptions(release, 'Spring');
+    const parts = screen.getByRole('group', { name: 'Parts' });
+    await user.click(await within(parts).findByRole('checkbox', { name: 'Search' }));
+    expect(screen.queryByText(/cannot set this field/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).toMatchObject({ fields: { 31: [42, 41], 32: 51, 33: 5, 34: [8] } });
+  });
+
+  it('[CORE-009] a person field restricted to a group offers only the people it allows (T-265)', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [{ key: 'cf[12]', required: false, description: null }]);
+    form.customFields = [
+      {
+        id: 12,
+        name: 'Approver',
+        description: '',
+        type: 'user',
+        multiple: false,
+        restricted: true,
+      },
+    ];
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /fields/12/people?track=SHOP&ticketTypeId=4&q=sa&limit=8': () =>
+        jsonResponse(200, { people: [{ id: 22, name: 'Sasha Lee' }] }),
+      'GET /people/mentionable*': () =>
+        jsonResponse(200, {
+          people: [
+            { id: 21, name: 'Sam Rivera', canView: true },
+            { id: 22, name: 'Sasha Lee', canView: true },
+          ],
+        }),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Refund');
+    const approver = screen.getByRole('searchbox', { name: 'Approver' });
+    expect(approver).toHaveAccessibleDescription(
+      'Type a name. Only the people this field allows are offered.',
+    );
+    await user.type(approver, 'sa');
+    expect(await screen.findByText('1 person found')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sam Rivera' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Sasha Lee' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).toMatchObject({ fields: { 12: 22 } });
+    expect(calls.some((c) => c.path.startsWith('/people/mentionable'))).toBe(false);
+  });
+
+  it('[CORE-006] offers as parent only tickets one level up, and for a subticket only in its track (T-265)', async () => {
+    const user = userEvent.setup();
+    const leveled = [
+      { id: 3, name: 'Bug', level: { rank: 0 } },
+      { id: 4, name: 'Chore', level: { rank: 0 } },
+      { id: 5, name: 'Subticket', level: { rank: -1 } },
+    ];
+    const form = withFields(CHORE_FORM, [{ key: 'parent', required: false, description: null }]);
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: leveled }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /tracks/SHOP/layout?ticketTypeId=5&operation=create': () => jsonResponse(200, form),
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [{ id: 40, key: 'SHOP-4', summary: 'Payments', status: { name: 'Open' } }],
+        }),
+    });
+    const parent = await screen.findByRole('combobox', { name: 'Parent' });
+    expect(parent).toHaveAccessibleDescription(
+      'Type a ticket’s key or words from its summary. Only tickets one level up are offered.',
+    );
+    await user.type(parent, 'pay');
+    await user.click(await screen.findByRole('option', { name: /SHOP-4/ }));
+    const queries = () =>
+      calls
+        .filter((c) => c.method === 'POST' && c.path === '/search')
+        .map((c) => (c.body as { q: string }).q);
+    expect(queries().pop()).toBe('hierarchyLevel = 1 AND (summary ~ "pay*") ORDER BY updated DESC');
+    // A subticket sits under a ticket one level up in its own track; the parent chosen for a
+    // Chore cannot hold it, so it is let go.
+    await chooseType(user, 'Subticket');
+    const again = await screen.findByRole('combobox', { name: 'Parent' });
+    expect(screen.queryByRole('button', { name: 'Remove SHOP-4 as parent' })).toBeNull();
+    expect(again).toHaveAccessibleDescription(
+      'Type a ticket’s key or words from its summary. Only tickets one level up in this track are offered.',
+    );
+    await user.type(again, 'pay');
+    await screen.findByRole('option', { name: /SHOP-4/ });
+    expect(queries().pop()).toBe(
+      'track = "SHOP" AND hierarchyLevel = 0 AND (summary ~ "pay*") ORDER BY updated DESC',
+    );
   });
 
   it('[CORE-015] [CORE-016] a track with no releases or areas offers none, and says so where one is required', async () => {

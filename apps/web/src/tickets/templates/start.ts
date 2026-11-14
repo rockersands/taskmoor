@@ -10,20 +10,41 @@ import {
   SYSTEM_FIELDS,
   type TicketForm,
 } from '../form';
+import type { Named } from './client';
 
 /**
  * A template's starting values on the create form (CORE-030; ADR-113). The form shows what it can
  * edit, so the person can review it. What the backend will refuse for them (a field a rule hides,
  * off the layout, locked) is not shown at all: it stays out of the body, the backend leaves it out
- * and says so. The only values kept out of view are those on the layout with no control here
- * (people, areas, releases), which the picker lists so that they can be turned off.
+ * and says so. The template's assignee, releases and areas fill the form's pickers in when it
+ * has them (T-265), so a value chosen there takes the template's place. The values kept out of
+ * view are those on the layout with no control here, and releases or areas the picker does not
+ * offer (archived since, or a list that did not load): the template picker lists them so that
+ * they can be turned off.
  */
 export interface FormFill {
   values: FormValues;
   docs: Record<string, PmJson | null>;
+  /** People the template chose, by field key, for the form's person pickers. */
+  picks: Record<string, Named[]>;
   /** Body keys the template sets that this form shows but cannot edit. */
   extras: string[];
+  /** Body keys whose values went into the form's pickers. */
+  picked: string[];
 }
+
+/**
+ * What the form's pickers can take from a template: their field keys, who it assigns, and the
+ * ids each release or area picker offers, by field key (absent while its list loads).
+ */
+export interface TemplatePickers {
+  keys: ReadonlySet<string>;
+  assignee: Named | null;
+  offered?: Readonly<Record<string, readonly number[]>>;
+}
+
+/** System fields a template fills into a picker: the assignee, releases and areas. */
+const ID_LIST_KEYS = new Set(['targetRelease', 'foundInRelease', 'area']);
 
 const fieldKeyOf = (bodyKey: string): string | null =>
   Object.entries(SYSTEM_FIELDS).find(([, f]) => f.body === bodyKey)?.[0] ?? null;
@@ -86,9 +107,42 @@ function fillCustom(field: CustomField, key: string, value: unknown, fill: FormF
   }
 }
 
-/** The form's values from a template's `start`, for one laid-out form. */
-export function fillForm(start: Record<string, unknown>, form: TicketForm): FormFill {
-  const fill: FormFill = { values: {}, docs: {}, extras: [] };
+/**
+ * Puts a template's value into the picker of `key`, as the form holds it; false when no picker
+ * takes it. The assignee needs the person's name, which the template gives with its id. Releases
+ * and areas go in only when the picker offers every one of them: one it does not list (archived
+ * since the template was saved) would be sent without a checkbox to see or untick it.
+ */
+function pickedValue(
+  key: string,
+  value: unknown,
+  pickers: TemplatePickers,
+  fill: FormFill,
+): boolean {
+  if (!pickers.keys.has(key)) return false;
+  if (key === 'assignee') {
+    const person = pickers.assignee;
+    if (!person || person.id !== value) return false;
+    fill.picks.assignee = [{ id: person.id, name: person.name }];
+    return true;
+  }
+  if (!ID_LIST_KEYS.has(key) || !Array.isArray(value)) return false;
+  const offered = pickers.offered?.[key];
+  if (!offered || !value.every((id) => offered.includes(Number(id)))) return false;
+  fill.values[key] = value.map(String);
+  return true;
+}
+
+/**
+ * The form's values from a template's `start`, for one laid-out form; `pickers` says which of
+ * the form's pickers can take the template's people, releases and areas (none by default).
+ */
+export function fillForm(
+  start: Record<string, unknown>,
+  form: TicketForm,
+  pickers: TemplatePickers = { keys: new Set(), assignee: null },
+): FormFill {
+  const fill: FormFill = { values: {}, docs: {}, picks: {}, extras: [], picked: [] };
   const shown = onLayout(form);
   const free = (key: string) => settable(form, shown, key);
   for (const [bodyKey, value] of Object.entries(start)) {
@@ -104,7 +158,8 @@ export function fillForm(start: Record<string, unknown>, form: TicketForm): Form
     }
     const key = fieldKeyOf(bodyKey);
     if (key === null || !free(key)) continue;
-    if (!EDITABLE_SYSTEM.has(key)) fill.extras.push(bodyKey);
+    if (pickedValue(key, value, pickers, fill)) fill.picked.push(bodyKey);
+    else if (!EDITABLE_SYSTEM.has(key)) fill.extras.push(bodyKey);
     else if (key === 'description' || key === 'environment') fill.docs[key] = value as PmJson;
     else if (key === 'labels') fill.values[key] = (value as string[]).join(' ');
     else fill.values[key] = String(value);
@@ -114,14 +169,15 @@ export function fillForm(start: Record<string, unknown>, form: TicketForm): Form
 
 /**
  * The template's values to leave out when the ticket is made: those the person cleared on the
- * form, and those they turned off in the picker's list. A body that lacks a value otherwise takes
- * the template's.
+ * form or in its pickers (`picked`, the body keys `fillForm` put there), and those they turned
+ * off in the picker's list. A body that lacks a value otherwise takes the template's.
  */
 export function omitKeys(
   start: Record<string, unknown>,
   form: TicketForm,
   body: Record<string, unknown>,
   turnedOff: ReadonlySet<string>,
+  picked: readonly string[] = [],
 ): string[] {
   const out = new Set(turnedOff);
   const shown = onLayout(form);
@@ -136,9 +192,8 @@ export function omitKeys(
       continue;
     }
     const key = fieldKeyOf(bodyKey);
-    if (key !== null && free(key) && EDITABLE_SYSTEM.has(key) && !(bodyKey in body)) {
-      out.add(bodyKey);
-    }
+    const formHeld = key !== null && (EDITABLE_SYSTEM.has(key) || picked.includes(bodyKey));
+    if (key !== null && free(key) && formHeld && !(bodyKey in body)) out.add(bodyKey);
   }
   return [...out];
 }

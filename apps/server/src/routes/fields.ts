@@ -3,7 +3,7 @@ import { OUTPUT_TYPES, outputValueType } from '@taskmoor/formula';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
-import { requireUser } from '../auth';
+import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import {
   type Catalog,
@@ -65,6 +65,10 @@ import { resolveTrack } from '../tickets/store';
  *   formula, and a context change of a formula or of a field one reads, queue a recompute of
  *   every ticket. A field a formula reads is not deleted (409 `used_by_formula`); a formula
  *   field is, values and all, unless another formula reads it.
+ * - `GET /api/v1/fields/:id/people` and `GET /api/v1/fields/:id/groups` are the pickers' sources:
+ *   the people a user picker offers for a ticket of a type in a track (CORE-009 (2)), and the
+ *   site's groups a group picker offers (spec 01a section 1.4), the latter to those who hold
+ *   "Browse users and groups", as the people a mention offers are (T-265).
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -1526,6 +1530,27 @@ export function registerFieldRoutes(
     }
     const rows = await query.orderBy('name').orderBy('id').limit(q.data.limit).execute();
     return { people: rows.map((r) => ({ id: r.id, name: r.name })) };
+  });
+
+  // The site's groups a group picker offers, by name (spec 01a section 1.4; T-265).
+  app.get('/api/v1/fields/:id/groups', async (request, reply) => {
+    if (!(await requireGlobal(request, reply, 'browse_users'))) return reply;
+    const p = z.object({ id }).safeParse(request.params);
+    const q = suggestQuery.safeParse(request.query);
+    if (!p.success || !q.success) return invalid(reply);
+    const field = await readable(request, p.data.id);
+    if (!field || field.type !== 'group') return notFound(reply);
+    const text = q.data.q
+      .trim()
+      .toLowerCase()
+      .replace(/[\\%_]/g, (c) => `\\${c}`);
+    let query = db
+      .selectFrom('user_group')
+      .select(['id', 'name'])
+      .where('workspace_id', '=', request.workspaceId);
+    if (text !== '') query = query.where(sql<boolean>`lower(name) LIKE ${`%${text}%`}`);
+    const rows = await query.orderBy(sql`lower(name)`).orderBy('id').limit(q.data.limit).execute();
+    return { groups: rows.map((r) => ({ id: r.id, name: r.name })) };
   });
 }
 

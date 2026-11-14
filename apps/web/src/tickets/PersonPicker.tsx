@@ -17,6 +17,8 @@ export interface PersonPickerProps {
   onChange: (people: PickedPerson[]) => void;
   /** Several people (a custom person field that holds several); one by default. */
   multiple?: boolean;
+  /** What it finds: people, or groups for a custom group field (T-265); people by default. */
+  kind?: 'people' | 'groups';
   /** What the Remove button beside a chosen person is called; "Remove Sam" by default. */
   removeLabel?: (name: string) => string;
   /** Said under the search field; "Type a name to find someone." by default. */
@@ -32,7 +34,8 @@ export interface PersonPickerProps {
  * Choosing people by name (T-253): a search field whose matches follow the text after a short
  * pause, each a button that takes the person, and the people taken, each with a Remove button.
  * With one person to choose, the search field gives way to the choice until it is removed. The
- * ticket templates' assignee and the create form's people fields use it. Focus never falls
+ * ticket templates' assignee and the create form's people fields use it, and the create form's
+ * group fields too (`kind="groups"`, T-265), whose words speak of groups. Focus never falls
  * away with a control that goes: taking someone moves it to the search field, or to their
  * Remove button when the field gives way; removing someone moves it to the search field. The
  * status line says who was taken or removed.
@@ -43,6 +46,7 @@ export function PersonPicker({
   chosen,
   onChange,
   multiple = false,
+  kind = 'people',
   removeLabel,
   hint,
   describedBy,
@@ -95,13 +99,16 @@ export function PersonPicker({
 
   const searching = multiple || chosen.length === 0;
   const offered = (found ?? []).filter((p) => !chosen.some((c) => c.id === p.id));
+  const groups = kind === 'groups';
   const searchSaid = failed
     ? t('tickets.pickers.peopleFailed')
     : found === null
       ? ''
       : offered.length === 0
-        ? t('tickets.pickers.noPeople')
-        : t('tickets.pickers.peopleFound', { count: offered.length });
+        ? t(groups ? 'tickets.pickers.noGroups' : 'tickets.pickers.noPeople')
+        : t(groups ? 'tickets.pickers.groupsFound' : 'tickets.pickers.peopleFound', {
+            count: offered.length,
+          });
   const take = (person: PickedPerson) => {
     setText('');
     setFound(null);
@@ -178,7 +185,7 @@ export function PersonPicker({
             }}
           />
           <p id={hintId} className="form-hint">
-            {hint ?? t('tickets.pickers.personHint')}
+            {hint ?? t(groups ? 'tickets.pickers.groupHint' : 'tickets.pickers.personHint')}
           </p>
           {offered.length > 0 && (
             <ul className="person-picker-found">

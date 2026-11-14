@@ -2880,6 +2880,15 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.create.removeParent': 'Quitar {key} como padre',
   'tickets.create.noReleases': 'Este track no tiene versiones para elegir.',
   'tickets.create.noAreas': 'Este track no tiene áreas para elegir.',
+  'tickets.create.noTeams': 'El sitio no tiene equipos para elegir.',
+  'tickets.create.requesterHint':
+    'Escribe un nombre para buscar a alguien. Si lo dejas vacío, el solicitante eres tú.',
+  'tickets.create.restrictedHint':
+    'Escribe un nombre. Solo se ofrecen las personas que este campo permite.',
+  'tickets.create.parentHintLevel':
+    'Escribe la clave de un ticket o palabras de su resumen. Solo se ofrecen tickets de un nivel más arriba.',
+  'tickets.create.parentHintTrack':
+    'Escribe la clave de un ticket o palabras de su resumen. Solo se ofrecen tickets de un nivel más arriba en este track.',
   'tickets.pickers.personHint': 'Escribe un nombre para buscar a alguien.',
   'tickets.pickers.remove': 'Quitar a {name}',
   'tickets.pickers.removeShort': 'Quitar',
@@ -2889,6 +2898,10 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.pickers.peopleFailed': 'La búsqueda no funcionó. Inténtalo de nuevo en un momento.',
   'tickets.pickers.personChosen': 'Elegiste a {name}.',
   'tickets.pickers.personRemoved': 'Quitaste a {name}.',
+  'tickets.pickers.groupHint': 'Escribe un nombre para buscar un grupo.',
+  'tickets.pickers.noGroups': 'Ningún grupo coincide.',
+  'tickets.pickers.groupsFound':
+    '{count, plural, one {# grupo encontrado} other {# grupos encontrados}}',
   'workflow.check.fieldRequired': '{field} es obligatorio.',
   'workflow.check.fieldModified': 'Cambia primero {field}.',
   'workflow.check.fieldSingleValue': '{field} admite un solo valor.',

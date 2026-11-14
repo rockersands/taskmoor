@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { type CreateClient, CreateTicketPage } from './CreateTicketPage';
 import { BUG_FORM, CHORE_FORM, LOCKED_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
 import type { TicketForm } from './form';
@@ -45,6 +46,55 @@ const PICKER_FORM: TicketForm = {
   customFields: [{ id: 12, name: 'Reviewers', description: '', type: 'user', multiple: true }],
 };
 
+/**
+ * The chore form with the fields T-265 made settable: the requester, a person field that allows
+ * only some people, group, team, release and area fields; the team required.
+ */
+const MORE_PICKERS_FORM: TicketForm = {
+  ...CHORE_FORM,
+  layout: {
+    ...CHORE_FORM.layout,
+    tabs: [
+      {
+        name: null,
+        sections: [
+          {
+            kind: 'main',
+            hideWhenEmpty: false,
+            fields: [
+              { key: 'summary', required: true, description: null },
+              { key: 'requester', required: false, description: null },
+              { key: 'cf[20]', required: false, description: null },
+              { key: 'cf[21]', required: false, description: null },
+            ],
+          },
+          {
+            kind: 'context',
+            hideWhenEmpty: false,
+            fields: [
+              { key: 'cf[22]', required: true, description: null },
+              { key: 'cf[23]', required: false, description: null },
+              { key: 'cf[24]', required: false, description: null },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  customFields: [
+    { id: 20, name: 'Approver', description: '', type: 'user', multiple: false, restricted: true },
+    { id: 21, name: 'Owning groups', description: '', type: 'group', multiple: true },
+    { id: 22, name: 'Team', description: '', type: 'team', multiple: false },
+    { id: 23, name: 'Fixed in', description: '', type: 'release', multiple: false },
+    { id: 24, name: 'Parts', description: '', type: 'area', multiple: true },
+  ],
+};
+
+const GROUPS = [
+  { id: 41, name: 'Operations' },
+  { id: 42, name: 'Ops leads' },
+];
+
 /** A backend in memory: Bugs need a due date and a severity, as the form says. */
 function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
   let number = 0;
@@ -61,6 +111,11 @@ function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
       { id: 6, name: 'Summer' },
     ],
     areas: async () => [{ id: 7, name: 'Checkout' }],
+    // Only Sasha may approve (CORE-009 (2)).
+    fieldPeople: async () => PEOPLE.filter((p) => p.id === 22),
+    groups: async (_field, typed) =>
+      GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase())),
+    teams: async () => [{ id: 51, name: 'Payments' }],
     create: async (body) => {
       const missing: Record<string, string> = {};
       if (body.ticketTypeId === 3 && !body.dueDate) missing.dueDate = 'required';
@@ -188,6 +243,62 @@ export const WithPickersAtPhoneWidth: Story = {
       'sa',
     );
     await canvas.findByRole('button', { name: 'Sasha Lee' });
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+const morePickersClient = () =>
+  fakeClient({
+    ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
+    form: async () => MORE_PICKERS_FORM,
+  });
+
+/**
+ * The requester, a person field that allows only some, groups, a team, a release and areas, each
+ * with its picker (T-265).
+ */
+export const WithMorePickers: Story = {
+  args: { client: morePickersClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText('Summary (required)'), 'Refund');
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Requester' }), 'sa');
+    await userEvent.click(await canvas.findByRole('button', { name: 'Sam Rivera' }));
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Approver' }), 'sa');
+    await expect(await canvas.findByText('1 person found')).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Sasha Lee' }));
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Owning groups' }), 'op');
+    await userEvent.click(await canvas.findByRole('button', { name: 'Ops leads' }));
+    const team = canvas.getByRole('combobox', { name: 'Team (required)' });
+    await canvas.findByRole('option', { name: 'Payments' });
+    await userEvent.selectOptions(team, 'Payments');
+    await canvas.findByRole('option', { name: 'Spring' });
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Fixed in' }), 'Spring');
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Checkout' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Create' }));
+    await expect(await canvas.findByText('SHOP-1 was created.')).toBeVisible();
+  },
+};
+
+/** The same on a phone's touch screen: every picker a finger's size, nothing sideways. */
+export const WithMorePickersOnAPhone: Story = {
+  args: { client: morePickersClient() },
+  decorators: [atPhoneWidth],
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByRole('searchbox', { name: 'Owning groups' }), 'op');
+    await canvas.findByRole('button', { name: 'Operations' });
+    await canvas.findByRole('option', { name: 'Payments' });
+    await canvas.findByRole('checkbox', { name: 'Checkout' });
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.person-picker input[type="search"]',
+        '.person-picker-found button',
+        '.create-field select',
+        '.create-choice',
+      ]),
+    ).toEqual([]);
     await fitsPhoneWidth(canvas);
   },
 };
