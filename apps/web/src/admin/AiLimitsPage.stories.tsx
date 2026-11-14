@@ -33,8 +33,8 @@ export const Empty: Story = { args: { client: fakeAiLimitsClient([], []) } };
 export const AddingALimit: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement);
-    await userEvent.click(await page.findByRole('button', { name: 'Add a limit' }));
-    await expect(page.getByRole('form', { name: 'Add a limit' })).toBeVisible();
+    await userEvent.click(await page.findByRole('button', { name: 'New limit' }));
+    await expect(page.getByRole('form', { name: 'New limit' })).toBeVisible();
   },
 };
 
@@ -42,7 +42,7 @@ export const AddingALimit: Story = {
 export const AddingARate: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement);
-    await userEvent.click(await page.findByRole('button', { name: 'Add a rate' }));
-    await expect(page.getByRole('form', { name: 'Add a rate' })).toBeVisible();
+    await userEvent.click(await page.findByRole('button', { name: 'New rate' }));
+    await expect(page.getByRole('form', { name: 'New rate' })).toBeVisible();
   },
 };

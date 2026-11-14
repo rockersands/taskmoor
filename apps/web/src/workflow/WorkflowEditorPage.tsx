@@ -222,8 +222,15 @@ export function WorkflowEditorPage({
     if (panel === 'discard') discardConfirm.current?.focus();
   }, [panel]);
 
-  // The breadcrumb ends at the workflow's name, under Workflows (AD-28).
-  useAdminTrail(workflow ? [{ label: t('common.value', { value: workflow.name }) }] : null);
+  // The breadcrumb ends at the workflow's name, under Workflows (AD-28); a workflow that does not
+  // exist ends it at the not-found page, so Workflows is a link back to the list there too.
+  useAdminTrail(
+    workflow
+      ? [{ label: t('common.value', { value: workflow.name }) }]
+      : load.status === 'missing'
+        ? [{ label: t('notFound.workflow') }]
+        : null,
+  );
 
   // A workflow that does not exist is a not-found page (D4, AD-30): Home and Search, no header.
   if (load.status === 'missing') return <NotFoundPage title={t('notFound.workflow')} />;

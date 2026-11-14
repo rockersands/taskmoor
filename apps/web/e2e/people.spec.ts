@@ -48,8 +48,8 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   const email = `mo.${testInfo.project.name}.${Date.now()}@people.test`;
   await page.goto(`${BASE}/#/admin/users`);
   await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeVisible();
-  await page.getByRole('button', { name: 'Add a person' }).click();
-  const form = page.getByRole('form', { name: 'Add a person' });
+  await page.getByRole('button', { name: 'New person' }).click();
+  const form = page.getByRole('form', { name: 'New person' });
   await form.getByLabel('Name').fill(name);
   await form.getByLabel('Email').fill(email);
   await form.getByRole('button', { name: 'Add' }).click();
@@ -147,8 +147,8 @@ test('[IAM-008] ASVS 8.3.2: a person downloads their own data, and the administr
   const name = `Erin Vale ${testInfo.project.name}`;
   const email = `erin.${testInfo.project.name}.${Date.now()}@people.test`;
   await page.goto(`${BASE}/#/admin/users`);
-  await page.getByRole('button', { name: 'Add a person' }).click();
-  const form = page.getByRole('form', { name: 'Add a person' });
+  await page.getByRole('button', { name: 'New person' }).click();
+  const form = page.getByRole('form', { name: 'New person' });
   await form.getByLabel('Name').fill(name);
   await form.getByLabel('Email').fill(email);
   await form.getByRole('button', { name: 'Add' }).click();

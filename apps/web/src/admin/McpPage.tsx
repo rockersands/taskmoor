@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { PageHeader } from '../shell/PageHeader';
+import { BreakAtSlashes } from './BreakAtSlashes';
 
 export type McpProfile = 'read-only' | 'planner' | 'full';
 
@@ -195,11 +196,18 @@ export function McpPage({
         </h2>
         <p className="page-note">{t('mcp.connectHttp')}</p>
         <pre className="mcp-snippet">
-          <code>{`${origin}/api/v1/mcp\nAuthorization: Bearer <token>`}</code>
+          <code>
+            <BreakAtSlashes text={`${origin}/api/v1/mcp\nAuthorization: Bearer <token>`} />
+          </code>
         </pre>
         <p className="page-note">{t('mcp.connectStdio')}</p>
+        {/* Breaks at its spaces and after a '/', never inside the host or the port (AD-35). */}
         <pre className="mcp-snippet">
-          <code>{`TASKMOOR_URL=${origin} TASKMOOR_TOKEN=<token> node cli.mjs mcp`}</code>
+          <code>
+            <BreakAtSlashes
+              text={`TASKMOOR_URL=${origin} TASKMOOR_TOKEN=<token> node cli.mjs mcp`}
+            />
+          </code>
         </pre>
       </section>
     </section>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { NewButton, useNewForm } from '../../admin/NewButton';
 import { useT } from '../../i18n/I18nProvider';
 import { useSessionExpiry } from '../../session/useSessionExpiry';
 import { DangerAction } from '../../shell/DangerAction';
@@ -21,8 +22,6 @@ export interface TicketTemplatesPageProps {
   client?: TemplateClient;
 }
 
-type Editing = { template: SavedTemplate | null } | null;
-
 /**
  * Ticket templates (CORE-029): a track's at #/tracks/KEY/templates, with those for every track
  * alongside, read-only; those for every track at #/admin/ticket-templates. Those who may change
@@ -42,7 +41,9 @@ export function TicketTemplatesPage({
     | { status: 'failed' }
     | { status: 'loaded'; list: TemplateList; options: TemplateOptions }
   >({ status: 'loading' });
-  const [editing, setEditing] = useState<Editing>(null);
+  // A new template's form opens from the New button (D11); a saved one's from its row.
+  const creating = useNewForm();
+  const [editing, setEditing] = useState<SavedTemplate | null>(null);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -90,6 +91,23 @@ export function TicketTemplatesPage({
         eyebrow={track ? (trackName ?? track) : undefined}
         purpose={track ? t('tickets.templates.trackPurpose') : t('settings.ticketTemplatesHint')}
         about={t('tickets.templates.intro')}
+        {...(state.status === 'loaded' && state.list.mayCreate
+          ? {
+              // In the one place every administration page has it (D11, AD-18).
+              actions: (
+                <NewButton
+                  label={t('tickets.templates.new')}
+                  open={creating.open}
+                  onToggle={() => {
+                    setMessage('');
+                    setEditing(null);
+                    creating.toggle();
+                  }}
+                  ref={creating.button}
+                />
+              ),
+            }
+          : {})}
       />
       <p role="status" className="form-status">
         {message}
@@ -114,30 +132,17 @@ export function TicketTemplatesPage({
                 : t('tickets.templates.readOnlyEveryTrack')}
             </p>
           )}
-          {state.list.mayCreate && !editing && (
-            <div className="form-actions">
-              <button
-                type="button"
-                className="button-primary"
-                onClick={() => {
-                  setMessage('');
-                  setEditing({ template: null });
-                }}
-              >
-                {t('tickets.templates.new')}
-              </button>
-            </div>
-          )}
-          {editing && (
+          {(creating.open || editing) && (
             <TemplateForm
-              key={editing.template?.id ?? 'new'}
+              key={editing?.id ?? 'new'}
               client={client}
               track={track}
               options={state.options}
-              template={editing.template}
-              onCancel={() => setEditing(null)}
+              template={editing}
+              onCancel={() => (editing ? setEditing(null) : creating.close())}
               onSaved={(saved) => {
-                setEditing(null);
+                if (editing) setEditing(null);
+                else creating.close();
                 setProblem(null);
                 setMessage(t('tickets.templates.saved', { name: saved.name }));
                 void load();
@@ -185,7 +190,9 @@ export function TicketTemplatesPage({
                           aria-label={t('tickets.templates.editOf', { name: template.name })}
                           onClick={() => {
                             setMessage('');
-                            setEditing({ template });
+                            // One form at a time: a new template's gives way.
+                            if (creating.open) creating.toggle();
+                            setEditing(template);
                           }}
                         >
                           {t('tickets.templates.edit')}

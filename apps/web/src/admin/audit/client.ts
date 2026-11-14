@@ -6,7 +6,8 @@ export interface AuditRecord {
   occurredAt: string;
   actor: { id: number; name: string | null; email: string | null } | null;
   action: string;
-  subject: { type: string; id: string | null } | null;
+  /** `name`: what the subject is called now, when the server can name it (AD-2). */
+  subject: { type: string; id: string | null; name?: string } | null;
   details: unknown;
   ip: string | null;
 }

@@ -1550,6 +1550,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject}: {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} «{name}»',
   'admin.audit.entryAbout': 'Sobre: {subject}',
   'admin.audit.entryFrom': 'Desde {address}',
   'admin.audit.subject.access': 'Acceso',
@@ -2084,6 +2085,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.environment': 'Del entorno del servidor',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS los incluye. Cámbialos allí; un reinicio aplica el cambio.',
+  'admin.frontends.new': 'Nuevo frontend',
+  'admin.frontends.cancel': 'Cancelar',
   'admin.frontends.add': 'Añadir un frontend',
   'admin.frontends.origin': 'Origen',
   'admin.frontends.originHint':
@@ -2940,7 +2943,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.status.active': 'Personas activas',
   'admin.users.status.deactivated': 'Personas desactivadas',
   'admin.users.status.all': 'Todos',
-  'admin.users.add': 'Añadir una persona',
+  'admin.users.add': 'Nueva persona',
   'admin.users.name': 'Nombre',
   'admin.users.email': 'Correo electrónico',
   'admin.users.makeSiteAdmin': 'Administrador del sitio',
@@ -3013,7 +3016,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.groups.added': 'Se añadió {name}.',
   'admin.groups.deleted': 'Se eliminó {name}.',
   'admin.groups.counts':
-    '{members, plural, one {# miembro} other {# miembros}}, {groups, plural, one {# grupo} other {# grupos}} dentro',
+    '{members, plural, one {# miembro} other {# miembros}} · {groups, plural, one {# grupo} other {# grupos}} dentro',
   'admin.groups.manage': 'Gestionar',
   'admin.groups.manageOf': 'Gestionar {name}',
   'admin.groups.membersOf': 'Miembros de {name}',
@@ -3544,6 +3547,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
   'admin.permissions.global': 'Permisos globales',
+  'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
+  'admin.permissions.newGlobal': 'Nuevo permiso global',
   'admin.permissions.addGlobal': 'Dar un permiso global',
   'admin.permissions.grantee.role': 'Rol {name}',
   'admin.permissions.grantee.group': 'Grupo {name}',
@@ -4094,7 +4099,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los estados pertenecen a todo el sitio, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',
   'admin.statuses.loading': 'Cargando los estados…',
   'admin.statuses.failed': 'No se pudieron cargar los estados.',
-  'admin.statuses.add': 'Añadir un estado',
+  'admin.statuses.add': 'Nuevo estado',
   'admin.statuses.formNew': 'Estado nuevo',
   'admin.statuses.formEdit': 'Editar {name}',
   'admin.statuses.name': 'Nombre',
@@ -6041,6 +6046,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.strict': 'Modo estricto',
   'ai.strictHint':
     'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives abajo.',
+  'admin.ai.strictHintNoTracks':
+    'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives. Activa la IA y guarda para elegirlos.',
   'ai.provider': 'Proveedor',
   'ai.provider.none': 'Ningún proveedor',
   'ai.provider.anthropic': 'API de Anthropic',
@@ -6167,6 +6174,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.refused.unavailable': 'El proveedor de IA no responde. Inténtalo más tarde.',
   'ai.refused.failed': 'La IA no pudo ayudar con esta petición.',
   'admin.aiUsage.title': 'Uso de la IA',
+  'admin.aiUsage.about':
+    'Las llamadas de IA de un periodo, contadas por día, función, persona y modelo, a las tarifas de Límites y precios de la IA. Tu organización paga al proveedor directamente; Taskmoor no cobra nada. Los días van en UTC.',
   'admin.aiUsage.forbidden': 'Solo los administradores del sitio ven el uso de la IA.',
   'admin.aiUsage.statementFailed': 'No se pudo cargar qué sale de este sitio.',
   'admin.aiUsage.usage': 'Uso',
@@ -6574,7 +6583,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Al llegar a un límite, las llamadas de IA que cubre se rechazan antes de enviar nada, hasta que empiece de nuevo su periodo. Una llamada en curso aún termina.',
   'admin.aiLimits.noLimits':
     'La IA funciona sin tope hasta que añadas uno. Añade uno para detenerla en un número de tokens o un coste.',
-  'admin.aiLimits.addLimit': 'Añadir un límite',
+  'admin.aiLimits.addLimit': 'Nuevo límite',
   'admin.aiLimits.limitName': '{what}, por {period}',
   'admin.aiLimits.resets': 'Empieza de nuevo {at} UTC',
   'admin.aiLimits.change': 'Cambiar',
@@ -6621,7 +6630,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.resetPriceOf': 'Volver al precio de lista: {name}',
   'admin.aiLimits.priceSaved': 'Se guardó la tarifa de {model}.',
   'admin.aiLimits.priceReset': '{model} vuelve a su precio de lista.',
-  'admin.aiLimits.addPrice': 'Añadir una tarifa',
+  'admin.aiLimits.addPrice': 'Nueva tarifa',
   'admin.aiLimits.provider': 'Proveedor',
   'admin.aiLimits.providerHint':
     'Como lo nombra la página de IA, por ejemplo anthropic, bedrock o vertex.',
@@ -7082,11 +7091,10 @@ export const messagesEs: Record<MessageId, string> = {
     'El formulario tal como lo dará el servidor, con las reglas de campos aplicadas. Sigue tus cambios antes de que guardes.',
   'layouts.preview.type': 'Ver como',
   'layouts.preview.track': 'Campos y reglas de',
-  'layouts.preview.noTrack':
-    'Ningún track en concreto (campos compartidos, reglas predeterminadas)',
+  'layouts.preview.noTrack': 'Ningún track en concreto',
   'layouts.preview.ownerTrack': 'El track al que pertenece este conjunto',
   'layouts.preview.trackHint':
-    'Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
+    'Sin un track en concreto, la vista previa usa los campos compartidos y las reglas predeterminadas. Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
   'layouts.preview.fixedTrack':
     'Con los campos y las reglas de {key} · {name}, el track al que pertenece este conjunto.',
   'layouts.preview.noTypes': 'No hay tipos de ticket para la vista previa.',
@@ -7107,6 +7115,8 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.preview.leftOut': 'Colocados, pero fuera de este formulario:',
   'layouts.preview.reason.hidden': '{field}: una regla de campo lo oculta.',
   'layouts.preview.reason.notApplicable': '{field}: no aplica a este tipo de ticket aquí.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: se pone en el ticket una vez creado, así que el formulario de crear lo omite.',
   'layouts.preview.reason.computed':
     '{field}: su valor se calcula, así que el formulario de crear lo omite.',
   'purpose.crossTracks':

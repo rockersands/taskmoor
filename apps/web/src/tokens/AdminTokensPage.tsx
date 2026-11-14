@@ -189,25 +189,29 @@ function InventorySection({
     await onChanged();
   };
 
+  // No token at all: a filter has nothing to narrow, and a count would repeat the empty state.
+  const nothingYet = inventory.status === 'loaded' && filter === 'all' && inventory.total === 0;
   return (
     <section aria-labelledby={`${id}-title`} className="glass-card account-section">
       <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
         {t('admin.tokens.list')}
       </h2>
-      <div className="form-field tokens-filter">
-        <label htmlFor={`${id}-filter`}>{t('admin.tokens.filter')}</label>
-        <select
-          id={`${id}-filter`}
-          value={filter}
-          onChange={(e) => onFilter(e.target.value as TokenFilter)}
-        >
-          {FILTERS.map((f) => (
-            <option key={f} value={f}>
-              {t(`admin.tokens.filter.${f}`)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!nothingYet && (
+        <div className="form-field tokens-filter">
+          <label htmlFor={`${id}-filter`}>{t('admin.tokens.filter')}</label>
+          <select
+            id={`${id}-filter`}
+            value={filter}
+            onChange={(e) => onFilter(e.target.value as TokenFilter)}
+          >
+            {FILTERS.map((f) => (
+              <option key={f} value={f}>
+                {t(`admin.tokens.filter.${f}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {inventory.status === 'loading' && <p className="page-note">{t('admin.tokens.loading')}</p>}
       {inventory.status === 'failed' && (
         <p role="alert" className="form-error">
@@ -216,7 +220,9 @@ function InventorySection({
       )}
       {inventory.status === 'loaded' && (
         <>
-          <p className="page-note">{t('admin.tokens.count', { count: inventory.total })}</p>
+          {!nothingYet && (
+            <p className="page-note">{t('admin.tokens.count', { count: inventory.total })}</p>
+          )}
           {inventory.tokens.length === 0 && filter === 'all' ? (
             // Nothing at all yet: a wider filter would not help (AD-31).
             <EmptyState title={t('admin.tokens.noneYet')}>

@@ -39,6 +39,30 @@ export const DefaultSet: Story = {
   },
 };
 
+/**
+ * At a desktop's page width the preview's two selects stand side by side at one height (AD-37):
+ * 'Fields and rules of' once sat lower, under the hint that now follows the row.
+ */
+export const PreviewChoicesInARow: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 640 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Preview of the create form for Feature')).toBeVisible();
+    const type = canvas.getByRole('combobox', { name: 'Preview as' });
+    const track = canvas.getByRole('combobox', { name: 'Fields and rules of' });
+    await expect(Math.round(track.getBoundingClientRect().top)).toBe(
+      Math.round(type.getBoundingClientRect().top),
+    );
+    await expect(track).toHaveDisplayValue('No particular track');
+  },
+};
+
 /** The keyboard path: Alt and an arrow move a field one place, and the move is announced. */
 export const MovedWithTheKeyboard: Story = {
   play: async ({ canvasElement }) => {

@@ -93,8 +93,11 @@
 }
 
 /* Beside the page while it scrolls, never longer than the window, so it no longer sets the
-   page's length (D18). */
-.admin-nav-side {
+   page's length (D18). With the glass card's class too: `.glass-card { position: relative }`
+   comes later in the cascade with the same weight, and made the list scroll away with the page
+   and sit lower than the breadcrumb by its `top` (AD-11). It starts in line with the breadcrumb,
+   at the top of the section's row, and stops in line with the app's sidebar. */
+.admin-nav-side.glass-card {
   position: sticky;
   top: calc(var(--topbar-height) + 2 * var(--shell-gap));
   max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
@@ -797,6 +800,13 @@ details[open] > summary.admin-disclosure::after,
 /* People: every row lays out the same, its actions on a line of their own (AD-17). */
 .people-list-users .people-actions {
   flex: 1 1 100%;
+  gap: var(--space-1);
+}
+
+/* Tighter buttons, so a person's five actions stay on one line beside Administration's list at
+   1280 px; 'Erase…' wrapped onto a line of its own. */
+.people-list-users .people-actions > button {
+  padding-inline: var(--space-3);
 }
 
 /* Administration's form and list pages keep a reading width; the audit log and the usage tables
@@ -812,10 +822,19 @@ details[open] > summary.admin-disclosure::after,
     min-height: var(--hit-target-touch);
   }
 
+  /* A link inside a sentence keeps the line's height: its press area reaches above and below it
+     instead, so the line holding it is not pushed away from the one above (T-226). */
   .people-page .page-note a {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--hit-target-touch);
+    position: relative;
+  }
+
+  .people-page .page-note a::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: var(--hit-target-touch);
+    transform: translateY(-50%);
   }
 }
 
@@ -826,6 +845,11 @@ details[open] > summary.admin-disclosure::after,
 }
 
 .mcp-page > :is(.people-form, .account-section) {
+  max-width: none;
+}
+
+/* AI: the settings card is as wide as the keys and tracks cards beside it (T-219's form widths). */
+.ai-settings-page > .people-form {
   max-width: none;
 }
 
@@ -870,4 +894,25 @@ details[open] > summary.admin-disclosure::after,
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* A page's "New …" button has one place on every administration page, at every width: under the
+   title and its purpose line, at the start (D11). The header's wrapping put it at the right of a
+   short purpose line and under a long one. */
+.page-header:has(> .page-header-actions > .admin-new) {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* The place of a button a row does not have (admin/ActionSlot.tsx): as wide as the button, drawn
+   as nothing, so every row's buttons stand in the same columns. */
+.action-slot {
+  visibility: hidden;
+}
+
+/* A path or an address wraps only after a '/' (admin/BreakAtSlashes.tsx): a piece breaks inside
+   only when it is wider than the line on its own. */
+.fact dd .slash-breaks,
+.mcp-snippet .slash-breaks {
+  overflow-wrap: break-word;
 }

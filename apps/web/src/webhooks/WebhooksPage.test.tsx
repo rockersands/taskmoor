@@ -54,6 +54,9 @@ describe('webhooks page (UI-T18)', () => {
     await user.type(within(form).getByLabelText('Name'), 'Ops');
     await user.click(within(form).getByRole('button', { name: 'Create webhook' }));
     expect(await screen.findByText('Webhook Ops was created.')).toBeInTheDocument();
+    // The form closed with the focus in it: the New button has it back (D11).
+    expect(screen.queryByRole('form', { name: 'New webhook' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'New webhook' })).toHaveFocus();
     expect(client.calls.at(-1)).toEqual({
       action: 'create',
       args: [

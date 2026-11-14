@@ -539,6 +539,7 @@ function PolicyPanel({
   onDeleted: (name: string) => Promise<void>;
 }) {
   const t = useT();
+  const giving = useNewForm();
   const [policy, setPolicy] = useState<Policy | null>(null);
   const reload = useCallback(() => client.policy(id).then(setPolicy, failed), [client, id, failed]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per policy
@@ -551,6 +552,39 @@ function PolicyPanel({
   const name = policy.policy.name;
   return (
     <div className="people-panel">
+      {/* As in Global permissions below: the list, and a "New …" button that opens the form
+          above it (D11, AD-18). */}
+      <div className="form-actions">
+        <NewButton
+          label={t('admin.permissions.newGrantIn', { name })}
+          open={giving.open}
+          onToggle={giving.toggle}
+          ref={giving.button}
+        />
+      </div>
+      {giving.open && (
+        <GrantForm
+          label={t('admin.permissions.addGrantTo', { name })}
+          permissions={catalogue.track}
+          grantees={POLICY_GRANTEES}
+          roles={roles}
+          groups={groups}
+          client={client}
+          onCancel={giving.close}
+          onGive={(grant, grantee) =>
+            client.addGrant(id, grant).then(() => {
+              giving.close();
+              void reload();
+              said(
+                t('admin.permissions.granted', {
+                  permission: permissionName(t, grant.permission),
+                  grantee,
+                }),
+              );
+            }, failed)
+          }
+        />
+      )}
       <GrantList
         grants={policy.grants}
         order={order}
@@ -561,25 +595,6 @@ function PolicyPanel({
               t('admin.permissions.removed', {
                 grantee: granteeName(t, grant),
                 permission: permissionName(t, grant.permission),
-              }),
-            );
-          }, failed)
-        }
-      />
-      <GrantForm
-        label={t('admin.permissions.addGrantTo', { name })}
-        permissions={catalogue.track}
-        grantees={POLICY_GRANTEES}
-        roles={roles}
-        groups={groups}
-        client={client}
-        onGive={(grant, grantee) =>
-          client.addGrant(id, grant).then(() => {
-            void reload();
-            said(
-              t('admin.permissions.granted', {
-                permission: permissionName(t, grant.permission),
-                grantee,
               }),
             );
           }, failed)
@@ -629,11 +644,46 @@ function GlobalSection({
 }) {
   const t = useT();
   const headingId = useId();
+  const giving = useNewForm();
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.permissions.global')}
-      </h2>
+      {/* The list first, and a "New …" button that opens the form above it (D11, AD-18). */}
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.permissions.newGlobal')}
+            open={giving.open}
+            onToggle={giving.toggle}
+            ref={giving.button}
+          />
+        }
+      >
+        <h2 id={headingId} className="facts-title">
+          {t('admin.permissions.global')}
+        </h2>
+      </CardHead>
+      {giving.open && (
+        <GrantForm
+          label={t('admin.permissions.addGlobal')}
+          permissions={{ global: catalogue.global }}
+          grantees={GLOBAL_GRANTEES}
+          roles={[]}
+          groups={groups}
+          client={client}
+          onCancel={giving.close}
+          onGive={(grant, grantee) =>
+            client.addGlobalGrant(grant).then(() => {
+              giving.close();
+              said(
+                t('admin.permissions.granted', {
+                  permission: permissionName(t, grant.permission),
+                  grantee,
+                }),
+              );
+            }, failed)
+          }
+        />
+      )}
       <GrantList
         grants={grants}
         order={catalogue.global}
@@ -644,26 +694,6 @@ function GlobalSection({
                 t('admin.permissions.removed', {
                   grantee: granteeName(t, grant),
                   permission: permissionName(t, grant.permission),
-                }),
-              ),
-            failed,
-          )
-        }
-      />
-      <GrantForm
-        label={t('admin.permissions.addGlobal')}
-        permissions={{ global: catalogue.global }}
-        grantees={GLOBAL_GRANTEES}
-        roles={[]}
-        groups={groups}
-        client={client}
-        onGive={(grant, grantee) =>
-          client.addGlobalGrant(grant).then(
-            () =>
-              said(
-                t('admin.permissions.granted', {
-                  permission: permissionName(t, grant.permission),
-                  grantee,
                 }),
               ),
             failed,
@@ -694,9 +724,11 @@ function GrantList({
           {list.map((grant) => (
             <dd key={grant.id} className="people-sublist-row">
               <span>{granteeName(t, grant)}</span>
+              {/* The danger look every removing action has (D13); whether it asks first waits
+                  on T-267. */}
               <button
                 type="button"
-                className="button-secondary people-action"
+                className="button-danger-quiet people-action"
                 aria-label={t('admin.permissions.removeOf', {
                   grantee: granteeName(t, grant),
                   permission: permissionName(t, permission),
@@ -722,6 +754,7 @@ function GrantForm({
   groups,
   client,
   onGive,
+  onCancel,
 }: {
   label: string;
   permissions: Record<string, string[]>;
@@ -730,6 +763,8 @@ function GrantForm({
   groups: Named[];
   client: PermissionsClient;
   onGive: (grant: NewGrant, granteeName: string) => void;
+  /** When a New button opened the form: closes it again. */
+  onCancel?: () => void;
 }) {
   const t = useT();
   const formId = useId();
@@ -876,6 +911,11 @@ function GrantForm({
       <button type="submit" className="button-primary">
         {t('admin.permissions.give')}
       </button>
+      {onCancel && (
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t('admin.permissions.cancel')}
+        </button>
+      )}
     </form>
   );
 }

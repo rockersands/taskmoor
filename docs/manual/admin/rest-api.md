@@ -215,8 +215,9 @@ token that has the `admin` scope.
 
 ### Managing webhooks in the web app
 
-**New webhook** asks for a **Name**, an **Address** and a **Format**. Under **What it sends**, tick
-whole families of events such as **Tickets** or **Releases**; **Other events** takes exact names from
+**New webhook**, under the page's title and its line, opens a form above the list that asks for a
+**Name**, an **Address** and a **Format**. Under **What it sends**, tick whole families of events
+such as **Tickets** or **Releases**; **Other events** takes exact names from
 [the table below](#events), separated by commas. **Only tickets that match** is an optional query, and
 **Secret** an optional shared secret. The fields mean what they mean in the API, described next.
 

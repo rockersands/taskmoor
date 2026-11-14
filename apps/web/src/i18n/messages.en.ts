@@ -1506,6 +1506,7 @@ export const messagesEn = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject} {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} “{name}”',
   'admin.audit.entryAbout': 'About: {subject}',
   'admin.audit.entryFrom': 'From {address}',
   'admin.audit.subject.access': 'Access',
@@ -2032,6 +2033,8 @@ export const messagesEn = {
   'admin.frontends.environment': 'From the server’s environment',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS lists these. Change them there; a restart applies the change.',
+  'admin.frontends.new': 'New frontend',
+  'admin.frontends.cancel': 'Cancel',
   'admin.frontends.add': 'Add a frontend',
   'admin.frontends.origin': 'Origin',
   'admin.frontends.originHint':
@@ -2858,7 +2861,7 @@ export const messagesEn = {
   'admin.users.status.active': 'Active people',
   'admin.users.status.deactivated': 'Deactivated people',
   'admin.users.status.all': 'Everyone',
-  'admin.users.add': 'Add a person',
+  'admin.users.add': 'New person',
   'admin.users.name': 'Name',
   'admin.users.email': 'Email',
   'admin.users.makeSiteAdmin': 'Site administrator',
@@ -2930,7 +2933,7 @@ export const messagesEn = {
   'admin.groups.added': '{name} was added.',
   'admin.groups.deleted': '{name} was deleted.',
   'admin.groups.counts':
-    '{members, plural, one {# member} other {# members}}, {groups, plural, one {# group} other {# groups}} inside',
+    '{members, plural, one {# member} other {# members}} · {groups, plural, one {# group} other {# groups}} inside',
   'admin.groups.manage': 'Manage',
   'admin.groups.manageOf': 'Manage {name}',
   'admin.groups.membersOf': 'Members of {name}',
@@ -3453,6 +3456,8 @@ export const messagesEn = {
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
   'admin.permissions.global': 'Global permissions',
+  'admin.permissions.newGrantIn': 'New permission in {name}',
+  'admin.permissions.newGlobal': 'New global permission',
   'admin.permissions.addGlobal': 'Give a global permission',
   'admin.permissions.grantee.role': 'Role {name}',
   'admin.permissions.grantee.group': 'Group {name}',
@@ -3990,7 +3995,7 @@ export const messagesEn = {
     'Statuses belong to the whole site, and each workflow uses some of them. The stage gives a status its colour and meaning.',
   'admin.statuses.loading': 'Loading statuses…',
   'admin.statuses.failed': 'The statuses could not be loaded.',
-  'admin.statuses.add': 'Add a status',
+  'admin.statuses.add': 'New status',
   'admin.statuses.formNew': 'New status',
   'admin.statuses.formEdit': 'Edit {name}',
   'admin.statuses.name': 'Name',
@@ -5906,6 +5911,8 @@ export const messagesEn = {
   'ai.strict': 'Strict mode',
   'ai.strictHint':
     'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for below.',
+  'admin.ai.strictHintNoTracks':
+    'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for. Turn AI on and save to choose them.',
   'ai.provider': 'Provider',
   'ai.provider.none': 'No provider',
   'ai.provider.anthropic': 'Anthropic API',
@@ -6029,6 +6036,8 @@ export const messagesEn = {
   'ai.refused.unavailable': 'The AI provider is not answering. Try again later.',
   'ai.refused.failed': 'AI could not help with this request.',
   'admin.aiUsage.title': 'AI usage',
+  'admin.aiUsage.about':
+    'The AI calls of a period, counted by day, feature, person and model, at the rates of AI limits and prices. Your organisation pays the provider directly; Taskmoor charges nothing. Days are in UTC.',
   'admin.aiUsage.forbidden': 'Only site administrators see AI usage.',
   'admin.aiUsage.statementFailed': 'What leaves this site could not be loaded.',
   'admin.aiUsage.usage': 'Usage',
@@ -6427,7 +6436,7 @@ export const messagesEn = {
     'Once a limit is reached, the AI calls it covers are refused before anything is sent, until its period starts again. A call already running still finishes.',
   'admin.aiLimits.noLimits':
     'AI runs with no ceiling until you add one. Add one to stop it at a number of tokens or a cost.',
-  'admin.aiLimits.addLimit': 'Add a limit',
+  'admin.aiLimits.addLimit': 'New limit',
   'admin.aiLimits.limitName': '{what}, per {period}',
   'admin.aiLimits.resets': 'Starts again {at} UTC',
   'admin.aiLimits.change': 'Change',
@@ -6471,7 +6480,7 @@ export const messagesEn = {
   'admin.aiLimits.resetPriceOf': 'Back to the list price: {name}',
   'admin.aiLimits.priceSaved': 'The rate of {model} was saved.',
   'admin.aiLimits.priceReset': '{model} is back to its list price.',
-  'admin.aiLimits.addPrice': 'Add a rate',
+  'admin.aiLimits.addPrice': 'New rate',
   'admin.aiLimits.provider': 'Provider',
   'admin.aiLimits.providerHint':
     'As the AI page names it, for example anthropic, bedrock or vertex.',
@@ -6919,10 +6928,10 @@ export const messagesEn = {
     'The form as the server will give it, with the field rules applied. It follows your changes before you save.',
   'layouts.preview.type': 'Preview as',
   'layouts.preview.track': 'Fields and rules of',
-  'layouts.preview.noTrack': 'No particular track (shared fields, default rules)',
+  'layouts.preview.noTrack': 'No particular track',
   'layouts.preview.ownerTrack': 'The track this set belongs to',
   'layouts.preview.trackHint':
-    'Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
+    'With no particular track, the preview uses the shared fields and the default rules. Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
   'layouts.preview.fixedTrack':
     'With the fields and rules of {key} · {name}, the track this set belongs to.',
   'layouts.preview.noTypes': 'There are no ticket types to preview.',
@@ -6942,6 +6951,8 @@ export const messagesEn = {
   'layouts.preview.leftOut': 'Placed, but not on this form:',
   'layouts.preview.reason.hidden': '{field}: a field rule hides it.',
   'layouts.preview.reason.notApplicable': '{field}: it does not apply to this ticket type here.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: it is set on the ticket once it exists, so the create form leaves it out.',
   'layouts.preview.reason.computed':
     '{field}: its value is computed, so the create form leaves it out.',
   'purpose.crossTracks':

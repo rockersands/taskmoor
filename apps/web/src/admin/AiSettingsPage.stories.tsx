@@ -44,6 +44,28 @@ export const Off: Story = {
   },
 };
 
+/**
+ * The settings card is as wide as the keys card under it (T-219's form widths); it was narrower,
+ * x 605-1083 against 605-1243 at 1280.
+ */
+export const CardsAsWide: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 900 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const form = await canvas.findByRole('form', { name: 'AI settings' });
+    const keys = canvas.getByRole('heading', { name: 'Keys' }).closest('section') as HTMLElement;
+    await expect(Math.round(form.getBoundingClientRect().width)).toBe(
+      Math.round(keys.getBoundingClientRect().width),
+    );
+  },
+};
+
 /** Strict mode: one track opted in. */
 export const Strict: Story = {
   args: { client: fakeAiClient(aiView({ strict: true, tracks: { '1': true } })) },

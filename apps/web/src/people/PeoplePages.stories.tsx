@@ -45,12 +45,84 @@ export const People: Story = {
   },
 };
 
+/** The page's width beside Administration's list on a 1280 px screen. */
+const atDesktopPageWidth = (Story: () => ReactElement) => (
+  <div style={{ width: 638 }}>
+    <Story />
+  </div>
+);
+
+/**
+ * At a desktop's page width each person's five actions stay on one line, 'Erase…' included; it
+ * once wrapped onto a line of its own in every row.
+ */
+export const ActionsOnOneLine: Story = {
+  decorators: [atDesktopPageWidth],
+  // Bo is a site administrator too, so his row offers the longest wording, 'Remove site
+  // administrator'.
+  args: {
+    client: (() => {
+      const base = fakePeopleClient();
+      return {
+        ...base,
+        users: async (...query: Parameters<typeof base.users>) => {
+          const found = await base.users(...query);
+          return {
+            ...found,
+            users: found.users.map((u) => (u.id === 2 ? { ...u, isSiteAdmin: true } : u)),
+          };
+        },
+      };
+    })(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Grace Hopper');
+    const rows = canvasElement.querySelectorAll('.people-list-users .people-actions');
+    const lines = [...rows].map(
+      (row) =>
+        new Set([...row.children].map((b) => Math.round(b.getBoundingClientRect().top))).size,
+    );
+    await expect([...rows].some((row) => row.querySelectorAll('button').length === 5)).toBe(true);
+    await expect(lines.filter((n) => n !== 1)).toEqual([]);
+  },
+};
+
+/**
+ * The "New …" button has one place on every administration page (D11): under the title and its
+ * purpose line, at the start, whether the purpose line is short (Groups) or long (Teams).
+ */
+export const NewButtonUnderThePurposeLine: Story = {
+  decorators: [atDesktopPageWidth],
+  render: () => (
+    <>
+      <GroupsPage client={fakePeopleClient()} />
+      <TeamsPage client={fakeTeamsClient()} />
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ['New group', 'New team']) {
+      const button = await canvas.findByRole('button', { name });
+      const header = button.closest('header') as HTMLElement;
+      const title = within(header).getByRole('heading', { level: 1 });
+      const purpose = header.querySelector('.page-purpose') as HTMLElement;
+      await expect(Math.round(button.getBoundingClientRect().left)).toBe(
+        Math.round(title.getBoundingClientRect().left),
+      );
+      await expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        purpose.getBoundingClientRect().bottom,
+      );
+    }
+  },
+};
+
 /** Adding someone: the form, then the one-time link to send them. */
 export const AddingSomeone: Story = {
   args: { client: fakePeopleClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Add a person' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New person' }));
     await userEvent.type(canvas.getByLabelText('Name'), 'Mo Chen');
     await userEvent.type(canvas.getByLabelText('Email'), 'mo@example.com');
     await userEvent.click(canvas.getByRole('button', { name: 'Add' }));
@@ -133,7 +205,7 @@ export const PeopleAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Add a person' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New person' }));
     await expect(await canvas.findByText('Grace Hopper')).toBeVisible();
     await expect(canvas.getByText(/^Add people, make site/)).toBeVisible();
     await fitsPhoneWidth(canvas);

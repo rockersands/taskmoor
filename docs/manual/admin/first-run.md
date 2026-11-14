@@ -1,8 +1,8 @@
 ---
 title: "First-run setup"
 audience: admins
-sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/configuration/TracksAdminPage.tsx
-accessed: 2026-11-13
+sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/people/UsersPage.tsx
+accessed: 2026-11-14
 attestation: own-words
 ---
 # First-run setup
@@ -122,7 +122,7 @@ administrators see.
    **Single sign-on**, **LDAP and Active Directory** and SCIM provisioning connect your
    directory ([single sign-on](sso.md), [LDAP directories](ldap.md), [SCIM
    provisioning](scim.md)).
-4. **Add people.** On **People**, **Add a person** with a name and an email, and tick **Site
+4. **Add people.** On **People**, **New person** opens the form: a name and an email, and tick **Site
    administrator** for another administrator. Taskmoor then shows a one-time link to set a
    password, only once; send it to the person yourself. **Groups** gathers people for
    permissions ([people and groups](people-and-groups.md)).

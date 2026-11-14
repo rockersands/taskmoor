@@ -35,7 +35,8 @@ describe('audit log page (M1-085)', () => {
     ]);
     expect(rows.map((r) => within(r).getAllByRole('cell')[3]?.textContent)).toEqual([
       'API token 7',
-      'Person 1',
+      // Named when the server names it (AD-2), by its id otherwise.
+      'Person “Ada Lovelace”',
       '',
     ]);
     expect(within(rows[0] as HTMLElement).getAllByRole('cell')[0]).toHaveClass('audit-when');

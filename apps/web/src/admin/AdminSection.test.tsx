@@ -6,6 +6,7 @@ import { App, NAV_ITEMS } from '../App';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { User } from '../people/client';
 import { type Session, SessionProvider } from '../session/SessionProvider';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { stubBackend, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
@@ -312,6 +313,25 @@ describe('Administration (ADR-114)', () => {
       '#/manage/tracks/4',
     );
     expect(within(crumbs).getByText('Layout sets')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('[AGL-018] a not-found page inside it marks nothing in its list, and the breadcrumb links back (D4, PL-43)', () => {
+    window.location.hash = '#/admin/workflows/999';
+    renderAt(
+      '#/admin/workflows/999',
+      ADMIN,
+      null,
+      <>
+        <Trail trail={[{ label: 'Workflow not found' }]} />
+        <NotFoundPage title="Workflow not found" />
+      </>,
+    );
+    // The app's own navigation marks no section on a not-found page; this list follows it.
+    expect(pagesNav().querySelectorAll('[aria-current]')).toHaveLength(0);
+    const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+    expect(within(crumbs).getByRole('link', { name: 'Workflows' })).toBeVisible();
+    expect(within(crumbs).getByText('Workflow not found')).toHaveAttribute('aria-current', 'page');
+    window.location.hash = '';
   });
 
   it('[IAM-030] names a group a track manager may not open without linking to it (T-227)', () => {

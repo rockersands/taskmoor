@@ -211,7 +211,9 @@ test('[IAM-010] the administrator adds a role and a policy, grants, and deletes 
   await addPolicy.getByRole('button', { name: 'Add an access policy' }).click();
   await expect(page.getByText(`${policy} was added.`)).toBeVisible();
 
-  // The new policy is open, with the default's grants: the role may edit tickets too.
+  // The new policy is open, with the default's grants: the role may edit tickets too. Its form
+  // opens from its New button, as Global permissions' does (D11).
+  await page.getByRole('button', { name: `New permission in ${policy}` }).click();
   const give = page.getByRole('form', { name: `Give a permission in ${policy}` });
   await give.getByLabel('Permission').selectOption({ label: 'Edit tickets' });
   await give.getByLabel('Role', { exact: true }).selectOption({ label: role });
@@ -254,6 +256,7 @@ test('[IAM-011] the administrator gives a person a global permission and takes i
   const permission =
     testInfo.project.name === 'mobile' ? 'Subscribe groups to searches' : 'Share saved searches';
   await page.goto(`${BASE}/#/admin/permissions`);
+  await page.getByRole('button', { name: 'New global permission' }).click();
   const give = page.getByRole('form', { name: 'Give a global permission' });
   await give.getByLabel('Permission').selectOption({ label: permission });
   await give.getByLabel('To').selectOption({ label: 'A person' });

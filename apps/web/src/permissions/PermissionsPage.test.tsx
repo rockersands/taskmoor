@@ -102,12 +102,23 @@ describe('permission administration (M1-053)', () => {
     await user.click(within(form).getByRole('button', { name: 'Add an access policy' }));
     expect(await screen.findByText('Partners was added.')).toBeInTheDocument();
 
-    const give = await screen.findByRole('form', { name: 'Give a permission in Partners' });
-    await user.selectOptions(within(give).getByLabelText('Permission'), 'edit_tickets');
-    await user.selectOptions(within(give).getByLabelText('Role'), '9');
-    await user.click(within(give).getByRole('button', { name: 'Give' }));
+    // The policy's list first, as Global permissions has it: its form opens from a filled
+    // "New …" button and closes once given, the focus back on the button (D11, AD-18).
+    const newGrant = await screen.findByRole('button', { name: 'New permission in Partners' });
+    expect(newGrant).toHaveClass('button-primary');
+    expect(screen.queryByRole('form', { name: 'Give a permission in Partners' })).toBeNull();
+    await user.click(newGrant);
+    const first = screen.getByRole('form', { name: 'Give a permission in Partners' });
+    await user.selectOptions(within(first).getByLabelText('Permission'), 'edit_tickets');
+    await user.selectOptions(within(first).getByLabelText('Role'), '9');
+    await user.click(within(first).getByRole('button', { name: 'Give' }));
     expect(await screen.findByText('Edit tickets was given to Role Viewers.')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Give a permission in Partners' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'New permission in Partners' })).toHaveFocus();
 
+    await user.click(screen.getByRole('button', { name: 'New permission in Partners' }));
+    const give = screen.getByRole('form', { name: 'Give a permission in Partners' });
+    await user.selectOptions(within(give).getByLabelText('Permission'), 'edit_tickets');
     await user.selectOptions(within(give).getByLabelText('To'), 'user');
     await user.type(within(give).getByRole('searchbox', { name: 'Find a person' }), 'bo');
     await within(give).findByRole('option', { name: 'Bo Rivera' });
@@ -145,24 +156,33 @@ describe('permission administration (M1-053)', () => {
   it('[IAM-011] gives a global permission to a group and refuses administration to everyone', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const give = await screen.findByRole('form', { name: 'Give a global permission' });
-    await user.selectOptions(within(give).getByLabelText('Permission'), 'browse_users');
-    await user.selectOptions(within(give).getByLabelText('Group'), '12');
-    await user.click(within(give).getByRole('button', { name: 'Give' }));
+    // The list first: the form opens from a filled "New …" button (D11, AD-18).
+    expect(screen.queryByRole('form', { name: 'Give a global permission' })).toBeNull();
+    const open = await screen.findByRole('button', { name: 'New global permission' });
+    expect(open).toHaveClass('button-primary');
+    await user.click(open);
+    const first = screen.getByRole('form', { name: 'Give a global permission' });
+    await user.selectOptions(within(first).getByLabelText('Permission'), 'browse_users');
+    await user.selectOptions(within(first).getByLabelText('Group'), '12');
+    await user.click(within(first).getByRole('button', { name: 'Give' }));
     expect(
       await screen.findByText('See people and groups was given to Group Support.'),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Give a global permission' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'New global permission' }));
+    const give = screen.getByRole('form', { name: 'Give a global permission' });
     await user.selectOptions(within(give).getByLabelText('Permission'), 'site_admin');
     await user.selectOptions(within(give).getByLabelText('To'), 'any_user');
     await user.click(within(give).getByRole('button', { name: 'Give' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Administration cannot go to everyone.',
     );
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Remove Group Approvers from Change many tickets at once',
-      }),
-    );
+    const remove = screen.getByRole('button', {
+      name: 'Remove Group Approvers from Change many tickets at once',
+    });
+    // The danger look every removing action has (D13, AD-16).
+    expect(remove).toHaveClass('button-danger-quiet');
+    await user.click(remove);
     expect(
       await screen.findByText('Group Approvers no longer has Change many tickets at once.'),
     ).toBeInTheDocument();
