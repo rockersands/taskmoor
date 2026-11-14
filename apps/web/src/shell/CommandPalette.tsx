@@ -230,7 +230,6 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
               )}
               {items.map(({ command, label }, index) => (
                 // biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled on the combobox input
-                // biome-ignore lint/a11y/useKeyWithMouseEvents: hover only moves the highlight
                 <div
                   key={command.id}
                   id={`${listId}-${command.id}`}

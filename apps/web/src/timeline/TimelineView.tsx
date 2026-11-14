@@ -346,7 +346,7 @@ export function TimelineView({
 
   const onBarDown = (event: PointerEvent<HTMLButtonElement>, item: TimelineItem) => {
     const bar = barOf(item);
-    if (!bar || bar.kind !== 'own' || event.button !== 0) return;
+    if (bar?.kind !== 'own' || event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const offset = event.clientX - rect.left;
     const edge = Math.min(10, rect.width / 3);
@@ -383,7 +383,7 @@ export function TimelineView({
   const onBarUp = (item: TimelineItem) => {
     const d = drag;
     setDrag(null);
-    if (!d || !d.moved || d.shift === 0) return;
+    if (!d?.moved || d.shift === 0) return;
     justDragged.current = true;
     const days = dragged(d);
     const next =
@@ -397,7 +397,7 @@ export function TimelineView({
   const onBarKey = (event: KeyboardEvent, item: TimelineItem) => {
     if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const bar = barOf(item);
-    if (!bar || bar.kind !== 'own') return;
+    if (bar?.kind !== 'own') return;
     event.preventDefault();
     const days = (event.key === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 7 : 1);
     const next = shifted(item, bar.start + days, bar.due + days);

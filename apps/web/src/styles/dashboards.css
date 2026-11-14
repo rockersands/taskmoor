@@ -306,7 +306,7 @@
   align-items: stretch;
 }
 
-.is-wallboard .dashboard-column {
+.is-wallboard .dashboard-grid > .dashboard-column {
   align-content: stretch;
 }
 
@@ -463,7 +463,7 @@
   content: none;
 }
 
-.summary-section h2 {
+.glass-card.summary-section h2 {
   margin: 0;
   font-size: var(--font-size-300);
 }

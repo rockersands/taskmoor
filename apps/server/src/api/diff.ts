@@ -108,10 +108,10 @@ export function breakingChanges(before: Json, after: Json): BreakingChange[] {
     const bodyOf = (op: Json, doc: Json) =>
       properties(
         (
-          (((op.requestBody as Json | undefined)?.content as Json | undefined)?.[
+          ((op.requestBody as Json | undefined)?.content as Json | undefined)?.[
             'application/json'
-          ] as Json | undefined) ?? {}
-        ).schema,
+          ] as Json | undefined
+        )?.schema,
         doc,
       );
     if (old.requestBody || next.requestBody) {

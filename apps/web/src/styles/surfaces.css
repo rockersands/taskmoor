@@ -49,11 +49,6 @@
   overflow-wrap: anywhere;
 }
 
-.page-header-title > .help-tip {
-  margin-inline-start: var(--space-2);
-  vertical-align: middle;
-}
-
 .page-purpose {
   margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
@@ -106,6 +101,11 @@
   position: relative;
   display: inline-flex;
   flex: none;
+}
+
+.page-header-title > .help-tip {
+  margin-inline-start: var(--space-2);
+  vertical-align: middle;
 }
 
 .help-tip-button {

@@ -551,7 +551,6 @@ export function registerReleaseRoutes(
     const parsed = updateReleaseBody.safeParse(request.body);
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
-    const ws = request.workspaceId;
     try {
       const result = await db.transaction().execute(async (trx) => {
         const current = await trx

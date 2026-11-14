@@ -193,8 +193,6 @@ function TicketPopupFrame({
       closeLabel={t('ticketPopup.closeBackdrop')}
       className={TICKET_POPUP_CLASS}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: only asks before a link inside leaves a draft */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Enter on a link arrives as a click */}
       <div onClickCapture={onClickCapture}>
         <span id={labelId} className="visually-hidden">
           {title?.of === ticket

@@ -1471,7 +1471,7 @@ export function registerFieldRoutes(
     const q = suggestQuery.safeParse(request.query);
     if (!p.success || !q.success) return invalid(reply);
     const field = await readable(request, p.data.id);
-    if (!field || field.type !== 'labels') return notFound(reply);
+    if (field?.type !== 'labels') return notFound(reply);
     const prefix = q.data.q
       .trim()
       .toLowerCase()
@@ -1495,7 +1495,7 @@ export function registerFieldRoutes(
     if (!p.success || !q.success) return invalid(reply);
     const ws = request.workspaceId;
     const field = await readable(request, p.data.id);
-    if (!field || field.type !== 'user') return notFound(reply);
+    if (field?.type !== 'user') return notFound(reply);
     const trackId = await resolveTrack(db, ws, q.data.track);
     if (trackId === null || !(await request.authz.can('browse_track', trackId))) {
       return notFound(reply);
@@ -1539,7 +1539,7 @@ export function registerFieldRoutes(
     const q = suggestQuery.safeParse(request.query);
     if (!p.success || !q.success) return invalid(reply);
     const field = await readable(request, p.data.id);
-    if (!field || field.type !== 'group') return notFound(reply);
+    if (field?.type !== 'group') return notFound(reply);
     const text = q.data.q
       .trim()
       .toLowerCase()

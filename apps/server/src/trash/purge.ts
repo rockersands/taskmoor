@@ -31,7 +31,6 @@ import { retentionCutoff, trashRetentionDays } from './policy';
  *   removes is one event (`ticket.purged`, `track.purged`, actor none), so the audit log
  *   records every permanent deletion. Site administrators can also purge one at once.
  */
-type Db = Kysely<Database> | Transaction<Database>;
 
 export const PURGE_BATCH = 200;
 export type PurgeReason = 'retention' | 'admin';

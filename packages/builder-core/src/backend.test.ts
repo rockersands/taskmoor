@@ -130,6 +130,7 @@ describe('the backend kit (M1-110)', () => {
       expect(sh).toContain(check);
       expect(files['install.ps1']).toContain(check);
     }
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a shell parameter expansion in the script, not a template
     expect(sh.indexOf('preflight\n[ "${1:-}" = "--preflight" ]')).toBeGreaterThan(0);
     expect(sh).toContain('$PUBLIC_URL/#/setup?token=$TOKEN');
     // IAM-020 (3): once the backend holds the AI key sealed, the key leaves .env.

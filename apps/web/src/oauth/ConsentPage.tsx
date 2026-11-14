@@ -96,7 +96,6 @@ export function ConsentPage({ client = consentClient }: ConsentPageProps) {
   } else {
     const request = (state as { request: ConsentRequest }).request;
     const place = redirectPlace(request.redirectUri);
-    const name = request.client.name;
     const writes = request.scope === 'read write';
     body = (
       <>

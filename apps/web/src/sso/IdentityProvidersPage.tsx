@@ -137,84 +137,82 @@ export function IdentityProvidersPage({
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.sso.forbidden')}</p>
       ) : (
-        <>
-          <div className="sso-sections">
-            {state.status === 'loaded' && <RedirectUriField uri={state.redirectUri} />}
-            <section aria-labelledby={listId} className="glass-card account-section">
-              <div className="sso-list-head">
-                <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
-                  {t('admin.sso.list')}
-                </h2>
-                {state.status === 'loaded' && (
-                  <button
-                    ref={addButton}
-                    type="button"
-                    className="button-primary"
-                    aria-expanded={editing === 'new'}
-                    onClick={() => {
-                      setDone('');
-                      setEditing('new');
-                    }}
-                  >
-                    {t('admin.sso.add')}
-                  </button>
-                )}
+        <div className="sso-sections">
+          {state.status === 'loaded' && <RedirectUriField uri={state.redirectUri} />}
+          <section aria-labelledby={listId} className="glass-card account-section">
+            <div className="sso-list-head">
+              <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
+                {t('admin.sso.list')}
+              </h2>
+              {state.status === 'loaded' && (
+                <button
+                  ref={addButton}
+                  type="button"
+                  className="button-primary"
+                  aria-expanded={editing === 'new'}
+                  onClick={() => {
+                    setDone('');
+                    setEditing('new');
+                  }}
+                >
+                  {t('admin.sso.add')}
+                </button>
+              )}
+            </div>
+            {state.status === 'loaded' && editing === 'new' && (
+              <div className="sso-editor">
+                <ProviderForm
+                  groups={state.groups}
+                  redirectUri={state.redirectUri}
+                  onSave={(input) => save(null, input)}
+                  onCancel={() => {
+                    setEditing(null);
+                    addButton.current?.focus();
+                  }}
+                />
               </div>
-              {state.status === 'loaded' && editing === 'new' && (
-                <div className="sso-editor">
-                  <ProviderForm
-                    groups={state.groups}
-                    redirectUri={state.redirectUri}
-                    onSave={(input) => save(null, input)}
-                    onCancel={() => {
-                      setEditing(null);
-                      addButton.current?.focus();
-                    }}
-                  />
-                </div>
-              )}
-              {state.status === 'loading' && (
-                <p role="status" className="page-note">
-                  {t('admin.sso.loading')}
-                </p>
-              )}
-              {state.status === 'failed' && (
-                <p role="alert" className="form-error">
-                  {t('admin.sso.failed')}
-                </p>
-              )}
-              {state.status === 'loaded' &&
-                (state.providers.length === 0 ? (
-                  <EmptyState title={t('empty.identityProviders.title')}>
-                    {t('empty.identityProviders.body')}
-                  </EmptyState>
-                ) : (
-                  <ul className="sso-provider-list" aria-labelledby={listId}>
-                    {state.providers.map((provider) => (
-                      <ProviderItem
-                        key={provider.id}
-                        provider={provider}
-                        groups={state.groups}
-                        redirectUri={state.redirectUri}
-                        editing={editing === provider.id}
-                        onEdit={() => {
-                          setDone('');
-                          setEditing(provider.id);
-                        }}
-                        onCancelEdit={() => setEditing(null)}
-                        onSave={(input) => save(provider, input)}
-                        onDelete={() => remove(provider)}
-                        refuse={refuse}
-                      />
-                    ))}
-                  </ul>
-                ))}
-              <p role="status" className="form-status">
-                {done}
+            )}
+            {state.status === 'loading' && (
+              <p role="status" className="page-note">
+                {t('admin.sso.loading')}
               </p>
-            </section>
-          </div>
-        </>
+            )}
+            {state.status === 'failed' && (
+              <p role="alert" className="form-error">
+                {t('admin.sso.failed')}
+              </p>
+            )}
+            {state.status === 'loaded' &&
+              (state.providers.length === 0 ? (
+                <EmptyState title={t('empty.identityProviders.title')}>
+                  {t('empty.identityProviders.body')}
+                </EmptyState>
+              ) : (
+                <ul className="sso-provider-list" aria-labelledby={listId}>
+                  {state.providers.map((provider) => (
+                    <ProviderItem
+                      key={provider.id}
+                      provider={provider}
+                      groups={state.groups}
+                      redirectUri={state.redirectUri}
+                      editing={editing === provider.id}
+                      onEdit={() => {
+                        setDone('');
+                        setEditing(provider.id);
+                      }}
+                      onCancelEdit={() => setEditing(null)}
+                      onSave={(input) => save(provider, input)}
+                      onDelete={() => remove(provider)}
+                      refuse={refuse}
+                    />
+                  ))}
+                </ul>
+              ))}
+            <p role="status" className="form-status">
+              {done}
+            </p>
+          </section>
+        </div>
       )}
     </section>
   );

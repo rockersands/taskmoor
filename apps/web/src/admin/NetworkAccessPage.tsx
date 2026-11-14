@@ -137,7 +137,7 @@ export function NetworkAccessPage({
     event.preventDefault();
     void save(false);
   };
-  const lockedOut = view !== null && view.allowlist.enabled && !view.yourAddressAllowed;
+  const lockedOut = view?.allowlist.enabled && !view.yourAddressAllowed;
 
   return (
     <section aria-labelledby={titleId} className="page network-page">

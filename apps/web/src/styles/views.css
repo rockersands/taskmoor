@@ -184,11 +184,6 @@
   background: var(--glass-surface-sunken);
 }
 
-.calendar-day.is-today .calendar-date {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
 .calendar-day.is-drop-target {
   outline: 2px dashed var(--color-accent);
   outline-offset: -2px;
@@ -202,6 +197,11 @@
   font-size: var(--font-size-200);
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+.calendar-day.is-today .calendar-date {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .calendar-sprint {

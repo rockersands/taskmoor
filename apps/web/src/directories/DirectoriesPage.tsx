@@ -242,103 +242,101 @@ export function DirectoriesPage({
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.directories.forbidden')}</p>
       ) : (
-        <>
-          <div className="sso-sections">
-            <section aria-labelledby={listId} className="glass-card account-section">
-              <div className="sso-list-head">
-                <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
-                  {t('admin.directories.list')}
-                </h2>
-                {state.status === 'loaded' && (
-                  <button
-                    ref={addButton}
-                    type="button"
-                    className="button-primary"
-                    aria-expanded={editing === 'new'}
-                    onClick={() => {
-                      setDone('');
-                      setEditing('new');
-                    }}
-                  >
-                    {t('admin.directories.add')}
-                  </button>
-                )}
+        <div className="sso-sections">
+          <section aria-labelledby={listId} className="glass-card account-section">
+            <div className="sso-list-head">
+              <h2 id={listId} ref={listHeading} tabIndex={-1} className="facts-title">
+                {t('admin.directories.list')}
+              </h2>
+              {state.status === 'loaded' && (
+                <button
+                  ref={addButton}
+                  type="button"
+                  className="button-primary"
+                  aria-expanded={editing === 'new'}
+                  onClick={() => {
+                    setDone('');
+                    setEditing('new');
+                  }}
+                >
+                  {t('admin.directories.add')}
+                </button>
+              )}
+            </div>
+            {state.status === 'loaded' && editing === 'new' && (
+              <div className="sso-editor">
+                <DirectoryForm
+                  presets={state.presets}
+                  onSave={(input) => save(null, input)}
+                  onTest={test}
+                  onCancel={() => {
+                    setEditing(null);
+                    addButton.current?.focus();
+                  }}
+                />
               </div>
-              {state.status === 'loaded' && editing === 'new' && (
-                <div className="sso-editor">
-                  <DirectoryForm
-                    presets={state.presets}
-                    onSave={(input) => save(null, input)}
-                    onTest={test}
-                    onCancel={() => {
-                      setEditing(null);
-                      addButton.current?.focus();
-                    }}
-                  />
-                </div>
-              )}
-              {state.status === 'loading' && (
-                <p role="status" className="page-note">
-                  {t('admin.directories.loading')}
-                </p>
-              )}
-              {state.status === 'failed' && (
-                <p role="alert" className="form-error">
-                  {t('admin.directories.failed')}
-                </p>
-              )}
-              {state.status === 'loaded' &&
-                (state.directories.length === 0 ? (
-                  <EmptyState title={t('empty.directories.title')}>
-                    {t('empty.directories.body')}
-                  </EmptyState>
-                ) : (
-                  <>
-                    {state.directories.length > 1 && (
-                      <p className="page-note">{t('admin.directories.precedence')}</p>
-                    )}
-                    <ol className="sso-provider-list" aria-labelledby={listId}>
-                      {state.directories.map((directory, index) => (
-                        <DirectoryItem
-                          key={directory.id}
-                          directory={directory}
-                          presets={state.presets}
-                          first={index === 0}
-                          last={index === state.directories.length - 1}
-                          editing={editing === directory.id}
-                          client={client}
-                          onEdit={() => {
-                            setDone('');
-                            setEditing(directory.id);
-                          }}
-                          onCancelEdit={() => setEditing(null)}
-                          onSave={(input) => save(directory, input)}
-                          onTest={test}
-                          onMove={(by) => move(state.directories, index, by)}
-                          onChanged={async (message) => {
-                            setDone(message);
-                            if (editing === directory.id) setEditing(null);
-                            await load();
-                          }}
-                          onDeleted={async (message) => {
-                            setDone(message);
-                            if (editing === directory.id) setEditing(null);
-                            await load();
-                            // The directory's row is gone: the list's heading takes the focus.
-                            listHeading.current?.focus();
-                          }}
-                          refuse={refuse}
-                        />
-                      ))}
-                    </ol>
-                  </>
-                ))}
-              <p role="status" className="form-status">
-                {done}
+            )}
+            {state.status === 'loading' && (
+              <p role="status" className="page-note">
+                {t('admin.directories.loading')}
               </p>
-            </section>
-          </div>
-        </>
+            )}
+            {state.status === 'failed' && (
+              <p role="alert" className="form-error">
+                {t('admin.directories.failed')}
+              </p>
+            )}
+            {state.status === 'loaded' &&
+              (state.directories.length === 0 ? (
+                <EmptyState title={t('empty.directories.title')}>
+                  {t('empty.directories.body')}
+                </EmptyState>
+              ) : (
+                <>
+                  {state.directories.length > 1 && (
+                    <p className="page-note">{t('admin.directories.precedence')}</p>
+                  )}
+                  <ol className="sso-provider-list" aria-labelledby={listId}>
+                    {state.directories.map((directory, index) => (
+                      <DirectoryItem
+                        key={directory.id}
+                        directory={directory}
+                        presets={state.presets}
+                        first={index === 0}
+                        last={index === state.directories.length - 1}
+                        editing={editing === directory.id}
+                        client={client}
+                        onEdit={() => {
+                          setDone('');
+                          setEditing(directory.id);
+                        }}
+                        onCancelEdit={() => setEditing(null)}
+                        onSave={(input) => save(directory, input)}
+                        onTest={test}
+                        onMove={(by) => move(state.directories, index, by)}
+                        onChanged={async (message) => {
+                          setDone(message);
+                          if (editing === directory.id) setEditing(null);
+                          await load();
+                        }}
+                        onDeleted={async (message) => {
+                          setDone(message);
+                          if (editing === directory.id) setEditing(null);
+                          await load();
+                          // The directory's row is gone: the list's heading takes the focus.
+                          listHeading.current?.focus();
+                        }}
+                        refuse={refuse}
+                      />
+                    ))}
+                  </ol>
+                </>
+              ))}
+            <p role="status" className="form-status">
+              {done}
+            </p>
+          </section>
+        </div>
       )}
     </section>
   );

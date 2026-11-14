@@ -309,8 +309,7 @@ export function safeReturnTo(
       return '/';
     }
   }
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\'))
-    return '/';
+  if (!value?.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/';
   return value.slice(0, 500);
 }
 

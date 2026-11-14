@@ -30,26 +30,11 @@ interface TicketSpec {
   visitors: number[];
   webLink: number | null;
 }
-interface LinkSpec {
-  from: number;
-  to: number;
-  type: 0 | 1;
-}
-interface ChangeSpec {
-  ticket: number;
-  actor: number;
-  day: number;
-}
 interface CommentSpec {
   ticket: number;
   author: number;
   day: number;
   group: number | null;
-}
-interface MemberSpec {
-  level: number;
-  grantee: 'user' | 'group' | 'any_user';
-  index: number;
 }
 
 const someUsers = fc.uniqueArray(fc.integer({ min: 0, max: 2 }), { maxLength: 3 });

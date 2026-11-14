@@ -1,6 +1,6 @@
-import type { Database, JsonValue } from '@taskmoor/db';
+import type { JsonValue } from '@taskmoor/db';
 import { dayOf, schema } from '@taskmoor/richtext';
-import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import { type RawBuilder, sql } from 'kysely';
 
 /**
  * Comments (M1-018; CORE-020, NTF-001 (3); ADR-044): who may read a comment, the same rule on
@@ -12,7 +12,6 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
  * read every comment's earlier versions through the versions route only. A deleted comment is
  * read by nobody but that route.
  */
-type Db = Kysely<Database> | Transaction<Database>;
 
 /** A comment's restriction: one role or one group, or null for an open comment. */
 export type CommentVisibility = { roleId: number } | { groupId: number } | null;
