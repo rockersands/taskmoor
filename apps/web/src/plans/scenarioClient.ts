@@ -1,5 +1,7 @@
 import { ApiError, api } from '../api/client';
-import { filterParams, type PlanFilters } from './client';
+import { filterParams, type PlanFilters, type ScenarioInView } from './client';
+
+export type { ScenarioInView };
 
 /**
  * Scenarios and draft changes of a plan (T-089e; PLN-002, PLN-003; ADR-122 stage 6). A scenario
@@ -8,17 +10,6 @@ import { filterParams, type PlanFilters } from './client';
  * applier's permissions. A scenario gives no access: drafts on tickets the plan does not show the
  * viewer are only counted (`notShown`).
  */
-
-/** A scenario as a view that reads it names it, counted for its viewer. */
-export interface ScenarioInView {
-  id: number;
-  name: string;
-  main: boolean;
-  /** Drafted tickets the viewer is shown. */
-  drafts: number;
-  /** Drafted tickets the plan does not show the viewer: counted, never named. */
-  notShown: number;
-}
 
 /** One row of `GET /plans/:id/scenarios`. */
 export interface ScenarioRow extends ScenarioInView {

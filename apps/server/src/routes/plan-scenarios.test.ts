@@ -211,12 +211,15 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
     let started: Promise<unknown> = Promise.resolve();
     await database.db.transaction().execute(async (trx) => {
       await trx.selectFrom('ticket').select('id').where('id', '=', ticketId).forUpdate().execute();
+      const holder = (await sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`.execute(trx))
+        .rows[0]?.pid;
       started = start();
-      // Wait until a backend waits on a lock: the apply's ticket change.
+      // Wait until a backend waits on this transaction's lock: the apply's ticket change. Only
+      // this one: every other test file shares the cluster, and its backends wait on their own.
       for (let i = 0; i < 400; i++) {
         const waiting = await sql<{ n: number }>`
           SELECT count(*)::int AS n FROM pg_stat_activity
-           WHERE wait_event_type = 'Lock' AND query ILIKE '%ticket%'`.execute(database.db);
+           WHERE ${holder}::int = ANY(pg_blocking_pids(pid))`.execute(database.db);
         if ((waiting.rows[0]?.n ?? 0) > 0) break;
         await new Promise((r) => setTimeout(r, 25));
       }
@@ -1392,7 +1395,8 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
         )
       ).rows[0]?.n,
     ).toBe(0);
-  });
+    // 10,000 tickets take a while to write while every other test file runs beside this one.
+  }, 180_000);
 
   it('[PLN-002] audits every scenario and draft event, with the plan as its subject', async () => {
     await relay();

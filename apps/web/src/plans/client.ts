@@ -14,7 +14,17 @@ import {
 } from '../timeline/client';
 import type { BlockersElsewhere } from '../timeline/dependencies';
 import type { ReleaseMarker } from '../timeline/markers';
-import type { ScenarioInView } from './scenarioClient';
+
+/** A scenario as a view that reads it names it, counted for its viewer. */
+export interface ScenarioInView {
+  id: number;
+  name: string;
+  main: boolean;
+  /** Drafted tickets the viewer is shown. */
+  drafts: number;
+  /** Drafted tickets the plan does not show the viewer: counted, never named. */
+  notShown: number;
+}
 
 /** A source of a plan as one viewer sees it (ADR-122); those hidden from them are only counted. */
 export type PlanSource =
