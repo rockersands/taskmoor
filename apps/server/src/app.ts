@@ -80,9 +80,9 @@ import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes
 import { registerPersonalDataRoutes } from './routes/personal-data';
 import { registerPlanCapacityRoutes } from './routes/plan-capacity';
 import { registerPlanViewRoutes } from './routes/plan-views';
-import { registerProgramBoardRoutes } from './routes/program-boards';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
+import { registerProgramBoardRoutes } from './routes/program-boards';
 import { registerCorePropertyRoutes } from './routes/properties';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
 import { registerReleaseHubRoutes } from './routes/release-hub';

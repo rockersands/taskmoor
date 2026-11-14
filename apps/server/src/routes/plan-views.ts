@@ -4,6 +4,7 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import type { z } from 'zod';
 import { compileCondition, compileQuery } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
+import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
 import {
   calendarQuery,
   filterQuery,
@@ -13,7 +14,6 @@ import {
   type PlanFilters,
   timelineQuery,
 } from '../plans/model';
-import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
 import {
   browsedTracks,
   filterText,

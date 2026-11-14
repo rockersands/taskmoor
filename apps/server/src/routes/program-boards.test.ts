@@ -127,7 +127,7 @@ describe('program boards (PLN-008)', () => {
         }
       };
       put('none', row.unscheduled);
-      row.cells.forEach((cell, i) => put(b.periods[i]?.start ?? '?', cell));
+      for (const [i, cell] of row.cells.entries()) put(b.periods[i]?.start ?? '?', cell);
     }
     return out;
   };
@@ -270,7 +270,11 @@ describe('program boards (PLN-008)', () => {
     boardId = (
       await call(
         'admin',
-        { method: 'POST', url: base(), payload: { name: 'Spring', from: '2027-03-03', periods: 4 } },
+        {
+          method: 'POST',
+          url: base(),
+          payload: { name: 'Spring', from: '2027-03-03', periods: 4 },
+        },
         201,
       )
     ).board.id;
@@ -343,9 +347,7 @@ describe('program boards (PLN-008)', () => {
     expect(body).not.toContain('PBB');
     // Search blocks Login (drawn); the hidden ticket is outside for her, counted, never named;
     // Far off is the plan's own, past the board's periods.
-    expect(board.links).toEqual([
-      expect.objectContaining({ from: t.search?.id, to: t.login?.id }),
-    ]);
+    expect(board.links).toEqual([expect.objectContaining({ from: t.search?.id, to: t.login?.id })]);
     expect(board.blockersElsewhere).toEqual(
       [
         { id: t.login?.id, outside: 1, unlisted: 0 },
@@ -411,7 +413,9 @@ describe('program boards (PLN-008)', () => {
       expect(archived.board).toMatchObject({ archived: true, version: 2 });
       const list = await call('ana', { method: 'GET', url: base() });
       expect(list.editable).toBe(false);
-      expect(list.boards.map((b: { name: string; archived: boolean }) => [b.name, b.archived])).toEqual([
+      expect(
+        list.boards.map((b: { name: string; archived: boolean }) => [b.name, b.archived]),
+      ).toEqual([
         ['Autumn', false],
         ['Spring', false],
         ['Summer', false],

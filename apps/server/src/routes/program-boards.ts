@@ -9,8 +9,8 @@ import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/de
 import { filterShape, idParam } from '../plans/model';
 import { type Period, periodsFrom } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
-import { isCalendarDay } from '../tickets/model';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
+import { isCalendarDay } from '../tickets/model';
 import { periodOf, planTeams, planVisible } from './plans';
 import { searchRefusal } from './search';
 
@@ -109,7 +109,8 @@ interface BoardRow {
 const boardView = (b: BoardRow) => ({
   id: b.id,
   name: b.name,
-  teamField: b.team_field_id === null ? null : { id: b.team_field_id, name: b.team_field_name ?? '' },
+  teamField:
+    b.team_field_id === null ? null : { id: b.team_field_id, name: b.team_field_name ?? '' },
   from: b.from_day,
   periods: b.periods,
   archived: b.archived_at !== null,
@@ -139,7 +140,14 @@ export function registerProgramBoardRoutes(
     const ws = request.workspaceId;
     let q = db
       .selectFrom('plan as p')
-      .select(['p.id', 'p.name', 'p.owner_id', 'p.period_kind', 'p.period_weeks', 'p.period_anchor'])
+      .select([
+        'p.id',
+        'p.name',
+        'p.owner_id',
+        'p.period_kind',
+        'p.period_weeks',
+        'p.period_anchor',
+      ])
       .where('p.workspace_id', '=', ws)
       .where('p.id', '=', id);
     const admin = await request.authz.isSiteAdmin();

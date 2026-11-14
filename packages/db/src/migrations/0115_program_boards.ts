@@ -42,5 +42,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await sql`CREATE INDEX plan_dependency_type_link_idx ON plan_dependency_type (link_type_id)`.execute(
     db,
   );
-  await sql`ALTER TABLE plan ADD COLUMN flag_same_sprint boolean NOT NULL DEFAULT false`.execute(db);
+  await sql`ALTER TABLE plan ADD COLUMN flag_same_sprint boolean NOT NULL DEFAULT false`.execute(
+    db,
+  );
 }

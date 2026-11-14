@@ -340,7 +340,15 @@ describe('a plan’s dependencies (PLN-006)', () => {
         'dependencies.linkTypeIds.0': 'always_counted',
         'dependencies.linkTypeIds.1': 'not_found',
       });
-      expect((await as('ana', { method: 'PATCH', url: `/api/v1/plans/${planId}`, payload: { dependencies: { linkTypeIds: [], sameSprint: true } } })).statusCode).toBe(403);
+      expect(
+        (
+          await as('ana', {
+            method: 'PATCH',
+            url: `/api/v1/plans/${planId}`,
+            payload: { dependencies: { linkTypeIds: [], sameSprint: true } },
+          })
+        ).statusCode,
+      ).toBe(403);
     });
 
     it('[PLN-013] marks a dependency within one open sprint only when the plan asks', async () => {

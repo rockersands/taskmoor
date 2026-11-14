@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import {
   createBody,
   duplicateBody,
@@ -19,7 +20,6 @@ import {
   sourceKey,
   updateBody,
 } from '../plans/model';
-import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import { samePeriods } from '../plans/periods';
 import {
   browsedTracks,
