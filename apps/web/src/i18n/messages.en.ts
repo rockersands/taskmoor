@@ -5708,7 +5708,7 @@ export const messagesEn = {
   'sprints.settings.statistic': 'Estimate with',
   'sprints.settings.statistic.ticketCount': 'Ticket count',
   'sprints.settings.statistic.originalEstimate': 'Original time estimate',
-  'sprints.settings.statistic.field': 'A number field, such as story points',
+  'sprints.settings.statistic.field': 'A number field, such as Points',
   'sprints.settings.field': 'Number field',
   'sprints.settings.fieldPlaceholder': 'Pick a number field',
   'sprints.settings.fieldUnknown': 'Field {id}',
