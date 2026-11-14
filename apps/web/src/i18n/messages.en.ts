@@ -3785,6 +3785,10 @@ export const messagesEn = {
     '{count, plural, one {# custom field} other {# custom fields}} changed',
   'bulk.change.moved': 'moved to the {track} track',
   'bulk.change.movedElsewhere': 'moved to another track',
+  'bulk.change.transitioned': 'moved to the {status} status',
+  'bulk.change.transitionedElsewhere': 'moved to another status',
+  'bulk.change.transitionFields':
+    '{count, plural, one {# field} other {# fields}} filled in on the way',
   'bulk.changed': 'Tickets that were changed',
   'bulk.clone.changed': 'The copies',
   'bulk.moreChanged': 'Show more',

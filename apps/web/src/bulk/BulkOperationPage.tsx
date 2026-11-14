@@ -80,18 +80,40 @@ const finished = (op: BulkOperation) => op.status === 'done' || op.status === 'c
 const EDITED: Record<string, MessageId> = {
   ...Object.fromEntries(Object.values(SYSTEM_FIELDS).map((field) => [field.body, field.label])),
   ticketTypeId: 'tickets.create.type',
+  statusId: 'ticketView.field.status',
+  visibilityLevelId: 'ticketView.field.visibilityLevel',
 };
 const DAYS = new Set(['startDate', 'dueDate']);
 
+type Named = { id: number; name: string }[];
+/** The site's lists that name the ids a change set, as far as they have been read. */
+interface Names {
+  priorities: Named;
+  statuses: Named;
+  closeReasons: Named;
+}
+const NO_NAMES: Names = { priorities: [], statuses: [], closeReasons: [] };
+
 /**
- * What the change was, in words (D14): each field an edit set and its new value, or the track a
- * move went to. Ids name what they can (a priority); otherwise the field alone is named.
+ * What the change was, in words (D14): each field an edit set and its new value, the track a
+ * move went to, or the status a transition took the tickets to. Ids name what they can (a
+ * priority, a status, a close reason); otherwise the field alone is named.
  */
-function useChangeText(op: BulkOperation | null, priorities: { id: number; name: string }[]) {
+function useChangeText(op: BulkOperation | null, names: Names) {
   const t = useT();
   const intl = useIntl();
   if (!op?.params) return null;
   const parts: string[] = [];
+  const named = (key: string, value: unknown): string | null => {
+    const find = (list: Named) => list.find((item) => item.id === value)?.name ?? null;
+    if (key === 'priorityId') {
+      const name = find(names.priorities);
+      return name === null ? null : priorityName(t, name);
+    }
+    if (key === 'statusId') return find(names.statuses);
+    if (key === 'closeReasonId') return find(names.closeReasons);
+    return null;
+  };
   const edit = op.action === 'edit' ? op.params.edit : undefined;
   for (const [key, value] of Object.entries(edit ?? {})) {
     if (key === 'fields' && value && typeof value === 'object') {
@@ -112,16 +134,29 @@ function useChangeText(op: BulkOperation | null, priorities: { id: number; name:
       parts.push(t('bulk.change.set', { field, value: day }));
     } else if (typeof value === 'string') {
       parts.push(t('bulk.change.set', { field, value }));
-    } else if (key === 'priorityId' && priorities.some((p) => p.id === value)) {
-      const name = priorityName(t, priorities.find((p) => p.id === value)?.name ?? '');
-      parts.push(t('bulk.change.set', { field, value: name }));
     } else {
-      parts.push(t('bulk.change.changed', { field }));
+      const name = named(key, value);
+      parts.push(
+        name === null
+          ? t('bulk.change.changed', { field })
+          : t('bulk.change.set', { field, value: name }),
+      );
     }
   }
   const track = op.action === 'move' ? op.params.move?.track : undefined;
   if (typeof track === 'string') parts.push(t('bulk.change.moved', { track }));
   else if (track !== undefined) parts.push(t('bulk.change.movedElsewhere'));
+  const transition = op.action === 'transition' ? op.params.transition : undefined;
+  if (transition) {
+    const status = named('statusId', transition.statusId);
+    parts.push(
+      status === null
+        ? t('bulk.change.transitionedElsewhere')
+        : t('bulk.change.transitioned', { status }),
+    );
+    const count = Object.keys(transition.fields ?? {}).length;
+    if (count > 0) parts.push(t('bulk.change.transitionFields', { count }));
+  }
   return parts.length > 0 ? t('bulk.change', { change: intl.formatList(parts) }) : null;
 }
 
@@ -237,21 +272,30 @@ export function BulkOperationPage({
     setNextChanged(page.next);
   };
 
-  // A priority an edit set is named, not shown as a number.
-  const [priorities, setPriorities] = useState<{ id: number; name: string }[]>([]);
-  const wantsPriority = typeof op?.params?.edit?.priorityId === 'number';
+  // A priority, status or close reason the change set is named, not shown as a number.
+  const [names, setNames] = useState<Names>(NO_NAMES);
+  const edit = op?.params?.edit;
+  const wantsPriority = typeof edit?.priorityId === 'number';
+  const wantsStatus =
+    typeof edit?.statusId === 'number' || typeof op?.params?.transition?.statusId === 'number';
+  const wantsReason = typeof edit?.closeReasonId === 'number';
   useEffect(() => {
-    if (!wantsPriority || !client.priorities) return;
     let live = true;
-    client.priorities().then(
-      (list) => live && setPriorities(list),
-      () => {},
-    );
+    const read = (key: keyof Names, wanted: boolean, list?: () => Promise<Named>) => {
+      if (!wanted || !list) return;
+      list().then(
+        (got) => live && setNames((now) => ({ ...now, [key]: got })),
+        () => {},
+      );
+    };
+    read('priorities', wantsPriority, client.priorities);
+    read('statuses', wantsStatus, client.statuses);
+    read('closeReasons', wantsReason, client.closeReasons);
     return () => {
       live = false;
     };
-  }, [client, wantsPriority]);
-  const change = useChangeText(op, priorities);
+  }, [client, wantsPriority, wantsStatus, wantsReason]);
+  const change = useChangeText(op, names);
   const changedId = useId();
 
   const cancel = async () => {

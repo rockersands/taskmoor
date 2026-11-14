@@ -3884,6 +3884,10 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {# campo personalizado cambiado} other {# campos personalizados cambiados}}',
   'bulk.change.moved': 'trasladados al track {track}',
   'bulk.change.movedElsewhere': 'trasladados a otro track',
+  'bulk.change.transitioned': 'pasados al estado {status}',
+  'bulk.change.transitionedElsewhere': 'pasados a otro estado',
+  'bulk.change.transitionFields':
+    '{count, plural, one {# campo rellenado} other {# campos rellenados}} al pasar',
   'bulk.changed': 'Tickets que se cambiaron',
   'bulk.clone.changed': 'Las copias',
   'bulk.moreChanged': 'Mostrar más',

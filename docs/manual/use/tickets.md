@@ -486,7 +486,8 @@ result for every ticket stay readable for 14 days after it finishes. The web app
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
 changed with the reason. Above the progress, a line says what the change was: each field it set
-and the new value (**The change: Priority set to High.**), or the track a move went to. Once it
+and the new value (**The change: Priority set to High.**), the track a move went to, or the
+status a transition took the tickets to (**The change: moved to the Done status.**). Once it
 finishes, **Tickets that were changed** links each changed ticket (for a clone, each copy), and
 **Back to the search** returns to the search that chose the tickets (**Go to Search** when a list
 of tickets did). When some tickets were not changed, a warning takes the place of

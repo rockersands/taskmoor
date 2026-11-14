@@ -63,6 +63,8 @@ export function fakeBulkClient(
     /** The tickets changed, for the links under a finished change (D14). */
     changed?: BulkItem[];
     priorities?: { id: number; name: string }[];
+    statuses?: { id: number; name: string }[];
+    closeReasons?: { id: number; name: string }[];
   } = {},
 ): BulkClient & { cancelled: () => boolean } {
   let op = { ...start };
@@ -84,6 +86,8 @@ export function fakeBulkClient(
     failures: async () => ({ items: options.failures ?? FAILURES, next: null }),
     changed: async () => ({ items: options.changed ?? [], next: null }),
     priorities: async () => options.priorities ?? [],
+    statuses: async () => options.statuses ?? [],
+    closeReasons: async () => options.closeReasons ?? [],
     cancel: async () => {
       cancelled = true;
       op = { ...op, cancelRequested: true };

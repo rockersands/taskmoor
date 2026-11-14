@@ -8,7 +8,7 @@ import { stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { BulkOperationPage } from './BulkOperationPage';
-import type { BulkItem } from './client';
+import type { BulkItem, BulkParams } from './client';
 import { FAILURES, fakeBulkClient, RUNNING } from './fixtures';
 
 function openPage(operation = RUNNING) {
@@ -161,6 +161,70 @@ describe('bulk operation progress (M1-021)', () => {
     );
     expect(await screen.findByText('The change: moved to the WEB track.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Go to Search' })).toHaveAttribute('href', '#/search');
+  });
+
+  it('[CORE-024] names a transition by the status it took the tickets to (D14)', async () => {
+    const finishedTransition = (transition: NonNullable<BulkParams['transition']>) =>
+      fakeBulkClient(
+        {
+          ...RUNNING,
+          action: 'transition',
+          total: 3,
+          succeeded: 3,
+          failed: 0,
+          pending: 0,
+          status: 'done',
+          params: { transition, query: 'track = SHOP' },
+        },
+        { statuses: [{ id: 3, name: 'In review' }] },
+      );
+    const first = render(
+      <I18nProvider locale="en">
+        <BulkOperationPage
+          id="7"
+          client={finishedTransition({ statusId: 3, fields: { resolution: 'Done' } })}
+          pollMs={5}
+        />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText(
+        'The change: moved to the In review status and 1 field filled in on the way.',
+      ),
+    ).toBeVisible();
+    first.unmount();
+    // By a transition of the workflow, or to a status the reader cannot name: said all the same.
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={finishedTransition({ transitionId: 21 })} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('The change: moved to another status.')).toBeVisible();
+  });
+
+  it('[CORE-024] names the status, close reason and visibility level an edit set (D14)', async () => {
+    const client = fakeBulkClient(
+      {
+        ...RUNNING,
+        total: 1,
+        succeeded: 1,
+        failed: 0,
+        pending: 0,
+        status: 'done',
+        params: { edit: { ticketTypeId: 4, statusId: 3, closeReasonId: 5, visibilityLevelId: 2 } },
+      },
+      { statuses: [{ id: 3, name: 'In review' }], closeReasons: [{ id: 5, name: 'Duplicate' }] },
+    );
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText(
+        'The change: Ticket type changed, Status set to In review, Close reason set to Duplicate, and Visibility level changed.',
+      ),
+    ).toBeVisible();
   });
 
   it('[CORE-024] a cancelled bulk change with failures says how many were changed, failed and skipped (PL-23)', async () => {

@@ -25,6 +25,8 @@ export interface BulkParams {
   edit?: Record<string, unknown>;
   /** For a move: the track the tickets go to, by key or id. */
   move?: { track?: string | number };
+  /** For a transition: the status to reach, or the workflow transition to take, and its fields. */
+  transition?: { statusId?: number; transitionId?: number; fields?: Record<string, unknown> };
   /** The query whose results were the tickets, when one chose them. */
   query?: string;
 }
@@ -63,6 +65,10 @@ export interface BulkClient {
   changed?(id: number, after?: number): Promise<{ items: BulkItem[]; next: number | null }>;
   /** The site's priorities, to name the one an edit set. */
   priorities?(): Promise<{ id: number; name: string }[]>;
+  /** The site's statuses, to name the one a transition or an edit took the tickets to. */
+  statuses?(): Promise<{ id: number; name: string }[]>;
+  /** The site's close reasons, to name the one an edit set. */
+  closeReasons?(): Promise<{ id: number; name: string }[]>;
   cancel(id: number): Promise<BulkOperation>;
 }
 
@@ -78,6 +84,10 @@ export const bulkClient: BulkClient = {
   changed: (id, after) => items(id, 'done', after),
   priorities: async () =>
     (await api<{ priorities: { id: number; name: string }[] }>('/priorities')).priorities,
+  statuses: async () =>
+    (await api<{ statuses: { id: number; name: string }[] }>('/statuses')).statuses,
+  closeReasons: async () =>
+    (await api<{ closeReasons: { id: number; name: string }[] }>('/close-reasons')).closeReasons,
   cancel: async (id) =>
     (
       await api<{ bulkOperation: BulkOperation }>(`/bulk-operations/${id}/cancel`, {
