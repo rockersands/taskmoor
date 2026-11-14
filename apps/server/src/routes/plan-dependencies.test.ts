@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -700,5 +701,115 @@ describe('a plan’s dependencies (PLN-006)', () => {
       });
       expect(bad.statusCode).toBe(400);
     });
+
+    it('[PLN-011] [QRY-008] answers a member 404 for a private plan of someone else, word for word as a missing id', async () => {
+      const hidden = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: '/api/v1/plans',
+            payload: { name: 'Private path', sources: [{ kind: 'track', trackId: tracks.DPA }] },
+          },
+          201,
+        )
+      ).plan.id as number;
+      // Its owner reads its path; Ana, who sees its tickets, may not see the plan.
+      expect(
+        (await as('admin', { method: 'GET', url: `/api/v1/plans/${hidden}/critical-path` }))
+          .statusCode,
+      ).toBe(200);
+      const refused = await as('ana', {
+        method: 'GET',
+        url: `/api/v1/plans/${hidden}/critical-path`,
+      });
+      const missing = await as('ana', { method: 'GET', url: '/api/v1/plans/999999/critical-path' });
+      expect(refused.statusCode).toBe(404);
+      expect(missing.statusCode).toBe(404);
+      expect(refused.body).toBe(missing.body);
+      expect(refused.body).not.toContain('Design');
+    });
+
+    /** `n` copies of `template` in its track, in one statement. */
+    async function copies(template: { id: number }, n: number, tag: string): Promise<void> {
+      const columns = (
+        await sql<{ column_name: string }>`
+          SELECT column_name FROM information_schema.columns
+           WHERE table_name = 'ticket' AND table_schema = 'public'
+             AND column_name NOT IN ('id', 'number', 'rank', 'search_vector')
+             AND is_generated = 'NEVER'`.execute(database.db)
+      ).rows.map((r) => r.column_name);
+      const list = sql.join(columns.map((c) => sql.ref(c)));
+      const row = await database.db
+        .selectFrom('ticket')
+        .select('track_id')
+        .where('id', '=', template.id)
+        .executeTakeFirstOrThrow();
+      const top = await sql<{ n: number }>`
+        SELECT max(number)::int AS n FROM ticket WHERE track_id = ${row.track_id}`.execute(
+        database.db,
+      );
+      await sql`
+        INSERT INTO ticket (number, rank, ${list})
+        SELECT ${top.rows[0]?.n ?? 0} + g, rank || ${tag}::text || lpad(g::text, 6, '0'), ${list}
+          FROM ticket, generate_series(1, ${n}::int) g
+         WHERE id = ${template.id}`.execute(database.db);
+    }
+
+    it('[PLN-011] names 500 tickets of the chains at most and counts the rest, and refuses a plan of more than 50,000 open tickets', async () => {
+      const track = await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'DPL', name: 'Large', mode: 'shared' },
+        },
+        201,
+      );
+      const large = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: '/api/v1/plans',
+            payload: {
+              name: 'Large path',
+              sources: [{ kind: 'track', trackId: track.track.id }],
+              shares: [{ scope: 'any_user' }],
+            },
+          },
+          201,
+        )
+      ).plan.id as number;
+      const read = (who: string) =>
+        as(who, { method: 'GET', url: `/api/v1/plans/${large}/critical-path` });
+      // 600 tickets that all end on the plan's last day: each is critical, a chain of its own.
+      const template = await ticket('DPL', 'Even', {
+        startDate: '2027-05-01',
+        dueDate: '2027-05-10',
+      });
+      await copies(template, 599, 'c');
+      const cut = await read('admin');
+      expect(cut.statusCode, cut.body.slice(0, 400)).toBe(200);
+      const answer = cut.json() as PathAnswer;
+      expect(answer.counts.critical).toBe(600);
+      expect(answer.chains.reduce((n, c) => n + c.tickets.length, 0)).toBe(500);
+      expect(answer.more).toBe(100);
+      expect(answer.chains.every((c) => c.tickets.every((x) => x.key.startsWith('DPL-')))).toBe(
+        true,
+      );
+      // Past 50,000 open tickets nothing is computed: they are counted first.
+      for (const [tag, n] of [
+        ['a', 10_000],
+        ['b', 10_000],
+        ['d', 10_000],
+        ['e', 10_000],
+        ['f', 9_401],
+      ] as const)
+        await copies(template, n, tag);
+      const refused = await read('admin');
+      expect(refused.statusCode, refused.body.slice(0, 400)).toBe(409);
+      expect(refused.json()).toEqual({ error: 'plan_too_large', limit: 50_000 });
+    }, 240_000);
   });
 });
