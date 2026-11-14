@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { localDate } from '@taskmoor/query';
 import { stableJson } from '@taskmoor/testkit';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -328,6 +329,75 @@ describe('releases hub (M1-050)', () => {
     expect(anywhere.release.shippedOn).toBe('2026-10-02');
     expect(anywhere.markdown).toContain('Released on October 2, 2026.');
     await get('alice', `${url}?timeZone=${encodeURIComponent('Mars/Olympus')}`, 400);
+  });
+
+  it('[CORE-016] judges overdue and ships an undated release on the viewer’s own day (T-282)', async () => {
+    // Kiritimati (UTC+14) is always a day or two ahead of Pago Pago (UTC-11), whatever the hour.
+    const ahead = 'Pacific/Kiritimati';
+    const behind = 'Pacific/Pago_Pago';
+    const zone = (timeZone: string) => ({ 'taskmoor-time-zone': timeZone });
+    const behindToday = localDate(new Date(), behind);
+    const due = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: `/api/v1/tracks/${trackId}/releases`,
+          payload: { name: '2.2', releaseDate: behindToday },
+        },
+        201,
+      )
+    ).release.id as number;
+    await call(
+      'alice',
+      {
+        method: 'POST',
+        url: '/api/v1/tickets',
+        payload: { track: 'RH', summary: 'Tip jar', targetReleaseIds: [due] },
+      },
+      201,
+    );
+    // Its day is today in Pago Pago and gone by in Kiritimati.
+    const read = (timeZone: string, url: string) =>
+      call('alice', { method: 'GET', url, headers: zone(timeZone) });
+    const codes = async (timeZone: string) =>
+      (await read(timeZone, `/api/v1/releases/${due}/overview`)).warnings.map(
+        (w: { code: string }) => w.code,
+      );
+    expect(await codes(ahead)).toContain('overdue');
+    expect(await codes(behind)).not.toContain('overdue');
+    const listed = async (timeZone: string) =>
+      (await read(timeZone, `/api/v1/tracks/${trackId}/releases`)).releases.find(
+        (r: { id: number }) => r.id === due,
+      );
+    expect(await listed(ahead)).toMatchObject({ overdue: true });
+    expect(await listed(behind)).toMatchObject({ overdue: false });
+    expect((await read(ahead, `/api/v1/releases/${due}`)).release.overdue).toBe(true);
+    expect((await read(behind, `/api/v1/releases/${due}`)).release.overdue).toBe(false);
+    // Shipped with no day given, each ships on the shipper's own day, never UTC's for both.
+    const shippedOn: Record<string, string> = {};
+    for (const [name, timeZone] of [
+      ['2.3', ahead],
+      ['2.4', behind],
+    ] as const) {
+      const made = (
+        await call(
+          'admin',
+          { method: 'POST', url: `/api/v1/tracks/${trackId}/releases`, payload: { name } },
+          201,
+        )
+      ).release.id as number;
+      const done = await call('admin', {
+        method: 'POST',
+        url: `/api/v1/releases/${made}/ship`,
+        headers: zone(timeZone),
+        payload: {},
+      });
+      shippedOn[timeZone] = done.release.releaseDate;
+    }
+    expect(shippedOn[ahead]).toBe(localDate(new Date(), ahead));
+    expect(shippedOn[behind]).toBe(localDate(new Date(), behind));
+    expect(shippedOn[ahead]).not.toBe(shippedOn[behind]);
   });
 
   it('[CORE-016] shows nothing to those who may not browse the track', async () => {
