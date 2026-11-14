@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import type { SearchTicket } from './client';
 import { DEFAULT_COLUMNS } from './columns';
 import { fakeSearchClient, TICKETS } from './fixtures';
@@ -98,7 +98,7 @@ export const Sorted: Story = {
  * assignee and priority, inside a phone's width with nothing sticking out, the key a finger wide.
  */
 export const StackedOnAPhone: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   render: (args) => (
     <div data-testid="phone-width" style={{ width: 360 }}>
       <ResultRows {...args} />

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { NewCrossTrackDialog } from './NewCrossTrackDialog';
 
@@ -32,7 +32,7 @@ export const StopsShort: Story = {
 
 /** A finger reaches each way to end it and each release to tick (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async () => {
     const dialog = await within(document.body).findByRole('dialog');
     await within(dialog).findByRole('checkbox', { name: /Shop 2\.1/ });

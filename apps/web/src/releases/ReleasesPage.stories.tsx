@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasesPage } from './ReleasesPage';
 
@@ -93,7 +93,7 @@ export const NotFound: Story = {
 /** A finger reaches the release across tracks a release is in (ADR-033). */
 export const LinkedOnATouchScreen: Story = {
   args: { client: fakeReleaseClient({ linked: true }) },
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: /Spring launch/ });
     await expect(tooSmallForAFinger(canvasElement, ['.release-cross-track'])).toEqual([]);
@@ -102,7 +102,7 @@ export const LinkedOnATouchScreen: Story = {
 
 /** A finger reaches each release and the fold-out of the archived ones (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText(/archived release/);
     await expect(

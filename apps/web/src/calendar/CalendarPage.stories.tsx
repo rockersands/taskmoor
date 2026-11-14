@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { asOnATouchScreen, onARealTouchScreen } from '../test/touch';
+import { onARealTouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
@@ -129,7 +129,7 @@ export const EntryInHand: Story = {
  */
 export const EntryOnATouchTablet: Story = {
   args: { client: fakeCalendarClient() },
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });

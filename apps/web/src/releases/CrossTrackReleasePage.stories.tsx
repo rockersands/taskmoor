@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { CrossTrackReleasePage } from './CrossTrackReleasePage';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 
@@ -118,7 +118,7 @@ export const DeletingALongNameAtPhoneWidth: Story = {
 
 /** A finger reaches the choice to end when its work completes (ADR-033). */
 export const EditOnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Edit' }));
@@ -129,7 +129,7 @@ export const EditOnATouchScreen: Story = {
 
 /** A finger reaches each linked release and each ticket (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('heading', { name: 'Spring launch' });

@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { SearchPage } from './SearchPage';
 
@@ -177,7 +177,7 @@ export const EveryTrackOnAPhone: Story = {
 
 /** On a touch screen each stage's label is a finger's target, "New" too (PL-13). */
 export const StagesOnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('group', { name: 'Stage' });

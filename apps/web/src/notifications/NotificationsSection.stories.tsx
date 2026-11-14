@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { SIGNED_IN } from '../account/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { defaultPreferences, fakeNotificationsClient } from './fixtures';
 import { NotificationsSection } from './NotificationsSection';
 
@@ -95,7 +95,7 @@ export const OneCheckBoxLook: Story = {
 
 /** A tap anywhere in a cell of the matrix reaches its check box, drawn at 28 px (ADR-033, AC-12). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const boxes = await within(canvasElement).findAllByRole('checkbox');
     await expect(tooSmallForAFinger(canvasElement, ['.notification-cell'])).toEqual([]);
