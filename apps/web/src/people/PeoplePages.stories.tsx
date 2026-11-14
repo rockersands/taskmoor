@@ -215,22 +215,37 @@ export const PeopleAtPhoneWidth: Story = {
 
 /**
  * On a phone each person's last sign-in stays on one line, whatever the length of the address
- * before it: it broke inside the date, 'Nov / 14, 2026' (S3-AC-10).
+ * before it: it broke inside the date, 'Nov / 14, 2026', at a place that depended on the address
+ * (S3-AC-10). The row is tried at every phone width, so some width puts a break in each phrase.
  */
 export const LastSignInWholeAtPhoneWidth: Story = {
-  decorators: [atPhoneWidth],
+  decorators: [
+    (Story) => (
+      <div data-testid="phone-width" style={{ width: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText('Grace Hopper');
+    const box = canvas.getByTestId('phone-width');
     const metas = [...canvasElement.querySelectorAll<HTMLElement>('.people-meta')];
     await expect(metas.length).toBeGreaterThan(1);
-    for (const meta of metas) {
-      const signIn = ((meta.textContent ?? '').split(' · ')[1] ?? '').replace(/\s+/g, ' ');
-      await expect(signIn).toMatch(/^last signed in /);
-      // The phrase, spaces as the layout leaves them, is whole on one of the lines.
-      const lines = textLines(meta).map((line) => line.replace(/\s+/g, ' ').trim());
-      await expect(lines.some((line) => line.endsWith(signIn))).toBe(true);
+    const broken: string[] = [];
+    for (let width = 300; width <= 420; width += 4) {
+      box.style.width = `${width}px`;
+      for (const meta of metas) {
+        const signIn = ((meta.textContent ?? '').split(' · ')[1] ?? '').replace(/\s+/g, ' ');
+        // The phrase, spaces as the layout leaves them, is whole on one of the lines.
+        const lines = textLines(meta).map((line) => line.replace(/\s+/g, ' ').trim());
+        if (!lines.some((line) => line.endsWith(signIn))) {
+          broken.push(`${width}: ${lines.join(' / ')}`);
+        }
+      }
     }
+    await expect(broken).toEqual([]);
+    box.style.width = '360px';
     await fitsPhoneWidth(canvas);
   },
 };
