@@ -60,6 +60,13 @@
   color: var(--color-chart-guide);
 }
 
+/* What the value axis counts, over its ticks, so a count of tickets nearby is not misread. */
+.chart-measure {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
 .chart-plot {
   /* A drawing in its own coordinates: left to right under every script (M1-116, ADR-024). */
   direction: ltr;

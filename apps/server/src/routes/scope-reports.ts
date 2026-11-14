@@ -263,7 +263,9 @@ export function registerScopeReportRoutes(
     const input = await inputs(request, board, candidates, (s: ReportState) =>
       s.targetReleases.has(release.id),
     );
-    // From the release's start, else the first day a ticket targeted it; at most two years.
+    // From the release's start; else the earliest of the day it was made, the first day a ticket
+    // targeted it and its release date, so a shipped release's day is on the axis; at most two
+    // years.
     const first = input.events.find(
       (e) =>
         e.kind === 'field' &&
@@ -271,7 +273,12 @@ export function registerScopeReportRoutes(
         (e.to ?? '').split(',').includes(String(release.id)),
     );
     const today = localDate(input.now, timeZone);
-    let from = release.start_date ?? localDate(first?.at ?? release.created_at, timeZone);
+    const earliest = [
+      localDate(release.created_at, timeZone),
+      ...(first ? [localDate(first.at, timeZone)] : []),
+      ...(release.release_date ? [release.release_date] : []),
+    ].sort()[0] as string;
+    let from = release.start_date ?? earliest;
     if (from > today) from = today;
     const span = datesBetween(from, today);
     if (span.length > MAX_DAYS) from = span[span.length - MAX_DAYS] as string;

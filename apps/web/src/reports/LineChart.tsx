@@ -20,6 +20,8 @@ export interface LineChartProps {
   format: (value: number) => string;
   /** The value of one displayed unit, for round ticks (3600 when seconds show as hours). */
   unit?: number;
+  /** What the values count (tickets, hours, an estimate), named over the value axis. */
+  measure?: string;
   /** The table view's toggle and its first column's header. */
   tableLabel: string;
   xHeader: string;
@@ -41,6 +43,7 @@ export function LineChart({
   series,
   format,
   unit = 1,
+  measure,
   tableLabel,
   xHeader,
 }: LineChartProps) {
@@ -111,6 +114,7 @@ export function LineChart({
           ))}
         </ul>
       )}
+      {measure && <p className="chart-measure">{measure}</p>}
       <div
         ref={box}
         className="chart-plot"
