@@ -402,3 +402,9 @@
   height: var(--space-1);
   padding: 0;
 }
+
+/* A track's Summary (second sweep): each card of its grid ends at its content, never stretched to
+   its row neighbour's height, as a plan's Summary does (PL-37). */
+.track-summary .summary-sections {
+  align-items: start;
+}
