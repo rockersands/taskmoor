@@ -445,6 +445,38 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
     expect((await layout('dave')).json().locks).toEqual([]);
   });
 
+  it('[CORE-008] [IAM-010] the create form names the fields the person lacks the permission to set', async () => {
+    const track = await trackWith(lockedFlow());
+    const types = (await get('alice', `/api/v1/tracks/${track.key}/ticket-types`)).json();
+    // Dave only views this track: no Assign tickets, Schedule tickets or the like.
+    await database.db
+      .updateTable('track_role_actor')
+      .set({ role_id: roles.Viewers as number })
+      .where('track_id', '=', track.id)
+      .where('user_id', '=', users.dave?.id as number)
+      .execute();
+    const layout = (who: Who, operation = 'create') =>
+      get(
+        who,
+        `/api/v1/tracks/${track.key}/layout?ticketTypeId=${types.defaultTypeId}&operation=${operation}`,
+      );
+    const alice = (await layout('alice')).json();
+    expect(alice.withheld).toEqual([]);
+    const keys = new Set(
+      (alice.layout.tabs as { sections: { fields: { key: string }[] }[] }[]).flatMap((t) =>
+        t.sections.flatMap((s) => s.fields.map((f) => f.key)),
+      ),
+    );
+    const dave = (await layout('dave')).json();
+    // What the create route would refuse him, among the fields this layout has.
+    expect(dave.withheld).toEqual(
+      ['assignee', 'requester', 'startDate', 'dueDate', 'closeReason'].filter((k) => keys.has(k)),
+    );
+    expect(dave.withheld).toContain('assignee');
+    // The other operations say nothing of it.
+    expect((await layout('alice', 'view')).json()).not.toHaveProperty('withheld');
+  });
+
   it('[CORE-013] refuses rules that could not be met, or that name nobody known', async () => {
     const save = (rule: Record<string, unknown>) =>
       post('admin', '/api/v1/field-rule-sets', { name: `Rules ${Math.random()}`, rules: [rule] });

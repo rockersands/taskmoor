@@ -17,7 +17,9 @@ import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tick
  *   types "@": active people whose name contains the text or whose email starts with it, with
  *   `canView` saying whether they may see the ticket (or browse the track, before the ticket
  *   exists), so the editor can warn before mentioning someone who cannot (NTF-005 (1)). Those
- *   who can come first. Needs "Browse users and groups" and the track or ticket.
+ *   who can come first. Needs "Browse users and groups" and the track or ticket. With
+ *   `assignable=true`, only those who hold "Assignable user" in the track (the ticket's track),
+ *   for an assignee picker such as the create form's (CORE-008, IAM-010).
  *
  * Both only read.
  */
@@ -31,6 +33,7 @@ const mentionQuery = z
     ticket: z.string().min(1).max(300).optional(),
     q: z.string().max(200).default(''),
     limit: z.coerce.number().int().min(1).max(50).default(10),
+    assignable: z.enum(['true', 'false']).default('false'),
   })
   .strict()
   .refine((q) => (q.track === undefined) !== (q.ticket === undefined), 'track or ticket');
@@ -114,15 +117,26 @@ export function registerRichTextRoutes(
       .orderBy('id')
       .limit(q.data.limit * 3)
       .execute();
-    const people = await Promise.all(
-      rows.map(async (r) => {
-        const as = authorizer.context(ws, { userId: r.id });
-        const canView = ticket
-          ? await as.seesTicket(ticket)
-          : await as.can('browse_track', trackId as number);
-        return { id: r.id, name: r.name, canView };
-      }),
-    );
+    const assignableOnly = q.data.assignable === 'true';
+    const people = (
+      await Promise.all(
+        rows.map(async (r) => {
+          if (
+            assignableOnly &&
+            !(await authorizer.trackPermissions(ws, { userId: r.id }, trackId as number)).has(
+              'assignable_user',
+            )
+          ) {
+            return null;
+          }
+          const as = authorizer.context(ws, { userId: r.id });
+          const canView = ticket
+            ? await as.seesTicket(ticket)
+            : await as.can('browse_track', trackId as number);
+          return { id: r.id, name: r.name, canView };
+        }),
+      )
+    ).filter((p) => p !== null);
     people.sort((a, b) => Number(b.canView) - Number(a.canView));
     return { people: people.slice(0, q.data.limit) };
   });

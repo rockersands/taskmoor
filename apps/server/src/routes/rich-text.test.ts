@@ -404,6 +404,32 @@ describe('rich text formats and mentions (M1-017)', () => {
     ).toBe(400);
   });
 
+  it('[CORE-008] [IAM-010] offers only people who may be assigned in the track, for an assignee picker', async () => {
+    const res = await as('alice', {
+      method: 'GET',
+      url: '/api/v1/people/mentionable?track=RT&q=&assignable=true',
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const names = (res.json().people as { name: string }[]).map((p) => p.name);
+    // Victor only views the track and Nora has no role in it: neither holds "Assignable user".
+    expect(names).toContain('Alice Moreau');
+    expect(names).not.toContain('victor');
+    expect(names).not.toContain('nora');
+    const everyone = await as('alice', {
+      method: 'GET',
+      url: '/api/v1/people/mentionable?track=RT&q=&assignable=false',
+    });
+    expect((everyone.json().people as { name: string }[]).map((p) => p.name)).toContain('victor');
+    expect(
+      (
+        await as('alice', {
+          method: 'GET',
+          url: '/api/v1/people/mentionable?track=RT&assignable=yes',
+        })
+      ).statusCode,
+    ).toBe(400);
+  });
+
   it('[NTF-005] offers no one to people without "Browse users and groups"', async () => {
     await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
     try {
