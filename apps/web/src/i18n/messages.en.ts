@@ -43,16 +43,16 @@ export const messagesEn = {
   'track.section.releases': 'Releases',
   'track.section.files': 'Files and links',
   'track.section.statistics': 'Statistics',
-  'track.boardFailed': "This track's board could not be loaded. Try again in a moment.",
+  'track.boardFailed': 'This track’s board could not be loaded. Try again in a moment.',
   'track.notFound': 'No track has the key {key}, or you cannot see it.',
   'track.backlog.noneTitle': 'This track has no backlog',
   'track.backlog.none':
     'A backlog plans work in sprints, which only a Scrum board has. On this track, every ticket is on the board: its first column is where new work waits.',
   'track.backlog.openBoard': 'Open the board',
-  'track.backlog.kanbanAction': "Change the board's kind",
+  'track.backlog.kanbanAction': 'Change the board’s kind',
   'track.files.title': 'Files and links',
   'track.files.purpose':
-    "Everything attached or linked to this track's tickets, newest first. Each row leads to its ticket.",
+    'Everything attached or linked to this track’s tickets, newest first. Each row leads to its ticket.',
   'track.files.about':
     'Files live on tickets: this page gathers them, and the web links added to tickets, so a track’s documents are in one place. Only what is on tickets you may see is listed.',
   'track.files.failed': 'The files and links could not be loaded.',
@@ -63,7 +63,7 @@ export const messagesEn = {
   'track.files.truncated': 'Only the newest 200 of each are listed.',
   'track.outcomes.title': 'Outcomes',
   'track.outcomes.purpose':
-    "Each of this track's outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.",
+    'Each of this track’s outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.',
   'track.outcomes.about':
     'An outcome is a larger result the track works towards, with tickets under it. Its bar fills as those tickets close, and its dates come from the outcome itself.',
   'track.outcomes.failed': 'The outcomes could not be loaded.',
@@ -80,14 +80,14 @@ export const messagesEn = {
   'track.outcomes.howTo':
     'To add one, create a ticket of the type {types}, then add the tickets that work towards it from its page.',
   'track.outcomes.howToNone':
-    "None of this track's ticket types is at the outcome level. An administrator can add one in the track's settings.",
+    'None of this track’s ticket types is at the outcome level. An administrator can add one in the track’s settings.',
   'track.outcomes.create': 'Create a ticket',
   'track.outcomes.howToManage':
     'Choose New outcome to create one of the type {types}, then add the tickets that work towards it from its page.',
   'track.outcomes.manage.toggle': 'Manage outcomes',
   'track.outcomes.manage.title': 'Manage outcomes',
   'track.outcomes.manage.note':
-    "Create an outcome here, and use the tools under each one to change its summary and dates, move it up or down among the open ones, or close it. Each change is the same as on the outcome's own page.",
+    'Create an outcome here, and use the tools under each one to change its summary and dates, move it up or down among the open ones, or close it. Each change is the same as on the outcome’s own page.',
   'track.outcomes.manage.new': 'New outcome',
   'track.outcomes.manage.summary': 'Summary',
   'track.outcomes.manage.summaryMissing': 'Give the outcome a summary.',
@@ -109,7 +109,7 @@ export const messagesEn = {
   'track.outcomes.manage.closeHow': 'How to close {key}',
   'track.outcomes.manage.closed': 'Closed {key}.',
   'track.outcomes.manage.noClose':
-    "{key}'s workflow offers no way to a closed status from where it is now.",
+    '{key}’s workflow offers no way to a closed status from where it is now.',
   'track.outcomes.manage.onPage':
     'Closing {key} asks for more than can be filled in here: open it and close it from its page.',
   'track.outcomes.manage.forbidden': 'You may not make this change to this outcome.',
@@ -124,12 +124,12 @@ export const messagesEn = {
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
   'tracks.empty':
-    "A track holds a team or project's tickets. Administrators make them under Administration.",
+    'A track holds a team or project’s tickets. Administrators make them under Administration.',
   'tracks.emptyMayCreate':
-    "A track holds a team or project's tickets, with its board, backlog or list, and reports. Make the first one to start.",
+    'A track holds a team or project’s tickets, with its board, backlog or list, and reports. Make the first one to start.',
   'tracks.new': 'New track',
   'tracks.new.intro':
-    "A track holds a team or project's tickets. Its key starts every ticket's key.",
+    'A track holds a team or project’s tickets. Its key starts every ticket’s key.',
   'tracks.new.create': 'Create track',
   'tracks.new.cancel': 'Cancel',
   'tracks.new.close': 'Close without making a track',
@@ -152,7 +152,7 @@ export const messagesEn = {
   'trackGroups.count': '{count, plural, one {# track} other {# tracks}}',
   'trackGroups.empty': 'No tracks yet. Drop one here, or choose this group in a track’s menu.',
   'trackGroups.emptyShared': 'None of its tracks are open to you.',
-  'trackGroups.minimize': 'Minimize {name}',
+  'trackGroups.minimize': 'Minimise {name}',
   'trackGroups.open': 'Open {name}',
   'trackGroups.sharedBy': 'Shared by {name}',
   'trackGroups.sharedWith': 'Shared with {count, plural, one {# person} other {# people}}',
@@ -233,7 +233,7 @@ export const messagesEn = {
   'trackGroups.announce.deleted': '{name} deleted.',
   'trackGroups.announce.left': 'You left {name}.',
   'trackGroups.announce.renamed': 'Renamed to {name}.',
-  'trackGroups.announce.minimized': '{name} minimized.',
+  'trackGroups.announce.minimized': '{name} minimised.',
   'trackGroups.announce.opened': '{name} opened.',
   'purpose.tracks':
     'Every track you can see. Open one for its summary, board, backlog, calendar, timeline and statistics.',
@@ -469,7 +469,7 @@ export const messagesEn = {
   'tutorial.section.import': 'Import',
   'tutorial.section.importHint':
     'Bring tickets in from a CSV file, with a dry run first to check what will happen.',
-  'tutorial.setupOnly': 'For administrators',
+  'tutorial.setupOnly': 'For site and configuration administrators',
   'tutorial.actionOn': '{action}: {title}',
   'tutorial.loading': 'Reading your progress…',
   'tutorial.loadFailed':
@@ -859,7 +859,7 @@ export const messagesEn = {
   'importedLink.looking': 'Looking for what this link became…',
   'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',
   'importedLink.failed': 'The link could not be looked up. Try again in a moment.',
-  'importedLink.toSearch': 'Go to search',
+  'importedLink.notFound': 'Link not found',
   'saved.importProblem':
     'This saved search came from an import and does not run yet: {problem}. Change the query and save it to fix it.',
   'saved.failed': 'That did not work. Try again in a moment.',
@@ -983,17 +983,17 @@ export const messagesEn = {
   'auth.sso.error.invalidState':
     'The sign-in took too long, or it was started in another browser. Try again.',
   'auth.sso.error.providerError':
-    'Your identity provider did not complete the sign-in. Try again, and ask your administrator if it keeps happening.',
+    'Your identity provider did not complete the sign-in. Try again, and ask a site administrator if it keeps happening.',
   'auth.sso.error.providerUnavailable':
-    'Single sign-on is not available right now. Try again later, or ask your administrator.',
+    'Single sign-on is not available right now. Try again later, or ask a site administrator.',
   'auth.sso.error.emailUnverified':
-    'Your identity provider did not confirm your email address, so you could not be signed in. Ask your administrator for help.',
+    'Your identity provider did not confirm your email address, so you could not be signed in. Ask a site administrator for help.',
   'auth.sso.error.domainNotAllowed':
-    'Your email address is in a domain this sign-in option does not serve. Ask your administrator for help.',
+    'Your email address is in a domain this sign-in option does not serve. Ask a site administrator for help.',
   'auth.sso.error.noAccount':
-    'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
+    'There is no account for you here yet. Ask a site administrator to create one. If you were invited, sign in with the very address the invitation went to.',
   'auth.sso.error.accountDeactivated':
-    'Your account is deactivated. Ask your administrator if you need it again.',
+    'Your account is deactivated. Ask a site administrator if you need it again.',
   'auth.sso.error.unknown': 'Single sign-on did not work. Try again in a moment.',
   'auth.sso.breakGlassOnly':
     'The email and password did not sign you in. For this domain only break-glass accounts can use a password; everyone else signs in with {name}.',
@@ -1145,7 +1145,7 @@ export const messagesEn = {
   'account.intro.profile':
     'Your name, email, time zone and language, and how Taskmoor looks for you.',
   'account.intro.notifications':
-    'When Taskmoor tells you about changes, and whether by email, in your inbox or both.',
+    'When Taskmoor tells you about changes to the tickets you work on and follow, by email, in your inbox or both. Changes save at once.',
   'account.intro.security':
     'Your password, two-factor authentication and the devices where you are signed in.',
   'account.intro.tokens': 'The tokens your programs and scripts use to call the API as you.',
@@ -1159,8 +1159,6 @@ export const messagesEn = {
   'account.appearance.saved': 'Appearance saved to your account.',
   // Notification settings and unsubscribe links (M1-056, M1-057; NTF-002, NTF-004).
   'notifications.title': 'Notifications',
-  'notifications.intro':
-    'How Taskmoor tells you about changes to the tickets you work on and follow. Changes save at once.',
   'notifications.loading': 'Reading your notification settings…',
   'notifications.failed': 'Your notification settings could not be read. Try again in a moment.',
   'notifications.email': 'Email',
@@ -1506,6 +1504,7 @@ export const messagesEn = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject} {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} “{name}”',
   'admin.audit.entryAbout': 'About: {subject}',
   'admin.audit.entryFrom': 'From {address}',
   'admin.audit.subject.access': 'Access',
@@ -2032,6 +2031,8 @@ export const messagesEn = {
   'admin.frontends.environment': 'From the server’s environment',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS lists these. Change them there; a restart applies the change.',
+  'admin.frontends.new': 'New frontend',
+  'admin.frontends.cancel': 'Cancel',
   'admin.frontends.add': 'Add a frontend',
   'admin.frontends.origin': 'Origin',
   'admin.frontends.originHint':
@@ -2275,7 +2276,7 @@ export const messagesEn = {
   'admin.security.groups': 'Also required for members of these groups',
   'admin.security.noGroups': 'There are no groups yet.',
   'admin.security.groupsFailed': 'The groups could not be read. Try again in a moment.',
-  'admin.security.domains': 'Your organization’s email domains',
+  'admin.security.domains': 'Your organisation’s email domains',
   'admin.security.domainsHint':
     'One per line, such as example.com. Once you name one, people whose email is at any other domain are external and must use two-factor authentication. Leave it empty to treat everyone alike.',
   'admin.security.save': 'Save policy',
@@ -2787,12 +2788,21 @@ export const messagesEn = {
   'tickets.error.notAssignable': 'This person cannot be given tickets in this track.',
   'tickets.error.wrongLevel': 'A ticket of this type cannot sit under that ticket.',
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
+  'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',
+  'tickets.create.estimateHint': 'For example 2h 30m, or 1d.',
+  'tickets.create.numberHint': 'A number, for example 3.',
   'tickets.create.removeParent': 'Remove {key} as parent',
   'tickets.create.noReleases': 'This track has no releases to choose.',
   'tickets.create.noAreas': 'This track has no areas to choose.',
+  'tickets.create.requesterHint': 'Type a name to find someone. Left empty, you are the requester.',
+  'tickets.create.restrictedHint': 'Type a name. Only the people this field allows are offered.',
+  'tickets.create.parentHintLevel':
+    'Type a ticket’s key or words from its summary. Only tickets one level up are offered.',
+  'tickets.create.parentHintTrack':
+    'Type a ticket’s key or words from its summary. Only tickets one level up in this track are offered.',
   'tickets.pickers.personHint': 'Type a name to find someone.',
   'tickets.pickers.remove': 'Remove {name}',
   'tickets.pickers.removeShort': 'Remove',
@@ -2801,6 +2811,12 @@ export const messagesEn = {
   'tickets.pickers.peopleFailed': 'The search did not work. Try again in a moment.',
   'tickets.pickers.personChosen': '{name} chosen.',
   'tickets.pickers.personRemoved': '{name} removed.',
+  'tickets.pickers.groupHint': 'Type a name to find a group.',
+  'tickets.pickers.noGroups': 'No group matches.',
+  'tickets.pickers.groupsFound': '{count, plural, one {# group found} other {# groups found}}',
+  'tickets.pickers.teamHint': 'Type a name to find a team.',
+  'tickets.pickers.noTeams': 'No team matches.',
+  'tickets.pickers.teamsFound': '{count, plural, one {# team found} other {# teams found}}',
   'workflow.check.fieldRequired': '{field} is required.',
   'workflow.check.fieldModified': 'Change {field} first.',
   'workflow.check.fieldSingleValue': '{field} takes one value only.',
@@ -2856,7 +2872,7 @@ export const messagesEn = {
   'admin.users.status.active': 'Active people',
   'admin.users.status.deactivated': 'Deactivated people',
   'admin.users.status.all': 'Everyone',
-  'admin.users.add': 'Add a person',
+  'admin.users.add': 'New person',
   'admin.users.name': 'Name',
   'admin.users.email': 'Email',
   'admin.users.makeSiteAdmin': 'Site administrator',
@@ -2928,7 +2944,7 @@ export const messagesEn = {
   'admin.groups.added': '{name} was added.',
   'admin.groups.deleted': '{name} was deleted.',
   'admin.groups.counts':
-    '{members, plural, one {# member} other {# members}}, {groups, plural, one {# group} other {# groups}} inside',
+    '{members, plural, one {# member} other {# members}} · {groups, plural, one {# group} other {# groups}} inside',
   'admin.groups.manage': 'Manage',
   'admin.groups.manageOf': 'Manage {name}',
   'admin.groups.membersOf': 'Members of {name}',
@@ -3089,7 +3105,7 @@ export const messagesEn = {
   'trackPeople.result.alreadyHolds': '{who}: already holds the role.',
   'trackPeople.result.sendFailed': 'The email could not be sent; try again from the list.',
   'trackPeople.result.external':
-    'This address is outside your organization, so two-factor authentication will be needed.',
+    'This address is outside your organisation, so two-factor authentication will be needed.',
   'trackPeople.problem.appoint':
     'You cannot give or remove the role that runs this track. A site administrator can.',
   'trackPeople.problem.lastAdmin':
@@ -3130,7 +3146,7 @@ export const messagesEn = {
   'invite.join': 'Join {key}',
   'invite.otherAccount': 'This invitation is for {email}. Sign out, then open the link again.',
   'invite.signOut': 'Sign out',
-  'invite.useProvider': 'This address signs in through its organization: sign in below.',
+  'invite.useProvider': 'This address signs in through its organisation: sign in below.',
   'invite.signInToFinish': 'Sign in to finish.',
   'admin.tracks.title': 'Tracks',
   'admin.tracks.intro':
@@ -3451,6 +3467,8 @@ export const messagesEn = {
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
   'admin.permissions.global': 'Global permissions',
+  'admin.permissions.newGrantIn': 'New permission in {name}',
+  'admin.permissions.newGlobal': 'New global permission',
   'admin.permissions.addGlobal': 'Give a global permission',
   'admin.permissions.grantee.role': 'Role {name}',
   'admin.permissions.grantee.group': 'Group {name}',
@@ -3774,6 +3792,24 @@ export const messagesEn = {
   'bulk.cancelFailed': 'The bulk change could not be cancelled. Try again in a moment.',
   'bulk.failures': 'Tickets that were not changed',
   'bulk.moreFailures': 'Show more',
+  'bulk.change': 'The change: {change}.',
+  'bulk.change.set': '{field} set to {value}',
+  'bulk.change.cleared': '{field} cleared',
+  'bulk.change.changed': '{field} changed',
+  'bulk.change.none': 'none',
+  'bulk.change.customFields':
+    '{count, plural, one {# custom field} other {# custom fields}} changed',
+  'bulk.change.moved': 'moved to the {track} track',
+  'bulk.change.movedElsewhere': 'moved to another track',
+  'bulk.change.transitioned': 'moved to the {status} status',
+  'bulk.change.transitionedElsewhere': 'moved to another status',
+  'bulk.change.transitionFields':
+    '{count, plural, one {# field} other {# fields}} filled in on the way',
+  'bulk.changed': 'Tickets that were changed',
+  'bulk.clone.changed': 'The copies',
+  'bulk.moreChanged': 'Show more',
+  'bulk.backToSearch': 'Back to the search',
+  'bulk.toSearch': 'Go to Search',
   'bulk.reason.notFound': 'Not found, or you may not see it.',
   'bulk.reason.forbidden': 'You may not make this change to this ticket.',
   'bulk.reason.invalidFields': 'Some of the values do not fit this ticket.',
@@ -3970,7 +4006,7 @@ export const messagesEn = {
     'Statuses belong to the whole site, and each workflow uses some of them. The stage gives a status its colour and meaning.',
   'admin.statuses.loading': 'Loading statuses…',
   'admin.statuses.failed': 'The statuses could not be loaded.',
-  'admin.statuses.add': 'Add a status',
+  'admin.statuses.add': 'New status',
   'admin.statuses.formNew': 'New status',
   'admin.statuses.formEdit': 'Edit {name}',
   'admin.statuses.name': 'Name',
@@ -4384,8 +4420,8 @@ export const messagesEn = {
   'inbox.view.all': 'All',
   'inbox.view.priority': 'Priority',
   'inbox.view.snoozed': 'Snoozed',
-  'inbox.unreadCount': '{count, plural, =0 {nothing unread} one {# unread} other {# unread}}',
-  'inbox.unreadMore': 'more than 999 unread',
+  'inbox.unreadCount': '{count, plural, =0 {Nothing unread} one {# unread} other {# unread}}',
+  'inbox.unreadMore': 'More than 999 unread',
   'inbox.unreadOnly': 'Unread only',
   'inbox.filter.type': 'Type',
   'inbox.filter.anyType': 'Any type',
@@ -4550,7 +4586,7 @@ export const messagesEn = {
   'boards.create.trackChoose': 'Choose a track',
   'boards.create.trackOption': '{name} ({key})',
   'boards.create.trackHint':
-    "The board shows this track's tickets. Its columns start from the statuses of the track's workflows.",
+    'The board shows this track’s tickets. Its columns start from the statuses of the track’s workflows.',
   'boards.create.noTracks': 'You cannot see any track yet, so a board would have nothing to show.',
   'boards.create.useQuery': 'Advanced: choose the tickets with a query',
   'boards.create.useTrack': 'Choose a track instead',
@@ -4608,7 +4644,7 @@ export const messagesEn = {
   'boards.settings.remove.to': 'Move them to',
   'boards.settings.remove.confirm': 'Remove the column',
   'boards.settings.reach.noStatus':
-    "No card can go to {column} yet: it has no status in this track's workflow.",
+    'No card can go to {column} yet: it has no status in this track’s workflow.',
   'boards.settings.reach.noPath':
     'No card can reach {column}: nothing in the workflow leads there.',
   'boards.settings.reach.shared':
@@ -4926,6 +4962,8 @@ export const messagesEn = {
   'reports.scope.sprintTitle': 'Work per sprint',
   'reports.scope.sprintSummary':
     'Completed and added work in each of {count, plural, one {# sprint} other {# sprints}}.',
+  'reports.scope.sprintSummaryOutside':
+    'Completed and added work in each of {count, plural, one {# sprint} other {# sprints}}, and outside the sprints: {completed} completed, {added} added.',
   'reports.scope.completed': 'Completed',
   'reports.scope.added': 'Added',
   'reports.scope.removed': 'Removed',
@@ -4933,6 +4971,16 @@ export const messagesEn = {
   'reports.scope.end': 'At the end',
   'reports.scope.sprint': 'Sprint',
   'reports.scope.table': 'Work by sprint',
+  'reports.scope.outside': 'Outside the sprints',
+  'reports.measure.ticketCount': 'Tickets',
+  'reports.measure.originalEstimate': 'Hours of estimate',
+  'reports.measure.field': 'Estimate',
+  'reports.measure.scope.ticketCount': 'Tickets in scope',
+  'reports.measure.scope.originalEstimate': 'Hours in scope',
+  'reports.measure.scope.field': 'Estimate in scope',
+  'reports.measure.completed.ticketCount': 'Tickets completed',
+  'reports.measure.completed.originalEstimate': 'Hours completed',
+  'reports.measure.completed.field': 'Estimate completed',
   'reports.release.title': 'Release progress',
   'reports.release.summary': 'Release progress: {completed} done of {scope} in scope.',
   'reports.release.scope': 'Scope',
@@ -4943,9 +4991,11 @@ export const messagesEn = {
   'reports.release.forecast': 'At the pace of the last 14 days, the work is done by {date}.',
   'reports.release.noForecast': 'No work was completed lately, so there is no forecast yet.',
   'reports.outcome.pick': 'Enter an outcome’s key to see its report.',
-  'reports.outcome.done': 'Done',
-  'reports.outcome.open': 'Still open',
-  'reports.outcome.unestimated': 'Open without an estimate',
+  'reports.outcome.chartTitle': 'Outcome progress',
+  'reports.outcome.chartSummary': 'Outcome progress: {completed} done of {scope} in scope.',
+  'reports.outcome.done': 'Tickets done',
+  'reports.outcome.open': 'Tickets still open',
+  'reports.outcome.unestimated': 'Open tickets without an estimate',
   'reports.outcome.empty': 'No ticket is under this outcome now.',
   'reports.outcome.tickets': 'Tickets under the outcome',
   'reports.outcome.ticket': 'Ticket',
@@ -4973,12 +5023,12 @@ export const messagesEn = {
   'dashboards.kind.group-by': 'Grouped tickets',
   'dashboards.kind.workload': 'Workload',
   'dashboards.kind.time-tracking': 'Time tracking',
-  'dashboards.kind.track-summary': "This track's numbers",
+  'dashboards.kind.track-summary': 'This track’s numbers',
   'dashboards.value.none': 'None',
   'dashboards.value.other': 'Other',
   'dashboards.widget.failed': 'This widget could not be loaded.',
   'dashboards.widget.badQuery':
-    "Taskmoor cannot read the query in this widget, so it shows nothing. Edit the dashboard and fix the query in the widget's settings.",
+    'Taskmoor cannot read the query in this widget, so it shows nothing. Edit the dashboard and fix the query in the widget’s settings.',
   'dashboards.widget.noLinks': 'No links yet.',
   'dashboards.widget.noTickets': 'No tickets.',
   'dashboards.widget.noData': 'Nothing to show yet.',
@@ -5010,7 +5060,8 @@ export const messagesEn = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} in the period shown.',
   'dashboards.widget.groupDone': '{closed} of {total} done',
   'dashboards.widget.unestimated': 'Without an estimate',
-  'dashboards.widget.noTime': 'No ticket here has any {statistic}.',
+  'dashboards.widget.noTime': 'No ticket here has a value for {statistic}.',
+  'dashboards.widget.noneClosed': 'No ticket was closed in this period.',
   'dashboards.widget.workSummary':
     '{statistic} by value: {value} over {count, plural, one {# ticket} other {# tickets}}.',
   'dashboards.widget.ticket': 'Ticket',
@@ -5089,6 +5140,8 @@ export const messagesEn = {
   'dashboards.leaveWallboard': 'Leave the wallboard',
   'dashboards.makeDefault': 'Make it everyone’s home',
   'dashboards.madeDefault': 'It is everyone’s home dashboard now.',
+  'dashboards.madeDefaultShared':
+    'It is everyone’s home dashboard now, so everyone signed in sees it.',
   'dashboards.visibility': 'Who sees it',
   'dashboards.visibility.private': 'Only me',
   'dashboards.visibility.any_user': 'Everyone signed in',
@@ -5348,22 +5401,23 @@ export const messagesEn = {
   'summary.purpose':
     'Where this track stands, at a glance: every number opens the search behind it.',
   'summary.about':
-    "Until someone customizes it, this page shows the track's numbers. The track's owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.",
-  'summary.customize': 'Customize',
+    'Until someone customises it, this page shows the track’s numbers. The track’s owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.',
+  'summary.customize': 'Customise',
   'summary.backToDefault': 'Back to the default',
-  'summary.confirmDefault':
-    'Go back to the default summary? This removes the widgets chosen for this track, for everyone.',
+  'summary.resetOutcome':
+    'The summary of {track} returns to the default for everyone, and the widgets chosen for it are removed. This cannot be undone.',
+  'summary.resetOf': 'Reset the summary of {track}',
   'summary.backToDefaultDone': 'This track shows its default summary again.',
   'summary.save': 'Save the summary',
   'summary.conflict': 'Someone changed this summary meanwhile. Reload the page and try again.',
-  'summary.forbidden': "Only the track's owner and administrators can change its summary.",
+  'summary.forbidden': 'Only the track’s owner and administrators can change its summary.',
   'summary.unsaved': 'Save the summary to see this widget.',
   'summary.queryHint': 'Empty for this track',
-  'summary.numbersFailed': "This track's numbers could not be loaded.",
+  'summary.numbersFailed': 'This track’s numbers could not be loaded.',
   'summary.emptyTitle': 'No widgets on this summary',
-  'summary.empty': "The track's administrators chose no widgets for it yet.",
+  'summary.empty': 'The track’s administrators chose no widgets for it yet.',
   'summary.emptyEditable':
-    'Choose Customize to add some, or Back to the default for the numbers this page starts with.',
+    'Choose Customise to add some, or Back to the default for the numbers this page starts with.',
   'summary.filter.label': 'Filter this summary for yourself',
   'summary.filter.field': 'Only tickets that match',
   'summary.filter.placeholder': 'For example: assignee = currentUser()',
@@ -5371,7 +5425,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    "Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page's address, so you can bookmark it. The summary everyone else sees does not change.",
+    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',
@@ -5379,7 +5433,7 @@ export const messagesEn = {
   'statistics.purpose':
     'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
   'statistics.about':
-    "Each report counts only the tickets you can see in this track, so two people may read different numbers. Reports that follow sprints need the track's board to be a Scrum board; the others work on any board.",
+    'Each report counts only the tickets you can see in this track, so two people may read different numbers. Reports that follow sprints need the track’s board to be a Scrum board; the others work on any board.',
   'statistics.group.flow': 'Flow',
   'statistics.group.sprints': 'Sprints',
   'statistics.group.releases': 'Releases',
@@ -5394,13 +5448,14 @@ export const messagesEn = {
   'statistics.workloadNote': 'The remaining estimate of the open tickets you can see, by assignee.',
   'statistics.needsScrum.title': '{report} needs a Scrum board',
   'statistics.needsScrum':
-    "This report follows sprints, and this track's board is a Kanban board, which has none. The flow and ticket reports work on any board.",
+    'This report follows sprints, and this track’s board is a Kanban board, which has none. The flow and ticket reports work on any board.',
   'statistics.noSprints.title': 'No sprint has started yet',
   'statistics.noSprints': 'A sprint report appears here once a sprint of this board starts.',
   'statistics.sprint': 'Sprint',
   'statistics.axis.status': 'Status',
   'statistics.axis.priority': 'Priority',
   'statistics.axis.type': 'Type',
+  'statistics.axis.track': 'Track',
   'statistics.axis.assignee': 'Assignee',
   'statistics.axis.requester': 'Requester',
   'statistics.axis.creator': 'Creator',
@@ -5713,7 +5768,7 @@ export const messagesEn = {
   'sprints.settings.statistic': 'Estimate with',
   'sprints.settings.statistic.ticketCount': 'Ticket count',
   'sprints.settings.statistic.originalEstimate': 'Original time estimate',
-  'sprints.settings.statistic.field': 'A number field, such as story points',
+  'sprints.settings.statistic.field': 'A number field, such as Points',
   'sprints.settings.field': 'Number field',
   'sprints.settings.fieldPlaceholder': 'Pick a number field',
   'sprints.settings.fieldUnknown': 'Field {id}',
@@ -5873,6 +5928,8 @@ export const messagesEn = {
   'ai.strict': 'Strict mode',
   'ai.strictHint':
     'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for below.',
+  'admin.ai.strictHintNoTracks':
+    'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for. Turn AI on and save to choose them.',
   'ai.provider': 'Provider',
   'ai.provider.none': 'No provider',
   'ai.provider.anthropic': 'Anthropic API',
@@ -5996,6 +6053,8 @@ export const messagesEn = {
   'ai.refused.unavailable': 'The AI provider is not answering. Try again later.',
   'ai.refused.failed': 'AI could not help with this request.',
   'admin.aiUsage.title': 'AI usage',
+  'admin.aiUsage.about':
+    'The AI calls of a period, counted by day, feature, person and model, at the rates of AI limits and prices. Your organisation pays the provider directly; Taskmoor charges nothing. Days are in UTC.',
   'admin.aiUsage.forbidden': 'Only site administrators see AI usage.',
   'admin.aiUsage.statementFailed': 'What leaves this site could not be loaded.',
   'admin.aiUsage.usage': 'Usage',
@@ -6394,7 +6453,7 @@ export const messagesEn = {
     'Once a limit is reached, the AI calls it covers are refused before anything is sent, until its period starts again. A call already running still finishes.',
   'admin.aiLimits.noLimits':
     'AI runs with no ceiling until you add one. Add one to stop it at a number of tokens or a cost.',
-  'admin.aiLimits.addLimit': 'Add a limit',
+  'admin.aiLimits.addLimit': 'New limit',
   'admin.aiLimits.limitName': '{what}, per {period}',
   'admin.aiLimits.resets': 'Starts again {at} UTC',
   'admin.aiLimits.change': 'Change',
@@ -6438,7 +6497,7 @@ export const messagesEn = {
   'admin.aiLimits.resetPriceOf': 'Back to the list price: {name}',
   'admin.aiLimits.priceSaved': 'The rate of {model} was saved.',
   'admin.aiLimits.priceReset': '{model} is back to its list price.',
-  'admin.aiLimits.addPrice': 'Add a rate',
+  'admin.aiLimits.addPrice': 'New rate',
   'admin.aiLimits.provider': 'Provider',
   'admin.aiLimits.providerHint':
     'As the AI page names it, for example anthropic, bedrock or vertex.',
@@ -6583,7 +6642,7 @@ export const messagesEn = {
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
-  'ticketTools.links.archived': "That ticket's track is archived, so its links cannot change.",
+  'ticketTools.links.archived': 'That ticket’s track is archived, so its links cannot change.',
   'ticketTools.subtickets.title': 'Subtickets',
   'ticketTools.children.title': 'Tickets under this',
   'ticketTools.subtickets.empty': 'None yet.',
@@ -6886,10 +6945,10 @@ export const messagesEn = {
     'The form as the server will give it, with the field rules applied. It follows your changes before you save.',
   'layouts.preview.type': 'Preview as',
   'layouts.preview.track': 'Fields and rules of',
-  'layouts.preview.noTrack': 'No particular track (shared fields, default rules)',
+  'layouts.preview.noTrack': 'No particular track',
   'layouts.preview.ownerTrack': 'The track this set belongs to',
   'layouts.preview.trackHint':
-    'Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
+    'With no particular track, the preview uses the shared fields and the default rules. Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
   'layouts.preview.fixedTrack':
     'With the fields and rules of {key} · {name}, the track this set belongs to.',
   'layouts.preview.noTypes': 'There are no ticket types to preview.',
@@ -6909,6 +6968,8 @@ export const messagesEn = {
   'layouts.preview.leftOut': 'Placed, but not on this form:',
   'layouts.preview.reason.hidden': '{field}: a field rule hides it.',
   'layouts.preview.reason.notApplicable': '{field}: it does not apply to this ticket type here.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: it is set on the ticket once it exists, so the create form leaves it out.',
   'layouts.preview.reason.computed':
     '{field}: its value is computed, so the create form leaves it out.',
   'purpose.crossTracks':

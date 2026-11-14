@@ -2,6 +2,7 @@ import { ApiError } from '../../api/client';
 import type {
   AppliedTemplate,
   FieldValueOption,
+  Named,
   PickerClient,
   SavedTemplate,
   TemplateBody,
@@ -155,12 +156,13 @@ export function fakePickerClient(
     fields: { '7': 70 },
   },
   answer: Partial<AppliedTemplate> = {},
+  names: Record<string, Named[]> = {},
 ): FakePickerClient {
   const applied: FakePickerClient['applied'] = [];
   return {
     applied,
     list: async () => templates,
-    start: async () => start,
+    start: async () => ({ start, names }),
     apply: async (id, body) => {
       applied.push({ id, body });
       return {

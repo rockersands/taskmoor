@@ -239,6 +239,20 @@ become **translucent glass**:
     board's floating choices sit outside any glass and stay where they are; they should move onto
     it as their pages are next touched.
   - `DialogHead` gives a `ModalDialog` the create dialog's title row with **Close**.
+- **Glass cards under 768 px wide are opaque** (the second page sweep, 2026-11-13; this replaces
+  the blurred cards above for that width, and the user may still choose otherwise). On a phone,
+  Account's notifications card (about 2,500 px tall) showed a hard band of another part of the
+  canvas across its whole width after a scroll, while the gutter beside it stayed right: Chromium
+  drew the card's blurred backdrop out of step with the window-fixed canvas. A static page and the
+  stories did not reproduce it, so the trigger is not established. A first fix dropped only the
+  blur and kept the translucent fill, which is the state the fallback rule says glass is never in.
+  Now one rule at the end of the glass details in `surfaces.css` gives `.glass-card`, under
+  `max-width: 767px`, the same opaque tokens as the fallback where glass cannot blur (the skin's
+  `--color-surface`, a clear sheen, a plain border for the rim, opaque wells and fields inside) and
+  no backdrop filter. It goes by width alone, as every compact layout does (ADR-033), so a narrow
+  desktop window shows the same. The top bar and wider screens are unchanged.
+  The story `Shell/SharedStyles` GlassOnAPhone holds it in both skins; GlassOnADesktop holds the
+  blur at 768 px and wider; `design-offenders.ts` names the rule among the allowed opaque surfaces.
 - **Destructive actions** (D13): `button-danger-quiet` is the first step of Deactivate, Erase,
   Delete and Revoke tokens, the quiet pill's shape in the danger colours; `shell/DangerAction.tsx`
   opens a question in its place that says what will happen, with the action by name as

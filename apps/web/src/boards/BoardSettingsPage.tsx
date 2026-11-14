@@ -786,18 +786,15 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
                       onCancel={() => setRemoving(null)}
                     />
                   )}
-                  {column.id &&
-                    reach &&
-                    reach.columns[column.id] &&
-                    reach.columns[column.id] !== 'ok' && (
-                      <ColumnReachNote
-                        name={label}
-                        problem={reach.columns[column.id] as 'no_status' | 'no_path'}
-                        reach={reach}
-                        fixing={fixing === column.id}
-                        onFix={() => void fixColumn(column.id as string)}
-                      />
-                    )}
+                  {column.id && reach?.columns[column.id] && reach.columns[column.id] !== 'ok' && (
+                    <ColumnReachNote
+                      name={label}
+                      problem={reach.columns[column.id] as 'no_status' | 'no_path'}
+                      reach={reach}
+                      fixing={fixing === column.id}
+                      onFix={() => void fixColumn(column.id as string)}
+                    />
+                  )}
                 </li>
               );
             })}

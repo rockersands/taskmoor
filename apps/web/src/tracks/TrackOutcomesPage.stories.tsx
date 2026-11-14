@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import type { TrackOutcome } from './client';
 import { fakeTrackClient, managedOutcomes, outcomePages, SHOP_OUTCOMES } from './fixtures';
 import { TrackLayout } from './TrackLayout';
@@ -103,7 +103,7 @@ export const NoOutcomeType: Story = {
   args: { client: withOutcomes([], 100, []) },
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByText(/None of this track's ticket types/),
+      await within(canvasElement).findByText(/None of this track’s ticket types/),
     ).toBeVisible();
   },
 };
@@ -185,7 +185,7 @@ export const ManagingOnAPhone: Story = {
 
 /** A finger reaches every tool of the panel (ADR-033). */
 export const ManagingOnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   render: () => <Managed />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

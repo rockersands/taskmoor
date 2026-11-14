@@ -44,15 +44,19 @@ describe('unsubscribe page (M1-057)', () => {
     ).toBeVisible();
   });
 
-  it('says when a link is not valid or missing', async () => {
+  it('[NTF-002] says when a link is not valid, as an alert in the error style (D24)', async () => {
     renderPage(fakeUnsubscribeClient({ inspect: () => Promise.reject(new Error('404')) }));
-    expect(await screen.findByText(/This unsubscribe link is not valid/)).toBeVisible();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/This unsubscribe link is not valid/);
+    expect(alert).toHaveClass('page-note');
   });
 
   it('[NTF-002] says a missing link is missing, apart from one that is not valid (AC-15)', () => {
     window.location.hash = '#/unsubscribe';
     renderPage();
-    expect(screen.getByText(/This address has no unsubscribe link in it/)).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /This address has no unsubscribe link in it/,
+    );
     expect(screen.queryByText(/not valid/)).toBeNull();
     // No intro that would contradict it (AC-7), and the frame's one way out (D24).
     expect(screen.queryByText(/Stop the emails this link stands for/)).toBeNull();

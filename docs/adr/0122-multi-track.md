@@ -943,11 +943,11 @@ touch drags), and how the image looks, which needs a person to look at it.
 
 ### Stage 5 (T-089d): the program board and dependency options
 
-**Designed and built on 2026-11-13, not merged.** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
+**Designed and built on 2026-11-13; on `main` at `443b2dcd` (2026-11-14).** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
 built (the wordings are under "Tests"). The user decided on 2026-11-13 (`decisions.csv`, rows on
 T-089i and T-241) to build PLN-013 with the program board in 1.0, that blockers outside the plan
 stay a count only, that the section is called **Plans** and that the interface says **site**. The
-questions at the end are the user's; the design takes the first answer each time.
+questions at the end are the user's; the design takes the first answer each time. **Answered on 2026-11-14 (T-300): the user kept all twelve as built.**
 
 A **program board** lays a plan's work out by team and iteration: a row per team, a column per
 period, and in each cell the outcomes and the work (levels 1 and 0, spec 00) that team has due in

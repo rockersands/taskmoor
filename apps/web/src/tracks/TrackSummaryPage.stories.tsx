@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
 import { TrackSummaryPage } from './TrackSummaryPage';
 
@@ -64,6 +64,34 @@ export const RowsThatFill: Story = {
   },
 };
 
+/**
+ * Each section ends at its content (RPT-006; second sweep): a short list beside a long one leaves
+ * no empty card under it, as a plan's Summary does (PL-37).
+ */
+export const SectionsEndAtTheirContent: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Open by assignee' });
+    const sections = Array.from(canvasElement.querySelectorAll<HTMLElement>('.summary-section'));
+    await expect(sections.length).toBeGreaterThan(1);
+    const empty = sections.map((section) => {
+      const last = section.lastElementChild?.getBoundingClientRect().bottom ?? 0;
+      const style = getComputedStyle(section);
+      const edge =
+        Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth);
+      return Math.round(section.getBoundingClientRect().bottom - edge - last);
+    });
+    await expect(empty).toEqual(sections.map(() => 0));
+  },
+};
+
 /** On a phone the tiles go two to a row and the fifth spans the last row, never alone in half. */
 export const RowsThatFillOnAPhone: Story = {
   decorators: [
@@ -93,7 +121,7 @@ export const CustomizedForAViewer: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('article', { name: 'Open bugs' })).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Customize' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Customise' })).toBeNull();
   },
 };
 
@@ -102,7 +130,7 @@ export const Customizing: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Customize' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Customise' }));
     await expect(await canvas.findByRole('button', { name: 'Save the summary' })).toBeVisible();
   },
 };
@@ -112,8 +140,56 @@ export const DefaultForAnAdministrator: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Customize' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Customise' })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Back to the default' })).toBeNull();
+  },
+};
+
+/** Opens the question before going back to the default (D13, T-273). */
+const askToGoBack = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole('button', { name: 'Back to the default' }));
+  await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  return canvas;
+};
+const RESETTABLE = {
+  client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }),
+};
+const RESET_OUTCOME =
+  'The summary of Shop returns to the default for everyone, and the widgets chosen for it are removed. This cannot be undone.';
+
+/**
+ * Back to the default removes the track's widgets for everyone, so it asks first (D13, T-273): the
+ * button looks like a danger, and the question in its place says what will happen.
+ */
+export const AskingToGoBackToTheDefault: Story = {
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    const canvas = await askToGoBack(canvasElement);
+    await expect(canvas.getByRole('group', { name: RESET_OUTCOME })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Reset the summary of Shop' })).toBeVisible();
+    await expect(canvas.getByRole('article', { name: 'Open bugs' })).toBeVisible();
+  },
+};
+
+/** The question on a phone: under the title, nothing sideways. */
+export const AskingToGoBackOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    await askToGoBack(canvasElement);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/** A finger reaches both answers (ADR-033). */
+export const AskingToGoBackOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  args: RESETTABLE,
+  play: async ({ canvasElement }) => {
+    await askToGoBack(canvasElement);
+    await expect(tooSmallForAFinger(canvasElement, ['.danger-confirm button'])).toEqual([]);
   },
 };
 
@@ -126,14 +202,14 @@ export const PhoneCustomizing: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Customize' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Customise' }));
     await expect(await canvas.findByRole('button', { name: 'Save the summary' })).toBeVisible();
   },
 };
 
 /** A finger reaches every number, however few its digits (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('listitem');
     await expect(tooSmallForAFinger(canvasElement, ['.report-stats a', '.summary-list a'])).toEqual(
@@ -161,7 +237,7 @@ export const FilteredForThemselves: Story = {
       canvas.getByText('Showing only the tickets that match assignee = currentUser().'),
     ).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Clear the filter' })).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Customize' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Customise' })).toBeNull();
   },
 };
 
@@ -190,11 +266,11 @@ export const FilteredOnAPhone: Story = {
 
 /** A finger reaches the filter's field and each of its buttons (ADR-033). */
 export const FilterOnATouchScreen: Story = {
-  beforeEach: () => {
-    const touch = asOnATouchScreen();
+  beforeEach: async () => {
+    const touch = await onARealTouchScreen();
     const address = filtered('assignee = currentUser()')();
-    return () => {
-      touch();
+    return async () => {
+      await touch();
       address();
     };
   },

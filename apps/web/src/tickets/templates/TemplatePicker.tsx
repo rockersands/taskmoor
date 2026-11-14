@@ -9,6 +9,8 @@ export interface PickedTemplate {
   template: SavedTemplate;
   start: Record<string, unknown>;
   extras: string[];
+  /** Body keys it filled into the form's pickers (T-265): cleared there, they are left out. */
+  picked: string[];
   /** Extras the person turned off: left out of the ticket. */
   off: ReadonlySet<string>;
   /** Whether its subtickets are made too. */
@@ -32,6 +34,13 @@ export interface TemplatePickerProps {
   /** The form as laid out now; a template can be chosen once it is here. */
   form: TicketForm | null;
   picked: PickedTemplate | null;
+  /**
+   * The fields whose pickers the form has, which a template's people, groups, teams, releases and
+   * areas fill (custom ones as `cf[12]`).
+   */
+  pickable?: ReadonlySet<string>;
+  /** The ids each release and area picker offers, by field key, once its list is here. */
+  offered?: Readonly<Record<string, readonly number[]>>;
   /** A template was chosen (with what it fills in), or none. */
   onPick: (picked: PickedTemplate | null, fill: FormFill | null) => void;
   onChange: (picked: PickedTemplate) => void;
@@ -39,8 +48,10 @@ export interface TemplatePickerProps {
 
 /**
  * Starting a ticket from a template (CORE-030): the templates that fit the track and ticket type
- * in the create form, shown only when there are some. Choosing one fills the form for review.
- * Values the form cannot edit, and the subtickets, are listed with a checkbox each.
+ * in the create form, shown only when there are some. Choosing one fills the form for review,
+ * its pickers too (its assignee, releases and areas, T-265; its custom people, groups, teams,
+ * releases and areas, T-276). Values the form cannot edit, and the subtickets, are listed with a
+ * checkbox each.
  */
 export function TemplatePicker({
   client,
@@ -48,6 +59,8 @@ export function TemplatePicker({
   typeId,
   form,
   picked,
+  pickable,
+  offered,
   onPick,
   onChange,
 }: TemplatePickerProps) {
@@ -81,9 +94,24 @@ export function TemplatePicker({
       return;
     }
     try {
-      const start = await client.start(template.id, track);
-      const fill = fillForm(start, form);
-      onPick({ template, start, extras: fill.extras, off: new Set(), subtickets: true }, fill);
+      const { start, names } = await client.start(template.id, track);
+      const fill = fillForm(start, form, {
+        keys: pickable ?? new Set(),
+        assignee: template.assignee,
+        names,
+        ...(offered ? { offered } : {}),
+      });
+      onPick(
+        {
+          template,
+          start,
+          extras: fill.extras,
+          picked: fill.picked,
+          off: new Set(),
+          subtickets: true,
+        },
+        fill,
+      );
     } catch {
       setFailed(true);
     }

@@ -120,6 +120,8 @@ describe('workflow editor (M1-030)', () => {
     renderEditor(client, 1);
     const adding = await screen.findByLabelText('Add a status');
     await user.selectOptions(adding, String(S.Approved));
+    // A filled button, like every add action in administration (D11, AD-19).
+    expect(screen.getByRole('button', { name: 'Add to workflow' })).toHaveClass('button-primary');
     await user.click(screen.getByRole('button', { name: 'Add to workflow' }));
     expect(within(transitionList()).getByText('Approved')).toBeVisible();
     expect(within(checks()).getByText('No problems found.')).toBeVisible();

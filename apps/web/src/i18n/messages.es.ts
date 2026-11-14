@@ -493,7 +493,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tutorial.section.import': 'Importación',
   'tutorial.section.importHint':
     'Trae tickets desde un archivo CSV, con una prueba previa para comprobar qué pasará.',
-  'tutorial.setupOnly': 'Para administradores',
+  'tutorial.setupOnly': 'Para administradores del sitio y de configuración',
   'tutorial.actionOn': '{action}: {title}',
   'tutorial.loading': 'Leyendo tu progreso…',
   'tutorial.loadFailed':
@@ -881,7 +881,7 @@ export const messagesEs: Record<MessageId, string> = {
   'importedLink.looking': 'Buscando en qué se convirtió este enlace…',
   'importedLink.missing': 'Nada de lo importado coincide con este enlace, o no puedes verlo.',
   'importedLink.failed': 'No se pudo buscar el enlace. Inténtalo de nuevo en un momento.',
-  'importedLink.toSearch': 'Ir a la búsqueda',
+  'importedLink.notFound': 'Enlace no encontrado',
   'saved.importProblem':
     'Esta búsqueda guardada llegó con una importación y aún no funciona: {problem}. Cambia la consulta y guárdala para arreglarla.',
   'saved.failed': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
@@ -1009,17 +1009,17 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.sso.error.invalidState':
     'El inicio de sesión tardó demasiado, o se empezó en otro navegador. Inténtalo de nuevo.',
   'auth.sso.error.providerError':
-    'Tu proveedor de identidad no completó el inicio de sesión. Inténtalo de nuevo y pregunta a tu administrador si sigue pasando.',
+    'Tu proveedor de identidad no completó el inicio de sesión. Inténtalo de nuevo y pregunta a un administrador del sitio si sigue pasando.',
   'auth.sso.error.providerUnavailable':
-    'El inicio de sesión único no está disponible ahora mismo. Inténtalo más tarde o pregunta a tu administrador.',
+    'El inicio de sesión único no está disponible ahora mismo. Inténtalo más tarde o pregunta a un administrador del sitio.',
   'auth.sso.error.emailUnverified':
-    'Tu proveedor de identidad no confirmó tu dirección de correo, así que no se pudo iniciar tu sesión. Pide ayuda a tu administrador.',
+    'Tu proveedor de identidad no confirmó tu dirección de correo, así que no se pudo iniciar tu sesión. Pide ayuda a un administrador del sitio.',
   'auth.sso.error.domainNotAllowed':
-    'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a tu administrador.',
+    'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a un administrador del sitio.',
   'auth.sso.error.noAccount':
-    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
+    'Aún no tienes una cuenta aquí. Pide a un administrador del sitio que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
   'auth.sso.error.accountDeactivated':
-    'Tu cuenta está desactivada. Pregunta a tu administrador si la necesitas de nuevo.',
+    'Tu cuenta está desactivada. Pregunta a un administrador del sitio si la necesitas de nuevo.',
   'auth.sso.error.unknown':
     'El inicio de sesión único no funcionó. Inténtalo de nuevo en un momento.',
   'auth.sso.breakGlassOnly':
@@ -1177,7 +1177,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.intro.profile':
     'Tu nombre, tu correo, tu zona horaria y tu idioma, y cómo se ve Taskmoor para ti.',
   'account.intro.notifications':
-    'Cuándo te avisa Taskmoor de los cambios, y si es por correo, en tu bandeja de entrada o en ambos.',
+    'Cuándo te avisa Taskmoor de los cambios en los tickets en los que trabajas y que sigues, por correo, en tu bandeja de entrada o en ambos. Los cambios se guardan al instante.',
   'account.intro.security':
     'Tu contraseña, la verificación en dos pasos y los dispositivos donde tienes la sesión iniciada.',
   'account.intro.tokens':
@@ -1191,8 +1191,6 @@ export const messagesEs: Record<MessageId, string> = {
   'account.appearance.systemHint': 'Claro u oscuro, según la configuración de tu dispositivo.',
   'account.appearance.saved': 'La apariencia se guardó en tu cuenta.',
   'notifications.title': 'Notificaciones',
-  'notifications.intro':
-    'Cómo te avisa Taskmoor de los cambios en los tickets en los que trabajas y que sigues. Los cambios se guardan al instante.',
   'notifications.loading': 'Leyendo tu configuración de notificaciones…',
   'notifications.failed':
     'No se pudo leer tu configuración de notificaciones. Inténtalo de nuevo en un momento.',
@@ -1550,6 +1548,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject}: {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} «{name}»',
   'admin.audit.entryAbout': 'Sobre: {subject}',
   'admin.audit.entryFrom': 'Desde {address}',
   'admin.audit.subject.access': 'Acceso',
@@ -2084,6 +2083,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.environment': 'Del entorno del servidor',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS los incluye. Cámbialos allí; un reinicio aplica el cambio.',
+  'admin.frontends.new': 'Nuevo frontend',
+  'admin.frontends.cancel': 'Cancelar',
   'admin.frontends.add': 'Añadir un frontend',
   'admin.frontends.origin': 'Origen',
   'admin.frontends.originHint':
@@ -2871,12 +2872,23 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.notAssignable': 'A esta persona no se le pueden dar tickets en este track.',
   'tickets.error.wrongLevel': 'Un ticket de este tipo no puede ir debajo de ese ticket.',
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
+  'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',
+  'tickets.create.estimateHint': 'Por ejemplo 2h 30m, o 1d.',
+  'tickets.create.numberHint': 'Un número, por ejemplo 3.',
   'tickets.create.removeParent': 'Quitar {key} como padre',
   'tickets.create.noReleases': 'Este track no tiene versiones para elegir.',
   'tickets.create.noAreas': 'Este track no tiene áreas para elegir.',
+  'tickets.create.requesterHint':
+    'Escribe un nombre para buscar a alguien. Si lo dejas vacío, el solicitante eres tú.',
+  'tickets.create.restrictedHint':
+    'Escribe un nombre. Solo se ofrecen las personas que este campo permite.',
+  'tickets.create.parentHintLevel':
+    'Escribe la clave de un ticket o palabras de su resumen. Solo se ofrecen tickets de un nivel más arriba.',
+  'tickets.create.parentHintTrack':
+    'Escribe la clave de un ticket o palabras de su resumen. Solo se ofrecen tickets de un nivel más arriba en este track.',
   'tickets.pickers.personHint': 'Escribe un nombre para buscar a alguien.',
   'tickets.pickers.remove': 'Quitar a {name}',
   'tickets.pickers.removeShort': 'Quitar',
@@ -2886,6 +2898,14 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.pickers.peopleFailed': 'La búsqueda no funcionó. Inténtalo de nuevo en un momento.',
   'tickets.pickers.personChosen': 'Elegiste a {name}.',
   'tickets.pickers.personRemoved': 'Quitaste a {name}.',
+  'tickets.pickers.groupHint': 'Escribe un nombre para buscar un grupo.',
+  'tickets.pickers.noGroups': 'Ningún grupo coincide.',
+  'tickets.pickers.groupsFound':
+    '{count, plural, one {# grupo encontrado} other {# grupos encontrados}}',
+  'tickets.pickers.teamHint': 'Escribe un nombre para buscar un equipo.',
+  'tickets.pickers.noTeams': 'Ningún equipo coincide.',
+  'tickets.pickers.teamsFound':
+    '{count, plural, one {# equipo encontrado} other {# equipos encontrados}}',
   'workflow.check.fieldRequired': '{field} es obligatorio.',
   'workflow.check.fieldModified': 'Cambia primero {field}.',
   'workflow.check.fieldSingleValue': '{field} admite un solo valor.',
@@ -2938,7 +2958,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.status.active': 'Personas activas',
   'admin.users.status.deactivated': 'Personas desactivadas',
   'admin.users.status.all': 'Todos',
-  'admin.users.add': 'Añadir una persona',
+  'admin.users.add': 'Nueva persona',
   'admin.users.name': 'Nombre',
   'admin.users.email': 'Correo electrónico',
   'admin.users.makeSiteAdmin': 'Administrador del sitio',
@@ -3011,7 +3031,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.groups.added': 'Se añadió {name}.',
   'admin.groups.deleted': 'Se eliminó {name}.',
   'admin.groups.counts':
-    '{members, plural, one {# miembro} other {# miembros}}, {groups, plural, one {# grupo} other {# grupos}} dentro',
+    '{members, plural, one {# miembro} other {# miembros}} · {groups, plural, one {# grupo} other {# grupos}} dentro',
   'admin.groups.manage': 'Gestionar',
   'admin.groups.manageOf': 'Gestionar {name}',
   'admin.groups.membersOf': 'Miembros de {name}',
@@ -3542,6 +3562,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
   'admin.permissions.global': 'Permisos globales',
+  'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
+  'admin.permissions.newGlobal': 'Nuevo permiso global',
   'admin.permissions.addGlobal': 'Dar un permiso global',
   'admin.permissions.grantee.role': 'Rol {name}',
   'admin.permissions.grantee.group': 'Grupo {name}',
@@ -3873,6 +3895,24 @@ export const messagesEs: Record<MessageId, string> = {
   'bulk.cancelFailed': 'No se pudo cancelar el cambio en bloque. Inténtalo de nuevo en un momento.',
   'bulk.failures': 'Tickets que no se cambiaron',
   'bulk.moreFailures': 'Mostrar más',
+  'bulk.change': 'El cambio: {change}.',
+  'bulk.change.set': '{field} pasa a {value}',
+  'bulk.change.cleared': '{field} sin valor',
+  'bulk.change.changed': 'cambio en {field}',
+  'bulk.change.none': 'ninguno',
+  'bulk.change.customFields':
+    '{count, plural, one {# campo personalizado cambiado} other {# campos personalizados cambiados}}',
+  'bulk.change.moved': 'trasladados al track {track}',
+  'bulk.change.movedElsewhere': 'trasladados a otro track',
+  'bulk.change.transitioned': 'pasados al estado {status}',
+  'bulk.change.transitionedElsewhere': 'pasados a otro estado',
+  'bulk.change.transitionFields':
+    '{count, plural, one {# campo rellenado} other {# campos rellenados}} al pasar',
+  'bulk.changed': 'Tickets que se cambiaron',
+  'bulk.clone.changed': 'Las copias',
+  'bulk.moreChanged': 'Mostrar más',
+  'bulk.backToSearch': 'Volver a la búsqueda',
+  'bulk.toSearch': 'Ir a Buscar',
   'bulk.reason.notFound': 'No se encontró, o no puedes verlo.',
   'bulk.reason.forbidden': 'No puedes hacer este cambio en este ticket.',
   'bulk.reason.invalidFields': 'Algunos de los valores no encajan con este ticket.',
@@ -4074,7 +4114,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los estados pertenecen a todo el sitio, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',
   'admin.statuses.loading': 'Cargando los estados…',
   'admin.statuses.failed': 'No se pudieron cargar los estados.',
-  'admin.statuses.add': 'Añadir un estado',
+  'admin.statuses.add': 'Nuevo estado',
   'admin.statuses.formNew': 'Estado nuevo',
   'admin.statuses.formEdit': 'Editar {name}',
   'admin.statuses.name': 'Nombre',
@@ -4499,8 +4539,8 @@ export const messagesEs: Record<MessageId, string> = {
   'inbox.view.all': 'Todo',
   'inbox.view.priority': 'Prioritario',
   'inbox.view.snoozed': 'Pospuesto',
-  'inbox.unreadCount': '{count, plural, =0 {nada sin leer} one {# sin leer} other {# sin leer}}',
-  'inbox.unreadMore': 'más de 999 sin leer',
+  'inbox.unreadCount': '{count, plural, =0 {Nada sin leer} one {# sin leer} other {# sin leer}}',
+  'inbox.unreadMore': 'Más de 999 sin leer',
   'inbox.unreadOnly': 'Solo sin leer',
   'inbox.filter.type': 'Tipo',
   'inbox.filter.anyType': 'Cualquier tipo',
@@ -5047,6 +5087,8 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.scope.sprintTitle': 'Trabajo por sprint',
   'reports.scope.sprintSummary':
     'Trabajo completado y añadido en cada uno de {count, plural, one {# sprint} other {# sprints}}.',
+  'reports.scope.sprintSummaryOutside':
+    'Trabajo completado y añadido en cada uno de {count, plural, one {# sprint} other {# sprints}}, y fuera de los sprints: {completed} completado, {added} añadido.',
   'reports.scope.completed': 'Completado',
   'reports.scope.added': 'Añadido',
   'reports.scope.removed': 'Quitado',
@@ -5054,6 +5096,16 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.scope.end': 'Al final',
   'reports.scope.sprint': 'Sprint',
   'reports.scope.table': 'Trabajo por sprint',
+  'reports.scope.outside': 'Fuera de los sprints',
+  'reports.measure.ticketCount': 'Tickets',
+  'reports.measure.originalEstimate': 'Horas de estimación',
+  'reports.measure.field': 'Estimación',
+  'reports.measure.scope.ticketCount': 'Tickets en el alcance',
+  'reports.measure.scope.originalEstimate': 'Horas en el alcance',
+  'reports.measure.scope.field': 'Estimación en el alcance',
+  'reports.measure.completed.ticketCount': 'Tickets completados',
+  'reports.measure.completed.originalEstimate': 'Horas completadas',
+  'reports.measure.completed.field': 'Estimación completada',
   'reports.release.title': 'Progreso de la versión',
   'reports.release.summary': 'Progreso de la versión: {completed} hecho de {scope} en el alcance.',
   'reports.release.scope': 'Alcance',
@@ -5064,9 +5116,12 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.release.forecast': 'Al ritmo de los últimos 14 días, el trabajo estará hecho el {date}.',
   'reports.release.noForecast': 'No se completó trabajo últimamente, así que aún no hay previsión.',
   'reports.outcome.pick': 'Introduce la clave de un objetivo para ver su informe.',
-  'reports.outcome.done': 'Hechos',
-  'reports.outcome.open': 'Aún abiertos',
-  'reports.outcome.unestimated': 'Abiertos sin estimación',
+  'reports.outcome.chartTitle': 'Progreso del objetivo',
+  'reports.outcome.chartSummary':
+    'Progreso del objetivo: {completed} hecho de {scope} en el alcance.',
+  'reports.outcome.done': 'Tickets hechos',
+  'reports.outcome.open': 'Tickets aún abiertos',
+  'reports.outcome.unestimated': 'Tickets abiertos sin estimación',
   'reports.outcome.empty': 'Ahora no hay ningún ticket bajo este objetivo.',
   'reports.outcome.tickets': 'Tickets bajo el objetivo',
   'reports.outcome.ticket': 'Ticket',
@@ -5129,7 +5184,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} en el periodo mostrado.',
   'dashboards.widget.groupDone': '{closed} de {total} hechos',
   'dashboards.widget.unestimated': 'Sin estimación',
-  'dashboards.widget.noTime': 'Ningún ticket de aquí tiene valor en «{statistic}».',
+  'dashboards.widget.noTime': 'Ningún ticket de aquí tiene un valor para «{statistic}».',
+  'dashboards.widget.noneClosed': 'Ningún ticket se cerró en este periodo.',
   'dashboards.widget.workSummary':
     '{statistic} por valor: {value} en {count, plural, one {# ticket} other {# tickets}}.',
   'dashboards.widget.ticket': 'Ticket',
@@ -5211,6 +5267,8 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.leaveWallboard': 'Salir de la pantalla mural',
   'dashboards.makeDefault': 'Hacerlo el inicio de todos',
   'dashboards.madeDefault': 'Ahora es el panel de inicio de todos.',
+  'dashboards.madeDefaultShared':
+    'Ahora es el panel de inicio de todos, así que lo ven todos los que iniciaron sesión.',
   'dashboards.visibility': 'Quién lo ve',
   'dashboards.visibility.private': 'Solo yo',
   'dashboards.visibility.any_user': 'Todos los que iniciaron sesión',
@@ -5480,8 +5538,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda. Cualquiera puede filtrarlo para sí, sin cambiarlo para nadie más.',
   'summary.customize': 'Personalizar',
   'summary.backToDefault': 'Volver al predeterminado',
-  'summary.confirmDefault':
-    '¿Volver al resumen predeterminado? Se quitan los widgets elegidos para este track, para todos.',
+  'summary.resetOutcome':
+    'El resumen de {track} vuelve al predeterminado para todos, y se quitan los widgets elegidos para él. No se puede deshacer.',
+  'summary.resetOf': 'Restablecer el resumen de {track}',
   'summary.backToDefaultDone': 'Este track vuelve a mostrar su resumen predeterminado.',
   'summary.save': 'Guardar el resumen',
   'summary.conflict':
@@ -5536,6 +5595,7 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.axis.status': 'Estado',
   'statistics.axis.priority': 'Prioridad',
   'statistics.axis.type': 'Tipo',
+  'statistics.axis.track': 'Track',
   'statistics.axis.assignee': 'Asignado',
   'statistics.axis.requester': 'Solicitante',
   'statistics.axis.creator': 'Creador',
@@ -5846,7 +5906,7 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.statistic': 'Estimar con',
   'sprints.settings.statistic.ticketCount': 'Número de tickets',
   'sprints.settings.statistic.originalEstimate': 'Estimación de tiempo original',
-  'sprints.settings.statistic.field': 'Un campo numérico, como los puntos de historia',
+  'sprints.settings.statistic.field': 'Un campo numérico, como Puntos',
   'sprints.settings.field': 'Campo numérico',
   'sprints.settings.fieldPlaceholder': 'Elige un campo numérico',
   'sprints.settings.fieldUnknown': 'Campo {id}',
@@ -6007,6 +6067,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.strict': 'Modo estricto',
   'ai.strictHint':
     'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives abajo.',
+  'admin.ai.strictHintNoTracks':
+    'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives. Activa la IA y guarda para elegirlos.',
   'ai.provider': 'Proveedor',
   'ai.provider.none': 'Ningún proveedor',
   'ai.provider.anthropic': 'API de Anthropic',
@@ -6133,6 +6195,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.refused.unavailable': 'El proveedor de IA no responde. Inténtalo más tarde.',
   'ai.refused.failed': 'La IA no pudo ayudar con esta petición.',
   'admin.aiUsage.title': 'Uso de la IA',
+  'admin.aiUsage.about':
+    'Las llamadas de IA de un periodo, contadas por día, función, persona y modelo, a las tarifas de Límites y precios de la IA. Tu organización paga al proveedor directamente; Taskmoor no cobra nada. Los días van en UTC.',
   'admin.aiUsage.forbidden': 'Solo los administradores del sitio ven el uso de la IA.',
   'admin.aiUsage.statementFailed': 'No se pudo cargar qué sale de este sitio.',
   'admin.aiUsage.usage': 'Uso',
@@ -6540,7 +6604,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Al llegar a un límite, las llamadas de IA que cubre se rechazan antes de enviar nada, hasta que empiece de nuevo su periodo. Una llamada en curso aún termina.',
   'admin.aiLimits.noLimits':
     'La IA funciona sin tope hasta que añadas uno. Añade uno para detenerla en un número de tokens o un coste.',
-  'admin.aiLimits.addLimit': 'Añadir un límite',
+  'admin.aiLimits.addLimit': 'Nuevo límite',
   'admin.aiLimits.limitName': '{what}, por {period}',
   'admin.aiLimits.resets': 'Empieza de nuevo {at} UTC',
   'admin.aiLimits.change': 'Cambiar',
@@ -6587,7 +6651,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.resetPriceOf': 'Volver al precio de lista: {name}',
   'admin.aiLimits.priceSaved': 'Se guardó la tarifa de {model}.',
   'admin.aiLimits.priceReset': '{model} vuelve a su precio de lista.',
-  'admin.aiLimits.addPrice': 'Añadir una tarifa',
+  'admin.aiLimits.addPrice': 'Nueva tarifa',
   'admin.aiLimits.provider': 'Proveedor',
   'admin.aiLimits.providerHint':
     'Como lo nombra la página de IA, por ejemplo anthropic, bedrock o vertex.',
@@ -7048,11 +7112,10 @@ export const messagesEs: Record<MessageId, string> = {
     'El formulario tal como lo dará el servidor, con las reglas de campos aplicadas. Sigue tus cambios antes de que guardes.',
   'layouts.preview.type': 'Ver como',
   'layouts.preview.track': 'Campos y reglas de',
-  'layouts.preview.noTrack':
-    'Ningún track en concreto (campos compartidos, reglas predeterminadas)',
+  'layouts.preview.noTrack': 'Ningún track en concreto',
   'layouts.preview.ownerTrack': 'El track al que pertenece este conjunto',
   'layouts.preview.trackHint':
-    'Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
+    'Sin un track en concreto, la vista previa usa los campos compartidos y las reglas predeterminadas. Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
   'layouts.preview.fixedTrack':
     'Con los campos y las reglas de {key} · {name}, el track al que pertenece este conjunto.',
   'layouts.preview.noTypes': 'No hay tipos de ticket para la vista previa.',
@@ -7073,6 +7136,8 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.preview.leftOut': 'Colocados, pero fuera de este formulario:',
   'layouts.preview.reason.hidden': '{field}: una regla de campo lo oculta.',
   'layouts.preview.reason.notApplicable': '{field}: no aplica a este tipo de ticket aquí.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: se pone en el ticket una vez creado, así que el formulario de crear lo omite.',
   'layouts.preview.reason.computed':
     '{field}: su valor se calcula, así que el formulario de crear lo omite.',
   'purpose.crossTracks':

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { fakeTrackClient } from '../tracks/fixtures';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
@@ -245,6 +246,10 @@ describe('a release’s page (M1-050)', () => {
   });
 
   it('[CORE-016] shows the generated notes, to copy as Markdown or download', async () => {
+    const zone = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+      ...new Intl.DateTimeFormat().resolvedOptions(),
+      timeZone: 'America/Chicago',
+    });
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
@@ -258,13 +263,25 @@ describe('a release’s page (M1-050)', () => {
     await user.click(notes.getByRole('button', { name: 'Copy as Markdown' }));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n\n- CHK-26'));
     expect(await screen.findByText('Release notes copied.')).toBeVisible();
+    // The file's link names the browser's zone, which a download cannot send as a header (T-277).
     expect(notes.getByRole('link', { name: 'Download Markdown' })).toHaveAttribute(
       'href',
-      '/api/v1/releases/1/notes?format=markdown',
+      '/api/v1/releases/1/notes?format=markdown&timeZone=America%2FChicago',
     );
     // Shipped: no way to ship it again, the day it shipped.
     expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
-    expect(screen.getByText('Shipped on').nextElementSibling).toHaveTextContent('2026-10-01');
+    expect(screen.getByText('Shipped on').nextElementSibling).toHaveTextContent('Oct 1, 2026');
+    zone.mockRestore();
+  });
+
+  it('[CORE-016] offers no Markdown to copy or download while the notes are empty (D27)', async () => {
+    renderRelease(3);
+    const notes = within(await screen.findByRole('region', { name: 'Release notes' }));
+    expect(
+      notes.getByText('No closed tickets yet: the notes fill in as tickets close.'),
+    ).toBeVisible();
+    expect(notes.queryByRole('button', { name: 'Copy as Markdown' })).toBeNull();
+    expect(notes.queryByRole('link', { name: 'Download Markdown' })).toBeNull();
   });
 
   it('[CORE-016] sits under its track’s tab bar with Releases marked, titled by its name under the track (T-215, D26, D7)', async () => {
@@ -334,5 +351,59 @@ describe('a release’s page (M1-050)', () => {
     renderRelease();
     await screen.findByRole('heading', { level: 1, name: '2.0' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+// A release's own dates read as its Releases list and its release across tracks do: in the
+// person's locale, never `2026-12-01`, and the same calendar day on a clock behind UTC (T-240).
+describe('a release’s own dates in the person’s locale (T-240, TR-29)', () => {
+  useTimeZone('America/Los_Angeles');
+
+  /** Release 3 starts on 2 November; release 1 shipped late on 30 September, Los Angeles time. */
+  function datedClient() {
+    const client = fakeReleaseClient();
+    const get = client.get.bind(client);
+    vi.spyOn(client, 'get').mockImplementation(async (id) =>
+      id === 1
+        ? { ...(await get(1)), releaseDate: null, shippedAt: '2026-10-01T03:00:00Z' }
+        : { ...(await get(id)), startDate: '2026-11-02' },
+    );
+    return client;
+  }
+  const renderIn = (locale: 'en' | 'es', releaseId: number) =>
+    render(
+      <I18nProvider locale={locale}>
+        <ReleasePage
+          releaseId={releaseId}
+          client={datedClient()}
+          now={() => new Date('2026-10-30T09:00:00Z')}
+          tracks={fakeTrackClient()}
+        />
+      </I18nProvider>,
+    );
+  const fact = (term: string) => screen.getByText(term, { selector: 'dt' }).nextElementSibling;
+
+  it('[NFR-006] [CORE-016] reads the start and release dates in English', async () => {
+    renderIn('en', 3);
+    await screen.findByRole('heading', { level: 1, name: '2.1' });
+    expect(fact('Start date')).toHaveTextContent(/^Nov 2, 2026$/);
+    expect(fact('Release date')).toHaveTextContent(/^Dec 1, 2026$/);
+  });
+
+  it('[NFR-006] [CORE-016] reads the start and release dates in Spanish', async () => {
+    renderIn('es', 3);
+    await screen.findByRole('heading', { level: 1, name: '2.1' });
+    expect(fact('Fecha de inicio')).toHaveTextContent(/^2 nov 2026$/);
+    expect(fact('Fecha de la versión')).toHaveTextContent(/^1 dic 2026$/);
+  });
+
+  it('[NFR-006] [CORE-016] reads the day a release shipped on the person’s own clock', async () => {
+    renderIn('en', 1);
+    await screen.findByRole('heading', { level: 1, name: '1.9' });
+    expect(fact('Shipped on')).toHaveTextContent(/^Sep 30, 2026$/);
+    cleanup();
+    renderIn('es', 1);
+    await screen.findByRole('heading', { level: 1, name: '1.9' });
+    expect(fact('Entregada el')).toHaveTextContent(/^30 sept 2026$/);
   });
 });

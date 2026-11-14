@@ -3,6 +3,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { effectiveMemberIds } from '../directory';
 import type { FieldChange } from '../tickets/history';
 import type { Catalog, ContextDef, FieldDef } from './catalog';
+import { customFieldId } from './form-model';
 import { publicConfig } from './formulas';
 import {
   fold,
@@ -14,6 +15,7 @@ import {
   restValue,
   type Stored,
   serialise,
+  storageOf,
 } from './types';
 
 /**
@@ -29,6 +31,32 @@ export type Channel = 'ui' | 'rest' | 'automation';
 
 /** The name history and the query language give a custom field (ADR-010). */
 export const historyName = (fieldId: number) => `cf[${fieldId}]`;
+/** How a custom field's values in history are read: calendar days or instants (T-277). */
+export type HistoryValueType = 'date' | 'datetime';
+
+/**
+ * What a ticket's history tells its reader about a custom field's row (T-277), or null for a
+ * system field's row: the field's name, only when the field applies to the ticket where it is now
+ * (so the reader sees the field on the ticket itself); and whether its values are calendar days
+ * (`date`, as a date field or a formula giving a date stores them) or instants (`datetime`), for
+ * a client to read them in the person's locale. A field since deleted is neither.
+ */
+export function historyFieldOf(
+  catalog: Catalog,
+  at: { trackId: number; ticketTypeId: number },
+  field: string,
+): { fieldName: string | null; valueType: HistoryValueType | null } | null {
+  const id = customFieldId(field);
+  if (id === null) return null;
+  const def = catalog.fields.get(id);
+  if (!def) return { fieldName: null, valueType: null };
+  const storage = storageOf(def);
+  return {
+    fieldName: catalog.contextOf(id, at.trackId, at.ticketTypeId) ? def.name : null,
+    valueType: storage === 'date' ? 'date' : storage === 'time' ? 'datetime' : null,
+  };
+}
+
 /** The key a refused value is reported under, as the body names it. */
 export const errorKey = (fieldId: number | string) => `fields.${fieldId}`;
 

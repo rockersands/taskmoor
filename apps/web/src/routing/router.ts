@@ -261,7 +261,7 @@ export function createRouter(
     // unless it leaves a page that asks first.
     const onClick = (event: MouseEvent) => {
       const pressed = pressedLink(event);
-      if (!pressed || !pressed.raw.includes('#/')) return;
+      if (!pressed?.raw.includes('#/')) return;
       const url = new URL(pressed.raw, win.document.baseURI);
       if (url.origin !== win.location.origin || url.pathname !== win.location.pathname) return;
       if (opensOverlay(url.hash, pressed.anchor, current())) {

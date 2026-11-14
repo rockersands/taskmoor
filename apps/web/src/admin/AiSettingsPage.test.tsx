@@ -169,10 +169,16 @@ describe('the AI settings page (M1-076)', () => {
     await screen.findByRole('checkbox', { name: 'Use AI on this site' });
     expect(screen.queryByRole('group', { name: 'Summaries of tickets and threads' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Tracks' })).toBeNull();
+    // With no tracks' list on the page, the strict hint points to no list "below".
+    expect(screen.getByText(/^AI stays off/)).toHaveTextContent(
+      'Turn AI on and save to choose them.',
+    );
+    expect(screen.queryByText(/turn it on for below/)).toBeNull();
     await user.click(screen.getByRole('checkbox', { name: 'Use AI on this site' }));
     expect(screen.getByRole('group', { name: 'Summaries of tickets and threads' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Save AI settings' }));
     expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible();
+    expect(screen.getByText(/turn it on for below/)).toBeVisible();
   });
 
   it('[AI-001] a track switch leaves an unsaved change alone', async () => {

@@ -42,11 +42,32 @@ describe('AI limits and prices (UI-T19)', () => {
     expect(within(list as HTMLElement).getByText(/Above 100,000 tokens/)).toBeVisible();
   });
 
+  it('[OPS-020] adds through filled "New …" buttons at the head of each card, the form above the list (D11, AD-19)', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    for (const [region, name] of [
+      ['Spend limits', 'New limit'],
+      ['Price table', 'New rate'],
+    ] as const) {
+      const card = await screen.findByRole('region', { name: region });
+      const button = within(card).getByRole('button', { name });
+      expect(button).toHaveClass('button-primary');
+      expect(button.closest('.admin-card-head')).not.toBeNull();
+      await user.click(button);
+      const form = within(card).getByRole('form', { name });
+      const list = card.querySelector('ul') as HTMLElement;
+      // The form comes before the list, not at the card's foot.
+      if (list) {
+        expect(form.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    }
+  });
+
   it('[OPS-020] adds a daily limit for each person, in tokens', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Add a limit' }));
-    const form = screen.getByRole('form', { name: 'Add a limit' });
+    await user.click(await screen.findByRole('button', { name: 'New limit' }));
+    const form = screen.getByRole('form', { name: 'New limit' });
     await user.selectOptions(within(form).getByLabelText('Who it counts'), 'Each person');
     await user.selectOptions(within(form).getByLabelText('Period'), 'Day');
     await user.type(within(form).getByLabelText('Amount in tokens'), '200000');
@@ -71,8 +92,8 @@ describe('AI limits and prices (UI-T19)', () => {
   it('[OPS-020] adds a limit for one person and one for a feature, in US dollars', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Add a limit' }));
-    const form = screen.getByRole('form', { name: 'Add a limit' });
+    await user.click(await screen.findByRole('button', { name: 'New limit' }));
+    const form = screen.getByRole('form', { name: 'New limit' });
     await user.selectOptions(within(form).getByLabelText('Who it counts'), 'One person');
     await user.type(within(form).getByLabelText('Find a person'), 'noor');
     await within(form).findByRole('option', { name: 'Noor Haddad' });
@@ -86,8 +107,8 @@ describe('AI limits and prices (UI-T19)', () => {
       metric: 'cost',
       amount: 25.5,
     });
-    await user.click(screen.getByRole('button', { name: 'Add a limit' }));
-    const next = screen.getByRole('form', { name: 'Add a limit' });
+    await user.click(screen.getByRole('button', { name: 'New limit' }));
+    const next = screen.getByRole('form', { name: 'New limit' });
     await user.selectOptions(within(next).getByLabelText('Who it counts'), 'One feature');
     await user.selectOptions(within(next).getByLabelText('Feature'), 'summarize');
     await user.type(within(next).getByLabelText('Amount in tokens'), '10');
@@ -99,8 +120,8 @@ describe('AI limits and prices (UI-T19)', () => {
   it('[OPS-020] refuses an amount and alerts it cannot use, before asking the server', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Add a limit' }));
-    const form = screen.getByRole('form', { name: 'Add a limit' });
+    await user.click(await screen.findByRole('button', { name: 'New limit' }));
+    const form = screen.getByRole('form', { name: 'New limit' });
     await user.click(within(form).getByRole('button', { name: 'Save the limit' }));
     expect(await within(form).findByRole('alert')).toHaveTextContent('above zero');
     await user.type(within(form).getByLabelText('Amount in tokens'), '10');
@@ -178,8 +199,8 @@ describe('AI limits and prices (UI-T19)', () => {
   it('[OPS-020] adds a rate for a provider with no list price', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Add a rate' }));
-    const form = screen.getByRole('form', { name: 'Add a rate' });
+    await user.click(await screen.findByRole('button', { name: 'New rate' }));
+    const form = screen.getByRole('form', { name: 'New rate' });
     await user.type(within(form).getByLabelText('Provider'), 'bedrock');
     await user.type(within(form).getByLabelText('Model'), 'custom');
     await user.click(within(form).getByRole('button', { name: 'Save the rate' }));

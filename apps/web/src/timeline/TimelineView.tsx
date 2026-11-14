@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react';
 import { useIntl } from 'react-intl';
+import { useDayText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -78,6 +79,8 @@ const ZOOMS: { id: Zoom; label: MessageId }[] = [
 ];
 /** Every row's height, so dependency lines know where rows are (44px: a touch target). */
 const ROW = 44;
+/** The space between today's line and a "No dates" chip, so the line never runs along its edge. */
+const UNSCHEDULED_GAP = 4;
 /** Beyond this many rows only those in view are drawn, with some to spare on either side. */
 const WINDOW_AFTER = 200;
 const OVERSCAN = 20;
@@ -373,7 +376,7 @@ export function TimelineView({
 
   const onBarDown = (event: PointerEvent<HTMLButtonElement>, item: TimelineItem) => {
     const bar = barOf(item);
-    if (!bar || bar.kind !== 'own' || event.button !== 0) return;
+    if (bar?.kind !== 'own' || event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const offset = event.clientX - rect.left;
     const edge = Math.min(10, rect.width / 3);
@@ -410,7 +413,7 @@ export function TimelineView({
   const onBarUp = (item: TimelineItem) => {
     const d = drag;
     setDrag(null);
-    if (!d || !d.moved || d.shift === 0) return;
+    if (!d?.moved || d.shift === 0) return;
     justDragged.current = true;
     const days = dragged(d);
     const next =
@@ -424,7 +427,7 @@ export function TimelineView({
   const onBarKey = (event: KeyboardEvent, item: TimelineItem) => {
     if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const bar = barOf(item);
-    if (!bar || bar.kind !== 'own') return;
+    if (bar?.kind !== 'own') return;
     event.preventDefault();
     const days = (event.key === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 7 : 1);
     const next = shifted(item, bar.start + days, bar.due + days);
@@ -625,8 +628,8 @@ export function TimelineView({
             <button
               type="button"
               className="timeline-unscheduled"
-              // Past today's line, which runs through the middle of today's column.
-              style={{ left: x(today) + px / 2 + 2 }}
+              // Past today's line (2 px through the middle of today's column), with a gap.
+              style={{ left: x(today) + px / 2 + 2 + UNSCHEDULED_GAP }}
               onClick={() => setSelected(item.id)}
               aria-label={
                 item.draft && daysDrafted(item)
@@ -1006,6 +1009,7 @@ function SchedulePanel({
   };
 }) {
   const t = useT();
+  const day = useDayText();
   const id = useId();
   const [start, setStart] = useState(item.start ?? '');
   const [due, setDue] = useState(item.due ?? '');
@@ -1057,8 +1061,8 @@ function SchedulePanel({
         <p className="board-hint">
           {item.rollup.start || item.rollup.due
             ? t('timeline.panel.rollup', {
-                start: item.rollup.start ?? t('timeline.noDate'),
-                due: item.rollup.due ?? t('timeline.noDate'),
+                start: item.rollup.start ? day(item.rollup.start) : t('timeline.noDate'),
+                due: item.rollup.due ? day(item.rollup.due) : t('timeline.noDate'),
               })
             : t('timeline.panel.noRollup')}
         </p>

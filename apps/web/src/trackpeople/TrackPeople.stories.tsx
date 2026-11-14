@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { MEMBER } from '../admin/fixtures';
+import { ADMIN, MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeSignInSso } from '../sso/fixtures';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES, WAITING } from './fixtures';
@@ -46,6 +46,35 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Manager: Story = {};
+
+/**
+ * On a phone the link inside a note keeps the line's height, its 44 px press area reaching above
+ * and below it: the line holding 'Open Permissions' sat about 31 px under the line above, against
+ * 18 px elsewhere (T-226).
+ */
+export const InlineLinkOnAPhone: Story = {
+  args: { client: fakeTrackPeopleClient({ invitingGiven: false }) },
+  decorators: [
+    atPhoneWidth,
+    (Story) => (
+      <SessionProvider session={ADMIN}>
+        <Story />
+      </SessionProvider>
+    ),
+  ],
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const link = await canvas.findByRole('link', { name: 'Open Permissions' });
+    // The link is as tall as its text (it was 44 px, which pushed its line down).
+    const fontSize = Number.parseFloat(getComputedStyle(link).fontSize);
+    await expect(link.getBoundingClientRect().height).toBeLessThanOrEqual(fontSize * 1.6);
+    const press = getComputedStyle(link, '::after');
+    await expect(press.position).toBe('absolute');
+    await expect(Number.parseFloat(press.height)).toBeGreaterThanOrEqual(44 - 0.5);
+    await fitsPhoneWidth(canvas);
+  },
+};
 
 /** A track with its own configuration: its page leads to its own sets (T-163a). */
 export const OwnConfiguration: Story = {
@@ -260,7 +289,7 @@ export const ChecklistNoticesAtPhoneWidth: Story = {
       </I18nProvider>
     ),
   ],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const box = await canvas.findByRole('checkbox', {
@@ -484,7 +513,7 @@ export const AnswerBesideTheRowAtPhoneWidth: Story = {
       </I18nProvider>
     ),
   ],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const card = await canvas.findByRole('region', { name: 'Quién tiene cada rol' });
@@ -525,7 +554,7 @@ export const InvitationAnswerInItsRow: Story = {
 export const InvitationAnswerInItsRowAtPhoneWidth: Story = {
   args: { client: twoWaiting() },
   decorators: [atPhoneWidth],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const card = await canvas.findByRole('region', { name: 'Invitations waiting' });

@@ -174,12 +174,16 @@ export const OPEN_TO_ANY_ORIGIN: ReadonlySet<string> = new Set([
   '/api/v1/unsubscribe',
 ]);
 
-/** Request headers a frontend sends: JSON bodies, bearer tokens, the sync outbox's ids. */
+/**
+ * Request headers a frontend sends: JSON bodies, bearer tokens, the sync outbox's ids and the
+ * browser's time zone, which reports count their days in (T-272).
+ */
 const ALLOWED_HEADERS = [
   'authorization',
   'content-type',
   'taskmoor-client-id',
   'taskmoor-mutation-id',
+  'taskmoor-time-zone',
 ].join(', ');
 /** Response headers a frontend reads besides the CORS-safelisted ones. */
 const EXPOSED_HEADERS = [

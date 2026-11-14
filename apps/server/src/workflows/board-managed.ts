@@ -209,7 +209,6 @@ async function adoptWorkflow(
   by: Actor,
   trackId: number,
   mapId: number,
-  previousWorkflowId: number,
   definition: WorkflowDefinition,
   mapping: ReadonlyMap<number, number>,
 ): Promise<{ workflowId: number; ticketCount: number }> {
@@ -890,7 +889,6 @@ export async function syncBoardWorkflow(
       by,
       board.trackId as number,
       track.mapId,
-      track.sharedWorkflowId,
       definition,
       mapping,
     );

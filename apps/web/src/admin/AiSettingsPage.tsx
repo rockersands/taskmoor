@@ -389,8 +389,10 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
     );
   };
 
+  // The tracks' list shows only once AI is on and saved; the strict hint says "below" only then.
+  const tracksShown = settings.enabled && view.settings.enabled;
   return (
-    <section className="page admin-page" aria-labelledby={`${id}-title`}>
+    <section className="page admin-page ai-settings-page" aria-labelledby={`${id}-title`}>
       {header}
       {view.keyStorage === 'none' && (
         <p role="alert" className="form-error">
@@ -422,7 +424,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
           <label htmlFor={`${id}-strict`}>{t('ai.strict')}</label>
         </div>
         <p id={`${id}-strict-hint`} className="form-hint">
-          {t('ai.strictHint')}
+          {t(tracksShown ? 'ai.strictHint' : 'admin.ai.strictHintNoTracks')}
         </p>
         <div className="form-field">
           <label htmlFor={`${id}-provider`}>{t('ai.provider')}</label>
@@ -631,7 +633,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
         </section>
       )}
 
-      {settings.enabled && view.settings.enabled && (
+      {tracksShown && (
         <section aria-labelledby={`${id}-tracks`} className="glass-card account-section">
           <h2 id={`${id}-tracks`} className="facts-title">
             {t('ai.tracks')}

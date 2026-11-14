@@ -50,11 +50,36 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
   return response;
 }
 
+/** The header that carries the browser's time zone; the server's `viewerTimeZone` reads it. */
+export const TIME_ZONE_HEADER = 'taskmoor-time-zone';
+
+/**
+ * The time zone of this browser, the clock `localDay()` reads, so the server counts a report's
+ * days on the same calendar as the person's own "today" (T-272); null when the browser has none.
+ */
+export function browserTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/** The request's headers with the browser's time zone added, unless the caller set one. */
+export function withTimeZone(headers: HeadersInit | undefined): Headers {
+  const out = new Headers(headers);
+  const zone = browserTimeZone();
+  if (zone && !out.has(TIME_ZONE_HEADER)) out.set(TIME_ZONE_HEADER, zone);
+  return out;
+}
+
 async function authorizedFetch(url: string, init: RequestInit): Promise<Response> {
   const client = oauthClient;
-  if (!client) return fetch(url, { ...init, credentials: CREDENTIALS });
+  if (!client) {
+    return fetch(url, { ...init, headers: withTimeZone(init.headers), credentials: CREDENTIALS });
+  }
   const send = (token: string | null) => {
-    const headers = new Headers(init.headers);
+    const headers = withTimeZone(init.headers);
     if (token) headers.set('authorization', `Bearer ${token}`);
     return fetch(url, { ...init, headers, credentials: 'omit' });
   };

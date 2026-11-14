@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { isCalendarDay, useDayText } from '../i18n/days';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { ClockIcon, NobodyIcon, PencilIcon } from '../shell/icons';
@@ -63,10 +64,10 @@ const nameOf = (value: unknown): string | null =>
     : null;
 
 /** What a card says in words, beyond its icons: only the fields someone added. */
-function cardMeta(t: Translate, card: BoardCard): string[] {
+function cardMeta(t: Translate, day: (day: string) => string, card: BoardCard): string[] {
   const out: string[] = [];
-  if (typeof card.fields.dueDate === 'string') {
-    out.push(t('boards.card.due', { date: card.fields.dueDate }));
+  if (isCalendarDay(card.fields.dueDate)) {
+    out.push(t('boards.card.due', { date: day(card.fields.dueDate) }));
   }
   if (Array.isArray(card.fields.labels) && card.fields.labels.length > 0) {
     out.push(card.fields.labels.join(', '));
@@ -121,6 +122,7 @@ function BoardCardView({
   actions,
 }: BoardCardProps) {
   const t = useT();
+  const day = useDayText();
   const priority = card.fields.priority as { name: string; level?: number } | null | undefined;
   const titleOpen = editor !== null && editor !== undefined;
   // Out of the tab order unless it is the cell's current card: the arrows reach the others.
@@ -172,7 +174,7 @@ function BoardCardView({
             {card.fields.points}
           </span>
         )}
-        {cardMeta(t, card).map((part, i) => (
+        {cardMeta(t, day, card).map((part, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: parts are fixed in order per card
           <span key={i}>{part}</span>
         ))}

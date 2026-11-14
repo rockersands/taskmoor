@@ -27,6 +27,33 @@ export const WithToken: Story = {
   },
 };
 
+/**
+ * One card, as on every stand-alone form (AC-16, D24): its groups are wells inside it, and
+ * 'Finish setup' ends the card, inside its edges, rather than standing on the canvas below.
+ */
+export const FinishSetupInsideTheCard: Story = {
+  beforeEach: () => {
+    window.location.hash = '#/setup?token=story-token';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const form = await canvas.findByRole('form', { name: 'Set up Taskmoor' });
+    const button = within(form).getByRole('button', { name: 'Finish setup' });
+    const card = form.getBoundingClientRect();
+    const box = button.getBoundingClientRect();
+    const padding = Number.parseFloat(getComputedStyle(form).paddingLeft);
+    await expect(padding).toBeGreaterThan(0);
+    await expect(box.left).toBeGreaterThanOrEqual(card.left + padding - 0.5);
+    await expect(box.right).toBeLessThanOrEqual(card.right - padding + 0.5);
+    await expect(box.bottom).toBeLessThanOrEqual(card.bottom - padding + 0.5);
+    // The card is the glass; the groups inside it are wells with no blur of their own.
+    await expect(getComputedStyle(form).backdropFilter).not.toBe('none');
+    for (const group of form.querySelectorAll('fieldset')) {
+      await expect(getComputedStyle(group).backdropFilter).toBe('none');
+    }
+  },
+};
+
 export const WithoutToken: Story = {
   beforeEach: () => {
     window.location.hash = '#/setup';

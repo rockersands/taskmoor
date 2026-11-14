@@ -60,6 +60,13 @@
   color: var(--color-chart-guide);
 }
 
+/* What the value axis counts, over its ticks, so a count of tickets nearby is not misread. */
+.chart-measure {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
 .chart-plot {
   /* A drawing in its own coordinates: left to right under every script (M1-116, ADR-024). */
   direction: ltr;
@@ -355,10 +362,6 @@
   font-weight: var(--font-weight-strong);
 }
 
-.reports-choices .report-note {
-  flex-basis: 100%;
-}
-
 .reports-check {
   display: inline-flex;
   align-items: center;
@@ -388,6 +391,10 @@
 
 .report-note {
   font-size: var(--font-size-200);
+}
+
+.reports-choices .report-note {
+  flex-basis: 100%;
 }
 
 .report-stats {
@@ -443,6 +450,12 @@
 
 .report-table :is(th, td):is(:first-child, :nth-child(2)) {
   text-align: start;
+}
+
+/* A table of numbers after its first column: every number column aligns at its end, the first
+   one included (two-dimensional statistics, the widgets' tables). */
+.report-table table.report-numbers :is(th, td):nth-child(2) {
+  text-align: end;
 }
 
 /* No word or number breaks in the middle (TR-12): values and headings stay whole, the first
@@ -511,9 +524,12 @@
 
 /* Shares of a whole (M1-064): a ring in the categorical hues' fixed order, parted by the
    surface, the numbers beside each swatch. */
+/* On a narrow card the legend wraps under the ring and the ring stands in the middle, not at the
+   left with the right half empty. */
 .chart-donut {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: var(--space-4);
 }

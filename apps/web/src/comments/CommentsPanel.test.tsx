@@ -174,6 +174,10 @@ describe('the comments section (M1-018)', () => {
       'false',
     );
     const open = within(item).getByRole('button', { name: 'Add a reaction' });
+    // It shows what it does: a face with a plus and a tooltip, not a bare '+'.
+    expect(open).toHaveAttribute('title', 'Add a reaction');
+    expect(open.querySelector('svg.comment-react-icon')).not.toBeNull();
+    expect(open).not.toHaveTextContent('+');
     await user.click(open);
     expect(open).toHaveAttribute('aria-expanded', 'true');
     await user.click(within(item).getByRole('button', { name: 'React with 🎉' }));

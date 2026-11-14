@@ -35,6 +35,11 @@ export interface CustomField {
   type: string;
   multiple: boolean;
   options?: Option[];
+  /**
+   * A person field whose context offers only a group's or a track role's people (CORE-009 (2)):
+   * its picker asks the field for them. Absent in older fixtures.
+   */
+  restricted?: boolean;
 }
 export interface TicketForm {
   layout: { operation: string; tabs: FormTab[] };
@@ -83,18 +88,21 @@ export const EDITABLE_SYSTEM = new Set([
   'remainingEstimate',
 ]);
 /**
- * System fields this form sets with a picker (T-253): people, the parent, releases and areas.
- * Ticket templates still list a template's values for them under "Also from this template".
+ * System fields this form sets with a picker (T-253, T-265): people, the parent, releases and
+ * areas. A ticket template's assignee, releases and areas fill these pickers in (`fillForm`).
  */
 export const PICKED_SYSTEM = new Set([
   'assignee',
+  'requester',
   'parent',
   'targetRelease',
   'foundInRelease',
   'area',
 ]);
-/** Custom field types this form sets with a picker: people. */
-export const PICKED_CUSTOM = new Set(['user']);
+/** Custom field types this form sets with a picker: people, groups, teams, releases, areas. */
+export const PICKED_CUSTOM = new Set(['user', 'group', 'team', 'release', 'area']);
+/** Fields whose value is one id: people and the parent. */
+const ID_VALUES = new Set(['assignee', 'requester', 'parent']);
 /** Fields whose values are lists of ids: releases and areas. */
 const ID_LISTS = new Set(['targetRelease', 'foundInRelease', 'area']);
 
@@ -135,8 +143,6 @@ export function textDocument(text: string): unknown {
   };
 }
 
-const words = (text: string) => text.split(/\s+/).filter((w) => w !== '');
-
 /** Labels as typed: a label holds no spaces (CORE-016), so spaces and commas both separate. */
 export const splitLabels = (text: string) => text.split(/[\s,]+/).filter((w) => w !== '');
 
@@ -160,6 +166,10 @@ function customValue(
       return new Date(raw).toISOString();
     case 'select':
     case 'user':
+    case 'group':
+    case 'team':
+    case 'release':
+    case 'area':
       return Number(raw);
     case 'cascading-select': {
       const child = values[`${key}/child`];
@@ -209,7 +219,7 @@ export function createBody(
       continue;
     }
     if (typeof raw !== 'string' || raw.trim() === '') continue;
-    if (key.key === 'assignee' || key.key === 'parent') body[name] = Number(raw);
+    if (ID_VALUES.has(key.key)) body[name] = Number(raw);
     else if (key.key === 'description' || key.key === 'environment') body[name] = textDocument(raw);
     else if (key.key === 'labels') body[name] = splitLabels(raw);
     else if (key.key === 'priority') body[name] = Number(raw);
@@ -247,5 +257,7 @@ const ERRORS: Record<string, MessageId> = {
   not_assignable: 'tickets.error.notAssignable',
   wrong_level: 'tickets.error.wrongLevel',
   other_track: 'tickets.error.otherTrack',
+  // A release or area archived since it was offered (the create route's placement check; T-276).
+  archived: 'tickets.error.archived',
 };
 export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';

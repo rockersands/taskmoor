@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { asOnATouchScreen } from '../test/touch';
+import { onARealTouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
@@ -129,7 +129,7 @@ export const EntryInHand: Story = {
  */
 export const EntryOnATouchTablet: Story = {
   args: { client: fakeCalendarClient() },
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
@@ -185,6 +185,102 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'November 2026' })).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * The list of days on a phone's touch screen (D9; M1-049): the card keeps room inside its edge,
+ * and each finger-tall chip has its text in the middle of its height, not at the top.
+ */
+export const DayListOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const chip = await canvas.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    const card = canvasElement.querySelector('.calendar-grid.is-agenda')?.getBoundingClientRect();
+    if (!card) throw new Error('a phone shows the month as a list of days');
+    const box = chip.getBoundingClientRect();
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect(box.left - card.left).toBeGreaterThanOrEqual(16);
+    for (const heading of canvasElement.querySelectorAll('.calendar-date')) {
+      await expect(heading.getBoundingClientRect().left - card.left).toBeGreaterThanOrEqual(16);
+    }
+    const words = document.createRange();
+    words.selectNodeContents(chip);
+    const text = words.getBoundingClientRect();
+    const middle = (r: DOMRect) => (r.top + r.bottom) / 2;
+    await expect(Math.abs(middle(text) - middle(box))).toBeLessThanOrEqual(1);
+  },
+};
+
+/**
+ * Every chip that is not as it should be, as `name: what`: a chip a finger tall on a touch screen
+ * (never taller), as tall as its one line of words with a mouse (the grip beside it does not
+ * stretch it), and its words in the middle of its height either way. Nothing, on a calendar that
+ * keeps its promise; no chips at all is named too.
+ */
+function chipsOff(root: HTMLElement): string[] {
+  const chips = Array.from(root.querySelectorAll<HTMLElement>('.calendar-entry .calendar-chip'));
+  if (chips.length === 0) return ['no chips'];
+  const touch = matchMedia('(pointer: coarse)').matches;
+  return chips.flatMap((chip) => {
+    const name = chip.textContent?.trim().slice(0, 24) ?? '';
+    const box = chip.getBoundingClientRect();
+    const words = document.createRange();
+    words.selectNodeContents(chip);
+    const text = words.getBoundingClientRect();
+    const style = getComputedStyle(chip);
+    const frame =
+      Number.parseFloat(style.paddingTop) +
+      Number.parseFloat(style.paddingBottom) +
+      Number.parseFloat(style.borderTopWidth) +
+      Number.parseFloat(style.borderBottomWidth);
+    const off: string[] = [];
+    if (touch && Math.abs(box.height - 44) > 0.5) off.push(`${Math.round(box.height)} px tall`);
+    if (!touch && box.height > text.height + frame + 0.5) {
+      off.push(`${Math.round(box.height)} px tall for a ${Math.round(text.height)} px line`);
+    }
+    const by = (text.top + text.bottom) / 2 - (box.top + box.bottom) / 2;
+    if (Math.abs(by) > 1) off.push(`words ${Math.round(by)} px from the middle`);
+    return off.map((what) => `${name}: ${what}`);
+  });
+}
+
+/**
+ * AGL-017: with a mouse, each chip is as tall as its one line of words, not stretched to its grip,
+ * and its words sit in its middle (T-274: Plans' fix, kept by every calendar).
+ */
+export const ChipsHoldTheirLine: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    await expect(chipsOff(canvasElement)).toEqual([]);
+  },
+};
+
+/**
+ * AGL-017, ADR-033: the month at a desktop's width on a touch screen. Each chip is a finger tall
+ * beside its finger-sized grip, no taller, with its one line of words in its middle, not at its
+ * top (T-274).
+ */
+export const ChipsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await within(canvasElement).findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    await expect(chipsOff(canvasElement)).toEqual([]);
+  },
+};
+
+/** AGL-017, ADR-033, D9: the same in a phone's list of days, every chip of it (T-274). */
+export const ChipsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await within(canvasElement).findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    await expect(canvasElement.querySelector('.calendar-grid.is-agenda')).not.toBeNull();
+    await expect(chipsOff(canvasElement)).toEqual([]);
   },
 };
 

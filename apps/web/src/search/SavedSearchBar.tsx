@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -48,6 +49,7 @@ export function SavedSearchBar({
   onSaved,
 }: SavedSearchBarProps) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
   const [list, setList] = useState<SavedSearch[]>([]);
   const [listRead, setListRead] = useState(false);
@@ -189,7 +191,7 @@ export function SavedSearchBar({
       setSubscribed(true);
       return t('saved.subscribed', {
         name: opened.name,
-        when: new Date(sub.nextRunAt).toLocaleString(),
+        when: intl.formatDate(sub.nextRunAt, { dateStyle: 'medium', timeStyle: 'short' }),
       });
     });
 
@@ -249,14 +251,15 @@ export function SavedSearchBar({
             type="button"
             className="button-secondary saved-state"
             data-on={subscribed || undefined}
+            // The state shows as Star's does (PL-32): a mark either way, and pressed while the
+            // person gets it by email. The button opens the subscription's settings.
+            aria-pressed={subscribed}
             aria-expanded={panel === 'subscribe'}
             onClick={() => toggle('subscribe')}
           >
-            {subscribed && (
-              <span className="saved-state-mark" aria-hidden="true">
-                {'\u2713'}
-              </span>
-            )}
+            <span className="saved-state-mark" aria-hidden="true">
+              {subscribed ? '\u2713' : '\u2709\uFE0E'}
+            </span>
             {t(subscribed ? 'saved.subscribedButton' : 'saved.subscribe')}
           </button>
         )}

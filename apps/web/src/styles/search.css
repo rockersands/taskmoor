@@ -42,6 +42,18 @@
   overflow-y: auto;
 }
 
+/*
+ * On a phone or a touch screen the rows are a finger tall and fewer fit side by side, so a capped
+ * group cut its last track off with nothing to say more was below (QRY-014). There the page itself
+ * scrolls: every track shows, in full.
+ */
+@media (max-width: 767px), (pointer: coarse) {
+  .search-basic > .search-choices {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
 /* One label style for the form's fields and its groups (PL-33): the size and weight of a field's. */
 .search-choices > legend,
 .search-filter > legend {
@@ -212,14 +224,52 @@
   outline-offset: 2px;
 }
 
+/* Columns past the card's edge (D2): the table scrolls and the edge with more beyond it fades, so
+   a cut column reads as "more this way", never as a clipped date. While anything in it has focus
+   (a cell's pencil, an edit) the whole table shows. */
+.search-table-scroll:is([data-more="end"], [data-more="start"], [data-more="both"]) {
+  scrollbar-width: thin;
+}
+
+.search-table-scroll[data-more="end"]:not(:focus-within) {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.search-table-scroll[data-more="start"]:not(:focus-within) {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.search-table-scroll[data-more="both"]:not(:focus-within) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
+}
+
+/* The key takes its own width (TR-8): the key stays whole, and the subtickets' count under it
+   wraps between words instead of widening the column. */
 .search-key {
-  white-space: nowrap;
+  width: 1%;
   font-weight: var(--font-weight-strong);
+}
+
+.search-key > a {
+  white-space: nowrap;
+}
+
+.search-key .tool-progress-mini {
+  flex-wrap: wrap;
+  max-inline-size: 7rem;
+  white-space: normal;
 }
 
 /*
  * The summary takes the width the other columns leave (TR-8, PL-10): short values stay on one line
- * at their own width, so a title wraps only when the table is truly full, and a date never breaks.
+ * at their own width, so a title wraps only when the table is truly full, and a date or a name
+ * never breaks.
  */
 .search-table [data-column] {
   width: 1%;
@@ -227,7 +277,7 @@
 
 .search-table [data-column="summary"] {
   width: auto;
-  min-width: 16rem;
+  min-width: 12rem;
 }
 
 .search-table [data-one-line] {
@@ -260,9 +310,14 @@
   overflow-wrap: break-word;
 }
 
-/* The pencil keeps a gap from the next column, inside its own cell. */
+/* No one assigned: the word, quieter than a name. */
+.search-cell-none {
+  color: var(--color-text-muted);
+}
+
+/* The pencil keeps a clear gap from the next column, inside its own cell (TR-8). */
 .search-cell:has(.search-cell-edit) {
-  padding-inline-end: var(--space-4);
+  padding-inline-end: var(--space-6);
 }
 
 .search-cell-edit {

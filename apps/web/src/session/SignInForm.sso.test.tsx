@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
+import { messagesEn } from '../i18n/messages.en';
+import { messagesEs } from '../i18n/messages.es';
 import type { Discovery, SignInSsoClient, SsoProviderSummary } from '../sso/client';
 import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
@@ -306,8 +308,10 @@ describe('sign-in with single sign-on (M1-080)', () => {
     openSignIn(client, { hash: '#/sign-in?sso_error=no_account' });
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(
-      'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
+      'There is no account for you here yet. Ask a site administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
+    // The same person to ask as the line under the form (D12, D15).
+    expect(screen.getByText(/Ask a site administrator for a new password link/)).toBeVisible();
     // Above the form, as its own alert, not as a password error (AC-10).
     const form = screen.getByRole('form', { name: 'Sign in' });
     expect(form.contains(alert)).toBe(false);
@@ -315,6 +319,23 @@ describe('sign-in with single sign-on (M1-080)', () => {
     expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
     // The address loses the reason, so a reload does not show it again.
     expect(window.location.hash).toBe('#/sign-in');
+  });
+
+  it('[IAM-003] every reason names a site administrator as the one to ask, in English and Spanish (D12)', () => {
+    const reasons = (messages: Record<string, string>) =>
+      Object.entries(messages).filter(([id]) => id.startsWith('auth.sso.error.'));
+    // Every reason that sends the person to someone sends them to the role the sign-in page names.
+    const vague = [
+      ...reasons(messagesEn).filter(
+        ([, text]) => /administrator/i.test(text) && !text.includes('a site administrator'),
+      ),
+      ...reasons(messagesEs).filter(
+        ([, text]) => /administrador/i.test(text) && !text.includes('un administrador del sitio'),
+      ),
+    ];
+    expect(vague).toEqual([]);
+    expect(messagesEn['auth.forgotPassword']).toContain('a site administrator');
+    expect(messagesEs['auth.forgotPassword']).toContain('un administrador del sitio');
   });
 
   it('[IAM-003] a reason this frontend does not know still gets a sentence', async () => {

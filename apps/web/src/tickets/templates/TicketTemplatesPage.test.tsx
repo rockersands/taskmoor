@@ -123,6 +123,8 @@ describe('ticket templates page (CORE-029)', () => {
     });
     expect(screen.queryByRole('form', { name: 'New template' })).toBeNull();
     expect(screen.getByText('Bug report')).toBeVisible();
+    // The form closed with the focus in it: the New button has it back (D11).
+    expect(screen.getByRole('button', { name: 'New template' })).toHaveFocus();
   });
 
   it('[CORE-029] says why a name is refused and keeps the form', async () => {

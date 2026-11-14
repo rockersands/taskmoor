@@ -96,6 +96,20 @@ describe('admin token inventory', () => {
     ).toBeVisible();
   });
 
+  it('[IAM-007] with no token at all, offers no filter and no count over the empty state', async () => {
+    const none = () => jsonResponse(200, { tokens: [], total: 0, owners: [] });
+    inventoryBackend({
+      'GET /admin/tokens?status=all&limit=500': none,
+      'GET /admin/tokens?status=active&limit=1': none,
+    });
+    window.location.hash = '#/admin/tokens';
+    render(<App session={ADMIN} />);
+    const tokens = within(await screen.findByRole('region', { name: 'Tokens' }));
+    expect(await tokens.findByText('No API tokens yet')).toBeVisible();
+    expect(tokens.queryByLabelText('Show')).toBeNull();
+    expect(tokens.queryByText('0 tokens')).toBeNull();
+  });
+
   it('[IAM-007] shows the tokens due for rotation and the revoked ones on request', async () => {
     const user = userEvent.setup();
     const { calls, tokens } = await openPage();

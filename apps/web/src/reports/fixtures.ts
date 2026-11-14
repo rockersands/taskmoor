@@ -211,6 +211,8 @@ export function scopeFixture(): ScopeBurndown {
       sprint(9, 'closed', [33, 10, 8, 3, 28]),
       sprint(10, 'active', [30, 6, 0, 0, 24]),
     ],
+    // 52 joined and 12 were done before sprint 8, 2 joined between 9 and 10.
+    outside: { completed: 12, added: 54, removed: 0 },
     now: { scope: 64, completed: 40, remaining: 24 },
     velocity: 11,
     forecast: 3,

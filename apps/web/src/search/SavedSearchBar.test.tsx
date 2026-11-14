@@ -5,13 +5,18 @@ import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
 import { applyStylesheet } from '../test/stylesheets';
+import { useTimeZone } from '../test/timeZone';
 import { fakeSavedSearchClient } from './fixtures';
 import { SavedSearchBar } from './SavedSearchBar';
 import type { SavedSearch } from './savedClient';
 
-function renderBar(opened: SavedSearch | null, client = fakeSavedSearchClient()) {
+function renderBar(
+  opened: SavedSearch | null,
+  client = fakeSavedSearchClient(),
+  locale: 'en' | 'es' = 'en',
+) {
   render(
-    <I18nProvider locale="en">
+    <I18nProvider locale={locale}>
       <SessionProvider session={MEMBER}>
         <SavedSearchBar
           client={client}
@@ -64,10 +69,15 @@ describe('the saved searches bar (M1-063)', () => {
     expect(star).toHaveTextContent('★');
     const subscribe = screen.getByRole('button', { name: 'Subscribe' });
     expect(subscribe).not.toHaveAttribute('data-on');
+    // Like Star, Subscribe carries a mark and a pressed state either way (PL-32).
+    expect(subscribe).toHaveAttribute('aria-pressed', 'false');
+    expect(subscribe).toHaveTextContent('✉');
     await user.click(subscribe);
     await user.click(screen.getByRole('button', { name: 'Subscribe by email' }));
     const subscribed = await screen.findByRole('button', { name: 'Subscribed' });
     expect(subscribed).toHaveAttribute('data-on');
+    expect(subscribed).toHaveAttribute('aria-pressed', 'true');
+    expect(subscribed).toHaveTextContent('✓');
   });
 
   it('[QRY-012] reads that the person already gets it by email', async () => {
@@ -79,5 +89,31 @@ describe('the saved searches bar (M1-063)', () => {
     await waitFor(() => expect(asked).toHaveBeenCalledWith(2, 2));
     expect(screen.getByRole('button', { name: 'Star' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Star' })).toHaveTextContent('☆');
+  });
+});
+
+// The first email's time reads in the person's locale, as every other date in the app does, not
+// the browser's '10/30/2026, 1:00:00 AM' (T-240).
+describe('when a subscription’s first email goes out (T-240)', () => {
+  useTimeZone('America/Los_Angeles');
+
+  const subscribeIn = async (locale: 'en' | 'es', subscribe: string, save: string) => {
+    const user = userEvent.setup();
+    const client = fakeSavedSearchClient();
+    renderBar(client.saved[0] as SavedSearch, client, locale);
+    await user.click(screen.getByRole('button', { name: subscribe }));
+    await user.click(screen.getByRole('button', { name: save }));
+  };
+
+  it('[QRY-012] [NFR-006] in English', async () => {
+    await subscribeIn('en', 'Subscribe', 'Subscribe by email');
+    expect(
+      await screen.findByText(/The first email goes out Oct 30, 2026, 1:00\sAM\.$/),
+    ).toBeVisible();
+  });
+
+  it('[QRY-012] [NFR-006] in Spanish', async () => {
+    await subscribeIn('es', 'Suscribirse', 'Suscribirse por correo');
+    expect(await screen.findByText(/El primer correo sale 30 oct 2026, 1:00\.$/)).toBeVisible();
   });
 });

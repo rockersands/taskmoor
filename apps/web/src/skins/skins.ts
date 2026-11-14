@@ -84,3 +84,45 @@ export function applyAppearance(
     unwatch = () => query.removeEventListener('change', follow);
   }
 }
+
+/** While a ticket prints: the skin chosen before printing began, to come back afterwards. */
+let skinBeforePrint: string | null = null;
+let printViews = 0;
+
+const lightForPrint = () => {
+  const root = document.documentElement;
+  if (skinBeforePrint !== null || root.dataset.skin === 'light') return;
+  skinBeforePrint = root.dataset.skin ?? '';
+  root.dataset.skin = 'light';
+};
+
+const skinAfterPrint = () => {
+  if (skinBeforePrint === null) return;
+  const root = document.documentElement;
+  // A skin changed while the print dialog was open stays.
+  if (root.dataset.skin === 'light') {
+    if (skinBeforePrint) root.dataset.skin = skinBeforePrint;
+    else delete root.dataset.skin;
+  }
+  skinBeforePrint = null;
+};
+
+/**
+ * Paper is light whatever the skin (PL-27, D37): while a ticket prints, the page takes the light
+ * skin itself, so every token (a priority's glyph, a warning, a done state) prints in the light
+ * skin's values, which hold their contrast on white, and print.css only adds the printer's own
+ * white and black. The skin chosen comes back when printing ends. Each ticket view on screen
+ * calls this; the returned function stops it, and the last one to stop removes the listeners.
+ */
+export function printInLightSkin(): () => void {
+  if (printViews++ === 0) {
+    window.addEventListener('beforeprint', lightForPrint);
+    window.addEventListener('afterprint', skinAfterPrint);
+  }
+  return () => {
+    if (--printViews > 0) return;
+    window.removeEventListener('beforeprint', lightForPrint);
+    window.removeEventListener('afterprint', skinAfterPrint);
+    skinAfterPrint();
+  };
+}

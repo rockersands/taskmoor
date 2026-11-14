@@ -190,3 +190,58 @@ export const Everything: Story = {
     expect(style(dialog).backgroundColor).toMatch(/^rgb\(/);
   },
 };
+
+/** The colour a token paints in this skin, read from a probe on the page's canvas. */
+const tokenColour = (token: string) => {
+  const probe = document.createElement('div');
+  probe.style.background = `var(${token})`;
+  document.body.append(probe);
+  const colour = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  return colour;
+};
+
+/** Whether every colour in a computed background image is fully clear (no sheen). */
+const clearImage = (image: string) =>
+  (image.match(/rgba?\([^)]*\)/g) ?? []).every((colour) => {
+    const parts = colour.match(/[\d.]+/g) ?? [];
+    return parts.length === 4 && Number(parts[3]) === 0;
+  });
+
+/**
+ * ADR-114, ADR-033: on a phone a glass card is the opaque surface of its skin, as where glass
+ * cannot blur. A card several windows tall had its blurred backdrop drawn out of step with the
+ * canvas after a scroll (the second sweep's account notifications); an opaque card shows nothing
+ * behind it, and what sits inside it is on the opaque tokens too. Runs in both skins.
+ */
+export const GlassOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    const surface = tokenColour('--color-surface');
+    await expect(surface).toMatch(/^rgb\(/);
+    const cards = Array.from(canvasElement.querySelectorAll('.glass-card'));
+    await expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      const style = getComputedStyle(card);
+      await expect(style.backdropFilter).toBe('none');
+      await expect(style.backgroundColor).toBe(surface);
+      await expect(clearImage(style.backgroundImage)).toBe(true);
+    }
+    const field = within(canvasElement).getByRole('textbox', { name: 'A line' });
+    await expect(getComputedStyle(field).backgroundColor).toBe(
+      tokenColour('--color-surface-raised'),
+    );
+  },
+};
+
+/** On a wide screen the same cards are blurred glass. */
+export const GlassOnADesktop: Story = {
+  globals: { viewport: { value: 'desktop' } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    const card = canvasElement.querySelector('.glass-card');
+    if (!card) throw new Error('the story draws glass cards');
+    await expect(getComputedStyle(card).backdropFilter).toContain('blur');
+  },
+};

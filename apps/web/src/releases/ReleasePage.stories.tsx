@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { ApiError } from '../api/client';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeTrackClient } from '../tracks/fixtures';
 import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
@@ -98,7 +98,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket of the release (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('table');
     await expect(
@@ -110,10 +110,27 @@ export const OnATouchScreen: Story = {
 /** A finger reaches the release across tracks in its facts (ADR-033). */
 export const LinkedOnATouchScreen: Story = {
   args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'Spring launch' });
     await expect(tooSmallForAFinger(canvasElement, ['.release-facts a'])).toEqual([]);
+  },
+};
+
+/**
+ * A release with no closed tickets yet (D27; PLN-007): "Add to a release across tracks…" is a
+ * normal button, not a bar across the card, and empty notes offer no Markdown.
+ */
+export const NothingClosedYet: Story = {
+  args: { releaseId: 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const add = await canvas.findByRole('button', { name: 'Add to a release across tracks…' });
+    const card = add.closest('section')?.getBoundingClientRect();
+    if (!card) throw new Error('the button is in its section');
+    await expect(add.getBoundingClientRect().width).toBeLessThan(card.width / 2);
+    const notes = within(canvas.getByRole('region', { name: 'Release notes' }));
+    await expect(notes.queryByRole('button', { name: 'Copy as Markdown' })).toBeNull();
   },
 };
 

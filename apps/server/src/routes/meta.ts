@@ -62,15 +62,17 @@ export const metaAnswer = z
         description:
           'The oldest frontend this backend serves (older ones must update) and the one it was built with (older ones should). Null on a development build, which takes any frontend.',
       }),
-    instance: z.object({
-      id: z.string(),
-      name: z.string(),
-      keyAlgorithm: z.literal('Ed25519'),
-      publicKey: z.string().meta({ description: 'SPKI DER, base64url.' }),
-      keyFingerprint: z
-        .string()
-        .meta({ description: '`SHA256:` and the key’s digest, base64url.' }),
-    }),
+    instance: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        keyAlgorithm: z.literal('Ed25519'),
+        publicKey: z.string().meta({ description: 'SPKI DER, base64url.' }),
+        keyFingerprint: z
+          .string()
+          .meta({ description: '`SHA256:` and the key’s digest, base64url.' }),
+      })
+      .meta({ description: 'Who this site is: its id, its name and the key it signs with.' }),
     signIn: z.object({
       password: z.boolean(),
       providers: z.array(provider),

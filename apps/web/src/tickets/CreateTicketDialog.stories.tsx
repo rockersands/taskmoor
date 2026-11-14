@@ -31,6 +31,30 @@ type Story = StoryObj<typeof meta>;
 /** The create form over the page. */
 export const Open: Story = {};
 
+/** A colour with no transparency: `rgb(…)`, or `rgba(…)` whose alpha is 1. */
+const opaque = (colour: string) => {
+  const alpha = /rgba\([^)]*,\s*([\d.]+)\)/.exec(colour)?.[1];
+  return colour.startsWith('rgb') && (alpha === undefined || Number(alpha) === 1);
+};
+
+/**
+ * Create's sticky foot is opaque, in the dialog's own fill (D3, PL-21): the form scrolling under it
+ * (the Environment editor's borders and toolbar) never shows through beside Create.
+ */
+export const OpaqueFoot: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const create = await canvas.findByRole('button', { name: 'Create' });
+    const foot = create.closest('.form-actions');
+    const dialog = create.closest('.create-dialog');
+    if (!foot || !dialog) throw new Error('No foot');
+    const fill = getComputedStyle(foot).backgroundColor;
+    await expect(opaque(fill), fill).toBe(true);
+    await expect(fill).toBe(getComputedStyle(dialog).backgroundColor);
+    await expect(getComputedStyle(foot).position).toBe('sticky');
+  },
+};
+
 /** Started from SHOP-7: its type and fields filled in. */
 export const FromATicket: Story = {
   play: async ({ canvasElement }) => {

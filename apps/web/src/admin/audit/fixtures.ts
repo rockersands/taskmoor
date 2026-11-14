@@ -15,7 +15,7 @@ export const RECORDS: AuditRecord[] = [
     occurredAt: '2026-10-30T09:00:00Z',
     actor: { id: 1, name: 'Ada Lovelace', email: 'ada@example.com' },
     action: 'user.signed_in',
-    subject: { type: 'user', id: '1' },
+    subject: { type: 'user', id: '1', name: 'Ada Lovelace' },
     details: {},
     ip: '203.0.113.5',
   },

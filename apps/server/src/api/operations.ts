@@ -128,12 +128,12 @@ function propertyOperations(
 }
 
 export const OPERATIONS: readonly Operation[] = [
-  // The instance (M1-106): what a frontend or a client reads before anything else.
+  // The site (M1-106): what a frontend or a client reads before anything else.
   op({
     method: 'GET',
     path: '/api/meta',
     id: 'getMeta',
-    tag: 'Instance',
+    tag: 'Site',
     summary: 'What this site is and which clients it works with',
     description:
       'Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.',

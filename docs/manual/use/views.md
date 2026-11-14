@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts
-accessed: 2026-11-13
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts
+accessed: 2026-11-14
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -23,7 +23,8 @@ track's name above it. It shows:
   by assignee** (the ten people with most).
 
 The five numbers sit on one line however their labels wrap; on a phone they go two to a row with
-the last across the row, and the four lists one or two to a row, never three and a lone fourth.
+the last across the row, and the four lists one or two to a row, never three and a lone fourth,
+each card as tall as its own list.
 Every number is a link to the search that finds exactly those tickets. The tab bar above it holds
 the track's other sections, such as its [**Releases**](boards.md#releases),
 [**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**,
@@ -46,13 +47,13 @@ whole sprint rather than a query, so they stay as they are, and the page says so
 The filter is yours alone. It is kept in the page's address (`tracks/PAY?filter=...`), so it
 survives a reload and you can bookmark the filtered summary or send yourself the link; anyone who
 opens that link sees the summary filtered the same way, as far as they may see. Nothing is saved
-on the server, and the summary the owner set up does not change. Pressing **Customize** shows the
+on the server, and the summary the owner set up does not change. Pressing **Customise** shows the
 widgets unfiltered, as everyone will see them.
 
-### Customizing the summary
+### Customising the summary
 
-The track's owner and its administrators see **Customize**. It starts from the numbers above, as
-one widget called **This track's numbers**, so nothing is lost. They can then choose a **Layout**
+The track's owner and its administrators see **Customise**. It starts from the numbers above, as
+one widget called **This track’s numbers**, so nothing is lost. They can then choose a **Layout**
 of one to three columns, add any [widget](dashboards-and-reports.md#widgets) with **Widget to
 add**, set each one up, move them (by drag, by their buttons or with Alt and the arrow keys, as
 on a [dashboard](dashboards-and-reports.md#arranging-widgets)) and remove them, and press **Save the
@@ -74,9 +75,14 @@ On a track's summary:
 - the sprint widgets read the track's board, and need it to be a Scrum board; a Kanban track's
   editor offers every other widget, the time and workload ones included.
 
-**Back to the default** removes the customization for everyone, after asking. If someone else saved
-a change while you were editing, saving says so, and nothing is overwritten. An archived track's
-summary cannot be changed until the track is restored.
+**Back to the default** removes the customization for everyone, so it asks first. Its button has the
+danger colour of an action that removes something; pressing it does nothing yet, and in its place
+the page says that the track's summary returns to the default for everyone, that the widgets chosen
+for it are removed, and that this cannot be undone. **Reset the summary of** and the track's name
+does it; **Cancel** or Escape leaves everything as it was. Afterwards the page says the track shows
+its default summary again. If you may not change the summary, it says so and the question stays
+open. If someone else saved a change while you were editing, saving says so, and nothing is
+overwritten. An archived track's summary cannot be changed until the track is restored.
 
 A customized summary is not a dashboard: it belongs to the track, and it does not appear under
 **Dashboards**.
@@ -193,7 +199,7 @@ it is long; on a phone the summary sits under the key.
 - **Dependencies**: "blocks" links between listed tickets show as lines. A line turns dashed
   and red when the blocked ticket starts on or before the day its blocker is due, unless one of
   the two is already closed.
-- **No dates** marks a ticket without any, at today.
+- **No dates** marks a ticket without any, just after today's line.
 
 Under the chart, **What the bars mean** explains each of these styles, listing only those the
 timeline draws.
@@ -201,7 +207,9 @@ timeline draws.
 The **Zoom** buttons switch between **Weeks**, **Months** and **Quarters**. **Today** scrolls
 to the current day. The month's name stays in view at the left of the days while you scroll. When
 a ticket's bar lies wholly before or after the days in view, its row shows **Earlier** or
-**Later** at that edge instead of looking empty; choose it to scroll to the bar. When more rows
+**Later** at that edge instead of looking empty; choose it to scroll to the bar. These markers are
+solid, so today's line passes behind their words. On a phone the ticket's key sits over its
+summary, and a tap anywhere on the two opens the ticket. When more rows
 wait below the chart's lower edge, the last ones fade out: scroll the chart, which you can also
 reach with Tab and scroll with the arrow keys.
 

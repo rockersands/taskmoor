@@ -51,6 +51,10 @@ export const Panels: Story = {
     await expect(canvas.getByRole('button', { name: /Faster checkout/ })).toHaveTextContent(
       '6 tickets, 2 closed',
     );
+    // A release's date reads as the Releases list says it, never '2026-12-01' (T-240).
+    await expect(canvas.getByRole('button', { name: /Checkout 2\.0/ })).toHaveTextContent(
+      '4 tickets, due Dec 1, 2026',
+    );
   },
 };
 

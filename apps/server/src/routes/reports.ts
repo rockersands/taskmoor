@@ -8,6 +8,7 @@ import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
 import { datesBetween, dayEnd, dayStart } from '../reports/flow';
 import { createdVsClosed, PERIODS, parseAxis, twoDimensional } from '../reports/general';
+import { viewerTimeZone } from '../reports/zone';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { searchRefusal } from './search';
 
@@ -91,8 +92,7 @@ export function registerReportRoutes(
     if (!user) return reply;
     const q = createdQuery.safeParse(request.query);
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
-    const timeZone =
-      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const timeZone = viewerTimeZone(request, q.data.timeZone);
     const now = Date.now();
     const to = q.data.to ?? localDate(new Date(now), timeZone);
     const from = q.data.from ?? daysBefore(to, (q.data.days ?? 30) - 1);

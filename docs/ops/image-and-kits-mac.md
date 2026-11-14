@@ -6,7 +6,8 @@ on 2026-11-05, what failed and what was fixed, a second run that evening after t
 for what the runs left behind, and a third on 2026-11-06 after a review of that work, in which
 all five passed. A fourth that day, after a re-check, made an air-gap bundle for amd64 servers
 on this arm64 Mac for the first time and ran the image and fresh-machine scripts again; after a
-second re-check, the bundle's SBOM was checked against a tag that holds both platforms. The
+second re-check, the bundle's SBOM was checked against a tag that holds both platforms. On
+2026-11-14 `smoke.sh` ran twice more after T-247 bounded the image's dependency install. The
 scripts are the ones in `CLAUDE.md`'s command table; none of them reaches a registry other than
 Docker Hub for base images.
 
@@ -126,6 +127,28 @@ linux/arm64,linux/amd64 --load`; a plain `docker image inspect` reported `linux/
 The test image was removed afterwards, which left the same images as before, no container and
 no volume, and Colima was stopped.
 
+### After T-247: the dependency install bounded
+
+On 2026-11-14, while holding the machine's test lock, with Colima started for the run and
+stopped after it (Docker Engine 29.5.2, arm64). T-247 gave the Dockerfile's install step pnpm's
+network settings through that step's environment (a download that receives nothing for 60 s is
+dropped and tried again, up to five more times after 10 s to 2 min, eight downloads at once), a
+30-minute limit on the whole step with a message naming the build arguments to change
+(`PNPM_INSTALL_TIMEOUT`, `PNPM_INSTALL_FETCH_TIMEOUT`, `PNPM_INSTALL_FETCH_RETRIES`,
+`PNPM_INSTALL_NETWORK_CONCURRENCY`), and pnpm's store as a BuildKit cache mount outside the
+image's layers. The link was fast that morning, so neither run could show the limit at work; the
+limit, its message and the settings pnpm receives are shown by
+`packages/devtools/src/dockerfile.test.ts`, which runs the step's own script with stand-ins.
+
+| Script | Result | Time | What it showed |
+|---|---|---|---|
+| `bash tools/image/smoke.sh` at `c4c09a3c` | Passed | 58 s | The install step ran (its text had changed): 820 packages, none from the empty store, downloaded in 15.7 s. Image 269 MB unpacked, as before; the version in the server and the frontend artefact; both routing modes; all roles next to PostgreSQL 16; the amd64 image under emulation, every builder step cached. pnpm printed a notice that a newer pnpm exists, a request to the registry the build does not need, so the next commit turned the notifier off |
+| `bash tools/image/smoke.sh` at `8ab9088f` | Passed | 31 s | The install step ran again (its text had changed once more) and took everything from the store: "reused 816, downloaded 0", done in 3 s, with no notice. The same checks passed. The store's cache mount held 697.6 MB afterwards |
+
+The second run is what a build stopped by the limit, or one whose install layer Docker lost (as
+in the second run of 2026-11-05), now does: it takes from the store what an earlier build
+downloaded instead of fetching all 820 packages again.
+
 ## Runs and fixes
 
 Each failure was fixed in the script or in what it exercises, with a test where one can show it,
@@ -163,12 +186,16 @@ and the script was run again.
   seconds (300 unless raised), with corepack's signature check kept and its network switched
   off afterwards. `smoke.sh` passed with it at `98cb9df7`, both architectures, in 4,042 s; that
   step took 1.1 s.
-- **The dependency install can still stall over a slow, unreliable link**, as in the second run
-  and again in T-236's run: with the install layer rebuilt (the new step comes before it), it
-  took 3,060 s, nearly all of it waiting: nothing for about 950 s after connection resets at
-  10 s, then about 35 minutes at 807 of 820 packages, broken once by socket time-outs and resets
-  at 1,968 s, before pnpm's own retries finished. Each quiet stretch lasted 16 to 18 minutes. It
-  never failed, and nothing bounds the step as a whole.
+- **Bounded by T-247 (2026-11-14): the dependency install could stall over a slow, unreliable
+  link**, as in the second run and again in T-236's run: with the install layer rebuilt (the new
+  step comes before it), it took 3,060 s, nearly all of it waiting: nothing for about 950 s after
+  connection resets at 10 s, then about 35 minutes at 807 of 820 packages, broken once by socket
+  time-outs and resets at 1,968 s, before pnpm's own retries finished. Each quiet stretch lasted
+  16 to 18 minutes. The step now stops after 30 minutes (`PNPM_INSTALL_TIMEOUT`) and says what to
+  change, and a build run again takes what the stopped one downloaded from pnpm's store in the
+  build cache (see [After T-247](#after-t-247-the-dependency-install-bounded)). Not yet seen on
+  a slow link: whether the settings shorten such a run, or whether it now stops at the limit and
+  finishes on the next build.
 - `fresh-vm.sh` prints a harmless "Terminated" line when it stops its static server.
 - **`fresh-vm.sh`'s journey under heavy load** (second run, above): on a quiet machine it passed
   twice in the third run and again in the fourth, so the second run's failure did not come
@@ -218,6 +245,10 @@ size and the download together: `taskmoor:dev` 365 MB, `taskmoor:dev-amd64` 368 
 base images they pull; `docker rmi` the first four frees about 1.7 GB, and
 `docker builder prune` the build cache, at the cost of downloading it all again on the next
 run over a slow link. Colima was stopped afterwards.
+
+Since T-247 the build cache also holds pnpm's store for the image's dependency install, a cache
+mount of about 700 MB (`docker buildx du --filter type=exec.cachemount`). `docker builder
+prune` removes it too, and the next build downloads every package again.
 
 ## What cannot run here
 

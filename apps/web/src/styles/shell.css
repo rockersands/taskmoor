@@ -416,6 +416,17 @@ a {
   overflow-y: auto;
 }
 
+/*
+ * While commands wait below the list's foot, its last line fades out, as the edge of a tab bar with
+ * more beyond it does, so a list that happens to end on a whole command still shows that more
+ * follow. The fade stays at the foot as the list scrolls, and goes at its end. Focus stays in the
+ * search field (a combobox), so the fade is lifted by the active option instead (TR-4): once the
+ * arrow keys move it past the first command, nothing it can reach is faded.
+ */
+.palette-list[data-more]:not(:has([aria-selected="true"]:not(:first-child))) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-8) * 2), transparent);
+}
+
 .palette-item,
 .palette-empty {
   padding: var(--space-2) var(--space-3);
@@ -437,9 +448,16 @@ a {
 }
 
 /* The main action: a peach pill with dark text, lifted by a soft shadow. */
+/* A link drawn as this button reads as one (D4): its label centred in the pill, never underlined. */
 .button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   min-height: var(--hit-target);
+  box-sizing: border-box;
   padding: 0 var(--space-5);
+  text-decoration: none;
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);

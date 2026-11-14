@@ -22,7 +22,44 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: wave 12's follow-ups on main (2026-11-14, the Mac)
+### Latest: the create form, one date format and the demo loader (2026-11-14, the Mac)
+
+- **On `main` (`89c4433b`, full gate: 8,862 tests, 260 e2e):** T-265 (the create form sets every field
+  it lists), T-240 (one date format in the person's locale; TR-29 gone), T-239 (`pnpm demo
+  --tickets` loads tickets.md into a demo), T-247 (the image's install is bounded) and T-270.
+  New: T-276 to T-281 (T-278 to T-280 for the user). Windows: T-089e (migration 0110).
+
+### Earlier: Plans' confirmations and the sweep's Plans rows on main (2026-11-14, Windows)
+
+- **On `main` (`72db5a6e`, full gate on Windows: 8,790 tests, 258 e2e):** T-266 (Plans ask in the
+  page before deleting or clearing capacity) and T-304 (the `plan-` rows of the second sweep), with
+  a review's six findings fixed; T-303 (the MCP command broke mid-setting on Windows).
+- **In progress on Windows:** T-089e, draft changes and scenarios (ADR-122 stage 6, migration 0110)
+  on `wave15/t089e-scenarios`. The design's 18 questions for the user are at the end of stage 6;
+  it builds the first answer of each.
+
+### Earlier: the second sweep fixed (2026-11-14, the Mac)
+
+- **On `main` (`1bf593c9`, full gate: 8,758 tests, 256 e2e):** T-258 (a fresh sweep of every route:
+  `docs/plan/page-review-second-sweep.md`, 119 of 151 faults fixed, 69 new), T-271 (its faults
+  outside Plans, six groups) and T-272 (reports bucket days by the person's own day). Printing a
+  ticket switches to the light skin (`printInLightSkin` in `skins/skins.ts`). Next for the Mac:
+  T-273 to T-275 (on `main` at 07a56b32 too). Windows has T-089e (migration 0110).
+
+### Earlier: the program board and eleven bugs on main (2026-11-14, Windows)
+
+- **On `main` (`443b2dcd`, full gate on Windows: 8,615 tests, 255 e2e):** T-089d, program boards
+  (ADR-122 stage 5, PLN-008, PLN-013, migration 0108), reviewed by a panel (17 faults fixed with
+  tests); and the bugs T-203 (migration 0109), T-223, T-224, T-225, T-227, T-230, T-235, T-243,
+  T-244, T-245 and T-249, reviewed too (10 faults fixed). New helper: `apps/web/e2e/unique.ts`
+  for track keys and stamps per worker; new specs should use it.
+- **Found by the gate, fixed:** T-301 (notification settings: an earlier save's answer took back a
+  quick second change) and T-302 (the finger-drag e2e on Windows never saw `scrollend`).
+- **Open questions for the user:** T-300 (the program board's twelve). Left open in T-245: a save
+  sent after the OAuth token has run out still waits for a refresh.
+- **Next for Windows:** T-266, the `plan-` rows of the second sweep, then T-089e, T-089f, T-089a.
+
+### Earlier: wave 12's follow-ups on main (2026-11-14, the Mac)
 
 - **On `main` (`488632e0`, full gate: 8,526 tests, 254 e2e):** T-253 (the create form sets assignee,
   release, area, parent and person fields; Track is an icon select), T-254 (one confirmation,

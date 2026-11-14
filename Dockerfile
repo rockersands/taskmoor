@@ -48,10 +48,41 @@ COPY packages/storage/package.json packages/storage/
 COPY packages/testkit/package.json packages/testkit/
 COPY packages/webconfig/package.json packages/webconfig/
 COPY packages/workflow/package.json packages/workflow/
+# The dependency install, bounded (T-247): on a slow link it once took 51 minutes, with quiet
+# stretches of 16 to 18 minutes. pnpm's network settings come from this step's environment only
+# (no .npmrc enters the image): a download that receives nothing for PNPM_INSTALL_FETCH_TIMEOUT
+# seconds is dropped and tried again, up to PNPM_INSTALL_FETCH_RETRIES more times after a pause
+# of 10 s growing to 2 min, and at most PNPM_INSTALL_NETWORK_CONCURRENCY downloads run at once, so
+# a thin link is not split sixteen ways. Through a proxy pnpm bounds only the wait for an answer,
+# so the whole step also stops after PNPM_INSTALL_TIMEOUT seconds and says which argument to
+# raise. pnpm's store is a build cache outside the image's layers: a build stopped part way, or
+# one whose install layer Docker lost, downloads only what the store does not hold yet. None of
+# this changes what is installed (the lockfile is frozen and every package is checked against its
+# hash), and the arguments are declared here, after the manifests, so a changed value runs this
+# step again but keeps every layer above it. pnpm does not ask the registry for a newer pnpm.
+ARG PNPM_INSTALL_TIMEOUT=1800
+ARG PNPM_INSTALL_FETCH_TIMEOUT=60
+ARG PNPM_INSTALL_FETCH_RETRIES=5
+ARG PNPM_INSTALL_NETWORK_CONCURRENCY=8
 RUN --mount=type=secret,id=build_ca,required=false \
+    --mount=type=cache,id=taskmoor-pnpm-store,target=/pnpm/store,sharing=locked \
     if [ -s /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
-    pnpm install --frozen-lockfile --ignore-scripts \
-      --filter @taskmoor/server... --filter @taskmoor/web...
+    export npm_config_store_dir=/pnpm/store \
+      npm_config_fetch_timeout="$((PNPM_INSTALL_FETCH_TIMEOUT * 1000))" \
+      npm_config_fetch_retries="$PNPM_INSTALL_FETCH_RETRIES" \
+      npm_config_fetch_retry_mintimeout=10000 \
+      npm_config_fetch_retry_maxtimeout=120000 \
+      npm_config_network_concurrency="$PNPM_INSTALL_NETWORK_CONCURRENCY" \
+      npm_config_update_notifier=false; \
+    start=$(date +%s); \
+    timeout "$PNPM_INSTALL_TIMEOUT" pnpm install --frozen-lockfile --ignore-scripts \
+      --filter @taskmoor/server... --filter @taskmoor/web... || { \
+      status=$?; \
+      if [ $(($(date +%s) - start)) -ge "$PNPM_INSTALL_TIMEOUT" ]; then \
+        echo "pnpm install: stopped after $PNPM_INSTALL_TIMEOUT s, before every dependency was downloaded. What it fetched is kept for the next build. On a slow link, build again with a longer limit (--build-arg PNPM_INSTALL_TIMEOUT=3600) or fewer downloads at once (--build-arg PNPM_INSTALL_NETWORK_CONCURRENCY=4)" >&2; \
+      fi; \
+      exit "$status"; \
+    }
 COPY . .
 # Stamped into the frontend artefact and the server bundle alike (M1-105): the server refuses
 # a frontend of another version. Declared here so a new version keeps the install layer cached.

@@ -99,11 +99,14 @@ describe('password link page', () => {
     expect(screen.getByText(/Every other session of this account is signed out/)).toBeVisible();
   });
 
-  it('[IAM-001] explains an invalid, expired or used link', async () => {
+  it('[IAM-001] explains an invalid, expired or used link, as an alert (D24)', async () => {
     stubLinks(() => jsonResponse(404, { error: 'invalid_link' }));
     window.location.hash = `#/password?token=${TOKEN}`;
     render(<App />);
-    expect(await screen.findByText(/invalid, has expired or was already used/)).toBeVisible();
+    // Announced and drawn as the sign-in page's errors are, not as a plain note.
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/invalid, has expired or was already used/);
+    expect(alert).toHaveClass('page-note');
     expect(screen.queryByLabelText('New password')).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
       'href',
@@ -124,7 +127,7 @@ describe('password link page', () => {
   it('[IAM-001] needs the token from the link, and says so without the intro (AC-7, AC-15)', () => {
     window.location.hash = '#/password';
     render(<App />);
-    expect(screen.getByText(/This address has no password link in it/)).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(/This address has no password link in it/);
     expect(screen.queryByText(/This link works once/)).toBeNull();
     // The frame's one way out (D24).
     expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(

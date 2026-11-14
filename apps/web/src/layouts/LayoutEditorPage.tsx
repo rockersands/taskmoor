@@ -25,6 +25,7 @@ import {
   layoutsClient,
   type Owned,
 } from './client';
+import { NEVER_ON_CREATE } from './createForm';
 import { LayoutCanvas } from './LayoutCanvas';
 import { LayoutPreview } from './LayoutPreview';
 import {
@@ -37,6 +38,7 @@ import {
   layoutSource,
   OPERATIONS,
   type Operation,
+  placedKeys,
   SYSTEM_FIELD_KEYS,
   sameLayouts,
   starterFor,
@@ -567,6 +569,13 @@ function SetEditor({
 
   const key = formKey(form);
   const draft = drafts[key] ?? null;
+  // A Create layout does not offer Close reason, which the create form never shows (D30); one
+  // already placed stays, so it can be taken off.
+  const canvasKeys = useMemo(() => {
+    if (form.operation !== 'create') return fieldKeys;
+    const placed = new Set(draft ? placedKeys(draft) : []);
+    return fieldKeys.filter((k) => !NEVER_ON_CREATE.has(k) || placed.has(k));
+  }, [fieldKeys, form.operation, draft]);
   const source = layoutSource(drafts, form);
   const formName = t('layouts.formName', {
     operation: form.operation,
@@ -758,7 +767,7 @@ function SetEditor({
             <LayoutCanvas
               draft={draft}
               onChange={change}
-              fieldKeys={fieldKeys}
+              fieldKeys={canvasKeys}
               fieldName={fieldName}
             />
             <div className="form-field form-field-inline layout-others">

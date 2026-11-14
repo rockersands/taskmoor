@@ -1,4 +1,6 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { ActionSlot } from '../admin/ActionSlot';
+import { NewButton } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { DangerAction } from '../shell/DangerAction';
@@ -110,19 +112,17 @@ export function StatusesSection({
         <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.statuses.title')}
         </h2>
+        {/* The filled "New …" button every list page has (D11, AD-19). */}
         {statuses && (
-          <button
+          <NewButton
             ref={addButton}
-            type="button"
-            className="button-primary"
-            aria-expanded={editing === 'new'}
-            onClick={() => {
+            label={t('admin.statuses.add')}
+            open={editing === 'new'}
+            onToggle={() => {
               setDone('');
-              setEditing('new');
+              setEditing(editing === 'new' ? null : 'new');
             }}
-          >
-            {t('admin.statuses.add')}
-          </button>
+          />
         )}
       </div>
       <p className="page-note">{t('admin.statuses.intro')}</p>
@@ -180,7 +180,8 @@ export function StatusesSection({
                   >
                     {t('admin.statuses.edit')}
                   </button>
-                  {index > 0 && (
+                  {/* A missing Up or Down keeps its place, so the rows' buttons form columns. */}
+                  {index > 0 ? (
                     <button
                       type="button"
                       className="button-secondary"
@@ -190,8 +191,10 @@ export function StatusesSection({
                     >
                       {t('admin.workflow.rule.up')}
                     </button>
+                  ) : (
+                    <ActionSlot label={t('admin.workflow.rule.up')} />
                   )}
-                  {index < statuses.length - 1 && (
+                  {index < statuses.length - 1 ? (
                     <button
                       type="button"
                       className="button-secondary"
@@ -201,6 +204,8 @@ export function StatusesSection({
                     >
                       {t('admin.workflow.rule.down')}
                     </button>
+                  ) : (
+                    <ActionSlot label={t('admin.workflow.rule.down')} />
                   )}
                   <DangerAction
                     label={t('admin.statuses.delete')}

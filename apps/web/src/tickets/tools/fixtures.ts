@@ -4,6 +4,7 @@ import type {
   ChecklistItem,
   ChecklistProgress,
   ChildTicket,
+  ChildType,
   LinkType,
   PickedTicket,
   TicketChecklists,
@@ -118,7 +119,7 @@ export function fakeToolsClient(
     mayLink?: boolean;
     enabled?: boolean;
     children?: ChildTicket[];
-    childTypes?: { id: number; name: string }[];
+    childTypes?: ChildType[];
     checklists?: Checklist[];
     canEdit?: boolean;
     /** Where a subticket may go (TT-6); none moves a subticket from the list at all. */

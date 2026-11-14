@@ -9,7 +9,7 @@
       "reason": "Duplicate"
     }
   ],
-  "markdown": "# Checkout 1.9\n\nReleased on 2026-10-01.\n\nCard payments, at last.\n\n## Feature\n\n- RH-6 Wallet \\*payments\\* \\[beta\\]\n- RH-8 A card form\n\n## Bug\n\n- RH-7 Totals off by a cent\n",
+  "markdown": "# Checkout 1.9\n\nReleased on October 1, 2026.\n\nCard payments, at last.\n\n## Feature\n\n- RH-6 Wallet \\*payments\\* \\[beta\\]\n- RH-8 A card form\n\n## Bug\n\n- RH-7 Totals off by a cent\n",
   "release": {
     "id": 2,
     "name": "1.9",

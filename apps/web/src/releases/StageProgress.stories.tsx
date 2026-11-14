@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { StageProgress } from './StageProgress';
 
 const counted = (stage: string, count: number, exact = true) => ({
@@ -48,7 +48,7 @@ export const AtLeast: Story = {
 
 /** A finger reaches each number (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(tooSmallForAFinger(canvasElement, ['.release-legend a'])).toEqual([]);
   },

@@ -29,6 +29,13 @@
   padding: var(--space-4);
 }
 
+/* A button of a section's own, as "Add to a release across tracks…", is a normal button at the
+   start of the line, never a bar the card's width (D27). */
+.release-section > button {
+  justify-self: start;
+  max-width: 100%;
+}
+
 .release-group h2,
 .release-section h2 {
   margin: 0;
@@ -250,25 +257,25 @@
 }
 
 @media (pointer: coarse) {
+  .release-name,
+  .release-table a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
+  }
+
   .release-create input,
   .release-create button,
   .release-decide input,
   .release-decide button,
   .release-ship input,
   .release-ship button,
-  .release-section .form-actions a,
   .release-group summary,
   .release-legend a,
   .release-name,
-  .release-table a {
+  .release-table a,
+  .release-section .form-actions a {
     min-height: var(--hit-target-touch);
-  }
-
-  .release-name,
-  .release-table a {
-    display: inline-flex;
-    align-items: center;
-    min-width: var(--hit-target-touch);
   }
 }
 
@@ -382,10 +389,10 @@
   .cross-track-card a,
   .cross-track-candidates label,
   .cross-track-dialog label.form-field-inline,
-  .cross-track-group-head h2 a,
   .release-cross-track,
   .release-cross-track-all,
-  .release-facts a {
+  .release-facts a,
+  .cross-track-group-head h2 a {
     display: inline-flex;
     align-items: center;
     min-height: var(--hit-target-touch);

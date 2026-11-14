@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { PersonalDataSection } from '../account/PersonalDataSection';
+import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -46,6 +47,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const [link, setLink] = useState<{ name: string; url: string } | null>(null);
   /** The person whose data panel or erase form is open. */
   const [open, setOpen] = useState<{ user: User; panel: 'data' | 'erase' } | null>(null);
+  const adding = useNewForm();
   // A deactivation takes the person's Deactivate away: the page's heading keeps the focus.
   const title = useRef<HTMLHeadingElement>(null);
 
@@ -107,22 +109,39 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
         title={t('admin.users.title')}
         {...(state.status === 'forbidden'
           ? {}
-          : { purpose: t('settings.usersHint'), about: t('admin.users.intro') })}
+          : {
+              purpose: t('settings.usersHint'),
+              about: t('admin.users.intro'),
+              // A filled "New …" button that opens the form, as on every list page (D11, AD-19).
+              actions: (
+                <NewButton
+                  label={t('admin.users.add')}
+                  open={adding.open}
+                  onToggle={adding.toggle}
+                  ref={adding.button}
+                  data-tutorial="admin-user-new"
+                />
+              ),
+            })}
       />
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.users.forbidden')}</p>
       ) : (
         <>
-          <AddUser
-            client={client}
-            onAdded={(user, activation) => {
-              setMessage(t('admin.users.added', { name: user.name }));
-              setProblem(null);
-              setLink(activation ? { name: user.name, url: activation } : null);
-              void load();
-            }}
-            onProblem={(error) => setProblem(refusal(error))}
-          />
+          {adding.open && (
+            <AddUser
+              client={client}
+              onAdded={(user, activation) => {
+                adding.close();
+                setMessage(t('admin.users.added', { name: user.name }));
+                setProblem(null);
+                setLink(activation ? { name: user.name, url: activation } : null);
+                void load();
+              }}
+              onCancel={adding.close}
+              onProblem={(error) => setProblem(refusal(error))}
+            />
+          )}
           {link && (
             <div className="people-link">
               <p className="page-note">{t('admin.users.linkHint', { name: link.name })}</p>
@@ -366,45 +385,30 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
 function AddUser({
   client,
   onAdded,
+  onCancel,
   onProblem,
 }: {
   client: PeopleClient;
   onAdded: (user: User, activationLink: string | null) => void;
+  onCancel: () => void;
   onProblem: (error: unknown) => void;
 }) {
   const t = useT();
   const id = useId();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [admin, setAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
-  if (!open) {
-    return (
-      <div className="form-actions" data-tutorial="admin-user-new">
-        <button type="button" className="button-primary" onClick={() => setOpen(true)}>
-          {t('admin.users.add')}
-        </button>
-      </div>
-    );
-  }
   return (
     <form
       className="glass-card people-card people-form"
-      data-tutorial="admin-user-new"
       aria-label={t('admin.users.add')}
       onSubmit={(event) => {
         event.preventDefault();
         setBusy(true);
         client
           .createUser({ name: name.trim(), email: email.trim(), isSiteAdmin: admin })
-          .then((made) => {
-            onAdded(made.user, made.activationLink);
-            setOpen(false);
-            setName('');
-            setEmail('');
-            setAdmin(false);
-          }, onProblem)
+          .then((made) => onAdded(made.user, made.activationLink), onProblem)
           .finally(() => setBusy(false));
       }}
     >
@@ -446,7 +450,7 @@ function AddUser({
         <button type="submit" className="button-primary" disabled={busy}>
           {t('admin.users.create')}
         </button>
-        <button type="button" className="button-secondary" onClick={() => setOpen(false)}>
+        <button type="button" className="button-secondary" onClick={onCancel}>
           {t('admin.users.cancel')}
         </button>
       </div>

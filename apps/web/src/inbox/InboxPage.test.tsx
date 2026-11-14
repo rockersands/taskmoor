@@ -265,7 +265,8 @@ describe('the inbox page (M1-058)', () => {
       view: 'all',
       upTo: '15',
     });
-    expect(page.getByText('nothing unread')).toBeVisible();
+    // The count is the eyebrow above the title, capitalised like the others.
+    expect(page.getByText('Nothing unread', { exact: true })).toBeVisible();
     expect(page.getByRole('button', { name: 'Mark all as read' })).toBeDisabled();
   });
 

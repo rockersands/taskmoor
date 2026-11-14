@@ -38,12 +38,18 @@ type Story = StoryObj<typeof meta>;
 /** Roles, policies and global permissions. */
 export const Permissions: Story = {};
 
-/** The default policy open: its grants by permission, and the form to give one. */
+/**
+ * The default policy open: its grants by permission, and the form to give one, opened from the
+ * policy's New button as Global permissions' is (D11).
+ */
 export const PolicyOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Manage Default access policy' }),
+    );
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'New permission in Default access policy' }),
     );
     await expect(
       await canvas.findByRole('form', { name: 'Give a permission in Default access policy' }),

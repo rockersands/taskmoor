@@ -960,6 +960,13 @@
           "field": {
             "type": "string"
           },
+          "fieldName": {
+            "description": "A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "from": {
             "additionalProperties": {},
             "properties": {
@@ -1018,6 +1025,21 @@
                 "type": "null"
               }
             ]
+          },
+          "valueType": {
+            "anyOf": [
+              {
+                "enum": [
+                  "date",
+                  "datetime"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value."
           }
         },
         "required": [
@@ -1288,6 +1310,7 @@
           },
           "instance": {
             "additionalProperties": false,
+            "description": "Who this site is: its id, its name and the key it signs with.",
             "properties": {
               "id": {
                 "type": "string"
@@ -3647,7 +3670,7 @@
         "security": [],
         "summary": "What this site is and which clients it works with",
         "tags": [
-          "Instance"
+          "Site"
         ],
         "x-taskmoor-access": "public",
         "x-taskmoor-stability": "stable"
@@ -13286,6 +13309,49 @@
           "Internal"
         ],
         "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/fields/{id}/groups": {
+      "get": {
+        "operationId": "internal-get-fields-by-id-groups",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
       }
     },
@@ -36434,9 +36500,6 @@
       "name": "Comments"
     },
     {
-      "name": "Instance"
-    },
-    {
       "name": "Links"
     },
     {
@@ -36453,6 +36516,9 @@
     },
     {
       "name": "Session"
+    },
+    {
+      "name": "Site"
     },
     {
       "name": "Tickets"

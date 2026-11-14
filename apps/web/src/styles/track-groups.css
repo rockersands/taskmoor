@@ -114,6 +114,11 @@
 }
 
 /* A track card with its grip at the top corner. */
+.track-card {
+  position: relative;
+  padding-inline-end: calc(var(--hit-target) + var(--space-2));
+}
+
 /* A card in a bubble is a well, with no blur of its own: glass inside glass cuts the blur off. */
 .track-group-bubble .track-card {
   background: var(--glass-surface-sunken);
@@ -124,11 +129,6 @@
 
 .track-group-bubble .track-card::before {
   content: none;
-}
-
-.track-card {
-  position: relative;
-  padding-inline-end: calc(var(--hit-target) + var(--space-2));
 }
 
 .track-card .move-grip {

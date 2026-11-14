@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import type { MessageId } from '../i18n/messages.en';
 import { PICKER_DEBOUNCE_MS } from './tools/TicketPicker';
 
 /** A person as a picker offers one. */
@@ -17,6 +18,11 @@ export interface PersonPickerProps {
   onChange: (people: PickedPerson[]) => void;
   /** Several people (a custom person field that holds several); one by default. */
   multiple?: boolean;
+  /**
+   * What it finds: people, groups for a custom group field (T-265), or teams for a custom team
+   * field (T-276); people by default.
+   */
+  kind?: 'people' | 'groups' | 'teams';
   /** What the Remove button beside a chosen person is called; "Remove Sam" by default. */
   removeLabel?: (name: string) => string;
   /** Said under the search field; "Type a name to find someone." by default. */
@@ -28,11 +34,35 @@ export interface PersonPickerProps {
   disabled?: boolean;
 }
 
+/** What a picker says while it searches, by what it finds. */
+const WORDS: Record<
+  NonNullable<PersonPickerProps['kind']>,
+  { hint: MessageId; none: MessageId; found: MessageId }
+> = {
+  people: {
+    hint: 'tickets.pickers.personHint',
+    none: 'tickets.pickers.noPeople',
+    found: 'tickets.pickers.peopleFound',
+  },
+  groups: {
+    hint: 'tickets.pickers.groupHint',
+    none: 'tickets.pickers.noGroups',
+    found: 'tickets.pickers.groupsFound',
+  },
+  teams: {
+    hint: 'tickets.pickers.teamHint',
+    none: 'tickets.pickers.noTeams',
+    found: 'tickets.pickers.teamsFound',
+  },
+};
+
 /**
  * Choosing people by name (T-253): a search field whose matches follow the text after a short
  * pause, each a button that takes the person, and the people taken, each with a Remove button.
  * With one person to choose, the search field gives way to the choice until it is removed. The
- * ticket templates' assignee and the create form's people fields use it. Focus never falls
+ * ticket templates' assignee and the create form's people fields use it, and the create form's
+ * group and team fields too (`kind="groups"`, T-265; `kind="teams"`, T-276), whose words speak
+ * of groups or teams. Focus never falls
  * away with a control that goes: taking someone moves it to the search field, or to their
  * Remove button when the field gives way; removing someone moves it to the search field. The
  * status line says who was taken or removed.
@@ -43,6 +73,7 @@ export function PersonPicker({
   chosen,
   onChange,
   multiple = false,
+  kind = 'people',
   removeLabel,
   hint,
   describedBy,
@@ -95,13 +126,14 @@ export function PersonPicker({
 
   const searching = multiple || chosen.length === 0;
   const offered = (found ?? []).filter((p) => !chosen.some((c) => c.id === p.id));
+  const words = WORDS[kind];
   const searchSaid = failed
     ? t('tickets.pickers.peopleFailed')
     : found === null
       ? ''
       : offered.length === 0
-        ? t('tickets.pickers.noPeople')
-        : t('tickets.pickers.peopleFound', { count: offered.length });
+        ? t(words.none)
+        : t(words.found, { count: offered.length });
   const take = (person: PickedPerson) => {
     setText('');
     setFound(null);
@@ -178,7 +210,7 @@ export function PersonPicker({
             }}
           />
           <p id={hintId} className="form-hint">
-            {hint ?? t('tickets.pickers.personHint')}
+            {hint ?? t(words.hint)}
           </p>
           {offered.length > 0 && (
             <ul className="person-picker-found">

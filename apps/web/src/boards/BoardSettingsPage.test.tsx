@@ -2,6 +2,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { messagesEn } from '../i18n/messages.en';
+import { messagesEs } from '../i18n/messages.es';
 import { setViewportWidth } from '../test/viewport';
 import { fakeTrackClient } from '../tracks/fixtures';
 import { TrackLayout } from '../tracks/TrackLayout';
@@ -306,7 +308,7 @@ describe('sprint settings of a Scrum board (M1-044, M1-045)', () => {
     const client = renderSettings(scrum());
     await ready();
     expect(sprints().getByRole('combobox', { name: 'Estimate with' })).toHaveDisplayValue(
-      'A number field, such as story points',
+      'A number field, such as Points',
     );
     await waitFor(() =>
       expect(sprints().getByRole('combobox', { name: 'Number field' })).toHaveDisplayValue(
@@ -428,5 +430,18 @@ describe('sprint settings of a Scrum board (M1-044, M1-045)', () => {
       lengthDays: 14,
       timeZone: 'Pacific/Auckland',
     });
+  });
+});
+
+describe("the estimate's words (docs/specs/00-terminology.md)", () => {
+  it('[NFR-006] [AGL-007] names the number field Points, never story points, in English and Spanish (TR-25)', () => {
+    expect(messagesEn['sprints.settings.statistic.field']).toBe('A number field, such as Points');
+    expect(messagesEs['sprints.settings.statistic.field']).toBe('Un campo numérico, como Puntos');
+    const said = (catalogue: Record<string, string>, word: RegExp) =>
+      Object.entries(catalogue)
+        .filter(([key, text]) => key.startsWith('sprints.settings.') && word.test(String(text)))
+        .map(([key]) => key);
+    expect(said(messagesEn, /story points?/i)).toEqual([]);
+    expect(said(messagesEs, /puntos de historia/i)).toEqual([]);
   });
 });

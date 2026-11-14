@@ -224,6 +224,16 @@ export const change = z
     at: instant,
     actor: nullable(person),
     field: z.string(),
+    fieldName: nullable(z.string()).optional().meta({
+      description:
+        'A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise.',
+    }),
+    valueType: nullable(z.enum(['date', 'datetime']))
+      .optional()
+      .meta({
+        description:
+          'A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value.',
+      }),
     from: changeValue,
     to: changeValue,
     transitionId: nullable(id),

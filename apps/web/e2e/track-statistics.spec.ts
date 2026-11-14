@@ -127,7 +127,7 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
   // Titled by its section under the track's tab bar (D26).
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Summary');
   await expect(page.getByRole('navigation', { name: `Sections of ${key}` })).toBeVisible();
-  await page.getByRole('button', { name: 'Customize' }).click();
+  await page.getByRole('button', { name: 'Customise' }).click();
   await page.getByRole('combobox', { name: 'Widget to add' }).selectOption({ label: 'Workload' });
   await page.getByRole('button', { name: 'Add widget' }).click();
   const form = page.getByRole('form', { name: /Workload/ });
@@ -167,7 +167,7 @@ test('[RPT-006] the track’s administrator puts a report on the Summary; a memb
   await expect(
     page.getByRole('article', { name: 'Workload' }).getByRole('row', { name: /None/ }).first(),
   ).toContainText('4h');
-  await expect(page.getByRole('button', { name: 'Customize' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Customise' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Back to the default' })).toHaveCount(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
   await noSidewaysScroll(page);

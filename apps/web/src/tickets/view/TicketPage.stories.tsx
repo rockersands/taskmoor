@@ -10,7 +10,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
 import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
@@ -251,7 +251,7 @@ export const AtPhoneWidth: Story = {
 
 /** On a touch screen a child's key and a short Activity tab are a finger wide (PL-26). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('tab', { name: 'All' });
@@ -259,6 +259,25 @@ export const OnATouchScreen: Story = {
     await expect(tooSmallForAFinger(canvasElement, ['.ticket-tab', '.ticket-child > a'])).toEqual(
       [],
     );
+  },
+};
+
+/**
+ * On a touch phone the Activity tabs keep one row (CORE-019): 'All' never wraps alone under the
+ * others, and the row stays inside the phone's width.
+ */
+export const ActivityTabsOnOneRow: Story = {
+  beforeEach: onARealTouchScreen,
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('tab', { name: 'All' });
+    const tabs = canvas.getAllByRole('tab');
+    const top = tabs[0]?.getBoundingClientRect().top ?? 0;
+    for (const tab of tabs) {
+      await expect(tab.getBoundingClientRect().top, tab.textContent ?? '').toBe(top);
+    }
+    await fitsPhoneWidth(canvas);
   },
 };
 

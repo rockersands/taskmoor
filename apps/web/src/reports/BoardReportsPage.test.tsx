@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { type BoardReport, BoardReportsPage } from './BoardReportsPage';
 import {
   fakeReportClient,
   RELEASES,
   REPORT_BOARD,
+  releaseReportFixture,
   SCRUM_REPORT_BOARD,
   SUMMARIES,
 } from './fixtures';
@@ -256,6 +258,12 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
     ]);
     const perSprint = screen.getByRole('figure', { name: 'Work per sprint' });
     expect(within(perSprint).getByRole('list').textContent).toBe('CompletedAdded');
+    // Its text alternative counts the column outside the sprints as well (TR-13).
+    expect(
+      within(perSprint).getByRole('img', {
+        name: 'Completed and added work in each of 3 sprints, and outside the sprints: 12 completed, 54 added.',
+      }),
+    ).toBeInTheDocument();
     const table = screen.getAllByRole('table').at(-1) as HTMLElement;
     expect(cells(within(table).getAllByRole('row')[2] as HTMLElement)).toEqual([
       'Checkout Sprint 9',
@@ -264,6 +272,16 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
       '8',
       '3',
       '28',
+    ]);
+    // What was done and added while no sprint ran has its own column, so the columns add up to
+    // the sentence: 12 + 10 + 6 + 12 = 40 done (TR-13).
+    expect(cells(within(table).getAllByRole('row').at(-1) as HTMLElement)).toEqual([
+      'Outside the sprints',
+      '',
+      '12',
+      '54',
+      '0',
+      '',
     ]);
     expect(client.calls.at(-1)).toEqual({ report: 'release-burndown', params: { release: 31 } });
     await user.selectOptions(screen.getByRole('combobox', { name: 'Release' }), 'Checkout 2.1');
@@ -293,13 +311,59 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
   it('[RPT-001] the release report shows progress by day, the plan and a forecast', async () => {
     open('release-report', 'en', scrum());
     const figure = await screen.findByRole('figure', { name: 'Release progress' });
-    expect(within(figure).getByRole('list').textContent).toBe('CompletedScope');
+    // The lines name what they add up; Completed is drawn last, over Scope, so it stays seen
+    // once it reaches the scope.
+    expect(within(figure).getByRole('list').textContent).toBe(
+      'Estimate in scopeEstimate completed',
+    );
+    expect(within(figure).getByText('Estimate')).toBeVisible();
+    const lines = [...figure.querySelectorAll('path.chart-line')];
+    expect(lines.map((l) => l.getAttribute('class'))).toEqual([
+      'chart-line chart-line-two',
+      'chart-line chart-line-one',
+    ]);
     expect(
       screen.getByText(
-        'Planned for Nov 30. At the pace of the last 14 days, the work is done by Nov 11.',
+        'Planned for Nov 30, 2026. At the pace of the last 14 days, the work is done by Nov 11, 2026.',
       ),
     ).toBeVisible();
     expect(within(figure).getAllByRole('row')).toHaveLength(23);
+  });
+
+  // The release's days read as the Releases list says them, with their year, in the person's
+  // locale; a release shipped with no date shipped on the person's own day (T-240).
+  it('[RPT-001] [NFR-006] the release report reads its days in Spanish', async () => {
+    open('release-report', 'es', scrum());
+    expect(
+      await screen.findByText(
+        'Prevista para el 30 nov 2026. Al ritmo de los últimos 14 días, el trabajo estará hecho el 11 nov 2026.',
+      ),
+    ).toBeVisible();
+  });
+
+  describe('a release shipped with no date (T-240)', () => {
+    useTimeZone('America/Los_Angeles');
+    const shipped = () => {
+      const client = scrum();
+      client.releaseReport = async () => {
+        const report = releaseReportFixture();
+        return {
+          ...report,
+          release: { ...report.release, releaseDate: null, shippedAt: '2026-11-12T03:00:00Z' },
+        };
+      };
+      return client;
+    };
+
+    it('[RPT-001] [NFR-006] says the day it shipped on the person’s clock, in English', async () => {
+      open('release-report', 'en', shipped());
+      expect(await screen.findByText('Shipped on Nov 11, 2026.')).toBeVisible();
+    });
+
+    it('[RPT-001] [NFR-006] says the day it shipped on the person’s clock, in Spanish', async () => {
+      open('release-report', 'es', shipped());
+      expect(await screen.findByText('Entregada el 11 nov 2026.')).toBeVisible();
+    });
   });
 
   it('[RPT-001] says when the board’s track has no releases', async () => {
@@ -318,7 +382,15 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
         ...RELEASES.map((r) => r.name),
         'Checkout Sprint',
       ]);
-      const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
+      // A column label wrapped onto two lines shows as two pieces: put them back together.
+      const texts = visibleTexts(container)
+        .filter((t) => !/\d/.test(t) && !data.has(t))
+        .reduce<string[]>((out, t) => {
+          const last = out.at(-1);
+          if (last?.startsWith('[') && !last.endsWith(']')) out[out.length - 1] = `${last} ${t}`;
+          else out.push(t);
+          return out;
+        }, []);
       expect(untranslated(texts)).toEqual([]);
       expect(errors).toEqual([]);
       container.remove();

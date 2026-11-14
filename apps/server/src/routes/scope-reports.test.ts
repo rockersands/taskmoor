@@ -252,6 +252,9 @@ describe('release and outcome reports (M1-062)', () => {
       ['Two', 5, 3, 0, 2],
     ]);
     expect(report.now).toEqual({ scope: 10, completed: 8, remaining: 2 });
+    // a and b joined before the first sprint: added outside them, so all that was added less
+    // what was completed is what remains (TR-13).
+    expect(report.outside).toEqual({ completed: 0, added: 8, removed: 0 });
     expect([report.velocity, report.forecast]).toEqual([5, 1]);
     // Bob does not browse RB: its release is not found for him.
     await get('bob', `release-burndown?release=${releases.RB}`, 404);
@@ -287,6 +290,28 @@ describe('release and outcome reports (M1-062)', () => {
     expect(report.days).toHaveLength(1);
     expect(report.days[0]).toMatchObject({ scope: 10, completed: 8 });
     expect([report.pace, report.forecast]).toEqual([0, null]);
+    // A release dated before its first ticket starts on its date, so a shipped release's day is
+    // on the axis.
+    const DAY = 86_400_000;
+    const today = report.days[0].date as string;
+    const earlier = new Date(Date.parse(`${today}T00:00:00Z`) - 5 * DAY).toISOString().slice(0, 10);
+    await database.db
+      .updateTable('release')
+      .set({ release_date: earlier })
+      .where('id', '=', releases.RA as number)
+      .execute();
+    try {
+      const dated = await get('alice', `release-report?release=${releases.RA}&timeZone=UTC`);
+      expect(dated.days).toHaveLength(6);
+      expect(dated.days[0]).toMatchObject({ date: earlier, scope: 0, completed: 0 });
+      expect(dated.days[5]).toMatchObject({ date: today, scope: 10, completed: 8 });
+    } finally {
+      await database.db
+        .updateTable('release')
+        .set({ release_date: null })
+        .where('id', '=', releases.RA as number)
+        .execute();
+    }
   });
 
   it('[RPT-001] refuses a kanban board, a missing release and an unknown one', async () => {

@@ -6,6 +6,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { DonutChart, MAX_SLICES } from '../reports/DonutChart';
 import { LineChart } from '../reports/LineChart';
+import { ReportTable } from '../reports/ReportTable';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
@@ -67,6 +68,7 @@ const FIELD_NAMES: Record<string, MessageId> = {
   status: 'statistics.axis.status',
   priority: 'statistics.axis.priority',
   type: 'statistics.axis.type',
+  track: 'statistics.axis.track',
   assignee: 'statistics.axis.assignee',
   requester: 'statistics.axis.requester',
   creator: 'statistics.axis.creator',
@@ -76,6 +78,18 @@ const FIELD_NAMES: Record<string, MessageId> = {
   foundInRelease: 'statistics.axis.foundInRelease',
   area: 'statistics.axis.area',
 };
+
+/** A share of a whole as a bar in a fixed track, so its length follows the share. */
+function ShareBar({ share }: { share: number }) {
+  return (
+    <span className="widget-share-track" aria-hidden="true">
+      <span
+        className="widget-share-bar"
+        style={{ width: `${Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10}%` }}
+      />
+    </span>
+  );
+}
 
 /**
  * The title a widget shows: its own, or its kind's. An untitled pie names what it counts, such as
@@ -138,6 +152,11 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       : v.kind === 'other'
         ? t('dashboards.value.other')
         : (v.name ?? v.id ?? '');
+  /** The name of the field a table counts by, heading its first column (not 'Value'). */
+  const fieldHeader = (d: { field?: string; fieldName?: string | null }) => {
+    const known = d.field ? FIELD_NAMES[d.field] : undefined;
+    return known ? t(known) : (d.fieldName ?? t('dashboards.widget.value'));
+  };
 
   if (widget.kind === 'introduction') {
     const text = String(config.text ?? '');
@@ -272,7 +291,20 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     }
     case 'average-age':
     case 'time-to-close': {
-      const d = data as { periods: string[]; age?: number[]; average?: number[] };
+      const d = data as {
+        periods: string[];
+        age?: number[];
+        average?: number[];
+        closed?: number[];
+      };
+      // Nothing closed in the range: a line on 0h would read as closing taking no time.
+      if (widget.kind === 'time-to-close' && d.closed?.every((c) => c === 0)) {
+        return (
+          <EmptyState compact title={t('dashboards.widget.noneClosed')}>
+            {t('empty.reports.period')}
+          </EmptyState>
+        );
+      }
       const values = d.age ?? d.average ?? [];
       const { unit, format } = durations(t, intl, Math.max(0, ...values));
       return (
@@ -305,7 +337,12 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       );
     }
     case 'pie': {
-      const d = data as { values: Value[]; total: number };
+      const d = data as {
+        field?: string;
+        fieldName?: string | null;
+        values: Value[];
+        total: number;
+      };
       const sorted = [...d.values].sort((a, b) => b.total - a.total);
       const slices =
         sorted.length <= MAX_SLICES
@@ -333,23 +370,23 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
             t('dashboards.widget.slice', { value: count(v), share: percent(s) })
           }
           tableLabel={t('reports.table')}
-          headers={[
-            t('dashboards.widget.value'),
-            t('dashboards.widget.tickets'),
-            t('dashboards.widget.share'),
-          ]}
+          headers={[fieldHeader(d), t('dashboards.widget.tickets'), t('dashboards.widget.share')]}
         />
       );
     }
     case 'ticket-statistics': {
-      const d = data as { values: Value[]; total: number };
+      const d = data as {
+        field?: string;
+        fieldName?: string | null;
+        values: Value[];
+        total: number;
+      };
       return (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-        <section className="report-table" aria-label={title} tabIndex={0}>
-          <table>
+        <ReportTable label={title}>
+          <table className="report-numbers">
             <thead>
               <tr>
-                <th scope="col">{t('dashboards.widget.value')}</th>
+                <th scope="col">{fieldHeader(d)}</th>
                 <th scope="col">{t('dashboards.widget.tickets')}</th>
                 <th scope="col">{t('dashboards.widget.share')}</th>
               </tr>
@@ -361,11 +398,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                   <td>{count(v.total)}</td>
                   <td>
                     <span className="widget-share">
-                      <span
-                        className="widget-share-bar"
-                        style={{ width: `${d.total === 0 ? 0 : (v.total / d.total) * 100}%` }}
-                        aria-hidden="true"
-                      />
+                      <ShareBar share={d.total === 0 ? 0 : v.total / d.total} />
                       {percent(d.total === 0 ? 0 : v.total / d.total)}
                     </span>
                   </td>
@@ -380,15 +413,15 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               </tr>
             </tfoot>
           </table>
-        </section>
+        </ReportTable>
       );
     }
     case 'two-dimensional': {
       const d = data as { x: Value[]; y: Value[]; cells: number[][]; total: number };
       return (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-        <section className="report-table" aria-label={title} tabIndex={0}>
-          <table>
+        // Past the card's edge the table scrolls with a fade on the side that has more (D2, TR-12).
+        <ReportTable label={title}>
+          <table className="report-numbers">
             <thead>
               <tr>
                 <td />
@@ -421,7 +454,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               </tr>
             </tfoot>
           </table>
-        </section>
+        </ReportTable>
       );
     }
     case 'sprint-burndown': {
@@ -599,11 +632,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               <p className="widget-group-head">
                 <strong>{valueName(v)}</strong>
                 <span className="widget-share">
-                  <span
-                    className="widget-share-bar"
-                    style={{ width: `${v.total === 0 ? 0 : (v.closed / v.total) * 100}%` }}
-                    aria-hidden="true"
-                  />
+                  <ShareBar share={v.total === 0 ? 0 : v.closed / v.total} />
                   {t('dashboards.widget.groupDone', {
                     closed: count(v.closed),
                     total: count(v.total),
@@ -635,6 +664,8 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     }
     case 'workload': {
       const d = data as {
+        field?: string;
+        fieldName?: string | null;
         statistic: 'remainingEstimate' | 'originalEstimate' | 'timeSpent';
         values: (Value & { seconds: number; unestimated: number })[];
         total: number;
@@ -682,17 +713,16 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               t('dashboards.widget.slice', { value: hours(v), share: percent(s) })
             }
             tableLabel={t('reports.table')}
-            headers={[t('dashboards.widget.value'), statistic, t('dashboards.widget.share')]}
+            headers={[fieldHeader(d), statistic, t('dashboards.widget.share')]}
           />
         );
       }
       return (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-        <section className="report-table" aria-label={title} tabIndex={0}>
-          <table>
+        <ReportTable label={title}>
+          <table className="report-numbers">
             <thead>
               <tr>
-                <th scope="col">{t('dashboards.widget.value')}</th>
+                <th scope="col">{fieldHeader(d)}</th>
                 <th scope="col">{t('dashboards.widget.tickets')}</th>
                 <th scope="col">{statistic}</th>
                 <th scope="col">{t('dashboards.widget.unestimated')}</th>
@@ -717,7 +747,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               </tr>
             </tfoot>
           </table>
-        </section>
+        </ReportTable>
       );
     }
     case 'time-tracking': {
@@ -769,9 +799,8 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
             {t('dashboards.time.estimated', { estimated: d.estimated, tickets: d.tickets })}
           </p>
           {d.rows.length > 0 && (
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-            <section className="report-table" aria-label={title} tabIndex={0}>
-              <table>
+            <ReportTable label={title}>
+              <table className="report-numbers">
                 <thead>
                   <tr>
                     <th scope="col">{t('dashboards.widget.ticket')}</th>
@@ -794,7 +823,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                   ))}
                 </tbody>
               </table>
-            </section>
+            </ReportTable>
           )}
         </>
       );

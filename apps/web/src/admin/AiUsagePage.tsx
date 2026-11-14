@@ -193,7 +193,7 @@ export function AiUsagePage({
       <PageHeader
         titleId={titleId}
         title={t('admin.aiUsage.title')}
-        {...(forbidden ? {} : { purpose: t('purpose.aiUsage') })}
+        {...(forbidden ? {} : { purpose: t('purpose.aiUsage'), about: t('admin.aiUsage.about') })}
       />
       {forbidden ? (
         <p className="page-note">{t('admin.aiUsage.forbidden')}</p>

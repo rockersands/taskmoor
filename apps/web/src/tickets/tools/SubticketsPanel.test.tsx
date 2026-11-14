@@ -6,6 +6,7 @@ import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
 import type { SearchClient } from '../../search/client';
 import { ResultTable } from '../../search/ResultTable';
+import { TypeGlyph } from '../../shell/TicketIcons';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import type { Transition } from '../view/client';
@@ -136,7 +137,8 @@ describe('SubticketsPanel', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Customer'));
     expect(names).toBe(1);
     // Another type's form could not be read: the field goes by its number, and is asked again.
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Ticket type' }), 'Sub-bug');
+    await user.click(screen.getByRole('combobox', { name: 'Ticket type' }));
+    await user.click(screen.getByRole('option', { name: 'Sub-bug' }));
     await user.type(field, '{Enter}');
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('also asks for: field 12.'),
@@ -202,7 +204,7 @@ describe('SubticketsPanel', () => {
     await waitFor(() => expect(link).toHaveFocus());
   });
 
-  it('[CORE-032] asks which type when the track has several', async () => {
+  it('[CORE-032] asks which type, in the icon menu Create uses, when the track has several', async () => {
     const user = userEvent.setup();
     const { client } = renderPanel(
       fakeToolsClient({
@@ -212,16 +214,42 @@ describe('SubticketsPanel', () => {
         ],
       }),
     );
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Ticket type' }),
-      'Sub-bug',
-    );
+    // The icon menu Create uses for the same choice, not a native select.
+    const type = await screen.findByRole('combobox', { name: 'Ticket type' });
+    expect(type.tagName).toBe('BUTTON');
+    expect(type).toHaveTextContent('Subticket');
+    await user.click(type);
+    await user.click(screen.getByRole('option', { name: 'Sub-bug' }));
     await user.type(screen.getByRole('textbox', { name: 'New subticket' }), 'A{Enter}');
     await waitFor(() =>
       expect(client.calls).toContainEqual({
         action: 'createChild',
         args: [{ track: 'SHOP', parent: 'SHOP-41', ticketTypeId: 10, summary: 'A' }],
       }),
+    );
+  });
+
+  it('[CORE-032] draws each type with the icon its administrator chose, as Create does', async () => {
+    const user = userEvent.setup();
+    renderPanel(
+      fakeToolsClient({
+        childTypes: [
+          { id: 9, name: 'Subticket', icon: null },
+          { id: 10, name: 'Sub-bug', icon: 'bug' },
+        ],
+      }),
+    );
+    await user.click(await screen.findByRole('combobox', { name: 'Ticket type' }));
+    const drawn = (name: string) =>
+      screen.getByRole('option', { name }).querySelector('svg')?.outerHTML;
+    // The chosen icon, not the default glyph a name it does not know gets.
+    const bug = render(<TypeGlyph name="Bug" />).container.querySelector('svg')?.outerHTML;
+    const plain = render(<TypeGlyph name="Sub-bug" />).container.querySelector('svg')?.outerHTML;
+    expect(bug).not.toBe(plain);
+    expect(drawn('Sub-bug')).toBe(bug);
+    // A type with no chosen icon keeps its name's own.
+    expect(drawn('Subticket')).toBe(
+      render(<TypeGlyph name="Subticket" />).container.querySelector('svg')?.outerHTML,
     );
   });
 

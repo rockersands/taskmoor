@@ -51,6 +51,14 @@ import {
 import { firstLine, pngSize, redact } from './redact.mjs';
 import { seedDemo } from './seed.mjs';
 import { ensureSignedIn } from './session.mjs';
+import {
+  linkLooksGood,
+  metaSays,
+  openBoardTicket,
+  openCreate,
+  openGrip,
+  openInDialog,
+} from './states.mjs';
 import { summarise } from './summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -80,57 +88,6 @@ const SETTLE_MS = 8000;
 const source = (file) => readFileSync(join(ROOT, 'apps', 'web', 'src', file), 'utf8');
 
 // ---------------------------------------------------------------------------------------- states
-
-const openBoardTicket = async (page) => {
-  const link = page.locator('.board-card-link').first();
-  await link.waitFor({ timeout: 10_000 });
-  await link.click();
-  await page.locator('[role="dialog"]').first().waitFor({ timeout: 10_000 });
-};
-const openCreate = async (page) => {
-  await page.locator('.create-open').click({ timeout: 10_000 });
-  await page.locator('[role="dialog"]').first().waitFor({ timeout: 10_000 });
-};
-/** Presses the first grip that can be seen (some show only on focus), and waits for its menu. */
-const openGrip = (grip) => async (page) => {
-  await page.locator(grip).first().waitFor({ state: 'attached', timeout: 10_000 });
-  for (const handle of (await page.locator(grip).all()).slice(0, 12)) {
-    await handle.focus().catch(() => {});
-    const box = await handle.boundingBox();
-    if (!box || box.width < 1 || box.height < 1) continue;
-    await handle.scrollIntoViewIfNeeded({ timeout: 3000 });
-    await handle.click({ force: true });
-    await page.locator('[role="menu"], [aria-expanded="true"]').first().waitFor({ timeout: 5000 });
-    return;
-  }
-  throw new Error('no grip could be seen');
-};
-/** Opens the first thing of this kind inside the dialog: a menu, a list or a tip. */
-const openInDialog = (kind) => async (page) => {
-  const opener = page.locator('[role="dialog"]').first().locator(kind).first();
-  await opener.waitFor({ timeout: 10_000 });
-  const opened = (await opener.getAttribute('aria-label')) ?? (await opener.innerText());
-  await opener.scrollIntoViewIfNeeded();
-  await opener.click();
-  await page.waitForTimeout(200);
-  return { opened: redact(opened, 80) };
-};
-/** The backend says another frontend is wanted; nothing changes on the server. */
-const metaSays = (frontend) => async (page) => {
-  await page.route('**/api/meta*', async (call) => {
-    const answer = await call.fetch();
-    const body = await answer.json();
-    await call.fulfill({ response: answer, json: { ...body, frontend } });
-  });
-};
-/** Asked about a link, the backend answers as for a good one, so the form shows (never sent). */
-const linkLooksGood = (path, json) => async (page) => {
-  await page.route(`**/api/v1/${path}`, (call) =>
-    call.request().method() === 'POST' || path === 'setup'
-      ? call.fulfill({ json })
-      : call.continue(),
-  );
-};
 
 function allStates(ids) {
   const track = `#/tracks/${ids.track}`;

@@ -76,6 +76,8 @@ export interface SprintWork {
 export interface ScopeBurndown {
   statistic: SprintSettings['estimation'];
   sprints: SprintWork[];
+  /** Work completed, added and removed while no sprint ran; older servers leave it out. */
+  outside?: { completed: number; added: number; removed: number };
   now: { scope: number; completed: number; remaining: number };
   /** Completed per sprint over the last three completed sprints. */
   velocity: number;

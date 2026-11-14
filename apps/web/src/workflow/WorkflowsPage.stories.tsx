@@ -4,8 +4,8 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
-import { fakeWorkflowsClient, SUPPORT_WORKFLOW } from './fixtures';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { DEFAULT_WORKFLOW, fakeWorkflowsClient, SUPPORT_WORKFLOW } from './fixtures';
 import { WorkflowsPage } from './WorkflowsPage';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
@@ -38,6 +38,34 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Workflows: Story = {};
+
+/**
+ * The rows' buttons stand in columns at a desktop's page width: the default workflow has no
+ * Delete, and its place stays, so Edit and the download start at the same x on every row.
+ */
+export const ButtonsInColumns: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 640 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    client: fakeWorkflowsClient({
+      workflows: [DEFAULT_WORKFLOW, { ...SUPPORT_WORKFLOW, tracks: [] }],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: 'Delete Support' });
+    const left = (name: RegExp) =>
+      new Set(canvas.getAllByRole('link', { name }).map((b) => b.getBoundingClientRect().left));
+    await expect(canvas.getAllByRole('link', { name: /^Edit / })).toHaveLength(2);
+    await expect(left(/^Edit /).size).toBe(1);
+    await expect(left(/^Download /).size).toBe(1);
+  },
+};
 
 export const WithADraft: Story = {
   args: {
@@ -123,7 +151,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each workflow's name (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'Support' });
     await expect(tooSmallForAFinger(canvasElement, ['.workflow-name-link'])).toEqual([]);

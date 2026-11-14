@@ -287,6 +287,49 @@ describe('releases hub (M1-050)', () => {
     expect(file.body).toContain('- RH-6 Wallet \\*payments\\* \\[beta\\]');
   });
 
+  it('[CORE-016] writes the notes’ days in plain English, the shipped day in the reader’s zone (T-277)', async () => {
+    const release = async (payload: Record<string, unknown>) =>
+      (
+        await call(
+          'admin',
+          { method: 'POST', url: `/api/v1/tracks/${trackId}/releases`, payload },
+          201,
+        )
+      ).release.id as number;
+    const planned = await release({ name: '2.1', releaseDate: '2026-12-01' });
+    const plannedNotes = await get('alice', `/api/v1/releases/${planned}/notes`);
+    expect(plannedNotes.markdown).toContain('Planned for December 1, 2026.');
+    expect(plannedNotes.markdown).not.toContain('2026-12-01');
+    // Shipped with no release date, as an import can leave one: 03:00 in UTC on October 2 is
+    // still October 1 in Chicago, the day the release's page shows a reader there.
+    const undated = await release({ name: '1.8' });
+    await database.db
+      .updateTable('release')
+      .set({ shipped_at: new Date('2026-10-02T03:00:00Z'), release_date: null })
+      .where('id', '=', undated)
+      .execute();
+    const url = `/api/v1/releases/${undated}/notes`;
+    const inChicago = await call('alice', {
+      method: 'GET',
+      url,
+      headers: { 'taskmoor-time-zone': 'America/Chicago' },
+    });
+    expect(inChicago.release.shippedOn).toBe('2026-10-01');
+    expect(inChicago.markdown).toContain('Released on October 1, 2026.');
+    // A download sends no header, so its link names the zone.
+    const file = await as('alice', {
+      method: 'GET',
+      url: `${url}?format=markdown&timeZone=${encodeURIComponent('America/Chicago')}`,
+    });
+    expect(file.statusCode, file.body).toBe(200);
+    expect(file.body).toContain('Released on October 1, 2026.');
+    // With no zone sent and none on the profile, the day is UTC's.
+    const anywhere = await get('alice', url);
+    expect(anywhere.release.shippedOn).toBe('2026-10-02');
+    expect(anywhere.markdown).toContain('Released on October 2, 2026.');
+    await get('alice', `${url}?timeZone=${encodeURIComponent('Mars/Olympus')}`, 400);
+  });
+
   it('[CORE-016] shows nothing to those who may not browse the track', async () => {
     await get('carol', `/api/v1/releases/${gated}/overview`, 404);
     await get('carol', `/api/v1/releases/${shipped}/notes`, 404);

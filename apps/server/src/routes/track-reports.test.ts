@@ -379,6 +379,23 @@ describe('a track’s reports equal their searches', () => {
     }
   });
 
+  it('[RPT-002] the reports over time end on the browser’s today, not UTC’s (T-272)', async () => {
+    // Fourteen hours east and eleven west of UTC: their calendars never show the same day.
+    const local = (zone: string) =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date()).slice(0, 10);
+    for (const zone of ['Pacific/Kiritimati', 'Pacific/Pago_Pago']) {
+      for (const kind of ['recently-created', 'time-to-close', 'created-vs-closed']) {
+        const { data } = await call('member', {
+          method: 'GET',
+          url: `/api/v1/tracks/RPS/statistics/${kind}?days=7&period=day`,
+          headers: { 'taskmoor-time-zone': zone },
+        });
+        expect(data.timeZone, `${kind} ${zone}`).toBe(zone);
+        expect((data.periods as string[]).at(-1), `${kind} ${zone}`).toBe(local(zone));
+      }
+    }
+  });
+
   it('[RPT-002] average age counts a reopened ticket as open again, from its history', async () => {
     const id = (
       await call(

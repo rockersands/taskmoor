@@ -1,4 +1,4 @@
-import { ApiError, api } from '../api/client';
+import { ApiError, api, browserTimeZone } from '../api/client';
 import { routeHref } from '../routing/router';
 
 export interface Approver {
@@ -173,6 +173,13 @@ export const releaseClient: ReleaseClient = {
 export const searchHref = (query: string) =>
   routeHref(`#/search?${new URLSearchParams({ q: query }).toString()}`);
 
-/** The notes as a file, straight from the server. */
-export const notesFileHref = (releaseId: number) =>
-  `/api/v1/releases/${releaseId}/notes?format=markdown`;
+/**
+ * The notes as a file, straight from the server. A download sends no headers of ours, so the link
+ * names the browser's zone itself: the file then says the day the release shipped as its page does
+ * (T-277).
+ */
+export function notesFileHref(releaseId: number): string {
+  const zone = browserTimeZone();
+  const query = new URLSearchParams({ format: 'markdown', ...(zone ? { timeZone: zone } : {}) });
+  return `/api/v1/releases/${releaseId}/notes?${query.toString()}`;
+}

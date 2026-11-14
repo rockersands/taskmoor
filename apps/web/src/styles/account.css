@@ -22,26 +22,31 @@
  * The sections, as a row of tabs that scrolls inside itself on a phone (five need about 450 px):
  * the current one is brought into view, and an edge with more beyond it fades, as on a track's
  * tab bar. Not while a tab there has keyboard focus, so its ring is never faded out.
+ *
+ * The fade is as wide as a tab (D2, D17): a narrow one fell on the last few letters of a tab that
+ * ended at the edge, which then looked whole, and nothing said 'Your data' was there. As wide as
+ * a tab, whatever sits at the edge visibly thins out, so the row reads as going on.
  */
 .account-tabs {
+  --tabs-fade: 6rem;
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .account-tabs[data-more="end"]:not(:has(:focus-visible)) {
-  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--tabs-fade)), transparent);
 }
 
 .account-tabs[data-more="start"]:not(:has(:focus-visible)) {
-  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--tabs-fade)), transparent);
 }
 
 .account-tabs[data-more="both"]:not(:has(:focus-visible)) {
   mask-image: linear-gradient(
     to right,
     transparent,
-    #000 var(--space-8),
-    #000 calc(100% - var(--space-8)),
+    #000 var(--tabs-fade),
+    #000 calc(100% - var(--tabs-fade)),
     transparent
   );
 }
@@ -197,6 +202,13 @@
   height: 20px;
   margin: 0;
   accent-color: var(--color-accent);
+  /* Its own opaque chip: the field's clear glass let each miniature through, so the same radio
+     was a hollow ring on a light preview and a grey disc on a dark one. */
+  box-shadow: 0 0 0 3px var(--color-surface-raised);
+}
+
+.appearance-option input:not(:checked) {
+  background: var(--color-surface-raised);
 }
 
 .appearance-text {
@@ -305,8 +317,12 @@
   gap: var(--space-1);
 }
 
-/* The app's radio, in the accent as everywhere else (AC-11). */
-.notification-choice input[type="radio"] {
+/*
+ * The app's radio and check box, in the accent as everywhere else (AC-11), at one size and with
+ * no margin of the browser's: the boxes under the Email choices line up with its radios, the
+ * controls and their words alike.
+ */
+.notification-choice input {
   flex: none;
   width: 20px;
   height: 20px;

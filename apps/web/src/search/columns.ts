@@ -183,6 +183,19 @@ export function cellEditor(column: string, fields: readonly ColumnField[]): Cell
   }
 }
 
+const DATE_TIME_COLUMNS = new Set(['createdAt', 'updatedAt', 'closedAt']);
+
+/**
+ * Whether a column holds a moment (a date and a time): created, updated and closed, or a custom
+ * field of type datetime. Its cells read in the person's locale, never as the raw ISO timestamp
+ * (T-240).
+ */
+export function isDateTimeColumn(column: string, fields: readonly ColumnField[]): boolean {
+  if (DATE_TIME_COLUMNS.has(column)) return true;
+  const id = customFieldId(column);
+  return id !== null && fields.some((f) => f.id === id && f.type === 'datetime');
+}
+
 /** The value a cell holds, as the ticket view in search returns it. */
 export function cellValue(ticket: SearchTicket, column: string): unknown {
   const id = customFieldId(column);

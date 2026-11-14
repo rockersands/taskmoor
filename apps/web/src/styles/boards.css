@@ -630,6 +630,19 @@
   .board-row {
     grid-template-columns: repeat(var(--board-columns, 3), minmax(0, min(80vw, 18rem)));
   }
+
+  /* A phone shows about one column at a time: each ends at its last card, never at the length of
+     the longest column beside it, so a short column is not a screen of empty frame. */
+  .board-row:not(.board-heads) {
+    align-items: start;
+  }
+
+  /* While a card is in hand the cells reach the row's full height again: a finger deep in a long
+     column that moves sideways is still over the short column beside it, and the card lands at
+     its end. The drag's styles last until the drop has read what is under the finger. */
+  body.is-pointer-dragging .board-row:not(.board-heads) {
+    align-items: stretch;
+  }
 }
 
 @media (pointer: coarse) {
@@ -697,18 +710,23 @@
   min-width: 0;
 }
 
-.sprint-ticket[data-done] .sprint-ticket-summary {
-  text-decoration: line-through;
-}
-
+/* The keys are a column of one width (TR-22): the page gives the longest key's length in
+   characters, and a character of a bold key is at most about three quarters of an em. */
 .sprint-ticket-key {
+  flex: none;
+  min-inline-size: calc(var(--sprint-key-chars, 0) * 0.75em);
   font-weight: var(--font-weight-strong);
+  font-variant-numeric: tabular-nums;
 }
 
 .sprint-ticket-summary {
   flex: 1 1 12rem;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.sprint-ticket[data-done] .sprint-ticket-summary {
+  text-decoration: line-through;
 }
 
 .sprint-ticket-status,
@@ -1016,12 +1034,6 @@ body.is-pointer-dragging .board-scroll {
   background: var(--color-accent-soft);
 }
 
-.backlog-panel-item.is-drop-target button,
-.sprint-section.is-drop-target {
-  outline: 2px dashed var(--color-accent);
-  outline-offset: 2px;
-}
-
 .backlog-panel-key {
   font-weight: var(--font-weight-strong);
 }
@@ -1062,9 +1074,13 @@ body.is-pointer-dragging .board-scroll {
   box-shadow: 0 -3px 0 0 var(--color-accent);
 }
 
+/* A row's box and a section's are labels around the box forms.css draws: the label is the
+   finger's target on touch, the box keeps the size of every other (T-221). */
+.sprint-ticket-select,
 .sprint-select-all {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
 .backlog-create {
@@ -1081,9 +1097,15 @@ body.is-pointer-dragging .board-scroll {
 
 @media (pointer: coarse) {
   .sprint-ticket-select,
-  .sprint-select-all input {
+  .sprint-select-all {
     min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
+  }
+
+  .sprint-ticket-select input,
+  .sprint-select-all input {
+    width: 28px;
+    height: 28px;
   }
 
   .backlog-selection select,
@@ -1144,4 +1166,11 @@ body.is-pointer-dragging .board-scroll {
 .board-settings-reach button,
 .board-settings-remove button {
   justify-self: start;
+}
+
+/* Drop targets of the backlog panel and the sprints, last: nothing after them changes an outline. */
+.backlog-panel-item.is-drop-target button,
+.sprint-section.is-drop-target {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 2px;
 }

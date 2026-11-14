@@ -441,9 +441,12 @@ export function CalendarView({
                         if (event.pointerType === 'mouse') beginDrag(event, entry);
                       }}
                     >
-                      {entry.ticket.draft ? `${t('draft.tag')} ` : ''}
-                      {entry.kind === 'start' ? `${t('calendar.starts')} ` : ''}
-                      {entry.ticket.key} {entry.ticket.summary}
+                      {/* The text is its own line, so a finger-tall chip centres it (D9). */}
+                      <span className="calendar-chip-text">
+                        {entry.ticket.draft ? `${t('draft.tag')} ` : ''}
+                        {entry.kind === 'start' ? `${t('calendar.starts')} ` : ''}
+                        {entry.ticket.key} {entry.ticket.summary}
+                      </span>
                     </a>
                     <MoveMenu
                       className="calendar-grip"

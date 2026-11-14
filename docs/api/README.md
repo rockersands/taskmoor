@@ -122,16 +122,16 @@ as the token's owner, so they never do more than the token may; administrators c
 profile and the allowed clients on the MCP settings page, and every call is in the audit log.
 See [ADR-068](../adr/0068-mcp-server.md).
 
-## The instance and its versions
+## The site and its versions
 
 `GET /api/meta` needs no sign-in. A client reads it before anything else. It gives:
 - the backend and API versions;
 - the frontend versions the backend serves (`minimum` and `recommended`);
 - how people sign in;
-- the instance's id and Ed25519 public key.
+- the site's id (`instance.id`) and Ed25519 public key.
 
-Send `?nonce=` with 16 to 128 base64url characters and the instance signs it. The signature
-covers the lines `taskmoor-meta-v1`, the instance id and the nonce. `verifyInstance` in
+Send `?nonce=` with 16 to 128 base64url characters and the site signs it. The signature
+covers the lines `taskmoor-meta-v1`, the site's id and the nonce. `verifyInstance` in
 `@taskmoor/webconfig` checks it. A backend of release x.y serves frontends of x.y and x.(y-1).
 An older one shows "Update required", and one release behind shows an update notice. See
 [ADR-070](../adr/0070-meta-endpoint-and-version-window.md).

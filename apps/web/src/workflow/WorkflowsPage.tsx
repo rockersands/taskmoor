@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { ActionSlot } from '../admin/ActionSlot';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
@@ -331,7 +332,8 @@ function WorkflowItem({
         >
           {t('admin.workflows.export')}
         </a>
-        {deletable && (
+        {/* A workflow that cannot go keeps Delete's place, so the rows' buttons form columns. */}
+        {deletable ? (
           <DangerAction
             label={t('admin.workflows.delete')}
             name={t('admin.workflows.deleteNamed', { name })}
@@ -339,6 +341,8 @@ function WorkflowItem({
             confirmLabel={t('admin.workflows.deleteNamed', { name })}
             onConfirm={remove}
           />
+        ) : (
+          <ActionSlot label={t('admin.workflows.delete')} danger />
         )}
       </div>
     </li>

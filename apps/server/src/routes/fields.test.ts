@@ -94,6 +94,8 @@ describe('custom fields (M1-010)', () => {
   const history = async (t: { id: number }) =>
     (await get('alice', `/api/v1/tickets/${t.id}/history?order=asc`)).json().changes as {
       field: string;
+      fieldName?: string | null;
+      valueType?: string | null;
       from: { value: string | null; display: string | null };
       to: { value: string | null; display: string | null };
     }[];
@@ -286,6 +288,47 @@ describe('custom fields (M1-010)', () => {
     expect(suggested.json().labels).toEqual(['billing']);
   });
 
+  it('[CORE-022] names a custom field in history and says whether its values are days or instants (T-277)', async () => {
+    const day = await field({ name: 'Go-live day', type: 'date' });
+    const moment = await field({ name: 'Cut-over', type: 'datetime' });
+    const note = await field({ name: 'Rollout note', type: 'text' });
+    const gone = await field({ name: 'Audit day', type: 'date' });
+    const made = await ticket('XT', {
+      fields: {
+        [day.id]: '2026-10-13',
+        [moment.id]: '2026-10-13T09:00:00Z',
+        [note.id]: 'Soon',
+        [gone.id]: '2026-11-01',
+      },
+    });
+    // Audit day stops applying to the ticket's track: its rows keep how they read, not the name.
+    const narrowed = await patch(
+      'admin',
+      `/api/v1/fields/${gone.id}/contexts/${gone.contexts[0]?.id}`,
+      { trackIds: [tracks.YT] },
+    );
+    expect(narrowed.statusCode, narrowed.body).toBe(200);
+    const rows = await history(made);
+    const row = (f: FieldJson) => rows.find((r) => r.field === `cf[${f.id}]`);
+    expect(row(day)).toMatchObject({
+      fieldName: 'Go-live day',
+      valueType: 'date',
+      to: { value: '2026-10-13', display: null },
+    });
+    expect(row(moment)).toMatchObject({
+      fieldName: 'Cut-over',
+      valueType: 'datetime',
+      to: { value: '2026-10-13T09:00:00.000Z', display: null },
+    });
+    expect(row(note)).toMatchObject({ fieldName: 'Rollout note', valueType: null });
+    expect(row(gone)).toMatchObject({ fieldName: null, valueType: 'date' });
+    // A system field's row carries neither.
+    const summary = rows.find((r) => r.field === 'summary');
+    expect(summary).toBeDefined();
+    expect(summary).not.toHaveProperty('fieldName');
+    expect(summary).not.toHaveProperty('valueType');
+  });
+
   it('[CORE-010] checks values on write: numbers, text length, references and read-only text', async () => {
     const points = await field({ name: 'Estimate points', type: 'number' });
     const title = await field({ name: 'Short title', type: 'text' });
@@ -448,6 +491,44 @@ describe('custom fields (M1-010)', () => {
       id: users.alice?.id,
       name: 'alice',
     });
+  });
+
+  it('[CORE-010] a group picker offers the site groups by name to those who may browse them (T-265)', async () => {
+    const [ops, design] = await database.db
+      .insertInto('user_group')
+      .values([
+        { workspace_id: 1, name: 'Picker ops' },
+        { workspace_id: 1, name: 'Picker design' },
+      ])
+      .returning(['id', 'name'])
+      .execute();
+    const f = await field({ name: 'Owning group', type: 'group' });
+    const all = await get('alice', `/api/v1/fields/${f.id}/groups?q=picker`);
+    expect(all.statusCode, all.body).toBe(200);
+    expect(all.json().groups).toEqual([
+      { id: design?.id, name: 'Picker design' },
+      { id: ops?.id, name: 'Picker ops' },
+    ]);
+    const narrowed = await get('alice', `/api/v1/fields/${f.id}/groups?q=OPS&limit=5`);
+    expect(narrowed.json().groups).toEqual([{ id: ops?.id, name: 'Picker ops' }]);
+    // What the picker offers, the create route takes.
+    expect((await ticket('XT', { fields: { [f.id]: ops?.id } })).fields[f.id]).toEqual({
+      id: ops?.id,
+      name: 'Picker ops',
+    });
+    // Only for a group field.
+    const text = await field({ name: 'Not groups', type: 'text' });
+    expect((await get('alice', `/api/v1/fields/${text.id}/groups`)).statusCode).toBe(404);
+    // Not to people without "Browse users and groups".
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      expect((await get('alice', `/api/v1/fields/${f.id}/groups`)).statusCode).toBe(403);
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
   });
 
   it('[CORE-009] renames, reorders and disables options without changing stored ids', async () => {

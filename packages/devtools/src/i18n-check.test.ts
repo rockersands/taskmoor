@@ -1,6 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkWebStrings, findHardCodedStrings, webComponents } from './i18n-check';
+import {
+  checkCatalogueStyle,
+  checkWebStrings,
+  findCatalogueStyle,
+  findHardCodedStrings,
+  styleProblems,
+  webComponents,
+} from './i18n-check';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -51,5 +58,36 @@ describe('hard-coded string check (M1-116)', () => {
 
   it('[NFR-006] (1) the web app has no hard-coded strings', () => {
     expect(checkWebStrings(ROOT)).toEqual([]);
+  });
+});
+
+describe('the English catalogue’s house style (TR-34)', () => {
+  it('[NFR-006] finds straight apostrophes and American spellings, line by line', () => {
+    const source = `export const messagesEn = {
+      'a': "This track's board",
+      'b': 'This track’s board',
+      'c': 'Customize',
+      'd':
+        'Your organization’s domains, colored',
+      'e': "{key}'s workflow",
+      'f': 'Bring work in from a Jira Data Center backup; resize it to any size',
+      'g': 'Colour, organisation, customise, minimise, summarise',
+    } as const;`;
+    expect(findCatalogueStyle(source, 'messages.en.ts').map((f) => [f.line, f.text])).toEqual([
+      [2, "'a': a straight apostrophe (')"],
+      [4, "'c': the American spelling 'Customize'"],
+      [6, "'d': the American spelling 'organization', the American spelling 'colored'"],
+      [7, "'e': a straight apostrophe (')"],
+    ]);
+  });
+
+  it('[NFR-006] reads placeholders and other products’ names as not ours to spell', () => {
+    expect(styleProblems("{name}'s")).toEqual(["a straight apostrophe (')"]);
+    expect(styleProblems('{color} at the Jira Data Center')).toEqual([]);
+    expect(styleProblems('Center the text')).toEqual(["the American spelling 'Center'"]);
+  });
+
+  it('[NFR-006] the English catalogue uses curly apostrophes and British spellings throughout', () => {
+    expect(checkCatalogueStyle(ROOT)).toEqual([]);
   });
 });

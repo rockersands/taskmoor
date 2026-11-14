@@ -217,12 +217,12 @@ describe('a track is one place with its sections (ADR-116)', () => {
       'href',
       '#/tracks/SHOP/board',
     );
-    expect(screen.queryByRole('link', { name: "Change the board's kind" })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Change the board’s kind' })).toBeNull();
   });
 
   it('[CORE-002] offers those who may configure the board to change its kind', () => {
     inEnglish(<NoBacklog board={{ ...BOARD, mayConfigure: true }} />);
-    expect(screen.getByRole('link', { name: "Change the board's kind" })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Change the board’s kind' })).toHaveAttribute(
       'href',
       `#/boards/${BOARD.id}/settings`,
     );

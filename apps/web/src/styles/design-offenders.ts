@@ -55,9 +55,12 @@ export const ALLOWED = {
   /** Selectors: fields need no entry. The user is still to decide on sticky cells (T-143). */
   opaqueSurfaces: {
     '.skip-link': 'it appears over anything at all, and must stay readable there',
+    '.glass-card':
+      'under 768 px only, in surfaces.css: the fallback tokens.css gives glass that cannot blur (ADR-114)',
     '.timeline-head': STICKY,
     '.timeline-corner': STICKY,
     '.timeline-label': STICKY,
+    '.timeline-edge': STICKY,
     '.timeline-group .timeline-label': STICKY,
     '.capacity-table thead th': STICKY,
     '.capacity-table tbody th': STICKY,
@@ -67,6 +70,8 @@ export const ALLOWED = {
     '.program-board tbody th': STICKY,
     '.scenario-action-bar':
       'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
+    '.create-dialog .create-form > .form-actions':
+      "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
     '.plan-timeline .timeline-edge':
       "a plan timeline's Earlier or Later marker: today's line runs under it, and would cross its words through glass (PL-6)",
     '.timeline-fade':

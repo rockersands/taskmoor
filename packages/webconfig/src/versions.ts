@@ -48,7 +48,7 @@ export interface FrontendWindow {
 
 export function frontendWindow(backendVersion: string): FrontendWindow {
   const r = parseRelease(backendVersion);
-  if (!r || r.prerelease !== '') return { minimum: null, recommended: null };
+  if (r?.prerelease !== '') return { minimum: null, recommended: null };
   return {
     minimum: r.minor > 0 ? `${r.major}.${r.minor - 1}.0` : `${r.major}.0.0`,
     recommended: `${r.major}.${r.minor}.0`,

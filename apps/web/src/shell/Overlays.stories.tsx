@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NAV_ITEMS } from '../App';
-import { asOnATouchScreen } from '../test/touch';
+import { onARealTouchScreen } from '../test/touch';
 import { AppShell } from './AppShell';
 import { CommandPalette } from './CommandPalette';
 import { IconSelect } from './IconSelect';
@@ -102,7 +102,7 @@ export const PaletteFromTheTopBar: Story = {
  */
 export const TopBarOnASmallPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  beforeEach: () => asOnATouchScreen(),
+  beforeEach: onARealTouchScreen,
   render: (args) => (
     <AppShell {...args} topbarEnd={<CommandPalette commands={commands} />}>
       <PageBehind />

@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { SearchPage } from './SearchPage';
 
@@ -141,9 +141,43 @@ export const FiltersAtPhoneWidth: Story = {
   },
 };
 
+/**
+ * Five tracks on a phone (QRY-014): every track's box and label shows in full, the last one
+ * ('WEB Web app') too, with no part of the group cut off at its lower edge.
+ */
+export const EveryTrackOnAPhone: Story = {
+  args: {
+    client: {
+      ...fakeSearchClient(),
+      tracks: async () => [
+        { key: 'API', name: 'API Platform' },
+        { key: 'MOB', name: 'Mobile apps' },
+        { key: 'OPS', name: 'Operations' },
+        { key: 'SWEEPL', name: 'Sweep local track' },
+        { key: 'WEB', name: 'Web app' },
+      ],
+    },
+  },
+  beforeEach: onARealTouchScreen,
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const group = canvas.getByRole('group', { name: 'Tracks' });
+    const last = await within(group).findByRole('checkbox', { name: 'WEB Web app' });
+    const label = canvasElement.querySelector(`label[for="${last.id}"]`);
+    if (!label) throw new Error('No label');
+    const box = group.getBoundingClientRect();
+    for (const shown of [last, label]) {
+      await expect(shown.getBoundingClientRect().bottom).toBeLessThanOrEqual(box.bottom + 0.5);
+    }
+    await expect(group.scrollHeight).toBeLessThanOrEqual(group.clientHeight + 1);
+    await fitsPhoneWidth(canvas);
+  },
+};
+
 /** On a touch screen each stage's label is a finger's target, "New" too (PL-13). */
 export const StagesOnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('group', { name: 'Stage' });

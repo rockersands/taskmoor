@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { McpPage } from './McpPage';
+import { textLines } from './textLines';
 
 const meta = {
   title: 'Admin/McpPage',
@@ -47,6 +48,31 @@ const atPhoneWidth = (Story: () => ReactElement) => (
 const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
   const box = canvas.getByTestId('phone-width');
   await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
+
+/**
+ * On a phone the stdio command wraps at its spaces and after a '/', never inside the host or the
+ * port: it once broke as 'localhost:809' and '0' (AD-35).
+ */
+export const CommandBreaksAtSlashes: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 300 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: { origin: 'http://localhost:8090' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const command = (await canvas.findByText(/^TASKMOOR_URL=/)).closest('code') as HTMLElement;
+    await expect(command.textContent).toBe(
+      'TASKMOOR_URL=http://localhost:8090 TASKMOOR_TOKEN=<token> node cli.mjs mcp',
+    );
+    const lines = textLines(command);
+    await expect(lines.length).toBeGreaterThan(1);
+    await expect(lines.slice(0, -1).filter((line) => !/[/\s]$/.test(line))).toEqual([]);
+  },
 };
 
 export const AtPhoneWidth: Story = {

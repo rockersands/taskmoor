@@ -27,6 +27,8 @@ describe('the imports page (M1-097)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     const wizard = screen.getByRole('form', { name: 'New import' });
+    // Nothing to start again while the form is open and nothing has run.
+    expect(screen.queryByRole('button', { name: 'Start another import' })).toBeNull();
     await user.selectOptions(
       await within(wizard).findByRole('combobox', { name: 'File in the imports folder' }),
       'jira-backup-2026-10-30.zip',
@@ -77,6 +79,16 @@ describe('the imports page (M1-097)', () => {
       'href',
       '#report-5',
     );
+    // Imported, the form is closed to changes: now a fresh one is offered.
+    await user.click(screen.getByRole('button', { name: 'Start another import' }));
+    expect(
+      within(screen.getByRole('form', { name: 'New import' })).getByRole('button', {
+        name: 'Dry run',
+      }),
+    ).toBeEnabled();
+    // The button went with the old form: the new form's title has the focus, not the page.
+    expect(screen.getByRole('heading', { name: 'New import' })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Start another import' })).toBeNull();
   });
 
   it('[IMP-013] uploads a file into the folder and offers it', async () => {
@@ -85,6 +97,8 @@ describe('the imports page (M1-097)', () => {
     const input = await screen.findByLabelText('Upload a file into the folder');
     // The app's own file button, with the chosen file named beside it (AD-34).
     expect(input.closest('label')).toHaveClass('button-secondary');
+    // Its name holds the button's visible words too, so saying "Choose a file" finds it.
+    expect(input).toHaveAccessibleName('Upload a file into the folder Choose a file');
     expect(screen.getByText('No file chosen yet.')).toBeVisible();
     await user.upload(input, new File(['PK'], 'later-backup.zip', { type: 'application/zip' }));
     expect(screen.getByText('later-backup.zip')).toBeVisible();

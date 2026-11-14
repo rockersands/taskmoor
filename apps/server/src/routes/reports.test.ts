@@ -294,6 +294,52 @@ describe('general reports (M1-062)', () => {
     ]);
   });
 
+  it('[RPT-002] counts days on the browser’s clock: 21:47 in New York is that day, not UTC’s next (T-272)', async () => {
+    // Made at 21:47 on Oct 9 in New York (EDT, UTC-4), which is already Oct 10 in UTC.
+    t.evening = (
+      await call(
+        'alice',
+        { method: 'POST', url: '/api/v1/tickets', payload: { track: 'GA', summary: 'evening' } },
+        201,
+      )
+    ).ticket;
+    await createdAt('evening', '2026-10-10T01:47:00Z');
+    const path = `/api/v1/reports/created-vs-closed?query=${encodeURIComponent('summary ~ evening')}&from=2026-10-09&to=2026-10-10`;
+    const read = async (headers: Record<string, string>) =>
+      (await call('alice', { method: 'GET', url: path, headers })) as {
+        timeZone: string;
+        created: number[];
+      };
+    const zone = { 'taskmoor-time-zone': 'America/New_York' };
+    // No zone anywhere: UTC's days.
+    expect(await read({})).toMatchObject({ timeZone: 'UTC', created: [0, 1] });
+    // The browser's zone: the evening of the 9th, as the calendar shows it.
+    expect(await read(zone)).toMatchObject({ timeZone: 'America/New_York', created: [1, 0] });
+    // A zone the request asks for wins over the browser's.
+    expect(
+      await call('alice', { method: 'GET', url: `${path}&timeZone=UTC`, headers: zone }),
+    ).toMatchObject({ timeZone: 'UTC', created: [0, 1] });
+    // The browser's zone wins over the profile's; an unknown one falls back to the profile's.
+    await database.db
+      .updateTable('app_user')
+      .set({ time_zone: 'Europe/Berlin' })
+      .where('id', '=', users.alice?.id as number)
+      .execute();
+    try {
+      expect(await read(zone)).toMatchObject({ timeZone: 'America/New_York', created: [1, 0] });
+      expect(await read({ 'taskmoor-time-zone': 'Mars/Olympus' })).toMatchObject({
+        timeZone: 'Europe/Berlin',
+        created: [0, 1],
+      });
+    } finally {
+      await database.db
+        .updateTable('app_user')
+        .set({ time_zone: null })
+        .where('id', '=', users.alice?.id as number)
+        .execute();
+    }
+  });
+
   it('[RPT-005] counts tickets by two fields, several values each and none apart', async () => {
     const table = await get('alice', `two-dimensional?query=${QUERY}&x=priority&y=labels`);
     expect(names(table.x)).toEqual(['High', 'Low', 'none']);

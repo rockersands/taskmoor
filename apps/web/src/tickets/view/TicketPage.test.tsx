@@ -15,6 +15,7 @@ import { addressRoute, currentRoute, overlayRoute, router } from '../../routing/
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { applyStylesheet } from '../../test/stylesheets';
+import { useTimeZone } from '../../test/timeZone';
 import { setRootFontSize, setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketToolsClient } from '../tools/client';
@@ -243,6 +244,119 @@ describe('the ticket view (M1-051)', () => {
     expect(await within(all).findByText('Changed Status from New to Active')).toBeVisible();
     expect(within(all).getAllByText('Commented').length).toBeGreaterThan(0);
     expect(within(all).getByText('Logged 2 h')).toBeVisible();
+  });
+
+  // History reads a start or due day as the ticket's own fields do, in the reader's locale and
+  // on its calendar day, never 'Set Due date to 2026-10-13' (T-240).
+  it.each([
+    {
+      locale: 'en' as const,
+      names: ['Activity', 'History'],
+      lines: ['Changed Due date from Oct 13, 2026 to Nov 2, 2026', 'Set Start date to Oct 1, 2026'],
+    },
+    {
+      locale: 'es' as const,
+      names: ['Actividad', 'Historial'],
+      lines: [
+        'Cambió Fecha límite de 13 oct 2026 a 2 nov 2026',
+        'Definió Fecha de inicio como 1 oct 2026',
+      ],
+    },
+  ])(
+    '[CORE-022] [NFR-006] reads start and due days in history in $locale',
+    async ({ locale, names, lines }) => {
+      const user = userEvent.setup();
+      const { client } = renderPage({}, locale);
+      const day = (field: string, from: string | null, to: string) => ({
+        id: field,
+        at: '2026-10-21T15:00:00Z',
+        actor: null,
+        field,
+        from: { value: from, display: null },
+        to: { value: to, display: null },
+        transitionId: null,
+      });
+      vi.spyOn(client, 'history').mockResolvedValue({
+        changes: [day('dueDate', '2026-10-13', '2026-11-02'), day('startDate', null, '2026-10-01')],
+        next: null,
+      });
+      await heading();
+      const [activity, history] = names as [string, string];
+      const tabs = screen.getByRole('tablist', { name: activity });
+      await user.click(within(tabs).getByRole('tab', { name: history }));
+      const panel = screen.getByRole('tabpanel', { name: history });
+      for (const line of lines) expect(await within(panel).findByText(line)).toBeVisible();
+    },
+  );
+
+  // A custom date or date-and-time field's change reads as the ticket's own dates do, by the
+  // field's name, never 'Set a custom field to 2026-10-13T09:00:00.000Z' (T-277). A moment is
+  // on the reader's clock: 09:00 in UTC is 4:00 in the morning in Chicago.
+  describe('custom dates in history (T-277)', () => {
+    useTimeZone('America/Chicago');
+
+    it.each([
+      {
+        locale: 'en' as const,
+        names: ['Activity', 'History'],
+        lines: [
+          'Changed Go-live day from Oct 13, 2026 to Nov 2, 2026',
+          'Set Cut-over to Oct 13, 2026, 4:00 AM',
+          'Set a custom field to Dec 1, 2026',
+          'Set Rollout note to 2026-10-13',
+        ],
+      },
+      {
+        locale: 'es' as const,
+        names: ['Actividad', 'Historial'],
+        lines: [
+          'Cambió Go-live day de 13 oct 2026 a 2 nov 2026',
+          'Definió Cut-over como 13 oct 2026, 4:00',
+          'Definió un campo personalizado como 1 dic 2026',
+          'Definió Rollout note como 2026-10-13',
+        ],
+      },
+    ])(
+      '[CORE-022] [NFR-006] reads custom date and date-and-time fields by name in $locale',
+      async ({ locale, names, lines }) => {
+        const user = userEvent.setup();
+        const { client } = renderPage({}, locale);
+        const row = (
+          field: string,
+          fieldName: string | null,
+          valueType: 'date' | 'datetime' | null,
+          from: string | null,
+          to: string,
+        ) => ({
+          id: field,
+          at: '2026-10-21T15:00:00Z',
+          actor: null,
+          field,
+          fieldName,
+          valueType,
+          from: { value: from, display: null },
+          to: { value: to, display: null },
+          transitionId: null,
+        });
+        vi.spyOn(client, 'history').mockResolvedValue({
+          changes: [
+            row('cf[50]', 'Go-live day', 'date', '2026-10-13', '2026-11-02'),
+            row('cf[51]', 'Cut-over', 'datetime', null, '2026-10-13T09:00:00.000Z'),
+            // A field that no longer applies to the ticket has no name for the reader.
+            row('cf[52]', null, 'date', null, '2026-12-01'),
+            // Text that looks like a day stays as written.
+            row('cf[53]', 'Rollout note', null, null, '2026-10-13'),
+          ],
+          next: null,
+        });
+        await heading();
+        const [activity, history] = names as [string, string];
+        const tabs = screen.getByRole('tablist', { name: activity });
+        await user.click(within(tabs).getByRole('tab', { name: history }));
+        const panel = screen.getByRole('tabpanel', { name: history });
+        for (const line of lines) expect(await within(panel).findByText(line)).toBeVisible();
+      },
+    );
   });
 
   it('[AGL-018] keyboard shortcuts: help, follow, assign, comment, edit, transitions', async () => {
@@ -747,6 +861,15 @@ describe('the ticket view after the page review (T-220)', () => {
       expect(hidden(await heading())).toBe(false);
       expect(hidden(details())).toBe(false);
       expect(hidden(page.querySelector('.ticket-text'))).toBe(false);
+      // Priority prints its value as text: its menu's button stays, without its chevron.
+      const priority = within(details()).getByRole('combobox', { name: 'Priority' });
+      expect(hidden(priority)).toBe(false);
+      expect(priority).toHaveTextContent('High');
+      expect(hidden(priority.querySelector('svg:last-child'))).toBe(true);
+      // Other buttons in the details still go.
+      const other = details().querySelector('button:not(.icon-select-button)');
+      expect(other).not.toBeNull();
+      expect(hidden(other)).toBe(true);
     } finally {
       gone();
     }

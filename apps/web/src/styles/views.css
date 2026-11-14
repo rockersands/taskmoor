@@ -184,11 +184,6 @@
   background: var(--glass-surface-sunken);
 }
 
-.calendar-day.is-today .calendar-date {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
 .calendar-day.is-drop-target {
   outline: 2px dashed var(--color-accent);
   outline-offset: -2px;
@@ -202,6 +197,11 @@
   font-size: var(--font-size-200);
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+.calendar-day.is-today .calendar-date {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .calendar-sprint {
@@ -221,8 +221,11 @@
   font-weight: var(--font-weight-strong);
 }
 
+/* A chip is a row with its text centred in its height: on touch it is a finger tall (D9). The
+   text keeps to one line and ends in an ellipsis. */
 .calendar-chip {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   overflow: hidden;
   padding: var(--space-half) var(--space-1);
@@ -238,6 +241,13 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: grab;
+}
+
+.calendar-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .calendar-chip[data-stage="closed"] {
@@ -335,8 +345,11 @@
     display: none;
   }
 
+  /* A day of the list is a part of the card, with the card's own room inside its edge. */
   .calendar-day {
+    gap: var(--space-1);
     min-height: 0;
+    padding: var(--space-3) var(--space-4);
     border-inline-end: 0;
   }
 
@@ -401,4 +414,10 @@
 .calendar-sprint.is-continued {
   height: var(--space-1);
   padding: 0;
+}
+
+/* A track's Summary (second sweep): each card of its grid ends at its content, never stretched to
+   its row neighbour's height, as a plan's Summary does (PL-37). */
+.track-summary .summary-sections {
+  align-items: start;
 }

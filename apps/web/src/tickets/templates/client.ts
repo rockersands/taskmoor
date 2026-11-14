@@ -91,10 +91,20 @@ export interface TemplateOptions {
   fields: FieldChoice[];
 }
 
+/**
+ * What a template starts a ticket with in a track: a create body (`start`), and the names of
+ * the people, groups and teams its custom values name, by body key (`fields.12`), as far as the
+ * reader may see them (T-276). A value with no name here stays out of the form's pickers.
+ */
+export interface TemplateStart {
+  start: Record<string, unknown>;
+  names: Record<string, Named[]>;
+}
+
 /** The endpoints the create form's picker uses. Stories and tests pass their own. */
 export interface PickerClient {
   list: (track: string, ticketTypeId: number) => Promise<SavedTemplate[]>;
-  start: (id: number, track: string) => Promise<Record<string, unknown>>;
+  start: (id: number, track: string) => Promise<TemplateStart>;
   apply: (id: number, body: Record<string, unknown>) => Promise<AppliedTemplate>;
 }
 
@@ -120,12 +130,12 @@ export const pickerClient: PickerClient = {
         `${templatesPath}?track=${encodeURIComponent(track)}&ticketTypeId=${ticketTypeId}`,
       )
     ).templates,
-  start: async (id, track) =>
-    (
-      await api<{ start: Record<string, unknown> }>(
-        `${templatesPath}/${id}?track=${encodeURIComponent(track)}`,
-      )
-    ).start,
+  start: async (id, track) => {
+    const res = await api<{ start: Record<string, unknown>; names?: Record<string, Named[]> }>(
+      `${templatesPath}/${id}?track=${encodeURIComponent(track)}`,
+    );
+    return { start: res.start, names: res.names ?? {} };
+  },
   apply: async (id, body) => {
     const res = await api<Omit<AppliedTemplate, 'key'> & { ticket: { key: string } }>(
       `${templatesPath}/${id}/tickets`,

@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { DashboardsPage } from './DashboardsPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
 
@@ -48,11 +48,36 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The person's own dashboards, those shared with them, and the wallboard choice. */
+/**
+ * The person's own dashboards, those shared with them, and the wallboard choice; every card's
+ * title in one style.
+ */
 export const List: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('region', { name: 'Yours' })).toBeVisible();
+    const size = (name: string) =>
+      getComputedStyle(canvas.getByRole('heading', { level: 2, name })).fontSize;
+    await expect(size('Wallboard')).toBe(size('Yours'));
+    await expect(size('Shared with you')).toBe(size('Yours'));
+  },
+};
+
+/** A box ticked: the wallboard card offers to start it with the dashboards chosen (PL-14). */
+export const WallboardChosen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const wallboard = await canvas.findByRole('region', { name: 'Wallboard' });
+    await expect(within(wallboard).queryByRole('link')).toBeNull();
+    await userEvent.click(
+      canvas.getByRole('checkbox', { name: 'Show Checkout team on the wallboard' }),
+    );
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Show Support on the wallboard' }));
+    const start = within(wallboard).getByRole('link', {
+      name: 'Start the wallboard with 2 dashboards',
+    });
+    await expect(start).toBeVisible();
+    await expect(start).toHaveAttribute('href', '#/dashboards/5/wallboard?rotate=5,6&seconds=60');
   },
 };
 
@@ -82,7 +107,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each dashboard's name and the box that puts it on the wallboard (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('checkbox');
     await expect(

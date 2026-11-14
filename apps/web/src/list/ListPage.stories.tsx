@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeListClient, fakeListSearch } from './fixtures';
 import { ListPage } from './ListPage';
 
@@ -103,7 +103,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket's key and the buttons of Columns and Format rules (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'SHOP-41' });
     await expect(
