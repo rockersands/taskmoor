@@ -120,7 +120,7 @@ or a custom date-and-time field's column in search, reads the same way with its 
 day wherever you are. The day something happened, such as the day a release shipped when it had
 no release date, is the day on your device's clock. One place still shows the stored form: in a
 ticket's history, a change to a custom date or date-and-time field reads its value as stored,
-`2026-10-13` or `2026-10-13T09:00:00Z`.
+`2026-10-13` or `2026-10-13T09:00:00.000Z`.
 
 ## Notifications
 
