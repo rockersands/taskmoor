@@ -2537,8 +2537,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.form.removeMapping': 'Quitar',
   'admin.sso.form.removeMappingNamed': 'Quitar la asignación {number}',
   'admin.sso.form.noMappings': 'Sin asignaciones.',
-  'admin.sso.form.noGroups':
-    'Aún no hay grupos. Crea grupos primero para asignarles valores del claim.',
+  'admin.sso.form.noGroups': 'Aún no hay grupos',
+  'admin.sso.form.noGroupsBody':
+    'Un valor del claim se asigna a un grupo, así que primero van los grupos: créalos en Grupos, dentro de Administración.',
   'admin.sso.form.groupsFailed':
     'No se pudieron leer los grupos, así que ahora no se puede cambiar la asignación.',
   'admin.sso.form.create': 'Añadir el proveedor',
@@ -6774,6 +6775,17 @@ export const messagesEs: Record<MessageId, string> = {
     'Algunos valores no se pueden usar. Revisa los días, los campos y los subtickets.',
   'tickets.templates.problem.forbidden': 'No puedes cambiar esta plantilla.',
   'tickets.templates.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'tickets.templates.problem.marked':
+    'Algunos valores no se pueden usar. El motivo está debajo de cada uno.',
+  'tickets.templates.problem.trackOnly':
+    'Solo la plantilla de un track puede tener este valor: una para todos los tracks no.',
+  'tickets.templates.archivedValue': '{name} (archivada)',
+  'tickets.templates.valueNotInTrack':
+    '{type, select, area {Área {id}, no está en este track} other {Versión {id}, no está en este track}}',
+  'tickets.templates.removeValue': 'Quitar {value} de {field}',
+  'tickets.templates.trackValuesHint':
+    'Se pone a través de la API. Si quitas uno, los tickets creados con esta plantilla no lo llevan.',
+  'tickets.templates.noTrackValues': 'Ninguno: al guardar, este campo queda vacío.',
   'tickets.templates.pick': 'Empezar desde una plantilla',
   'tickets.templates.pickNone': 'Sin plantilla',
   'tickets.templates.pickFailed':

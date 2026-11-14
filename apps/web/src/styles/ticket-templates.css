@@ -43,3 +43,23 @@
   flex: 1 1 14rem;
   min-width: 0;
 }
+
+/* A custom release or area field's values, each with its Remove button (T-291). */
+.ticket-template-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket-template-values > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

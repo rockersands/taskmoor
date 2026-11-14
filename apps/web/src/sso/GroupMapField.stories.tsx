@@ -60,7 +60,11 @@ export const NoGroups: Story = {
   args: { groups: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/^There are no groups yet\./)).toHaveClass('empty-state-title');
+    // A short title, and the reason and the next step as its body (T-295).
+    await expect(canvas.getByText('No groups yet')).toHaveClass('empty-state-title');
+    await expect(canvas.getByText(/^A claim value maps to a group/)).toHaveClass(
+      'empty-state-body',
+    );
   },
 };
 

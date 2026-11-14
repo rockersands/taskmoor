@@ -62,13 +62,36 @@ export const TEMPLATE_OPTIONS: TemplateOptions = {
     { id: 1, name: 'High' },
     { id: 2, name: 'Low' },
   ],
-  areas: [{ id: 31, name: 'Checkout' }],
-  releases: [{ id: 41, name: '1.0' }],
+  areas: [
+    { id: 31, name: 'Checkout' },
+    { id: 32, name: 'Old storefront', archived: true },
+  ],
+  releases: [
+    { id: 41, name: '1.0' },
+    { id: 42, name: '0.9', archived: true },
+  ],
   fields: [
     { id: 7, name: 'Severity', type: 'select', multiple: false },
     { id: 9, name: 'Customer', type: 'text', multiple: false },
     { id: 99, name: 'Secret formula', type: 'formula', multiple: false },
+    { id: 12, name: 'Fixed in', type: 'release', multiple: true },
+    { id: 13, name: 'Owning area', type: 'area', multiple: false },
   ],
+};
+
+/**
+ * A track template whose custom release and area fields name the track's own, an archived one
+ * and one of another track (77), as only the API sets them (T-291); its Target release is an
+ * archived one it already held.
+ */
+export const HOTFIX_TEMPLATE: SavedTemplate = {
+  ...base(13, 'Hotfix'),
+  purpose: 'A fix shipped on its own',
+  track: { id: 1, key: 'SHOP', name: 'Shop' },
+  defaults: {
+    targetReleaseIds: [42],
+    fields: { '12': [41, 42, 77], '13': 31, '99': 'kept' },
+  },
 };
 
 export const EVERY_TRACK_OPTIONS: TemplateOptions = {
@@ -90,16 +113,25 @@ const OPTIONS: Record<string, FieldValueOption[]> = {
   ],
 };
 
-/** An in-memory backend; a second template with a name in use is refused, as the API does. */
+/**
+ * An in-memory backend; a second template with a name in use is refused, as the API does.
+ * `refuse` makes every save answer with these problems by body path, as the API's
+ * `invalid_fields` does (T-291).
+ */
 export function fakeTemplateClient(
   start: SavedTemplate[] = [RELEASE_TEMPLATE, INCIDENT_TEMPLATE],
-  { mayCreate = true, options = TEMPLATE_OPTIONS } = {},
+  {
+    mayCreate = true,
+    options = TEMPLATE_OPTIONS,
+    refuse = null as Record<string, string> | null,
+  } = {},
 ): FakeTemplateClient {
   let rows = structuredClone(start);
   let next = 100;
   const saved: FakeTemplateClient['saved'] = [];
   const removed: number[] = [];
   const refuseTaken = (body: TemplateBody, id: number | null) => {
+    if (refuse) throw new ApiError(400, { error: 'invalid_fields', fields: refuse });
     if (rows.some((r) => r.name === body.name && r.id !== id)) {
       throw new ApiError(400, { error: 'invalid_fields', fields: { name: 'taken' } });
     }

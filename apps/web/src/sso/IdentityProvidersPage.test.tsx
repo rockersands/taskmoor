@@ -404,9 +404,13 @@ describe('identity provider administration (M1-080)', () => {
     openPage({ 'GET /groups': () => jsonResponse(200, { groups: [] }) });
     await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
-    expect(await within(form).findByText(/^There are no groups yet\./)).toHaveClass(
-      'empty-state-title',
-    );
+    // A short title; why and what to do first in its body (T-295).
+    expect(await within(form).findByText('No groups yet')).toHaveClass('empty-state-title');
+    expect(
+      within(form).getByText(
+        'A claim value maps to a group, so the groups come first: create them under Groups in Administration.',
+      ),
+    ).toHaveClass('empty-state-body');
     expect(within(form).queryByText('No mappings.')).toBeNull();
   });
 

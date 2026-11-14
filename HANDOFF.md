@@ -22,7 +22,27 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the phone and accessibility pass closed (2026-11-14, the Mac)
+### Latest: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
+
+On `main` at `0f1a4e11` after a full gate (9,107 tests, 262 e2e; one speed limit missed on this
+Mac, not enforced, and benchmarking is set aside for now).
+
+- T-287 (the Mac's parts): a ticket template refuses an archived release or area named anew with
+  the create route's code 'archived' and keeps one it already holds; for a system release or area
+  that code was 'not_found' before. The ticket page and bulk edit say 'not in this track'. The
+  sweep's probe leaves a control's aria-describedby hint out of its name. Windows has the
+  releases-across-tracks part.
+- T-289: BoardPeopleFilter, LayoutPreview, VisibilityPage, DomainListField, GroupMapField and
+  TracksPage show EmptyState. Four entries stay in design-offenders.ts for Windows (two
+  releases-across-tracks files, two Plans files).
+- T-290: done. Touch stories for the checklist and sprint-row grips; a design test that every
+  stylesheet grip is in GRIP_SELECTORS or named as dragged whole; long track names wrap inside
+  their card.
+- tickets.md's title line, overwritten by a claim edit on 2026-11-13, is restored.
+- Next on the Mac: T-291 to T-295 (template refusals, field labels in refusals, the timeline bar's
+  touch target, a wider design guard, the SSO empty state's title).
+
+### Earlier: the phone and accessibility pass closed (2026-11-14, the Mac)
 
 - **On `main` (`77c00547`, full gate: 9,078 tests, 262 e2e):** T-222, T-226, T-228, T-229 and T-231,
   closing T-164 (the wave 8 phone pass). New: T-288 (for the user: try the calendar grip on real

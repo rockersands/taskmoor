@@ -1,7 +1,7 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { ApiError } from '../../api/client';
 import type { MessageId } from '../../i18n/messages.en';
-import { splitLabels } from '../form';
+import { errorMessage, splitLabels } from '../form';
 import type {
   FieldChoice,
   Named,
@@ -20,6 +20,12 @@ export const FORM_FIELD_TYPES: ReadonlySet<string> = new Set([
   'select',
   'labels',
 ]);
+
+/**
+ * Custom field types whose values are the track's releases or areas: the form names them from the
+ * track's lists and lets a person remove one, but offers none to add (T-291).
+ */
+export const TRACK_VALUE_TYPES: ReadonlySet<string> = new Set(['release', 'area']);
 
 /** A subticket-level type's rank (spec 01a section 1.2). */
 export const SUBTICKET_RANK = -1;
@@ -41,10 +47,45 @@ export interface TemplateDraft {
   foundInReleaseIds: number[];
   /** Values by field id. */
   fields: Record<string, string | string[]>;
+  /** The releases or areas a custom release or area field holds, as ids by field id. */
+  trackValues: Record<string, number[]>;
   subtickets: { summary: string; ticketTypeId: string }[];
 }
 
 const asText = (value: number | undefined) => (value === undefined ? '' : String(value));
+
+const MAX_ID = 2_147_483_647;
+
+/** A release or area id as the API reads one: a number, a string of digits, or `{"id": n}`. */
+function idOf(input: unknown): number | null {
+  if (input !== null && typeof input === 'object' && !Array.isArray(input) && 'id' in input) {
+    return idOf((input as { id: unknown }).id);
+  }
+  if (typeof input === 'number') {
+    return Number.isInteger(input) && input > 0 && input <= MAX_ID ? input : null;
+  }
+  if (typeof input === 'string' && /^[1-9][0-9]{0,9}$/.test(input)) {
+    const n = Number(input);
+    return n <= MAX_ID ? n : null;
+  }
+  return null;
+}
+
+/**
+ * The ids a custom release or area value holds (an id, or ids for a multiple field; none for an
+ * empty list), or null when the form cannot read every one of them: such a value stays as saved,
+ * as one the form does not show, so that a save never drops what it could not list.
+ */
+function idsOf(value: unknown): number[] | null {
+  const list = Array.isArray(value) ? value : [value];
+  const ids: number[] = [];
+  for (const item of list) {
+    const id = idOf(item);
+    if (id === null) return null;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
 
 function fieldText(field: FieldChoice, value: unknown): string | string[] {
   if (Array.isArray(value)) {
@@ -60,10 +101,14 @@ export function draftOf(
 ): TemplateDraft {
   const defaults = saved?.defaults ?? {};
   const values: TemplateDraft['fields'] = {};
+  const trackValues: TemplateDraft['trackValues'] = {};
   for (const [id, value] of Object.entries(defaults.fields ?? {})) {
     const field = fields.find((f) => String(f.id) === id);
     if (field && FORM_FIELD_TYPES.has(field.type) && value != null) {
       values[id] = fieldText(field, value);
+    } else if (field && TRACK_VALUE_TYPES.has(field.type)) {
+      const ids = idsOf(value);
+      if (ids && ids.length > 0) trackValues[id] = ids;
     }
   }
   return {
@@ -81,6 +126,7 @@ export function draftOf(
     targetReleaseIds: defaults.targetReleaseIds ?? [],
     foundInReleaseIds: defaults.foundInReleaseIds ?? [],
     fields: values,
+    trackValues,
     subtickets: (saved?.subtickets ?? []).map((s) => ({
       summary: s.summary,
       ticketTypeId: s.ticketTypeId == null ? '' : String(s.ticketTypeId),
@@ -97,8 +143,19 @@ function fieldValue(field: FieldChoice, raw: string | string[]): unknown {
 }
 
 /**
+ * Whether the form shows a saved custom field value: a control for it, or its releases or areas
+ * when it can read each of their ids.
+ */
+function shown(field: FieldChoice | undefined, value: unknown): boolean {
+  if (field === undefined) return false;
+  if (FORM_FIELD_TYPES.has(field.type)) return true;
+  return TRACK_VALUE_TYPES.has(field.type) && (value == null || idsOf(value) !== null);
+}
+
+/**
  * The defaults a draft makes. What the form does not show stays as saved: custom fields of types
- * it has no control for, and an assignee on a template for every track.
+ * it has no control for, and an assignee on a template for every track. A custom release or area
+ * field keeps the values the form still lists, as an id or ids as the field takes them.
  */
 function defaultsOf(
   draft: TemplateDraft,
@@ -124,7 +181,12 @@ function defaultsOf(
   const custom: Record<string, unknown> = {};
   for (const [id, value] of Object.entries(before.fields ?? {})) {
     const field = fields.find((f) => String(f.id) === id);
-    if (!field || !FORM_FIELD_TYPES.has(field.type)) custom[id] = value;
+    if (!shown(field, value)) custom[id] = value;
+  }
+  for (const [id, ids] of Object.entries(draft.trackValues)) {
+    const field = fields.find((f) => String(f.id) === id);
+    if (!field || ids.length === 0) continue;
+    custom[id] = field.multiple ? ids : ids[0];
   }
   for (const [id, raw] of Object.entries(draft.fields)) {
     const field = fields.find((f) => String(f.id) === id);
@@ -160,15 +222,75 @@ export function bodyOf(
   };
 }
 
-/** How many of a saved template's custom field values the form has no control for. */
+/** How many of a saved template's custom field values the form does not show. */
 export function keptValues(saved: SavedTemplate | null, fields: readonly FieldChoice[]): number {
-  return Object.keys(saved?.defaults.fields ?? {}).filter((id) => {
-    const field = fields.find((f) => String(f.id) === id);
-    return !field || !FORM_FIELD_TYPES.has(field.type);
-  }).length;
+  return Object.entries(saved?.defaults.fields ?? {}).filter(
+    ([id, value]) =>
+      !shown(
+        fields.find((f) => String(f.id) === id),
+        value,
+      ),
+  ).length;
 }
 
-/** A refusal from the API as a message. */
+/**
+ * Where the form shows a problem: a control's own name (`name`, `priority`, `areaIds`), a custom
+ * field's `field:<id>`, or a subticket row's `subticket:<index in the draft>` (with `:type` for
+ * its type).
+ */
+export type ProblemSpot = string;
+
+/** A refused save: the message for the whole form, and the problems by where they show. */
+export interface Refusal {
+  message: MessageId;
+  at: Record<ProblemSpot, MessageId>;
+}
+
+/** Body paths of the template's own values and of its defaults, by the spot that shows them. */
+const SPOTS: Record<string, ProblemSpot> = {
+  name: 'name',
+  purpose: 'purpose',
+  summary: 'summary',
+  description: 'description',
+  ticketTypeIds: 'ticketTypeIds',
+  'defaults.priorityId': 'priority',
+  'defaults.labels': 'labels',
+  'defaults.startInDays': 'startInDays',
+  'defaults.dueInDays': 'dueInDays',
+  'defaults.assigneeId': 'assignee',
+  'defaults.areaIds': 'areaIds',
+  'defaults.targetReleaseIds': 'targetReleaseIds',
+  'defaults.foundInReleaseIds': 'foundInReleaseIds',
+};
+
+/** The spot a body path's problem shows at, or null for one the form does not place. */
+function spotOf(path: string, draft: TemplateDraft): ProblemSpot | null {
+  const custom = /^defaults\.fields\.(\d+)(\.|$)/.exec(path);
+  if (custom) return `field:${custom[1]}`;
+  const sub = /^subtickets\.(\d+)(?:\.(\w+))?$/.exec(path);
+  if (sub) {
+    // The body leaves out rows with no summary: its index counts the rows it kept.
+    const rows = draft.subtickets.flatMap((s, i) => (s.summary.trim() === '' ? [] : [i]));
+    const row = rows[Number(sub[1])];
+    if (row === undefined) return null;
+    return sub[2] === 'ticketTypeId' ? `subticket:${row}:type` : `subticket:${row}`;
+  }
+  // `defaults.areaIds.2` is the third area: the problem shows at the list.
+  const key = Object.keys(SPOTS).find((p) => path === p || path.startsWith(`${p}.`));
+  return key === undefined ? null : (SPOTS[key] ?? null);
+}
+
+/**
+ * A problem's message. The create route's codes read as they do on the create form (T-291):
+ * an archived release or area, one the track does not offer, a value that is gone.
+ */
+function problemMessage(path: string, code: string): MessageId {
+  if (path === 'name' && code === 'taken') return 'tickets.templates.problem.nameTaken';
+  if (code === 'track_only') return 'tickets.templates.problem.trackOnly';
+  return errorMessage(code);
+}
+
+/** A refusal from the API as one message: a delete's, or a save's line for the whole form. */
 export function refusalOf(error: unknown): MessageId {
   if (!(error instanceof ApiError)) return 'tickets.templates.problem.other';
   const body = error.body as { error?: string; fields?: Record<string, string> } | null;
@@ -179,4 +301,33 @@ export function refusalOf(error: unknown): MessageId {
   if (error.status === 400) return 'tickets.templates.problem.invalid';
   if (error.status === 403) return 'tickets.templates.problem.forbidden';
   return 'tickets.templates.problem.other';
+}
+
+/**
+ * A refused save (T-291): a refused value's reason next to the control it belongs to, with a
+ * line for the form that says to look there. A problem the form has no spot for, such as a value
+ * it does not show, keeps the general line.
+ */
+export function saveRefusalOf(error: unknown, draft: TemplateDraft): Refusal {
+  const body = error instanceof ApiError && error.status === 400 ? error.body : null;
+  const fields = (body as { fields?: Record<string, string> } | null)?.fields;
+  if (!fields) return { message: refusalOf(error), at: {} };
+  const at: Record<ProblemSpot, MessageId> = {};
+  let unplaced = false;
+  for (const [path, code] of Object.entries(fields)) {
+    const spot = spotOf(path, draft);
+    if (spot === null) unplaced = true;
+    else at[spot] ??= problemMessage(path, code);
+  }
+  const placed = Object.keys(at).length;
+  if (placed === 1 && at.name === 'tickets.templates.problem.nameTaken' && !unplaced) {
+    return { message: 'tickets.templates.problem.nameTaken', at: {} };
+  }
+  return {
+    message:
+      unplaced || placed === 0
+        ? 'tickets.templates.problem.invalid'
+        : 'tickets.templates.problem.marked',
+    at,
+  };
 }

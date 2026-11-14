@@ -53,7 +53,9 @@ export function GroupMapField({ rows, groups, onChange }: GroupMapFieldProps) {
       ) : (
         <>
           {groups.length === 0 && rows.length === 0 ? (
-            <EmptyState compact title={t('admin.sso.form.noGroups')} />
+            <EmptyState compact title={t('admin.sso.form.noGroups')}>
+              {t('admin.sso.form.noGroupsBody')}
+            </EmptyState>
           ) : (
             rows.length === 0 && <EmptyState compact title={t('admin.sso.form.noMappings')} />
           )}
