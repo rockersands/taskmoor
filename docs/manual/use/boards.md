@@ -357,13 +357,16 @@ shipped, to the release's name, with the notice under it. The page shows:
   **Decline** with an optional comment;
 - for the track's administrators, **Add to a release across tracks…** or **Remove from** the one it
   is in, neither of which changes its date;
-- **Tickets**: the tickets targeting the release;
-- **Release notes**: the closed tickets, grouped by ticket type. Tickets closed without being
+- **Tickets**: the tickets targeting the release, each with its type;
+- **Release notes**: the closed tickets, grouped by ticket type under the type's name. The
+  seeded types read in your language (**Funcionalidad** in Spanish); a type someone added or
+  renamed shows as they wrote it. Tickets closed without being
   done (not planned, duplicates) are left out and counted by close reason, in words, for example
   "Left out (closed without being done): 1 ticket as Duplicate and 2 tickets as Not planned."
   The seeded close reasons are in your language; one someone named shows as they wrote it.
   Once there are notes, use **Copy as
-  Markdown** or **Download Markdown**. The Markdown is in English and writes its day in full,
+  Markdown** or **Download Markdown**. The Markdown is in English, with the types' stored
+  names as its headings, and writes its day in full,
   "Released on October 1, 2026.", the same day this page says it shipped. The file comes from
   the site's server, also when the app is hosted at another address.
 

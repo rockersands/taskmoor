@@ -8,7 +8,7 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
-import { closeReasonName } from '../shell/seededNames';
+import { closeReasonName, typeName } from '../shell/seededNames';
 import { localDay } from '../timeline/client';
 import { type TrackClient, trackClient } from '../tracks/client';
 import { TrackLayout } from '../tracks/TrackLayout';
@@ -364,7 +364,7 @@ export function ReleasePage({
                         <a href={routeHref(`#/tickets/${encodeURIComponent(k.key)}`)}>{k.key}</a>
                       </td>
                       <td>{k.summary}</td>
-                      <td>{k.type}</td>
+                      <td>{typeName(t, k.type)}</td>
                       <td>{k.status}</td>
                       <td>{k.assignee ?? t('summary.unassigned')}</td>
                     </tr>
@@ -788,7 +788,8 @@ function NotesView({
         <div className="release-notes">
           {notes.sections.map((s, i) => (
             <section key={s.type} aria-labelledby={`${id}-notes-${i}`}>
-              <h3 id={`${id}-notes-${i}`}>{s.type}</h3>
+              {/* A seeded type in the person's language; the Markdown keeps the stored name (T-351). */}
+              <h3 id={`${id}-notes-${i}`}>{typeName(t, s.type)}</h3>
               <ul>
                 {s.tickets.map((k) => (
                   <li key={k.id}>

@@ -495,7 +495,8 @@ many are done. Each copy:
 Only the tickets you can see are copied, and none in the trash. When everything was copied, the
 page opens the copy. If something was left out, such as an assignee you may not set or a field
 the new track does not have, or a ticket could not be copied, the dialog says so, naming each
-field by its label, and offers
+field by its label and a custom field by its name, also one the new track does not have (one
+whose name you may not read says "a custom field"), and offers
 **Open PAY-43** and **See each ticket's result**, which shows every ticket that was not copied
 and why, as for [bulk changes](#bulk-changes). Comments, followers and logged time are not
 copied. A ticket whose type the other track does not offer is not copied, and neither is

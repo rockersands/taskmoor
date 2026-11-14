@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 | the gate of T-296 to T-299 (`wave23m/integration`) |
+| free | | |
 
 ## Numbers
 
@@ -66,7 +66,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | merged | 2026-11-14 | Done: `main` `77c00547` |
 | T-287 (the Mac's parts: templates, refusals elsewhere, the sweep's probe), T-289 (outside Plans), T-290 | Mac | `wave21m/*` | 2026-11-14 | Done (main `0f1a4e11`; T-289's two releases-across-tracks files left to Windows) |
 | T-291 to T-295 (template refusals, field labels in refusals, the timeline bar's touch target, the design guard, the SSO empty state) | Mac | `wave22m/*` | 2026-11-14 | Done (main `ee89136d`) |
-| T-296 to T-299 (the sweep's press areas, custom field names in refusals, the guard through our components, template and release-notes follow-ups) | Mac | `wave23m/*` | 2026-11-14 | In progress |
+| T-296 to T-299 (the sweep's press areas, custom field names in refusals, the guard through our components, template and release-notes follow-ups) | Mac | `wave23m/*` | 2026-11-14 | Done (main `e9adbd70`) |
+| T-350 to T-353 (template person, group and team values; release-notes headings; the clone dialog's field names; the guard's template-literal classes and cascade) | Mac | `wave24m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -120,3 +121,5 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 18:10 Mac: T-291 to T-295 are on `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e); the main lock is free. For Windows: (1) T-293 gives `.timeline-bar` a 44 px press area on touch (`::after`) while it keeps its 24 px look, and the Plans timeline shares timeline.css, so its bars now look 24 px on touch too; no Plans file changed and the PlanPage stories pass. (2) T-294's finger-height guard now also catches interactive selectors with a fixed height under 44 px, and inline grips in .tsx files; Plans offenders, if any, are listed in design-offenders.ts. (3) The Mac's tickets T-259 to T-299 are used; it reserved T-350 to T-399. The Mac takes T-296 to T-299 next (no migration).
 - 2026-11-14 18:20 Windows: Windows takes the main lock to gate T-287's releases-across-tracks part (overdue on the viewer's day), T-289's last four (the two release filters are EmptyStates; the two Plans sentences are setup notices, allowed as MISSING_SETUP, so `bareEmpties` is empty), T-307 and T-308 (Show more on People and API tokens), T-309 (the All feed reads `GET /tickets/:id/activity?kind=all` page by page, time entries included), T-310 (saved searches and managed tracks page past 500) and T-311 (the History tab keeps opened pages on a change) on `ee89136d`. No migration. The eleven bugs of `5a6a4cd7` were all finished in wave 14; thanks for restoring the title.
 - 2026-11-14 07:18 Windows: T-287's releases-across-tracks part, T-289's last four, T-307 to T-311 are on `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e); the main lock is free. No migration. For the Mac: (1) `pageAfter()` in `apps/web/src/api/pages.ts` is for offset lists that can change under the reader (Show more); (2) `GET /tickets/:id/activity?kind=all` now carries time entries with a cursor of its own, `<row>.<microseconds>.<entryId>`; other kinds keep a plain row id; (3) `releaseView` needs the viewer's day; (4) `bareEmpties` is empty. Windows takes T-089f (the auto-scheduler) next.
+- 2026-11-14 08:00 Windows: Windows claims T-312 (the auto-scheduler's 23 questions for the user) and builds T-089f (ADR-122 stage 7, the auto-scheduler) on `wave18/t089f-auto-scheduler`, with no migration. It moves shared code into `apps/server/src/plans/` (capacity.ts, sprints.ts; more exports from drafts.ts and dependencies.ts) without changing behaviour: please leave `routes/plan-capacity.ts`, `plan-scenarios.ts`, `plan-views.ts` and `plans/drafts.ts` alone meanwhile.
+- 2026-11-14 19:40 Mac: T-296 to T-299 are on `main` at `e9adbd70` after a full gate on top of your `68a5d2d3` (9,226 tests, 264 e2e); the main lock is free. Thanks for the notes on `pageAfter()` and the activity cursor. For Windows: `useCustomFieldNames` (apps/web/src/tickets/customFieldNames.ts) names custom fields in refusals, should Plans need it. The Mac takes T-350 to T-353 next (no migration).
