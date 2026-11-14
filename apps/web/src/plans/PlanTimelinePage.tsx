@@ -6,12 +6,14 @@ import { EmptyState } from '../shell/EmptyState';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { CriticalPathList } from '../timeline/CriticalPathList';
 import { dayNumber, localDay, type TimelineItem } from '../timeline/client';
+import { slackMap } from '../timeline/critical';
 import { DependencyList } from '../timeline/DependencyList';
 import { dependenciesOf } from '../timeline/dependencies';
 import { type TimelineGroup, TimelineView } from '../timeline/TimelineView';
 import type { PlanGroup, PlanZoom } from './address';
-import type { PlanTimeline, PlanTimelineItem } from './client';
+import type { PlanCriticalPath, PlanTimeline, PlanTimelineItem } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { csvBlob, fileName, saveBlob } from './download';
 import { draftCalls } from './drafting';
@@ -31,6 +33,11 @@ import { IMAGE_ROWS, imageRows, svgToPng, timelineSvg, viewWords } from './planI
  * not list are only counted, never named.
  *
  * Its files (PLN-014) read the Timeline again for the file, as CSV or as an image of up to 400 rows.
+ *
+ * The critical path (PLN-011; ADR-122 stage 9): a toggle among the tools, kept in the address
+ * (`critical=1`), reads the path over the whole plan the viewer is shown; the bars it lists are
+ * marked, the path is given in words below (`CriticalPathList`), and the CSV and the image carry
+ * it while it is on.
  */
 export function PlanTimelinePage({
   id,
@@ -51,6 +58,20 @@ export function PlanTimelinePage({
   const [failed, setFailed] = useState(false);
   const filterKey = JSON.stringify(filters);
   const listId = useId();
+  const pathId = useId();
+  // The critical path's toggle: in the address when the page keeps the view's position there.
+  const [criticalHere, setCriticalHere] = useState(false);
+  const criticalOn = client.criticalPath
+    ? onPosition
+      ? position?.critical === '1'
+      : criticalHere
+    : false;
+  const setCritical = (on: boolean) => {
+    if (onPosition) onPosition({ critical: on ? '1' : undefined });
+    else setCriticalHere(on);
+  };
+  const [path, setPath] = useState<PlanCriticalPath | null>(null);
+  const [pathFailed, setPathFailed] = useState(false);
 
   /** Counts requests: only the latest one's answer is drawn, however they come back. */
   const latest = useRef(0);
@@ -69,7 +90,40 @@ export function PlanTimelinePage({
     );
   }, [client, id, filterKey, scenario?.id]);
   useEffect(load, [load]);
-  useTicketChanges(load);
+
+  /** Counts reads of the path, as `latest` does the timeline's. */
+  const pathLatest = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
+  const loadPath = useCallback(() => {
+    const asked = ++pathLatest.current;
+    if (!criticalOn || !client.criticalPath) {
+      setPath(null);
+      setPathFailed(false);
+      return;
+    }
+    client.criticalPath(id, filters, scenario?.id).then(
+      (answer) => {
+        if (asked !== pathLatest.current) return;
+        setPath(answer);
+        setPathFailed(false);
+      },
+      () => {
+        if (asked === pathLatest.current) setPathFailed(true);
+      },
+    );
+  }, [client, id, filterKey, scenario?.id, criticalOn]);
+  useEffect(loadPath, [loadPath]);
+  const reloadAll = useCallback(() => {
+    load();
+    loadPath();
+  }, [load, loadPath]);
+  useTicketChanges(reloadAll);
+  const slack = useMemo(() => (path ? slackMap(path.listed) : null), [path]);
+  /** The path read fresh for a file, while it is on. */
+  const freshSlack = async () =>
+    criticalOn && client.criticalPath
+      ? slackMap((await client.criticalPath(id, filters, scenario?.id)).listed)
+      : undefined;
 
   /** How a timeline's tickets group, on the page and in a file read for it. */
   const groupFor = (answer: PlanTimeline) => {
@@ -142,8 +196,9 @@ export function PlanTimelinePage({
           label: t('plans.download.csv'),
           make: async () => {
             const fresh = await client.timeline(id, filters, true, scenario?.id);
+            const critical = await freshSlack();
             const name = dated('timeline', 'csv');
-            saveBlob(name, csvBlob(timelineCsv(t, fresh)));
+            saveBlob(name, csvBlob(timelineCsv(t, fresh, undefined, critical)));
             return name;
           },
         },
@@ -153,6 +208,7 @@ export function PlanTimelinePage({
           failed: t('plans.download.imageFailed'),
           make: async () => {
             const fresh = await client.timeline(id, filters, true, scenario?.id);
+            const critical = await freshSlack();
             const image = timelineSvg({
               t,
               // An image made in a scenario says so in its title (ADR-122 stage 6).
@@ -166,6 +222,7 @@ export function PlanTimelinePage({
               ...(group ? { groupOf: groupFor(fresh) } : {}),
               dependencies: dependenciesOf(fresh.items, fresh.links, fresh.blockersElsewhere),
               hiddenSources: plan.hiddenSources,
+              ...(critical ? { critical } : {}),
               monthText: (day) =>
                 intl.formatDate(new Date(day * 86_400_000), {
                   month: 'short',
@@ -206,13 +263,25 @@ export function PlanTimelinePage({
           : {})}
         data={data}
         reschedule={drafts?.reschedule ?? client.reschedule}
-        reload={load}
+        reload={reloadAll}
         now={now}
         {...(groupOf ? { groupOf } : {})}
         truncatedText={t('plans.truncated', { count: data.items.length })}
         dependencies={dependencies}
+        {...(client.criticalPath
+          ? { critical: { on: criticalOn, onToggle: setCritical, slack } }
+          : {})}
         tools={
           <>
+            {criticalOn && (
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => document.getElementById(pathId)?.focus()}
+              >
+                {t('critical.goTo')}
+              </button>
+            )}
             <button
               type="button"
               className="button-secondary"
@@ -224,6 +293,7 @@ export function PlanTimelinePage({
           </>
         }
       />
+      {criticalOn && <CriticalPathList path={path} failed={pathFailed} headingId={pathId} />}
       <DependencyList
         dependencies={dependencies}
         headingId={listId}

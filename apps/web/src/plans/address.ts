@@ -46,6 +46,8 @@ export interface PlanPosition {
   month?: string | undefined;
   from?: string | undefined;
   sort?: PlanSort | undefined;
+  /** The Timeline marks the critical path (PLN-011). */
+  critical?: '1' | undefined;
 }
 
 /**
@@ -94,6 +96,7 @@ function readPosition(params: URLSearchParams): PlanPosition {
   if (from && isDay(from)) position.from = from;
   const sort = oneOf(PLAN_SORTS, params.get('sort'));
   if (sort) position.sort = sort;
+  if (params.get('critical') === '1') position.critical = '1';
   return position;
 }
 
@@ -143,7 +146,7 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     if (value) params.set(key, value);
   }
   if (view.group) params.set('group', view.group);
-  for (const key of ['zoom', 'month', 'from', 'sort'] as const) {
+  for (const key of ['zoom', 'month', 'from', 'sort', 'critical'] as const) {
     const value = view.position?.[key];
     if (value) params.set(key, value);
   }

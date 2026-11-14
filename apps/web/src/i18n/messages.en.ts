@@ -7276,6 +7276,39 @@ export const messagesEn = {
     'A link type you chose no longer exists, or always counts. Reload the page and choose again.',
   'dependencies.via': '({phrase})',
   'dependencies.sameSprint': 'Same sprint',
+  // The critical path on a plan's Timeline (PLN-011; ADR-122 stage 9).
+  'critical.toggle': 'Critical path',
+  'critical.goTo': 'Critical path in words',
+  'critical.failed': 'The critical path could not be read. Try again later.',
+  'critical.loading': 'Working out the critical path…',
+  'critical.bar.on': 'On the critical path',
+  'critical.bar.slack': '{days, plural, one {# day of slack} other {# days of slack}}',
+  'critical.legend': 'On the critical path (heavy outline and ▲)',
+  'critical.title': 'Critical path',
+  'critical.covers':
+    'It covers the tickets this plan shows you, whatever the filters, so it can differ from someone else’s.',
+  'critical.summary':
+    '{count, plural, one {# ticket is} other {# tickets are}} on the critical path. The plan ends {end}.',
+  'critical.noPath': 'No open ticket of this plan has dates, so there is no critical path.',
+  'critical.chain': 'Chain {number, number}',
+  'critical.step.first': 'starts {start}, ends {end}',
+  'critical.step.firstEnd': 'starts {start}, ends {end}, the plan’s end.',
+  'critical.step.then': 'then starts {start}, ends {end}',
+  'critical.step.thenEnd': 'then starts {start}, ends {end}, the plan’s end.',
+  'critical.step.late':
+    '(a dependency before it is {days, plural, one {# day} other {# days}} late)',
+  'critical.more':
+    '{count, plural, one {# more ticket is} other {# more tickets are}} on the path and not listed here.',
+  'critical.cycles':
+    '{count, plural, one {# ticket is} other {# tickets are}} in a circle of dependencies and {count, plural, one {has} other {have}} no slack.',
+  'critical.waitsElsewhere':
+    '{count, plural, one {# ticket waits} other {# tickets wait}} for work outside this plan or not shown to you; that work is not counted.',
+  'critical.undated':
+    '{count, plural, one {# open ticket has} other {# open tickets have}} no dates and {count, plural, one {is} other {are}} left out.',
+  'critical.csv.slack': 'Slack (days)',
+  'critical.csv.critical': 'Critical',
+  'critical.image.legend':
+    'Heavy outline and ▲: on the critical path. Heavy line: a tight dependency on it.',
   'timeline.badge.sprint': 'same sprint',
   'timeline.badge.withSprint':
     'Blocked by {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # late}}, {sprint, plural, one {# in the same sprint} other {# in the same sprint}}',

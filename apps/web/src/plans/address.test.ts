@@ -14,6 +14,8 @@ describe('a plan view in the address', () => {
       ['month', '2027-02'],
       ['from', '2027-02-28'],
       ['sort', 'priority'],
+      // The Timeline's critical path (PLN-011), so a link keeps it on.
+      ['critical', '1'],
     ] as const) {
       const read = readView(`#/plans/12?${key}=${value}`);
       expect(read.position).toEqual({ [key]: value });
@@ -37,6 +39,8 @@ describe('a plan view in the address', () => {
       'from=2027-2-1',
       'sort=summary',
       'sort=created%20DESC',
+      'critical=yes',
+      'critical=0',
     ]) {
       expect(readView(`#/plans/12?${bad}`).position, bad).toEqual({});
     }

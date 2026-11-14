@@ -7441,6 +7441,40 @@ export const messagesEs: Record<MessageId, string> = {
     'Un tipo de enlace que elegiste ya no existe, o siempre cuenta. Recarga la página y vuelve a elegir.',
   'dependencies.via': '({phrase})',
   'dependencies.sameSprint': 'Mismo sprint',
+  // The critical path on a plan's Timeline (PLN-011; ADR-122 stage 9).
+  'critical.toggle': 'Ruta crítica',
+  'critical.goTo': 'Ruta crítica en palabras',
+  'critical.failed': 'No se pudo leer la ruta crítica. Inténtalo más tarde.',
+  'critical.loading': 'Calculando la ruta crítica…',
+  'critical.bar.on': 'En la ruta crítica',
+  'critical.bar.slack': '{days, plural, one {# día de holgura} other {# días de holgura}}',
+  'critical.legend': 'En la ruta crítica (borde grueso y ▲)',
+  'critical.title': 'Ruta crítica',
+  'critical.covers':
+    'Abarca los tickets que este plan te muestra, sean cuales sean los filtros, así que puede ser distinta de la de otra persona.',
+  'critical.summary':
+    '{count, plural, one {# ticket está} other {# tickets están}} en la ruta crítica. El plan termina el {end}.',
+  'critical.noPath':
+    'Ningún ticket abierto de este plan tiene fechas, así que no hay ruta crítica.',
+  'critical.chain': 'Cadena {number, number}',
+  'critical.step.first': 'empieza el {start}, termina el {end}',
+  'critical.step.firstEnd': 'empieza el {start}, termina el {end}, el final del plan.',
+  'critical.step.then': 'luego empieza el {start}, termina el {end}',
+  'critical.step.thenEnd': 'luego empieza el {start}, termina el {end}, el final del plan.',
+  'critical.step.late':
+    '(una dependencia anterior va {days, plural, one {# día} other {# días}} con retraso)',
+  'critical.more':
+    '{count, plural, one {# ticket más está} other {# tickets más están}} en la ruta y no se listan aquí.',
+  'critical.cycles':
+    '{count, plural, one {# ticket está} other {# tickets están}} en un círculo de dependencias y no {count, plural, one {tiene} other {tienen}} holgura.',
+  'critical.waitsElsewhere':
+    '{count, plural, one {# ticket espera} other {# tickets esperan}} trabajo fuera de este plan o que no se te muestra; ese trabajo no se cuenta.',
+  'critical.undated':
+    '{count, plural, one {# ticket abierto no tiene} other {# tickets abiertos no tienen}} fechas y se {count, plural, one {deja} other {dejan}} fuera.',
+  'critical.csv.slack': 'Holgura (días)',
+  'critical.csv.critical': 'Crítico',
+  'critical.image.legend':
+    'Borde grueso y ▲: en la ruta crítica. Línea gruesa: una dependencia ajustada en ella.',
   'timeline.badge.sprint': 'mismo sprint',
   'timeline.badge.withSprint':
     'Bloqueado por {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # con retraso}}, {sprint, plural, one {# en el mismo sprint} other {# en el mismo sprint}}',

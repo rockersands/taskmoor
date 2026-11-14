@@ -343,3 +343,80 @@ describe('today on the person’s own clock (AGL-015)', () => {
     );
   });
 });
+
+/**
+ * The critical path on a timeline (PLN-011; ADR-122 stage 9), with the fixture plan's path:
+ * SHOP-2 (two days late against SHOP-3) and SHOP-3 on it, OPS-4 with two days of slack.
+ */
+describe('the critical path on a timeline (PLN-011)', () => {
+  const pathView = async (critical?: Parameters<typeof TimelineView>[0]['critical']) => {
+    const { fakePlanClient } = await import('../plans/fixtures');
+    const data = await fakePlanClient().timeline(12, {});
+    return (
+      <I18nProvider locale="en">
+        <TimelineView
+          data={data}
+          reschedule={async () => ({ ok: true })}
+          reload={() => {}}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+          truncatedText="cut"
+          {...(critical ? { critical } : {})}
+        />
+      </I18nProvider>
+    );
+  };
+
+  it('[PLN-011] offers a Critical path toggle among the tools, pressed while it is on', async () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(await pathView({ on: false, onToggle, slack: null }));
+    const toggle = screen.getByRole('button', { name: 'Critical path', pressed: false });
+    fireEvent.click(toggle);
+    expect(onToggle).toHaveBeenCalledWith(true);
+    expect(document.querySelector('.is-critical')).toBeNull();
+    rerender(await pathView({ on: true, onToggle, slack: null }));
+    expect(screen.getByRole('button', { name: 'Critical path', pressed: true })).toBeVisible();
+    // Without the page's path, no toggle at all.
+    rerender(await pathView());
+    expect(screen.queryByRole('button', { name: 'Critical path' })).toBeNull();
+  });
+
+  it('[PLN-011] outlines and marks the bars on the path, says slack in each description and draws tight links heavier', async () => {
+    const slack = new Map([
+      [2, -2],
+      [3, 0],
+      [4, 2],
+    ]);
+    render(await pathView({ on: true, onToggle: () => {}, slack }));
+    const last = screen.getByRole('button', {
+      name: 'SHOP-3: Nov 9, 2026 to Nov 20, 2026',
+      description: /On the critical path$/,
+    });
+    expect(last).toHaveClass('is-critical');
+    // A shape as well as the outline: never colour alone.
+    expect(last.querySelector('.timeline-critical-mark')).not.toBeNull();
+    expect(
+      screen.getByRole('button', {
+        name: 'SHOP-2: Nov 2, 2026 to Nov 10, 2026',
+        description: /On the critical path$/,
+      }),
+    ).toHaveClass('is-critical');
+    const side = screen.getByRole('button', {
+      name: 'OPS-4: Nov 12, 2026 to Nov 18, 2026',
+      description: /2 days of slack$/,
+    });
+    expect(side).not.toHaveClass('is-critical');
+    // SHOP-2 to SHOP-3 is tight; SHOP-2 to OPS-4 is not.
+    expect(document.querySelectorAll('.timeline-link.is-critical')).toHaveLength(1);
+    const legend = screen.getByRole('list', { name: 'What the bars mean' });
+    expect(within(legend).getByText('On the critical path (heavy outline and ▲)')).toBeVisible();
+  });
+
+  it('[PLN-011] marks nothing while the toggle is off, whatever slack it was given', async () => {
+    render(await pathView({ on: false, onToggle: () => {}, slack: new Map([[3, 0]]) }));
+    expect(document.querySelector('.timeline-bar.is-critical')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'SHOP-3: Nov 9, 2026 to Nov 20, 2026' }),
+    ).not.toHaveAccessibleDescription(/critical/);
+    expect(screen.queryByText('On the critical path (heavy outline and ▲)')).toBeNull();
+  });
+});
