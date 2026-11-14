@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { cellText, records } from '@taskmoor/server/testing';
 
 /**
  * Search results (M1-042; QRY-014, QRY-015): columns chosen, moved and kept after a reload, a
@@ -126,11 +127,19 @@ test('[QRY-014] [QRY-015] columns, edits in place and a CSV export of the result
   await page.getByRole('link', { name: 'Export CSV' }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/^tickets-\d{4}-\d{2}-\d{2}\.csv$/);
-  const csv = readFileSync((await download.path()) as string, 'utf8');
+  const bytes = readFileSync((await download.path()) as string);
+  // The UTF-8 byte-order mark first, once (T-252); then the header.
+  expect([...bytes.subarray(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 'k'.charCodeAt(0)]);
+  const csv = bytes.toString('utf8').slice(1);
   const lines = csv.trim().split('\r\n');
   expect(lines[0]).toBe('key,summary,ticketType,status,assignee,priority,labels,updatedAt');
   expect(lines).toHaveLength(2);
   expect(lines[1]).toContain(`${ticket.key},Edited ${word},`);
   expect(lines[1]).toContain(',"alpha; beta",');
+  // The CSV importer reads the file back as written, the mark taken off.
+  const back = [...records(bytes, ',')].map((r) => r.fields.map(cellText));
+  expect(back[0]).toEqual(lines[0]?.split(','));
+  expect(back[1]?.[0]).toBe(ticket.key);
+  expect(back[1]).toContain('alpha; beta');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

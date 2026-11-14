@@ -8,7 +8,7 @@ import { localDay } from '../timeline/client';
 import type { PlanPosition } from './address';
 import type { Plan, PlanClient, PlanCount, PlanFilters, PlanSummary } from './client';
 import { DownloadMenu } from './DownloadMenu';
-import { fileName, saveBlob } from './download';
+import { csvBlob, fileName, saveBlob } from './download';
 import { summaryCsv } from './planExport';
 
 export interface PlanSectionProps {
@@ -118,7 +118,7 @@ export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionP
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'summary', localDay(now()), 'csv');
-                saveBlob(name, new Blob([summaryCsv(t, summary)], { type: 'text/csv' }));
+                saveBlob(name, csvBlob(summaryCsv(t, summary)));
                 return name;
               },
             },

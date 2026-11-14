@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { CSV_BOM } from '@taskmoor/webconfig';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -12,7 +13,6 @@ import { fakePlanClient, manyPlanItems } from './fixtures';
 import {
   calendarCsv,
   capacityCsv,
-  csvField,
   csvText,
   releasesCsv,
   summaryCsv,
@@ -27,8 +27,14 @@ const translate = (locale: 'en' | 'es' = 'en') =>
     ),
   }).result.current;
 
-/** A file's rows, read as RFC 4180 reads them. */
-function parse(text: string): string[][] {
+/**
+ * A file's rows, read as RFC 4180 reads them, after its byte-order mark: every file starts with
+ * exactly one (T-252), as the importer expects and takes off.
+ */
+function parse(file: string): string[][] {
+  expect(file.startsWith(CSV_BOM)).toBe(true);
+  const text = file.slice(1);
+  expect(text.startsWith(CSV_BOM)).toBe(false);
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -64,7 +70,9 @@ function parse(text: string): string[][] {
 const src = ['apps/web/src', 'src'].find((d) => existsSync(join(d, 'styles/tokens.css'))) ?? 'src';
 function matchesGolden(text: string, name: string) {
   const path = join(src, 'plans/__golden__', name);
-  const plain = text.replaceAll('\r\n', '\n');
+  // The byte-order mark is checked by `parse`; the golden copy holds the table after it.
+  expect(text.startsWith(CSV_BOM)).toBe(true);
+  const plain = text.slice(1).replaceAll('\r\n', '\n');
   if (!existsSync(path) && !process.env.CI) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, plain);
@@ -90,20 +98,15 @@ const imageOf = async (extra: { data?: PlanTimeline; hiddenSources?: number } = 
 };
 
 describe('the files of a plan', () => {
-  it("[PLN-014] guards every cell by the server's table: quoting, and text that would run as a formula", () => {
-    // The server's `csvField` is held to the same file (`audit/query.test.ts`).
-    const table = JSON.parse(readFileSync(join(src, 'plans/csvGuardTable.json'), 'utf8')) as [
-      string | number | null,
-      string,
-    ][];
-    expect(table.length).toBeGreaterThan(10);
-    for (const [value, written] of table) expect(csvField(value)).toBe(written);
-    expect(
-      csvText([
-        ['a', 'b,c'],
-        [null, 1],
-      ]),
-    ).toBe('a,"b,c"\r\n,1\r\n');
+  it('[PLN-014] writes cells by the rule every CSV export shares, the byte-order mark first and once', () => {
+    // The cell guard's table is the shared helper's (`@taskmoor/webconfig` `csv.test.ts`).
+    const text = csvText([
+      ['a', 'b,c'],
+      [null, 1],
+      ['=1+1', 'Versión'],
+    ]);
+    expect(text).toBe(`${CSV_BOM}a,"b,c"\r\n,1\r\n'=1+1,Versión\r\n`);
+    expect([...new TextEncoder().encode(text).slice(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 0x61]);
   });
 
   it('[PLN-014] [PLN-006] the Timeline file holds its rows, with blockers it does not list as numbers', async () => {

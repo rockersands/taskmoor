@@ -2,12 +2,14 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { expectWithinBudget } from '@taskmoor/testkit/budget';
+import { CSV_BOM } from '@taskmoor/webconfig';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { AUDITED_EVENTS } from '../audit/subscriber';
 import { SESSION_COOKIE } from '../auth';
+import { cellText, records } from '../import/csv';
 
 // Made for this run: no password is written in the repository.
 const PASSWORD = `plans-${randomBytes(18).toString('base64url')}`;
@@ -803,12 +805,19 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     call(who, { method: 'POST', url: `/api/v1/plans/${id}/duplicate`, payload: { name } }, code);
   const exported = (who: string, id: number, query: Record<string, string> = {}) =>
     as(who, { method: 'GET', url: `/api/v1/plans/${id}/export?${new URLSearchParams(query)}` });
-  /** A simple file's rows, its cells split at commas and quotes taken off. */
-  const rowsOf = (body: string) =>
-    body
+  /**
+   * A simple file's rows, its cells split at commas and quotes taken off, after the byte-order
+   * mark every CSV file starts with exactly once (T-252).
+   */
+  const rowsOf = (body: string) => {
+    expect(body.startsWith(CSV_BOM)).toBe(true);
+    expect(body.slice(1).startsWith(CSV_BOM)).toBe(false);
+    return body
+      .slice(1)
       .trimEnd()
       .split('\r\n')
       .map((line) => line.split(',').map((cell) => cell.replace(/^"|"$/g, '')));
+  };
   /** The keys a search finds as that person, each once. */
   const searchKeys = async (who: string, q: string) => {
     const found: string[] = [];
@@ -1040,6 +1049,11 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
       const rows = rowsOf(res.body);
       expect(rows[0]).toEqual(['key', 'summary', 'status']);
       const keysInFile = rows.slice(1).map((r) => r[0]);
+      // The bytes start EF BB BF, and the CSV importer reads the file back without the mark.
+      expect([...res.rawPayload.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+      const back = [...records(res.rawPayload, ',')].map((r) => r.fields.map(cellText));
+      expect(back[0]).toEqual(['key', 'summary', 'status']);
+      expect(back.slice(1).map((r) => r[0])).toEqual(keysInFile);
       if (seen.query === null) {
         expect(keysInFile).toEqual([]);
         continue;
@@ -1135,10 +1149,12 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     // Cy sees none of the plan's sources: a header row alone, in the columns asked for.
     const nothing = await exported('cy', plan.id, { columns: 'summary' });
     expect(nothing.statusCode).toBe(200);
-    expect(nothing.body).toBe('key,summary\r\n');
+    expect(nothing.body).toBe(`${CSV_BOM}key,summary\r\n`);
     // An empty plan too.
     const empty = (await make('ana', { name: 'Empty', sources: [] })).plan as { id: number };
-    expect((await exported('ana', empty.id, { columns: 'summary' })).body).toBe('key,summary\r\n');
+    expect((await exported('ana', empty.id, { columns: 'summary' })).body).toBe(
+      `${CSV_BOM}key,summary\r\n`,
+    );
   });
 
   it('[QRY-015] [PLN-014] a file counts as a bulk export; export=true answers the same and counts once', async () => {

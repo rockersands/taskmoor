@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
+import { CSV_CONTENT_TYPE, csvLine as csvRecord, withBom } from '@taskmoor/webconfig';
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
@@ -133,7 +134,8 @@ export function registerAuditRoutes(
     await countBulkExport(db, workspaceId, admin.id);
     const filter = toFilter(rest);
     async function* chunks(): AsyncGenerator<string> {
-      let buffer = format === 'csv' ? `${CSV_COLUMNS.join(',')}\r\n` : '';
+      // A CSV file starts with the byte-order mark, once (T-252), then the header.
+      let buffer = format === 'csv' ? withBom(csvRecord(CSV_COLUMNS)) : '';
       for await (const record of exportAudit(db, workspaceId, filter)) {
         buffer += format === 'csv' ? csvLine(record) : `${JSON.stringify(record)}\n`;
         if (buffer.length >= 64 * 1024) {
@@ -147,7 +149,7 @@ export function registerAuditRoutes(
     return reply
       .header(
         'content-type',
-        format === 'csv' ? 'text/csv; charset=utf-8' : 'application/x-ndjson; charset=utf-8',
+        format === 'csv' ? CSV_CONTENT_TYPE : 'application/x-ndjson; charset=utf-8',
       )
       .header('content-disposition', `attachment; filename="audit-${day}.${format}"`)
       .header('cache-control', 'no-store')

@@ -1,9 +1,9 @@
 import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
+import { CSV_CONTENT_TYPE, csvLine, withBom } from '@taskmoor/webconfig';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
-import { csvField } from '../audit/query';
 import { requireUser } from '../auth';
 import type { FieldCatalogs } from '../fields/catalog';
 import { plainText } from '../fields/types';
@@ -33,9 +33,10 @@ import {
  *   only when the client has taken the last one, so the whole result is never in memory.
  * - `columns` lists the columns to export, as the results list names them (`key`, `summary`,
  *   `status`, `cf[10]`, ...), in their order; the key always comes first. CSV writes one cell
- *   per column as text (lists joined by "; "), RFC 4180 quoting, and text a spreadsheet would
- *   run as a formula (starting with =, +, -, @, tab or carriage return) gets a leading
- *   apostrophe. JSON writes the tickets as the search route shows them, keeping those columns.
+ *   per column as text (lists joined by "; ") by the rule every CSV export shares
+ *   (`@taskmoor/webconfig` `csv.ts`): RFC 4180 quoting, a leading apostrophe on text a
+ *   spreadsheet would run as a formula, and a UTF-8 byte-order mark before the header, once
+ *   (T-252). JSON writes the tickets as the search route shows them, keeping those columns.
  *
  * It reads only: no event, and an API token needs the read scope.
  */
@@ -173,7 +174,7 @@ function csvRow(view: TicketView, columns: readonly Column[]): string {
       ? systemText(view, c.id)
       : customText((view.fields as Record<string, unknown>)[String(c.field)]),
   );
-  return `${cells.map(csvField).join(',')}\r\n`;
+  return csvLine(cells);
 }
 
 /** What one export streams, for the search's route and a plan's (PLN-014). */
@@ -241,7 +242,8 @@ export async function sendTicketExport(
   );
 
   async function* chunks(): AsyncGenerator<string> {
-    let buffer = format === 'csv' ? `${header.map(csvField).join(',')}\r\n` : '[';
+    // A CSV file starts with the byte-order mark, once (T-252), then the header.
+    let buffer = format === 'csv' ? withBom(csvLine(header)) : '[';
     let rows = 0;
     let after: Cursor | undefined;
     while (query) {
@@ -277,10 +279,7 @@ export async function sendTicketExport(
 
   const day = new Date().toISOString().slice(0, 10);
   return reply
-    .header(
-      'content-type',
-      format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8',
-    )
+    .header('content-type', format === 'csv' ? CSV_CONTENT_TYPE : 'application/json; charset=utf-8')
     .header('content-disposition', `attachment; filename="${file}-${day}.${format}"`)
     .header('cache-control', 'no-store')
     .send(Readable.from(chunks()));

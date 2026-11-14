@@ -1,4 +1,5 @@
 import type { Database } from '@taskmoor/db';
+import { csvLine as csvRecord } from '@taskmoor/webconfig';
 import { type Kysely, sql } from 'kysely';
 import { erasedEmail, erasedName } from '../privacy/placeholder';
 
@@ -213,19 +214,7 @@ export const CSV_COLUMNS = [
   'hash',
 ] as const;
 
-/**
- * One CSV field (RFC 4180). Text a spreadsheet would run as a formula (starting with =, +, -,
- * @, tab or carriage return, or their full-width forms) gets a leading apostrophe, so an exported
- * name cannot become one. A semicolon is quoted too: where a list separator is a semicolon, as in
- * Spanish settings, a spreadsheet would split the cell there and read what follows as a new cell.
- */
-export function csvField(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  let text = typeof value === 'string' ? value : String(value);
-  if (typeof value === 'string' && /^[=+\-@\t\r＝＋－＠]/.test(text)) text = `'${text}`;
-  return /[",;\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
+/** One record as a CSV line (the shared rule of every export, `@taskmoor/webconfig`). */
 export function csvLine(record: AuditView): string {
   const values: Record<(typeof CSV_COLUMNS)[number], unknown> = {
     seq: record.seq,
@@ -243,5 +232,5 @@ export function csvLine(record: AuditView): string {
     prev_hash: record.prevHash,
     hash: record.hash,
   };
-  return `${CSV_COLUMNS.map((c) => csvField(values[c])).join(',')}\r\n`;
+  return csvRecord(CSV_COLUMNS.map((c) => values[c]));
 }

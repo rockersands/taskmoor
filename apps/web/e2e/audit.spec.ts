@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { records as csvRecords } from '@taskmoor/server/testing';
 
 /**
  * The audit log end to end (M1-085; IAM-013): a refused sign-in is recorded, the audit page
@@ -40,9 +41,16 @@ test('[IAM-013] finds a refused sign-in on the audit page and downloads it', asy
     page.getByRole('link', { name: 'Download as CSV' }).click(),
   ]);
   expect(csv.suggestedFilename()).toMatch(/^audit-\d{4}-\d{2}-\d{2}\.csv$/);
-  const text = readFileSync((await csv.path()) as string, 'utf8');
-  expect(text.split('\r\n')[0]).toMatch(/^seq,occurred_at,recorded_at,actor_id/);
+  const bytes = readFileSync((await csv.path()) as string);
+  // The UTF-8 byte-order mark first, once, so Excel on Windows reads the file as UTF-8 (T-252).
+  expect([...bytes.subarray(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 's'.charCodeAt(0)]);
+  const text = bytes.toString('utf8');
+  expect(text.slice(1).split('\r\n')[0]).toMatch(/^seq,occurred_at,recorded_at,actor_id/);
   expect(text).toContain(marker);
+  // The CSV importer reads the file back, the mark taken off.
+  const back = [...csvRecords(bytes, ',')].map((r) => r.fields);
+  expect(back[0]?.slice(0, 4)).toEqual(['seq', 'occurred_at', 'recorded_at', 'actor_id']);
+  expect(back.some((row) => row.some((cell) => cell.includes(marker)))).toBe(true);
 
   const [jsonl] = await Promise.all([
     page.waitForEvent('download'),

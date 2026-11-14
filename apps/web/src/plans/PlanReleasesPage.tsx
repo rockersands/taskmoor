@@ -11,7 +11,7 @@ import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { localDay } from '../timeline/client';
 import type { PlanRelease, PlanReleases } from './client';
 import { DownloadMenu } from './DownloadMenu';
-import { fileName, saveBlob } from './download';
+import { csvBlob, fileName, saveBlob } from './download';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { releasesCsv } from './planExport';
 
@@ -120,7 +120,7 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'releases', localDay(now()), 'csv');
-                saveBlob(name, new Blob([releasesCsv(t, data)], { type: 'text/csv' }));
+                saveBlob(name, csvBlob(releasesCsv(t, data)));
                 return name;
               },
             },

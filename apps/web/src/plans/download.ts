@@ -1,3 +1,5 @@
+import { CSV_CONTENT_TYPE, withBom } from '@taskmoor/webconfig';
+
 /** Hands a file the page made to the browser's own download: a Blob URL and a link clicked. */
 export function saveBlob(name: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
@@ -11,6 +13,13 @@ export function saveBlob(name: string, blob: Blob): void {
   // The browser has the file once the click is handled; keep the URL a while for slow ones.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+/**
+ * A CSV file the page made, as the browser saves it: UTF-8 with the byte-order mark in front,
+ * exactly once (T-252), typed as every CSV export is.
+ */
+export const csvBlob = (text: string): Blob =>
+  new Blob([withBom(text)], { type: CSV_CONTENT_TYPE });
 
 /**
  * A plan's file: its name reduced to letters, digits and safe marks, the view and the day. Letters
