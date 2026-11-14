@@ -3598,7 +3598,14 @@ build differs from the design above, or settles what it left open:
 - **`total`** is the number of rows given, never more. **`values`** follow the formula field
   convention: dates as day numbers, durations in seconds. **`today`** is the reader's day in their
   time zone (`todayIn`); `workingWeek` comes from `formulaEnv`. **`generation`** is a counter in the
-  server process, started from the clock.
+  server process, started from the clock. **The page does not compare it** (a review's finding):
+  behind several API processes (the Helm chart's replicas) each counts its own, so a newer answer
+  could carry a lower number and the page kept the old one. The page drops a late answer by its
+  own read number, which also keys the grid it draws.
+- **A change that sends the stored spec again** compares both specs with their keys sorted
+  (`canonicalJson`, `tickets/model.ts`): jsonb gives the stored spec's keys in its own order, so
+  without it a spec with totals, a links step or a formula never matched itself, and each save
+  bumped the version and emitted `plan.structure_changed`.
 - **Ticket columns** are `{ kind: 'ticket', field }`, the design giving no shape: `key`, the
   search results' system columns or `cf[N]`. **Lowest and Highest** also take date and date-time
   custom fields and formula fields of date output.
@@ -3620,6 +3627,17 @@ build differs from the design above, or settles what it left open:
 - **The children walk** starts from the inserted tickets and never passes through another inserted
   ticket, which the insert has already nested. A links step makes up to three queries: the walk,
   the hidden counts and the facts of the tickets it reached.
+- **A links step is cut by the tickets it adds, not its link pairs:** it keeps every pair to a
+  ticket already a candidate, and pairs to at most 100,000 new tickets, lowest id first
+  (`cutLinks`, `plans/structureTree.ts`), ordered by source and target, so the cut is the same on
+  every read. A guard of 400,000 pairs read bounds memory; reaching it, or a 100,001st new ticket,
+  sets `more`.
+- **Group by a custom field** counts a value only where the field's context covers the ticket's
+  track and type, as the cells and totals read it; a value kept in the side tables after a context
+  was narrowed groups under "No value".
+- **The tree and the skeleton grow their lists in place** (`appendTo`): a copy per entry made
+  grouping 100,000 top rows, or nesting 100,000 children under one parent, quadratic, holding the
+  server for seconds outside the statement timeout's reach.
 
 **The browser engine**
 
@@ -3635,8 +3653,20 @@ build differs from the design above, or settles what it left open:
 
 - **The tree column holds the key** as a link, headed **Ticket**, so a `key` ticket column is not
   drawn a second time. `aria-rowcount` counts the header row and the **All rows** total row in the
-  table's foot as well as the rows shown. The row window does not subtract the header row's
-  height (the overscan absorbs it), and a row whose cell is being edited may grow past 44 px.
+  table's foot as well as the rows shown. The page measures the sticky header row and the **All
+  rows** footer and gives both to the row window (`offset`, `bottom`), so a row scrolled to by the
+  keyboard shows whole between them, and to the scroller as scroll padding, so focus does too. A
+  row whose cell is being edited may grow past 44 px.
+- **Focus:** when closing rows hides the row that held the treegrid's one Tab stop, the highest
+  closed row above it takes the stop. A moved row keeps focus and scroll only in the read that
+  follows the move; Refresh, a filter or another structure starts at the first row. The menu key
+  or Shift and F10 also cancel the next `contextmenu` within a second, which Chrome and Edge on
+  Windows send on the menu key's keyup, so the browser's own menu never opens over the row's.
+- **Cells:** a failed read of the rows in view says "Some cells could not be read" with **Try
+  again**. After an edit, the tickets of the rows above, read again, also replace their values in
+  the skeleton, so a formula column reading a stored formula field of those rows follows the
+  server's new value. A cell answer is kept while the grid is shown even if the rows wanted
+  changed meanwhile (a `mounted` ref; the e2e found rows left loading).
 - **Keys beyond the design:** Page Up and Page Down move ten rows, and Left on a closed row goes to
   its parent. Ctrl+Home and Ctrl+End go to the first and last rows in the same column.
 - **Inside a scenario** the page says its own sentence, `grid.live` ("The Grid shows tickets as they
@@ -3645,10 +3675,15 @@ build differs from the design above, or settles what it left open:
 - **The picker lists only saved structures:** once a plan has one, the unsaved default is no longer
   offered (the route still reads it by `default`). A structure named in the address that no longer
   exists shows the plan's first, with a notice. Delete structure is a `DangerAction` in the
-  toolbar; on the unsaved default, **Save as a structure…** takes the place of Edit structure….
+  toolbar, named "Delete structure {name}" (`grid.delete.label`); on the unsaved default, **Save as a structure…** takes the place of Edit structure….
 - **The dialog** shows a saved formula as stored, by id (`{cf[41]}`), not rewritten to names. A new
   formula column starts as `count(children)`, named "Child rows"; Lowest and Highest of a date say
   "Earliest" and "Latest". A group row shows "Field: value" and how many child rows it has.
+- **Phone cards** are 120 px unless their words need more: the tallest card drawn (its open
+  button's own height, plus padding and border) sets every card's height, up to 480 px, so two
+  facts and two marks, or larger text, are never clipped and the row window's rows stay one
+  height. A card's name starts with "Open" and its key (`grid.openCard`), then the words it shows,
+  so the name a speaking user hears matches what they read.
 - **Estimates after an edit:** the search view keeps them under `timeTracking`, so `savedTicketOf`
   (`plans/grid/client.ts`) copies them up before `editOfTicket` reads them.
 
@@ -3669,16 +3704,23 @@ build differs from the design above, or settles what it left open:
   (`scrollFirst`): after a short rest, or a sideways move. Phones have no grip; the card's sheet
   offers Move under… and Remove from parent. No Alt+arrow moves, none being designed.
 
+**Verified**
+
+- The e2e `apps/web/e2e/plan-grid.spec.ts` passes on the desktop and the phone viewport (run on
+  its own, not the whole `pnpm verify --e2e`). Its first run changed the page in three places,
+  recorded above: the phone card's name, the name of Delete structure and the `mounted` guard on
+  cell answers.
+- The random trees of the property tests live in `apps/web/src/test/gridTrees.ts`, under the test
+  helpers' folder, so the module boundaries hold.
+- The 100,000-row tree has tests that fail past a timeout rather than a budget: 100,000 top rows
+  in two groups, and 100,000 children under one parent (`structureTree.test.ts`).
+
 **Not yet done**
 
-- The e2e `apps/web/e2e/plan-grid.spec.ts` has not been run: Playwright is not run in this wave.
 - The budgets in `plan-structures.large.test.ts` wait for the user's hold on benchmarking; the
   limits and refusals have their tests (`routes/plan-structures.test.ts`, 503 `query_timeout` on
   20,000 tickets), and `PlanGridPage.test.tsx` draws a fake 100,000-row skeleton to its last row
   and edits it there.
-- `packages/devtools/src/boundaries.test.ts` fails: `apps/web/src/plans/grid/testTrees.ts`, a
-  test helper that is not named as a test file, imports `@taskmoor/testkit/property` ("test helpers
-  only in tests", "web stays frontend only"). Renaming or moving it fixes it.
 
 #### Questions for the user (the design takes the first answer each time)
 
