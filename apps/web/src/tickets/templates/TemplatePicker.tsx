@@ -36,6 +36,8 @@ export interface TemplatePickerProps {
   picked: PickedTemplate | null;
   /** The fields whose pickers the form has, which a template's people, releases and areas fill. */
   pickable?: ReadonlySet<string>;
+  /** The ids each release and area picker offers, by field key, once its list is here. */
+  offered?: Readonly<Record<string, readonly number[]>>;
   /** A template was chosen (with what it fills in), or none. */
   onPick: (picked: PickedTemplate | null, fill: FormFill | null) => void;
   onChange: (picked: PickedTemplate) => void;
@@ -54,6 +56,7 @@ export function TemplatePicker({
   form,
   picked,
   pickable,
+  offered,
   onPick,
   onChange,
 }: TemplatePickerProps) {
@@ -91,6 +94,7 @@ export function TemplatePicker({
       const fill = fillForm(start, form, {
         keys: pickable ?? new Set(),
         assignee: template.assignee,
+        ...(offered ? { offered } : {}),
       });
       onPick(
         {

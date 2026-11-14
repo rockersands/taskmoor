@@ -17,9 +17,10 @@ import type { Named } from './client';
  * edit, so the person can review it. What the backend will refuse for them (a field a rule hides,
  * off the layout, locked) is not shown at all: it stays out of the body, the backend leaves it out
  * and says so. The template's assignee, releases and areas fill the form's pickers in when it
- * has them (T-265), so a value chosen there takes the template's place. The only values kept out
- * of view are those on the layout with no control here, which the picker lists so that they can
- * be turned off.
+ * has them (T-265), so a value chosen there takes the template's place. The values kept out of
+ * view are those on the layout with no control here, and releases or areas the picker does not
+ * offer (archived since, or a list that did not load): the template picker lists them so that
+ * they can be turned off.
  */
 export interface FormFill {
   values: FormValues;
@@ -32,10 +33,14 @@ export interface FormFill {
   picked: string[];
 }
 
-/** What the form's pickers can take from a template: their field keys, and who it assigns. */
+/**
+ * What the form's pickers can take from a template: their field keys, who it assigns, and the
+ * ids each release or area picker offers, by field key (absent while its list loads).
+ */
 export interface TemplatePickers {
   keys: ReadonlySet<string>;
   assignee: Named | null;
+  offered?: Readonly<Record<string, readonly number[]>>;
 }
 
 /** System fields a template fills into a picker: the assignee, releases and areas. */
@@ -104,7 +109,9 @@ function fillCustom(field: CustomField, key: string, value: unknown, fill: FormF
 
 /**
  * Puts a template's value into the picker of `key`, as the form holds it; false when no picker
- * takes it. The assignee needs the person's name, which the template gives with its id.
+ * takes it. The assignee needs the person's name, which the template gives with its id. Releases
+ * and areas go in only when the picker offers every one of them: one it does not list (archived
+ * since the template was saved) would be sent without a checkbox to see or untick it.
  */
 function pickedValue(
   key: string,
@@ -120,6 +127,8 @@ function pickedValue(
     return true;
   }
   if (!ID_LIST_KEYS.has(key) || !Array.isArray(value)) return false;
+  const offered = pickers.offered?.[key];
+  if (!offered || !value.every((id) => offered.includes(Number(id)))) return false;
   fill.values[key] = value.map(String);
   return true;
 }

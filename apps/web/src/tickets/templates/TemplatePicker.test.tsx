@@ -37,6 +37,32 @@ function renderForm(
   return { created, picker };
 }
 
+/** The bug form with the areas and target releases on it, which have pickers. */
+const PICKER_FORM: TicketForm = {
+  ...BUG_FORM,
+  layout: {
+    ...BUG_FORM.layout,
+    tabs: BUG_FORM.layout.tabs.map((tab, i) =>
+      i === 0
+        ? {
+            ...tab,
+            sections: [
+              ...tab.sections,
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [
+                  { key: 'area', required: false, description: null },
+                  { key: 'targetRelease', required: false, description: null },
+                ],
+              },
+            ],
+          }
+        : tab,
+    ),
+  },
+};
+
 const pick = async (user: ReturnType<typeof userEvent.setup>, name = 'Release checklist') => {
   const picker = await screen.findByRole('combobox', { name: 'Start from a template' });
   await screen.findByLabelText('Summary (required)');
@@ -106,32 +132,8 @@ describe('starting a ticket from a template (CORE-030)', () => {
       dueDate: '2026-11-10',
       fields: { '7': 70 },
     });
-    const form: TicketForm = {
-      ...BUG_FORM,
-      layout: {
-        ...BUG_FORM.layout,
-        tabs: BUG_FORM.layout.tabs.map((tab, i) =>
-          i === 0
-            ? {
-                ...tab,
-                sections: [
-                  ...tab.sections,
-                  {
-                    kind: 'main',
-                    hideWhenEmpty: false,
-                    fields: [
-                      { key: 'area', required: false, description: null },
-                      { key: 'targetRelease', required: false, description: null },
-                    ],
-                  },
-                ],
-              }
-            : tab,
-        ),
-      },
-    };
     renderForm(picker, 'en', {
-      form: async () => form,
+      form: async () => PICKER_FORM,
       assignable: async () => [{ id: 22, name: 'Sasha Lee' }],
       areas: async () => [
         { id: 31, name: 'Checkout' },
@@ -157,6 +159,39 @@ describe('starting a ticket from a template (CORE-030)', () => {
     expect(body).toMatchObject({ assigneeId: 22, targetReleaseIds: [41] });
     expect(body.areaIds).toBeUndefined();
     expect(body.omit).toEqual(['areaIds']);
+  });
+
+  it('[CORE-030] keeps a release the picker does not offer in the list, where it can be turned off (T-265)', async () => {
+    const user = userEvent.setup();
+    // Release 1.0 (41) was archived after the template was saved: the track offers only 1.1.
+    const picker = fakePickerClient(undefined, {
+      summary: 'Release SHOP 2026-11-03',
+      areaIds: [31],
+      targetReleaseIds: [41],
+      dueDate: '2026-11-10',
+      fields: { '7': 70 },
+    });
+    renderForm(picker, 'en', {
+      form: async () => PICKER_FORM,
+      areas: async () => [{ id: 31, name: 'Checkout' }],
+      releases: async () => [{ id: 42, name: '1.1' }],
+    });
+    await screen.findByRole('checkbox', { name: '1.1' });
+    await pick(user);
+    // The offered area fills its picker; the archived release is named with a checkbox.
+    expect(screen.getByRole('checkbox', { name: 'Checkout' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '1.1' })).not.toBeChecked();
+    const also = screen.getByRole('group', { name: 'Also from this template' });
+    const release = within(also).getByRole('checkbox', { name: 'Target releases' });
+    expect(release).toBeChecked();
+    // Turned off there, it is left out, and a release ticked in the form is sent instead.
+    await user.click(release);
+    await user.click(screen.getByRole('checkbox', { name: '1.1' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeInTheDocument();
+    const body = picker.applied[0]?.body as Record<string, unknown>;
+    expect(body).toMatchObject({ areaIds: [31], targetReleaseIds: [42] });
+    expect(body.omit).toEqual(['targetReleaseIds']);
   });
 
   it('[CORE-030] says what was left out and which subtickets failed', async () => {

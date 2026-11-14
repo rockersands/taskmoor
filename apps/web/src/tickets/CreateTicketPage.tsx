@@ -546,6 +546,16 @@ export function CreateTicketPage({
   const set = (key: string, value: string | string[]) => setValues((v) => ({ ...v, [key]: value }));
   /** The list a list picker offers; null while it loads, or for no list. */
   const pickable = useMemo(() => pickableKeys(client), [client]);
+  // The ids the release and area pickers offer, for a template's values to fill them (T-265).
+  const offered = useMemo(() => {
+    const out: Record<string, number[]> = {};
+    if (releases) {
+      const ids = releases.map((r) => r.id);
+      for (const key of RELEASE_KEYS) out[key] = ids;
+    }
+    if (areas) out.area = areas.map((a) => a.id);
+    return out;
+  }, [releases, areas]);
   const listOf = (kind: ListKind | null) =>
     kind === 'area' ? areas : kind === 'team' ? teams : kind === 'release' ? releases : null;
   const mentions = useMemo(
@@ -1223,6 +1233,7 @@ export function CreateTicketPage({
               form={form?.status === 'loaded' ? form.value : null}
               picked={picked}
               pickable={pickable}
+              offered={offered}
               onChange={setPicked}
               onPick={(next, fill) => {
                 setPicked(next);
