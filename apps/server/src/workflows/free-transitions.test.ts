@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freeTransition, freeTransitions } from './free-moving';
+import { freeMoveEffects, freeTransition, freeTransitions } from './free-moving';
 
 /** The free move into a status (the user's decision of 2026-11-04; WF-008; ADR-116). */
 const CLEAR = [{ type: 'clear-field', field: 'close-reason' }];
@@ -41,5 +41,17 @@ describe('the free move into a status (WF-008)', () => {
       to: 2,
       effects: CLEAR,
     });
+  });
+
+  it('[WF-008] a free move that closes is never made without the reason it closes with, by its types (T-249)', () => {
+    // A closing move with no reason would clear the reason as it closes: neither call compiles.
+    // @ts-expect-error a closing free move needs its reason
+    const closesWithNone = () => freeMoveEffects(true, null);
+    // @ts-expect-error a closing free move needs its reason
+    const intoClosedWithNone = () => freeTransition(3, 'Closed', true, null);
+    expect([typeof closesWithNone, typeof intoClosedWithNone]).toEqual(['function', 'function']);
+    expect(freeMoveEffects(true, 9)).toEqual(SETS(9));
+    expect(freeMoveEffects(false, 9)).toEqual(CLEAR);
+    expect(freeMoveEffects(false)).toEqual(CLEAR);
   });
 });

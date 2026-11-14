@@ -392,7 +392,9 @@ export function boardDefinition(
   const closes = closingIndex(columns, closing);
   // The status id names its transition, so it stays the same while the column does.
   const transitions: Transition[] = columns.map((column, index) =>
-    freeTransition(statusIds[index] as number, column.name, index === closes, completedId),
+    index === closes
+      ? freeTransition(statusIds[index] as number, column.name, true, completedId)
+      : freeTransition(statusIds[index] as number, column.name, false),
   );
   return {
     initialStatusId: statusIds[0] as number,
@@ -798,9 +800,11 @@ export async function addColumnPath(
     // it (T-237). The workflow's other statuses are held with it, in id order, as the version
     // written next holds them.
     const info = await heldStatusInfo(trx, by.workspaceId, [...statusIdsOf(current), statusId]);
-    const closes = info.get(statusId)?.stage === 'closed';
-    const completedId = closes ? await completedReasonId(trx, by) : null;
-    transitions.push(freeTransition(statusId, column.name, closes, completedId, id++));
+    transitions.push(
+      info.get(statusId)?.stage === 'closed'
+        ? freeTransition(statusId, column.name, true, await completedReasonId(trx, by), id++)
+        : freeTransition(statusId, column.name, false, null, id++),
+    );
   }
   // Out again: a global transition already leaves from it; the others get a step each.
   for (const other of stored) {
