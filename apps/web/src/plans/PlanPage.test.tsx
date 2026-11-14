@@ -291,15 +291,53 @@ describe('a plan (PLN-001, PLN-012)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Someone changed this plan meanwhile',
     );
-    // Deleting is a danger, and it asks first, saying what happens (D13).
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const remove = screen.getByRole('button', { name: 'Delete plan' });
-    expect(remove).toHaveClass('button-danger');
-    await user.click(remove);
-    expect(confirm).toHaveBeenCalledWith(
-      'Delete the plan “Spring” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
+  });
+
+  it('[PLN-001] deletes a plan only after asking in the page what goes, by keyboard too (D13)', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm');
+    const { client } = renderPlan('settings', '#/plans/12/settings');
+    const trigger = await screen.findByRole('button', { name: 'Delete plan' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // The question says what goes, offers the plan's deletion by name, and focuses Cancel.
+    const outcome =
+      'Delete the plan “Spring launch” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.';
+    let question = screen.getByRole('group', { name: outcome });
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: outcome })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete plan' })).toHaveFocus();
+    expect(client.removed).toEqual([]);
+    // A refusal says why and keeps the question; the second answer, by keyboard, deletes it.
+    const remove = vi.spyOn(client, 'remove').mockRejectedValueOnce(new Error('down'));
+    await user.keyboard('{Enter}');
+    question = screen.getByRole('group', { name: outcome });
+    await user.click(within(question).getByRole('button', { name: 'Delete Spring launch' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The plan could not be deleted. Try again.',
     );
+    expect(screen.getByRole('group', { name: outcome })).toBeVisible();
+    remove.mockRestore();
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toHaveFocus();
+    await user.keyboard('{Enter}');
     await waitFor(() => expect(client.removed).toEqual([12]));
+    await waitFor(() => expect(window.location.hash).toBe('#/plans'));
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it('[PLN-001] asks on a phone with answers that wrap, no sideways scroll (D13, ADR-033)', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    renderPlan('settings', '#/plans/12/settings');
+    await user.click(await screen.findByRole('button', { name: 'Delete plan' }));
+    const question = screen.getByRole('group', { name: /Delete the plan “Spring launch”/ });
+    expect(question).toHaveClass('danger-confirm');
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+    setViewportWidth(1280);
   });
 
   it('[PLN-001] [PLN-005] settings read as the rest of the app: “Only me”, shared boxes, a written date (PL-41)', async () => {

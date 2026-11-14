@@ -498,14 +498,31 @@ describe('releases across tracks (PLN-007)', () => {
 
   it('[PLN-007] asks before deleting, and answers one it may not see as not found', async () => {
     const user = userEvent.setup();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(window, 'confirm');
     const client = renderPage();
-    const remove = vi.spyOn(client, 'remove');
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
-    expect(confirm).toHaveBeenCalledWith(
-      'Delete Spring launch? Its releases stay as they are, and free to join another.',
-    );
+    const remove = vi.spyOn(client, 'remove').mockResolvedValueOnce({ ok: false, code: 'gone' });
+    const trigger = await screen.findByRole('button', { name: 'Delete' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first in the page, saying what goes (D13); Escape gives the focus back, sending nothing.
+    const outcome =
+      'Delete Spring launch? Its releases stay as they are, and free to join another.';
+    let question = screen.getByRole('group', { name: outcome });
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus();
     expect(remove).not.toHaveBeenCalled();
+    // By keyboard: a refusal says why and keeps the question; a second answer deletes it.
+    await user.keyboard('{Enter}');
+    question = screen.getByRole('group', { name: outcome });
+    await user.keyboard('{Shift>}{Tab}{/Shift}{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('It could not be deleted.');
+    expect(screen.getByRole('group', { name: outcome })).toBeVisible();
+    await user.click(within(question).getByRole('button', { name: 'Delete Spring launch' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/cross-track-releases'));
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(confirm).not.toHaveBeenCalled();
     confirm.mockRestore();
     const missing = {
       ...fakeCrossTrackClient(),

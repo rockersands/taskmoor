@@ -1,7 +1,8 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
+import { DangerAction } from '../shell/DangerAction';
 import type {
   CapacityUnit,
   LinkTypeOption,
@@ -16,6 +17,9 @@ import { SourcePicker } from './SourcePicker';
 import { type TeamOption, TeamPicker } from './TeamPicker';
 
 type Visibility = 'private' | 'any_user' | 'custom';
+
+/** What a save would clear: every capacity (a new unit), or the single periods' (new periods). */
+type Clearing = 'unit' | 'period';
 
 /** The page's choice of who sees a plan; other shares are kept as they are. */
 function visibilityOf(shares: readonly PlanShare[]): Visibility {
@@ -58,7 +62,8 @@ const isBlocking = (l: { outward: string }) => l.outward.trim().toLowerCase() ==
  * nobody removes what they cannot see. Sharing needs "Share dashboards and saved searches".
  * Teams and capacity (PLN-005): the site teams the plan plans with, the unit work and capacity
  * are counted in and its periods. A new unit clears every capacity set, and new periods the
- * capacity set for single periods, so each asks first.
+ * capacity set for single periods, so Save asks first, in its own place, as DangerAction does
+ * (D13): what goes, the save by name beside Cancel, the focus on Cancel and back on Save.
  */
 export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProps) {
   const t = useT();
@@ -90,6 +95,10 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
   const [sameSprint, setSameSprint] = useState(plan.dependencies?.sameSprint ?? false);
   const [linkOptions, setLinkOptions] = useState<LinkTypeOption[] | null>(null);
   const [linksFailed, setLinksFailed] = useState(false);
+  const [asking, setAsking] = useState<Clearing | null>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
 
   // Read once per plan, not again for each version saved.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan, not per version
@@ -169,13 +178,38 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         ? { kind: 'weeks', weeks: Number(periodChoice), anchor }
         : null;
 
+  // What a save would clear, asked in place of Save first (D13): every capacity, or the
+  // capacity set for single periods.
+  const clears: Clearing | null = !period
+    ? null
+    : unit !== plan.capacityUnit
+      ? 'unit'
+      : !samePeriods(period, plan.period)
+        ? 'period'
+        : null;
+
+  const closeQuestion = (focusSave: boolean) => {
+    returnFocus.current = focusSave;
+    setAsking(null);
+  };
+
+  useEffect(() => {
+    if (asking) {
+      cancelButton.current?.focus();
+    } else if (returnFocus.current) {
+      returnFocus.current = false;
+      saveButton.current?.focus();
+    }
+  }, [asking]);
+
+  const submit = () => {
+    if (!name.trim() || !period) return;
+    if (clears) setAsking(clears);
+    else void save();
+  };
+
   const save = async () => {
     if (!name.trim() || !period) return;
-    if (unit !== plan.capacityUnit) {
-      if (!window.confirm(t('plans.settings.confirmUnit'))) return;
-    } else if (!samePeriods(period, plan.period)) {
-      if (!window.confirm(t('plans.settings.confirmPeriod'))) return;
-    }
     setBusy(true);
     setProblem(null);
     setStatus('');
@@ -193,6 +227,8 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
       version: plan.version,
     });
     setBusy(false);
+    // Answered: the question goes, and the focus waits on Save, the result beside it.
+    if (asking) closeQuestion(true);
     if (saved.ok) {
       setStatus(t('plans.settings.saved'));
       onSaved();
@@ -213,9 +249,15 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     );
   };
 
+  // Asked first by DangerAction (D13); a refusal keeps the question open, the reason above it.
   const remove = async () => {
-    if (!window.confirm(t('plans.settings.confirmDelete', { name: plan.name }))) return;
-    await client.remove(plan.id);
+    setProblem(null);
+    try {
+      await client.remove(plan.id);
+    } catch (error) {
+      setProblem(t('plans.settings.deleteFailed'));
+      throw error;
+    }
     navigate('#/plans');
   };
 
@@ -225,7 +267,11 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
       aria-label={t('plans.section.settings')}
       onSubmit={(event) => {
         event.preventDefault();
-        void save();
+        submit();
+      }}
+      // A change to the settings makes the question about the old ones moot.
+      onChange={() => {
+        if (asking) closeQuestion(false);
       }}
     >
       <div className="form-field">
@@ -396,13 +442,68 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button-primary" disabled={busy || !name.trim() || !period}>
-          {t('plans.settings.save')}
-        </button>
-        {/* A danger, and it asks first, saying what happens (D13). */}
-        <button type="button" className="button-danger" onClick={() => void remove()}>
-          {t('plans.settings.delete')}
-        </button>
+        {asking ? (
+          // biome-ignore lint/a11y/useSemanticElements: a question and its two answers, not a set of fields
+          <div
+            className="danger-confirm"
+            role="group"
+            aria-labelledby={`${id}-clears`}
+            aria-busy={busy || undefined}
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (!busy) closeQuestion(true);
+            }}
+          >
+            <p id={`${id}-clears`} className="danger-confirm-outcome">
+              {t(asking === 'unit' ? 'plans.settings.confirmUnit' : 'plans.settings.confirmPeriod')}
+            </p>
+            <div className="danger-confirm-actions">
+              <button
+                type="button"
+                className="button-danger"
+                aria-disabled={busy || undefined}
+                onClick={() => {
+                  if (!busy) void save();
+                }}
+              >
+                {t(
+                  asking === 'unit'
+                    ? 'plans.settings.confirmUnitAction'
+                    : 'plans.settings.confirmPeriodAction',
+                )}
+              </button>
+              <button
+                ref={cancelButton}
+                type="button"
+                className="button-secondary"
+                aria-disabled={busy || undefined}
+                onClick={() => {
+                  if (!busy) closeQuestion(true);
+                }}
+              >
+                {t('danger.cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            ref={saveButton}
+            type="submit"
+            className="button-primary"
+            disabled={busy || !name.trim() || !period}
+          >
+            {t('plans.settings.save')}
+          </button>
+        )}
+        {/* A danger, and it asks first, saying what goes (D13). */}
+        <DangerAction
+          label={t('plans.settings.delete')}
+          outcome={t('plans.settings.confirmDelete', { name: plan.name })}
+          confirmLabel={t('plans.settings.deleteNamed', { name: plan.name })}
+          onConfirm={remove}
+        />
       </div>
     </form>
   );

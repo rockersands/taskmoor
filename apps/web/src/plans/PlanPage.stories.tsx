@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
@@ -194,6 +194,40 @@ export const Settings: Story = {
     // Teams and capacity (PLN-005): the site's teams, the unit and the periods.
     await expect(await canvas.findByRole('checkbox', { name: 'Web (2 people)' })).toBeChecked();
     await expect(canvas.getByLabelText('Count work in')).toHaveValue('points');
+  },
+};
+
+/**
+ * Settings at a phone's width on a touch screen, a new unit about to be saved and Delete plan
+ * pressed: each asks in its own place what goes (D13), its answers wrapping and big enough for a
+ * finger (ADR-033), nothing sticking out.
+ */
+export const SettingsAskingOnAPhone: Story = {
+  args: { section: 'settings', client: fakePlanClient() },
+  decorators: [atPhoneWidth],
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/settings';
+    return asOnATouchScreen();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const unit = await canvas.findByLabelText('Count work in');
+    await userEvent.selectOptions(unit, 'hours');
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete plan' }));
+    await expect(
+      canvas.getByRole('group', {
+        name: 'Change the unit? Every capacity set in this plan will be cleared.',
+      }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('group', { name: /Delete the plan/ })).toBeVisible();
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.danger-confirm .button-danger',
+        '.danger-confirm .button-secondary',
+      ]),
+    ).toEqual([]);
+    await fitsPhoneWidth(canvas);
   },
 };
 
