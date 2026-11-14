@@ -213,6 +213,34 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(grid.calls.rows[0]?.at.scenario).toBe(4);
   });
 
+  it('[PLN-010] shows the newest read, whatever number the server process gave its answer', async () => {
+    // Two server processes count their own generations: the newer answer can carry the lower one.
+    const grid = fakeGridClient({
+      structures: [
+        { id: 3, name: 'Estimates', spec: ESTIMATES },
+        { id: 4, name: 'By status', spec: BY_STATUS },
+      ],
+    });
+    const rows = grid.rows;
+    let generation = 1_000;
+    grid.rows = async (...args) => ({ ...(await rows(...args)), generation: generation-- });
+    const page = (structure: number) => (
+      <I18nProvider locale="en">
+        <PlanGridPage
+          planId={12}
+          view={{ filters: {}, group: null, structure }}
+          scenario={null}
+          client={grid}
+          search={grid.search}
+        />
+      </I18nProvider>
+    );
+    const { rerender } = render(page(3));
+    await screen.findByRole('treegrid', { name: 'Estimates' });
+    rerender(page(4));
+    expect(await screen.findByRole('treegrid', { name: 'By status' })).toBeVisible();
+  });
+
   it('[PLN-010] refuses a read that runs too long, showing nothing of it, and tries again', async () => {
     const user = userEvent.setup();
     const { grid } = renderGrid({ timeout: true });

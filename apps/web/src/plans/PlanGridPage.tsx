@@ -159,6 +159,12 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
   const [listFailed, setListFailed] = useState(false);
   const [listVersion, setListVersion] = useState(0);
   const [answer, setAnswer] = useState<GridAnswer | null>(null);
+  // The read the answer shown came from, and the ticket whose row takes focus in it: only the
+  // read that follows a move keeps the moved row in focus; any later read starts at the top.
+  const [shownRead, setShownRead] = useState<{ read: number; focus: number | null }>({
+    read: 0,
+    focus: null,
+  });
   const [readProblem, setReadProblem] = useState<'timeout' | 'failed' | null>(null);
   const [reads, setReads] = useState(0);
   const [fields, setFields] = useState<SearchField[]>([]);
@@ -167,7 +173,7 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   // The ticket just moved: its row keeps focus when the skeleton read again behind arrives.
-  const [keepFocus, setKeepFocus] = useState<number | null>(null);
+  const moveFocus = useRef<number | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again after each change, by `listVersion`
   useEffect(() => {
@@ -208,17 +214,22 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
   const filtersKey = JSON.stringify(view.filters);
   const scenarioId = scenario?.id;
 
-  // Each read is numbered; an answer that comes back after a newer one is dropped.
+  // Each read is numbered here; an answer that comes back after a newer one is dropped. The
+  // skeleton's own `generation` is not compared: each server process counts its own, so two
+  // processes behind one address give numbers that say nothing of which answer is newer.
   const latest = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again for the filters, the scenario and Refresh
   useEffect(() => {
     if (sid === null) return;
     const ask = ++latest.current;
+    const focusFor = moveFocus.current;
+    moveFocus.current = null;
     setReadProblem(null);
     client.rows(planId, sid, { filters: view.filters, scenario: scenarioId }).then(
       (a) => {
         if (ask !== latest.current) return;
-        setAnswer((was) => (was && was.generation > a.generation ? was : a));
+        setAnswer(a);
+        setShownRead({ read: ask, focus: focusFor });
       },
       (error) => {
         if (ask !== latest.current) return;
@@ -354,7 +365,7 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
         <p className="report-loading">{t('grid.loading')}</p>
       ) : (
         <GridBody
-          key={`${answer.generation}`}
+          key={shownRead.read}
           planId={planId}
           answer={answer}
           columns={spec.columns}
@@ -364,10 +375,10 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
           search={search}
           fields={fields}
           levels={levels}
-          focusTicket={keepFocus}
+          focusTicket={shownRead.focus}
           onStatus={setStatus}
           onMoved={(ticket) => {
-            setKeepFocus(ticket);
+            moveFocus.current = ticket;
             setReads((r) => r + 1);
           }}
         />

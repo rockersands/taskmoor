@@ -116,6 +116,11 @@ describe('moving a row of the Grid (PLN-010)', () => {
     await waitFor(() => expect(grid.calls.rows.length).toBe(2));
     await waitFor(() => expect(rowOf('SHOP-70')).toHaveFocus());
     expect(rowOf('SHOP-70')).toHaveAttribute('aria-level', '2');
+    // Only that read keeps the moved row in focus: Refresh starts again at the first row.
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() => expect(grid.calls.rows.length).toBe(3));
+    await waitFor(() => expect(rowOf('SHOP-1')).toHaveAttribute('tabindex', '0'));
+    expect(rowOf('SHOP-70')).toHaveAttribute('tabindex', '-1');
   });
 
   it('[PLN-010] says why a row cannot be the parent: its level, its track, its own rows', async () => {
