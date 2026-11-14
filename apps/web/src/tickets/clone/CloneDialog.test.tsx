@@ -107,6 +107,26 @@ describe('the clone dialog (M1-124)', () => {
     expect(onCloned).not.toHaveBeenCalled();
   });
 
+  it('[CORE-023] names every value left out of the copy by its label, never by its key (T-292)', async () => {
+    const user = userEvent.setup();
+    open({
+      locale: 'es',
+      client: fakeCloneClient({
+        total: 1,
+        failed: 0,
+        first: copied(['remainingEstimate', 'closeReasonId', 'fields.12', 'attachments', 'odd']),
+      }).client,
+    });
+    const box = await screen.findByRole('dialog', { name: 'Clonar SHOP-7' });
+    await user.click(within(box).getByRole('button', { name: 'Clonar' }));
+    expect(
+      await within(box).findByText(
+        'La copia no tiene lo que no puedes poner ahí o lo que su track no acepta: ' +
+          'Estimación restante, Motivo de cierre, un campo personalizado, Adjuntos, otro valor.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[CORE-023] says why the ticket itself was not copied', async () => {
     const user = userEvent.setup();
     open({

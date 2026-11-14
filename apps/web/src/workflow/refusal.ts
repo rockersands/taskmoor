@@ -16,7 +16,8 @@ export interface TransitionRefusal {
   check?: { type: string; configured: boolean } & Record<string, unknown>;
 }
 
-const FIELDS: Record<string, MessageId> = {
+/** The fields workflows read and write, by the names the workflow model gives them. */
+export const WORKFLOW_FIELD_LABELS: Readonly<Record<string, MessageId>> = {
   summary: 'workflow.field.summary',
   description: 'workflow.field.description',
   environment: 'workflow.field.environment',
@@ -60,12 +61,12 @@ const GUARD_MESSAGES: Record<string, MessageId> = {
 };
 
 /** A table's own entry for a key the server sent, never an inherited property. */
-const own = <T>(table: Record<string, T>, key: string): T | undefined =>
+const own = <T>(table: Readonly<Record<string, T>>, key: string): T | undefined =>
   Object.hasOwn(table, key) ? table[key] : undefined;
 
 /** A field's label; a field this client does not know shows its name. */
 export function fieldLabel(t: Translate, name: string): string {
-  const id = own(FIELDS, name);
+  const id = own(WORKFLOW_FIELD_LABELS, name);
   return id ? t(id) : name;
 }
 

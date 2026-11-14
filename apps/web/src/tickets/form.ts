@@ -263,7 +263,8 @@ const ERRORS: Record<string, MessageId> = {
   // type or visibility level the track does not offer (T-282).
   not_in_track: 'tickets.error.notInTrack',
 };
-export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';
+export const errorMessage = (code: string): MessageId =>
+  (Object.hasOwn(ERRORS, code) ? ERRORS[code] : undefined) ?? 'tickets.error.other';
 
 /**
  * The message for a refusal outside the create form (the ticket page's edits, a bulk change's
