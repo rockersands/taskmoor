@@ -164,7 +164,8 @@ when the pointer or the keyboard is on the entry and always on a touch screen, w
 the entry on a day too narrow to hold both: with a finger, drag the entry by its grip, since a
 finger elsewhere scrolls the page. Touch and hold the grip a moment, then drag it anywhere; a
 finger that moves sideways first drags at once, and a quick flick up or down that happens to start
-on a grip scrolls the page as it would anywhere else. While you drag, the day it would land on is
+on a grip scrolls the page as it would anywhere else. A pen, like a mouse, drags at once in any
+direction. While you drag, the day it would land on is
 outlined and a label with the ticket follows the pointer; near the top or bottom of the screen the
 page scrolls. **Escape** puts it back, and so does letting go on its own day or outside the
 calendar. If the grip's menu is open when you start a drag, it closes.

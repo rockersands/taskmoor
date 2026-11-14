@@ -514,13 +514,18 @@ Board cards (AGL-002, AGL-009) and calendar entries (AGL-017) followed in T-162b
   the follower says so on the pressed element (`DRAG_BEGAN`), and the grip listens (T-228).
 - **A calendar's grips let the page scroll (T-228, 2026-11-14).** A phone's month is a long list
   of days with a grip on every entry, so a flick up or down started on a grip used to pick the
-  ticket up instead of scrolling. The calendar's grips carry `touch-action: pan-y`, and their
-  presses are followed with `scrollFirst`: a finger becomes a drag once it has rested 300 ms (under
-  a phone's long press, whose menu is held back meanwhile), or when its first move is at least as
-  far sideways as up or down. A quicker move up or down is the page's scroll, and the press lets
-  go. Once dragging, the page's `touchmove` is cancelled, so the browser does not scroll under the
-  drag. Mouse and pen presses drag at once as before; the other grips keep `touch-action: none`,
-  where a list scrolls less and a hold would only slow the drag down.
+  ticket up instead of scrolling. Under a touch screen's pointer (`(pointer: coarse)`) the
+  calendar's grips carry `touch-action: pan-y`, and their presses are followed with `scrollFirst`:
+  a finger becomes a drag once it has rested 300 ms (under a phone's long press, whose menu is held
+  back meanwhile), or when its first move is at least as far sideways as up or down. A quicker move
+  up or down is the page's scroll, and the press lets go. Once dragging, the page's `touchmove` is
+  cancelled, so the browser does not scroll under the drag. Mouse and pen presses drag at once as
+  before: as `touch-action` governs a pen's touches too (an Apple Pencil in Safari, a stylus in
+  Chrome on Android), the page's `touchmove` is cancelled for a pen from its first move, so the
+  page never pans under it. Where a mouse is the main pointer (a laptop with a touch screen or a
+  pen), the calendar's grips keep `touch-action: none` and no `scrollFirst`, so a finger or a pen
+  there drags at once as before, whether or not the browser sends a pen's touches. The other grips
+  keep `touch-action: none`, where a list scrolls less and a hold would only slow the drag down.
 - **The backlog.** A mouse drags a row from anywhere but its controls, a finger by its grip; a
   ticket that is part of the selection takes the whole selection, in order. The section and the
   place are outlined as on the board (`is-drop-target`, `is-drop-before`), the outcome or release
