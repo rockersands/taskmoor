@@ -1022,7 +1022,11 @@ describe('the auto-scheduler (PLN-004)', () => {
         res = await as('owner', {
           method: 'POST',
           url: `/api/v1/plans/${plans.Fill}/schedule`,
-          payload: { into: { scenarioId: sid }, from: FROM, keep: { query: `key = "${t.c4?.key}"` } },
+          payload: {
+            into: { scenarioId: sid },
+            from: FROM,
+            keep: { query: `key = "${t.c4?.key}"` },
+          },
         });
       },
       async () => {
@@ -1503,8 +1507,6 @@ describe('the auto-scheduler (PLN-004)', () => {
     });
     expect([...out.meanwhile].sort((a, b) => a - b)).toEqual([10, 11, 12, 21]);
     expect([...out.placed].sort((a, b) => a - b)).toEqual([30, 31]);
-    expect([...new Set(out.writes.map((w) => w.ticketId))].sort((a, b) => a - b)).toEqual([
-      30, 31,
-    ]);
+    expect([...new Set(out.writes.map((w) => w.ticketId))].sort((a, b) => a - b)).toEqual([30, 31]);
   });
 });

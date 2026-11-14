@@ -375,7 +375,8 @@ export async function writeDrafts(
       ...new Set(
         options.changes
           .filter(
-            (c) => (c.field === 'startDate' || c.field === 'dueDate') && !sameValue(c.value, c.live),
+            (c) =>
+              (c.field === 'startDate' || c.field === 'dueDate') && !sameValue(c.value, c.live),
           )
           .map((c) => c.ticketId),
       ),
