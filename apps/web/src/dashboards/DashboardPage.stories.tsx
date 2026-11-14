@@ -45,6 +45,23 @@ export const Widgets: Story = {
     const grid = within(canvas.getByRole('article', { name: 'Two-dimensional statistics' }));
     const first = grid.getAllByRole('row')[1]?.querySelectorAll('td')[0] as HTMLElement;
     await expect(['end', 'right']).toContain(getComputedStyle(first).textAlign);
+    // A widget table's head is the quiet head of every data table (T-222): sunken, muted, small.
+    const head = stats.getAllByRole('columnheader')[0] as HTMLElement;
+    const probe = document.createElement('table');
+    probe.className = 'data-table';
+    probe.innerHTML = '<thead><tr><th scope="col">x</th></tr></thead>';
+    // Beside the widget's table, so both read the same tokens.
+    (head.closest('article') ?? canvasElement).append(probe);
+    const quiet = getComputedStyle(probe.querySelector('th') as HTMLElement);
+    const look = (style: CSSStyleDeclaration) => [
+      style.backgroundColor,
+      style.color,
+      style.fontSize,
+      style.fontWeight,
+    ];
+    await expect(look(getComputedStyle(head))).toEqual(look(quiet));
+    await expect(getComputedStyle(head).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    probe.remove();
     // A group's progress stays on one line ('1 of 3 done').
     const done = canvas.getByText('1 of 3 done');
     await expect(done.getBoundingClientRect().height).toBeLessThan(
