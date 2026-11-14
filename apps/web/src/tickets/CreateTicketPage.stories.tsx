@@ -154,14 +154,15 @@ export const LockedFields: Story = {
   },
 };
 
+const pickerClient = () =>
+  fakeClient({
+    ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
+    form: async () => PICKER_FORM,
+  });
+
 /** People, the parent, releases and areas chosen with pickers; the assignee is required (T-253). */
 export const WithPickers: Story = {
-  args: {
-    client: fakeClient({
-      ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
-      form: async () => PICKER_FORM,
-    }),
-  },
+  args: { client: pickerClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText('Summary (required)'), 'Card declined');
@@ -178,7 +179,7 @@ export const WithPickers: Story = {
 };
 
 export const WithPickersAtPhoneWidth: Story = {
-  args: WithPickers.args,
+  args: { client: pickerClient() },
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

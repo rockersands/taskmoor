@@ -208,7 +208,7 @@ describe('the create form (M1-012)', () => {
     await user.click(await screen.findByRole('button', { name: 'Sam Rivera' }));
     await user.click(screen.getByRole('button', { name: 'Create' }));
     // A refusal shows at the picker, in words.
-    const group = await screen.findByRole('group', { name: 'Assignee (required)' });
+    const group = await screen.findByRole('list', { name: 'Assignee (required)' });
     await waitFor(() =>
       expect(group).toHaveAccessibleDescription(
         'This person cannot be given tickets in this track.',
@@ -288,6 +288,25 @@ describe('the create form (M1-012)', () => {
     const asked = calls.filter((c) => c.path.startsWith('/people/mentionable'));
     expect(asked.length).toBeGreaterThan(0);
     expect(asked.every((c) => !c.path.includes('assignable=true'))).toBe(true);
+  });
+
+  it('[CORE-015] [CORE-016] a track with no releases or areas offers none, and says so where one is required', async () => {
+    const form = withFields(CHORE_FORM, [
+      { key: 'targetRelease', required: true, description: null },
+      { key: 'area', required: false, description: null },
+    ]);
+    openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /tracks/1/releases': () => jsonResponse(200, { releases: [] }),
+      'GET /tracks/1/areas': () => jsonResponse(200, { areas: [] }),
+    });
+    const target = await screen.findByRole('group', { name: 'Target releases (required)' });
+    await waitFor(() =>
+      expect(target).toHaveAccessibleDescription('This track has no releases to choose.'),
+    );
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Areas' })).toBeNull());
   });
 
   it('[IAM-010] leaves out what the person may not set at create, and says so where it is required', async () => {

@@ -95,12 +95,23 @@ export function PersonPicker({
   const hintId = `${id}-hint`;
 
   return (
-    <fieldset aria-describedby={describedBy || undefined} className="person-picker">
-      <legend id={labelId} className="form-label">
-        {label}
-      </legend>
+    <div className="person-picker">
+      {/* The search field's own label while it shows; otherwise the name of the list chosen. */}
+      {searching ? (
+        <label id={labelId} htmlFor={`${id}-search`} className="form-label">
+          {label}
+        </label>
+      ) : (
+        <span id={labelId} className="form-label">
+          {label}
+        </span>
+      )}
       {chosen.length > 0 && (
-        <ul className="person-picker-chosen">
+        <ul
+          className="person-picker-chosen"
+          aria-labelledby={labelId}
+          aria-describedby={searching ? undefined : describedBy || undefined}
+        >
           {chosen.map((person) => (
             <li key={person.id}>
               <span>{person.name}</span>
@@ -125,7 +136,6 @@ export function PersonPicker({
             id={`${id}-search`}
             type="search"
             autoComplete="off"
-            aria-labelledby={labelId}
             aria-describedby={[hintId, describedBy].filter(Boolean).join(' ')}
             aria-required={required || undefined}
             aria-invalid={invalid || undefined}
@@ -159,6 +169,6 @@ export function PersonPicker({
           </p>
         </>
       )}
-    </fieldset>
+    </div>
   );
 }

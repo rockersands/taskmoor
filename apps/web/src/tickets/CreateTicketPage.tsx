@@ -225,6 +225,9 @@ function shownKeys(form: TicketForm, client: CreateClient): Set<string> {
   return out;
 }
 
+/** The release fields, whose picker lists the track's releases. */
+const RELEASE_KEYS = new Set(['targetRelease', 'foundInRelease']);
+
 /** The keys of a layout, to know which pickers need their lists. */
 const layoutKeys = (form: TicketForm) =>
   new Set(form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key))));
@@ -789,6 +792,9 @@ export function CreateTicketPage({
     // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30),
     // and so is one the person may not set at create (IAM-010).
     if ((kind === 'unset' || kind === 'withheld') && !field.required) return null;
+    // A track with no releases or areas has nothing to offer: an optional row goes too.
+    const list = field.key === 'area' ? areas : RELEASE_KEYS.has(field.key) ? releases : null;
+    if (kind === 'picker' && list?.length === 0 && !field.required) return null;
     if (kind === 'unset' || kind === 'withheld') {
       // Required at create, yet not to be set here: it stays, saying why, and the backend's
       // refusal shows here rather than nowhere.

@@ -43,7 +43,7 @@ export const OnePerson: Story = {
     await expect(await canvas.findByText('2 people found')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Sam Rivera' }));
     await expect(canvas.queryByRole('searchbox', { name: 'Assignee' })).toBeNull();
-    await expect(canvas.getByRole('group', { name: 'Assignee' })).toHaveTextContent('Sam Rivera');
+    await expect(canvas.getByRole('list', { name: 'Assignee' })).toHaveTextContent('Sam Rivera');
     await userEvent.click(canvas.getByRole('button', { name: 'Remove Sam Rivera' }));
     await expect(canvas.getByRole('searchbox', { name: 'Assignee' })).toBeVisible();
   },

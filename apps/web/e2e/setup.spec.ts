@@ -11,6 +11,7 @@ import {
   test,
 } from '@playwright/test';
 import { ENFORCE_BUDGETS, expectWithinBudget } from './budget';
+import { chooseTrack } from './pickers';
 
 const TOKEN = 'e2e-setup-token-0123456789';
 const ADMIN = { name: 'Kalo', email: 'kalo@example.com', password: 'a long enough passphrase' };
@@ -1168,7 +1169,7 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
 
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'FORM Forms' });
+  await chooseTrack(page, 'FORM');
   await page.getByLabel('Ticket type').click();
   await page.getByRole('option', { name: 'Bug', exact: true }).click();
   await expect(page.getByLabel('Due date (required)')).toBeVisible();
@@ -1677,7 +1678,7 @@ test('[WF-007] [CORE-013] a locked field and a locked status show read-only, wit
   // The create form: the due date is read-only and says who sets it.
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'LOCK Locks' });
+  await chooseTrack(page, 'LOCK');
   const due = page.getByLabel('Due date');
   await expect(due).toBeDisabled();
   await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');

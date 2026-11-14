@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTrack } from './pickers';
 
 /**
  * Ticket templates end to end (CORE-029, CORE-030; ADR-113): from a track's summary to its
@@ -81,7 +82,7 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
     await page.keyboard.press('c');
     const dialog = page.getByRole('dialog', { name: 'Create ticket' });
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel('Track').selectOption({ value: key });
+    await chooseTrack(dialog, key);
     const picker = dialog.getByRole('combobox', { name: 'Start from a template' });
     await expect(picker).toBeEnabled();
     await expect(dialog.getByLabel('Summary (required)')).toBeVisible();

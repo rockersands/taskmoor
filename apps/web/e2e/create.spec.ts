@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTrack } from './pickers';
 
 /**
  * The create dialog honours layouts per ticket type (M1-052; CORE-008, CORE-013): a track of
@@ -90,7 +91,7 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   await page.keyboard.press('c');
   const dialog = page.getByRole('dialog', { name: 'Create ticket' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Track').selectOption({ value: key });
+  await chooseTrack(dialog, key);
   const type = dialog.getByLabel('Ticket type');
 
   // The first type: its tab, Environment required, no due date.
@@ -134,6 +135,136 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
     }),
   ).toContainText(ticketKey);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('[CORE-008] [CORE-013] [IAM-010] the create dialog sets the assignee a layout requires, the parent, releases, areas and a person field', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  const api = async (method: 'post' | 'patch' | 'get', path: string, data?: unknown) => {
+    const res = await page.request[method](`${BASE}/api/v1${path}`, data ? { data } : {});
+    expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBe(true);
+    return res.json();
+  };
+  const me = (await api('get', '/session')).user as { id: number; name: string };
+
+  // A track of its own, with a release, an area, an outcome to sit under and a person field.
+  const key = `P${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
+  const { track } = await api('post', '/tracks', {
+    key,
+    name: `Pickers ${testInfo.project.name}`,
+    mode: 'shared',
+  });
+  const { ticketTypes, defaultTypeId } = (await api('get', `/tracks/${key}/ticket-types`)) as {
+    defaultTypeId: number;
+    ticketTypes: { id: number; name: string }[];
+  };
+  const outcomeType = ticketTypes.find((t) => t.name === 'Outcome');
+  const child =
+    ticketTypes.find((t) => t.name === 'Feature') ??
+    ticketTypes.find((t) => t.id === defaultTypeId);
+  if (!outcomeType || !child) throw new Error('the track needs an Outcome and a type below it');
+  await api('post', `/tracks/${track.id}/releases`, { name: 'Spring' });
+  await api('post', `/tracks/${track.id}/areas`, { name: 'Checkout' });
+  const { ticket: outcome } = await api('post', '/tickets', {
+    track: key,
+    ticketTypeId: outcomeType.id,
+    summary: `Faster checkout ${key}`,
+  });
+  const reviewerName = `Reviewer ${key}`;
+  const { field } = await api('post', '/fields', {
+    name: reviewerName,
+    type: 'user',
+    context: { trackIds: [track.id] },
+  });
+  const { fieldRuleSet } = await api('post', '/field-rule-sets', {
+    name: `Rules ${key}`,
+    rules: [{ ticketTypeId: child.id, field: 'assignee', required: true }],
+  });
+  const { layoutSet } = await api('post', '/layout-sets', {
+    name: `Layouts ${key}`,
+    layouts: [
+      {
+        ticketTypeId: child.id,
+        operation: 'create',
+        definition: {
+          tabs: [
+            {
+              name: 'Who and where',
+              sections: [
+                {
+                  fields: [
+                    'summary',
+                    'assignee',
+                    'parent',
+                    'targetRelease',
+                    'area',
+                    `cf[${field.id}]`,
+                  ],
+                },
+              ],
+            },
+          ],
+          others: 'omit',
+        },
+      },
+    ],
+  });
+  await api('patch', `/tracks/${track.id}`, {
+    fieldRuleSetId: fieldRuleSet.id,
+    layoutSetId: layoutSet.id,
+  });
+
+  await page.goto(`${BASE}/#/home`);
+  await expect(page.getByRole('button', { name: 'New ticket' })).toBeVisible();
+  await page.keyboard.press('c');
+  const dialog = page.getByRole('dialog', { name: 'Create ticket' });
+  await expect(dialog).toBeVisible();
+  await chooseTrack(dialog, key);
+  await dialog.getByLabel('Ticket type').click();
+  await dialog.getByRole('option', { name: child.name, exact: true }).click();
+  await expect(dialog.getByRole('region', { name: 'Who and where' })).toBeVisible();
+  await dialog.getByLabel('Summary (required)').fill(`Pay by card ${testInfo.project.name}`);
+  // Every picker empty, some below the dialog's fold: no serious axe issue.
+  await expect(dialog.getByRole('searchbox', { name: reviewerName })).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // The assignee, required by the layout, among those who may be given tickets here.
+  const assignee = dialog.getByRole('searchbox', { name: 'Assignee (required)' });
+  await assignee.fill(me.name.slice(0, 3));
+  await dialog.getByRole('button', { name: me.name, exact: true }).click();
+  await expect(
+    dialog.getByRole('button', { name: `Remove ${me.name}`, exact: true }),
+  ).toBeVisible();
+  // The parent, found by words of its summary.
+  await dialog.getByRole('combobox', { name: 'Parent' }).fill('Faster checkout');
+  await dialog.getByRole('option', { name: new RegExp(outcome.key) }).click();
+  await expect(
+    dialog.getByRole('button', { name: `Remove ${outcome.key} as parent` }),
+  ).toBeVisible();
+  // A release and an area, a checkbox each.
+  await dialog.getByRole('group', { name: 'Target releases' }).getByLabel('Spring').check();
+  await dialog.getByRole('group', { name: 'Areas' }).getByLabel('Checkout').check();
+  // The person field.
+  await dialog.getByRole('searchbox', { name: reviewerName }).fill(me.name.slice(0, 3));
+  await dialog.getByRole('button', { name: me.name, exact: true }).click();
+  await expect(dialog.getByRole('list', { name: reviewerName })).toContainText(me.name);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  const made = dialog.getByText(new RegExp(`^${key}-\\d+ was created\\.$`));
+  await expect(made).toBeVisible();
+  const ticketKey = ((await made.textContent()) ?? '').split(' ')[0] as string;
+  const { ticket } = await api('get', `/tickets/${ticketKey}`);
+  expect(ticket.assignee?.id).toBe(me.id);
+  expect(ticket.parent?.key).toBe(outcome.key);
+  expect((ticket.targetReleases as { name: string }[]).map((r) => r.name)).toEqual(['Spring']);
+  expect((ticket.areas as { name: string }[]).map((a) => a.name)).toEqual(['Checkout']);
+  expect(ticket.fields?.[String(field.id)]).toEqual({ id: me.id, name: me.name });
 });
 
 test('[AGL-019] the home page lists what is assigned to me, what I opened and what I follow', async ({
