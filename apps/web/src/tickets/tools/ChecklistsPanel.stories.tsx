@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fireEvent, waitFor, within } from 'storybook/test';
+import { gripsTooSmall, onARealTouchScreen } from '../../test/touch';
 import { ChecklistsPanel } from './ChecklistsPanel';
 import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
 
@@ -93,5 +94,29 @@ export const DraggingAnItem: Story = {
         )[3],
       ).toBe('Write the notes'),
     );
+  },
+};
+
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every item's grip is a finger's
+ * size (T-290).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.checklist-grip'])).toEqual([]);
+  },
+};
+
+/** The same on a phone, with nothing sideways. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.checklist-grip'])).toEqual([]);
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
   },
 };

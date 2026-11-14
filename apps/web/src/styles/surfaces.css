@@ -449,6 +449,9 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-4);
+  /* A name of one long word breaks inside the card rather than running out of it, or under a
+     track card's grip (T-290). */
+  overflow-wrap: anywhere;
 }
 
 .tracks-item a {
