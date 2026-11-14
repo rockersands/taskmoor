@@ -233,6 +233,7 @@ describe('the auto-scheduler (PLN-004)', () => {
     scenarioId: number,
     start: () => Promise<unknown>,
     during: (trx: Transaction<Database>) => Promise<void>,
+    tries = 400,
   ) {
     let started: Promise<unknown> = Promise.resolve();
     await database.db.transaction().execute(async (trx) => {
@@ -245,13 +246,17 @@ describe('the auto-scheduler (PLN-004)', () => {
       const holder = (await sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`.execute(trx))
         .rows[0]?.pid;
       started = start();
-      for (let i = 0; i < 400; i++) {
+      let blocked = false;
+      for (let i = 0; i < tries && !blocked; i++) {
         const waiting = await sql<{ n: number }>`
           SELECT count(*)::int AS n FROM pg_stat_activity
            WHERE ${holder}::int = ANY(pg_blocking_pids(pid))`.execute(database.db);
-        if ((waiting.rows[0]?.n ?? 0) > 0) break;
-        await new Promise((r) => setTimeout(r, 25));
+        blocked = (waiting.rows[0]?.n ?? 0) > 0;
+        if (!blocked) await new Promise((r) => setTimeout(r, 25));
       }
+      // A run that never reached the lock would read the change below as its own start: say so
+      // rather than fail later on a count that depends on timing.
+      if (!blocked) throw new Error('the run did not wait on the scenario’s lock');
       await during(trx);
     });
     return started;
@@ -771,6 +776,21 @@ describe('the auto-scheduler (PLN-004)', () => {
     const a2 = (await drafts(auto)).get(t.a2?.id as number);
     expect(a2?.dueDate).toMatchObject({ to: '2027-03-07', was: '2027-04-30', origin: 'scheduler' });
     expect(run.counts.unchanged).toBe(run.counts.placed - 1);
+  });
+
+  it('[PLN-004] says so when a run never waits on the scenario’s lock, rather than test a race', async () => {
+    let during = false;
+    await expect(
+      whileScenarioLocked(
+        auto,
+        async () => undefined,
+        async () => {
+          during = true;
+        },
+        4,
+      ),
+    ).rejects.toThrow('the run did not wait on the scenario’s lock');
+    expect(during).toBe(false);
   });
 
   it('[PLN-004] leaves out of the write a ticket changed while the run worked', async () => {
