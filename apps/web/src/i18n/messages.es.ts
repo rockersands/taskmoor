@@ -412,6 +412,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles, después de la descripción y las herramientas del ticket, son sus campos: cambia uno y se guarda al momento. La actividad va al final, con los comentarios, el historial de cada cambio y el tiempo registrado.',
   'about.list':
     'Cada fila es un ticket de este track, en el orden que fija Ordenar por; el lápiz junto a un valor lo cambia ahí mismo. Agrupar por reparte las filas según un campo y cuenta cada grupo. Columnas elige lo que muestran las filas, y las reglas de formato colorean los tickets que encuentra una condición. Las columnas y las reglas se guardan en este navegador. En un teléfono cada ticket es un bloque: su clave, su resumen y luego su estado, su responsable y su prioridad.',
+  'about.plan':
+    'Cada pestaña muestra los tickets de este plan a su manera: Resumen los cuenta, Cronograma y Calendario los colocan en sus fechas, Lista los da en filas, Capacidad compara el trabajo con lo que cabe a cada equipo en un periodo, y Versiones y Tableros de programa lo siguen entre tracks. Elige un escenario para probar cambios como borradores antes de que lleguen a los tickets. Cada persona ve en un plan solo los tickets que ya puede ver.',
   'help.about': '¿Para qué sirve {name}?',
   'help.menu': 'Ayuda',
   'help.tutorials': 'Tutoriales',
@@ -5412,6 +5414,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.summary.failed': 'No se pudieron cargar los números de este plan.',
   'plans.timeline.failed': 'No se pudo cargar el cronograma de este plan.',
   'plans.calendar.failed': 'No se pudo cargar el calendario de este plan.',
+  'plans.calendar.sprint': '{sprint} · {track}',
   'plans.list.capped':
     'La lista se detiene en {count, number} tickets. Filtra el plan, o ábrelo en la búsqueda, para ver el resto.',
   'plans.sources.find': 'Buscar un track o una búsqueda guardada',
@@ -5727,7 +5730,7 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.legend.sprint': 'Fechas de su sprint',
   'timeline.legend.rollup': 'Calculado a partir de sus hijos',
   'timeline.legend.closed': 'Parte de los hijos cerrada',
-  'timeline.legend.none': 'Aún sin fechas',
+  'timeline.legend.none': 'Sin fechas',
   'timeline.legend.today': 'Hoy',
   'timeline.legend.release': 'Versión',
   'timeline.legend.link': 'Bloquea el ticket al que lleva',
@@ -7392,6 +7395,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Un tablero de programa ordena los objetivos y el trabajo de este plan por equipo y periodo. Quien ve el plan ve sus tableros y mueve tarjetas en la medida en que puede cambiar esos tickets.',
   'programBoards.noField':
     'Un tablero de programa coloca las tarjetas según un campo de equipo. Pide a un administrador del sitio que añada uno.',
+  'programBoards.noFieldAdmin':
+    'Un tablero de programa coloca las tarjetas según un campo de equipo. Añade un campo de tipo Equipo en Campos, dentro de Administración, y podrás elegirlo aquí.',
+  'programBoards.openFields': 'Abrir Campos',
   'programBoards.none': 'Aún no hay tableros de programa.',
   'programBoards.failed':
     'No se pudieron cargar los tableros de programa. Inténtalo de nuevo en un momento.',

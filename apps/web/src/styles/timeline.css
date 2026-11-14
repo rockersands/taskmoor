@@ -87,6 +87,23 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/*
+ * Months, sprints and releases cut at the card's right edge fade out there (S3-PL-7, D2), as the
+ * rows do at its foot. A strip after the scale, held at the edge in view while more of the head
+ * lies beyond it: scrolled to the end, or with nothing cut, it stands past the last label and
+ * covers nothing. The head only; the rows' bars have their own edge markers.
+ */
+.timeline-head::after {
+  content: "";
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  flex: none;
+  width: 2.5rem;
+  background: linear-gradient(to right, transparent, var(--color-surface-raised));
+  pointer-events: none;
+}
+
 .timeline-corner {
   position: sticky;
   left: 0;

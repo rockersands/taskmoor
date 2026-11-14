@@ -307,6 +307,7 @@ export function PlanPage({
         title={plan.name}
         eyebrow={t('plans.meta', { owner: plan.owner.name })}
         purpose={t('purpose.plan')}
+        about={t('about.plan')}
         actions={<PlanShareActions plan={plan} client={client} />}
       />
       {plan.description && <p className="plan-description">{plan.description}</p>}

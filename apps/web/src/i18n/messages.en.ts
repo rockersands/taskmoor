@@ -389,6 +389,8 @@ export const messagesEn = {
     'The buttons under the title move the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
   'about.list':
     'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
+  'about.plan':
+    'Each tab shows this plan’s tickets its own way: Summary counts them, Timeline and Calendar place them on their dates, List gives them as rows, Capacity weighs the work against each team’s room in a period, and Releases and Program boards follow it across tracks. Choose a scenario to try changes as drafts before they reach the tickets. Everyone sees in a plan only the tickets they may see anyway.',
   'help.about': 'What is {name} for?',
   'help.menu': 'Help',
   'help.tutorials': 'Tutorials',
@@ -5282,6 +5284,8 @@ export const messagesEn = {
   'plans.summary.failed': 'This plan’s numbers could not be loaded.',
   'plans.timeline.failed': 'This plan’s timeline could not be loaded.',
   'plans.calendar.failed': 'This plan’s calendar could not be loaded.',
+  // A sprint on a plan's calendar: what tells it apart first, its track after (S3-PL-4).
+  'plans.calendar.sprint': '{sprint} · {track}',
   'plans.list.capped':
     'The list stops at {count, number} tickets. Filter the plan, or open it in search, to see the rest.',
   'plans.sources.find': 'Find a track or saved search',
@@ -5593,7 +5597,7 @@ export const messagesEn = {
   'timeline.legend.sprint': 'Dates from its sprint',
   'timeline.legend.rollup': 'Rolled up from its children',
   'timeline.legend.closed': 'Share of children closed',
-  'timeline.legend.none': 'No dates yet',
+  'timeline.legend.none': 'No dates',
   'timeline.legend.today': 'Today',
   'timeline.legend.release': 'Release',
   'timeline.legend.link': 'Blocks the ticket it leads to',
@@ -7226,6 +7230,10 @@ export const messagesEn = {
     'A program board lays this plan’s outcomes and work out by team and period. Everyone who sees the plan sees its boards, and moves cards as far as they may change those tickets.',
   'programBoards.noField':
     'A program board places cards by a Team field. Ask a site administrator to add one.',
+  // For those who may add fields themselves (S3-PL-8): where, not whom to ask.
+  'programBoards.noFieldAdmin':
+    'A program board places cards by a Team field. Add a field of the Team type under Fields in Administration, and it can be chosen here.',
+  'programBoards.openFields': 'Open Fields',
   'programBoards.none': 'No program boards yet.',
   'programBoards.failed': 'The program boards could not be loaded. Try again in a moment.',
   'programBoards.new': 'New program board',

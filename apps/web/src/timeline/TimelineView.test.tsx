@@ -301,7 +301,8 @@ describe('what the chart shows and where (PLN-012)', () => {
       'Dates from its sprint',
       'Rolled up from its children',
       'Share of children closed',
-      'No dates yet',
+      // The chips' own words (S3-PL-11): one name for a ticket without dates.
+      'No dates',
       'Today',
       'Release',
       'Blocks the ticket it leads to',
