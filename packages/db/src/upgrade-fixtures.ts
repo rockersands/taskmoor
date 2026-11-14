@@ -1829,6 +1829,26 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async () => {},
   },
+  '0110_plan_scenarios': {
+    tables: {
+      plan_scenario: `name = 'Seed scenario' AND main
+        AND plan_id = (SELECT id FROM plan WHERE name = 'Seed plan')`,
+      plan_draft: `field = 'dueDate' AND new_value = '"2026-12-01"'::jsonb AND old_value IS NULL
+        AND origin = 'person'
+        AND scenario_id = (SELECT id FROM plan_scenario WHERE name = 'Seed scenario')`,
+    },
+    seed: async (db) => {
+      // The seed plan's main scenario, drafting a due day on the first seed ticket (ADR-122 stage 6).
+      await sql`INSERT INTO plan_scenario (workspace_id, plan_id, name, main, created_by)
+        SELECT 1, p.id, 'Seed scenario', true, p.owner_id FROM plan p
+         WHERE p.name = 'Seed plan'`.execute(db);
+      await sql`INSERT INTO plan_draft
+          (workspace_id, plan_id, scenario_id, ticket_id, field, old_value, new_value, updated_by)
+        SELECT 1, s.plan_id, s.id, (SELECT min(id) FROM ticket), 'dueDate', NULL,
+               '"2026-12-01"'::jsonb, s.created_by
+          FROM plan_scenario s WHERE s.name = 'Seed scenario'`.execute(db);
+    },
+  },
 };
 
 /**

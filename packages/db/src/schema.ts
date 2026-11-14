@@ -1156,6 +1156,51 @@ export interface PlanDependencyTypeTable {
   link_type_id: number;
 }
 
+/**
+ * A scenario of a plan (PLN-003; ADR-122 stage 6): a named set of draft changes to its tickets.
+ * At most one per plan is `main`, the only one applied from; `applying_since` holds it while an
+ * apply runs.
+ */
+export interface PlanScenarioTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  name: string;
+  main: Generated<boolean>;
+  created_by: number;
+  applying_since: Date | null;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** What a draft changes: a day, or the value in a shared Team field (`cf:<id>`). */
+export type PlanDraftField = 'startDate' | 'dueDate' | `cf:${number}`;
+export type PlanDraftOrigin = 'person' | 'scheduler';
+
+/**
+ * A draft change (PLN-002; ADR-122 stage 6): one field of one ticket in one scenario, with the
+ * value it had when first drafted and the new one (a day as text, a team's id, or null). It
+ * changes nothing about the ticket until applied.
+ */
+export interface PlanDraftTable {
+  workspace_id: number;
+  plan_id: number;
+  scenario_id: number;
+  ticket_id: number;
+  field: PlanDraftField;
+  /** Set exactly when `field` is `cf:<id>`. */
+  team_field_id: number | null;
+  old_value: NullableJson;
+  new_value: NullableJson;
+  origin: Generated<PlanDraftOrigin>;
+  updated_by: number;
+  updated_at: DefaultTimestamp;
+  /** The last apply's refusal, kept until the draft changes or applies. */
+  refusal: NullableJson;
+  refused_at: Date | null;
+}
+
 export type PlanCapacityUnit = 'points' | 'hours';
 export type PlanPeriodKind = 'weeks' | 'month';
 
@@ -2945,6 +2990,8 @@ export interface Database {
   plan_capacity: PlanCapacityTable;
   program_board: ProgramBoardTable;
   plan_dependency_type: PlanDependencyTypeTable;
+  plan_scenario: PlanScenarioTable;
+  plan_draft: PlanDraftTable;
   cross_track_release: CrossTrackReleaseTable;
   cross_track_release_member: CrossTrackReleaseMemberTable;
   saved_search_star: SavedSearchStarTable;
