@@ -143,8 +143,6 @@ export function textDocument(text: string): unknown {
   };
 }
 
-const words = (text: string) => text.split(/\s+/).filter((w) => w !== '');
-
 /** Labels as typed: a label holds no spaces (CORE-016), so spaces and commas both separate. */
 export const splitLabels = (text: string) => text.split(/[\s,]+/).filter((w) => w !== '');
 

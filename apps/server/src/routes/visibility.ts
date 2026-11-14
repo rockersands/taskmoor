@@ -472,7 +472,6 @@ export function registerVisibilityRoutes(app: FastifyInstance, db: Kysely<Databa
     const body = parsed.data;
     const policy = await managedPolicy(request, reply);
     if (!policy) return reply;
-    const ws = request.workspaceId;
     try {
       const result = await db.transaction().execute(async (trx): Promise<Problem | number> => {
         if (body.defaultLevelId != null) {

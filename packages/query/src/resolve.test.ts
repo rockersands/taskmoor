@@ -101,7 +101,7 @@ describe('field and operator resolver (M1-036)', () => {
   it('[QRY-002] takes exactly the operators of each field type, all 17 on every field', () => {
     let checked = 0;
     for (const field of ALL_FIELDS) {
-      for (const [op, family, clause] of OPERATORS) {
+      for (const [, family, clause] of OPERATORS) {
         const text = clause(nameOf(field), sample(field));
         const result = refusal(text);
         if (takes(field, family)) {

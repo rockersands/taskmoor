@@ -16,6 +16,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const COMPOSE = readFileSync(join(ROOT, 'deploy/compose/docker-compose.yml'), 'utf8');
+// biome-ignore lint/suspicious/noTemplateCurlyInString: a Compose variable with its default, not a template
 const IMAGE = '${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg16-trixie}';
 const hasTools =
   spawnSync('openssl', ['version']).status === 0 && spawnSync('sh', ['-c', 'exit 0']).status === 0;

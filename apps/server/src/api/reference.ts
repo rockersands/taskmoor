@@ -116,10 +116,10 @@ export function renderReference(doc: Json): string {
         );
       }
       const body = (
-        (((op.requestBody as Json | undefined)?.content as Json | undefined)?.[
-          'application/json'
-        ] as Json | undefined) ?? {}
-      ).schema;
+        ((op.requestBody as Json | undefined)?.content as Json | undefined)?.['application/json'] as
+          | Json
+          | undefined
+      )?.schema;
       if (body) {
         const table = propertyTable(body, doc);
         lines.push('Body:', '', ...(table.length > 0 ? table : [`A ${typeText(body, doc)}.`]), '');

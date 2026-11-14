@@ -142,7 +142,7 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
     expect(res.statusCode, res.body).toBe(200);
     return ticket;
   }
-  const lock = (action: string, allowed: [string, number, string][]) => ({
+  const lock = (_action: string, allowed: [string, number, string][]) => ({
     by: 'status',
     statusId: S('Approved'),
     statusName: 'Approved',

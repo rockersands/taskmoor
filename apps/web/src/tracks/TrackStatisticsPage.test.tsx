@@ -477,7 +477,7 @@ describe('a track’s statistics (ADR-116)', () => {
   });
 
   it('[RPT-001] says a shipped release shipped on its own day, with no forecast (TR-15)', async () => {
-    const { reportClient } = openWithReports('release-report', (client) => {
+    openWithReports('release-report', (client) => {
       const read = client.releaseReport;
       client.releaseReport = async (board, release) => {
         const report = await read(board, release);

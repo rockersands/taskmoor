@@ -257,7 +257,7 @@ export function parseFilter(input: string, type: ResourceTypeDef): Filter {
 export function parsePath(input: string, type: ResourceTypeDef): AttrPath {
   const tokens = tokenize(input, invalidPath);
   const [head, open] = tokens;
-  if (!head || head.kind !== 'word') throw invalidPath(`Malformed path "${input}"`);
+  if (head?.kind !== 'word') throw invalidPath(`Malformed path "${input}"`);
   const path = resolveName(type, head.text, undefined, invalidPath);
   if (!open) return path;
   if (open.kind !== '[' || !path.attr.multiValued || path.sub) {
