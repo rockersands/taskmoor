@@ -123,6 +123,27 @@ describe('a plan’s baselines (PLN-011)', () => {
     );
   });
 
+  it('[PLN-011] reads the list again when a rename is refused for a change meanwhile, so the next try is saved', async () => {
+    const user = userEvent.setup();
+    const { baselines } = renderBaselines();
+    const kickOff = await waitFor(() => itemOf('Kick-off'));
+    await user.click(within(kickOff).getByRole('button', { name: 'Rename Kick-off' }));
+    const rename = screen.getByRole('dialog', { name: 'Rename Kick-off' });
+    // Someone else renames it while the dialog is open.
+    const row = (await baselines.list(12)).baselines[0] as { version: number };
+    await baselines.rename(12, 1, 'Kick-off (theirs)', row.version);
+    await user.clear(within(rename).getByLabelText('Name'));
+    await user.type(within(rename).getByLabelText('Name'), 'Start');
+    await user.click(within(rename).getByRole('button', { name: 'Save name' }));
+    expect(await within(rename).findByRole('alert')).toHaveTextContent(
+      'Someone changed this baseline meanwhile. The list is read again; try once more.',
+    );
+    await waitFor(() => expect(itemOf('Kick-off (theirs)')).toBeVisible());
+    await user.click(within(rename).getByRole('button', { name: 'Save name' }));
+    await screen.findByText('The baseline is now called Start.');
+    await waitFor(() => expect(itemOf('Start')).toBeVisible());
+  });
+
   it('[PLN-011] turns Capture off at 10 baselines, with the reason in words', async () => {
     renderBaselines('#/plans/12/baselines', {
       baselines: Array.from({ length: 10 }, (_, i) => ({ id: i + 1, name: `B${i + 1}` })),

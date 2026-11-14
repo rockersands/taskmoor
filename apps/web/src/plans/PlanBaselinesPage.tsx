@@ -244,7 +244,14 @@ export function PlanBaselinesPage({
       {renaming && (
         <RenameBaselineDialog
           baseline={renaming}
-          onRename={(name) => client.rename(planId, renaming.id, name, renaming.version)}
+          onRename={async (name) => {
+            // The row as the list holds it now: after a refusal for someone's change meanwhile,
+            // the list is read again and the next try carries its version.
+            const current = list.baselines.find((b) => b.id === renaming.id) ?? renaming;
+            const r = await client.rename(planId, renaming.id, name, current.version);
+            if (!r.ok && r.code === 'version_conflict') changed();
+            return r;
+          }}
           refusal={refusal}
           onDone={(b) => {
             setRenaming(null);
