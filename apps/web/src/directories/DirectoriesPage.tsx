@@ -68,6 +68,23 @@ function failureReason(t: Translate, error: string | null): string {
   return id ? t(id) : error;
 }
 
+/**
+ * What Sync and remove will do, with the counts the safety stop gave when it gave them (the
+ * server's text reads "safety_stop: the run would remove 812 of 1200 people; ...").
+ */
+function removalsOutcome(t: Translate, name: string, error: string | null): string {
+  const counts = /^safety_stop: the run would remove (\d+) of (\d+) (people|groups)\b/.exec(
+    error ?? '',
+  );
+  if (!counts) return t('admin.directories.confirmRemovalsOutcomeUncounted', { name });
+  return t('admin.directories.confirmRemovalsOutcome', {
+    name,
+    removed: Number(counts[1]),
+    known: Number(counts[2]),
+    what: counts[3] ?? 'people',
+  });
+}
+
 const WARNINGS: Record<string, MessageId> = {
   no_email: 'admin.directories.warning.noEmail',
   duplicate_email: 'admin.directories.warning.duplicateEmail',
@@ -362,6 +379,15 @@ function DirectoryItem({
   const intl = useIntl();
   const id = useId();
   const editButton = useRef<HTMLButtonElement>(null);
+  const fullSyncButton = useRef<HTMLButtonElement>(null);
+  // Set when Sync and remove was asked for; focus moves once Full sync is drawn usable again.
+  const focusFullSync = useRef(false);
+  useEffect(() => {
+    const button = fullSyncButton.current;
+    if (!focusFullSync.current || !button || button.disabled) return;
+    focusFullSync.current = false;
+    button.focus();
+  });
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<DirectoryRun[] | null>(null);
@@ -395,6 +421,28 @@ function DirectoryItem({
       setHistory(null);
       await onChanged(t('admin.directories.syncQueued', { name: directory.name }));
     });
+
+  // Unlike syncNow, a refusal throws, so the question stays open with the reason beside it. Once
+  // asked for, the run is no longer stopped and the question goes: Full sync takes the focus.
+  const confirmRemovals = async () => {
+    setWorking(true);
+    setError(null);
+    try {
+      await client.sync(directory.id, 'full', true);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'directory_disabled') {
+        setError(t('admin.directories.syncDisabled'));
+      } else if (!refuse(e)) {
+        setError(t('admin.directories.actionFailed'));
+      }
+      throw e;
+    } finally {
+      setWorking(false);
+    }
+    setHistory(null);
+    focusFullSync.current = true;
+    await onChanged(t('admin.directories.syncQueued', { name: directory.name }));
+  };
 
   const toggleHistory = () =>
     act(async () => {
@@ -459,15 +507,17 @@ function DirectoryItem({
         <div className="token-actions directory-actions">
           {directory.lastRun?.status === 'failed' &&
             directory.lastRun.error?.startsWith('safety_stop') && (
-              <button
-                type="button"
-                className="button-danger"
-                aria-label={t('admin.directories.confirmRemovalsNamed', { name: directory.name })}
+              // Asks first, saying how much goes (D13); a refusal keeps the question open.
+              <DangerAction
+                label={t('admin.directories.confirmRemovals')}
+                name={t('admin.directories.confirmRemovalsNamed', { name: directory.name })}
+                outcome={removalsOutcome(t, directory.name, directory.lastRun.error)}
+                confirmLabel={t('admin.directories.confirmRemovalsNamed', {
+                  name: directory.name,
+                })}
                 disabled={working || !directory.enabled}
-                onClick={() => void syncNow('full', true)}
-              >
-                {t('admin.directories.confirmRemovals')}
-              </button>
+                onConfirm={confirmRemovals}
+              />
             )}
           <button
             type="button"
@@ -481,6 +531,7 @@ function DirectoryItem({
           <button
             type="button"
             className="button-secondary"
+            ref={fullSyncButton}
             aria-label={t('admin.directories.fullSyncNamed', { name: directory.name })}
             disabled={working || !directory.enabled}
             onClick={() => void syncNow('full')}

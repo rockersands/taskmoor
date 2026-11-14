@@ -75,6 +75,20 @@ export const ConfirmingDelete: Story = {
   },
 };
 
+export const ConfirmingRemovals: Story = {
+  args: { client: fakeDirectoriesClient([HEAD_OFFICE, { ...LAB, enabled: true }]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    await expect(
+      canvas.getByRole('group', { name: /removes 812 of its 1,200 people/ }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
 export const SyncWaiting: Story = {
   args: {
     client: fakeDirectoriesClient([

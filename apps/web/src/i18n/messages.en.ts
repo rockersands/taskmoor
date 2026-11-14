@@ -2531,6 +2531,10 @@ export const messagesEn = {
   'admin.directories.syncDisabled': 'This directory is disabled. Enable it to sync it.',
   'admin.directories.confirmRemovals': 'Sync and remove',
   'admin.directories.confirmRemovalsNamed': 'Sync {name} and remove what left it',
+  'admin.directories.confirmRemovalsOutcome':
+    'A full sync of {name} starts now and removes {removed, number} of its {known, number} {what, select, groups {groups} other {people}}: the ones that left the directory. {what, select, groups {Those groups are deleted.} other {Those people are deactivated and keep their work.}}',
+  'admin.directories.confirmRemovalsOutcomeUncounted':
+    'A full sync of {name} starts now and removes every person and group that left the directory, more than half of them. People are deactivated and keep their work; groups are deleted.',
   'admin.directories.history': 'History',
   'admin.directories.historyNamed': 'History of {name}',
   'admin.directories.historyTitle': 'Recent syncs of {name}',

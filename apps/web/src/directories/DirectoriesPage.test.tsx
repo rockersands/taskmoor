@@ -233,6 +233,25 @@ describe('directory administration (M1-082)', () => {
     });
 
     const failing = await directoryItem('Research lab');
+    const trigger = within(failing).getByRole('button', {
+      name: 'Sync Research lab and remove what left it',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    // Asks first, naming how many go (D13); Escape gives the focus back, sending nothing.
+    await user.click(trigger);
+    const question = within(failing).getByRole('group', {
+      name: 'A full sync of Research lab starts now and removes 812 of its 1,200 people: the ones that left the directory. Those people are deactivated and keep their work.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    ).toHaveFocus();
+    expect(calls.find((c) => c.path === '/directories/2/sync')).toBeUndefined();
+
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
     await user.click(
       within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
     );
@@ -241,6 +260,32 @@ describe('directory administration (M1-082)', () => {
       confirmRemovals: true,
     });
     expect(await within(failing).findByText('Full sync waiting to start…')).toBeVisible();
+    // The stop is answered, so the question goes: the full sync it started takes the focus.
+    expect(within(failing).queryByRole('group')).toBeNull();
+    expect(
+      within(failing).getByRole('button', { name: 'Sync all of Research lab now' }),
+    ).toHaveFocus();
+  });
+
+  it('[IAM-005] keeps the safety stop question open when the sync is refused', async () => {
+    const user = userEvent.setup();
+    const lab: Directory = { ...LAB, enabled: true };
+    openPage({
+      'GET /directories': () =>
+        jsonResponse(200, { directories: [HEAD_OFFICE, lab], presets: PRESETS }),
+      'POST /directories/2/sync': () => jsonResponse(409, { error: 'directory_disabled' }),
+    });
+    const failing = await directoryItem('Research lab');
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    expect(
+      await within(failing).findByText('This directory is disabled. Enable it to sync it.'),
+    ).toBeVisible();
+    expect(within(failing).getByRole('group')).toBeVisible();
   });
 
   it('[IAM-005] says when a disabled directory cannot sync', async () => {

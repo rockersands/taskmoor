@@ -2606,6 +2606,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Este directorio está desactivado. Actívalo para sincronizarlo.',
   'admin.directories.confirmRemovals': 'Sincronizar y quitar',
   'admin.directories.confirmRemovalsNamed': 'Sincronizar {name} y quitar lo que salió de él',
+  'admin.directories.confirmRemovalsOutcome':
+    'Una sincronización completa de {name} empieza ahora y quita {removed, number} de sus {known, number} {what, select, groups {grupos} other {personas}}: {what, select, groups {los que} other {las que}} salieron del directorio. {what, select, groups {Esos grupos se eliminan.} other {Esas personas se desactivan y conservan su trabajo.}}',
+  'admin.directories.confirmRemovalsOutcomeUncounted':
+    'Una sincronización completa de {name} empieza ahora y quita a todas las personas y grupos que salieron del directorio, más de la mitad. Las personas se desactivan y conservan su trabajo; los grupos se eliminan.',
   'admin.directories.history': 'Historial',
   'admin.directories.historyNamed': 'Historial de {name}',
   'admin.directories.historyTitle': 'Sincronizaciones recientes de {name}',
