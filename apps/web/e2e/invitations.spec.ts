@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
 import { uniqueKey, uniqueStamp } from './unique';
 
 /**
@@ -41,6 +41,16 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 
 const noSidewaysScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+
+/**
+ * A dialog fits the screen: its own box, since it sits in a fixed backdrop whose overflow never
+ * widens the page, so the page's scroll width cannot tell (T-249).
+ */
+const dialogFits = (dialog: Locator) =>
+  dialog.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return box.left >= -0.5 && box.right <= innerWidth + 0.5 && el.scrollWidth <= el.clientWidth;
+  });
 
 async function ok<T>(answer: ReturnType<APIRequestContext['post']>): Promise<T> {
   const res = await answer;
@@ -138,6 +148,7 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await dialog.getByLabel('Role').selectOption({ label: 'Viewers' });
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await dialogFits(dialog)).toBe(true);
   await dialog.getByRole('button', { name: 'Make links' }).click();
   const linkBox = dialog.getByRole('textbox', { name: `Link for ${invited}` });
   await expect(linkBox).toHaveValue(/#\/invite\?token=/);
@@ -231,14 +242,18 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await expect(emailOnly.getByRole('button', { name: 'Send invitations' })).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await dialogFits(emailOnly)).toBe(true);
   await emailOnly.getByRole('button', { name: 'Cancel' }).click();
   await page.unroute(`**/api/v1/tracks/${made.track.id}/invitations`);
 
-  // In Spanish, whose words run longer, the dialog still fits the screen (ADR-033; T-249).
+  // In Spanish, whose words run longer, the dialog still fits the screen (ADR-033; T-249), on a
+  // phone at the narrowest width supported.
+  if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 740 });
   await page.goto(`${BASE}/?locale=es${new URL(page.url()).hash}`);
   await page.getByRole('button', { name: 'Invitar personas' }).click();
   const spanish = page.getByRole('dialog', { name: `Invitar personas a ${key}` });
   await spanish.getByLabel('Rol').selectOption({ label: 'Viewers' });
   await expect(spanish.getByRole('button', { name: 'Crear enlaces' })).toBeVisible();
   expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await dialogFits(spanish)).toBe(true);
 });

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
 import { uniqueKey, uniqueStamp } from './unique';
 
 /**
@@ -37,6 +37,16 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
 
 const noSidewaysScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+
+/**
+ * A dialog fits the screen: its own box, since it sits in a fixed backdrop whose overflow never
+ * widens the page, so the page's scroll width cannot tell (T-249).
+ */
+const dialogFits = (dialog: Locator) =>
+  dialog.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return box.left >= -0.5 && box.right <= innerWidth + 0.5 && el.scrollWidth <= el.clientWidth;
+  });
 
 async function ok<T>(answer: ReturnType<APIRequestContext['post']>): Promise<T> {
   const res = await answer;
@@ -164,7 +174,8 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   expect(refused.status()).toBe(403);
 
   // In Spanish, whose words run longer, the box and the invite dialog that offers it still fit
-  // the screen (ADR-033; T-249).
+  // the screen (ADR-033; T-249), on a phone at the narrowest width supported.
+  if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 740 });
   await signInAs(api, ADMIN.email, ADMIN.password as string);
   await visit(page, `?locale=es#/manage/tracks/${made.track.id}`);
   await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
@@ -178,4 +189,5 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
     dialog.getByRole('checkbox', { name: 'Permitir también crear tracks' }),
   ).toBeChecked();
   expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await dialogFits(dialog)).toBe(true);
 });
