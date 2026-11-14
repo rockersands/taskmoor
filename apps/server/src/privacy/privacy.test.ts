@@ -283,6 +283,22 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         closed: false,
       })
       .execute();
+    // [PLN-010] A structure Kalo saved in Mi's plan's Grid, its step narrowed by a query.
+    const structure = await database.db
+      .insertInto('plan_structure')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s tree',
+        spec: JSON.stringify({
+          steps: [{ kind: 'insert', query: 'summary ~ "tray sentinel"' }],
+          columns: [],
+        }),
+        created_by: kalo,
+        updated_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     const key = newObjectKey(1);
     const bytes = Buffer.from('a photo of the tray');
     const put = await store.put(key, Readable.from([bytes]), { maxBytes: 1000 });
@@ -450,6 +466,16 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       },
     ]);
     expect(JSON.stringify(preferences.planBaselines)).not.toContain('2027-01-15');
+    // [PLN-010] The structures they saved, by the plan's id and the name, without steps or columns.
+    expect(preferences.planStructures).toEqual([
+      {
+        planId: plan.id,
+        structureId: structure.id,
+        name: 'Kalo’s tree',
+        createdAt: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(preferences.planStructures)).not.toContain('tray sentinel');
     // [PLN-007] Those they own: what they named them, not the work they hold.
     expect(JSON.parse(String(zip['preferences.json'])).crossTrackReleases).toEqual([
       expect.objectContaining({
@@ -756,6 +782,19 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       })
       .returning('id')
       .executeTakeFirstOrThrow();
+    // [PLN-010] A structure Kalo saved in Mi's plan's Grid.
+    const structure = await database.db
+      .insertInto('plan_structure')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s structure',
+        spec: JSON.stringify({ steps: [{ kind: 'insert' }], columns: [] }),
+        created_by: kalo,
+        updated_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     await work();
     const before = await verifyChain(database.db, 1);
     expect(before.ok).toBe(true);
@@ -824,6 +863,14 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         .where('id', '=', baseline.id)
         .execute(),
     ).toEqual([{ name: 'Kalo’s baseline', created_by: kalo }]);
+    // [PLN-010] Erasure rewrites no structure: its maker's id now names the placeholder.
+    expect(
+      await database.db
+        .selectFrom('plan_structure')
+        .select(['name', 'created_by', 'updated_by'])
+        .where('id', '=', structure.id)
+        .execute(),
+    ).toEqual([{ name: 'Kalo’s structure', created_by: kalo, updated_by: kalo }]);
     // [PLN-007] Erasure keeps it: its owner's id now names the placeholder account.
     expect(
       await database.db

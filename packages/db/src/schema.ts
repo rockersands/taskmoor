@@ -1243,6 +1243,25 @@ export interface PlanBaselineDayTable {
   closed: boolean;
 }
 
+/**
+ * A structure of a plan's Grid (PLN-010; ADR-122 stage 10): a saved, named recipe for the plan's
+ * tree, its steps and columns, checked by the server's `structureSpec` on every write. It holds no
+ * tickets; the rows are built for each viewer when read.
+ */
+export interface PlanStructureTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  /** 1 to 100 characters, unique in its plan ignoring case. */
+  name: string;
+  spec: Json;
+  created_by: number;
+  updated_by: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  version: Generated<number>;
+}
+
 export type PlanCapacityUnit = 'points' | 'hours';
 export type PlanPeriodKind = 'weeks' | 'month';
 
@@ -3036,6 +3055,7 @@ export interface Database {
   plan_draft: PlanDraftTable;
   plan_baseline: PlanBaselineTable;
   plan_baseline_day: PlanBaselineDayTable;
+  plan_structure: PlanStructureTable;
   cross_track_release: CrossTrackReleaseTable;
   cross_track_release_member: CrossTrackReleaseMemberTable;
   saved_search_star: SavedSearchStarTable;

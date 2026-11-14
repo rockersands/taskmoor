@@ -33,6 +33,7 @@ import '../src/styles/ticket-templates.css';
 import '../src/styles/timeline.css';
 import '../src/styles/views.css';
 import '../src/styles/plans.css';
+import '../src/styles/grid.css';
 import '../src/styles/ai.css';
 import '../src/styles/surfaces.css';
 import '../src/styles/track-groups.css';

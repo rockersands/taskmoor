@@ -1872,6 +1872,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM plan_baseline b WHERE b.name = 'Seed baseline'`.execute(db);
     },
   },
+  '0112_plan_structures': {
+    tables: {
+      plan_structure: `name = 'Seed structure' AND version = 1
+        AND spec -> 'steps' -> 0 ->> 'kind' = 'insert'
+        AND plan_id = (SELECT id FROM plan WHERE name = 'Seed plan')`,
+    },
+    seed: async (db) => {
+      // A structure of the seed plan's Grid: its tickets and their children, with a count total
+      // (ADR-122 stage 10).
+      await sql`INSERT INTO plan_structure
+          (workspace_id, plan_id, name, spec, created_by, updated_by)
+        SELECT 1, p.id, 'Seed structure',
+               '{"steps":[{"kind":"insert"},{"kind":"children"}],
+                 "columns":[{"kind":"ticket","field":"summary"},{"kind":"total","fn":"count"}]}'::jsonb,
+               p.owner_id, p.owner_id
+          FROM plan p WHERE p.name = 'Seed plan'`.execute(db);
+    },
+  },
 };
 
 /**

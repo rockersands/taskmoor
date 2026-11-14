@@ -269,7 +269,11 @@ function SortMark({ column, sort }: { column: string; sort: TableSort | null | u
   );
 }
 
-function Cell({
+/**
+ * One editable cell of a ticket's column, shared with a plan's Grid (ADR-122 stage 10): the value,
+ * and where `editor` allows, an edit in place through the ticket route with the refusal on the cell.
+ */
+export function Cell({
   ticket,
   column,
   columnName,
@@ -452,7 +456,8 @@ function CellPicture({ column, value, shown }: { column: string; value: unknown;
   return shown;
 }
 
-function CellInput({
+/** The input of a cell being edited, by its editor's kind. */
+export function CellInput({
   editor,
   value,
   label,

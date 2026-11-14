@@ -89,7 +89,7 @@ MT-08 (T-089c to T-089g) have not started.
   PLN-002 and PLN-003 with MT-06 and PLN-004 with MT-07. Each moved to M1 with its stage, so nothing
   listed them for 1.0 before they existed. PLN-010 (from M2) and PLN-011 (from M4) moved to M1 as
   Musts with ADR-122's stages 10 and 9 when they were designed (2026-11-14), reworded to what is
-  built; PLN-011 is built as MT-09, PLN-010 waits for its own stage.
+  built; PLN-011 is built as MT-09 and PLN-010 as MT-10.
 
 ### Open question for the user (not blocking)
 
@@ -135,8 +135,8 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | MT-07 | T-089f | Auto-scheduler, previewed as draft changes: a run places a plan's open level-0 tickets in its periods within capacity, blockers first, as scheduler drafts in a scenario, with a reason per ticket. PLN-004 reworded and moved to M1 | PLN-004 | none | Built on `wave18/t089f-auto-scheduler`, waiting for the gate and merge |
 | MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | PLN-014 | none | Built on `wave8/multi-track-stages`, waiting for the coordinator's gate and merge |
 | MT-09 | T-089a | Baselines, the critical path and levelling (ADR-122 stage 9): named baselines of a plan's own and sprint days, from Live or a scenario, compared with the days now in calendar days; the critical path with each ticket's slack, over the whole plan the viewer is shown; and Even out load, a mode of the auto-scheduler's run that moves only work putting someone over capacity, later, keeping its length. PLN-011 reworded and moved to M1 | PLN-011 | 0111 | Built on `wave19/t089a-hierarchy-baselines`, waiting for the gate and merge |
+| MT-10 | T-089a | The hierarchy grid (ADR-122 stage 10): a plan's Grid section, built for each viewer from structures the plan's editors save (Add tickets, up to two Group by, Add children down every level, up to two Add linked tickets), with ticket columns edited in place, totals of the rows below and formula columns computed in the browser, up to 100,000 rows; one row moved under another parent by dragging or Move under, after confirmation, through the ticket's own change; live and read-only in a scenario; hidden tickets only counted. PLN-010 reworded and moved to M1 | PLN-010 | 0112 | Built on `wave20/t089a-hierarchy-grid`, waiting for the gate and merge |
 
-PLN-010 (the hierarchy grid, ADR-122 stage 10, also T-089a) is designed and in M1, and not built yet.
 Migration numbers: take the next free one on `main` when each stage starts (MT-03 took 0102).
 
 **Every ticket delivers:** spec, ADR section, routes with events, contract scenarios, audit

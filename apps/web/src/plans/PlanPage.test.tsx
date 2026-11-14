@@ -47,6 +47,7 @@ describe('a plan (PLN-001, PLN-012)', () => {
       'Summary',
       'Timeline',
       'List',
+      'Grid',
       'Calendar',
       'Capacity',
       'Releases',

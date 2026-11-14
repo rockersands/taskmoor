@@ -1259,6 +1259,22 @@ export const EVENT_TYPES = {
   'plan.baseline_renamed': { subject: 'plan', payload: z.object({ baselineId: id }) },
   'plan.baseline_deleted': { subject: 'plan', payload: z.object({ baselineId: id }) },
   /**
+   * Structures of a plan's Grid (PLN-010; ADR-122 stage 10): ids and the name, never a step's
+   * query, a column or a ticket.
+   */
+  'plan.structure_created': {
+    subject: 'plan',
+    payload: z.object({ structureId: id, name: z.string() }),
+  },
+  'plan.structure_changed': {
+    subject: 'plan',
+    payload: z.object({ structureId: id, name: z.string() }),
+  },
+  'plan.structure_deleted': {
+    subject: 'plan',
+    payload: z.object({ structureId: id, name: z.string() }),
+  },
+  /**
    * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
    * its old day, each it left with the reason, and how many were hidden from the mover; each
    * release moved also emits its own `release.updated`.

@@ -339,6 +339,7 @@ export async function writePersonalData(
     scenarios,
     drafts,
     baselines,
+    structures,
   ] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
@@ -426,6 +427,16 @@ export async function writePersonalData(
       .orderBy('plan_id')
       .orderBy('id')
       .execute(),
+    // Structures they made in plans' Grids (PLN-010): by the plan's id and the name, without the
+    // steps or columns, as the plan may be hidden from them now.
+    db
+      .selectFrom('plan_structure')
+      .select(['id', 'plan_id', 'name', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('created_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('id')
+      .execute(),
   ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
@@ -487,6 +498,12 @@ export async function writePersonalData(
         baselineId: x.id,
         name: x.name,
         source: x.source,
+        createdAt: iso(x.created_at),
+      })),
+      planStructures: structures.map((x) => ({
+        planId: x.plan_id,
+        structureId: x.id,
+        name: x.name,
         createdAt: iso(x.created_at),
       })),
       crossTrackReleases: crossTrackReleases.map((c) => ({

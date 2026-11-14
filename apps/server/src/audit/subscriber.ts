@@ -260,6 +260,10 @@ export const AUDITED_EVENTS = [
   'plan.baseline_captured',
   'plan.baseline_renamed',
   'plan.baseline_deleted',
+  // Structures of the Grid (PLN-010): the plan's settings others read, audited as baselines are.
+  'plan.structure_created',
+  'plan.structure_changed',
+  'plan.structure_deleted',
   // A run of the auto-scheduler (PLN-004): its choices and counts, beside its drafts.
   'plan.schedule_ran',
   // Releases across tracks (PLN-007): configuration others may see, as plans are.

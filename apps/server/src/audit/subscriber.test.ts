@@ -35,6 +35,16 @@ describe('what the audit log records (M1-003)', () => {
     }
   });
 
+  it('[PLN-010] [IAM-013] audits saving, changing and deleting a structure of a plan’s Grid', () => {
+    for (const type of [
+      'plan.structure_created',
+      'plan.structure_changed',
+      'plan.structure_deleted',
+    ] as const) {
+      expect(AUDITED_EVENTS).toContain(type);
+    }
+  });
+
   it('keeps the actions of records that are not events apart from event types', () => {
     for (const action of Object.values(AUDIT_ACTIONS)) {
       expect(Object.hasOwn(EVENT_TYPES, action), action).toBe(false);
