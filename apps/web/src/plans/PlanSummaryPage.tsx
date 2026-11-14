@@ -10,6 +10,12 @@ import type { Plan, PlanClient, PlanCount, PlanFilters, PlanSummary } from './cl
 import { DownloadMenu } from './DownloadMenu';
 import { csvBlob, fileName, saveBlob } from './download';
 import { summaryCsv } from './planExport';
+import type { ScenarioClient, ScenarioInView } from './scenarioClient';
+
+/** The scenario a view reads (ADR-122 stage 6), and whether the viewer may draft in it. */
+export interface ViewScenario extends ScenarioInView {
+  editable: boolean;
+}
 
 export interface PlanSectionProps {
   id: number;
@@ -20,6 +26,11 @@ export interface PlanSectionProps {
   /** Where the view stands, kept in the page's address so a link holds it (PLN-014). */
   position?: PlanPosition;
   onPosition?: (change: PlanPosition) => void;
+  /** The scenario the view reads, if any (ADR-122 stage 6): edits then make drafts. */
+  scenario?: ViewScenario;
+  scenarios?: ScenarioClient;
+  /** A draft was written: the scenario's counts are read again. */
+  onDrafted?: () => void;
 }
 
 const OVERVIEW: Record<string, MessageId> = {

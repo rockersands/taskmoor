@@ -89,6 +89,11 @@ export interface CalendarViewProps {
   now: () => Date;
   /** What the note under a cut-off calendar says. */
   truncatedText: string;
+  /**
+   * A plan read in this scenario (ADR-122 stage 6): a move is a draft in it and is said so, and a
+   * drafted ticket's entry begins with "Draft".
+   */
+  draftIn?: string;
 }
 
 /**
@@ -117,6 +122,7 @@ export function CalendarView({
   reload,
   now,
   truncatedText,
+  draftIn,
 }: CalendarViewProps) {
   const t = useT();
   const intl = useIntl();
@@ -197,11 +203,14 @@ export function CalendarView({
     const outcome = await moveTicket(ticket.key, days);
     if (outcome.ok) {
       const day = days[entry.kind === 'due' ? 'dueDate' : 'startDate'] as string;
+      const words = { key: ticket.key, date: dateText(dayNumber(day)) };
       setNotice(
-        t(entry.kind === 'due' ? 'calendar.movedDue' : 'calendar.movedStart', {
-          key: ticket.key,
-          date: dateText(dayNumber(day)),
-        }),
+        draftIn !== undefined
+          ? t(entry.kind === 'due' ? 'calendar.draftedDue' : 'calendar.draftedStart', {
+              ...words,
+              scenario: draftIn,
+            })
+          : t(entry.kind === 'due' ? 'calendar.movedDue' : 'calendar.movedStart', words),
       );
     } else {
       setProblem(scheduleRefusal(t, ticket.key, outcome));
@@ -419,19 +428,20 @@ export function CalendarView({
                       // The entry is dragged, not the link's address (the browser's own drag
                       // would end ours).
                       draggable={false}
-                      className={`calendar-chip${entry.kind === 'start' ? ' is-start' : ''}`}
+                      className={`calendar-chip${entry.kind === 'start' ? ' is-start' : ''}${entry.ticket.draft ? ' is-draft' : ''}`}
                       data-stage={entry.ticket.stage}
                       aria-describedby={`${id}-hint`}
-                      // The name begins with the words shown, "Starts:" included (TR-19).
-                      aria-label={t(
+                      // The name begins with the words shown, "Starts:" and "Draft" included (TR-19).
+                      aria-label={`${entry.ticket.draft ? `${t('draft.tag')} ` : ''}${t(
                         entry.kind === 'due' ? 'calendar.chipDue' : 'calendar.chipStart',
                         { key: entry.ticket.key, summary: entry.ticket.summary },
-                      )}
+                      )}${entry.ticket.draft?.stale ? `, ${t('draft.staleShort')}` : ''}`}
                       onPointerDown={(event) => {
                         // A mouse drags the entry from anywhere on it; a finger, by its grip.
                         if (event.pointerType === 'mouse') beginDrag(event, entry);
                       }}
                     >
+                      {entry.ticket.draft ? `${t('draft.tag')} ` : ''}
                       {entry.kind === 'start' ? `${t('calendar.starts')} ` : ''}
                       {entry.ticket.key} {entry.ticket.summary}
                     </a>

@@ -13,6 +13,7 @@ import { ProgramBoardPage } from './ProgramBoardPage';
 import { ProgramBoardsPage } from './ProgramBoardsPage';
 import { type CardMoved, cardChange, type ProgramBoard } from './programBoardClient';
 import { boardFixture, type FakeBoardOptions, fakeBoardClient } from './programBoardFixtures';
+import type { ChangePage, DraftInput, ScenarioClient } from './scenarioClient';
 
 /**
  * A plan's program board (T-089d; PLN-008; ADR-122 stage 5), with the fixture board "Spring PI":
@@ -558,5 +559,102 @@ describe('a plan’s program boards (PLN-008)', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New program board' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Archive / })).toBeNull();
+  });
+});
+
+/**
+ * The board in a scenario (T-089e; PLN-002; ADR-122 stage 6): "Faster" has SHOP-2 drafted into
+ * this week from last, so Web's first cell holds a card a draft moved and its count finds no search.
+ */
+describe('a program board in a scenario (PLN-002)', () => {
+  const inFaster = (): ProgramBoard => {
+    const board = boardFixture();
+    return {
+      ...board,
+      scenario: { id: 2, name: 'Faster', main: false, drafts: 1, notShown: 0 },
+      cards: board.cards.map((c) =>
+        c.key === 'SHOP-2' ? { ...c, draft: { dueDate: { now: '2026-10-29' }, stale: false } } : c,
+      ),
+      rows: board.rows.map((r, i) =>
+        i === 0 ? { ...r, cells: r.cells.map((c, j) => (j === 0 ? { ...c, drafts: 1 } : c)) } : r,
+      ),
+    };
+  };
+  const EMPTY: ChangePage = {
+    changes: [],
+    counts: { ready: 1, already: 0, changed: 0, refused: 0 },
+    drafts: 1,
+    notShown: 0,
+    teams: [],
+    teamFields: [],
+    next: null,
+  };
+
+  function renderInFaster() {
+    const asked: (number | undefined)[] = [];
+    const inner = fakeBoardClient({ readWith: () => inFaster() });
+    const client = {
+      ...inner,
+      read: (...args: Parameters<typeof inner.read>) => {
+        asked.push(args[3]);
+        return inner.read(...args);
+      },
+    };
+    const writes: DraftInput[][] = [];
+    let drafted = 0;
+    const scenarios = {
+      draft: async (_planId: number, sid: number, changes: DraftInput[]) => {
+        expect(sid).toBe(2);
+        writes.push(changes);
+        return { ok: true as const, value: EMPTY };
+      },
+    } as unknown as ScenarioClient;
+    render(
+      <I18nProvider locale="en">
+        <ProgramBoardPage
+          planId={12}
+          boardId={5}
+          filters={{}}
+          client={client}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+          scenario={{ id: 2, name: 'Faster', main: false, drafts: 1, notShown: 0, editable: true }}
+          scenarios={scenarios}
+          onDrafted={() => drafted++}
+        />
+      </I18nProvider>,
+    );
+    return { inner, asked, writes, drafted: () => drafted };
+  }
+
+  it('[PLN-002] reads the scenario, tags drafted cards and says a touched cell includes drafts, unlinked', async () => {
+    const { asked } = renderInFaster();
+    await screen.findAllByRole('link', { name: 'SHOP-2 Pay by card' });
+    const card = document.querySelector<HTMLElement>('li[data-card="SHOP-2"]');
+    expect(within(card as HTMLElement).getByText('Draft')).toBeVisible();
+    expect(asked[0]).toBe(2);
+    const cell = screen.getByRole('cell', { name: /^Web, .*includes drafts$/ });
+    expect(within(cell).getByText('and 3 more, includes drafts')).toBeVisible();
+    expect(within(cell).queryByRole('link', { name: /more/ })).toBeNull();
+    // A cell no draft touched keeps its search.
+    expect(screen.queryAllByRole('cell', { name: /includes drafts/ })).toHaveLength(1);
+  });
+
+  it('[PLN-002] makes a move a draft without the version, never the ticket’s own change', async () => {
+    const user = userEvent.setup();
+    const { inner, writes, drafted } = renderInFaster();
+    await user.click(await screen.findByRole('button', { name: 'Move SHOP-2…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Move SHOP-2' });
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Team' }), 'Ops');
+    await user.selectOptions(
+      within(dialog).getByRole('combobox', { name: 'Period' }),
+      'Nov 9 – Nov 15',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Draft the move' }));
+    expect(writes).toEqual([[{ ticketId: 102, fields: { '40': 4 }, dueDate: '2026-11-12' }]]);
+    expect(inner.moves).toEqual([]);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Draft: SHOP-2 to Ops, Nov 9 – Nov 15 in Faster. Nothing changed yet.',
+    );
+    expect(drafted()).toBe(1);
   });
 });

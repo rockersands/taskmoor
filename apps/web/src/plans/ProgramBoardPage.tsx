@@ -17,8 +17,11 @@ import { DependencyList } from '../timeline/DependencyList';
 import { type Blocked, blockerCount, dependenciesOf } from '../timeline/dependencies';
 import { type PlanView, planHref } from './address';
 import type { PlanFilters } from './client';
+import type { ViewScenario } from './PlanSummaryPage';
 import {
   type BoardCell,
+  type CardChange,
+  type CardMoved,
   cardChange,
   type Place,
   type ProgramBoard,
@@ -26,6 +29,7 @@ import {
   type ProgramBoardClient,
   programBoardClient,
 } from './programBoardClient';
+import { draftRefusalCode, type ScenarioClient } from './scenarioClient';
 
 export interface ProgramBoardPageProps {
   planId: number;
@@ -36,6 +40,14 @@ export interface ProgramBoardPageProps {
   client?: ProgramBoardClient;
   /** Today, for the period marked "Now". */
   now?: () => Date;
+  /**
+   * The scenario the board reads (ADR-122 stage 6): cards stand where its drafts put them, and a
+   * move is a draft in it, never the ticket's own change.
+   */
+  scenario?: ViewScenario;
+  scenarios?: ScenarioClient;
+  /** A draft was written: the scenario's counts are read again. */
+  onDrafted?: () => void;
 }
 
 /**
@@ -57,6 +69,10 @@ const REFUSALS: Record<string, MessageId> = {
   version_conflict: 'programBoard.conflict',
   '409': 'programBoard.conflict',
   unreachable: 'programBoard.unreachable',
+  // A draft in a scenario (ADR-122 stage 6).
+  start_after_due: 'programBoard.refused.order',
+  too_many_drafts: 'programBoard.refused.tooManyDrafts',
+  not_a_team_field: 'programBoard.refused.invalid',
 };
 
 /** A card as the dependency helpers read a ticket: its own days, no roll-up. */
@@ -158,6 +174,9 @@ export function ProgramBoardPage({
   view,
   client = programBoardClient,
   now = () => new Date(),
+  scenario,
+  scenarios,
+  onDrafted,
 }: ProgramBoardPageProps) {
   const t = useT();
   const intl = useIntl();
@@ -189,7 +208,7 @@ export function ProgramBoardPage({
   const load = useCallback(
     (quiet: boolean) => {
       const mine = ++generation.current;
-      client.read(planId, boardId, filters).then(
+      client.read(planId, boardId, filters, scenario?.id).then(
         (board) => {
           if (mine !== generation.current) return;
           setData(board);
@@ -202,7 +221,7 @@ export function ProgramBoardPage({
         },
       );
     },
-    [client, planId, boardId, filterKey],
+    [client, planId, boardId, filterKey, scenario?.id],
   );
   useEffect(() => load(false), [load]);
   // Reads again now, or once nothing holds the board: a read made while a card is held or a move
@@ -220,8 +239,17 @@ export function ProgramBoardPage({
   // Moves made elsewhere reach the local copy through the socket: read again, at most once in
   // 30 ms, and after a held card or a waiting move (whose own answer reads again too).
   const engine = useSyncEngine();
+  // Drafts are not in the change log, so in a scenario the board reads again every 15 s while
+  // open, to show others' drafts (ADR-122 stage 6).
+  const inScenario = scenario !== undefined;
+  useEffect(() => {
+    if (!inScenario) return;
+    const timer = setInterval(readSoon, POLL_MS);
+    return () => clearInterval(timer);
+  }, [inScenario, readSoon]);
   useEffect(() => {
     if (!engine) {
+      if (inScenario) return;
       const timer = setInterval(readSoon, POLL_MS);
       return () => clearInterval(timer);
     }
@@ -237,7 +265,7 @@ export function ProgramBoardPage({
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [engine, readSoon]);
+  }, [engine, readSoon, inScenario]);
   useTicketChanges(readSoon);
 
   /** Focus on a card's link where it now stands, or on the board's name when it is not shown. */
@@ -322,9 +350,12 @@ export function ProgramBoardPage({
     setPending((set) => new Set(set).add(card.id));
     setData((current) => (current ? movedLocally(current, card.id, to) : current));
     setStatus(t('programBoard.moving', { key: card.key }));
-    const result = await client
-      .move(card.key, change)
-      .catch((): Refusal => ({ ok: false, code: 'unreachable' }));
+    const result: CardMoved =
+      scenario && scenarios
+        ? await draftMove(card, change)
+        : await client
+            .move(card.key, change)
+            .catch((): Refusal => ({ ok: false, code: 'unreachable' }));
     // The next move of this card sends the version this one made, before the board reads again.
     if (result.ok && result.ticket) {
       const ticket = result.ticket;
@@ -343,14 +374,41 @@ export function ProgramBoardPage({
     });
     setStatus(
       result.ok
-        ? t('programBoard.moved', { key: card.key, place: placeText(to) })
+        ? scenario
+          ? t('programBoard.drafted', {
+              key: card.key,
+              place: placeText(to),
+              scenario: scenario.name,
+            })
+          : t('programBoard.moved', { key: card.key, place: placeText(to) })
         : t(
             result.code === 'forbidden' && result.locked
               ? 'programBoard.refused.locked'
-              : (REFUSALS[result.code] ?? 'programBoard.refused.other'),
+              : result.code === 'forbidden' && result.permission === 'edit_plan'
+                ? 'programBoard.refused.notEditor'
+                : (REFUSALS[result.code] ?? 'programBoard.refused.other'),
             { key: card.key, field: teamField?.name ?? '' },
           ),
     );
+  };
+
+  /** A move in a scenario: the Team value and days as a draft, without the version (stage 6). */
+  const draftMove = async (card: ProgramBoardCard, change: CardChange): Promise<CardMoved> => {
+    if (!scenario || !scenarios) return { ok: false, code: 'unreachable' };
+    const { version: _read, ...drafted } = change;
+    const written = await scenarios
+      .draft(planId, scenario.id, [{ ticketId: card.id, ...drafted }])
+      .catch(() => null);
+    if (!written) return { ok: false, code: 'unreachable' };
+    if (!written.ok) {
+      return {
+        ok: false,
+        code: draftRefusalCode(written),
+        ...(written.permission ? { permission: written.permission } : {}),
+      };
+    }
+    onDrafted?.();
+    return { ok: true };
   };
 
   // After a move from the dialog its Move button is gone (the card is in another cell and moving),
@@ -418,6 +476,12 @@ export function ProgramBoardPage({
           {typeName(t, card.type)} · {card.status.name}
           {closed && ` · ${t('programBoard.closed')}`}
         </p>
+        {card.draft && (
+          <p className="program-card-meta">
+            <span className="draft-tag">{t('draft.tag')}</span>
+            {card.draft.stale && ` ${t('draft.staleShort')}`}
+          </p>
+        )}
         {row.team === null && card.team && (
           <p className="program-card-meta">
             {t('programBoard.cardTeam', { name: card.team.name })}
@@ -449,10 +513,20 @@ export function ProgramBoardPage({
       {cell.cards.length > 0 && (
         <ul className="program-cell-cards">{cell.cards.map((c) => cardView(c, row))}</ul>
       )}
-      {cell.count > cell.cards.length && board.query !== null && (
-        <a className="program-cell-more" href={searchHref(cellSearch(row, column))}>
-          {t('programBoard.more', { count: cell.count - cell.cards.length })}
-        </a>
+      {/* A cell a draft moves a card into or out of finds no search: said, not linked. */}
+      {cell.drafts ? (
+        <p className="program-cell-drafts">
+          {cell.count > cell.cards.length
+            ? t('programBoard.moreWithDrafts', { count: cell.count - cell.cards.length })
+            : t('programBoard.withDrafts')}
+        </p>
+      ) : (
+        cell.count > cell.cards.length &&
+        board.query !== null && (
+          <a className="program-cell-more" href={searchHref(cellSearch(row, column))}>
+            {t('programBoard.more', { count: cell.count - cell.cards.length })}
+          </a>
+        )
       )}
     </>
   );
@@ -585,7 +659,7 @@ export function ProgramBoardPage({
                       <td
                         key={column.label}
                         {...dropProps(row, i)}
-                        aria-label={`${rowName(row)}, ${column.label}, ${t('programBoard.count', { count: cell.count })}`}
+                        aria-label={`${rowName(row)}, ${column.label}, ${t('programBoard.count', { count: cell.count })}${cell.drafts ? `, ${t('programBoard.withDrafts')}` : ''}`}
                       >
                         {cellBody(row, cell, i)}
                       </td>
@@ -609,6 +683,7 @@ export function ProgramBoardPage({
           rows={board.rows.map((row) => ({ team: row.team?.id ?? null, name: rowName(row) }))}
           columns={columns.map((c) => c.label)}
           teamMovable={teamField !== null}
+          drafting={scenario !== undefined}
           onMove={(to) => {
             const { card, from } = moving;
             setMoving(null);
@@ -629,6 +704,8 @@ export interface MoveDialogProps {
   columns: string[];
   /** False without a Team field: only the period changes. */
   teamMovable: boolean;
+  /** In a scenario the move is a draft, and the button says so. */
+  drafting?: boolean;
   onMove: (to: Place) => void;
   onClose: () => void;
   /** Where focus goes when the dialog closes; back to its opener by default. */
@@ -642,6 +719,7 @@ export function MoveDialog({
   rows,
   columns,
   teamMovable,
+  drafting = false,
   onMove,
   onClose,
   restoreFocus,
@@ -702,7 +780,7 @@ export function MoveDialog({
         <p className="board-hint">{t('programBoard.moveHint')}</p>
         <div className="form-actions">
           <button type="submit" className="button-primary" disabled={same}>
-            {t('programBoard.moveSave')}
+            {t(drafting ? 'programBoard.moveDraft' : 'programBoard.moveSave')}
           </button>
           <button type="button" className="button-secondary" onClick={onClose}>
             {t('programBoard.cancel')}

@@ -46,6 +46,8 @@ export interface ResultTableProps {
   format?: (ticket: SearchTicket) => RowFormat | null;
   /** The order the rows are in, marked on that column's header (PL-11). */
   sort?: TableSort | null;
+  /** No cell edits in place: a plan's List read in a scenario (ADR-122 stage 6). */
+  readOnly?: boolean;
 }
 
 const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
@@ -141,7 +143,16 @@ export function ResultRows({ tickets, fields, client, format }: ResultTableProps
   );
 }
 
-function WideTable({ tickets, columns, fields, client, onSaved, format, sort }: ResultTableProps) {
+function WideTable({
+  tickets,
+  columns,
+  fields,
+  client,
+  onSaved,
+  format,
+  sort,
+  readOnly = false,
+}: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
   const progress = useSubticketProgress(tickets, client.subticketProgress);
@@ -203,7 +214,7 @@ function WideTable({ tickets, columns, fields, client, onSaved, format, sort }: 
                     ticket={ticket}
                     column={column}
                     columnName={nameOf(column)}
-                    editor={cellEditor(column, fields)}
+                    editor={readOnly ? null : cellEditor(column, fields)}
                     priorities={priorities}
                     client={client}
                     onSaved={onSaved}
