@@ -1373,6 +1373,8 @@ export interface components {
             at: string;
             changeSet: string;
             field: string;
+            /** @description A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise. */
+            fieldName?: string | null;
             from: {
                 display: string | null;
                 value: string | null;
@@ -1387,6 +1389,8 @@ export interface components {
                 [key: string]: unknown;
             };
             transitionId: number | null;
+            /** @description A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value. */
+            valueType?: ("date" | "datetime") | null;
         } & {
             [key: string]: unknown;
         };

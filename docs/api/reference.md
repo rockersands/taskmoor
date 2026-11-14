@@ -1942,6 +1942,8 @@ Responses:
 | `at` | string | yes |  |
 | `actor` | [PersonRef](#schema-personref) or null | yes |  |
 | `field` | string | yes |  |
+| `fieldName` | string or null | no | A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise. |
+| `valueType` | `"date"`, `"datetime"` or null | no | A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value. |
 | `from` | object | yes |  |
 | `to` | object | yes |  |
 | `transitionId` | integer or null | yes |  |

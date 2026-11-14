@@ -15,6 +15,18 @@ export const dayText = (intl: IntlShape, day: string) =>
     year: 'numeric',
   });
 
+/**
+ * A moment (an instant with a time of day: when a ticket was created, a custom date-and-time
+ * field's value) as people read it, in their locale and on their own clock: 'Oct 13, 2026, 2:00 AM'
+ * (T-240, T-277). The one format for moments a value shows, never the raw ISO timestamp.
+ */
+export const momentText = (intl: IntlShape, iso: string) =>
+  intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
+
+/** Whether a value is an instant the API sends (ISO 8601) that a clock can read. */
+export const isInstant = (value: unknown): value is string =>
+  typeof value === 'string' && !Number.isNaN(Date.parse(value));
+
 /** `dayText` bound to the person's locale. */
 export function useDayText() {
   const intl = useIntl();
