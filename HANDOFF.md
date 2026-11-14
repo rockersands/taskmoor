@@ -22,7 +22,15 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the program board and eleven bugs on main (2026-11-14, Windows)
+### Latest: the second sweep fixed (2026-11-14, the Mac)
+
+- **On `main` (`1bf593c9`, full gate: 8,758 tests, 256 e2e):** T-258 (a fresh sweep of every route:
+  `docs/plan/page-review-second-sweep.md`, 119 of 151 faults fixed, 69 new), T-271 (its faults
+  outside Plans, six groups) and T-272 (reports bucket days by the person's own day). Printing a
+  ticket switches to the light skin (`printInLightSkin` in `skins/skins.ts`). Next for the Mac:
+  T-273 to T-275. Windows has the Plans rows (T-266) and T-089e (migration 0110).
+
+### Earlier: the program board and eleven bugs on main (2026-11-14, Windows)
 
 - **On `main` (`443b2dcd`, full gate on Windows: 8,615 tests, 255 e2e):** T-089d, program boards
   (ADR-122 stage 5, PLN-008, PLN-013, migration 0108), reviewed by a panel (17 faults fixed with
