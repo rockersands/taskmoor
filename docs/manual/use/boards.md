@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/styles/boards.css, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -51,7 +51,8 @@ holds its **Backlog** (Scrum boards only) and its
 own to them. The filters sit on a panel of their own above the columns. Each column is at least
 16 rem wide, so a board with more columns than the window holds scrolls sideways inside the board,
 never the whole page: the edge past which more columns wait fades, and the columns keep a scroll
-bar. Under the filters, a line says how to move cards: the keys when you work with a mouse and a
+bar. On a phone each column ends at its last card, however long the column beside it. Under the
+filters, a line says how to move cards: the keys when you work with a mouse and a
 keyboard, however narrow the window, and on a phone or another touch screen, "Drag a card by its
 grip to another column, or tap the grip for a menu of every move." 
 
@@ -348,8 +349,8 @@ shipped, to the release's name, with the notice under it. The page shows:
   is in, neither of which changes its date;
 - **Tickets**: the tickets targeting the release;
 - **Release notes**: the closed tickets, grouped by ticket type. Tickets closed without being
-  done (not planned, duplicates) are left out and counted. Use **Copy as Markdown** or
-  **Download Markdown**.
+  done (not planned, duplicates) are left out and counted. Once there are notes, use **Copy as
+  Markdown** or **Download Markdown**.
 
 To ship, the track's administrators press **Ship this release…**, an ordinary button beside the
 title. It opens **Ship 2.0?** (with the release's name), which says what shipping does: the
