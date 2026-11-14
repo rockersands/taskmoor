@@ -998,24 +998,21 @@ export function registerPlanScenarioRoutes(
     const body = parsed.data;
     if (!o.scenario.main) return reply.code(409).send({ error: 'not_main' });
     // 1. Hold the scenario: one apply at a time per plan; a hold older than ten minutes is stale.
-    const held = await sql<{ id: number }>`
+    // The hold's time is this apply's: it lets go only of its own, never of one taken after it.
+    const held = await sql<{ id: number; since: string }>`
       UPDATE plan_scenario SET applying_since = now()
        WHERE id = ${o.scenario.id}::int AND plan_id = ${o.plan.id}::int AND main
          AND (applying_since IS NULL OR applying_since < now() - interval '10 minutes')
-      RETURNING id`.execute(db);
-    if (held.rows.length === 0) {
+      RETURNING id, applying_since::text AS since`.execute(db);
+    const since = held.rows[0]?.since;
+    if (since === undefined) {
       const now = await scenarioOf(db, request.workspaceId, o.plan.id, o.scenario.id);
       if (!now) return notFound(reply);
       return reply.code(409).send({ error: now.main ? 'apply_in_progress' : 'not_main' });
     }
-    const release = () =>
-      db
-        .updateTable('plan_scenario')
-        .set({ applying_since: null })
-        .where('id', '=', o.scenario.id)
-        .execute();
+    const release = () => letGo(db, o.scenario.id, since);
     try {
-      const result = await applyDrafts(request, o.plan.id, o.scenario.id, body);
+      const result = await applyDrafts(request, o.plan.id, o.scenario.id, since, body);
       return result;
     } catch (error) {
       await release();
@@ -1023,11 +1020,19 @@ export function registerPlanScenarioRoutes(
     }
   });
 
-  /** Steps 2 to 6 of an apply (ADR-122 stage 6), the scenario held by the caller. */
+  /** Lets go of an apply's hold on a scenario, only while it is that apply's (`since`). */
+  function letGo(q: Db, scenarioId: number, since: string) {
+    return sql`
+      UPDATE plan_scenario SET applying_since = NULL
+       WHERE id = ${scenarioId}::int AND applying_since = ${since}::timestamptz`.execute(q);
+  }
+
+  /** Steps 2 to 6 of an apply (ADR-122 stage 6), the scenario held by the caller since `since`. */
   async function applyDrafts(
     request: FastifyRequest,
     planId: number,
     scenarioId: number,
+    since: string,
     body: z.infer<typeof applyBody>,
   ) {
     const tickets = await shownTo(request, planId);
@@ -1218,11 +1223,7 @@ export function registerPlanScenarioRoutes(
                  AS x(ticket_id, refusal)
            WHERE d.scenario_id = ${scenarioId}::int AND d.ticket_id = x.ticket_id`.execute(trx);
       }
-      await trx
-        .updateTable('plan_scenario')
-        .set({ applying_since: null })
-        .where('id', '=', scenarioId)
-        .execute();
+      await letGo(trx, scenarioId, since);
       const hidden =
         (
           await sql<{ n: number }>`

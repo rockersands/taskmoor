@@ -1726,7 +1726,10 @@ benchmarking. Where this differs from the design above:
   one-main index, a 500, and a delete race a make; fixed after review.)
 - **Applying.** A `gone` refusal carries `key: null` and is never stored, so a hidden ticket's
   draft shows no refusal to anyone. A ticket refused by a version raced during the apply gets its
-  values now from a second read, as the applier sees it. A throw anywhere clears the hold. The
+  values now from a second read, as the applier sees it. A throw anywhere clears the hold, as the
+  finish does, and both let go only of the apply's own hold (the time it set): an apply that ran
+  past ten minutes, whose hold another apply then took as stale, leaves that other one's hold in
+  place. (Built first clearing any hold; fixed after review.) The
   applier's permissions come from `request.authz`, an API token's included, through `callRoute`.
 - **`track_archived`** is reachable only when a track is archived between the read and the ticket's
   change (archived tracks' tickets are not in a plan, so they are `gone` before that); the test

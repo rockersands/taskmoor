@@ -1653,4 +1653,42 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
       payload: { version: other.version },
     });
   });
+
+  it('[PLN-002] lets go only of its own hold: a hold taken after it, from a stale one, stays', async () => {
+    const main = await mainScenario();
+    const work = await ticket('SCB', 'Held work', { dueDate: '2027-10-01' });
+    await draft('admin', main.id, [{ ticketId: work.id, dueDate: '2027-10-02' }]);
+    // While this apply runs, another takes its hold, as one may once ten minutes have gone by.
+    const other = new Date('2030-01-01T00:00:00Z');
+    const result = (await whileTicketLocked(
+      work.id,
+      async (trx) => {
+        await trx
+          .updateTable('plan_scenario')
+          .set({ applying_since: other })
+          .where('id', '=', main.id)
+          .execute();
+      },
+      () => apply('admin', main.id, { tickets: [work.id] }),
+    )) as { applied: unknown[] };
+    expect(result.applied).toEqual([{ ticketId: work.id, key: work.key }]);
+    const row = await database.db
+      .selectFrom('plan_scenario')
+      .select('applying_since')
+      .where('id', '=', main.id)
+      .executeTakeFirstOrThrow();
+    expect(row.applying_since).toEqual(other);
+    // The other apply still holds it.
+    const busy = await as('admin', {
+      method: 'POST',
+      url: scen(main.id, '/apply'),
+      payload: { all: true },
+    });
+    expect(busy.json()).toEqual({ error: 'apply_in_progress' });
+    await database.db
+      .updateTable('plan_scenario')
+      .set({ applying_since: null })
+      .where('id', '=', main.id)
+      .execute();
+  });
 });
