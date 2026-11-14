@@ -256,6 +256,25 @@ describe('moving a row of the Grid (PLN-010)', () => {
     ).toBeVisible();
   });
 
+  it('[PLN-010] the menu key opens the row’s menu, never the browser’s own over it', async () => {
+    const user = userEvent.setup();
+    renderGrid();
+    await screen.findByText('Dark mode for receipts');
+    act(() => rowOf('SHOP-70').focus());
+    await user.keyboard('{ContextMenu}');
+    const item = await screen.findByRole('menuitem', { name: 'Move under…' });
+    expect(item).toHaveFocus();
+    // Chrome and Edge on Windows send the menu key's contextmenu on its keyup, to what has focus.
+    const late = createEvent.contextMenu(item);
+    fireEvent(item, late);
+    expect(late.defaultPrevented).toBe(true);
+    expect(item).toHaveFocus();
+    // Only that once: a right click later keeps the browser's menu.
+    const right = createEvent.contextMenu(rowOf('SHOP-70'));
+    fireEvent(rowOf('SHOP-70'), right);
+    expect(right.defaultPrevented).toBe(false);
+  });
+
   it('[PLN-010] drags a row onto its new parent and asks first; a drop elsewhere says why', async () => {
     const { grid } = renderGrid();
     await screen.findByText('Dark mode for receipts');

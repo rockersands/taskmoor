@@ -449,6 +449,24 @@ interface Drawn {
   column: StructureColumn;
 }
 
+/**
+ * The browser's own context menu, which the menu key opens on its keyup (Chrome and Edge on
+ * Windows) whatever its keydown did, is cancelled once in the next second, so it cannot open over
+ * the row's menu that the keydown opened. A right click is left alone.
+ */
+function swallowNativeMenu() {
+  const stop = (event: Event) => {
+    event.preventDefault();
+    done();
+  };
+  const done = () => {
+    window.removeEventListener('contextmenu', stop, true);
+    window.clearTimeout(timer);
+  };
+  window.addEventListener('contextmenu', stop, true);
+  const timer = window.setTimeout(done, 1000);
+}
+
 /** The binary search of a skeleton row among the rows shown (they are in preorder). */
 function shownIndex(visible: Int32Array, row: number): number {
   let lo = 0;
@@ -1012,7 +1030,10 @@ function GridBody({
       case 'F10':
       case 'ContextMenu':
         if (event.key === 'F10' && !event.shiftKey) handled = false;
-        else openRowMenu(row);
+        else {
+          swallowNativeMenu();
+          openRowMenu(row);
+        }
         break;
       default:
         handled = false;
