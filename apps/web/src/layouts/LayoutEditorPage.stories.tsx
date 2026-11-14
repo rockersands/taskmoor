@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
 import { type Session, SessionProvider } from '../session/SessionProvider';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import { fakeLayoutsClient, layoutSetsFixture } from './fixtures';
 import { LayoutEditorPage } from './LayoutEditorPage';
 
@@ -145,6 +146,55 @@ export const TrackAdministrator: Story = {
 export const TrackAdministratorOnAPhone: Story = {
   ...TrackAdministrator,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/**
+ * NFR-007, ADR-033: on a phone's touch screen the links inside the page's notes, 'Back to managing
+ * OPS.' and the field rules of OPS, keep their line's height and reach a finger's 44 px above and
+ * below it, as on Track people (T-226).
+ */
+export const TrackLinksOnATouchPhone: Story = {
+  ...TrackAdministrator,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const links = [
+      await canvas.findByRole('link', { name: 'Back to managing OPS.' }),
+      await canvas.findByRole('link', {
+        name: 'The field rules of OPS are on its configuration sets.',
+      }),
+    ];
+    for (const link of links) {
+      const press = getComputedStyle(link, '::after');
+      await expect(press.position).toBe('absolute');
+      await expect(Number.parseFloat(press.height)).toBeGreaterThanOrEqual(44 - 0.5);
+    }
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every field's, section's and
+ * tab's grip is a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(await gripsTooSmall(canvasElement, ['.layout-grip-handle'])).toEqual([]);
+  },
+};
+
+/** The same on a phone. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(await gripsTooSmall(canvasElement, ['.layout-grip-handle'])).toEqual([]);
+  },
 };
 
 /** A set of the track's own that the track does not use yet: the page offers to use it. */
