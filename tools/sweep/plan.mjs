@@ -35,6 +35,8 @@ export const SPANISH = [
 export const SPANISH_LONGEST = 6;
 /** A phone page longer than this many windows is cut, and the capture says so. */
 export const MAX_WINDOWS = 30;
+/** How much of a phone window shows again at the top of the next, in CSS pixels. */
+export const WINDOW_OVERLAP = 48;
 
 /**
  * The command line, checked. Throws an Error carrying USAGE when something is wrong, so the caller
@@ -277,15 +279,16 @@ export const imageName = (slug, width, skin, window = 1) =>
 
 /**
  * Where each window of a phone picture starts, scrolling as a person would. A bar stuck to the top
- * or the bottom of the window covers what is under it, so each step is the window less those bars,
- * and nothing is left unseen between two pictures; the last window ends at the page's end.
+ * or the bottom of the window covers what is under it, so each step is the window less those bars
+ * and a little more, so nothing is left unseen between two pictures and a line cut at the foot of
+ * one is whole in the next; the last window ends at the page's end.
  */
 export function windowStops({ scrollHeight, innerHeight, stuckTop = 0, stuckBottom = 0 }) {
   const end = Math.max(0, Math.ceil(scrollHeight - innerHeight));
   // A bar that takes most of the window still lets the page move on by half a window.
   const step = Math.max(
     Math.floor(innerHeight / 2),
-    Math.floor(innerHeight - stuckTop - stuckBottom),
+    Math.floor(innerHeight - stuckTop - stuckBottom - WINDOW_OVERLAP),
   );
   const stops = [0];
   while (stops.at(-1) < end && stops.length < MAX_WINDOWS) {

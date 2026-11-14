@@ -14,6 +14,7 @@ import {
   parseSweepArgs,
   SPANISH,
   spanishChoice,
+  WINDOW_OVERLAP,
   windowStops,
 } from './plan.mjs';
 
@@ -296,16 +297,17 @@ describe('windowStops', () => {
   it('[NFR-007] takes one window when the page fits the phone', () => {
     expect(windowStops({ scrollHeight: 812, innerHeight: 812 })).toEqual({
       stops: [0],
-      step: 812,
+      step: 764,
       cut: false,
     });
     expect(windowStops({ scrollHeight: 300, innerHeight: 812 }).stops).toEqual([0]);
   });
 
-  it('[NFR-007] steps by the window less the stuck bars, and ends at the bottom of the page', () => {
+  it('[NFR-007] steps by the window less the stuck bars and an overlap, to the end of the page', () => {
+    expect(WINDOW_OVERLAP).toBe(48);
     expect(windowStops({ scrollHeight: 2000, innerHeight: 812, stuckTop: 56 })).toEqual({
-      stops: [0, 756, 1188],
-      step: 756,
+      stops: [0, 708, 1188],
+      step: 708,
       cut: false,
     });
     // Bars that take most of the window still let the page move on by half a window.
@@ -334,9 +336,11 @@ describe('windowStops', () => {
               expect(moved).toBeGreaterThan(0);
               expect(moved).toBeLessThanOrEqual(step);
             }
-            // What a stuck bar covers in one window is seen in the next.
-            if (stuckTop + stuckBottom <= innerHeight / 2) {
-              expect(step).toBeLessThanOrEqual(innerHeight - stuckTop - stuckBottom);
+            // What a stuck bar covers in one window is seen in the next, with some to spare.
+            if (stuckTop + stuckBottom + WINDOW_OVERLAP <= innerHeight / 2) {
+              expect(step).toBe(innerHeight - stuckTop - stuckBottom - WINDOW_OVERLAP);
+            } else {
+              expect(step).toBe(Math.floor(innerHeight / 2));
             }
           }
         }

@@ -37,7 +37,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm verify --update` | Rewrite golden files after an intended change; review the diff |
 | `pnpm test:watch` | Vitest watch mode |
 | `pnpm demo [--fresh] [--port N]` | Taskmoor on this machine in Spanish with sample data (embedded PostgreSQL, the real server); prints one-time password links. For reviewing the translation (`docs/review-spanish.md`) |
-| `pnpm sweep --demo --out <dir> [--only=<route>]` | Every route of the real app signed in, on a private demo (port 8090, `--url`): screenshots at 1280 and 375 px in both skins, and `measurements.json` with sideways scroll, targets under 44 px, axe, console errors, failed requests and names that leave out visible words; for the page sweep (UI-T22) |
+| `pnpm sweep --demo --out <dir> [--only=<route>] [--width=1280\|375]` | Every route of the real app signed in, on a private demo (port 8090, `--url`): whole-page pictures at 1280 px and, at 375 px with touch, the phone's window scrolled through the page (`<slug>--375--<skin>.png`, then `--2`, `--3`), both skins; `measurements.json` with sideways scroll, targets under 44 px, axe, console errors, failed requests and names that leave out visible words. Never prints or writes the demo's one-time links or its password. For the page sweep (UI-T22) |
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
