@@ -204,8 +204,17 @@ export interface ScenarioClient {
     sid: number,
     page?: { cursor?: number; only?: 'ready' | 'refused' | 'changed' },
   ): Promise<ChangeList>;
-  /** Writes drafts, 1 to 200 tickets, all or nothing; a field set back to live loses its draft. */
-  draft(planId: number, sid: number, changes: DraftInput[]): Promise<Outcome<ChangePage>>;
+  /**
+   * Writes drafts, 1 to 200 tickets, all or nothing; a field set back to live loses its draft, and
+   * a drafted value sent again stays as drafted. `keep` (Keep my draft) takes the values now as
+   * the values when drafted.
+   */
+  draft(
+    planId: number,
+    sid: number,
+    changes: DraftInput[],
+    options?: { keep?: boolean },
+  ): Promise<Outcome<ChangePage>>;
   /** Removes the chosen tickets' drafts the person is shown, or all of them. */
   discard(
     planId: number,
@@ -287,9 +296,12 @@ export const scenarioClient: ScenarioClient = {
     const text = params.toString();
     return api<ChangeList>(`${of(planId)}/${sid}/changes${text ? `?${text}` : ''}`);
   },
-  draft: (planId, sid, changes) =>
+  draft: (planId, sid, changes, options = {}) =>
     outcome(() =>
-      api<ChangePage>(`${of(planId)}/${sid}/drafts`, { method: 'PUT', body: { changes } }),
+      api<ChangePage>(`${of(planId)}/${sid}/drafts`, {
+        method: 'PUT',
+        body: options.keep ? { changes, keep: true } : { changes },
+      }),
     ),
   discard: (planId, sid, which) =>
     outcome(() =>

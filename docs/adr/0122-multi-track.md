@@ -1310,9 +1310,10 @@ scenario (question 16).
 - **Setting a field back to its live value removes that draft**; moving a bar back where it was
   undoes it. Two editors drafting the same field: the last write wins (question 15).
 - **Changed since drafted:** a field whose live value no longer equals its value when drafted. The
-  change list shows the value now, the draft and the value when drafted. Drafting that field again
-  (**Keep my draft** writes the same value) takes the live value as the new value when drafted, so
-  the person acts having seen it marked. A draft whose new value is already live reads as **already
+  change list shows the value now, the draft and the value when drafted. **Keep my draft** writes
+  the same value again, saying so (`keep`), and takes the live value as the new value when drafted,
+  so the person acts having seen it marked. The same value sent again without it (a bar's start
+  sent with its moved end) leaves the draft as it was, still marked. A draft whose new value is already live reads as **already
   so** and goes on the next apply.
 - **The ticket's `version` alone never makes a draft stale.** A comment or a new summary leaves every
   drafted field as drafted, and applying then uses the live `version`, so unrelated edits never block
@@ -1353,7 +1354,7 @@ the person may not see, and a scenario of another plan, answer 404 word for word
 | `DELETE /api/v1/plans/:id/scenarios/:sid?version=` | write | It and all its drafts; main is refused (`main_scenario`) while other scenarios exist |
 | `POST /api/v1/plans/:id/scenarios/:sid/promote` | write | `{ version }`: makes it main; refused while applying (`apply_in_progress`) |
 | `GET /api/v1/plans/:id/scenarios/:sid/changes?cursor=&only=` | read | The change list, 100 tickets a page; `only=ready\|refused\|changed` |
-| `PUT /api/v1/plans/:id/scenarios/:sid/drafts` | write | `{ changes: [{ ticketId, startDate?, dueDate?, fields?: { "<teamFieldId>": teamId \| null } }] }`, 1 to 200 tickets, all or nothing |
+| `PUT /api/v1/plans/:id/scenarios/:sid/drafts` | write | `{ changes: [{ ticketId, startDate?, dueDate?, fields?: { "<teamFieldId>": teamId \| null } }], keep?: true }`, 1 to 200 tickets, all or nothing; `keep` is Keep my draft |
 | `POST /api/v1/plans/:id/scenarios/:sid/discard` | write | `{ tickets }` or `{ all: true }`: `{ discarded, notShown }` |
 | `POST /api/v1/plans/:id/scenarios/:sid/apply` | write | `{ tickets }` (1 to 100) or `{ all: true, after? }`; main only (`not_main`; question 3) |
 | `GET /api/v1/plans/:id/compare?a=&b=` and the views' filters | read | Two sides, each `live` or a scenario id (see Comparing) |
@@ -1697,9 +1698,13 @@ benchmarking. Where this differs from the design above:
   draft names its scenario and plan together by a foreign key, and a scenario of another plan
   cannot hold a draft. Checks keep `team_field_id` equal to the id in `cf:<id>` and both values JSON
   strings, numbers or null; a cleared value is stored as SQL null.
-- **Every write is Keep my draft:** `writeDrafts` stores the live value as the value when drafted
-  on every write, not only the first, so drafting a changed field again is what the page's button
-  does, and an unchanged field keeps its value. A write clears the field's refusal.
+- **Keep my draft is said, not inferred:** `writeDrafts` stores the live value as the value when
+  drafted for a new value, and for a value sent again only with `keep: true` (the page's button).
+  A drafted value sent again without it is left as it was, its value when drafted included, so a
+  change made meanwhile stays marked and an apply refuses it: the Timeline sends both days when
+  only the bar's end moves, and the start it sends is the drafted one. (Built first as "every write
+  is Keep my draft", which let that start's draft lose its mark and apply over the other person's
+  change; fixed after review.) A ticket with a field written or removed loses its refusal.
 - **`start_after_due`** reads, for the day not in the request, the scenario's draft before the live
   value. Its error is on `changes.N.startDate`.
 - **Answers.** The list: `{ plan, editable, scenarios: [{ id, name, main, drafts, notShown,

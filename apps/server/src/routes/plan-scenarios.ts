@@ -905,6 +905,7 @@ export function registerPlanScenarioRoutes(
           updatedBy: o.user.id,
           origin: 'person',
           changes: writes,
+          keep: parsed.data.keep === true,
         });
         if ((await draftedTickets(trx, o.scenario.id)) > MAX_DRAFTED_TICKETS) {
           throw new TooManyDrafts();

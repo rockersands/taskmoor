@@ -12,8 +12,10 @@ import { filterShape } from './model';
  *   its due day or its value in a shared, single-value Team field (`cf:<id>`). It keeps the value
  *   the field had when drafted and the new value; drafting changes nothing about the ticket.
  * - `writeDrafts` is the one writer (the auto-scheduler of T-089f writes through it too): setting
- *   a field back to its live value removes the draft, and every write takes the live value as the
- *   value when drafted, so drafting again after a change made meanwhile is "Keep my draft".
+ *   a field back to its live value removes the draft, and a new value takes the live value as the
+ *   value when drafted. A value sent again unchanged (a bar's start sent with its moved end) keeps
+ *   the draft as it was, a change made meanwhile still marked; only "Keep my draft" (`keep`) takes
+ *   the live value as the value when drafted for a value it sends again.
  * - `draftOverlay` gives the views the drafted days and Team values in place of the live ones,
  *   only for tickets the viewer is shown; which tickets a view lists never comes from drafts.
  * - `refusalOf` turns the ticket route's answer into the reason an apply gives for a ticket.
@@ -99,7 +101,11 @@ export const draftChange = z
 export type DraftChangeInput = z.infer<typeof draftChange>;
 
 export const draftsBody = z
-  .object({ changes: z.array(draftChange).min(1).max(MAX_DRAFT_REQUEST) })
+  .object({
+    changes: z.array(draftChange).min(1).max(MAX_DRAFT_REQUEST),
+    /** Keep my draft: each value named takes the live value as its value when drafted. */
+    keep: z.literal(true).optional(),
+  })
   .strict()
   .refine((b) => new Set(b.changes.map((c) => c.ticketId)).size === b.changes.length, {
     message: 'duplicate_ticket',
@@ -253,8 +259,10 @@ export interface WrittenDrafts {
 
 /**
  * Writes drafts into a scenario (the caller holds the scenario's row lock). A value equal to the
- * live one removes the field's draft; any other is stored with the live value as its value when
- * drafted, its refusal cleared. The last write wins.
+ * live one removes the field's draft; a new value is stored with the live value as its value when
+ * drafted. A field's drafted value sent again is left as it was, its value when drafted included,
+ * unless `keep` is set (Keep my draft): then it too takes the live value. A ticket with a field
+ * written or removed loses its refusal. The last write wins.
  */
 export async function writeDrafts(
   trx: Transaction<Database>,
@@ -265,6 +273,8 @@ export async function writeDrafts(
     updatedBy: number;
     origin: PlanDraftOrigin;
     changes: readonly DraftWrite[];
+    /** Keep my draft: a value sent again takes the live value as its value when drafted. */
+    keep?: boolean;
   },
 ): Promise<WrittenDrafts> {
   const out: WrittenDrafts = { set: [], removed: [] };
@@ -289,6 +299,10 @@ export async function writeDrafts(
         toRemove.push(c);
         out.removed.push({ ticketId: c.ticketId, field: c.field });
       }
+      continue;
+    }
+    // The same value again, beside another field's change: the draft stays as it was.
+    if (!options.keep && before.has(key) && sameValue(before.get(key) as DraftValue, c.value)) {
       continue;
     }
     toSet.push(c);
@@ -335,6 +349,17 @@ export async function writeDrafts(
           refused_at: null,
         })),
       )
+      .execute();
+  }
+  // A ticket whose drafts changed is no longer refused: its next apply says again.
+  const touched = [...new Set([...out.set, ...out.removed].map((c) => c.ticketId))];
+  if (touched.length > 0) {
+    await trx
+      .updateTable('plan_draft')
+      .set({ refusal: null, refused_at: null })
+      .where('scenario_id', '=', options.scenarioId)
+      .where('ticket_id', 'in', touched)
+      .where('refusal', 'is not', null)
       .execute();
   }
   return out;

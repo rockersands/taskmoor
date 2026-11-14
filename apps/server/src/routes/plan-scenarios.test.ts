@@ -639,8 +639,16 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
       url: `${plan()}/timeline?scenario=${faster.id}`,
     });
     expect(timeline.items.find((i: { id: number }) => i.id === t.alpha.id).draft.stale).toBe(true);
-    // Keep my draft: the same value again takes the live value as the value when drafted.
+    // The same value again leaves the draft as it was, still changed since drafted.
     await draft('admin', faster.id, [{ ticketId: t.alpha.id, dueDate: '2027-03-12' }]);
+    list = await changes('admin', faster.id);
+    expect(alpha().state).toBe('changed');
+    // Keep my draft: the same value again takes the live value as the value when drafted.
+    await call('admin', {
+      method: 'PUT',
+      url: scen(faster.id, '/drafts'),
+      payload: { keep: true, changes: [{ ticketId: t.alpha.id, dueDate: '2027-03-12' }] },
+    });
     list = await changes('admin', faster.id);
     expect(alpha().state).toBe('ready');
     expect(alpha().fields[0]).toMatchObject({
@@ -1422,5 +1430,73 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
     });
     expect(drafted.statusCode, drafted.body).toBe(400);
     expect(drafted.json().error).toBe('invalid_fields');
+  });
+
+  /** The plan's main scenario now. */
+  const mainScenario = async () =>
+    (
+      (await call('admin', { method: 'GET', url: `${plan()}/scenarios` })).scenarios as Scenario[]
+    ).find((x) => x.main) as Scenario;
+
+  it('[PLN-002] keeps a drafted day sent again beside another change: still changed since drafted, never applied over that change', async () => {
+    const main = await mainScenario();
+    const ops = await ticket('SCB', 'Ops four', { startDate: '2027-11-01', dueDate: '2027-11-05' });
+    await draft('admin', main.id, [
+      { ticketId: ops.id, startDate: '2027-12-01', dueDate: '2027-12-10' },
+    ]);
+    // Someone else moves the start live.
+    await patchTicket('admin', ops.key, { startDate: '2027-11-20' });
+    // Only the bar's end moves in the scenario: the Timeline sends both days, the start as drafted.
+    const since = await lastEventId();
+    await draft('admin', main.id, [
+      { ticketId: ops.id, startDate: '2027-12-01', dueDate: '2027-12-12' },
+    ]);
+    expect((await eventsOf('plan.drafts_set', since))[0]?.payload).toMatchObject({
+      changes: [{ ticketId: ops.id, field: 'dueDate', from: '2027-12-10', to: '2027-12-12' }],
+      removed: [],
+    });
+    const row = async () =>
+      (await changes('admin', main.id)).changes.find((c) => c.ticketId === ops.id) as Change;
+    const moved = await row();
+    expect(moved.state).toBe('changed');
+    expect(moved.fields).toEqual([
+      expect.objectContaining({
+        field: 'dueDate',
+        was: '2027-11-05',
+        draft: '2027-12-12',
+        state: 'ready',
+      }),
+      expect.objectContaining({
+        field: 'startDate',
+        was: '2027-11-01',
+        now: '2027-11-20',
+        draft: '2027-12-01',
+        state: 'changed',
+      }),
+    ]);
+    // An apply refuses it, and the start stays as the other person set it.
+    const refused = await apply('admin', main.id, { tickets: [ops.id] });
+    expect(refused.refused).toEqual([
+      {
+        ticketId: ops.id,
+        key: ops.key,
+        reason: 'changed_meanwhile',
+        now: { startDate: '2027-11-20', dueDate: '2027-11-05' },
+      },
+    ]);
+    expect((await live(ops.id)).start).toBe('2027-11-20');
+    // Keep my draft takes the start as it is now, and clears the refusal: then it applies.
+    await call('admin', {
+      method: 'PUT',
+      url: scen(main.id, '/drafts'),
+      payload: {
+        keep: true,
+        changes: [{ ticketId: ops.id, startDate: '2027-12-01', dueDate: '2027-12-12' }],
+      },
+    });
+    expect(await row()).toMatchObject({ state: 'ready', refusal: null });
+    const applied = await apply('admin', main.id, { tickets: [ops.id] });
+    expect(applied.applied).toEqual([{ ticketId: ops.id, key: ops.key }]);
+    expect(await live(ops.id)).toMatchObject({ start: '2027-12-01', due: '2027-12-12' });
   });
 });

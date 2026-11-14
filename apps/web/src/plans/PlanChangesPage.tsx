@@ -220,7 +220,7 @@ export function PlanChangesPage({
     onChanged();
   };
 
-  /** Drafts the same values again: the value now becomes the value when drafted. */
+  /** Drafts the same values again, kept: the value now becomes the value when drafted. */
   const keep = async (c: PlanChange) => {
     setProblem(null);
     const change = {
@@ -240,7 +240,7 @@ export function PlanChangesPage({
           }
         : {}),
     };
-    const r = await client.draft(planId, scenario.id, [change]).catch(() => null);
+    const r = await client.draft(planId, scenario.id, [change], { keep: true }).catch(() => null);
     if (!r?.ok) {
       setProblem(r ? scenarioRefusal(t, r.code) : t('scenario.refused.other'));
       return;

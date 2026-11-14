@@ -69,7 +69,7 @@ export function fakeScenarioClient(
   const discards: (number[] | 'all')[] = [];
   const live = () => new Map(plans.items().map((i) => [i.id, i]));
 
-  const write = (scenario: Held, changes: DraftInput[]) => {
+  const write = (scenario: Held, changes: DraftInput[], keep = false) => {
     const now = live();
     for (const c of changes) {
       const ticket = now.get(c.ticketId);
@@ -80,9 +80,11 @@ export function fakeScenarioClient(
         ['dueDate', c.dueDate, ticket.due],
       ] as const) {
         if (value === undefined) continue;
-        // A field set back to its live value loses its draft; every write keeps the value now.
+        // A field set back to its live value loses its draft; a new value keeps the value now, as
+        // does the same value again only with Keep my draft.
         if (value === liveValue) delete days[field];
-        else days[field] = { was: liveValue, draft: value };
+        else if (keep || days[field]?.draft !== value)
+          days[field] = { was: liveValue, draft: value };
       }
       scenario.refused.delete(c.ticketId);
       if (Object.keys(days).length === 0) scenario.drafts.delete(c.ticketId);
@@ -339,7 +341,7 @@ export function fakeScenarioClient(
         ...page(s),
       });
     },
-    draft: async (_planId, sid, changes) => {
+    draft: async (_planId, sid, changes, options = {}) => {
       writes.push(changes);
       const s = find(sid);
       if (!s) return refusedOutcome('not_found');
@@ -367,7 +369,7 @@ export function fakeScenarioClient(
         }
       });
       if (Object.keys(bad).length > 0) return refusedOutcome('invalid_fields', bad);
-      write(s, changes);
+      write(s, changes, options.keep === true);
       return {
         ok: true,
         value: structuredClone(
