@@ -50,18 +50,18 @@ The link opens **Set up Taskmoor**. Fill in:
 
 | Section | Field | Notes |
 |---|---|---|
-| **Instance** | **Instance name** | Required, up to 100 characters; it leads the page title |
+| **Site** | **Site name** | Required, up to 100 characters; it leads the page title |
 | **Administrator** | **Name**, **Email** | Your own account |
 | | **Password**, **Confirm password** | At least 12 characters and at most 128; refused when it is common, predictable, or contains your name, your email address or the product name |
 | **Outgoing mail (optional)** | **Configure outgoing mail now** | Shows **SMTP host**, **SMTP port** (587), **Use TLS from the start (SMTPS)**, **SMTP user name** and **Sender address** |
 
-**Finish setup** creates the account as a site administrator, records the instance name, marks
+**Finish setup** creates the account as a site administrator, records the site name, marks
 setup as done, deletes the token, signs you in and opens **Home**. On the new site only site
 administrators may create tracks, until they give that permission to someone
 ([Tracks](tracks.md#who-may-create-one)). Taskmoor does not yet let you
-change the instance name after setup.
+change the site name after setup.
 
-The mail fields are stored with the instance, and the server sends email through that server
+The mail fields are stored with the site, and the server sends email through that server
 from then on, without a restart. The password always comes from the environment: when you
 give an SMTP user name, set `TASKMOOR_SMTP_PASSWORD` too. When the environment names a server
 with `TASKMOOR_SMTP_URL` ([mail settings](configuration.md#mail)), that one wins over the form.

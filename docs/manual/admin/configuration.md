@@ -36,7 +36,7 @@ default), or a comma-separated list of these roles.
 | `api` | The REST API under `/api/`, sign-in and setup. It owns the database schema: it applies pending migrations when it starts, and prints the setup link while setup is not done |
 | `worker` | Background work: events and jobs, notification emails, search subscriptions, scheduled backups and their drills, the trash purge, audit retention, imports, bulk changes, webhook deliveries, directory syncs and sprint cycles |
 | `realtime` | WebSockets on the same port: live updates (`/api/v1/sync/socket`) and co-editing (`/api/v1/collab`) |
-| `web` | The web app from `TASKMOOR_WEB_DIR`, with its settings filled in for this instance |
+| `web` | The web app from `TASKMOOR_WEB_DIR`, with its settings filled in for this site |
 
 Every role but `web` needs `DATABASE_URL`. The Compose kits and the all-in-one image run
 `all`; the Helm chart runs `api,web,realtime` in its app pods and `worker` in its worker pods.
@@ -83,12 +83,12 @@ wildcard such as `https://*.example.com` stops the server at start. Site adminis
 more frontends under **Administration > Frontends** without a restart
 ([adding frontends](builder-kits.md#adding-frontends-without-a-restart)).
 
-## Setup and instance identity
+## Setup and site identity
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `TASKMOOR_SETUP_TOKEN` | A new one at every start | A fixed first-run token, at least 16 characters ([first-run setup](first-run.md)) |
-| `TASKMOOR_INSTANCE_ID`, `TASKMOOR_INSTANCE_KEY` | none | Pair. The instance's id (a UUID) and its Ed25519 key seed from a Builder kit; they seed the identity the first time it is needed, and an identity already stored is kept |
+| `TASKMOOR_INSTANCE_ID`, `TASKMOOR_INSTANCE_KEY` | none | Pair. The site's id (a UUID) and its Ed25519 key seed from a Builder kit; they seed the identity the first time it is needed, and an identity already stored is kept |
 
 ## Secrets and keys
 

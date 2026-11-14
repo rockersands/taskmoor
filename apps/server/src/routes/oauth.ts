@@ -338,7 +338,7 @@ export async function registerOAuthRoutes(
     if ((await clientCount(db, workspaceId)) >= MAX_CLIENTS) {
       return reply.code(400).send({
         error: 'invalid_client_metadata',
-        error_description: 'This instance holds as many registered clients as it takes',
+        error_description: 'This site holds as many registered clients as it takes',
       });
     }
     const id = newClientId();

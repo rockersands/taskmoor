@@ -39,7 +39,7 @@ also renames a label.
 
 ### The Points field
 
-A workspace starts with a shared number field called **Points**, stored under that name and shown as
+A site starts with a shared number field called **Points**, stored under that name and shown as
 **Puntos** to someone using Taskmoor in Spanish. It covers every track and ticket type, so it is on
 the forms and in search like any custom field you add. Boards of new tracks estimate with it; their
 [sprint settings](../use/boards.md#sprint-settings) choose another statistic if you prefer.
@@ -49,7 +49,7 @@ the forms and in search like any custom field you add. Boards of new tracks esti
 - **Remove it** once no ticket holds a value, as with any field. Boards that estimated with it go back
   to the original time estimate, and it does not come back on its own.
 
-On upgrade, a workspace that already has a shared number field named Points or Puntos, or under the
+On upgrade, a site that already has a shared number field named Points or Puntos, or under the
 name an imported one usually has, keeps it and gets no second one (the oldest counts, if it has
 several). The boards that follow are
 those on the default statistic, unless the track's tickets already hold time estimates; a board that

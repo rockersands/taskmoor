@@ -22,7 +22,7 @@ afterEach(() => {
 describe('the plans (PLN-001)', () => {
   it('[PLN-001] lists the person’s plans and those shared with them', async () => {
     renderPlans();
-    expect(await screen.findByRole('heading', { name: 'Multi-track' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Plans' })).toBeVisible();
     // The plans arrive after the page's heading.
     const others = within(await screen.findByRole('region', { name: 'Shared with you' }));
     expect(others.getByRole('link', { name: 'Data centre move' })).toHaveAttribute(

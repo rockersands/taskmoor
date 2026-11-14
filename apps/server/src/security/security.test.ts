@@ -273,7 +273,7 @@ describe('security events (ADR-109)', () => {
         expect(email.text).not.toContain(setup.secret);
         for (const code of recoveryCodes) expect(email.text).not.toContain(code);
       }
-      expect(mine[3]?.text).toContain('Lo hizo un administrador de tu espacio de trabajo.');
+      expect(mine[3]?.text).toContain('Lo hizo un administrador del sitio.');
     });
 
     it('[IAM-001] ASVS 2.5.5: an email change is told to the old address, with the new one masked', async () => {

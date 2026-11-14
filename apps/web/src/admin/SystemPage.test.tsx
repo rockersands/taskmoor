@@ -29,9 +29,9 @@ describe('system status page', () => {
     // Healthy reads as success, not the accent (AD-33); the help mark is there (AD-20).
     expect(await screen.findByText('Connected')).toHaveClass('badge-success');
     expect(screen.getByRole('button', { name: 'What is System status for?' })).toBeVisible();
-    expect(fact('Instance', 'Version')).toBe('0.4.0');
-    expect(fact('Instance', 'Roles')).toBe('api, worker, realtime, web');
-    expect(fact('Instance', 'Uptime')).toBe('2 d 3 h 25 min');
+    expect(fact('Site', 'Version')).toBe('0.4.0');
+    expect(fact('Site', 'Roles')).toBe('api, worker, realtime, web');
+    expect(fact('Site', 'Uptime')).toBe('2 d 3 h 25 min');
     expect(fact('Database', 'PostgreSQL')).toBe('16.14');
     expect(fact('Database', 'Size')).toBe('4.8 GB');
     expect(fact('Database', 'Migrations')).toBe('2 applied');

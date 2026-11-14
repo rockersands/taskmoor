@@ -27,7 +27,7 @@ A backup is a directory of plain files; nothing in it is encrypted.
 The row counts come from the very snapshot the dump holds, so a restore can prove that every row
 came back.
 
-With the keyring inside, a backup is as sensitive as the live instance: store it encrypted or on
+With the keyring inside, a backup is as sensitive as the live site: store it encrypted or on
 a protected host. The directories Taskmoor creates for backups are owner-only (mode 0700), and
 the database password never appears on a command line or in the backup log.
 
@@ -157,10 +157,10 @@ Without `--yes` the command refuses and exits with 2. The restore:
 - reads the keyring, then restores the database with `pg_restore` (up to four jobs in parallel);
 - keeps this host's backup log as it was;
 - copies the backup's `files` into the data directory;
-- adds the backup's password keys to this instance's keyring, never replacing it, so the
+- adds the backup's password keys to this site's keyring, never replacing it, so the
   restored passwords keep working.
 
-The instance comes back exactly as it was backed up, administrators and their sessions included.
+The site comes back exactly as it was backed up, administrators and their sessions included.
 The database returns at the schema of the version that took the backup; a newer server applies
 its own migrations when it next starts. The same steps restore onto a new host.
 

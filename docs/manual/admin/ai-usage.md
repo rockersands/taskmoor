@@ -10,7 +10,7 @@ attestation: own-words
 Taskmoor's AI features call an AI provider your organisation pays directly. Taskmoor itself
 meters nothing and charges nothing. This page explains how administrators see what AI costs,
 stop it at a ceiling, keep sensitive values out of what is sent, and tell people what leaves the
-instance.
+site.
 
 Open **Administration → AI usage** (`#/admin/ai-usage`) to see it, and **Administration → AI limits
 and prices** (`#/admin/ai-limits`) to change limits and rates. Only site administrators see these
@@ -18,7 +18,7 @@ pages.
 
 ## What the page shows
 
-- **What leaves this instance**: the provider and region AI features send data to, what each
+- **What leaves this site**: the provider and region AI features send data to, what each
   feature that is turned on sends, what is never sent, the redaction in force and whether any
   content is kept. The statement is generated from the current settings, so it changes when a
   feature, model or provider changes.
@@ -117,7 +117,7 @@ Not yet: redaction by data classification waits for classification levels (a lat
 
 ## The notice before first use
 
-Before a person first uses an AI feature, Taskmoor shows them what leaves the instance and where
+Before a person first uses an AI feature, Taskmoor shows them what leaves the site and where
 it goes, and the feature appears once they choose **I understand**. Their answer is recorded
 once (`ai_notice.acknowledged` in the audit log).
 

@@ -38,7 +38,7 @@ export const Off: Story = {
   args: { client: fakeAiClient(aiView({ enabled: false })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole('checkbox', { name: 'Use AI in this workspace' });
+    await canvas.findByRole('checkbox', { name: 'Use AI on this site' });
     await expect(canvas.queryByRole('heading', { name: 'Tracks' })).toBeNull();
   },
 };

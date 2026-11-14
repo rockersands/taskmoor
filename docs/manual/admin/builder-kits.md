@@ -8,7 +8,7 @@ attestation: own-words
 # The Builder's kits
 
 The Builder turns one set of answers (the addresses, a name, mail settings) into the files an
-install needs, with fresh secrets and a signed description of the instance that both halves
+install needs, with fresh secrets and a signed description of the site that both halves
 share. It comes in two forms that give the same files: a web page that runs in your browser
 with no network, and a command in the source repository, `pnpm builder`.
 
@@ -17,7 +17,7 @@ with no network, and a command in the source repository, `pnpm builder`.
 | File | What it is |
 |---|---|
 | `taskmoor-backend-kit.zip` | For a server with Docker: PostgreSQL, the backend at the exact version and Caddy for HTTPS, with installers and a README of DNS records. For Helm, a values file and a Secret instead |
-| `taskmoor-frontend-kit.zip` | The web app for a static host: configured, pinned to its instance, with integrity hashes and the host's fallback files |
+| `taskmoor-frontend-kit.zip` | The web app for a static host: configured, pinned to its site, with integrity hashes and the host's fallback files |
 | `taskmoor-frontend-single.html` | The whole web app in one `index.html`, for a host that takes one file |
 
 ## The Builder page
@@ -28,21 +28,21 @@ version, which it shows under its title. Open it in a browser straight from the 
 any web host. It works offline, and it can send nothing anywhere: its content security policy
 allows no request, and its secrets come from the browser's own generator.
 
-1. Fill in the two addresses and whatever else you need: the instance name, the default
+1. Fill in the two addresses and whatever else you need: the site name, the default
    language, clean or hash addresses, how the app signs in, the deployment target, and
    optionally an SMTP server and an AI provider with their password and key. Each problem
    shows under its field.
 2. Choose **Make the kits**. Three download links appear, each with its size and its SHA-256,
    so you can compare a download with a file the command line wrote.
 3. Choose **Save project file** to keep the settings in `taskmoor-project.json`. With a
-   passphrase, the file also keeps the instance secrets of the kits you made, and the SMTP
+   passphrase, the file also keeps the site's secrets from the kits you made, and the SMTP
    password and AI key, encrypted. Without one it keeps the settings only.
 
 To make the same kits again, open the page, type the passphrase, choose **Load a project
 file**, then **Make the kits**. Loading a project that keeps secrets without its passphrase
-loads its settings only, and the page says so: the next kits then get a new instance. Until
-you reload the page or load another project, every run keeps the instance of the first one, so
-changing a setting and making the kits again does not change the instance.
+loads its settings only, and the page says so: the next kits then get a new site. Until
+you reload the page or load another project, every run keeps the site of the first one, so
+changing a setting and making the kits again does not change the site.
 
 The **Reproducible secrets** section takes a seed, as `--seed` does on the command line: the
 same project and seed give the same files on the page and in `pnpm builder`. The same warning
@@ -118,7 +118,7 @@ The project file keeps the answers, so you can build the kits again. It is JSON:
 The file holds no secret. It can carry the secrets only encrypted with a passphrase
 (PBKDF2-SHA-256 with 600,000 rounds, then AES-256-GCM), which `--passphrase-env` opens. The
 Builder page writes such a file when you save with a passphrase; the command line cannot. A
-run from a file without secrets and without a seed makes new secrets and a new instance
+run from a file without secrets and without a seed makes new secrets and a new site
 identity: a frontend kit built later does not match a backend installed from an earlier run.
 Keep the project file with its passphrase, or the zips of the run you installed.
 
@@ -129,22 +129,22 @@ refuses to start with a user and no password.
 
 ## The connection manifest
 
-Both kits carry the same `connection-manifest.json`, signed with the instance's private key
-(Ed25519). It names the instance id and name, its public key and fingerprint, the API and
+Both kits carry the same `connection-manifest.json`, signed with the site's private key
+(Ed25519). It names the site id and name, its public key and fingerprint, the API and
 WebSocket addresses, the allowed frontend origin, the routing mode and base path, and the
 backend and kit versions. The Builder refuses to write kits that disagree: the signature, the
-addresses, the instance, the key and the routing must match on both sides, and no secret of the
+addresses, the site, the key and the routing must match on both sides, and no secret of the
 run may appear anywhere in the frontend kit.
 
 The backend kit's `.env` gives the server its identity (`TASKMOOR_INSTANCE_ID` and
-`TASKMOOR_INSTANCE_KEY`). The frontend kit's `index.html` pins the instance id and the public
+`TASKMOOR_INSTANCE_KEY`). The frontend kit's `index.html` pins the site id and the public
 key. When the app starts, it asks the backend's `/api/meta` to sign a fresh random value and
-checks the answer. A backend that is not the pinned instance gets **This app belongs to
+checks the answer. A backend that is not the pinned site gets **This app belongs to
 another server** in place of the app, so nobody types a password into the wrong server.
 
 ## Installing a backend kit
 
-The kit for Compose holds `.env` (the settings and every secret of the instance),
+The kit for Compose holds `.env` (the settings and every secret of the site),
 `docker-compose.yml`, `Caddyfile`, `install.sh`, `install.ps1`, `README.md` and the manifest.
 
 1. Create the DNS record that `README.md` lists: an A record (and AAAA for IPv6) for the
@@ -190,7 +190,7 @@ helm install taskmoor deploy/helm/taskmoor -f values.yaml
 ```
 
 The Secret is named `taskmoor-kit`; the values point the chart's database, setup token, pepper
-and instance identity at it. See [Kubernetes with Helm](helm.md).
+and site identity at it. See [Kubernetes with Helm](helm.md).
 
 ## Putting the frontend kit on a static host
 

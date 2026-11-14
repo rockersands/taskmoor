@@ -10,7 +10,7 @@ jira-names: import sources and field mapping
 
 Taskmoor imports CSV files, its own full exports, a Jira Data Center backup's configuration
 and issues, and a Jira Cloud site (or any server with a Jira-compatible REST API) read with your
-own API token, and exports a whole workspace, chosen tracks, or the results of a search. Imports are
+own API token, and exports a whole site, chosen tracks, or the results of a search. Imports are
 for site administrators and run in the background; exports of search results are open to
 everyone who can search.
 
@@ -143,7 +143,7 @@ Content-Type: application/json
 `taskmoor` (see [Importing an export](#importing-an-export)), `dc-backup` (see
 [Data Center backups](#data-center-backups)), `cloud-rest` (see
 [Jira Cloud sites](#jira-cloud-sites)), or `synthetic`, a test format of Taskmoor's own
-with a seeded generator, for trying the importer on a scratch instance.
+with a seeded generator, for trying the importer on a scratch site.
 
 ### Following a run
 
@@ -214,7 +214,7 @@ imports the tickets too, but not
 their comments, history, time entries, links, web links and attachments, which are counted with
 the reason `tickets_only`.
 
-The source's system administrators become site administrators, who run the instance and see
+The source's system administrators become site administrators, who run the site and see
 every track. Add `"systemAdmins": "configuration_admin"` to make them configuration
 administrators instead: they manage the configuration but not the site, and the report warns
 `system_admin_as_configuration_admin`. Importing again with the other choice changes the grants
@@ -228,7 +228,7 @@ the numbers; raise them with `TASKMOOR_ARCHIVE_MAX_GIB`, `TASKMOOR_ARCHIVE_MAX_R
 
 `system` names the Jira instance, by default `dc`. Importing a later backup with the same
 `system` updates what the first import made instead of adding copies. Give each instance its own
-name if you import several into one workspace.
+name if you import several into one site.
 
 The request only checks that the file is a ZIP with `entities.xml` at its root. The job then
 reads the whole backup once, as a stream, and keeps what it read in a folder next to the ZIP
@@ -661,8 +661,8 @@ its order and in the columns shown, never a ticket the person could not see. The
 
 ## Full export
 
-A full export writes a workspace as documented plain files that any tool can read and another
-Taskmoor instance can import.
+A full export writes a site as documented plain files that any tool can read and another
+Taskmoor site can import.
 
 - **Download:** a site administrator opens `GET /api/v1/admin/export` and receives
   `taskmoor-export-<date>.zip`, written while it downloads. `?tracks=KEY,KEY` exports only those
@@ -686,7 +686,7 @@ time entries, attachments and history, plus the files under `attachments/`.
   is Taskmoor's stored document format, unchanged.
 - Tickets on higher hierarchy levels come first, so a parent precedes its children. A history
   record is one change of one ticket, with fields named as the query language names them.
-- The manifest names the format and its version (1), the source instance and workspace, the time,
+- The manifest names the format and its version (1), the source site, the time,
   the chosen tracks, and for each file its records, size and SHA-256. It is written last: an
   export without one is incomplete, and an import refuses it.
 
@@ -703,12 +703,12 @@ backup apply before it is unpacked, and a refused or broken ZIP leaves nothing b
 matched rather than created: people by email; groups, teams, roles, statuses, priorities, close reasons,
 ticket types, link types and workflows by name; fields, releases and areas by name within what
 they belong to. Importing the same export again changes nothing, and a later export of the same
-workspace updates what changed and adds what is new. People arrive without a password: they sign
+site updates what changed and adds what is new. People arrive without a password: they sign
 in through single sign-on or after an administrator sends them a password link.
 
 ### Not carried
 
-These stay with the source instance, and the report says what could not come across:
+These stay with the source site, and the report says what could not come across:
 
 - access policies, track role memberships, global permissions, visibility policies (a ticket
   with a visibility level fails to import), notification policies, field rule sets, layouts, and

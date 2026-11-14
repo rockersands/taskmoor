@@ -156,7 +156,7 @@ describe('API tokens on the Account page', () => {
     const options = within(short.section.getByLabelText('Expires after')).getAllByRole('option');
     expect(options.map((o) => o.getAttribute('value'))).toEqual(['7', '30', '45']);
     expect(short.section.getByLabelText('Expires after')).toHaveValue('30');
-    expect(short.section.getByText('Tokens last at most 45 days on this instance.')).toBeVisible();
+    expect(short.section.getByText('Tokens last at most 45 days on this site.')).toBeVisible();
   });
 
   it('[IAM-007] lists two-year lifetimes when the administrator allows them', async () => {

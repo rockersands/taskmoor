@@ -239,7 +239,7 @@ export const messagesEn = {
     'Every track you can see. Open one for its summary, board, backlog, calendar, timeline and statistics.',
   'nav.search': 'Search',
   'nav.dashboards': 'Dashboards',
-  'nav.plans': 'Multi-track',
+  'nav.plans': 'Plans',
   'nav.settings': 'Settings',
   // Navigation sections and page purposes (ADR-114): every page says in one line what it is for.
   'nav.group.you': 'Your work',
@@ -251,8 +251,6 @@ export const messagesEn = {
     'A board shows tickets as cards in columns, one column per step of the work. Move a card to move the work.',
   'purpose.board':
     'Cards move from left to right as the work moves on: drag one to another column to move its ticket.',
-  'purpose.ticket':
-    'One piece of work: what it is, where it stands, who has it and everything that happened to it.',
   'purpose.inbox': 'Mentions of you and changes to the tickets you follow, newest first.',
   'purpose.search':
     'Find tickets with filters or the query language, and save the searches you reuse.',
@@ -301,7 +299,7 @@ export const messagesEn = {
     'The rules that keep accounts safe: second factors and the alerts you receive.',
   'admin.system.about':
     'Read when something seems wrong: whether the database answers, how the background jobs and backups are doing, and which version runs. Times are shown in your time zone unless they say UTC.',
-  'purpose.system': 'How this instance is doing right now: its database, its jobs and its version.',
+  'purpose.system': 'How this site is doing right now: its database, its jobs and its version.',
   'admin.trash.about':
     'A deleted ticket or track waits here for the days the trash policy keeps it. Restoring brings it back as it was; when its time is up it is deleted for good.',
   'purpose.trash':
@@ -434,7 +432,7 @@ export const messagesEn = {
   // The guided tutorial (ADR-115): sections a person picks, each making one real thing.
   'tutorial.title': 'Tutorials',
   'tutorial.purpose':
-    'Learn Taskmoor by doing: each section walks you through making one real thing in this instance. Pick the sections you want; you can skip, pause and come back at any time.',
+    'Learn Taskmoor by doing: each section walks you through making one real thing on this site. Pick the sections you want; you can skip, pause and come back at any time.',
   'tutorial.about':
     'A tutorial highlights the control to use next and waits for you to use it. What you make is real and stays, so you can keep it or delete it afterwards. Your progress is saved with your account.',
   'tutorial.startSelected':
@@ -509,7 +507,7 @@ export const messagesEn = {
   // The steps of each section: what to do, and why it matters.
   'tutorial.step.tracks.intro.title': 'Tracks and tickets',
   'tutorial.step.tracks.intro.body':
-    'A track holds one piece of work and its tickets. You will make a ticket, comment on it and attach a file. What you make is real and stays in this instance, so you can keep it or delete it at the end.',
+    'A track holds one piece of work and its tickets. You will make a ticket, comment on it and attach a file. What you make is real and stays on this site, so you can keep it or delete it at the end.',
   'tutorial.step.tracks.newTrack.title': 'Start a new track',
   'tutorial.step.tracks.newTrack.body':
     'On the Tracks page, choose New track. Each track gets its own board, backlog and key for its tickets.',
@@ -536,10 +534,10 @@ export const messagesEn = {
     'Choose Attach files, or drop a file on the ticket. Files stay with the ticket for everyone who can see it.',
   'tutorial.step.tracks.finish.title': 'Your ticket is ready',
   'tutorial.step.tracks.finish.body':
-    'What you made stays in this instance. Keep it to try more, or open the ticket to delete it.',
+    'What you made stays on this site. Keep it to try more, or open the ticket to delete it.',
   'tutorial.step.workflows.intro.title': 'Workflows',
   'tutorial.step.workflows.intro.body':
-    'A workflow lists the statuses tickets move through and the moves between them. You will draw one, publish it and give it to a track. It is real and stays in this instance.',
+    'A workflow lists the statuses tickets move through and the moves between them. You will draw one, publish it and give it to a track. It is real and stays on this site.',
   'tutorial.step.workflows.newWorkflow.title': 'Start a new workflow',
   'tutorial.step.workflows.newWorkflow.body':
     'On the Workflows page in Administration, choose Create a workflow.',
@@ -560,7 +558,7 @@ export const messagesEn = {
     'On Tracks in Administration, open a track and choose your map as its workflow map. Its tickets then follow your workflow.',
   'tutorial.step.workflows.finish.title': 'Your workflow is in use',
   'tutorial.step.workflows.finish.body':
-    'It stays in this instance. Open it to change it again; it can be deleted once no track uses it.',
+    'It stays on this site. Open it to change it again; it can be deleted once no track uses it.',
   'tutorial.step.boards.intro.title': 'Boards and sprints',
   'tutorial.step.boards.intro.body':
     'Each track has a board that shows its tickets by status, and a backlog to plan in. You will move a card, then plan a sprint and start it. What you change is real.',
@@ -584,7 +582,7 @@ export const messagesEn = {
     'Choose Start sprint. Its tickets then fill the board until you complete it.',
   'tutorial.step.boards.finish.title': 'Your sprint is running',
   'tutorial.step.boards.finish.body':
-    'It stays in this instance. Complete it from the board or the backlog whenever the work is done.',
+    'It stays on this site. Complete it from the board or the backlog whenever the work is done.',
   'tutorial.step.search.intro.title': 'Search and saved searches',
   'tutorial.step.search.intro.body':
     'Search finds tickets in every track you can see. You will search two ways and save a search to use again. The saved search is real and stays.',
@@ -604,10 +602,10 @@ export const messagesEn = {
     'Choose Save as new and give it a name. A saved search can feed a board, a dashboard or an email.',
   'tutorial.step.search.finish.title': 'Your search is saved',
   'tutorial.step.search.finish.body':
-    'It stays in this instance. Open it again from the saved searches on this page whenever you need it.',
+    'It stays on this site. Open it again from the saved searches on this page whenever you need it.',
   'tutorial.step.dashboards.intro.title': 'Dashboards',
   'tutorial.step.dashboards.intro.body':
-    'A dashboard puts the lists and numbers you check often on one page. You will make one and add a widget. It is real and stays in this instance.',
+    'A dashboard puts the lists and numbers you check often on one page. You will make one and add a widget. It is real and stays on this site.',
   'tutorial.step.dashboards.openDashboards.title': 'Open Dashboards',
   'tutorial.step.dashboards.openDashboards.body': 'Choose Dashboards in the navigation.',
   'tutorial.step.dashboards.newDashboard.title': 'Make a dashboard',
@@ -621,10 +619,10 @@ export const messagesEn = {
     'Pick a widget, add it, set it up and choose Save dashboard. While editing, drag widgets to arrange them.',
   'tutorial.step.dashboards.finish.title': 'Your dashboard is ready',
   'tutorial.step.dashboards.finish.body':
-    'It stays in this instance. On its page you can share it, show it as a wallboard or delete it.',
+    'It stays on this site. On its page you can share it, show it as a wallboard or delete it.',
   'tutorial.step.releases.intro.title': 'Releases',
   'tutorial.step.releases.intro.body':
-    'A release gathers the tickets that ship together. You will make one, aim a ticket at it and mark it shipped. It is real and stays in this instance.',
+    'A release gathers the tickets that ship together. You will make one, aim a ticket at it and mark it shipped. It is real and stays on this site.',
   'tutorial.step.releases.openReleases.title': 'Open a track’s releases',
   'tutorial.step.releases.openReleases.body': 'Open a track and choose its Releases tab.',
   'tutorial.step.releases.newRelease.title': 'Make a release',
@@ -638,7 +636,7 @@ export const messagesEn = {
     'Open the release, choose Ship this release and confirm. Its tickets then count as shipped.',
   'tutorial.step.releases.finish.title': 'Your release has shipped',
   'tutorial.step.releases.finish.body':
-    'It stays in this instance with its notes, in the track’s releases.',
+    'It stays on this site with its notes, in the track’s releases.',
   'tutorial.step.admin.intro.title': 'Administration',
   'tutorial.step.admin.intro.body':
     'You will add a person, put them in a group and give the group a role in a track, so access follows the group. All of it is real and stays.',
@@ -656,7 +654,7 @@ export const messagesEn = {
     'On Tracks in Administration, open a track and give the role to your group. Everyone in the group gets that role’s access.',
   'tutorial.step.admin.finish.title': 'Access is set',
   'tutorial.step.admin.finish.body':
-    'The person, the group and the role stay in this instance. Change or remove them on the same pages.',
+    'The person, the group and the role stay on this site. Change or remove them on the same pages.',
   'tutorial.step.import.intro.title': 'Import',
   'tutorial.step.import.intro.body':
     'You will bring tickets in from a CSV file. A dry run checks the file first and changes nothing; the import itself is real.',
@@ -671,7 +669,7 @@ export const messagesEn = {
     'If the report looks right, choose Import. The report stays with the run.',
   'tutorial.step.import.finish.title': 'Your tickets are in',
   'tutorial.step.import.finish.body':
-    'They stay in this instance. The import’s report lists everything that came in.',
+    'They stay on this site. The import’s report lists everything that came in.',
   'boards.emptyScrumTitle': 'No sprint is running',
   'boards.emptyScrumBody':
     'A Scrum board shows the tickets of its running sprint. Plan a sprint in the backlog and start it; its tickets then show here.',
@@ -913,17 +911,17 @@ export const messagesEn = {
     'How much the attachments take, against the storage quotas. Both quotas are off unless you set them; an upload that would pass one is refused, and what is stored stays.',
   'storage.loading': 'Reading the storage use…',
   'storage.loadFailed': 'The storage use could not be read. Try again in a moment.',
-  'storage.workspace': 'The whole workspace',
+  'storage.workspace': 'The whole site',
   'storage.usedOf': '{used} of {limit}, in {files, number} files',
   'storage.usedNoQuota': '{used} in {files, number} files; no quota',
-  'storage.workspaceShare': 'The workspace: {share} percent of its quota used',
+  'storage.workspaceShare': 'The site: {share} percent of its quota used',
   'storage.person': 'One person',
   'storage.nobody': 'Nobody has uploaded anything yet',
   'storage.topOf': 'Most used: {used} of {limit}, by {name}',
   'storage.topNoQuota': 'Most used: {used}, by {name}; no quota',
   'storage.personShare': '{name}: {share} percent of the quota per person used',
   'storage.form': 'Change the storage quotas',
-  'storage.workspaceQuota': 'Workspace quota (GiB)',
+  'storage.workspaceQuota': 'Site quota (GiB)',
   'storage.personQuota': 'Quota per person (GiB)',
   'storage.hint': 'Leave a field empty for no quota.',
   'storage.save': 'Save the quotas',
@@ -1046,9 +1044,9 @@ export const messagesEn = {
     'It contains your name, your email address or the product name.',
   'setup.title': 'Set up Taskmoor',
   'setup.intro':
-    'This runs once. Create the first administrator account and give the instance a name; everything else can be changed later in Settings.',
-  'setup.instance': 'Instance',
-  'setup.instanceName': 'Instance name',
+    'This runs once. Create the first administrator account and give the site a name; everything else can be changed later in Settings.',
+  'setup.instance': 'Site',
+  'setup.instanceName': 'Site name',
   'setup.admin': 'Administrator',
   'setup.adminName': 'Name',
   'setup.confirmPassword': 'Confirm password',
@@ -1076,7 +1074,7 @@ export const messagesEn = {
     'Your name, time zone, language, password, two-factor authentication, signed-in devices and API tokens.',
   'settings.administration': 'Administration',
   'settings.systemStatus': 'System status',
-  'settings.systemStatusHint': 'Version, database, storage, backups and runtime of this instance.',
+  'settings.systemStatusHint': 'Version, database, storage, backups and runtime of this site.',
   'settings.apiTokens': 'API tokens',
   'settings.apiTokensHint':
     'Every token of every person and service account: revoke in bulk, rotation reminders, the token policy.',
@@ -1336,7 +1334,7 @@ export const messagesEn = {
   'tokens.expiry': 'Expires after',
   'tokens.expiryOption': '{days, plural, one {# day} other {# days}} (on {date})',
   'tokens.expiryHint':
-    '{max, plural, one {Tokens last at most # day on this instance.} other {Tokens last at most # days on this instance.}}',
+    '{max, plural, one {Tokens last at most # day on this site.} other {Tokens last at most # days on this site.}}',
   'tokens.expiryTooLong':
     '{max, plural, one {Tokens may last at most # day.} other {Tokens may last at most # days.}}',
   'tokens.scopeNotAllowed': 'Only administrators can give a token the administration scope.',
@@ -2078,7 +2076,7 @@ export const messagesEn = {
   'admin.system.loading': 'Reading the system status…',
   'admin.system.failed': 'The system status could not be read. Try again in a moment.',
   'admin.system.forbidden': 'Only site administrators can see the system status.',
-  'admin.system.instance': 'Instance',
+  'admin.system.instance': 'Site',
   'admin.system.version': 'Version',
   'admin.system.roles': 'Roles',
   'admin.system.started': 'Started',
@@ -2173,7 +2171,7 @@ export const messagesEn = {
   'admin.trash.retentionFailed': 'The retention could not be saved. Try again in a moment.',
   'admin.tokens.title': 'API tokens',
   'admin.tokens.intro':
-    'Every personal and service-account token of this instance. Revoke one, or many at once after a leak or when someone leaves.',
+    'Every personal and service-account token of this site. Revoke one, or many at once after a leak or when someone leaves.',
   'admin.tokens.forbidden': 'Only site administrators can see every token.',
   'admin.tokens.list': 'Tokens',
   'admin.tokens.filter': 'Show',
@@ -2233,7 +2231,7 @@ export const messagesEn = {
   'admin.serviceAccounts.created': 'Created {name}.',
   'admin.serviceAccounts.createFailed':
     'The service account could not be created. Try again in a moment.',
-  'admin.serviceAccounts.list': 'Service accounts of this instance',
+  'admin.serviceAccounts.list': 'Service accounts of this site',
   'admin.serviceAccounts.loading': 'Reading the service accounts…',
   'admin.serviceAccounts.failed': 'The service accounts could not be read. Try again in a moment.',
   'admin.serviceAccounts.none': 'There are no service accounts yet.',
@@ -3679,8 +3677,8 @@ export const messagesEn = {
   'ticketView.time.log': 'Log time',
   'ticketView.time.logged': 'Time logged.',
   'ticketView.time.required': 'Say how long first.',
-  'ticketView.time.invalid': 'That is not a length of time this workspace understands.',
-  'ticketView.time.disabled': 'Time tracking is turned off in this workspace.',
+  'ticketView.time.invalid': 'That is not a length of time this site understands.',
+  'ticketView.time.disabled': 'Time tracking is turned off on this site.',
   'ticketView.time.forbidden': 'You may not log time on this ticket.',
   'ticketView.problem.forbidden': 'You may not make this change to this ticket.',
   'ticketView.problem.stale': 'Someone changed this ticket meanwhile. Read it again and retry.',
@@ -3694,7 +3692,7 @@ export const messagesEn = {
   'comments.mentionWarning.cannotView': '{name} cannot see this ticket and was not notified.',
   'comments.mentionWarning.cannotRead': '{name} cannot read this comment and was not notified.',
   'comments.mentionWarning.unknown':
-    'Someone you mentioned is not in this workspace and was not notified.',
+    'Someone you mentioned is not on this site and was not notified.',
   'comments.mentionWarning.teamView':
     '{count, plural, one {# member of {name} cannot see this ticket and was not notified.} other {# members of {name} cannot see this ticket and were not notified.}}',
   'comments.mentionWarning.teamRead':
@@ -3792,7 +3790,7 @@ export const messagesEn = {
   'attachments.personQuota':
     '{name} was not added: your attachments would pass your storage quota of {limit} ({used} used, {available} left). Delete some, or ask a site administrator to raise it.',
   'attachments.workspaceQuota':
-    '{name} was not added: the workspace would pass its storage quota of {limit} ({used} used, {available} left). Ask a site administrator.',
+    '{name} was not added: the site would pass its storage quota of {limit} ({used} used, {available} left). Ask a site administrator.',
   'attachments.uploadFailed': '{name} could not be attached. Try again in a moment.',
   'attachments.forbidden': 'You may not attach files to this ticket.',
   'attachments.pastedName': 'pasted-{time}',
@@ -3887,7 +3885,7 @@ export const messagesEn = {
   'admin.workflows.loading': 'Loading workflows…',
   'admin.workflows.failed': 'The workflows could not be loaded. Try again later.',
   'admin.workflows.forbidden': 'Only site and configuration administrators manage workflows.',
-  'admin.workflows.list': 'Workflows in this workspace',
+  'admin.workflows.list': 'Workflows on this site',
   'admin.workflows.create': 'Create a workflow',
   'admin.workflows.none': 'No workflows yet.',
   'admin.workflows.default': 'Default',
@@ -3924,7 +3922,7 @@ export const messagesEn = {
   'admin.workflows.import.title': 'Import a workflow file',
   'admin.workflows.import.file': 'Workflow file',
   'admin.workflows.import.fileHint':
-    'A workflow file downloaded from this page, here or on another Taskmoor server. Statuses are matched by name and created when this workspace has none of that name.',
+    'A workflow file downloaded from this page, here or on another Taskmoor server. Statuses are matched by name and created when this site has none of that name.',
   'admin.workflows.import.into': 'Import as',
   'admin.workflows.import.asNew': 'A new workflow',
   'admin.workflows.import.asDraft': 'The next draft of {name}',
@@ -3963,7 +3961,7 @@ export const messagesEn = {
   'admin.workflows.report.onCreate': 'when a ticket is created',
   'admin.statuses.title': 'Statuses',
   'admin.statuses.intro':
-    'Statuses belong to the whole workspace, and each workflow uses some of them. The stage gives a status its colour and meaning.',
+    'Statuses belong to the whole site, and each workflow uses some of them. The stage gives a status its colour and meaning.',
   'admin.statuses.loading': 'Loading statuses…',
   'admin.statuses.failed': 'The statuses could not be loaded.',
   'admin.statuses.add': 'Add a status',
@@ -4043,7 +4041,7 @@ export const messagesEn = {
   'admin.workflow.addStatus': 'Add a status',
   'admin.workflow.addStatusButton': 'Add to workflow',
   'admin.workflow.allStatusesUsed':
-    'Every status of the workspace is in this workflow. New statuses are added on the Workflows page.',
+    'Every status of the site is in this workflow. New statuses are added on the Workflows page.',
   'admin.workflow.addTransition': 'Add a transition',
   'admin.workflow.newTransition': 'New transition',
   'admin.workflow.noTransitions': 'No transitions yet.',
@@ -4276,7 +4274,7 @@ export const messagesEn = {
   'workflow.lint.error': 'Error',
   'workflow.lint.warning': 'Warning',
   'workflow.lint.show': 'Show {name}',
-  'workflow.lint.unknownStatus': 'Status {id} no longer exists in the workspace.',
+  'workflow.lint.unknownStatus': 'Status {id} no longer exists on the site.',
   'workflow.lint.duplicateStatus': '{status} is in the workflow twice.',
   'workflow.lint.initialMissing': 'The initial status, {status}, is not in the workflow.',
   'workflow.lint.duplicateTransition': 'Two transitions share the id {id}.',
@@ -4317,7 +4315,7 @@ export const messagesEn = {
   'workflow.shape.not_system_field': 'At {path}: expected a system field.',
   'workflow.shape.not_assign_target': 'At {path}: expected current-user, requester or a person.',
   'workflow.shape.not_guard': 'At {path}: expected a guard, or a group of all or any.',
-  'workflow.problem.unknown_status': 'Status {statusId} no longer exists in the workspace.',
+  'workflow.problem.unknown_status': 'Status {statusId} no longer exists on the site.',
   'workflow.problem.duplicate_status': '{status} is in the workflow twice.',
   'workflow.problem.initial_not_in_workflow': 'The initial status is not in the workflow.',
   'workflow.problem.duplicate_transition': 'Two transitions share the id {id}.',
@@ -5135,7 +5133,7 @@ export const messagesEn = {
   'dashboards.newName': 'New dashboard',
   'dashboards.create': 'Create dashboard',
   'dashboards.listFailed': 'The dashboards could not be loaded.',
-  // Multi-track plans (T-088; ADR-122).
+  // Plans (T-088; ADR-122).
   'plans.intro':
     'A plan brings the tickets of several tracks and saved searches together in one Summary, Timeline, List and Calendar. Everyone sees in it only the tickets they may see anyway.',
   'plans.new': 'New plan',
@@ -5748,7 +5746,7 @@ export const messagesEn = {
   'builder.formName': 'Kit settings',
   'builder.project.title': 'Project file',
   'builder.project.hint':
-    'A project file keeps these settings, so you can make the same kits again for an upgrade or a new look. With a passphrase it also keeps the instance secrets, encrypted; without one it holds none, and the next kits get new secrets.',
+    'A project file keeps these settings, so you can make the same kits again for an upgrade or a new look. With a passphrase it also keeps the site’s secrets, encrypted; without one it holds none, and the next kits get new secrets.',
   'builder.project.passphrase': 'Passphrase (optional)',
   'builder.project.passphraseHint':
     'Used to encrypt the secrets when you save, and to open them when you load. Nobody can recover a lost passphrase.',
@@ -5762,7 +5760,7 @@ export const messagesEn = {
   'builder.project.saved':
     'Saved the project file without secrets. Kits made from it get new secrets.',
   'builder.project.savedWithSecrets':
-    'Saved the project file with the instance secrets, encrypted with your passphrase. Keep both safe.',
+    'Saved the project file with the site’s secrets, encrypted with your passphrase. Keep both safe.',
   'builder.project.notAProject': 'That file is not a Taskmoor Builder project file.',
   'builder.project.invalidInputs':
     'That project file has settings this Builder cannot use. Check its addresses.',
@@ -5775,8 +5773,8 @@ export const messagesEn = {
   'builder.frontendUrl': 'Frontend address',
   'builder.frontendUrlHint':
     'Where people open the app, such as https://tracker.example.com/. It ends with a slash and may name a folder.',
-  'builder.instance': 'Instance',
-  'builder.instanceName': 'Instance name (optional)',
+  'builder.instance': 'Site',
+  'builder.instanceName': 'Site name (optional)',
   'builder.defaultLanguage': 'Default language',
   'builder.language.en': 'English',
   'builder.language.es': 'Español',
@@ -5838,7 +5836,7 @@ export const messagesEn = {
   'builder.failed': 'The kits could not be made. Check the settings and try again.',
   'builder.results': 'Your kits',
   'builder.resultsHint':
-    'Install the backend kit on your server first, then upload one form of the frontend kit to your static host. The backend kit holds the instance secrets: keep it private.',
+    'Install the backend kit on your server first, then upload one form of the frontend kit to your static host. The backend kit holds the site’s secrets: keep it private.',
   'builder.result.backend': 'Download the backend kit',
   'builder.result.frontend': 'Download the frontend kit',
   'builder.result.single': 'Download the frontend as one file',
@@ -5856,7 +5854,7 @@ export const messagesEn = {
   'ai.keyStorageNone':
     'Keys cannot be stored on this server: set TASKMOOR_MASTER_KEY (or TASKMOOR_DATA) and restart it.',
   'ai.formLabel': 'AI settings',
-  'ai.enabled': 'Use AI in this workspace',
+  'ai.enabled': 'Use AI on this site',
   'ai.strict': 'Strict mode',
   'ai.strictHint':
     'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for below.',
@@ -5955,7 +5953,7 @@ export const messagesEn = {
   'ai.statement.provider.vertex': 'Google Cloud Vertex AI',
   'ai.statement.provider.foundry': 'Microsoft Foundry',
   'ai.statement.provider.openaiCompatible': 'a model server of your own',
-  'ai.statement.title': 'What leaves this instance',
+  'ai.statement.title': 'What leaves this site',
   'ai.statement.notConfigured': 'AI is not set up: nothing is sent anywhere.',
   'ai.statement.provider': 'AI features send data to {provider}.',
   'ai.statement.providerRegion': 'AI features send data to {provider}, region {region}.',
@@ -5982,7 +5980,7 @@ export const messagesEn = {
   'ai.refused.failed': 'AI could not help with this request.',
   'admin.aiUsage.title': 'AI usage',
   'admin.aiUsage.forbidden': 'Only site administrators see AI usage.',
-  'admin.aiUsage.statementFailed': 'What leaves this instance could not be loaded.',
+  'admin.aiUsage.statementFailed': 'What leaves this site could not be loaded.',
   'admin.aiUsage.usage': 'Usage',
   'admin.aiUsage.period': 'Period',
   'admin.aiUsage.last7': 'Last 7 days',
@@ -6122,13 +6120,12 @@ export const messagesEn = {
   'admin.group.integrationsPurpose':
     'What other programs and AI features may do here, and what they cost.',
   'admin.group.system': 'System',
-  'admin.group.systemPurpose':
-    'The health of this instance, its limits, imports and what was deleted.',
+  'admin.group.systemPurpose': 'The health of this site, its limits, imports and what was deleted.',
   'admin.group.about':
     'Each page of this group changes one part of the site. The list of every Administration page is beside the page, or behind the bar at the top on a phone; its groups open and close.',
   'admin.overview.title': 'Overview',
   'admin.overview.purpose':
-    'How this instance is doing and what is waiting for you. The pages to run the site are listed here too.',
+    'How this site is doing and what is waiting for you. The pages to run the site are listed here too.',
   'admin.overview.purposeSetup':
     'You can set up tracks here. The rest of Administration is for site administrators.',
   'admin.overview.loading': 'Reading…',
@@ -6142,7 +6139,7 @@ export const messagesEn = {
   'admin.overview.health.backup': 'There is no backup from the last day.',
   'admin.overview.health.version': 'Version {version}, running since {since}.',
   'admin.overview.health.failed':
-    'The health of this instance could not be read. Try again in a moment.',
+    'The health of this site could not be read. Try again in a moment.',
   'admin.overview.health.more': 'See every detail',
   'admin.overview.waiting': 'People who have not signed in yet',
   'admin.overview.waiting.count':
@@ -6278,9 +6275,9 @@ export const messagesEn = {
   'webhooks.purpose':
     'Send Taskmoor’s events to another system or a chat room as they happen, and see what was delivered.',
   'webhooks.about':
-    'A webhook sends only what the person who made it may see. Sign-ins, tokens, passwords and other security events never leave the instance, whatever a webhook asks for.',
+    'A webhook sends only what the person who made it may see. Sign-ins, tokens, passwords and other security events never leave the site, whatever a webhook asks for.',
   'webhooks.forbidden':
-    'Only site administrators manage webhooks, as they send this instance’s data to another host.',
+    'Only site administrators manage webhooks, as they send this site’s data to another host.',
   'webhooks.loading': 'Reading…',
   'webhooks.loadFailed': 'The webhooks could not be read. Try again in a moment.',
   'webhooks.failedAction': 'That could not be done. Try again in a moment.',

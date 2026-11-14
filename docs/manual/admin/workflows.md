@@ -307,7 +307,7 @@ A file whose workflow has no transitions at all imports with a transition from a
 each of its statuses, as a new workflow gets; a file with transitions or rules keeps them as they
 are.
 
-The import matches statuses by name, ignoring case, and creates those this workspace lacks.
+The import matches statuses by name, ignoring case, and creates those this site lacks.
 Everything else must already exist with the same name. Whatever cannot be found never lets
 more people through: a guard naming it never passes, a list drops it, a check that names it is
 removed and its transition is turned off until you fix it, and effects drop it. The report

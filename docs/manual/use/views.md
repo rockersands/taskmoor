@@ -96,7 +96,7 @@ status, assignee and priority. Open the ticket to change it.
 
 | Control | What it does |
 |---|---|
-| **Group by** | **Nothing**, **Status**, **Assignee**, **Priority**, **Type**, **Target release** or **Labels**. Each group shows its exact count. The types and priorities a workspace starts with are named in your language, as in search's filters |
+| **Group by** | **Nothing**, **Status**, **Assignee**, **Priority**, **Type**, **Target release** or **Labels**. Each group shows its exact count. The types and priorities a site starts with are named in your language, as in search's filters |
 | **Sort by** | **Newest created first**, **Recently updated**, **Due date** or **Priority** |
 | **Filter** | A condition in [the query language](search.md#the-query-language), such as `assignee = currentUser()`; press **Apply filter** |
 | **Columns** | A button that opens a panel over the page: choose, order and remove columns, as on the search page |
@@ -225,7 +225,7 @@ by its sprint gets days of its own once you save. As in the calendar, rescheduli
 **Set due dates** permission and is recorded in the ticket's history.
 
 The timeline lists the first 5,000 tickets of the track; roll-ups still count them all. A
-refused change says why, as on the calendar. A [Multi-track](multi-track.md) plan shows the same
+refused change says why, as on the calendar. A [plan](multi-track.md) shows the same
 timeline and calendar over several tracks.
 
 ## Outcomes

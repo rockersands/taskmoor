@@ -151,7 +151,7 @@ describe('Administration (ADR-114)', () => {
         throw new Error('down');
       },
     });
-    expect(await screen.findByText(/health of this instance could not be read/)).toBeVisible();
+    expect(await screen.findByText(/health of this site could not be read/)).toBeVisible();
     expect(await screen.findByText('Noor')).toBeVisible();
   });
 

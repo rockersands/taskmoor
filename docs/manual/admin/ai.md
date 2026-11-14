@@ -73,7 +73,7 @@ For each you can switch it off, choose the model and choose the effort.
 
 ## Where AI is on
 
-- **The workspace switch**, "Use AI in this workspace", turns everything on or off. Off, no
+- **The site switch**, "Use AI on this site", turns everything on or off. Off, no
   AI control shows anywhere and the server refuses every AI call. The page then hides the
   feature and track settings too.
 - **Track switches** turn AI off in one track (or back on). They take effect at once.
@@ -86,7 +86,7 @@ same rules again on every call, so a control that is hidden is also refused. The
 `GET /api/v1/ai/features?trackId=` which features are available in a track; anyone signed in
 can ask it.
 
-The same settings are under `PUT /api/v1/admin/ai` (workspace switch, strict mode, provider
+The same settings are under `PUT /api/v1/admin/ai` (site switch, strict mode, provider
 settings and features, never a key) and `PUT /api/v1/admin/ai/tracks/{id}` with `{"enabled":
 true}`, `false` or `null` (back to the default). Every change is in the audit log.
 
@@ -99,7 +99,7 @@ key at your provider a minute later, when those calls are done.
 ## How keys are kept
 
 Each key is encrypted with a key of its own, and that key is in turn encrypted (wrapped) with
-the instance's **master key**, which never enters the database. A copy of the database or a
+the site's **master key**, which never enters the database. A copy of the database or a
 backup therefore holds no readable AI key.
 
 - The master key is `TASKMOOR_MASTER_KEY`, which the Builder's backend kit writes for you.

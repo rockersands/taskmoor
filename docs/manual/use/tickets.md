@@ -294,7 +294,7 @@ ticket, on its page or in its pop-up: while files from your computer are over th
 outline goes round all of it with a card saying **Drop to attach to** the ticket and the size
 limit (or why you cannot attach files there), and the files you let go join its attachments.
 Each file must fit the size limit the section names, and the storage quota when a site
-administrator set one: an upload that would pass yours, or the workspace's, is refused with what
+administrator set one: an upload that would pass yours, or the site's, is refused with what
 is used and what is left.
 **Preview** opens images, PDF files, videos, text and the
 contents of ZIP files; **Download all as ZIP** takes every file at once. Deleting a file asks
@@ -379,7 +379,7 @@ your support. Both buttons show the current count; press again to undo.
 
 The **Time entries** tab lists the time logged on the ticket. To log time, enter **Time spent**
 (for example `1h 30m` or `2d`), optionally **What was done**, and press **Log time**. If time
-tracking is off for your workspace, the tab says so.
+tracking is off for your site, the tab says so.
 
 ### History
 

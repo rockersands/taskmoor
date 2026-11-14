@@ -77,8 +77,7 @@ describe('command palette', () => {
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
-    // Multi-track (ADR-122) matches too, after the label that starts with the letters typed.
-    expect(options.map((o) => o.textContent)).toEqual(['Tracks', 'Multi-track']);
+    expect(options.map((o) => o.textContent)).toEqual(['Tracks']);
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
     expect(input).toHaveAttribute('aria-activedescendant', options[0]?.id);
 

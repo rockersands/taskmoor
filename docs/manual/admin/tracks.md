@@ -447,11 +447,11 @@ and has its own **Limit** field, which takes a whole number with or without sepa
 ### Attachment storage
 
 Below the guardrails, **Attachment storage** shows how much the attachments take in the whole
-workspace and for the person who uploaded most, against two storage quotas. A new installation
-starts with 1 TiB for the workspace and 20 GiB a person; an installation upgraded from a version
+site and for the person who uploaded most, against two storage quotas. A new installation
+starts with 1 TiB for the site and 20 GiB a person; an installation upgraded from a version
 without quotas starts with none. Change them here, or clear a field to remove that quota.
 
-- **Workspace quota (GiB)** limits all attachments together; **Quota per person (GiB)** limits
+- **Site quota (GiB)** limits all attachments together; **Quota per person (GiB)** limits
   what each person uploads. Leave a field empty for no quota, then **Save the quotas**.
 - An upload that would pass a quota is refused with `413 storage_quota_exceeded`, naming the
   quota (`person` or `workspace`), the limit, the usage and the room left, in bytes. The ticket

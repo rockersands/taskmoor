@@ -52,7 +52,7 @@ test('[AI-001] test connection lists the fixture models; switches and strict mod
   await expect(page.getByRole('heading', { name: 'AI', level: 1 })).toBeVisible();
 
   // The provider: the Anthropic API at the local fake, with AI on.
-  await page.getByRole('checkbox', { name: 'Use AI in this workspace' }).check();
+  await page.getByRole('checkbox', { name: 'Use AI on this site' }).check();
   await page.getByRole('combobox', { name: 'Provider' }).selectOption('anthropic');
   await page.getByLabel('Address (leave empty for the provider’s own)').fill(PROVIDER);
   await page.getByRole('button', { name: 'Save AI settings' }).click();
@@ -113,7 +113,7 @@ test('[AI-001] test connection lists the fixture models; switches and strict mod
 
   // The workspace switch: the per-feature and per-track controls go, and AI is off everywhere.
   await page.getByRole('checkbox', { name: 'Strict mode' }).uncheck();
-  await page.getByRole('checkbox', { name: 'Use AI in this workspace' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Use AI on this site' }).uncheck();
   await expect(page.getByRole('combobox', { name: 'Model' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save AI settings' }).click();
   await expect(page.getByText('The AI settings were saved.')).toBeVisible();
