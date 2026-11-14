@@ -2796,6 +2796,13 @@ export const messagesEn = {
   'tickets.create.removeParent': 'Remove {key} as parent',
   'tickets.create.noReleases': 'This track has no releases to choose.',
   'tickets.create.noAreas': 'This track has no areas to choose.',
+  'tickets.create.noTeams': 'The site has no teams to choose.',
+  'tickets.create.requesterHint': 'Type a name to find someone. Left empty, you are the requester.',
+  'tickets.create.restrictedHint': 'Type a name. Only the people this field allows are offered.',
+  'tickets.create.parentHintLevel':
+    'Type a ticket’s key or words from its summary. Only tickets one level up are offered.',
+  'tickets.create.parentHintTrack':
+    'Type a ticket’s key or words from its summary. Only tickets one level up in this track are offered.',
   'tickets.pickers.personHint': 'Type a name to find someone.',
   'tickets.pickers.remove': 'Remove {name}',
   'tickets.pickers.removeShort': 'Remove',
@@ -2804,6 +2811,9 @@ export const messagesEn = {
   'tickets.pickers.peopleFailed': 'The search did not work. Try again in a moment.',
   'tickets.pickers.personChosen': '{name} chosen.',
   'tickets.pickers.personRemoved': '{name} removed.',
+  'tickets.pickers.groupHint': 'Type a name to find a group.',
+  'tickets.pickers.noGroups': 'No group matches.',
+  'tickets.pickers.groupsFound': '{count, plural, one {# group found} other {# groups found}}',
   'workflow.check.fieldRequired': '{field} is required.',
   'workflow.check.fieldModified': 'Change {field} first.',
   'workflow.check.fieldSingleValue': '{field} takes one value only.',

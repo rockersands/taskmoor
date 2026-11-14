@@ -6,9 +6,14 @@ import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import { type CreateClient, CreateTicketPage } from '../CreateTicketPage';
 import { BUG_FORM, CHORE_FORM, PRIORITIES, TRACKS, TYPES } from '../fixtures';
+import type { TicketForm } from '../form';
 import { type FakePickerClient, fakePickerClient } from './fixtures';
 
-function renderForm(picker: FakePickerClient = fakePickerClient(), locale: 'en' | 'en-XA' = 'en') {
+function renderForm(
+  picker: FakePickerClient = fakePickerClient(),
+  locale: 'en' | 'en-XA' = 'en',
+  more: Partial<CreateClient> = {},
+) {
   const created: Record<string, unknown>[] = [];
   const client: CreateClient = {
     tracks: async () => TRACKS,
@@ -20,6 +25,7 @@ function renderForm(picker: FakePickerClient = fakePickerClient(), locale: 'en' 
       return { key: 'SHOP-1' };
     },
     ticketTemplates: picker,
+    ...more,
   };
   render(
     <I18nProvider locale={locale}>
@@ -88,6 +94,69 @@ describe('starting a ticket from a template (CORE-030)', () => {
     const body = picker.applied[0]?.body as Record<string, unknown>;
     expect(body.omit).toEqual(['assigneeId']);
     expect(body.subtickets).toBe(false);
+  });
+
+  it('[CORE-030] fills the pickers with its assignee, releases and areas; the form’s choice wins (T-265)', async () => {
+    const user = userEvent.setup();
+    const picker = fakePickerClient(undefined, {
+      summary: 'Release SHOP 2026-11-03',
+      assigneeId: 21,
+      areaIds: [31],
+      targetReleaseIds: [41],
+      dueDate: '2026-11-10',
+      fields: { '7': 70 },
+    });
+    const form: TicketForm = {
+      ...BUG_FORM,
+      layout: {
+        ...BUG_FORM.layout,
+        tabs: BUG_FORM.layout.tabs.map((tab, i) =>
+          i === 0
+            ? {
+                ...tab,
+                sections: [
+                  ...tab.sections,
+                  {
+                    kind: 'main',
+                    hideWhenEmpty: false,
+                    fields: [
+                      { key: 'area', required: false, description: null },
+                      { key: 'targetRelease', required: false, description: null },
+                    ],
+                  },
+                ],
+              }
+            : tab,
+        ),
+      },
+    };
+    renderForm(picker, 'en', {
+      form: async () => form,
+      assignable: async () => [{ id: 22, name: 'Sasha Lee' }],
+      areas: async () => [
+        { id: 31, name: 'Checkout' },
+        { id: 32, name: 'Search' },
+      ],
+      releases: async () => [{ id: 41, name: '1.0' }],
+    });
+    await pick(user);
+    // In the pickers, not in the list of what the form cannot show.
+    expect(screen.getByRole('list', { name: 'Assignee' })).toHaveTextContent('Sam Rivera');
+    expect(await screen.findByRole('checkbox', { name: 'Checkout' })).toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: '1.0' })).toBeChecked();
+    const also = screen.getByRole('group', { name: 'Also from this template' });
+    expect(within(also).queryByRole('checkbox', { name: 'Assignee' })).toBeNull();
+    // Another assignee chosen in the form takes the template's place; a cleared area is left out.
+    await user.click(screen.getByRole('button', { name: 'Remove Sam Rivera' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Assignee' }), 'sa');
+    await user.click(await screen.findByRole('button', { name: 'Sasha Lee' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Checkout' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeInTheDocument();
+    const body = picker.applied[0]?.body as Record<string, unknown>;
+    expect(body).toMatchObject({ assigneeId: 22, targetReleaseIds: [41] });
+    expect(body.areaIds).toBeUndefined();
+    expect(body.omit).toEqual(['areaIds']);
   });
 
   it('[CORE-030] says what was left out and which subtickets failed', async () => {

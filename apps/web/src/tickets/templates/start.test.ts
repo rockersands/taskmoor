@@ -94,6 +94,52 @@ describe('a template on the create form (CORE-030)', () => {
     expect(fill.extras).toEqual([]);
   });
 
+  it('[CORE-030] fills the pickers the form has with its assignee, releases and areas (T-265)', () => {
+    const form: TicketForm = {
+      ...FORM,
+      layout: {
+        operation: 'create',
+        tabs: [
+          {
+            name: null,
+            sections: [
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [
+                  field('summary'),
+                  field('assignee'),
+                  field('area'),
+                  field('targetRelease'),
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const start = { summary: 'Release', assigneeId: 21, areaIds: [31], targetReleaseIds: [41, 42] };
+    const pickers = {
+      keys: new Set(['assignee', 'area', 'targetRelease']),
+      assignee: { id: 21, name: 'Sam Rivera' },
+    };
+    const fill = fillForm(start, form, pickers);
+    expect(fill.picks).toEqual({ assignee: [{ id: 21, name: 'Sam Rivera' }] });
+    expect(fill.values).toEqual({ summary: 'Release', area: ['31'], targetRelease: ['41', '42'] });
+    expect(fill.extras).toEqual([]);
+    expect(fill.picked).toEqual(['assigneeId', 'areaIds', 'targetReleaseIds']);
+    // A picker the form lacks, or an assignee it cannot name, stays a checkbox in the list.
+    const without = fillForm(start, form, {
+      keys: new Set(['area']),
+      assignee: { id: 99, name: 'Someone else' },
+    });
+    expect(without.picks).toEqual({});
+    expect(without.extras).toEqual(['assigneeId', 'targetReleaseIds']);
+    // Cleared in the form, the template's value is left out; chosen there, the form's is sent.
+    const body = { summary: 'Release', assigneeId: 22, targetReleaseIds: [41, 42] };
+    expect(omitKeys(start, form, body, new Set(), fill.picked)).toEqual(['areaIds']);
+  });
+
   it('[CORE-030] leaves out only what the person cleared or turned off', () => {
     const start = {
       summary: 'Release',

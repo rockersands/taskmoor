@@ -34,6 +34,7 @@ import {
 } from './form';
 import { PersonPicker, type PickedPerson } from './PersonPicker';
 import { type AppliedTemplate, type PickerClient, pickerClient } from './templates/client';
+import { SUBTICKET_RANK } from './templates/draft';
 import { omitKeys } from './templates/start';
 import { type PickedTemplate, TemplateOutcome, TemplatePicker } from './templates/TemplatePicker';
 import { type PickedTicket, pickerQuery, ticketToolsClient } from './tools/client';
@@ -55,6 +56,8 @@ export interface TypeChoice {
   id: number;
   name: string;
   icon?: string | null;
+  /** Its hierarchy level (CORE-006), which says where its parent sits; absent in older fixtures. */
+  level?: { rank: number };
 }
 
 /** The endpoints the page uses. Stories and some tests pass their own. */
@@ -81,6 +84,18 @@ export interface CreateClient {
   tickets?: (query: string) => Promise<PickedTicket[]>;
   releases?: (trackId: number) => Promise<NamedChoice[]>;
   areas?: (trackId: number) => Promise<NamedChoice[]>;
+  /**
+   * More sources (T-265): the people a restricted person field allows for a ticket of a type in
+   * a track (CORE-009 (2)); the site's groups for a group field; the site's teams.
+   */
+  fieldPeople?: (
+    fieldId: number,
+    track: string,
+    ticketTypeId: number,
+    typed: string,
+  ) => Promise<PickedPerson[]>;
+  groups?: (fieldId: number, typed: string) => Promise<NamedChoice[]>;
+  teams?: () => Promise<NamedChoice[]>;
 }
 
 /** People found by name in a track; only those who may be given tickets there, if asked. */
@@ -123,6 +138,20 @@ export const createClient: CreateClient = {
       id: a.id,
       name: a.name,
     })),
+  fieldPeople: async (fieldId, track, ticketTypeId, typed) =>
+    (
+      await api<{ people: PickedPerson[] }>(
+        `/fields/${fieldId}/people?track=${encodeURIComponent(track)}&ticketTypeId=${ticketTypeId}&q=${encodeURIComponent(typed)}&limit=8`,
+      )
+    ).people.map((p) => ({ id: p.id, name: p.name })),
+  groups: async (fieldId, typed) =>
+    (
+      await api<{ groups: NamedChoice[] }>(
+        `/fields/${fieldId}/groups?q=${encodeURIComponent(typed)}&limit=8`,
+      )
+    ).groups.map((g) => ({ id: g.id, name: g.name })),
+  teams: async () =>
+    (await api<{ teams: NamedChoice[] }>('/teams')).teams.map((t) => ({ id: t.id, name: t.name })),
   template: async (key) =>
     templateOf(
       (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,
@@ -166,6 +195,9 @@ export function templateOf(ticket: TemplateSource): TicketTemplate {
   return { track: ticket.track.key, ticketTypeId: ticket.ticketType.id, values, docs };
 }
 
+/** No one found: what a picker without its source offers. */
+const none = (): Promise<PickedPerson[]> => Promise.resolve([]);
+
 /** Fields written in the rich text editor (M1-017). */
 const RICH_TYPES = new Set(['description', 'environment', 'paragraph']);
 
@@ -179,8 +211,8 @@ function customField(form: TicketForm, key: string): CustomField | undefined {
 
 /**
  * How the form sets a field: a control of its own, a set of checkboxes, a picker (people, the
- * parent, releases, areas; T-253), or not at all: either the person may not (`withheld`, IAM-010)
- * or the form has no way to (`unset`).
+ * parent, releases, areas, groups, teams; T-253, T-265), or not at all: either the person may not
+ * (`withheld`, IAM-010) or the form has no way to (`unset`).
  */
 type Kind = 'control' | 'multiple' | 'picker' | 'withheld' | 'unset';
 
@@ -188,10 +220,42 @@ type Kind = 'control' | 'multiple' | 'picker' | 'withheld' | 'unset';
 function pickableKeys(client: CreateClient): Set<string> {
   const out = new Set<string>();
   if (client.assignable) out.add('assignee');
+  if (client.people) out.add('requester');
   if (client.tickets) out.add('parent');
   if (client.releases) out.add('targetRelease').add('foundInRelease');
   if (client.areas) out.add('area');
   return out;
+}
+
+/** Whether this client has the source a custom field's picker needs. */
+function customPickable(custom: CustomField, client: CreateClient): boolean {
+  switch (custom.type) {
+    case 'user':
+      // A restricted field offers only whom it allows (CORE-009 (2)), so it needs its own list.
+      return Boolean(custom.restricted ? client.fieldPeople : client.people);
+    case 'group':
+      return Boolean(client.groups);
+    case 'team':
+      return Boolean(client.teams);
+    case 'release':
+      return Boolean(client.releases);
+    case 'area':
+      return Boolean(client.areas);
+    default:
+      return false;
+  }
+}
+
+/** The kind of list a field chooses from, when it is a list of the track's or the site's. */
+type ListKind = 'release' | 'area' | 'team';
+function listKindOf(field: FormField, custom: CustomField | undefined): ListKind | null {
+  if (custom) {
+    return custom.type === 'release' || custom.type === 'area' || custom.type === 'team'
+      ? custom.type
+      : null;
+  }
+  if (field.key === 'area') return 'area';
+  return RELEASE_KEYS.has(field.key) ? 'release' : null;
 }
 
 function kindOf(
@@ -204,7 +268,7 @@ function kindOf(
   if (custom) {
     if (custom.type === 'select' && custom.multiple) return 'multiple';
     if (EDITABLE_CUSTOM.has(custom.type)) return 'control';
-    return PICKED_CUSTOM.has(custom.type) && client.people ? 'picker' : 'unset';
+    return PICKED_CUSTOM.has(custom.type) && customPickable(custom, client) ? 'picker' : 'unset';
   }
   if (EDITABLE_SYSTEM.has(field.key)) return 'control';
   return PICKED_SYSTEM.has(field.key) && pickableKeys(client).has(field.key) ? 'picker' : 'unset';
@@ -233,6 +297,32 @@ const ESTIMATES = new Set(['originalEstimate', 'remainingEstimate']);
 /** The keys of a layout, to know which pickers need their lists. */
 const layoutKeys = (form: TicketForm) =>
   new Set(form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key))));
+
+/** The lists a laid-out form chooses from: the track's releases and areas, the site's teams. */
+function wantedLists(form: TicketForm): Set<ListKind> {
+  const keys = layoutKeys(form);
+  const out = new Set<ListKind>();
+  if (keys.has('targetRelease') || keys.has('foundInRelease')) out.add('release');
+  if (keys.has('area')) out.add('area');
+  for (const field of form.customFields) {
+    if (!keys.has(`cf[${field.id}]`)) continue;
+    if (field.type === 'release' || field.type === 'area' || field.type === 'team') {
+      out.add(field.type);
+    }
+  }
+  return out;
+}
+
+/**
+ * What the Parent picker looks among (spec 01a section 1.2): tickets one level above the type's,
+ * and for a subticket only in its own track, as the create route checks. Unknown without the
+ * type's level.
+ */
+function parentScope(type: TypeChoice | undefined, track: string) {
+  const rank = type?.level?.rank;
+  if (rank === undefined) return null;
+  return { level: rank + 1, ...(rank === SUBTICKET_RANK ? { trackKey: track } : {}) };
+}
 
 export interface CreateTicketPageProps {
   client?: CreateClient;
@@ -287,9 +377,11 @@ export function CreateTicketPage({
   useEffect(() => {
     if (focusParentSearch) setFocusParentSearch(false);
   }, [focusParentSearch]);
-  // The track's releases and areas, once a form that places them is here; null until then.
+  // The track's releases and areas, and the site's teams, once a form that places them is here;
+  // null until then.
   const [releases, setReleases] = useState<NamedChoice[] | null>(null);
   const [areas, setAreas] = useState<NamedChoice[] | null>(null);
+  const [teams, setTeams] = useState<NamedChoice[] | null>(null);
   // Rich text fields' documents, by field key; a new form key gives empty editors.
   const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
   // What rich text editors start with: a template's documents, until the next clear.
@@ -403,9 +495,10 @@ export function CreateTicketPage({
 
   // The track's releases and areas, asked for when the form places them (T-253). A list that
   // fails to load offers nothing, and the backend still checks what is sent.
-  const placed = form?.status === 'loaded' ? layoutKeys(form.value) : new Set<string>();
-  const wantsReleases = placed.has('targetRelease') || placed.has('foundInRelease');
-  const wantsAreas = placed.has('area');
+  const lists = form?.status === 'loaded' ? wantedLists(form.value) : new Set<ListKind>();
+  const wantsReleases = lists.has('release');
+  const wantsAreas = lists.has('area');
+  const wantsTeams = lists.has('team');
   useEffect(() => {
     setReleases(null);
     if (trackId === undefined || !wantsReleases || !client.releases) return;
@@ -430,8 +523,31 @@ export function CreateTicketPage({
       live = false;
     };
   }, [client, trackId, wantsAreas]);
+  useEffect(() => {
+    if (!wantsTeams || !client.teams || teams !== null) return;
+    let live = true;
+    client.teams().then(
+      (list) => live && setTeams(list),
+      () => live && setTeams([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, wantsTeams, teams]);
+
+  // Where the parent is looked for, by the chosen type's level; a parent chosen for another
+  // level is let go when the type changes to one it cannot sit above.
+  const chosenType = types.find((type) => type.id === typeId);
+  const scope = parentScope(chosenType, track);
+  const scopeKey = scope ? `${scope.level}:${scope.trackKey ?? ''}` : '';
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the scope changes
+  useEffect(() => setParent(null), [scopeKey]);
 
   const set = (key: string, value: string | string[]) => setValues((v) => ({ ...v, [key]: value }));
+  /** The list a list picker offers; null while it loads, or for no list. */
+  const pickable = useMemo(() => pickableKeys(client), [client]);
+  const listOf = (kind: ListKind | null) =>
+    kind === 'area' ? areas : kind === 'team' ? teams : kind === 'release' ? releases : null;
   const mentions = useMemo(
     () => (track === '' ? undefined : client.mentions?.(track)),
     [client, track],
@@ -498,7 +614,7 @@ export function CreateTicketPage({
       if (picked && client.ticketTemplates) {
         const applied = await client.ticketTemplates.apply(picked.template.id, {
           ...body,
-          omit: omitKeys(picked.start, form.value, body, picked.off),
+          omit: omitKeys(picked.start, form.value, body, picked.off, picked.picked),
           subtickets: picked.subtickets,
         });
         setOutcome(applied);
@@ -680,7 +796,35 @@ export function CreateTicketPage({
     );
   }
 
-  /** People, the parent, releases or areas (T-253): each with the picker the app has for it. */
+  /**
+   * Where a person or group picker looks (T-253, T-265): those who may be given tickets for the
+   * assignee; anyone for the requester and a person field, unless the field allows only some
+   * (CORE-009 (2)); the site's groups for a group field.
+   */
+  function searchOf(field: FormField, custom: CustomField | undefined) {
+    return (typed: string): Promise<PickedPerson[]> => {
+      if (custom?.type === 'group') return client.groups?.(custom.id, typed) ?? none();
+      if (custom?.restricted) {
+        return typeId === null || !client.fieldPeople
+          ? none()
+          : client.fieldPeople(custom.id, track, typeId, typed);
+      }
+      const search = field.key === 'assignee' ? client.assignable : client.people;
+      return search?.(track, typed) ?? none();
+    };
+  }
+
+  /** The hint under a person picker that differs from the usual one. */
+  function personHint(field: FormField, custom: CustomField | undefined) {
+    if (field.key === 'requester') return t('tickets.create.requesterHint');
+    if (custom?.restricted) return t('tickets.create.restrictedHint');
+    return undefined;
+  }
+
+  /**
+   * People, the parent, releases, areas, groups or teams (T-253, T-265): each with the picker the
+   * app has for it.
+   */
   function picker(
     field: FormField,
     custom: CustomField | undefined,
@@ -690,15 +834,18 @@ export function CreateTicketPage({
     locked: boolean,
   ) {
     const invalid = Boolean(errors[field.key]);
-    if (custom || field.key === 'assignee') {
-      const search = custom ? client.people : client.assignable;
+    const listKind = listKindOf(field, custom);
+    if (field.key !== 'parent' && listKind === null) {
+      const hint = personHint(field, custom);
       return (
         <PersonPicker
           label={label}
-          search={(typed) => search?.(track, typed) ?? Promise.resolve([])}
+          search={searchOf(field, custom)}
           chosen={picks[field.key] ?? []}
           onChange={(people) => setPicks((p) => ({ ...p, [field.key]: people }))}
           multiple={custom?.multiple ?? false}
+          kind={custom?.type === 'group' ? 'groups' : 'people'}
+          {...(hint ? { hint } : {})}
           describedBy={described}
           required={field.required}
           invalid={invalid}
@@ -739,9 +886,15 @@ export function CreateTicketPage({
       return (
         <TicketPicker
           label={label}
-          hint={t('tickets.create.parentHint')}
+          hint={t(
+            scope === null
+              ? 'tickets.create.parentHint'
+              : scope.trackKey
+                ? 'tickets.create.parentHintTrack'
+                : 'tickets.create.parentHintLevel',
+          )}
           search={(typed) => {
-            const query = pickerQuery(typed);
+            const query = pickerQuery(typed, scope ?? {});
             return query && client.tickets ? client.tickets(query) : Promise.resolve([]);
           }}
           onPick={(ticket) => {
@@ -756,12 +909,52 @@ export function CreateTicketPage({
         />
       );
     }
-    // Releases and areas: one checkbox each, as for a field that holds several options.
-    const options = field.key === 'area' ? areas : releases;
+    // Releases, areas and teams: one checkbox each, as for a field that holds several options;
+    // a custom field that holds one is a list to choose one from.
+    const options = listOf(listKind);
     const chosen = values[field.key];
-    const list = Array.isArray(chosen) ? chosen : [];
     const emptyId = `${id}-empty`;
     const empty = options !== null && options.length === 0;
+    const emptyNote = empty && (
+      <p id={emptyId} className="form-hint">
+        {t(
+          listKind === 'area'
+            ? 'tickets.create.noAreas'
+            : listKind === 'team'
+              ? 'tickets.create.noTeams'
+              : 'tickets.create.noReleases',
+        )}
+      </p>
+    );
+    if (custom && !custom.multiple) {
+      return (
+        <>
+          <label htmlFor={id} className="form-label">
+            {label}
+          </label>
+          <select
+            id={id}
+            aria-describedby={
+              [empty ? emptyId : '', described].filter(Boolean).join(' ') || undefined
+            }
+            aria-required={field.required || undefined}
+            aria-invalid={invalid || undefined}
+            disabled={locked || undefined}
+            value={typeof chosen === 'string' ? chosen : ''}
+            onChange={(e) => set(field.key, e.target.value)}
+          >
+            <option value="">{t('tickets.create.none')}</option>
+            {(options ?? []).map((o) => (
+              <option key={o.id} value={String(o.id)}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+          {emptyNote}
+        </>
+      );
+    }
+    const list = Array.isArray(chosen) ? chosen : [];
     return (
       <fieldset
         className="create-choices"
@@ -786,11 +979,7 @@ export function CreateTicketPage({
             {o.name}
           </label>
         ))}
-        {empty && (
-          <p id={emptyId} className="form-hint">
-            {t(field.key === 'area' ? 'tickets.create.noAreas' : 'tickets.create.noReleases')}
-          </p>
-        )}
+        {emptyNote}
       </fieldset>
     );
   }
@@ -820,8 +1009,9 @@ export function CreateTicketPage({
     // A field set only once the ticket exists is left out, Close reason among them (PL-20, D30),
     // and so is one the person may not set at create (IAM-010).
     if ((kind === 'unset' || kind === 'withheld') && !field.required) return null;
-    // A track with no releases or areas has nothing to offer: an optional row goes too.
-    const list = field.key === 'area' ? areas : RELEASE_KEYS.has(field.key) ? releases : null;
+    // A track with no releases or areas, or a site with no teams, has nothing to offer: an
+    // optional row goes too.
+    const list = listOf(listKindOf(field, custom));
     if (kind === 'picker' && list?.length === 0 && !field.required) return null;
     if (kind === 'unset' || kind === 'withheld') {
       // Required at create, yet not to be set here: it stays, saying why, and the backend's
@@ -1032,11 +1222,12 @@ export function CreateTicketPage({
               typeId={typeId}
               form={form?.status === 'loaded' ? form.value : null}
               picked={picked}
+              pickable={pickable}
               onChange={setPicked}
               onPick={(next, fill) => {
                 setPicked(next);
                 setValues(fill?.values ?? {});
-                setPicks({});
+                setPicks(fill?.picks ?? {});
                 setParent(null);
                 setDocs(fill?.docs ?? {});
                 setSeed(fill?.docs ?? {});
