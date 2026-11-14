@@ -87,9 +87,10 @@ describe('bulk operation progress (M1-021)', () => {
     );
     expect(warning).toHaveClass('bulk-warning');
     expect(screen.queryByText('Done.')).toBeNull();
-    // Each failed ticket, with its reason.
+    // Each failed ticket, with its reason: the failures are read after the progress that
+    // reports them, so the list fills a moment after the warning appears.
     const failures = screen.getByRole('region', { name: 'Tickets that were not changed' });
-    expect(within(failures).getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect((await within(failures).findAllByRole('listitem')).length).toBeGreaterThan(0);
   });
 
   it('[CORE-024] a cancelled bulk change with failures says how many were changed, failed and skipped (PL-23)', async () => {
