@@ -14,6 +14,7 @@ import {
 } from '../timeline/client';
 import type { BlockersElsewhere } from '../timeline/dependencies';
 import type { ReleaseMarker } from '../timeline/markers';
+import type { ScenarioInView } from './scenarioClient';
 
 /** A source of a plan as one viewer sees it (ADR-122); those hidden from them are only counted. */
 export type PlanSource =
@@ -80,6 +81,11 @@ export interface CapacityWork {
   count: number;
   amount: number;
   unestimated: number;
+  /**
+   * In a scenario, how many drafted tickets a draft moves into or out of this cell (ADR-122 stage
+   * 6): its count then finds no search, so it is said, not linked.
+   */
+  drafts?: number;
 }
 
 /** A row's work in one period against its capacity (PLN-005, PLN-009). */
@@ -122,6 +128,8 @@ export interface CapacityTeam extends Omit<CapacityPerson, 'active'> {
 /** `GET /api/v1/plans/:id/capacity`. */
 export interface PlanCapacity {
   query: string | null;
+  /** The scenario read, when one was asked for. */
+  scenario?: ScenarioInView;
   editable: boolean;
   unit: CapacityUnit;
   /** The field points are read from; null when the workspace has none. */
@@ -204,6 +212,8 @@ export interface PlanTimelineItem extends TimelineItem {
 
 export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
   query: string | null;
+  /** The scenario read, when one was asked for: its drafts are in the items' days. */
+  scenario?: ScenarioInView;
   items: PlanTimelineItem[];
   /**
    * The blockers of listed tickets that the timeline does not list, only counted (PLN-006):
@@ -220,6 +230,8 @@ export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
 
 export interface PlanCalendar {
   query: string | null;
+  /** The scenario read, when one was asked for: its drafts are in the tickets' days. */
+  scenario?: ScenarioInView;
   tickets: (CalendarTicket & { trackId: number })[];
   tracks: PlanTrack[];
   sprints: { id: number; name: string; state: string; start: string; end: string }[];
@@ -313,17 +325,32 @@ export interface PlanClient {
   /** The Releases tab; of the filters only the track applies. */
   releases(id: number, track?: string): Promise<PlanReleases>;
   summary(id: number, filters: PlanFilters): Promise<PlanSummary>;
-  /** With `exporting`, read fresh for a file: the same answer, counted as a bulk export. */
-  timeline(id: number, filters: PlanFilters, exporting?: boolean): Promise<PlanTimeline>;
+  /**
+   * With `exporting`, read fresh for a file: the same answer, counted as a bulk export. With
+   * `scenario`, the days are that scenario's drafts where it has them (ADR-122 stage 6).
+   */
+  timeline(
+    id: number,
+    filters: PlanFilters,
+    exporting?: boolean,
+    scenario?: number,
+  ): Promise<PlanTimeline>;
   calendar(
     id: number,
     filters: PlanFilters,
     from: string,
     to: string,
     exporting?: boolean,
+    scenario?: number,
   ): Promise<PlanCalendar>;
   /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
-  capacity(id: number, filters: PlanFilters, from: string, periods: number): Promise<PlanCapacity>;
+  capacity(
+    id: number,
+    filters: PlanFilters,
+    from: string,
+    periods: number,
+    scenario?: number,
+  ): Promise<PlanCapacity>;
   /**
    * Sets capacities typed for `settings`; true when saved, else the refusal's code
    * (`settings_changed` when the plan's unit or periods are no longer those).
@@ -359,6 +386,10 @@ const withFilters = (path: string, filters: PlanFilters, extra: Record<string, s
   const text = params.toString();
   return text ? `${path}?${text}` : path;
 };
+
+/** A view's `scenario` parameter, when it reads one. */
+export const inScenario = (scenario: number | undefined): Record<string, string> =>
+  scenario === undefined ? {} : { scenario: String(scenario) };
 
 async function saved(call: () => Promise<{ plan: Plan }>): Promise<PlanSaved> {
   try {
@@ -404,21 +435,29 @@ export const planClient: PlanClient = {
   releases: (id, track) =>
     api<PlanReleases>(`/plans/${id}/releases${track ? `?track=${encodeURIComponent(track)}` : ''}`),
   summary: (id, filters) => api<PlanSummary>(withFilters(`/plans/${id}/summary`, filters)),
-  timeline: (id, filters, exporting) =>
+  timeline: (id, filters, exporting, scenario) =>
     api<PlanTimeline>(
-      withFilters(`/plans/${id}/timeline`, filters, exporting ? { export: 'true' } : {}),
+      withFilters(`/plans/${id}/timeline`, filters, {
+        ...(exporting ? { export: 'true' } : {}),
+        ...inScenario(scenario),
+      }),
     ),
-  calendar: (id, filters, from, to, exporting) =>
+  calendar: (id, filters, from, to, exporting, scenario) =>
     api<PlanCalendar>(
       withFilters(`/plans/${id}/calendar`, filters, {
         from,
         to,
         ...(exporting ? { export: 'true' } : {}),
+        ...inScenario(scenario),
       }),
     ),
-  capacity: (id, filters, from, periods) =>
+  capacity: (id, filters, from, periods, scenario) =>
     api<PlanCapacity>(
-      withFilters(`/plans/${id}/capacity`, filters, { from, periods: String(periods) }),
+      withFilters(`/plans/${id}/capacity`, filters, {
+        from,
+        periods: String(periods),
+        ...inScenario(scenario),
+      }),
     ),
   setCapacity: async (id, entries, settings) => {
     try {

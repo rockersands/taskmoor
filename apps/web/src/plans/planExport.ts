@@ -36,6 +36,16 @@ type Cell = string | number | null | undefined;
 export const csvText = (rows: readonly (readonly Cell[])[]): string => csvFile(rows);
 
 const header = (t: T, ids: readonly MessageId[]) => ids.map((id) => t(id));
+
+/**
+ * A file made in a scenario (ADR-122 stage 6) holds the drafted values: its first line says so,
+ * above the header, and the Timeline's and the Calendar's rows say which are drafts. A file made
+ * live is as before.
+ */
+const scenarioLine = (t: T, data: { scenario?: { name: string } }): Cell[][] =>
+  data.scenario ? [[t('plans.csv.inScenario', { name: data.scenario.name })]] : [];
+const draftCell = (t: T, draft: { stale: boolean } | undefined): Cell =>
+  draft ? t(draft.stale ? 'plans.csv.draftStale' : 'plans.csv.yes') : t('plans.csv.no');
 const trackKeys = (tracks: readonly { id: number; key: string }[]) =>
   new Map(tracks.map((x) => [x.id, x.key]));
 const stages: Record<'new' | 'active' | 'closed', MessageId> = {
@@ -58,7 +68,9 @@ export function timelineCsv(
   ),
 ): string {
   const tracks = trackKeys(data.tracks);
+  const drafts = data.scenario !== undefined;
   const rows: Cell[][] = [
+    ...scenarioLine(t, data),
     header(t, [
       'plans.csv.key',
       'plans.csv.summary',
@@ -76,6 +88,7 @@ export function timelineCsv(
       'plans.csv.late',
       'plans.csv.blockersOutside',
       'plans.csv.blockersUnlisted',
+      ...(drafts ? (['plans.csv.draft'] as const) : []),
     ]),
   ];
   for (const item of data.items) {
@@ -101,6 +114,7 @@ export function timelineCsv(
       blocked?.late ?? 0,
       blocked?.outside ?? 0,
       blocked?.unlisted ?? 0,
+      ...(drafts ? [draftCell(t, item.draft)] : []),
     ]);
   }
   return csvText(rows);
@@ -109,7 +123,9 @@ export function timelineCsv(
 /** The Calendar: the entries of the month shown. */
 export function calendarCsv(t: T, data: PlanCalendar): string {
   const tracks = trackKeys(data.tracks);
+  const drafts = data.scenario !== undefined;
   return csvText([
+    ...scenarioLine(t, data),
     header(t, [
       'plans.csv.key',
       'plans.csv.summary',
@@ -118,6 +134,7 @@ export function calendarCsv(t: T, data: PlanCalendar): string {
       'plans.csv.stage',
       'plans.csv.start',
       'plans.csv.due',
+      ...(drafts ? (['plans.csv.draft'] as const) : []),
     ]),
     ...data.tickets.map((x) => [
       x.key,
@@ -127,6 +144,7 @@ export function calendarCsv(t: T, data: PlanCalendar): string {
       t(stages[x.stage]),
       x.start,
       x.due,
+      ...(drafts ? [draftCell(t, x.draft)] : []),
     ]),
   ]);
 }
@@ -167,6 +185,7 @@ const isCell = (c: CapacityCell | CapacityWork): c is CapacityCell => 'load' in 
  */
 export function capacityCsv(t: T, data: PlanCapacity): string {
   const rows: Cell[][] = [
+    ...scenarioLine(t, data),
     header(t, [
       'plans.csv.team',
       'plans.csv.who',

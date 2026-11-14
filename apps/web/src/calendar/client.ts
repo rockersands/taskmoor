@@ -1,5 +1,5 @@
 import { ApiError, api } from '../api/client';
-import { type Refusal, refusalOf } from '../timeline/client';
+import { type DraftMark, type Refusal, refusalOf } from '../timeline/client';
 import type { ReleaseMarker } from '../timeline/markers';
 
 /** A ticket with a start or due day in the range shown (M1-049; AGL-017). */
@@ -11,6 +11,8 @@ export interface CalendarTicket {
   stage: 'new' | 'active' | 'closed';
   start: string | null;
   due: string | null;
+  /** On a plan read in a scenario: the ticket's drafts, its days above being the drafted ones. */
+  draft?: DraftMark;
 }
 
 /** `GET /api/v1/tracks/:keyOrId/calendar?from=&to=`. */

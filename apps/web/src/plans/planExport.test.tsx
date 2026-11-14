@@ -184,6 +184,28 @@ describe('the files of a plan', () => {
     matchesGolden(calendarCsv(translate(), data), 'plan-calendar.csv');
   });
 
+  it('[PLN-002] [PLN-014] a file made in a scenario says so first and marks each draft', async () => {
+    const plans = fakePlanClient();
+    const { fakeScenarioClient } = await import('./scenarioFixtures');
+    fakeScenarioClient(plans, {
+      scenarios: [{ name: 'Faster', drafts: [{ ticketId: 2, dueDate: '2026-11-11' }] }],
+    });
+    const timeline = parse(timelineCsv(translate(), await plans.timeline(12, {}, true, 1)));
+    expect(timeline[0]).toEqual(['Scenario: Faster, drafts not applied']);
+    expect(timeline[1]?.at(-1)).toBe('Draft');
+    const shop2 = timeline.find((r) => r[0] === 'SHOP-2');
+    expect([shop2?.[6], shop2?.at(-1)]).toEqual(['2026-11-11', 'Yes']);
+    expect(timeline.find((r) => r[0] === 'OPS-4')?.at(-1)).toBe('No');
+    const month = await plans.calendar(12, {}, '2026-10-26', '2026-11-29', true, 1);
+    const calendar = parse(calendarCsv(translate(), month));
+    expect(calendar[0]).toEqual(['Scenario: Faster, drafts not applied']);
+    expect(calendar.find((r) => r[0] === 'SHOP-2')?.slice(6)).toEqual(['2026-11-11', 'Yes']);
+    // Live, the files are as before: no line above the header, no Draft column.
+    const live = parse(timelineCsv(translate(), await plans.timeline(12, {}, true)));
+    expect(live[0]?.[0]).toBe('Key');
+    expect(live[0]).not.toContain('Draft');
+  });
+
   it('[PLN-014] the Summary file holds each measure, its number and its search', async () => {
     const data = await fakePlanClient().summary(12, {});
     const rows = parse(summaryCsv(translate(), data));

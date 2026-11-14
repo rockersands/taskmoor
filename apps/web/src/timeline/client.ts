@@ -1,6 +1,19 @@
 import { ApiError, api } from '../api/client';
 import type { ReleaseMarker } from './markers';
 
+/**
+ * How a plan's view marks a ticket drafted in the scenario it reads (ADR-122 stage 6): each
+ * drafted field's value now, live, and whether one changed since it was drafted. The ticket's own
+ * days and Team value in the answer are already the drafted ones.
+ */
+export interface DraftMark {
+  startDate?: { now: string | null };
+  dueDate?: { now: string | null };
+  /** Team values now, by the Team field's id. */
+  fields?: Record<string, { now: number | null }>;
+  stale: boolean;
+}
+
 /** A ticket on a track's timeline (M1-048; AGL-015). Dates are calendar days (YYYY-MM-DD). */
 export interface TimelineItem {
   id: number;
@@ -16,6 +29,8 @@ export interface TimelineItem {
   dated: 'own' | 'sprint' | null;
   /** For a ticket with children: their span and how many of them are closed. */
   rollup: { start: string | null; due: string | null; total: number; closed: number } | null;
+  /** On a plan read in a scenario: the ticket's drafts, its days above being the drafted ones. */
+  draft?: DraftMark;
 }
 
 /** `GET /api/v1/tracks/:keyOrId/timeline`. */

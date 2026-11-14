@@ -7428,4 +7428,258 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.csv.closed': 'Cerrados',
   'plans.csv.hiddenReleases': 'Versiones ocultas',
   'plans.csv.hiddenOpen': 'Tickets abiertos en versiones ocultas',
+  // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
+  'plans.section.changes': 'Cambios',
+  'plans.section.scenarios': 'Escenarios',
+  'draft.tag': 'Borrador',
+  'draft.stale':
+    'Cambió desde el borrador: el ticket ya no tiene los valores de los que partió este borrador.',
+  'draft.staleShort': 'cambió desde el borrador',
+  'timeline.drafted': 'Borrador: {key} del {start} al {due} en {scenario}. Aún no cambió nada.',
+  'timeline.undone': 'Se deshizo el borrador de {key} en {scenario}.',
+  'timeline.bar.draft': '{key}, borrador: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',
+  'timeline.bar.draftStale':
+    '{key}, borrador: del {start} al {due}. Ahora del {nowStart} al {nowDue}. Cambió desde el borrador.',
+  'timeline.schedule.draft':
+    'Borrador sin fechas: programar {key}. Ahora del {nowStart} al {nowDue}.',
+  'timeline.legend.draft': 'Cambio en borrador (borde discontinuo, marcado Borrador)',
+  'timeline.panel.draftHint':
+    'Guardar crea un borrador en {scenario}; el ticket no cambia hasta que se aplique.',
+  'timeline.panel.nowLive': 'Ahora: del {start} al {due}',
+  'timeline.panel.saveDraft': 'Guardar el borrador',
+  'timeline.panel.undoDraft': 'Deshacer este borrador',
+  'calendar.draftedDue': 'Borrador: {key} vence el {date} en {scenario}. Aún no cambió nada.',
+  'calendar.draftedStart': 'Borrador: {key} empieza el {date} en {scenario}. Aún no cambió nada.',
+  'schedule.refused.order':
+    'No se creó el borrador de {key}: su inicio quedaría después de su vencimiento.',
+  'schedule.refused.tooManyDrafts':
+    'No se creó el borrador de {key}: este escenario ya tiene tantos tickets en borrador como puede.',
+  'schedule.refused.notEditor':
+    'No se creó el borrador de {key}: solo el propietario del plan y los administradores del sitio pueden hacer borradores en un escenario.',
+  'plans.capacity.rangeIn': '{start} a {end}, en {scenario}',
+  'plans.capacity.inScenarioNote':
+    'La capacidad es del plan, no un borrador: se aplica en vivo y en todos los escenarios.',
+  'plans.list.live':
+    'La lista muestra los tickets como están, no los borradores, y aquí sus celdas no se pueden editar.',
+  'programBoard.drafted': 'Borrador: {key} a {place} en {scenario}. Aún no cambió nada.',
+  'programBoard.withDrafts': 'incluye borradores',
+  'programBoard.moreWithDrafts':
+    '{count, plural, one {y # más, incluye borradores} other {y # más, incluye borradores}}',
+  'programBoard.moveDraft': 'Hacer borrador del movimiento',
+  'programBoard.refused.notEditor':
+    'No se creó el borrador de {key}: solo el propietario del plan y los administradores del sitio pueden hacer borradores en un escenario.',
+  'programBoard.refused.order':
+    'No se creó el borrador de {key}: su inicio quedaría después de su vencimiento.',
+  'programBoard.refused.tooManyDrafts':
+    'No se creó el borrador de {key}: este escenario ya tiene tantos tickets en borrador como puede.',
+  'scenario.bar.label': 'Escenario',
+  'scenario.bar.liveOption': 'En vivo',
+  'scenario.bar.mainOption': '{name} (principal)',
+  'scenario.bar.newOption': 'Nuevo escenario…',
+  'scenario.bar.live': 'Los cambios que hagas aquí cambian los tickets ahora.',
+  'scenario.bar.drafting':
+    'Borrador en {name}: {count, plural, one {# cambio} other {# cambios}}. Nada cambia los tickets hasta que los apliques.',
+  'scenario.bar.viewing':
+    'Viendo {name}. Solo el propietario del plan y los administradores del sitio pueden hacer borradores.',
+  'scenario.bar.review': '{count, plural, one {Revisar # cambio} other {Revisar # cambios}}',
+  'scenario.bar.missing': 'Ese escenario ya no existe, así que esto es el plan en vivo.',
+  'scenario.bar.nowIn': 'Ahora se muestra {name}: borradores, sin aplicar.',
+  'scenario.bar.nowLive': 'Ahora se muestra el plan en vivo.',
+  'scenario.notShown':
+    '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
+  'scenario.listFailed':
+    'No se pudieron cargar los escenarios del plan, así que esto es el plan en vivo. Inténtalo de nuevo en un momento.',
+  'scenario.staysLive': 'Esta pestaña muestra los tickets como están, no los borradores.',
+  'scenario.cell.withDrafts':
+    '{count, plural, one {Con # cambio en borrador} other {Con # cambios en borrador}}',
+  'scenario.cancel': 'Cancelar',
+  'scenario.name': 'Nombre',
+  'scenario.main': 'Principal',
+  'scenario.new': 'Nuevo escenario',
+  'scenario.new.title': 'Nuevo escenario',
+  'scenario.new.intro':
+    'Un escenario guarda cambios en borrador de los tickets de este plan. Nada cambia un ticket hasta que se apliquen sus borradores. Todos los que ven el plan ven sus escenarios.',
+  'scenario.new.from': 'Partir de',
+  'scenario.new.empty': 'Vacío',
+  'scenario.new.copyOf': 'Una copia de {name} ({count, plural, one {# cambio} other {# cambios}})',
+  'scenario.new.save': 'Crear el escenario',
+  'scenario.new.nameRequired': 'Ponle un nombre al escenario.',
+  'scenario.new.done': 'Se creó {name}.',
+  'scenario.new.doneLeft':
+    'Se creó {name}. {count, plural, one {# borrador en un ticket que no ves se quedó atrás.} other {# borradores en tickets que no ves se quedaron atrás.}}',
+  'scenario.rename': 'Cambiar el nombre',
+  'scenario.rename.label': 'Cambiar el nombre de {name}',
+  'scenario.rename.title': 'Cambiar el nombre de {name}',
+  'scenario.rename.save': 'Guardar el nombre',
+  'scenario.rename.done': 'El escenario ahora se llama {name}.',
+  'scenario.refused.tooMany':
+    'Este plan ya tiene tantos escenarios como puede. Elimina uno primero.',
+  'scenario.refused.conflict':
+    'Alguien cambió este escenario mientras tanto. Míralo de nuevo y vuelve a intentarlo.',
+  'scenario.refused.main':
+    'El escenario principal no se puede eliminar mientras haya otros. Haz principal a otro primero.',
+  'scenario.refused.applying':
+    'Sus borradores se están aplicando ahora. Vuelve a intentarlo cuando termine.',
+  'scenario.refused.forbidden':
+    'Solo el propietario del plan y los administradores del sitio pueden hacer esto.',
+  'scenario.refused.gone': 'Ese escenario ya no existe.',
+  'scenario.refused.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'scenario.makeMain': 'Hacer principal',
+  'scenario.promote': 'Hacer principal a {name}',
+  'scenario.promote.ask':
+    '{count, plural, one {El # cambio de {name} pasa} other {Los # cambios de {name} pasan}} a ser los borradores del plan por aplicar. {main} conserva sus {mainCount, plural, one {# cambio} other {# cambios}} como escenario.',
+  'scenario.promote.done': '{name} es ahora el principal: sus borradores son los que se aplican.',
+  'scenario.open': 'Abrir',
+  'scenario.open.label': 'Abrir {name} en la cronología',
+  'scenario.delete': 'Eliminar',
+  'scenario.delete.label': 'Eliminar {name}',
+  'scenario.delete.ask':
+    'Se eliminan {name} y {count, plural, one {su # cambio en borrador} other {sus # cambios en borrador}}. Ningún ticket cambia.',
+  'scenario.delete.askHidden':
+    'Se eliminan {name} y {count, plural, one {su # cambio en borrador} other {sus # cambios en borrador}}, con {hidden, plural, one {# más en un ticket que no ves} other {# más en tickets que no ves}}. Ningún ticket cambia.',
+  'scenario.delete.done': 'Se eliminó {name}.',
+  'scenario.delete.mainKept':
+    'El escenario principal se queda mientras haya otros; haz principal a otro para eliminarlo.',
+  'scenario.list.title': 'Escenarios',
+  'scenario.list.intro':
+    'Cada escenario guarda cambios en borrador de los días de inicio y vencimiento y de los valores de equipo del plan. Los borradores solo se aplican desde el escenario principal; los demás son ideas para probar y comparar.',
+  'scenario.list.readOnly':
+    'Solo el propietario del plan y los administradores del sitio pueden crear, cambiar o aplicar escenarios.',
+  'scenario.list.full': 'Un plan tiene como mucho {count} escenarios.',
+  'scenario.list.empty': 'Aún no hay escenarios',
+  'scenario.list.emptyBody':
+    'Crea uno para hacer borradores sin cambiar los tickets. El primer escenario es el principal.',
+  'scenario.list.drafts': '{count, plural, =0 {Sin cambios} one {# cambio} other {# cambios}}',
+  'scenario.list.madeBy': 'Creado por {name} el {when}',
+  'scenario.list.applying': 'Aplicándose ahora',
+  'scenario.changes.link': 'Cambios',
+  'scenario.changes.label': 'Cambios en {name}',
+  'scenario.changes.noneChosen': 'No hay ningún escenario elegido',
+  'scenario.changes.chooseOne':
+    'Los cambios pertenecen a un escenario. Elige uno arriba, o crea uno en la pestaña Escenarios.',
+  'scenario.changes.toScenarios': 'Ir a Escenarios',
+  'scenario.changes.failed': 'No se pudieron cargar los cambios. Inténtalo de nuevo en un momento.',
+  'scenario.changes.title': 'Cambios en {name}',
+  'scenario.changes.titleMain': 'Cambios en {name}, el escenario principal',
+  'scenario.changes.counts':
+    '{count, plural, one {# cambio} other {# cambios}}: {ready} listos, {changed} cambiados desde el borrador, {refused} rechazados.',
+  'scenario.changes.notMain': 'Los borradores solo se aplican desde el escenario principal.',
+  'scenario.changes.readOnly':
+    'Solo el propietario del plan y los administradores del sitio pueden aplicarlos o descartarlos.',
+  'scenario.changes.notShown':
+    '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
+  'scenario.changes.onlyMine': 'Solo los que puedo aplicar',
+  'scenario.changes.selectAll':
+    '{count, plural, one {Elegir el # mostrado} other {Elegir los # mostrados}}',
+  'scenario.changes.selectNone': 'Quitar la elección',
+  'scenario.changes.select': 'Elegir {key}',
+  'scenario.changes.choose': 'Elegido',
+  'scenario.changes.list': 'Cambios en borrador',
+  'scenario.changes.ticket': 'Ticket',
+  'scenario.changes.track': 'Track',
+  'scenario.changes.change': 'Cambio',
+  'scenario.changes.state': 'Situación',
+  'scenario.changes.drafted': 'Borrador de',
+  'scenario.changes.by': '{name}, {when}',
+  'scenario.changes.more': 'Mostrar más',
+  'scenario.changes.empty': 'No hay cambios en borrador',
+  'scenario.changes.emptyBody':
+    'Arrastra barras en la cronología, mueve días en el calendario o tarjetas en un tablero de programa en este escenario para hacer borradores.',
+  'scenario.changes.actions': 'Cambios elegidos',
+  'scenario.field.start': 'Inicio',
+  'scenario.field.due': 'Vencimiento',
+  'scenario.field.team': 'Equipo',
+  'scenario.value.none': 'ninguno',
+  'scenario.value.team': 'equipo {id}',
+  'scenario.line': '{field}: {now} → {draft}',
+  'scenario.line.changed': '{field}: {now} → {draft} (borrador hecho sobre {was})',
+  'scenario.isNow': '{field} es ahora {value}',
+  'scenario.state.ready': 'Listo',
+  'scenario.state.already': 'Ya está así',
+  'scenario.state.changed': 'Cambió desde el borrador: {values}',
+  'scenario.state.refused': 'Rechazado: {reason}',
+  'scenario.state.scheduler': 'Propuesto por el planificador automático',
+  'scenario.needs.schedule': 'No puedes programar tickets en {track}',
+  'scenario.needs.edit': 'No puedes editar tickets en {track}',
+  'scenario.refusal.permission': 'te falta un permiso que necesita en {track}',
+  'scenario.refusal.locked': 'está bloqueado',
+  'scenario.refusal.lockedBy': 'está bloqueado. {why}',
+  'scenario.refusal.archived': 'su track está archivado',
+  'scenario.refusal.gone': 'Ya no está en este plan para ti',
+  'scenario.refusal.changed': 'cambió desde el borrador',
+  'scenario.refusal.invalid':
+    'el ticket no acepta estos valores, por ejemplo un equipo que no está en su formulario',
+  'scenario.refusal.failed': 'no cambió; vuelve a intentarlo',
+  'scenario.keep': 'Conservar mi borrador',
+  'scenario.keep.label': 'Conservar mi borrador de {key}',
+  'scenario.keep.done': 'Se conservó el borrador de {key}, frente a sus valores actuales.',
+  'scenario.apply.chosen':
+    '{count, plural, =0 {Aplicar cambios} one {Aplicar # cambio} other {Aplicar # cambios}}',
+  'scenario.apply.all': 'Aplicar todos',
+  'scenario.apply.ask':
+    '{count, plural, one {¿Cambiar # ticket como tú, con tus permisos?} other {¿Cambiar # tickets como tú, con tus permisos?}}',
+  'scenario.apply.askAll':
+    '¿Cambiar todos los tickets con un borrador que ves ({count}) como tú, con tus permisos?',
+  'scenario.apply.progress': 'Aplicando: {done} de {total} hechos.',
+  'scenario.apply.result': '{applied} aplicados, {refused} rechazados',
+  'scenario.apply.refusedRow': '{key}: {reason}',
+  'scenario.apply.inProgress':
+    'Se está aplicando otra vez este plan. Vuelve a intentarlo cuando termine.',
+  'scenario.apply.notMain': 'Este escenario ya no es el principal, así que no se aplicó nada más.',
+  'scenario.apply.stopped':
+    'La aplicación se detuvo antes del final. Lo listado se hizo; vuelve a intentarlo para el resto.',
+  'scenario.discard.chosen':
+    '{count, plural, =0 {Descartar cambios} one {Descartar # cambio} other {Descartar # cambios}}',
+  'scenario.discard.all': 'Descartar todos',
+  'scenario.discard.ask':
+    '{count, plural, one {Se eliminan los borradores de # ticket en {scenario}. El ticket queda como está.} other {Se eliminan los borradores de # tickets en {scenario}. Los tickets quedan como están.}}',
+  'scenario.discard.askAll':
+    'Se eliminan todos los borradores que ves en {scenario} ({count, plural, one {# ticket} other {# tickets}}). {hidden, plural, =0 {} one {# en un ticket que no ves se queda.} other {# en tickets que no ves se quedan.}} Ningún ticket cambia.',
+  'scenario.discard.done':
+    '{count, plural, one {Se descartaron los borradores de # ticket en {scenario}.} other {Se descartaron los borradores de # tickets en {scenario}.}}',
+  'scenario.compare.title': 'Comparar',
+  'scenario.compare.a': 'Comparar',
+  'scenario.compare.b': 'Con',
+  'scenario.compare.live': 'En vivo (los tickets como están)',
+  'scenario.compare.gone': 'Un escenario que ya no existe',
+  'scenario.compare.yours': 'Las cifras son de los tickets que ves.',
+  'scenario.compare.failed': 'No se pudo cargar la comparación. Inténtalo de nuevo en un momento.',
+  'scenario.compare.measures': 'El plan comparado',
+  'scenario.compare.measure': 'Medida',
+  'scenario.compare.difference': 'Diferencia',
+  'scenario.compare.planEnd': 'El plan termina',
+  'scenario.compare.drafts': 'Cambios en borrador',
+  'scenario.compare.moved': 'Tickets que terminan en otro día',
+  'scenario.compare.movedWords':
+    '{later, plural, one {# termina más tarde} other {# terminan más tarde}} y {earlier} antes en {name}',
+  'scenario.compare.noDrafts': 'Ninguno: los tickets como están',
+  'scenario.compare.draftsCount': '{count, plural, one {# cambio} other {# cambios}}',
+  'scenario.compare.draftsHidden':
+    '{count, plural, one {# cambio} other {# cambios}}, y {hidden} en tickets que no ves',
+  'scenario.compare.noEnd': 'sin vencimiento',
+  'scenario.compare.endUndated':
+    '{end}; {count, plural, one {# ticket abierto no tiene vencimiento} other {# tickets abiertos no tienen vencimiento}}',
+  'scenario.compare.neither': 'Ninguno tiene final',
+  'scenario.compare.noEndIn': 'Sin final en {name}',
+  'scenario.compare.onlyIn': 'Solo termina en {name}',
+  'scenario.compare.same': 'Termina el mismo día',
+  'scenario.compare.later':
+    '{count, plural, one {Termina # día más tarde en {name}} other {Termina # días más tarde en {name}}}',
+  'scenario.compare.earlier':
+    '{count, plural, one {Termina # día antes en {name}} other {Termina # días antes en {name}}}',
+  'scenario.compare.teams': 'El final de cada equipo, por {field}',
+  'scenario.compare.team': 'Equipo',
+  'scenario.compare.otherTeam': 'Otro equipo o ninguno',
+  'scenario.compare.noTeamField':
+    'El sitio no tiene un campo de equipo, así que los equipos no se comparan.',
+  'scenario.compare.differing':
+    '{count, plural, =0 {Ningún ticket difiere} one {# ticket difiere} other {# tickets difieren}}',
+  'scenario.compare.firstOf': 'Se listan los primeros {shown} de {count}.',
+  'scenario.compare.days': 'del {start} al {due}',
+  'scenario.compare.daysTeam': 'del {start} al {due}, {team}',
+  'scenario.compare.ticketSides': '{a}: {aDays}. {b}: {bDays}.',
+  'plans.csv.inScenario': 'Escenario: {name}, borradores sin aplicar',
+  'plans.csv.draft': 'Borrador',
+  'plans.csv.draftStale': 'Sí, cambió desde el borrador',
+  'plans.image.inScenario': '{plan} — Escenario: {scenario}, borradores sin aplicar',
 };
