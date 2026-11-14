@@ -430,16 +430,17 @@ describe('people past the first page (T-307)', () => {
 
   it('[IAM-008] counts everyone and shows the rest a page at a time', async () => {
     const user = userEvent.setup();
-    renderUsers(fakePeopleClient({ pageSize: 2, people: manyPeople(5) }));
-    expect(await screen.findByText('5 people')).toBeVisible();
-    expect(names()).toEqual(['Person 001', 'Person 002']);
-    await user.click(showMore());
-    await waitFor(() => expect(names()).toHaveLength(4));
+    renderUsers(fakePeopleClient({ pageSize: 3, people: manyPeople(7) }));
+    expect(await screen.findByText('7 people')).toBeVisible();
+    expect(names()).toEqual(['Person 001', 'Person 002', 'Person 003']);
+    // Each page starts at the last person shown, to see that the list did not move.
     await user.click(showMore());
     await waitFor(() => expect(names()).toHaveLength(5));
-    expect(names().at(-1)).toBe('Person 005');
+    await user.click(showMore());
+    await waitFor(() => expect(names()).toHaveLength(7));
+    expect(names().at(-1)).toBe('Person 007');
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
-    expect(screen.getByText('5 people')).toBeVisible();
+    expect(screen.getByText('7 people')).toBeVisible();
   });
 
   it('[IAM-008] a search after Show more starts afresh, and the late page is dropped', async () => {
@@ -458,7 +459,8 @@ describe('people past the first page (T-307)', () => {
     renderUsers(client);
     await screen.findByText('5 people');
     await user.click(showMore());
-    expect(showMore()).toBeDisabled();
+    // Not disabled, so the focus stays on it.
+    expect(showMore()).toHaveAttribute('aria-disabled', 'true');
     await user.type(screen.getByRole('searchbox', { name: 'Find by name or email' }), 'person 005');
     expect(await screen.findByText('1 person')).toBeVisible();
     expect(names()).toEqual(['Person 005']);
@@ -471,10 +473,10 @@ describe('people past the first page (T-307)', () => {
 
   it('[IAM-008] a change keeps the pages Show more opened', async () => {
     const user = userEvent.setup();
-    renderUsers(fakePeopleClient({ pageSize: 2, people: manyPeople(5) }));
-    await screen.findByText('5 people');
+    renderUsers(fakePeopleClient({ pageSize: 3, people: manyPeople(7) }));
+    await screen.findByText('7 people');
     await user.click(showMore());
-    await waitFor(() => expect(names()).toHaveLength(4));
+    await waitFor(() => expect(names()).toHaveLength(5));
     await user.click(screen.getByRole('button', { name: 'Make site administrator: Person 004' }));
     expect(await screen.findByText('Person 004 was changed.')).toBeInTheDocument();
     expect(names()).toEqual([
@@ -482,7 +484,36 @@ describe('people past the first page (T-307)', () => {
       'Person 002',
       'Person 003',
       'Person 004Site administrator',
+      'Person 005',
     ]);
     expect(showMore()).toBeVisible();
+  });
+
+  it('[IAM-008] skips nobody when someone ahead leaves the list, and the focus goes to the last page', async () => {
+    const user = userEvent.setup();
+    const base = fakePeopleClient({ pageSize: 3 });
+    let people = manyPeople(7);
+    const client: PeopleClient = {
+      ...base,
+      users: async (_query, _status, offset = 0) => ({
+        users: structuredClone(people.slice(offset, offset + 3)),
+        total: people.length,
+      }),
+    };
+    renderUsers(client);
+    await screen.findByText('7 people');
+    // Another administrator (or the directory) deactivates Person 002 meanwhile.
+    people = people.filter((p) => p.name !== 'Person 002');
+    showMore().focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('6 people')).toBeVisible();
+    expect(names()).toEqual(['Person 001', 'Person 003', 'Person 004', 'Person 005', 'Person 006']);
+    expect(showMore()).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(names()).toHaveLength(6));
+    expect(names().at(-1)).toBe('Person 007');
+    // The last page: the button goes, and the focus is on the person it brought.
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    await waitFor(() => expect(screen.getByText('Person 007').closest('li')).toHaveFocus());
   });
 });

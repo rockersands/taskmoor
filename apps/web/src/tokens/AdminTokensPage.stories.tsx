@@ -131,7 +131,7 @@ const showsMore = async (canvasElement: HTMLElement) => {
 };
 
 export const ShowMoreTokens: Story = {
-  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }) },
+  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 3 }) },
   play: async ({ canvasElement }) => {
     await showsMore(canvasElement);
   },
@@ -139,7 +139,7 @@ export const ShowMoreTokens: Story = {
 
 export const ShowMoreTokensAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
-  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }) },
+  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 3 }) },
   play: async ({ canvasElement }) => {
     await fitsPhoneWidth(await showsMore(canvasElement));
   },

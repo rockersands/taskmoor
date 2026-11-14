@@ -263,7 +263,7 @@ const showsMore = async (canvasElement: HTMLElement) => {
 
 export const ShowMorePeople: Story = {
   decorators: [atDesktopPageWidth],
-  args: { client: fakePeopleClient({ pageSize: 2, people: manyPeople(5) }) },
+  args: { client: fakePeopleClient({ pageSize: 3, people: manyPeople(5) }) },
   play: async ({ canvasElement }) => {
     await showsMore(canvasElement);
   },
@@ -271,7 +271,7 @@ export const ShowMorePeople: Story = {
 
 export const ShowMorePeopleAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
-  args: { client: fakePeopleClient({ pageSize: 2, people: manyPeople(5) }) },
+  args: { client: fakePeopleClient({ pageSize: 3, people: manyPeople(5) }) },
   play: async ({ canvasElement }) => {
     await fitsPhoneWidth(await showsMore(canvasElement));
   },

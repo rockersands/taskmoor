@@ -348,16 +348,17 @@ describe('the token inventory past the first page (T-308)', () => {
 
   it('[IAM-007] counts every token and shows the rest a page at a time', async () => {
     const user = userEvent.setup();
-    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }));
-    expect(await tokens.findByText('5 tokens')).toBeVisible();
-    expect(names(tokens)).toEqual(['Token 001', 'Token 002']);
-    await user.click(tokens.getByRole('button', { name: 'Show more' }));
-    await waitFor(() => expect(items(tokens)).toHaveLength(4));
+    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(7), pageSize: 3 }));
+    expect(await tokens.findByText('7 tokens')).toBeVisible();
+    expect(names(tokens)).toEqual(['Token 001', 'Token 002', 'Token 003']);
+    // Each page starts at the last token shown, to see that the list did not move.
     await user.click(tokens.getByRole('button', { name: 'Show more' }));
     await waitFor(() => expect(items(tokens)).toHaveLength(5));
-    expect(names(tokens).at(-1)).toBe('Token 005');
+    await user.click(tokens.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items(tokens)).toHaveLength(7));
+    expect(names(tokens).at(-1)).toBe('Token 007');
     expect(tokens.queryByRole('button', { name: 'Show more' })).toBeNull();
-    expect(tokens.getByText('5 tokens')).toBeVisible();
+    expect(tokens.getByText('7 tokens')).toBeVisible();
   });
 
   it('[IAM-007] another filter after Show more starts afresh, and the late page is dropped', async () => {
@@ -375,7 +376,11 @@ describe('the token inventory past the first page (T-308)', () => {
     });
     await tokens.findByText('6 tokens');
     await user.click(tokens.getByRole('button', { name: 'Show more' }));
-    expect(tokens.getByRole('button', { name: 'Show more' })).toBeDisabled();
+    // Not disabled, so the focus stays on it.
+    expect(tokens.getByRole('button', { name: 'Show more' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     await user.selectOptions(tokens.getByLabelText('Show'), 'revoked');
     expect(await tokens.findByText('1 token')).toBeVisible();
     expect(names(tokens)).toEqual(['Old laptop']);
@@ -387,10 +392,10 @@ describe('the token inventory past the first page (T-308)', () => {
 
   it('[IAM-007] a revocation keeps the pages Show more opened', async () => {
     const user = userEvent.setup();
-    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 2 }));
-    await tokens.findByText('5 tokens');
+    const tokens = renderPage(fakeAdminTokensClient({}, { tokens: manyTokens(7), pageSize: 3 }));
+    await tokens.findByText('7 tokens');
     await user.click(tokens.getByRole('button', { name: 'Show more' }));
-    await waitFor(() => expect(items(tokens)).toHaveLength(4));
+    await waitFor(() => expect(items(tokens)).toHaveLength(5));
     await user.click(tokens.getByRole('button', { name: 'Revoke Token 004 of River Stone' }));
     const confirm = tokens.getByRole('group', { name: /Revoke Token 004 of River Stone\?/ });
     await user.click(
@@ -400,7 +405,48 @@ describe('the token inventory past the first page (T-308)', () => {
     await waitFor(() =>
       expect(tokens.queryByRole('button', { name: 'Revoke Token 004 of River Stone' })).toBeNull(),
     );
-    expect(names(tokens)).toEqual(['Token 001', 'Token 002', 'Token 003', 'Token 004']);
+    expect(names(tokens)).toEqual([
+      'Token 001',
+      'Token 002',
+      'Token 003',
+      'Token 004',
+      'Token 005',
+    ]);
     expect(tokens.getByRole('button', { name: 'Show more' })).toBeVisible();
+  });
+
+  it('[IAM-007] skips no token when one ahead leaves the list, and the focus goes to the last page', async () => {
+    const user = userEvent.setup();
+    const base = fakeAdminTokensClient();
+    let live = manyTokens(7);
+    const tokens = renderPage({
+      ...base,
+      list: async (_filter, offset = 0) => ({
+        tokens: structuredClone(live.slice(offset, offset + 3)),
+        total: live.length,
+        owners: [],
+      }),
+    });
+    await tokens.findByText('7 tokens');
+    // Token 002 expires, or its owner revokes it, meanwhile: it leaves the Active list.
+    live = live.filter((token) => token.name !== 'Token 002');
+    const more = () => tokens.getByRole('button', { name: 'Show more' });
+    more().focus();
+    await user.keyboard('{Enter}');
+    expect(await tokens.findByText('6 tokens')).toBeVisible();
+    expect(names(tokens)).toEqual([
+      'Token 001',
+      'Token 003',
+      'Token 004',
+      'Token 005',
+      'Token 006',
+    ]);
+    expect(more()).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(items(tokens)).toHaveLength(6));
+    expect(names(tokens).at(-1)).toBe('Token 007');
+    // The last page: the button goes, and the focus is on the token it brought.
+    expect(tokens.queryByRole('button', { name: 'Show more' })).toBeNull();
+    await waitFor(() => expect(tokens.getByText('Token 007').closest('li')).toHaveFocus());
   });
 });

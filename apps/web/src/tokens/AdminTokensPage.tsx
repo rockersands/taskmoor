@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
+import { pageAfter } from '../api/pages';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -34,7 +35,9 @@ interface Listed {
   owners: OwnerSummary[];
   /** Rows read from the server so far: where the next page starts. */
   read: number;
-  /** An empty page arrived before `total` was reached (tokens left the list meanwhile). */
+  /** The id of the last row read, which the next page reads again (`pageAfter`). */
+  lastId: number | null;
+  /** A page brought no new token before `total` was reached (tokens left the list meanwhile). */
   end: boolean;
   /** Show more is reading the next page. */
   more: boolean;
@@ -42,16 +45,20 @@ interface Listed {
 
 type Inventory = { status: 'loading' } | ({ status: 'loaded' } & Listed) | { status: 'failed' };
 
-/** The list with the next page after it; a token already shown is not shown twice. */
-function withPage<L extends Listed>(listed: L, page: TokenInventory): L {
+/** Reads of a list that keeps moving before its pages are taken as they come. */
+const MOST_MOVES = 3;
+
+/** The list with a page's new rows after it; a token already shown is not shown twice. */
+function withPage<L extends Listed>(listed: L, rows: ApiToken[], page: TokenInventory): L {
   const known = new Set(listed.tokens.map((token) => token.id));
   return {
     ...listed,
-    tokens: [...listed.tokens, ...page.tokens.filter((token) => !known.has(token.id))],
+    tokens: [...listed.tokens, ...rows.filter((token) => !known.has(token.id))],
     total: page.total,
     owners: page.owners,
-    read: listed.read + page.tokens.length,
-    end: page.tokens.length === 0,
+    read: listed.read + rows.length,
+    lastId: rows.at(-1)?.id ?? listed.lastId,
+    end: rows.length === 0,
   };
 }
 
@@ -74,6 +81,8 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
   // Each reading of the list from its start takes the next number; a page that arrives after a
   // newer reading began (another filter, a revocation) is dropped (T-308).
   const reading = useRef(0);
+  /** The token the focus goes to: the first one the last page brought, as Show more goes. */
+  const [focusId, setFocusId] = useState<number | null>(null);
 
   const refuse = useCallback(
     (error: unknown): boolean => {
@@ -90,35 +99,54 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
   /**
    * Reads the list from its start: one page for a new filter, or as many as were shown (`keep`)
    * after a revocation, so Show more's pages stay open; the owners are read again with it.
+   * Resolves to what it shows, or null.
    */
   const load = useCallback(
-    async (keep = 0) => {
+    async (keep = 0): Promise<Listed | null> => {
       const mine = ++reading.current;
+      const start: Listed = {
+        filter,
+        tokens: [],
+        total: 0,
+        owners: [],
+        read: 0,
+        lastId: null,
+        end: false,
+        more: false,
+      };
       try {
-        let listed: Listed = {
-          filter,
-          tokens: [],
-          total: 0,
-          owners: [],
-          read: 0,
-          end: false,
-          more: false,
-        };
+        let listed = start;
+        let moved = 0;
         do {
-          const page = await client.list(filter, listed.read);
-          if (mine !== reading.current) return;
-          listed = withPage(listed, page);
-        } while (listed.read < Math.min(keep, listed.total) && !listed.end);
+          const got = await pageAfter(
+            listed,
+            (offset) => client.list(filter, offset),
+            (page) => page.tokens,
+            moved < MOST_MOVES,
+          );
+          if (mine !== reading.current) return null;
+          if (got === null) {
+            // The list moved while it was read: from its start again.
+            moved += 1;
+            listed = start;
+          } else {
+            listed = withPage(listed, got.rows, got.page);
+          }
+        } while (listed === start || (listed.read < Math.min(keep, listed.total) && !listed.end));
         setInventory({ status: 'loaded', ...listed });
+        return listed;
       } catch (error) {
-        if (mine !== reading.current) return;
+        if (mine !== reading.current) return null;
         if (!refuse(error)) setInventory({ status: 'failed' });
+        return null;
       }
     },
     [client, filter, refuse],
   );
   const shown = inventory.status === 'loaded' ? inventory.read : 0;
-  const reload = () => load(shown);
+  const reload = async () => {
+    await load(shown);
+  };
 
   useEffect(() => {
     if (forbidden) return;
@@ -126,18 +154,31 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
   }, [forbidden, load]);
 
   /**
-   * Show more: the next page of the same filter, after the tokens already shown (T-308).
-   * Resolves to false when the page could not be read, for the list to say so.
+   * Show more: the next page of the same filter, after the tokens already shown (T-308). When
+   * the list moved meanwhile (a token expired, was revoked or made), it is read again from its
+   * start, one page further, so no token is skipped. The last page puts the focus on the first
+   * token it brought. Resolves to false when the page could not be read, for the list to say so.
    */
   const more = async (): Promise<boolean> => {
     if (inventory.status !== 'loaded' || inventory.more) return true;
     const mine = reading.current;
     const from = inventory;
     setInventory({ ...from, more: true });
+    setFocusId(null);
     try {
-      const page = await client.list(from.filter, from.read);
-      if (mine === reading.current) {
-        setInventory((s) => (s.status === 'loaded' ? { ...withPage(s, page), more: false } : s));
+      const got = await pageAfter(
+        from,
+        (offset) => client.list(from.filter, offset),
+        (page) => page.tokens,
+      );
+      if (mine !== reading.current) return true;
+      const after = got === null ? await load(from.read + 1) : withPage(from, got.rows, got.page);
+      if (after === null) return true;
+      if (got !== null) setInventory({ status: 'loaded', ...after, more: false });
+      if (after.end || after.read >= after.total) {
+        const before = new Set(from.tokens.map((token) => token.id));
+        const first = after.tokens.find((token) => !before.has(token.id)) ?? after.tokens.at(-1);
+        setFocusId(first?.id ?? null);
       }
       return true;
     } catch (error) {
@@ -186,6 +227,7 @@ export function AdminTokensPage({ client = adminTokensClient }: AdminTokensPageP
           timeZone={timeZone}
           onChanged={reload}
           onMore={more}
+          focusId={focusId}
           refuse={refuse}
         />
         {/* Nothing to revoke in bulk while there are no tokens at all (AD-31). */}
@@ -220,6 +262,7 @@ function InventorySection({
   timeZone,
   onChanged,
   onMore,
+  focusId,
   refuse,
 }: {
   client: AdminTokensClient;
@@ -231,6 +274,8 @@ function InventorySection({
   onChanged: () => Promise<void>;
   /** Reads the next page; false when it could not be read. */
   onMore: () => Promise<boolean>;
+  /** The token that takes the focus: the first the last page brought. */
+  focusId: number | null;
   refuse: (error: unknown) => boolean;
 }) {
   const t = useT();
@@ -314,6 +359,7 @@ function InventorySection({
                   reminderDays={reminderDays}
                   timeZone={timeZone}
                   showOwner
+                  focused={token.id === focusId}
                   actions={
                     token.status !== 'active' ? undefined : (
                       <DangerAction
@@ -344,7 +390,8 @@ function InventorySection({
               <button
                 type="button"
                 className="button-secondary"
-                disabled={inventory.more}
+                // Not disabled: the focus stays on it while the page loads.
+                aria-disabled={inventory.more || undefined}
                 onClick={() => {
                   setError(null);
                   void onMore().then((read) => {
