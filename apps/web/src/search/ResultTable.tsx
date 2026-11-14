@@ -6,6 +6,7 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { IconSelect } from '../shell/IconSelect';
+import { useMoreSides } from '../shell/moreSides';
 import { priorityName } from '../shell/priorityName';
 import { PriorityGlyph, PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
@@ -49,8 +50,18 @@ export interface ResultTableProps {
 }
 
 const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
-/** Short values that read best on one line; the summary takes the width they leave (TR-8). */
-const ONE_LINE = new Set([...DATE_COLUMNS, 'ticketType', 'status', 'priority', 'voteCount']);
+/**
+ * Short values that read best on one line; the summary takes the width they leave (TR-8). A name
+ * stays whole too ('Chen Wei', not 'Chen' above 'Wei').
+ */
+const ONE_LINE = new Set([
+  ...DATE_COLUMNS,
+  'ticketType',
+  'status',
+  'assignee',
+  'priority',
+  'voteCount',
+]);
 
 /**
  * The results as a table in the person's columns (M1-042; QRY-014): the key links the ticket,
@@ -63,7 +74,7 @@ const ONE_LINE = new Set([...DATE_COLUMNS, 'ticketType', 'status', 'priority', '
  */
 export function ResultTable(props: ResultTableProps) {
   const compact = useMediaQuery(COMPACT_QUERY);
-  return compact ? <ResultRows {...props} /> : <WideTable {...props} />;
+  return compact ? <ResultRows {...props} /> : <ResultGrid {...props} />;
 }
 
 /** The key's cell: the link, subticket progress and the names of the format rules that apply. */
@@ -141,8 +152,25 @@ export function ResultRows({ tickets, fields, client, format }: ResultTableProps
   );
 }
 
-function WideTable({ tickets, columns, fields, client, onSaved, format, sort }: ResultTableProps) {
+/**
+ * The table on a wider screen. The key and the short columns take their own width and the summary
+ * the rest, so at 1280 px the default columns fit the card (TR-8, PL-10). A table wider than its
+ * card scrolls inside it, and the edge with more beyond it fades (D2), so a cut column reads as
+ * "more this way" instead of being clipped. Exported for the stories, which set the card's
+ * width themselves; pages use `ResultTable`.
+ */
+export function ResultGrid({
+  tickets,
+  columns,
+  fields,
+  client,
+  onSaved,
+  format,
+  sort,
+}: ResultTableProps) {
   const t = useT();
+  const region = useRef<HTMLElement>(null);
+  const more = useMoreSides(region, `${tickets.length}/${columns.join()}`);
   const nameOf = useColumnName(fields);
   const progress = useSubticketProgress(tickets, client.subticketProgress);
   const [priorities, setPriorities] = useState<
@@ -163,7 +191,9 @@ function WideTable({ tickets, columns, fields, client, onSaved, format, sort }: 
 
   return (
     <section
+      ref={region}
       className="glass-card glass-scroller search-table-scroll"
+      data-more={more}
       aria-label={t('search.table')}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
       tabIndex={0}
@@ -271,10 +301,14 @@ function Cell({
   }, [editing]);
 
   const value = cellValue(ticket, column);
+  // No one assigned reads 'Unassigned', as the phone's rows say, never a blank cell.
+  const unassigned = column === 'assignee' && (value === null || value === undefined);
   const shown =
     DATE_TIMES.has(column) && typeof value === 'string'
       ? intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
-      : valueText(value);
+      : unassigned
+        ? t('search.edit.unassigned')
+        : valueText(value);
 
   const close = () => {
     setInput(null);
@@ -365,7 +399,7 @@ function Cell({
         </form>
       ) : (
         <span className="search-cell-view">
-          <span className="search-cell-value">
+          <span className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}>
             <CellPicture column={column} value={value} shown={shown} />
           </span>
           {editor && (

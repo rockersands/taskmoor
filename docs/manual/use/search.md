@@ -326,7 +326,8 @@ and how to make the first.
 - **Subscribe** emails you its results: **How often** (**Every day**, **Every week** on a chosen
   day, or **Every month** on a day from 1 to 28), **At** an hour, and **Only when something
   matches**. Press **Subscribe by email**; the page says when the first email goes out. Once
-  you get a saved search by email, its button reads **Subscribed**, with a tick.
+  you get a saved search by email, its button reads **Subscribed**, with a tick, and looks pressed;
+  until then it shows an envelope.
 
 A track's board can stand on a saved search. Its query then has to stay inside that track, so
 **Save** refuses a query that would leave it and names the board and the track. Start the query with
@@ -347,8 +348,10 @@ by your administrator.
 Results show as a table, fifty tickets at a time; **Show more** adds the next fifty. The
 count above says how many tickets match, and a line beside it says their order, for example
 **Sorted by Created, latest first** (a date column reads earliest or latest first); the column
-they follow carries an arrow in its heading. The summary takes the width the other columns
-leave, and short values and dates stay on one line. On a phone the table becomes stacked rows:
+they follow carries an arrow in its heading. The key takes its own width and the summary the width the other columns
+leave; short values, names and dates stay on one line, and a ticket with no one assigned reads
+**Unassigned**. When the columns cannot fit the page, the table scrolls sideways inside its card,
+and the edge with more beyond it fades. On a phone the table becomes stacked rows:
 each ticket's key, its summary, and then its status, assignee and priority. Beyond 10,000 it is an estimate, "About 120,000 tickets",
 or "More than 10,000 tickets" when an estimate would not be close enough.
 

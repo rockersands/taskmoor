@@ -267,6 +267,20 @@ describe('search results (M1-042)', () => {
     expect(css).not.toMatch(/\.search-cell-value \{[^}]*overflow-wrap: anywhere/);
   });
 
+  it('[QRY-014] writes Unassigned in the Assignee cell of a ticket no one is assigned, as the phone rows do', async () => {
+    renderPage();
+    await screen.findByRole('table');
+    const cell = within(row('SHOP-44'))
+      .getAllByRole('cell')
+      .find((c) => c.getAttribute('data-column') === 'assignee');
+    expect(cell).toHaveTextContent(/^Unassigned$/);
+    // A name still shows as itself.
+    const named = within(row('SHOP-41'))
+      .getAllByRole('cell')
+      .find((c) => c.getAttribute('data-column') === 'assignee');
+    expect(named).toHaveTextContent(/^Kalo Moana$/);
+  });
+
   it('[QRY-014] says the order the results are in and marks that column (PL-11)', async () => {
     renderPage();
     const table = await screen.findByRole('table');
