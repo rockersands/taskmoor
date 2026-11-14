@@ -312,7 +312,8 @@ describe('search results (M1-042)', () => {
 });
 
 // A start, due or custom date cell reads in the person's locale and on its calendar day, as the
-// ticket's own fields do, never '2026-10-13' (T-240).
+// ticket's own fields do, never '2026-10-13'; a custom datetime cell reads as Created and Updated
+// do, never '2026-10-13T09:00:00Z' (T-240).
 describe('date cells in the person’s locale (T-240)', () => {
   useTimeZone('America/Los_Angeles');
 
@@ -321,7 +322,7 @@ describe('date cells in the person’s locale (T-240)', () => {
       ...(TICKETS[0] as SearchTicket),
       startDate: '2026-10-01',
       dueDate: '2026-10-13',
-      fields: { '50': '2026-11-02' },
+      fields: { '50': '2026-11-02', '51': '2026-10-13T09:00:00Z' },
     },
   ];
   const renderGrid = (locale: 'en' | 'es') =>
@@ -330,8 +331,11 @@ describe('date cells in the person’s locale (T-240)', () => {
         <SessionProvider session={MEMBER}>
           <ResultGrid
             tickets={dated()}
-            columns={['summary', 'startDate', 'dueDate', 'cf[50]']}
-            fields={[{ id: 50, name: 'Go-live', type: 'date' }]}
+            columns={['summary', 'startDate', 'dueDate', 'cf[50]', 'cf[51]']}
+            fields={[
+              { id: 50, name: 'Go-live', type: 'date' },
+              { id: 51, name: 'Cut-over', type: 'datetime' },
+            ]}
             client={fakeSearchClient()}
             onSaved={() => {}}
           />
@@ -346,12 +350,17 @@ describe('date cells in the person’s locale (T-240)', () => {
 
   it('[QRY-014] [NFR-006] in English', () => {
     renderGrid('en');
-    expect(cells()).toEqual(['Oct 1, 2026', 'Oct 13, 2026', 'Nov 2, 2026']);
+    expect(cells()).toEqual([
+      'Oct 1, 2026',
+      'Oct 13, 2026',
+      'Nov 2, 2026',
+      'Oct 13, 2026, 2:00 AM',
+    ]);
   });
 
   it('[QRY-014] [NFR-006] in Spanish', () => {
     renderGrid('es');
-    expect(cells()).toEqual(['1 oct 2026', '13 oct 2026', '2 nov 2026']);
+    expect(cells()).toEqual(['1 oct 2026', '13 oct 2026', '2 nov 2026', '13 oct 2026, 2:00']);
   });
 });
 

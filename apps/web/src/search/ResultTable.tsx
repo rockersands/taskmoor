@@ -22,6 +22,7 @@ import {
   cellValue,
   DATE_COLUMNS,
   editorStart,
+  isDateTimeColumn,
   type TableSort,
   valueText,
 } from './columns';
@@ -50,7 +51,6 @@ export interface ResultTableProps {
   sort?: TableSort | null;
 }
 
-const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
 /**
  * Short values that read best on one line; the summary takes the width they leave (TR-8). A name
  * stays whole too ('Chen Wei', not 'Chen' above 'Wei').
@@ -235,6 +235,7 @@ export function ResultGrid({
                     column={column}
                     columnName={nameOf(column)}
                     editor={cellEditor(column, fields)}
+                    dateTime={isDateTimeColumn(column, fields)}
                     priorities={priorities}
                     client={client}
                     onSaved={onSaved}
@@ -270,6 +271,7 @@ function Cell({
   column,
   columnName,
   editor,
+  dateTime,
   priorities,
   client,
   onSaved,
@@ -279,6 +281,8 @@ function Cell({
   column: string;
   columnName: string;
   editor: CellEditor | null;
+  /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
+  dateTime: boolean;
   priorities: { id: number; name: string; level?: number }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
@@ -305,7 +309,7 @@ function Cell({
   // No one assigned reads 'Unassigned', as the phone's rows say, never a blank cell.
   const unassigned = column === 'assignee' && (value === null || value === undefined);
   const shown =
-    DATE_TIMES.has(column) && typeof value === 'string'
+    dateTime && typeof value === 'string' && !Number.isNaN(Date.parse(value))
       ? intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
       : editor?.kind === 'date' && isCalendarDay(value)
         ? dayText(intl, value)
