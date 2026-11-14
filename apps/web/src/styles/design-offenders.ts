@@ -113,6 +113,11 @@ export const ALLOWED = {
     'permissions/PermissionExplainerPage.tsx admin.explain.noGrant':
       'one answer of the permission explainer, beside the others it can give',
     'permissions/PermissionExplainerPage.tsx admin.explain.noLevel': ONE_READING,
+    'plans/AutoScheduleDialog.tsx schedule.dialog.noTeam':
+      'one count in the list of tickets a run will not place, beside the others',
+    'plans/AutoScheduleDialog.tsx schedule.dialog.teams.noCapacity': MISSING_SETUP,
+    'plans/AutoScheduleDialog.tsx schedule.dialog.teams.none': MISSING_SETUP,
+    'plans/AutoScheduleDialog.tsx schedule.dialog.unit.noPoints': MISSING_SETUP,
     'plans/PlanCapacityPage.tsx plans.capacity.noPointsField': MISSING_SETUP,
     'plans/PlanCapacityPage.tsx plans.capacity.noTeams': MISSING_SETUP,
     'plans/PlanPage.tsx plans.notice.noSources': MISSING_SETUP,

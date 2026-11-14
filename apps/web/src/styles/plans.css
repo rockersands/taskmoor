@@ -1121,3 +1121,8 @@
 .capacity-row.is-others th {
   font-style: italic;
 }
+
+/* Auto-schedule's leave-out lists: a fieldset of check boxes, set closer than a form's groups. */
+.form fieldset.auto-schedule-choices {
+  gap: var(--space-2);
+}

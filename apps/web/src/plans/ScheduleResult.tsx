@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
 import type { CapacityUnit } from './client';
 import type { ScheduleResult as RunAnswer, ScheduleEntry, ScheduleOutcome } from './scenarioClient';
 import { type ScheduleLookup, useScheduleWords } from './scheduleWords';
@@ -202,7 +203,7 @@ export function ScheduleResult({
         ))}
       </fieldset>
       {rows.length === 0 ? (
-        <p className="scenario-meta">{t('schedule.result.none')}</p>
+        <EmptyState compact title={t('schedule.result.none')} />
       ) : (
         <ul
           className="scenario-differing"
