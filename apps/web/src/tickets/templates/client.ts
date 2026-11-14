@@ -81,13 +81,19 @@ export interface FieldValueOption {
   value: string;
 }
 
+/** A track's release or area; an archived one is named but not offered anew. */
+export interface TrackChoice extends Named {
+  archived?: boolean;
+}
+
 /** What the template form offers. */
 export interface TemplateOptions {
   track: { id: number; key: string; name: string } | null;
   types: TypeOption[];
   priorities: Named[];
-  areas: Named[];
-  releases: Named[];
+  /** The track's areas and releases, archived ones included to name what a template holds. */
+  areas: TrackChoice[];
+  releases: TrackChoice[];
   fields: FieldChoice[];
 }
 
@@ -172,16 +178,21 @@ export const templateClient: TemplateClient = {
     );
     const [types, areas, releases, fields] = await Promise.all([
       api<{ ticketTypes: TypeOption[] }>(`/tracks/${path}/ticket-types`),
-      api<{ areas: Named[] }>(`/tracks/${track.id}/areas`),
-      api<{ releases: Named[] }>(`/tracks/${track.id}/releases`),
+      // Each list comes whole, in one answer; archived ones name what a template already holds.
+      api<{ areas: (Named & { archived: boolean })[] }>(
+        `/tracks/${track.id}/areas?archived=include`,
+      ),
+      api<{ releases: (Named & { archived: boolean })[] }>(
+        `/tracks/${track.id}/releases?archived=include`,
+      ),
       api<{ fields: FieldChoice[] }>(`/fields?trackId=${track.id}`),
     ]);
     return {
       track,
       types: types.ticketTypes,
       priorities,
-      areas: areas.areas,
-      releases: releases.releases,
+      areas: areas.areas.map(({ id, name, archived }) => ({ id, name, archived })),
+      releases: releases.releases.map(({ id, name, archived }) => ({ id, name, archived })),
       fields: fields.fields,
     };
   },

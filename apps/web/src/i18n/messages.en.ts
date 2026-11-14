@@ -6619,6 +6619,17 @@ export const messagesEn = {
     'Some values cannot be used. Check the days, the fields and the subtickets.',
   'tickets.templates.problem.forbidden': 'You may not change this template.',
   'tickets.templates.problem.other': 'That did not work. Try again in a moment.',
+  'tickets.templates.problem.marked':
+    'Some values cannot be used. The reason is under each of them.',
+  'tickets.templates.problem.trackOnly':
+    'Only a track’s template can hold this value: a template for every track cannot.',
+  'tickets.templates.archivedValue': '{name} (archived)',
+  'tickets.templates.valueNotInTrack':
+    '{type, select, area {Area {id}, not in this track} other {Release {id}, not in this track}}',
+  'tickets.templates.removeValue': 'Remove {value} from {field}',
+  'tickets.templates.trackValuesHint':
+    'Set through the API. Removing one leaves it off the tickets made from this template.',
+  'tickets.templates.noTrackValues': 'None: saving leaves this field empty.',
   'tickets.templates.pick': 'Start from a template',
   'tickets.templates.pickNone': 'No template',
   'tickets.templates.pickFailed': 'That template could not be loaded. Try again in a moment.',
