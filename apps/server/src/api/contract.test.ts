@@ -338,21 +338,6 @@ describe('API v1 contract (M1-065)', () => {
       '/api/v1/admin/property-indexes/:id',
       `/api/v1/admin/property-indexes/${index.id}`,
     );
-    // Guardrails (M1-055): the list, with grants counted per permission, and one limit raised.
-    const { guardrails } = await call(
-      'GET',
-      '/api/v1/admin/guardrails',
-      '/api/v1/admin/guardrails',
-    );
-    expect(
-      (guardrails as Json[]).find((g) => g.name === 'grants_per_permission')?.usage,
-    ).toMatchObject({ where: { kind: 'access_policy', permission: expect.any(String) } });
-    await call(
-      'PUT',
-      '/api/v1/admin/guardrails/:name',
-      '/api/v1/admin/guardrails/areas_per_track',
-      { limit: 20_000 },
-    );
     const release = (
       await call('POST', '/api/v1/tracks/:id/releases', `/api/v1/tracks/${track.id}/releases`, {
         name: '1.0',

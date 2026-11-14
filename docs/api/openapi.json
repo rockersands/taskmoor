@@ -1135,86 +1135,6 @@
         ],
         "type": "object"
       },
-      "Guardrail": {
-        "additionalProperties": {},
-        "properties": {
-          "default": {
-            "description": "The limit a site starts with.",
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
-          },
-          "limit": {
-            "description": "The limit in force on this site.",
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
-          },
-          "name": {
-            "description": "The guardrail, such as `fields_per_track`.",
-            "type": "string"
-          },
-          "usage": {
-            "additionalProperties": {},
-            "properties": {
-              "value": {
-                "description": "The largest count on the site.",
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
-              },
-              "where": {
-                "anyOf": [
-                  {
-                    "additionalProperties": {},
-                    "properties": {
-                      "id": {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      "kind": {
-                        "description": "What holds that count, such as `track`, `field`, `workflow` or `access_policy`.",
-                        "type": "string"
-                      },
-                      "name": {
-                        "description": "Its name; a track by its key.",
-                        "type": "string"
-                      },
-                      "permission": {
-                        "description": "For grants per permission: the permission whose grants the access policy counts, by key, such as `browse_track`.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "id",
-                      "name"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "What holds the largest count; null while nothing does."
-              }
-            },
-            "required": [
-              "value",
-              "where"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "name",
-          "limit",
-          "default",
-          "usage"
-        ],
-        "type": "object"
-      },
       "Link": {
         "additionalProperties": {},
         "properties": {
@@ -5767,39 +5687,9 @@
     },
     "/api/v1/admin/guardrails": {
       "get": {
-        "description": "Every guardrail with its default, the limit in force and the largest count on the site, with what holds it. No limit goes above `ceiling`. For site administrators.",
-        "operationId": "listGuardrails",
+        "operationId": "internal-get-admin-guardrails",
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {},
-                  "properties": {
-                    "ceiling": {
-                      "description": "The highest limit allowed.",
-                      "maximum": 9007199254740991,
-                      "minimum": -9007199254740991,
-                      "type": "integer"
-                    },
-                    "guardrails": {
-                      "items": {
-                        "$ref": "#/components/schemas/Guardrail"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "guardrails",
-                    "ceiling"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Every guardrail, in a fixed order."
-          },
-          "401": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5807,17 +5697,7 @@
                 }
               }
             },
-            "description": "No session or token, or an expired one."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+            "description": "The route’s answer; refusals have the shared error shape."
           }
         },
         "security": [
@@ -5830,21 +5710,19 @@
             ]
           }
         ],
-        "summary": "The configuration limits and where each is used most",
+        "summary": "Internal route of the web app; it may change in any release.",
         "tags": [
-          "Guardrails"
+          "Internal"
         ],
         "x-taskmoor-access": "admin",
-        "x-taskmoor-stability": "stable"
+        "x-taskmoor-stability": "internal"
       }
     },
     "/api/v1/admin/guardrails/{name}": {
       "put": {
-        "description": "Takes effect with the next addition. What already exists is never removed, so a lowered limit can leave the count above it. For site administrators.",
-        "operationId": "setGuardrail",
+        "operationId": "internal-put-admin-guardrails-by-name",
         "parameters": [
           {
-            "description": "The guardrail, such as `fields_per_track`.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -5853,55 +5731,8 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "limit": {
-                    "description": "The new limit, from 1 to the ceiling.",
-                    "maximum": 1000000,
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "limit"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {},
-                  "properties": {
-                    "limit": {
-                      "maximum": 9007199254740991,
-                      "minimum": -9007199254740991,
-                      "type": "integer"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "limit"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "The guardrail and its new limit."
-          },
-          "400": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5909,47 +5740,7 @@
                 }
               }
             },
-            "description": "The request is not valid: see `error` and, for fields, `fields`."
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No session or token, or an expired one."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The session or token may not do this (its scope, or the person’s permissions)."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "There is no such resource, or the caller may not see it."
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The resource changed or is in a state that refuses this; read it again."
+            "description": "The route’s answer; refusals have the shared error shape."
           }
         },
         "security": [
@@ -5962,12 +5753,12 @@
             ]
           }
         ],
-        "summary": "Raise or lower a configuration limit",
+        "summary": "Internal route of the web app; it may change in any release.",
         "tags": [
-          "Guardrails"
+          "Internal"
         ],
         "x-taskmoor-access": "admin",
-        "x-taskmoor-stability": "stable"
+        "x-taskmoor-stability": "internal"
       }
     },
     "/api/v1/admin/imports": {
@@ -35926,9 +35717,6 @@
     },
     {
       "name": "Comments"
-    },
-    {
-      "name": "Guardrails"
     },
     {
       "name": "Instance"

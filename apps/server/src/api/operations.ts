@@ -16,7 +16,6 @@ import {
   listQuery as commentListQuery,
   updateBody as commentUpdateBody,
 } from '../routes/comments';
-import { putBody as guardrailBody } from '../routes/guardrails';
 import { createLinkBody } from '../routes/links';
 import { metaAnswer, metaQuery } from '../routes/meta';
 import { propertyIndexBody, putPropertyBody } from '../routes/properties';
@@ -694,45 +693,6 @@ export const OPERATIONS: readonly Operation[] = [
     description: 'The properties stay; queries can no longer read the values.',
     params: { id: 'The index’s id.' },
     responses: { 204: { description: 'Dropped.' } },
-  }),
-
-  // Guardrails (M1-055; CORE-026): the site's configuration limits.
-  op({
-    method: 'GET',
-    path: '/api/v1/admin/guardrails',
-    id: 'listGuardrails',
-    tag: 'Guardrails',
-    summary: 'The configuration limits and where each is used most',
-    description:
-      'Every guardrail with its default, the limit in force and the largest count on the site, with what holds it. No limit goes above `ceiling`. For site administrators.',
-    responses: {
-      200: {
-        description: 'Every guardrail, in a fixed order.',
-        schema: z
-          .object({
-            guardrails: z.array(s.guardrail),
-            ceiling: z.number().int().meta({ description: 'The highest limit allowed.' }),
-          })
-          .loose(),
-      },
-    },
-  }),
-  op({
-    method: 'PUT',
-    path: '/api/v1/admin/guardrails/:name',
-    id: 'setGuardrail',
-    tag: 'Guardrails',
-    summary: 'Raise or lower a configuration limit',
-    description:
-      'Takes effect with the next addition. What already exists is never removed, so a lowered limit can leave the count above it. For site administrators.',
-    params: { name: 'The guardrail, such as `fields_per_track`.' },
-    body: guardrailBody,
-    responses: {
-      200: {
-        description: 'The guardrail and its new limit.',
-        schema: z.object({ name: z.string(), limit: z.number().int() }).loose(),
-      },
-    },
   }),
 
   // Time tracking.

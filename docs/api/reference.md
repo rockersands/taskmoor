@@ -10,7 +10,6 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 - [Bulk changes](#bulk-changes)
 - [Checklists](#checklists)
 - [Comments](#comments)
-- [Guardrails](#guardrails)
 - [Instance](#instance)
 - [Links](#links)
 - [Properties](#properties)
@@ -615,45 +614,6 @@ Body:
 Responses:
 
 - 200: The comment as it is now. Body: `comment` ([Comment](#schema-comment)).
-- 400: The request is not valid: see `error` and, for fields, `fields`.
-- 401: No session or token, or an expired one.
-- 403: The session or token may not do this (its scope, or the person’s permissions).
-- 404: There is no such resource, or the caller may not see it.
-- 409: The resource changed or is in a state that refuses this; read it again.
-
-## Guardrails
-
-### The configuration limits and where each is used most
-
-`GET /api/v1/admin/guardrails`, operation `listGuardrails`, access: admin.
-
-Every guardrail with its default, the limit in force and the largest count on the site, with what holds it. No limit goes above `ceiling`. For site administrators.
-
-Responses:
-
-- 200: Every guardrail, in a fixed order. Body: `guardrails` (array of [Guardrail](#schema-guardrail)), `ceiling` (integer).
-- 401: No session or token, or an expired one.
-- 403: The session or token may not do this (its scope, or the person’s permissions).
-
-### Raise or lower a configuration limit
-
-`PUT /api/v1/admin/guardrails/{name}`, operation `setGuardrail`, access: admin.
-
-Takes effect with the next addition. What already exists is never removed, so a lowered limit can leave the count above it. For site administrators.
-
-| Parameter | In | Type | Required | Meaning |
-| --- | --- | --- | --- | --- |
-| `name` | path | string | yes | The guardrail, such as `fields_per_track`. |
-
-Body:
-
-| Name | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `limit` | integer | yes | The new limit, from 1 to the ceiling. |
-
-Responses:
-
-- 200: The guardrail and its new limit. Body: `name` (string), `limit` (integer).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
@@ -2013,15 +1973,6 @@ Responses:
 | `name` | string | yes |  |
 | `type` | string | yes |  |
 
-### Schema: Guardrail
-
-| Name | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `name` | string | yes | The guardrail, such as `fields_per_track`. |
-| `limit` | integer | yes | The limit in force on this site. |
-| `default` | integer | yes | The limit a site starts with. |
-| `usage` | object | yes |  |
-
 ### Schema: Link
 
 | Name | Type | Required | Meaning |
@@ -2362,5 +2313,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 529 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 531 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.
