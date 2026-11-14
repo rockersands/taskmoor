@@ -517,7 +517,9 @@ describe('a track’s reports equal their searches', () => {
     }
     // A name only where the catalogue's names are unique; a person by id, as names may repeat.
     const byStatus = await statistic('member', 'RPS', 'group-by', 'field=status');
-    expect(byStatus.values[0].query).toBe(`track = "RPS" AND status = "${byStatus.values[0].name}"`);
+    expect(byStatus.values[0].query).toBe(
+      `track = "RPS" AND status = "${byStatus.values[0].name}"`,
+    );
     const byPerson = await statistic('member', 'RPS', 'group-by', 'field=assignee');
     const member = (byPerson.values as (Value & { query: string })[]).find(
       (v) => v.id === String(users.member.id),
