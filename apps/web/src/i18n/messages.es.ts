@@ -7583,7 +7583,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Colocado desde el {start}: primero van los tickets de mayor rango de {subject}.',
   'schedule.reason.firstForBlocked': 'Colocado antes porque bloquea {ticket}.',
   'schedule.reason.already': 'Colocado donde ya está: no hay nada que cambiar.',
-  'schedule.reason.personDraft': 'Conservado: una persona hizo un borrador de sus días en este escenario.',
+  'schedule.reason.personDraft':
+    'Conservado: una persona hizo un borrador de sus días en este escenario.',
   'schedule.reason.mayNotSchedule': 'Conservado: no puedes programar tickets en {track}.',
   'schedule.reason.keptByQuery': 'Conservado: coincide con los tickets que se conservan.',
   'schedule.reason.inProgress': 'Conservado: está en curso.',
