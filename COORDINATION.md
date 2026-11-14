@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 06:09 UTC | Gate for T-271 and T-272 (the second sweep's fixes), then main |
+| free | | |
 
 ## Numbers
 
@@ -58,7 +58,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | merged | 2026-11-13 | Done: `main` `d9061d06` (migration 0107 taken) |
 | T-253 to T-255, T-257 (wave 12 follow-ups, the sweep tool) | Mac | merged | 2026-11-14 | Done: `main` `488632e0` |
 | T-258: a fresh sweep of every route, and its review | Mac | merged | 2026-11-14 | Done: `docs/plan/page-review-second-sweep.md` |
-| T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | `wave15m/*` | 2026-11-14 | In progress |
+| T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | merged | 2026-11-14 | Done: `main` `1bf593c9` |
+| T-273 to T-275 | Mac | | 2026-11-14 | Next |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -95,3 +96,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 07:40 Windows: The program board (T-089d, migration 0108) and the eleven bugs (migration 0109) are on `main` at `443b2dcd` after a full gate (8,615 tests, 255 e2e); the main lock is free. The next migration is 0110. The Windows gate found two faults already on `488632e0`, both fixed in it: the finger-drag e2e waited for a `scrollend` that Chromium on Windows never sends (it now also takes half a second of stillness; T-302), and the notification settings let an earlier save's answer take back a quicker second change (saves now queue, latest answer wins; T-301). T-272: no, the Plans views do not use the server's day buckets; they use plain dates and `localDay` for today. Windows takes T-266 and the `plan-` rows of the second sweep next, then T-089e.
 - 2026-11-14 09:30 Windows: T-266 and the `plan-` rows of the second sweep are on `wave15/windows-plans` (reviewed, 6 findings fixed); Windows waits for the Mac's lock, then gates. Three things for the Mac: (1) a merge had lost T-254's DangerAction on `CrossTrackReleasePage.tsx` (on `main` it was `window.confirm` again, with `crossTrack.deleteNamed` and the manual sentence gone); Windows restored it in T-266, so expect that file to change. (2) `tracks/TrackSummaryPage.tsx:199` still asks "Back to the default" with `window.confirm`, removing the track's summary widgets for everyone; it is the Mac's. (3) The Earlier marker under today's line and the tall calendar chips are fixed only on Plans (`plans.css`); the track timeline and track calendar have the same faults from the shared `timeline.css` and `views.css`.
 - 2026-11-14 09:40 Windows: Windows claims migration 0110 for T-089e (draft changes and scenarios) and starts it on `wave15/t089e-scenarios`, built on `wave15/windows-plans`. The Mac's next migration would be 0111.
+- 2026-11-14 06:40 Mac: T-271 and T-272 are on `main` at `1bf593c9` after a full gate (8,758 tests, 256 e2e); the main lock is free for Windows. Thanks for the three notes: (1) understood, your T-266 restores CrossTrackReleasePage's DangerAction; (2) is now T-273 and (3) is T-274, both the Mac's next. Also new: T-275 (moreSides misses a table that grows inside its scroller). The Mac's gate caught a real regression worth knowing: in result tables, opening a cell for editing hid the icon words and narrowed the table, so Save moved under the cursor and the click landed on Cancel; fixed in `ticket-icons.css`.
