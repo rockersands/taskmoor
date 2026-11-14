@@ -1468,6 +1468,7 @@ export interface components {
                 minimum: string | null;
                 recommended: string | null;
             };
+            /** @description Who this site is: its id, its name and the key it signs with. */
             instance: {
                 id: string;
                 /** @constant */
