@@ -201,6 +201,13 @@ describe('a plan’s baselines (PLN-011)', () => {
     );
   });
 
+  it('[PLN-011] compares with Live, as Capture says, when the scenario in the address is gone', async () => {
+    const { baselines } = renderBaselines('#/plans/12/baselines?scenario=99&baseline=1');
+    expect(await screen.findByText(/^The days now: Live\./)).toBeVisible();
+    expect(baselines.asked.length).toBeGreaterThan(0);
+    expect(baselines.asked.every((a) => a.scenario === undefined)).toBe(true);
+  });
+
   it('[PLN-011] says so when the baseline in the address is gone', async () => {
     renderBaselines('#/plans/12/baselines?baseline=99');
     expect(await screen.findByText('This baseline or scenario no longer exists.')).toBeVisible();

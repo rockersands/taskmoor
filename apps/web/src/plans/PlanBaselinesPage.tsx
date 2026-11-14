@@ -224,7 +224,9 @@ export function PlanBaselinesPage({
           client={client}
           baseline={opened}
           filters={view.filters}
-          scenario={view.scenario}
+          // The scenario the page resolved, as every plan view reads: one the address names that
+          // no longer exists leaves the plan Live, here as in Capture.
+          scenario={scenario?.id}
           closeHref={hrefWith(undefined)}
           now={now}
         />
