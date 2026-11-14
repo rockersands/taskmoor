@@ -42,7 +42,10 @@ export const IssueLink: Story = {
   },
 };
 
-/** Nothing imported matches (or the person may not see it). */
+/**
+ * Nothing imported matches (or the person may not see it): the not-found pattern of every other
+ * page (D4, D24): its title, one line said as an alert, Home and Search, and no intro.
+ */
 export const Missing: Story = {
   args: { route: '#/imported/board/99', lookup: async () => null },
   play: async ({ canvasElement }) => {
@@ -50,7 +53,18 @@ export const Missing: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'Nothing that was imported matches this link',
     );
-    await expect(canvas.getByRole('link', { name: 'Go to search' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('Link not found');
+    const waysOn = canvas.getByRole('navigation', { name: 'Ways on' });
+    await expect(
+      within(waysOn)
+        .getAllByRole('link')
+        .map((link) => [link.textContent, link.className]),
+    ).toEqual([
+      ['Go to Home', 'button-primary'],
+      ['Go to Search', 'button-secondary'],
+    ]);
+    await expect(canvas.queryByText(/now that its work was imported here/)).toBeNull();
+    await expect(canvasElement.querySelector('.form-error')).toBeNull();
   },
 };
 

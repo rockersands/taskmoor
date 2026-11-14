@@ -859,7 +859,7 @@ export const messagesEn = {
   'importedLink.looking': 'Looking for what this link became…',
   'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',
   'importedLink.failed': 'The link could not be looked up. Try again in a moment.',
-  'importedLink.toSearch': 'Go to search',
+  'importedLink.notFound': 'Link not found',
   'saved.importProblem':
     'This saved search came from an import and does not run yet: {problem}. Change the query and save it to fix it.',
   'saved.failed': 'That did not work. Try again in a moment.',

@@ -36,6 +36,41 @@ export const UnknownAddress: Story = {
   },
 };
 
+/** Where a label's line box sits inside its pill, and whether it is underlined. */
+const labelIn = (link: HTMLElement) => {
+  const words = document.createRange();
+  words.selectNodeContents(link);
+  const text = words.getBoundingClientRect();
+  const pill = link.getBoundingClientRect();
+  return {
+    offCentre: Math.abs(text.top + text.height / 2 - (pill.top + pill.height / 2)),
+    underlined: getComputedStyle(link).textDecorationLine !== 'none',
+  };
+};
+
+/**
+ * D4: both ways on read as buttons, links though they are: each label centred in its pill and not
+ * underlined, the primary 'Go to Home' as well as 'Go to Search'.
+ */
+export const WaysOnReadAsButtons: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ['Go to Home', 'Go to Search']) {
+      const link = canvas.getByRole('link', { name });
+      const label = labelIn(link);
+      await expect({ name, ...label, offCentre: label.offCentre < 1.5 }).toEqual({
+        name,
+        offCentre: true,
+        underlined: false,
+      });
+    }
+    const [home, search] = ['Go to Home', 'Go to Search'].map((name) =>
+      canvas.getByRole('link', { name }).getBoundingClientRect(),
+    );
+    await expect(Math.abs((home?.height ?? 0) - (search?.height ?? 0))).toBeLessThan(1);
+  },
+};
+
 /** A track that does not exist, or that the person may not see: the same page, its own words. */
 export const Track: Story = {
   args: {

@@ -437,9 +437,16 @@ a {
 }
 
 /* The main action: a peach pill with dark text, lifted by a soft shadow. */
+/* A link drawn as this button reads as one (D4): its label centred in the pill, never underlined. */
 .button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   min-height: var(--hit-target);
+  box-sizing: border-box;
   padding: 0 var(--space-5);
+  text-decoration: none;
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);

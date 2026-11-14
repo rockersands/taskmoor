@@ -2,8 +2,9 @@ import { type ImportedLinkKind, importedLinkOf, importedLinkRoute } from '@taskm
 import { useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
-import { redirectRoute, routeHref } from './router';
+import { redirectRoute } from './router';
 
 /** Finds what a link of the earlier tracker became: the app's route, or null for nothing. */
 export type ImportedLinkLookup = (
@@ -39,7 +40,9 @@ export interface ImportedLinkPageProps {
 /**
  * A link from the tracker an import came from (M1-128; IMP-011; ADR-097): a filter, board or
  * dashboard named by the earlier tracker's id. It asks the backend what the import made of it and
- * goes there; when nothing matches (or the person may not see it), it says so.
+ * goes there. When nothing matches (or the person may not see it), it is a not-found page like any
+ * other (D4): a title, one line, and the ways on to Home and Search, with no intro for a page that
+ * is not there (D24).
  */
 export function ImportedLinkPage({
   route,
@@ -71,6 +74,12 @@ export function ImportedLinkPage({
     };
   }, [route, lookup, onFound]);
 
+  if (state === 'missing') {
+    return (
+      <NotFoundPage title={t('importedLink.notFound')}>{t('importedLink.missing')}</NotFoundPage>
+    );
+  }
+
   return (
     <section className="page" aria-labelledby="imported-link-title">
       <PageHeader
@@ -82,18 +91,6 @@ export function ImportedLinkPage({
         <p role="status" className="page-note">
           {t('importedLink.looking')}
         </p>
-      )}
-      {state === 'missing' && (
-        <>
-          <p role="alert" className="form-error">
-            {t('importedLink.missing')}
-          </p>
-          <p>
-            <a className="button-quiet" href={routeHref('#/search')}>
-              {t('importedLink.toSearch')}
-            </a>
-          </p>
-        </>
       )}
       {state === 'failed' && (
         <p role="alert" className="form-error">
