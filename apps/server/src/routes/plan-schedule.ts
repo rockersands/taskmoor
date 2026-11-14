@@ -546,7 +546,13 @@ export function registerPlanScheduleRoutes(
             counts,
           },
         });
-        return { scenarioId, created, counts, meanwhile: diff.meanwhile };
+        // The scenario as the answer names it, read while its lock still holds it.
+        const scenario = await trx
+          .selectFrom('plan_scenario')
+          .select(['id', 'name', 'main', 'version'])
+          .where('id', '=', scenarioId)
+          .executeTakeFirstOrThrow();
+        return { scenario, created, counts, meanwhile: diff.meanwhile };
       });
       if ('missing' in outcome) return notFound(reply);
       if ('fields' in outcome) return invalidFields(reply, outcome.fields);
@@ -559,14 +565,11 @@ export function registerPlanScheduleRoutes(
               : { error: outcome.refused },
           );
       }
-      const scenario = await scenarioOf(ws, plan.id, outcome.scenarioId);
       const listed: (ScheduleEntry & { changedMeanwhile?: true })[] = output.tickets
         .slice(0, MAX_LISTED)
         .map((t) => (outcome.meanwhile.has(t.id) ? { ...t, changedMeanwhile: true } : t));
       return reply.code(outcome.created ? 201 : 200).send({
-        scenario: scenario
-          ? { id: scenario.id, name: scenario.name, main: scenario.main, version: scenario.version }
-          : null,
+        scenario: outcome.scenario,
         created: outcome.created,
         from,
         periods,
