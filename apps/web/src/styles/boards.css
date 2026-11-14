@@ -707,8 +707,13 @@
   text-decoration: line-through;
 }
 
+/* The keys are a column of one width (TR-22): the page gives the longest key's length in
+   characters, and a character of a bold key is at most about three quarters of an em. */
 .sprint-ticket-key {
+  flex: none;
+  min-inline-size: calc(var(--sprint-key-chars, 0) * 0.75em);
   font-weight: var(--font-weight-strong);
+  font-variant-numeric: tabular-nums;
 }
 
 .sprint-ticket-summary {
@@ -1068,9 +1073,13 @@ body.is-pointer-dragging .board-scroll {
   box-shadow: 0 -3px 0 0 var(--color-accent);
 }
 
+/* A row's box and a section's are labels around the box forms.css draws: the label is the
+   finger's target on touch, the box keeps the size of every other (T-221). */
+.sprint-ticket-select,
 .sprint-select-all {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
 .backlog-create {
@@ -1087,9 +1096,15 @@ body.is-pointer-dragging .board-scroll {
 
 @media (pointer: coarse) {
   .sprint-ticket-select,
-  .sprint-select-all input {
+  .sprint-select-all {
     min-width: var(--hit-target-touch);
     min-height: var(--hit-target-touch);
+  }
+
+  .sprint-ticket-select input,
+  .sprint-select-all input {
+    width: 28px;
+    height: 28px;
   }
 
   .backlog-selection select,

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { TrackSectionsContext } from '../tracks/trackSections';
 import { BacklogPage } from './BacklogPage';
+import type { BacklogTicket, SprintClient } from './client';
 import { fakeSprintClient } from './fixtures';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
@@ -182,5 +184,74 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Backlog', level: 2 })).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/** The backlog's tickets with keys of one to four digits, in every section. */
+const keysOfManyLengths = (): SprintClient => {
+  const client = fakeSprintClient();
+  const keys: Record<number, string> = { 2: 'CHK-23', 3: 'CHK-456', 5: 'CHK-1089' };
+  const rekey = (x: BacklogTicket) => ({ ...x, key: keys[x.id] ?? x.key });
+  return {
+    ...client,
+    backlog: async (boardId) => {
+      const read = await client.backlog(boardId);
+      return {
+        ...read,
+        sprints: read.sprints.map((s) => ({ ...s, tickets: s.tickets.map(rekey) })),
+        backlog: { ...read.backlog, tickets: read.backlog.tickets.map(rekey) },
+      };
+    },
+  };
+};
+
+/**
+ * The keys are a column (TR-22; AGL-008): every summary on the page starts at one place, in every
+ * section, whatever the length of the key before it, as in the sprint report's table.
+ */
+export const KeysInAColumn: Story = {
+  args: { client: keysOfManyLengths() },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('link', { name: 'CHK-1089' });
+    const summaries = Array.from(canvasElement.querySelectorAll('.sprint-ticket-summary'));
+    await expect(summaries).toHaveLength(5);
+    const starts = new Set(summaries.map((x) => Math.round(x.getBoundingClientRect().left)));
+    await expect([...starts]).toHaveLength(1);
+  },
+};
+
+/**
+ * The selection boxes on a phone (T-221): drawn at 28 px like every other box on touch, the
+ * statistics' filter among them, with the label around each the finger's 44 px target.
+ */
+export const SelectionBoxesOnATouchScreen: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const box = await canvas.findByRole('checkbox', { name: 'Select CHK-1' });
+    await expect(
+      notSized(canvasElement, '.sprint-ticket-select input, .sprint-select-all input', 28),
+    ).toEqual([]);
+    await expect(
+      tooSmallForAFinger(canvasElement, ['.sprint-ticket-select', '.sprint-select-all']),
+    ).toEqual([]);
+    // A press on the label, beside the box, chooses the ticket.
+    const label = box.closest('label');
+    if (!label) throw new Error('the box has a label around it');
+    label.scrollIntoView({ block: 'center' });
+    const target = label.getBoundingClientRect();
+    const corner = document.elementFromPoint(target.left + 3, target.top + 3);
+    await expect(corner).toBe(label);
+    await userEvent.click(label);
+    await expect(box).toBeChecked();
   },
 };
