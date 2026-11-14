@@ -9,9 +9,11 @@ import { uniqueKey } from './unique';
  * templates, one made with the form; the create dialog fills in its values for review, and
  * Create makes the ticket and its subtickets. A field rule then hides a value: the form does not
  * show it and the ticket says it was left out. A template for every track is kept on its own
- * page, shows in the track's, and is deleted after asking. No serious axe issue and no sideways
- * page scroll, on a phone too. It uses the attachments database (preview 4174), whose
- * administrator (Ada Attach) the API server made.
+ * page, shows in the track's, and is deleted after asking. The form adds custom release values
+ * from the track's list, and people, groups and teams found as the create form finds them, a
+ * person field that allows only a group offering only its members (T-350). No serious axe issue
+ * and no sideways page scroll, on a phone too. It uses the attachments database (preview 4174),
+ * whose administrator (Ada Attach) the API server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -223,5 +225,98 @@ test('[CORE-029] a template’s form adds a custom release from the track’s li
   expect(saved.template.defaults.fields).toEqual({
     [reviewer.id]: me.id,
     [fixedIn.id]: [release.id],
+  });
+});
+
+test('[CORE-029] [CORE-009] a template’s form finds people, groups and teams as the create form does (T-350)', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
+  expect(signIn.status()).toBe(200);
+  const api = async (method: 'post' | 'put' | 'get', path: string, data?: unknown) => {
+    const res = await page.request[method](`${BASE}/api/v1${path}`, data ? { data } : {});
+    expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBe(true);
+    return res.status() === 204 ? null : res.json();
+  };
+  const me = (await api('get', '/session')).user as { id: number; name: string };
+  const key = uniqueKey('W', testInfo);
+  const { track } = await api('post', '/tracks', {
+    key,
+    name: `Template people ${key}`,
+    mode: 'shared',
+  });
+  // Someone else, the only one the Approver field allows.
+  const rae = (
+    await api('post', '/users', {
+      email: `rae.${key.toLowerCase()}@attach.test`,
+      name: `Rae ${key}`,
+    })
+  ).user as { id: number; name: string };
+  const { group } = await api('post', '/groups', { name: `Approvers ${key}` });
+  await api('put', `/groups/${group.id}/members/${rae.id}`);
+  const { team } = await api('post', '/teams', { name: `Ledger team ${key}` });
+  const context = { trackIds: [track.id] };
+  const field = async (name: string, type: string, more: Record<string, unknown> = {}) =>
+    (await api('post', '/fields', { name: `${name} ${key}`, type, context, ...more })).field as {
+      id: number;
+    };
+  const approver = await field('Approver', 'user', {
+    context: { ...context, config: { userGroupId: group.id } },
+  });
+  const owning = await field('Owning group', 'group');
+  const ledger = await field('Team', 'team');
+
+  await page.goto(`${BASE}/#/tracks/${key}/templates`);
+  await page.getByRole('button', { name: 'New template' }).click();
+  const form = page.getByRole('form', { name: 'New template' });
+  await form.getByRole('textbox', { name: 'Name' }).fill('Review');
+  const addField = async (name: string) => {
+    await form
+      .getByRole('combobox', { name: 'Add a value for a field' })
+      .selectOption({ label: `${name} ${key}` });
+    await form.getByRole('button', { name: 'Add the field' }).click();
+  };
+
+  // The person field allows only its group: Rae is offered, the administrator is not.
+  await addField('Approver');
+  const people = form.getByRole('searchbox', { name: `Person to add to Approver ${key}` });
+  await expect(people).toHaveAccessibleDescription(
+    'Type a name. Only the people this field allows are offered.',
+  );
+  await people.fill(me.name);
+  await expect(form.getByText('No one matches.')).toBeVisible();
+  await people.fill(rae.name);
+  await form.getByRole('button', { name: rae.name, exact: true }).click();
+  await expect(
+    form.getByRole('button', { name: `Remove ${rae.name} from Approver ${key}` }),
+  ).toBeFocused();
+
+  await addField('Owning group');
+  await form
+    .getByRole('searchbox', { name: `Group to add to Owning group ${key}` })
+    .fill(`Approvers ${key}`);
+  await form.getByRole('button', { name: `Approvers ${key}`, exact: true }).click();
+  await addField('Team');
+  await form
+    .getByRole('searchbox', { name: `Team to add to Team ${key}` })
+    .fill(`Ledger team ${key}`);
+  await form.getByRole('button', { name: `Ledger team ${key}`, exact: true }).click();
+  await expect(
+    form.getByRole('list', { name: `Team ${key}` }).getByText(`Ledger team ${key}`),
+  ).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+
+  await form.getByRole('button', { name: 'Save the template' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'was saved' })).toHaveText(
+    'Template Review was saved.',
+  );
+  const { templates } = (await api('get', `/ticket-templates?track=${key}`)) as {
+    templates: { name: string; defaults: { fields?: Record<string, unknown> } }[];
+  };
+  expect(templates.find((t) => t.name === 'Review')?.defaults.fields).toEqual({
+    [approver.id]: rae.id,
+    [owning.id]: group.id,
+    [ledger.id]: team.id,
   });
 });

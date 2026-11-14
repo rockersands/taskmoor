@@ -4,6 +4,7 @@ import { RichTextEditor } from '../../richtext/RichTextEditor';
 import { PersonPicker } from '../PersonPicker';
 import type {
   FieldChoice,
+  FieldRule,
   FieldValueOption,
   Named,
   SavedTemplate,
@@ -17,8 +18,12 @@ import {
   draftOf,
   editedSpots,
   FORM_FIELD_TYPES,
+  foundByEach,
   keptValues,
+  NAMED_VALUE_TYPES,
+  type PersonSearch,
   type ProblemSpot,
+  personSearchOf,
   type Refusal,
   SUBTICKET_RANK,
   saveRefusalOf,
@@ -101,9 +106,23 @@ interface ListPicker {
 }
 
 /**
+ * What a custom person, group or team field finds to add (T-350): the create form's picker, its
+ * search field named for the field, looking where the create form looks.
+ */
+interface Finder {
+  label: string;
+  kind: 'people' | 'groups' | 'teams';
+  /** Said under the search field; the kind's own words by default. */
+  hint?: string;
+  find: (typed: string) => Promise<Named[]>;
+  take: (found: Named) => void;
+}
+
+/**
  * The values a custom release, area, person, group or team field holds (T-291, T-299), each by
  * its name with a way to remove it; for a release or area field, a list of the track's open ones
- * to add, as the create form picks them. People, groups and teams are set through the API.
+ * to add, as the create form picks them (T-299); for a person, group or team field, the create
+ * form's search to find one to add (T-350).
  */
 function ListedValues({
   field,
@@ -111,6 +130,7 @@ function ListedValues({
   nameOf,
   hint,
   picker,
+  finder = null,
   onChange,
   problem,
 }: {
@@ -120,6 +140,7 @@ function ListedValues({
   nameOf: ((value: number) => string) | null;
   hint: string;
   picker: ListPicker | null;
+  finder?: Finder | null;
   onChange: (ids: number[]) => void;
   problem: string | undefined;
 }) {
@@ -127,15 +148,17 @@ function ListedValues({
   const id = useId();
   const list = useRef<HTMLUListElement>(null);
   const none = useRef<HTMLParagraphElement>(null);
-  const select = useRef<HTMLSelectElement>(null);
+  const adder = useRef<HTMLDivElement>(null);
   const focusAt = useRef<number | 'picker' | null>(null);
   const [choice, setChoice] = useState('');
   useEffect(() => {
     if (focusAt.current === null) return;
     if (focusAt.current === 'picker') {
-      // Added: the list to add from keeps the focus, for the next one, or the new value's button.
+      // Added: the list or search to add from keeps the focus, for the next one, or the new
+      // value's button when the field holds one.
       const buttons = list.current?.querySelectorAll('button') ?? [];
-      (select.current ?? buttons[buttons.length - 1])?.focus();
+      const control = adder.current?.querySelector<HTMLElement>('select, input');
+      (control ?? buttons[buttons.length - 1])?.focus();
     } else {
       // The focus was on the button just removed: the next one takes it, or the line saying none.
       const buttons = list.current?.querySelectorAll('button') ?? [];
@@ -146,7 +169,9 @@ function ListedValues({
   });
   const described = [`${id}-hint`, problem ? `${id}-problem` : undefined].filter(Boolean).join(' ');
   // A field that holds one offers another once its value is removed.
-  const offered = picker && (field.multiple || ids.length === 0) ? picker.options : [];
+  const open = field.multiple || ids.length === 0;
+  const offered = picker && open ? picker.options : [];
+  const finding = finder !== null && open && nameOf !== null;
   const add = () => {
     const value = Number(choice);
     if (!value || ids.includes(value)) return;
@@ -201,13 +226,12 @@ function ListedValues({
       </span>
       {values}
       {offered.length > 0 && (
-        <div className="ticket-template-row">
+        <div ref={adder} className="ticket-template-row">
           <div className="form-field">
             <label htmlFor={`${id}-add`} className="form-label">
               {t('tickets.templates.addTrackValueLabel', { type: field.type, field: field.name })}
             </label>
             <select
-              ref={select}
               id={`${id}-add`}
               value={choice}
               {...invalidProps(`${id}-problem`, ids.length === 0 ? problem : undefined)}
@@ -230,6 +254,28 @@ function ListedValues({
           >
             {t('tickets.templates.addValue')}
           </button>
+        </div>
+      )}
+      {finding && (
+        <div ref={adder} className="ticket-template-find">
+          <PersonPicker
+            label={finder.label}
+            kind={finder.kind}
+            {...(finder.hint ? { hint: finder.hint } : {})}
+            // What the field holds already is not offered again.
+            search={async (typed) =>
+              (await finder.find(typed)).filter((found) => !ids.includes(found.id))
+            }
+            chosen={[]}
+            multiple
+            describedBy={ids.length === 0 && problem ? `${id}-problem` : undefined}
+            invalid={ids.length === 0 && problem !== undefined}
+            onChange={([found]) => {
+              if (!found || ids.includes(found.id)) return;
+              focusAt.current = 'picker';
+              finder.take({ id: found.id, name: found.name });
+            }}
+          />
         </div>
       )}
       {picker?.empty && <p className="form-hint">{picker.empty}</p>}
@@ -386,8 +432,9 @@ export interface TemplateFormProps {
  * it has no control for stay as they are: custom fields of other types, and the assignee of a
  * template for every track, are set through the API. A custom release or area field's values
  * show by name and can be removed (T-291) or added from the track's open ones (T-299); a custom
- * person, group or team field's show by name and can be removed (T-299). A refused save says why
- * next to each value (T-291), until that value is edited (T-299).
+ * person, group or team field's show by name and can be removed (T-299) or found with the create
+ * form's searches and added (T-350). A refused save says why next to each value (T-291), until
+ * that value is edited (T-299).
  */
 export function TemplateForm({
   client,
@@ -406,7 +453,16 @@ export function TemplateForm({
   const [busy, setBusy] = useState(false);
   // The names of the people, groups and teams the template's values name; null while read.
   const [names, setNames] = useState<Record<string, Named[]> | null>(null);
+  // Those found and added here, by field id, named as the search named them (T-350).
+  const [picked, setPicked] = useState<Record<string, Named[]>>({});
+  // The contexts of the person fields in use, to know whom each allows; 'failed' if unread.
+  const [rules, setRules] = useState<Record<string, FieldRule[] | 'failed'>>({});
+  // Whether the saved template names anyone: only then are names read before values show.
+  const [namesSaved] = useState(
+    () => Object.keys(draftOf(template, options.fields).namedValues).length > 0,
+  );
   const trackId = options.track?.id ?? null;
+  const trackKey = options.track?.key ?? null;
   // The draft as last rendered, for a control that keeps the change handler it was first given.
   const shownDraft = useRef(draft);
   shownDraft.current = draft;
@@ -432,11 +488,20 @@ export function TemplateForm({
     });
   const trackFields = fieldsOf(draft.trackValues);
   const namedFields = fieldsOf(draft.namedValues);
-  const addable = [...offered, ...listable].filter(
-    (f) => !fieldIds.includes(String(f.id)) && draft.trackValues[String(f.id)] === undefined,
+  // Any template can be given a person, group or team value, found as the create form finds it.
+  const nameable = options.fields.filter((f) => NAMED_VALUE_TYPES.has(f.type));
+  const addable = [...offered, ...listable, ...nameable].filter(
+    (f) =>
+      !fieldIds.includes(String(f.id)) &&
+      draft.trackValues[String(f.id)] === undefined &&
+      draft.namedValues[String(f.id)] === undefined,
   );
   const templateId = template?.id ?? null;
-  const namesWanted = templateId !== null && namedFields.length > 0;
+  const namesWanted = templateId !== null && namesSaved;
+  const peopleKey = namedFields
+    .filter((f) => f.type === 'user')
+    .map((f) => f.id)
+    .join(',');
 
   // The names of the people, groups and teams the template holds, as far as this person may see
   // them; one with no name is shown as hidden or gone.
@@ -451,6 +516,20 @@ export function TemplateForm({
       live = false;
     };
   }, [client, templateId, namesWanted]);
+
+  // The contexts of the person fields in use, as they join the form: whom each allows (T-350).
+  useEffect(() => {
+    let live = true;
+    for (const fieldId of peopleKey === '' ? [] : peopleKey.split(',')) {
+      client.fieldRules(Number(fieldId)).then(
+        (list) => live && setRules((known) => ({ ...known, [fieldId]: list })),
+        () => live && setRules((known) => ({ ...known, [fieldId]: 'failed' })),
+      );
+    }
+    return () => {
+      live = false;
+    };
+  }, [client, peopleKey]);
 
   // The options of the choice fields in use; loaded as they join the form.
   useEffect(() => {
@@ -503,6 +582,78 @@ export function TemplateForm({
       ? t('tickets.templates.problem.invalid')
       : t(refusal.message)
     : null;
+
+  // The types a ticket made from this template can have: those it names, or any of the track's.
+  const typesFitted =
+    draft.ticketTypeIds.length > 0 ? draft.ticketTypeIds : options.types.map((type) => type.id);
+
+  /**
+   * Where a person, group or team field finds values to add (T-350), as the create form looks:
+   * the track's people, or only those the field allows for the types the template fits; the
+   * site's groups and teams. A template for every track finds people in the whole site, unless
+   * the field allows only some people somewhere: the server says whom only per track and type.
+   * Null while the field's contexts are read, or when there is nowhere to look.
+   */
+  function finderOf(field: FieldChoice): Finder | null {
+    const key = String(field.id);
+    const take = (found: Named) => {
+      setPicked((known) => ({ ...known, [key]: [...(known[key] ?? []), found] }));
+      const held = shownDraft.current.namedValues[key] ?? [];
+      change({
+        namedValues: {
+          ...shownDraft.current.namedValues,
+          [key]: field.multiple ? [...held, found.id] : [found.id],
+        },
+      });
+    };
+    const label = t('tickets.templates.addNamedValueLabel', {
+      type: field.type,
+      field: field.name,
+    });
+    if (field.type === 'group') {
+      return { label, kind: 'groups', find: (typed) => client.groups(field.id, typed), take };
+    }
+    if (field.type === 'team') {
+      return { label, kind: 'teams', find: (typed) => client.teams(typed), take };
+    }
+    const known = rules[key];
+    if (known === undefined || known === 'failed') return null;
+    const search: PersonSearch = personSearchOf(known, trackId, typesFitted);
+    if (search.kind === 'none') return null;
+    if (search.kind === 'anyone') {
+      return {
+        label,
+        kind: 'people',
+        find: (typed) =>
+          trackKey === null ? client.sitePeople(typed) : client.people(trackKey, typed),
+        take,
+      };
+    }
+    const inTrack = trackKey ?? '';
+    return {
+      label,
+      kind: 'people',
+      hint: t('tickets.create.restrictedHint'),
+      find: async (typed) =>
+        foundByEach(
+          await Promise.all(
+            search.typeIds.map((typeId) => client.fieldPeople(field.id, inTrack, typeId, typed)),
+          ),
+        ),
+      take,
+    };
+  }
+
+  /** What is said under a person, group or team field's values. */
+  function namedHint(field: FieldChoice, finder: Finder | null) {
+    if (finder !== null) return t('tickets.templates.namedValuesHint');
+    const known = rules[String(field.id)];
+    if (field.type === 'user' && known === undefined) return t('tickets.templates.namedValuesHint');
+    if (field.type === 'user' && known !== 'failed') {
+      return t('tickets.templates.restrictedEveryTrack');
+    }
+    return t('tickets.templates.apiValuesHint');
+  }
 
   const save = () => {
     if (draft.name.trim() === '') return;
@@ -800,21 +951,23 @@ export function TemplateForm({
             );
           })}
           {namedFields.map((field) => {
-            const known = names?.[`fields.${field.id}`] ?? [];
+            const known = [...(names?.[`fields.${field.id}`] ?? []), ...(picked[field.id] ?? [])];
+            const finder = finderOf(field);
             return (
               <ListedValues
                 key={field.id}
                 field={field}
                 ids={draft.namedValues[String(field.id)] ?? []}
                 nameOf={
-                  names === null
+                  names === null && namesWanted
                     ? null
                     : (value) =>
                         known.find((n) => n.id === value)?.name ??
                         t('tickets.templates.unnamedValue', { type: field.type, id: value })
                 }
-                hint={t('tickets.templates.apiValuesHint')}
+                hint={namedHint(field, finder)}
                 picker={null}
+                finder={finder}
                 onChange={(next) =>
                   change({ namedValues: { ...draft.namedValues, [String(field.id)]: next } })
                 }
@@ -849,6 +1002,8 @@ export function TemplateForm({
                   const field = addable.find((f) => String(f.id) === adding);
                   if (field && TRACK_VALUE_TYPES.has(field.type)) {
                     change({ trackValues: { ...draft.trackValues, [adding]: [] } });
+                  } else if (field && NAMED_VALUE_TYPES.has(field.type)) {
+                    change({ namedValues: { ...draft.namedValues, [adding]: [] } });
                   } else {
                     change({
                       fields: {

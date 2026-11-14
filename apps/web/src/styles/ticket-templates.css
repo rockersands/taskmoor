@@ -63,3 +63,8 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* The search that finds a person, group or team to add to a custom field (T-350). */
+.ticket-template-find {
+  min-width: 0;
+}
