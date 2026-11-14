@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
+import type { NamedField } from '../tickets/customFieldNames';
 import type { OutcomeRights, TrackOutcome } from './client';
 import {
   fakeTrackClient,
@@ -403,6 +404,39 @@ describe("managing a track's outcomes from the Outcomes tab (AGL-024; T-082)", (
     expect(screen.getByRole('alert')).toHaveTextContent(said);
     // The track's catalogue (by its id), read once for the page.
     expect(calls.filter(([what]) => what === 'fieldNames')).toEqual([['fieldNames', 1]]);
+  });
+
+  it('[AGL-024][CORE-008] drops a refusal still waiting on the catalogue once a later save goes through (T-297)', async () => {
+    const options: Parameters<typeof managedOutcomes>[1] = {
+      refuse: new ApiError(400, { error: 'invalid_fields', fields: { 'fields.12': 'required' } }),
+    };
+    const { user, calls, manager } = await managing(options);
+    // A large catalogue: the read is still under way when the second save is made.
+    let answer: (fields: NamedField[]) => void = () => {};
+    manager.fieldNames = (trackId) => {
+      calls.push(['fieldNames', trackId]);
+      return new Promise((resolve) => {
+        answer = resolve;
+      });
+    };
+    await user.click(within(tools('SHOP-51')).getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Due date'), {
+      target: { value: '2027-02-26' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls.filter(([what]) => what === 'fieldNames')).toHaveLength(1));
+    // Filled in, the second save goes through before the catalogue answers.
+    delete options.refuse;
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved SHOP-51.')).toBeVisible();
+    await act(async () => {
+      answer([{ id: 12, name: 'Customer tier' }]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // The old refusal is not put back beside the success.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('Saved SHOP-51.')).toBeVisible();
   });
 
   it("[AGL-024][CORE-008] says 'A custom field' when the catalogue cannot be read (T-297)", async () => {

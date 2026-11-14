@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { type CustomFieldNames, customFieldOf } from './refusedFields';
 
 /** A custom field by its id and name, as the field catalogue lists it. */
@@ -14,10 +14,14 @@ export type ReadFieldNames = (trackId: number) => Promise<NamedField[]>;
  * Gives `show` the names of the custom fields that `keys` name (`fields.12`, `cf[12]`), so a
  * refusal names them as people see them (T-297).
  */
-export type NameCustomFields = (
-  keys: Iterable<string>,
-  show: (names: CustomFieldNames) => void,
-) => void;
+export interface NameCustomFields {
+  (keys: Iterable<string>, show: (names: CustomFieldNames) => void): void;
+  /**
+   * Drops a refusal still waiting on the read: the page has said something newer since (a change
+   * went through, or another began), so the old refusal would be shown beside it.
+   */
+  cancel(): void;
+}
 
 const NONE: CustomFieldNames = new Map();
 
@@ -30,7 +34,8 @@ const NONE: CustomFieldNames = new Map();
  * `show` is called at once when nothing needs reading, else when the read is done. A field the
  * catalogue does not give (a read refused or failed, for example without permission) keeps the
  * helper's 'A custom field'; a failed read is tried again on the next refusal. Of two refusals
- * waiting on the read only the later is shown, and nothing is shown once the page is gone.
+ * waiting on the read only the later is shown, none once the page calls `cancel` (it cleared or
+ * replaced its problem in the meantime), and nothing once the page is gone.
  */
 export function useCustomFieldNames(
   trackId: number | null,
@@ -50,8 +55,8 @@ export function useCustomFieldNames(
     };
   }, []);
 
-  return useCallback(
-    (keys, show) => {
+  return useMemo(() => {
+    const name = (keys: Iterable<string>, show: (names: CustomFieldNames) => void) => {
       const call = ++latest.current;
       const withKnown = (names: CustomFieldNames | null) =>
         names === null || names.size === 0 ? known : new Map([...names, ...known]);
@@ -83,7 +88,11 @@ export function useCustomFieldNames(
       void pending.then((names) => {
         if (live.current && call === latest.current) show(withKnown(names));
       });
-    },
-    [trackId, read, known],
-  );
+    };
+    return Object.assign(name, {
+      cancel: () => {
+        latest.current += 1;
+      },
+    });
+  }, [trackId, read, known]);
 }

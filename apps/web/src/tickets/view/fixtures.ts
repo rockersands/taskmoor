@@ -137,8 +137,11 @@ export function fakeTicketClient(
     transitions?: Transition[];
     missing?: boolean;
     access?: (ticket: TicketDetails) => TicketAccess;
-    /** The track's custom fields in the field catalogue, or the error reading them answers. */
-    fields?: NamedField[] | Error;
+    /**
+     * The track's custom fields in the field catalogue, or the error reading them answers; a
+     * promise holds the answer until the test settles it.
+     */
+    fields?: NamedField[] | Error | Promise<NamedField[]>;
   } = {},
 ): FakeTicketClient {
   const { mayEdit, editableFields, ...stored } = structuredClone(start.ticket ?? SHOP_41);
@@ -261,7 +264,7 @@ export function fakeTicketClient(
     numberFields: async () => [{ id: 31, name: 'Points', locked: false }],
     fieldNames: async (trackId) => {
       calls.push({ action: 'fieldNames', args: [trackId] });
-      const fields = start.fields ?? SHOP_FIELDS;
+      const fields = await (start.fields ?? SHOP_FIELDS);
       if (fields instanceof Error) throw fields;
       return structuredClone(fields);
     },

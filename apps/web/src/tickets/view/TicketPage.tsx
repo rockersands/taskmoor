@@ -279,7 +279,7 @@ export function TicketView({
   const [following, setFollowing] = useState<{ count: number; mine: boolean } | null>(null);
   const [votes, setVotes] = useState<{ count: number; mine: boolean } | null>(null);
   const [message, setMessage] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, showProblem] = useState<string | null>(null);
   const [editingSummary, setEditingSummary] = useState(false);
   const [asking, setAsking] = useState<Transition | null>(null);
   const [helping, setHelping] = useState(false);
@@ -366,6 +366,14 @@ export function TicketView({
     client.fieldNames,
     customNames,
   );
+  /**
+   * Says (or clears) what went wrong. Anything the page says drops a refusal still waiting on the
+   * catalogue, so a change that went through since is never shown beside it (T-297).
+   */
+  const setProblem = (next: string | null) => {
+    nameFields.cancel();
+    showProblem(next);
+  };
 
   // The pop-up is named after its ticket, whatever the view is showing or editing at the time.
   const shownKey = state.status === 'loaded' ? state.ticket.key : null;
@@ -488,7 +496,7 @@ export function TicketView({
   );
   /** Shows why a change did not go through, once any custom field it names has its name. */
   const refuse = (error: unknown) =>
-    nameFields(refusedFieldKeys(error), (custom) => setProblem(refusal(error, custom)));
+    nameFields(refusedFieldKeys(error), (custom) => showProblem(refusal(error, custom)));
 
   // The answer to an edit or a transition says what the reader may change now, as reading does
   // (T-191): a new assignee or status can change it, so nothing is kept from the read before.
@@ -529,7 +537,7 @@ export function TicketView({
       // name (T-297).
       nameFields(to.layout, (custom) => {
         const fields = to.layout.map((f) => refusedFieldLabel(t, f, custom) ?? f).join(', ');
-        setProblem(t('ticketView.problem.layout', { fields }));
+        showProblem(t('ticketView.problem.layout', { fields }));
       });
       return;
     }

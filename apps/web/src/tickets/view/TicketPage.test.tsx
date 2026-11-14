@@ -1,5 +1,5 @@
 import { writeDocToYDoc } from '@taskmoor/richtext';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -18,6 +18,7 @@ import { applyStylesheet } from '../../test/stylesheets';
 import { useTimeZone } from '../../test/timeZone';
 import { setRootFontSize, setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
+import type { NamedField } from '../customFieldNames';
 import type { TicketToolsClient } from '../tools/client';
 import { fakeToolsClient } from '../tools/fixtures';
 import type { TicketDetails } from './client';
@@ -26,6 +27,7 @@ import {
   fakeTicketClient,
   SHOP_41,
   SHOP_41_SOME_FIELDS,
+  SHOP_FIELDS,
   type TicketAccess,
   TRANSITIONS,
 } from './fixtures';
@@ -345,6 +347,42 @@ describe('the ticket view (M1-051)', () => {
       'Check these values. Points: This number is out of range. ' +
         'A custom field: This field is required.',
     );
+  });
+
+  it('[CORE-008] drops a refusal still waiting on the catalogue once a later edit goes through (T-297)', async () => {
+    const user = userEvent.setup();
+    // A large catalogue: the read is still under way when the next edit is made.
+    let answer: (fields: NamedField[]) => void = () => {};
+    const { client } = renderPage({
+      fields: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+    await heading();
+    await within(details()).findByRole('spinbutton', { name: 'Points' });
+    const edit = client.edit;
+    client.edit = async () => {
+      throw new ApiError(400, { error: 'invalid_fields', fields: { 'fields.77': 'required' } });
+    };
+    const choose = async (priority: string) => {
+      await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+      await user.click(screen.getByRole('option', { name: priority }));
+    };
+    await choose('Highest');
+    await waitFor(() =>
+      expect(client.calls.filter((c) => c.action === 'fieldNames')).toHaveLength(1),
+    );
+    // Another edit goes through before the catalogue answers.
+    client.edit = edit;
+    await choose('Medium');
+    expect(await screen.findByText('Saved.')).toBeVisible();
+    await act(async () => {
+      answer(SHOP_FIELDS);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // The old refusal is not put back beside 'Saved.'.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('Saved.')).toBeVisible();
   });
 
   it('[WF-006] names a custom field a transition asks for by its name from the catalogue (T-297)', async () => {

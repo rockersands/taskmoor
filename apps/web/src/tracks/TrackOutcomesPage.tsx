@@ -93,7 +93,7 @@ export function TrackOutcomesPage({
   const [working, setWorking] = useState<Working | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, showProblem] = useState<string | null>(null);
   /** Asks the panel to put the focus in its new outcome's summary. */
   const [focusNew, setFocusNew] = useState(0);
   /** Where the focus goes once a row's controls have changed under it. */
@@ -132,6 +132,14 @@ export function TrackOutcomesPage({
   // The panel has no field catalogue of its own: a refused custom field is named from the
   // track's, read the first time one is refused (T-297).
   const nameFields = useCustomFieldNames(read?.track.id ?? null, manager.fieldNames);
+  /**
+   * Says (or clears) what went wrong. Anything the panel says drops a refusal still waiting on the
+   * catalogue, so a change that went through since is never shown beside it (T-297).
+   */
+  const setProblem = (next: string | null) => {
+    nameFields.cancel();
+    showProblem(next);
+  };
 
   /** Why a change did not go through, in the words of the ticket page. */
   const refusal = useCallback(
@@ -158,7 +166,7 @@ export function TrackOutcomesPage({
   );
   /** Shows why a change did not go through, once any custom field it names has its name. */
   const refuse = (error: unknown) =>
-    nameFields(refusedFieldKeys(error), (custom) => setProblem(refusal(error, custom)));
+    nameFields(refusedFieldKeys(error), (custom) => showProblem(refusal(error, custom)));
 
   /**
    * Runs a change, then reads the list again from the top, as the server now orders it, and puts
