@@ -77,6 +77,7 @@ describe('SubticketsPanel', () => {
       { parent: 'not_found' },
       { ticketTypeId: 'not_in_track' },
       { visibilityLevelId: 'not_in_track' },
+      { 'fields.12.0': 'invalid' },
     ];
     client.createChild = async () => {
       throw new ApiError(400, { error: 'invalid_fields', fields: refusals.shift() });
@@ -98,9 +99,11 @@ describe('SubticketsPanel', () => {
     await refused('A ticket of this type cannot go under this one.');
     await refused('This ticket is gone, or you can no longer see it.');
     await refused('This track no longer offers that ticket type. Reload the page');
+    // Named by its control's label, as every refusal names it (T-292, T-299), not by its key.
+    await refused('This track did not take the value of: Visibility level. Use the create form');
     // A field it cannot name: no key is shown.
     await refused('That did not work. Try again in a moment.');
-    expect(screen.getByRole('alert')).not.toHaveTextContent(/visibility|Id\b/);
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/fields\.|Id\b/);
     // The names come from the type's create form, read once and not again for each refusal.
     expect(client.calls.filter((call) => call.action === 'childFields')).toEqual([
       { action: 'childFields', args: ['SHOP', 9] },

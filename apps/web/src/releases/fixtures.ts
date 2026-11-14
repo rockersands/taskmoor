@@ -207,7 +207,13 @@ export function fakeReleaseClient(
         shippedOn,
       },
       sections,
-      leftOut: sections.length > 0 ? [{ reason: 'Duplicate', count: 1 }] : [],
+      leftOut:
+        sections.length > 0
+          ? [
+              { reason: 'Duplicate', count: 1 },
+              { reason: 'Not planned', count: 2 },
+            ]
+          : [],
       truncated: false,
       markdown: [
         `# Checkout ${r.name}`,

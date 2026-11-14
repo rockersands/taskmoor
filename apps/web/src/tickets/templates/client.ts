@@ -122,6 +122,12 @@ export interface TemplateClient {
   fieldOptions: (fieldId: number, trackId: number | null) => Promise<FieldValueOption[]>;
   /** People who can be found in a track, for its templates' assignee. */
   people: (track: string, query: string) => Promise<Named[]>;
+  /**
+   * The names of the people, groups and teams a template's custom values name, by body key
+   * (`fields.12`), as far as the reader may see them (T-299); a value with no name here is one
+   * they may not see, or one that is gone.
+   */
+  names: (id: number) => Promise<Record<string, Named[]>>;
   create: (body: TemplateBody) => Promise<SavedTemplate>;
   update: (id: number, body: TemplateBody) => Promise<SavedTemplate>;
   remove: (id: number) => Promise<void>;
@@ -222,6 +228,8 @@ export const templateClient: TemplateClient = {
         `/people/mentionable?track=${encodeURIComponent(track)}&q=${encodeURIComponent(query)}&limit=8`,
       )
     ).people,
+  names: async (id) =>
+    (await api<{ names?: Record<string, Named[]> }>(`${templatesPath}/${id}`)).names ?? {},
   create: async (body) =>
     (await api<{ template: SavedTemplate }>(templatesPath, { method: 'POST', body })).template,
   update: async (id, body) =>

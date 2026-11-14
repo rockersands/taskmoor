@@ -8,6 +8,7 @@ import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
+import { closeReasonName } from '../shell/seededNames';
 import { localDay } from '../timeline/client';
 import { type TrackClient, trackClient } from '../tracks/client';
 import { TrackLayout } from '../tracks/TrackLayout';
@@ -758,7 +759,20 @@ function NotesView({
   onCopied: (message: string) => void;
 }) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
+  // Each reason in words (T-299): a seeded one in the person's language, one since deleted said so.
+  const leftOut = intl.formatList(
+    notes.leftOut.map((l) =>
+      l.reason === ''
+        ? t('release.notes.leftOutNoReason', { count: l.count })
+        : t('release.notes.leftOutReason', {
+            count: l.count,
+            reason: closeReasonName(t, l.reason),
+          }),
+    ),
+    { type: 'conjunction' },
+  );
   const copy = () => {
     navigator.clipboard?.writeText(notes.markdown).then(
       () => onCopied(t('release.notes.copied')),
@@ -788,11 +802,7 @@ function NotesView({
         </div>
       )}
       {notes.leftOut.length > 0 && (
-        <p className="board-hint">
-          {t('release.notes.leftOut', {
-            list: notes.leftOut.map((l) => `${l.reason} (${l.count})`).join(', '),
-          })}
-        </p>
+        <p className="board-hint">{t('release.notes.leftOut', { list: leftOut })}</p>
       )}
       {notes.truncated && <p className="board-hint">{t('release.notes.truncated')}</p>}
       {/* Notes with nothing in them are nothing to copy or keep (D27). */}

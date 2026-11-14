@@ -162,3 +162,66 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
     .click();
   await expect(page.getByRole('button', { name: `Edit template ${shared}` })).toHaveCount(0);
 });
+
+test('[CORE-029] a template’s form adds a custom release from the track’s list and names its people (T-299)', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
+  expect(signIn.status()).toBe(200);
+  const api = async (method: 'post' | 'get', path: string, data?: unknown) => {
+    const res = await page.request[method](`${BASE}/api/v1${path}`, data ? { data } : {});
+    expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBe(true);
+    return res.json();
+  };
+  const me = (await api('get', '/session')).user as { id: number; name: string };
+  const key = uniqueKey('V', testInfo);
+  const { track } = await api('post', '/tracks', {
+    key,
+    name: `Template values ${key}`,
+    mode: 'shared',
+  });
+  const { release } = await api('post', `/tracks/${track.id}/releases`, { name: 'Autumn' });
+  const context = { trackIds: [track.id] };
+  const field = async (name: string, type: string, more: Record<string, unknown> = {}) =>
+    (await api('post', '/fields', { name: `${name} ${key}`, type, context, ...more })).field as {
+      id: number;
+    };
+  const fixedIn = await field('Fixed in', 'release', { multiple: true });
+  const reviewer = await field('Reviewer', 'user');
+  // A person field set through the API: the form names its person.
+  const { template } = await api('post', '/ticket-templates', {
+    track: key,
+    name: 'Hotfix',
+    summary: 'Hotfix',
+    defaults: { fields: { [reviewer.id]: me.id } },
+  });
+
+  await page.goto(`${BASE}/#/tracks/${key}/templates`);
+  await page.getByRole('button', { name: 'Edit template Hotfix' }).click();
+  const form = page.getByRole('form', { name: 'Edit template Hotfix' });
+  await expect(
+    form.getByRole('list', { name: `Reviewer ${key}` }).getByText(me.name),
+  ).toBeVisible();
+  await form
+    .getByRole('combobox', { name: 'Add a value for a field' })
+    .selectOption({ label: `Fixed in ${key}` });
+  await form.getByRole('button', { name: 'Add the field' }).click();
+  await form
+    .getByRole('combobox', { name: `Release to add to Fixed in ${key}` })
+    .selectOption({ label: 'Autumn' });
+  await form.getByRole('button', { name: `Add to Fixed in ${key}` }).click();
+  await expect(
+    form.getByRole('list', { name: `Fixed in ${key}` }).getByText('Autumn'),
+  ).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await form.getByRole('button', { name: 'Save the template' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'was saved' })).toHaveText(
+    'Template Hotfix was saved.',
+  );
+  const saved = await api('get', `/ticket-templates/${template.id}`);
+  expect(saved.template.defaults.fields).toEqual({
+    [reviewer.id]: me.id,
+    [fixedIn.id]: [release.id],
+  });
+});

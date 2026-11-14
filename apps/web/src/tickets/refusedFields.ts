@@ -38,8 +38,9 @@ export function customFieldOf(key: string): number | null {
 /**
  * A field's label from the API key a refusal names it by: a system field in the person's
  * language; a custom one by its name in `custom` (a seeded one translated), else as
- * `unnamedCustom` says it ('A custom field' by default); null for a key that names no field this
- * client knows, which is never shown as it is.
+ * `unnamedCustom` says it ('A custom field' by default; given the field's `id`, so a message can
+ * name it by its number); null for a key that names no field this client knows, which is never
+ * shown as it is.
  */
 export function refusedFieldLabel(
   t: Translate,
@@ -52,7 +53,7 @@ export function refusedFieldLabel(
   const customField = customFieldOf(key);
   if (customField === null) return null;
   const name = custom?.get(customField);
-  return name === undefined ? t(unnamedCustom) : seededFieldName(t, name);
+  return name === undefined ? t(unnamedCustom, { id: customField }) : seededFieldName(t, name);
 }
 
 /**
