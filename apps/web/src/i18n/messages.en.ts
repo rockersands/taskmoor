@@ -3011,7 +3011,7 @@ export const messagesEn = {
   'trackPeople.lapsed': 'No longer valid',
   'trackPeople.sendFailed': 'Email not sent',
   'trackPeople.resend': 'Send again',
-  'trackPeople.resendTo': 'Send the invitation to {who} again',
+  'trackPeople.resendTo': 'Send again to {who}',
   'trackPeople.resent': 'The invitation to {who} went out again.',
   'trackPeople.newLink': 'New link',
   'trackPeople.newLinkFor': 'Make a new link for {who}',

@@ -212,9 +212,7 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   const byEmail =
     'Your invitations go by email: on a site that sends email, only site administrators copy links.';
   await expect(page.getByText(byEmail)).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: `Send the invitation to ${later} again` }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: `Send again to ${later}` })).toBeVisible();
   await expect(page.getByRole('button', { name: `Make a new link for ${later}` })).toHaveCount(0);
   await page.getByRole('button', { name: 'Invite people' }).click();
   const emailOnly = page.getByRole('dialog', { name: `Invite people to ${key}` });

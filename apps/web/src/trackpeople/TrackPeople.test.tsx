@@ -230,9 +230,7 @@ describe('the invite dialog (IAM-027)', () => {
     const user = userEvent.setup();
     // A site administrator, who may copy links where the site sends email too (T-053).
     const client = renderPeople({ canCopyLinks: true }, ADMIN);
-    await user.click(
-      await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Send again to nia@example.com' }));
     expect(
       await screen.findByText('The invitation to nia@example.com went out again.'),
     ).toBeVisible();
@@ -249,7 +247,7 @@ describe('the invite dialog (IAM-027)', () => {
   it('[IAM-027] where the site sends email a manager sends invitations by email, with no link to copy (T-053)', async () => {
     const user = userEvent.setup();
     const client = renderPeople({ emailAvailable: true, canCopyLinks: false });
-    await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' });
+    await screen.findByRole('button', { name: 'Send again to nia@example.com' });
     const note =
       'Your invitations go by email: on a site that sends email, only site administrators copy links.';
     expect(screen.getByText(note)).toBeInTheDocument();
@@ -451,9 +449,7 @@ describe('each card says what its actions did, on the card (T-232)', () => {
   it('[IAM-027] an invitation sent again is said on the card of invitations waiting', async () => {
     const user = userEvent.setup();
     renderPeople();
-    await user.click(
-      await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Send again to nia@example.com' }));
     const waiting = screen.getByRole('region', { name: 'Invitations waiting' });
     await waitFor(() =>
       expect(within(waiting).getByRole('status')).toHaveTextContent(
