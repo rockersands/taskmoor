@@ -22,6 +22,7 @@ import {
   TooManyDrafts,
   writeDrafts,
 } from '../plans/drafts';
+import { type EvenOutOutput, evenOut } from '../plans/evenOut';
 import { idParam, MAX_PERIODS } from '../plans/model';
 import { type Period, periodsFrom } from '../plans/periods';
 import { browsedTracks } from '../plans/query';
@@ -36,6 +37,7 @@ import {
   snapshotKey,
 } from '../plans/scheduleInputs';
 import {
+  type DayProposal,
   DEFAULT_RUN_PERIODS,
   DRAFT_CHUNK,
   EVENT_CHUNK,
@@ -45,6 +47,7 @@ import {
   MAX_QUERY,
   MAX_TO_SCHEDULE,
   movableCount,
+  type OverLeftCell,
   type ScheduleBody,
   type ScheduleCounts,
   type ScheduleEntry,
@@ -64,7 +67,9 @@ import { searchRefusal } from './search';
  *   who sees the plan, counted over the tickets the reader is shown; no ticket is named.
  * - `POST /api/v1/plans/:id/schedule`: a run, for the plan's owner and site administrators. It
  *   reads the plan as the runner sees it (`scheduleInputs.ts`), places its open level-0 tickets in
- *   the plan's periods (`scheduler.ts`, pure) and writes the proposals as draft days with origin
+ *   the plan's periods (`scheduler.ts`, pure), or with `mode: 'even_out'` moves only the work that
+ *   puts someone over capacity, later (`evenOut.ts`, pure; ADR-122 stage 9), and writes the
+ *   proposals as draft days with origin
  *   `scheduler` into one scenario, a new one or one of the plan's, through stage 6's writer. It
  *   changes no ticket. Under the scenario's lock it reads again the tickets it would touch and
  *   leaves out those changed meanwhile, then diffs against its own earlier proposals there, so a
@@ -140,7 +145,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** A run's draft writes and removals, from the engine's proposals and the drafts under the lock. */
 export function diffProposals(options: {
-  proposals: ScheduleOutput['proposals'];
+  /** A fill run's days, or evening out's, where a day a ticket has not stays null. */
+  proposals: readonly DayProposal[];
   read: ReadonlyMap<number, DaySnapshot>;
   locked: ReadonlyMap<number, DaySnapshot>;
   /** The auto-scheduler's drafts in the scenario on tickets the runner is shown. */
@@ -233,6 +239,7 @@ async function answerNames(
   request: FastifyRequest,
   listed: readonly ScheduleEntry[],
   inputs: ScheduleInputs,
+  overLeft: readonly OverLeftCell[] = [],
 ) {
   const tickets = new Set<number>();
   const people = new Set<number>();
@@ -252,6 +259,10 @@ async function answerNames(
   for (const e of listed) {
     visit(e.args);
     for (const w of e.warnings) visit(w.args);
+  }
+  for (const cell of overLeft) {
+    if (cell.teamId !== undefined) teams.add(cell.teamId);
+    if (cell.userId !== undefined) people.add(cell.userId);
   }
   const shown = new Set(listed.map((e) => e.id));
   const keyOf = new Map(inputs.input.tickets.map((x) => [x.id, x.key]));
@@ -358,6 +369,7 @@ export function registerPlanScheduleRoutes(
         timeoutMs,
         plan,
         periods,
+        overlay: scenario ? scenario.id : null,
       });
       const scenarios = await db
         .selectFrom('plan_scenario')
@@ -453,7 +465,10 @@ export function registerPlanScheduleRoutes(
         periods,
         body,
       });
-      const output = schedule(inputs.input);
+      const mode = body.mode ?? 'fill';
+      const output: ScheduleOutput | EvenOutOutput =
+        mode === 'even_out' ? evenOut(inputs.input) : schedule(inputs.input);
+      const overLeft = output.overLeft ?? [];
       const movable = movableCount(output.counts);
       if (movable > MAX_TO_SCHEDULE) {
         return reply
@@ -614,6 +629,8 @@ export function registerPlanScheduleRoutes(
               query: body.keep.query !== undefined,
             },
             counts,
+            mode,
+            overLeft: overLeft.length,
           },
         });
         // The scenario as the answer names it, read while its lock still holds it.
@@ -641,12 +658,14 @@ export function registerPlanScheduleRoutes(
       return reply.code(outcome.created ? 201 : 200).send({
         scenario: outcome.scenario,
         created: outcome.created,
+        mode,
         from,
         periods,
         counts: outcome.counts,
         tickets: listed,
         more: Math.max(0, output.tickets.length - MAX_LISTED),
-        names: await answerNames(db, request, listed, inputs),
+        ...(mode === 'even_out' ? { overLeft } : {}),
+        names: await answerNames(db, request, listed, inputs, overLeft),
       });
     } catch (error) {
       if (error instanceof InvalidCondition) {

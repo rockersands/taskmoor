@@ -80,6 +80,12 @@ export const scheduleBody = z
       })
       .strict()
       .default({ inProgress: true, inActiveSprint: true }),
+    /**
+     * What the run does (ADR-122 stage 9): `fill` places work in rank order (`schedule()`);
+     * `even_out` moves only work that puts someone over capacity, later (`evenOut()`). Left out,
+     * it is `fill`, so a body without it parses as before.
+     */
+    mode: z.enum(['fill', 'even_out']).optional(),
   })
   .strict();
 export type ScheduleBody = z.infer<typeof scheduleBody>;
@@ -169,6 +175,9 @@ export const PLACED_REASONS = [
   'after_higher_ranked',
   'first_for_blocked',
   'already',
+  // Evening out load (ADR-122 stage 9).
+  'moved_off_over',
+  'pushed_by_move',
 ] as const;
 export const KEPT_REASONS = [
   'person_draft',
@@ -188,6 +197,9 @@ export const NOT_PLACED_REASONS = [
   'blocker_undated',
   'blocker_not_placed',
   'no_room',
+  // Evening out load (ADR-122 stage 9).
+  'still_over',
+  'would_make_late',
 ] as const;
 export const LEFT_OUT_REASONS = ['level', 'type', 'release', 'query'] as const;
 export const WARNINGS = ['after_release', 'late_against_kept', 'over_where_kept'] as const;
@@ -211,6 +223,12 @@ export type ScheduleReason = PlacedReason | KeptReason | NotPlacedReason;
  *   `size`; `blocker_undated`, `blocker_not_placed`: `blockerId`; `no_room`: subject, `until`;
  * - warnings: `after_release`: `releaseId`, `releaseDate`, `days`; `late_against_kept`:
  *   `ticketIds` (up to five), `count`; `over_where_kept`: subject, `periodStart`.
+ * - evening out (`evenOut.ts`): `moved_off_over`: subject (the cell it left), `fromPeriod` and
+ *   `fromPeriodEnd` (the period it was due in), `toPeriod` and `toPeriodEnd` (the one it is due in
+ *   now), `days` (how much later), `over` (how far over the cell was); `pushed_by_move`:
+ *   `blockerId`, `days`; `still_over`: subject, `until`; `would_make_late`: `ticketId` (the ticket
+ *   a push reached), `why` (`kept`, `left_out`, `cycle`, `hidden_blocker`, `sprint` or
+ *   `past_end`), `until`.
  */
 export type ScheduleArgs = Record<string, number | string | number[]>;
 
@@ -246,6 +264,28 @@ export interface ScheduleOutput {
   /** Every open ticket not left out: not placed, placed with a warning, kept, placed; then rank. */
   tickets: ScheduleEntry[];
   counts: ScheduleCounts;
+  /** Evening out only: the cells still over capacity after the run. */
+  overLeft?: OverLeftCell[];
+}
+
+/** A ticket's proposed days; evening out keeps a day a ticket has not (null) as it is. */
+export interface DayProposal {
+  id: number;
+  start: string | null;
+  due: string | null;
+}
+
+/**
+ * A cell (a team or person in a period of the run) still over capacity after evening out: by how
+ * much, in the plan's unit, and whether only tickets that may not move were in it (`onlyFixed`).
+ */
+export interface OverLeftCell {
+  teamId?: number;
+  userId?: number;
+  periodStart: string;
+  periodEnd: string;
+  over: number;
+  onlyFixed: boolean;
 }
 
 /** The movable tickets a run tried: placed or not placed (`too_many_to_schedule` counts them). */

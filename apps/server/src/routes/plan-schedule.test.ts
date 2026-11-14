@@ -1531,4 +1531,271 @@ describe('the auto-scheduler (PLN-004)', () => {
     expect([...out.placed].sort((a, b) => a - b)).toEqual([30, 31]);
     expect([...new Set(out.writes.map((w) => w.ticketId))].sort((a, b) => a - b)).toEqual([30, 31]);
   });
+
+  /**
+   * Evening out load (T-089a; PLN-011; ADR-122 stage 9) on its own plan (SKE, Echo of u8 at 20
+   * points a week): e1 to e3, 10 points each, due in the first week, so it is 10 over; e5, nobody's,
+   * starts the day after e3 ends and is blocked by it; e6, in progress, is 25 points due in the
+   * third week, which only kept work fills.
+   */
+  describe('evening out load (PLN-011)', () => {
+    const e: Record<string, Ticket> = {};
+    let even = 0;
+    const team = () => teams.Echo as number;
+    const subjectCells = async (sid: number) => {
+      const capacity = await call('owner', {
+        method: 'GET',
+        url: `/api/v1/plans/${plans.Even}/capacity?scenario=${sid}&from=${FROM}&periods=4`,
+      });
+      return capacity.teams as {
+        id: number;
+        cells: { load: number; over: boolean }[];
+        members: { id: number; cells: { over: boolean }[] }[];
+      }[];
+    };
+
+    beforeAll(async () => {
+      const u8 = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: 'u8@example.com',
+          name: 'u8',
+          password_hash: await hashPassword(PASSWORD),
+          is_site_admin: false,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      users.u8 = { id: u8.id, cookie: '' };
+      tracks.SKE = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: '/api/v1/tracks',
+            payload: { key: 'SKE', name: 'SKE', mode: 'shared' },
+          },
+          201,
+        )
+      ).track.id;
+      const members = await database.db
+        .selectFrom('role')
+        .select('id')
+        .where('name', '=', 'Members')
+        .executeTakeFirstOrThrow();
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: tracks.SKE as number,
+          role_id: members.id,
+          user_id: user('owner'),
+        })
+        .execute();
+      teams.Echo = (
+        await call(
+          'admin',
+          { method: 'POST', url: '/api/v1/teams', payload: { name: 'Echo' } },
+          201,
+        )
+      ).team.id;
+      await call('admin', { method: 'PUT', url: `/api/v1/teams/${team()}/members/${u8.id}` }, 204);
+      const week1 = { startDate: '2027-03-01', dueDate: '2027-03-05' };
+      for (const k of ['e1', 'e2', 'e3'])
+        e[k] = await ticket('SKE', `Even ${k}`, { ...pts(10), ...week1 });
+      e.e5 = await ticket('SKE', 'Even after e3', {
+        ...pts(3),
+        startDate: '2027-03-06',
+        dueDate: '2027-03-07',
+      });
+      e.e6 = await ticket('SKE', 'Even in progress', { ...pts(25), dueDate: '2027-03-17' });
+      await assign(
+        ['e1', 'e2', 'e3', 'e6'].map((k) => e[k]?.id as number),
+        'u8',
+      );
+      await link(e.e3 as Ticket, e.e5 as Ticket);
+      await database.db
+        .updateTable('ticket')
+        .set({ status_id: await stageStatus('active') })
+        .where('id', '=', e.e6.id)
+        .execute();
+      plans.Even = (
+        await call(
+          'owner',
+          {
+            method: 'POST',
+            url: '/api/v1/plans',
+            payload: {
+              name: 'Even',
+              sources: [{ kind: 'track', trackId: tracks.SKE }],
+              shares: [{ scope: 'any_user' }],
+            },
+          },
+          201,
+        )
+      ).plan.id;
+      await call('owner', {
+        method: 'PATCH',
+        url: `/api/v1/plans/${plans.Even}`,
+        payload: { teams: [team()], period: { kind: 'weeks', weeks: 1, anchor: FROM } },
+      });
+      await call('owner', {
+        method: 'PUT',
+        url: `/api/v1/plans/${plans.Even}/capacity`,
+        payload: { entries: [{ teamId: team(), period: null, amount: 20 }] },
+      });
+    }, 120_000);
+
+    it('[PLN-011] counts before a run the cells over capacity now, over the reader’s tickets', async () => {
+      const ready = (await readiness('owner', 'Even', `?from=${FROM}&periods=4`)) as Readiness & {
+        overCells: number;
+      };
+      // The first week (30 of 20) and the third (25 of 20, all kept).
+      expect(ready.overCells).toBe(2);
+      // Cy sees none of the plan's tickets: nothing is over for them.
+      const cy = (await readiness('cy', 'Even', `?from=${FROM}&periods=4`)) as Readiness & {
+        overCells: number;
+      };
+      expect(cy.overCells).toBe(0);
+      const fill = (await readiness('owner', 'Accept')) as Readiness & { overCells: number };
+      expect(fill.overCells).toBe(0);
+    });
+
+    it('[PLN-011] [PLN-002] (2) (3) moves the lowest-ranked ticket a week later as a draft, pushes what it blocks and reports what stays over', async () => {
+      const since = await lastEventId();
+      const run = (await schedule(
+        'owner',
+        'Even',
+        { into: { newScenario: { name: 'Even' } }, from: FROM, periods: 4, mode: 'even_out' },
+        201,
+      )) as Run & {
+        mode: string;
+        overLeft: { teamId?: number; periodStart: string; over: number; onlyFixed: boolean }[];
+      };
+      even = run.scenario.id;
+      expect(run.mode).toBe('even_out');
+      expect(entry(run, e.e3 as Ticket)).toMatchObject({
+        outcome: 'placed',
+        reason: 'moved_off_over',
+        args: {
+          teamId: team(),
+          fromPeriod: '2027-03-01',
+          fromPeriodEnd: '2027-03-07',
+          toPeriod: '2027-03-08',
+          toPeriodEnd: '2027-03-14',
+          days: 3,
+          over: 10,
+        },
+      });
+      expect(entry(run, e.e5 as Ticket)).toMatchObject({
+        reason: 'pushed_by_move',
+        args: { blockerId: e.e3?.id, days: 3 },
+      });
+      for (const k of ['e1', 'e2'])
+        expect(entry(run, e[k] as Ticket)).toMatchObject({ outcome: 'placed', reason: 'already' });
+      expect(entry(run, e.e6 as Ticket)).toMatchObject({ outcome: 'kept', reason: 'in_progress' });
+      expect(run.overLeft).toEqual([
+        {
+          teamId: team(),
+          periodStart: '2027-03-15',
+          periodEnd: '2027-03-21',
+          over: 5,
+          onlyFixed: true,
+        },
+      ]);
+      expect(run.names.teams).toEqual([{ id: team(), name: 'Echo' }]);
+      // Drafts with origin scheduler on the moved and the pushed ticket only, lengths kept.
+      const all = await drafts(even);
+      expect([...all.keys()].sort((a, b) => a - b)).toEqual(
+        [e.e3?.id as number, e.e5?.id as number].sort((a, b) => a - b),
+      );
+      expect(
+        [...all.values()].every((d) => Object.values(d).every((f) => f.origin === 'scheduler')),
+      ).toBe(true);
+      expect(await days(even, e.e3 as Ticket)).toEqual(['2027-03-04', '2027-03-08']);
+      expect(await days(even, e.e5 as Ticket)).toEqual(['2027-03-09', '2027-03-10']);
+      expect(run.counts).toMatchObject({ placed: 4, withdrawn: 0 });
+      // After the run, every cell over capacity in the scenario is one the answer reported.
+      const echo = (await subjectCells(even)).find((x) => x.id === team());
+      const over = echo?.cells.flatMap((c, i) => (c.over ? [i] : []));
+      expect(over).toEqual([2]);
+      expect(echo?.members.flatMap((m) => m.cells).some((c) => c.over)).toBe(false);
+      // The run's event says its mode and how many cells stay over.
+      const ran = (await eventsOf('plan.schedule_ran', since)).at(-1)?.payload as {
+        mode: string;
+        overLeft: number;
+      };
+      expect(ran).toMatchObject({ mode: 'even_out', overLeft: 1 });
+      const set = (await eventsOf('plan.drafts_set', since)).map(
+        (x) => x.payload as { origin: string },
+      );
+      expect(set.length).toBeGreaterThan(0);
+      expect(set.every((x) => x.origin === 'scheduler')).toBe(true);
+    });
+
+    it('[PLN-011] [PLN-004] a fill run and an even-out run replace each other’s proposals, and people’s drafts stay', async () => {
+      // A person drafts e1 within the first week: it is kept by both kinds of run.
+      await call('owner', {
+        method: 'PUT',
+        url: `/api/v1/plans/${plans.Even}/scenarios/${even}/drafts`,
+        payload: { changes: [{ ticketId: e.e1?.id, dueDate: '2027-03-04' }] },
+      });
+      const fill = await schedule('owner', 'Even', {
+        into: { scenarioId: even },
+        from: FROM,
+        periods: 4,
+      });
+      expect((fill as Run & { mode: string }).mode).toBe('fill');
+      expect(entry(fill, e.e1 as Ticket)).toMatchObject({
+        outcome: 'kept',
+        reason: 'person_draft',
+      });
+      // e5 has nobody on it: the fill run does not place it, so the push drafted for it goes.
+      expect(entry(fill, e.e5 as Ticket)).toMatchObject({ reason: 'no_assignee' });
+      expect(await days(even, e.e5 as Ticket)).toBeNull();
+      const afterFill = await drafts(even);
+      expect(afterFill.get(e.e1?.id as number)?.dueDate?.origin).toBe('person');
+      // Evening out again starts from live days and people's drafts, never the fill run's.
+      const again = await schedule('owner', 'Even', {
+        into: { scenarioId: even },
+        from: FROM,
+        periods: 4,
+        mode: 'even_out',
+      });
+      expect(entry(again, e.e1 as Ticket)).toMatchObject({
+        outcome: 'kept',
+        reason: 'person_draft',
+      });
+      expect(entry(again, e.e3 as Ticket)).toMatchObject({ reason: 'moved_off_over' });
+      const now = await drafts(even);
+      expect(now.get(e.e1?.id as number)?.dueDate?.origin).toBe('person');
+      expect(await days(even, e.e3 as Ticket)).toEqual(['2027-03-04', '2027-03-08']);
+      expect(await days(even, e.e5 as Ticket)).toEqual(['2027-03-09', '2027-03-10']);
+      // The fill run's proposal on e2 is gone: e2 is where it was.
+      expect(now.has(e.e2?.id as number)).toBe(false);
+      // A second even-out run on unchanged tickets writes nothing.
+      const since = await lastEventId();
+      const third = await schedule('owner', 'Even', {
+        into: { scenarioId: even },
+        from: FROM,
+        periods: 4,
+        mode: 'even_out',
+      });
+      expect(third.counts).toMatchObject({ withdrawn: 0 });
+      expect(await eventsOf('plan.drafts_set', since)).toEqual([]);
+    });
+
+    it('[PLN-011] refuses a mode it does not know', async () => {
+      const res = await as('owner', {
+        method: 'POST',
+        url: `/api/v1/plans/${plans.Even}/schedule`,
+        payload: { into: { scenarioId: even }, mode: 'level' },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({
+        error: 'invalid_fields',
+        fields: { mode: expect.any(String) },
+      });
+    });
+  });
 });
