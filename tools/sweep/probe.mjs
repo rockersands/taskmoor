@@ -65,7 +65,8 @@ export async function runAxe() {
 
 /**
  * Controls under 44 px, and controls whose accessible name leaves out words they show (WCAG 2.5.3,
- * T-212). Links inside running text are left out of the first list, as the rule allows.
+ * T-212). Links inside running text are left out of the first list, as the rule allows, and so is
+ * a control whose box is smaller but whose press area holds a 44 px square (`pressable`).
  */
 export function measureControls(minimum) {
   const CONTROLS = [
@@ -130,6 +131,63 @@ export function measureControls(minimum) {
     return { width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10 };
   };
 
+  /** Whether a press at this point of the window reaches the control, itself or by its label. */
+  const reaches = (el, x, y) => {
+    if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return false;
+    const found = document.elementFromPoint(x, y);
+    if (!found) return false;
+    if (found === el || el.contains(found)) return true;
+    return [...(el.labels ?? [])].some((label) => label === found || label.contains(found));
+  };
+
+  /**
+   * Whether a finger has a whole `minimum` square to press a control in, however it is drawn: a
+   * box smaller than a finger can still be pressed over more, through a pseudo-element (the
+   * timeline's key links and one-day bars, TR-21) or a label, and a control under another cannot.
+   * The control is scrolled into the window, the press area is followed out from its centre along
+   * both axes with elementFromPoint, and a square of that size inside it is sampled on a 5 x 5
+   * grid. Every scroll position it changed is put back.
+   */
+  const pressable = (el) => {
+    const scrolled = [];
+    for (let up = el.parentElement; up; up = up.parentElement) {
+      scrolled.push([up, up.scrollLeft, up.scrollTop]);
+    }
+    const [windowX, windowY] = [window.scrollX, window.scrollY];
+    try {
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      const box = el.getBoundingClientRect();
+      const cx = box.left + box.width / 2;
+      const cy = box.top + box.height / 2;
+      if (!reaches(el, cx, cy)) return false;
+      const out = (dx, dy) => {
+        let d = 0;
+        while (d < minimum && reaches(el, cx + (d + 1) * dx, cy + (d + 1) * dy)) d += 1;
+        return d;
+      };
+      const [left, right, up, down] = [out(-1, 0), out(1, 0), out(0, -1), out(0, 1)];
+      // Sampled a pixel apart, an area `minimum` across is hit `minimum` times, give or take one.
+      const side = minimum - 1;
+      if (left + right + 1 < side || up + down + 1 < side) return false;
+      const start = (centre, before, after) =>
+        Math.min(Math.max(centre - side / 2, centre - before), centre + after - side);
+      const x0 = start(cx, left, right);
+      const y0 = start(cy, up, down);
+      for (let i = 0; i <= 4; i += 1) {
+        for (let j = 0; j <= 4; j += 1) {
+          if (!reaches(el, x0 + (i * side) / 4, y0 + (j * side) / 4)) return false;
+        }
+      }
+      return true;
+    } finally {
+      for (const [up, left, top] of scrolled) {
+        up.scrollLeft = left;
+        up.scrollTop = top;
+      }
+      window.scrollTo(windowX, windowY);
+    }
+  };
+
   /** Text a person can read on the element: not what is hidden, not a select's options. */
   const readable = (el) => {
     const parts = [];
@@ -185,7 +243,7 @@ export function measureControls(minimum) {
       }
       name = name.trim().replace(/\s+/g, ' ');
       const size = target(el);
-      if ((size.width < minimum || size.height < minimum) && !inText(el)) {
+      if ((size.width < minimum || size.height < minimum) && !inText(el) && !pressable(el)) {
         small.push({ role, name: name.slice(0, 80), ...size });
       }
       const seen = words(visibleWords(el));
