@@ -222,7 +222,7 @@ whole families of events such as **Tickets** or **Releases**; **Other events** t
 
 - **Change** opens the same form. A secret that is set is never shown: leave the field empty to keep
   it, type a new one, or tick **Remove the secret**. **On: send events** turns the webhook on and off.
-- **Delete** asks first, and its deliveries go with it.
+- **Delete**, in the danger colour, asks first, and its deliveries go with it.
 - **Deliveries** lists what was sent, newest first: the event, **Delivered**, **Waiting** or
   **Failed**, the attempts, the last answer and the last error. **Show** narrows it. **Send again**
   sends a failed one again; **Send all failed ones again** sends every failed one (up to 1,000 at a

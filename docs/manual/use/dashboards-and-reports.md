@@ -1,7 +1,7 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/App.tsx, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -38,7 +38,9 @@ it.
 3. Pick a **Widget to add** and press **Add widget**. Each widget has **Settings**, **Up**,
    **Down**, **Left**, **Right** and **Remove**.
 4. In a widget's settings, give it an optional title and fill in its fields, then **Apply**.
-5. Press **Save dashboard**, or **Cancel**. **Delete dashboard** removes it after asking.
+5. Press **Save dashboard**, or **Cancel**. **Delete dashboard**, in the danger colour,
+   removes it after asking: whoever it is shared with loses it too. Everyone's home dashboard
+   has no **Delete dashboard**: make another dashboard everyone's home first.
 
 If someone else saved the dashboard meanwhile, reload it and make your change again.
 

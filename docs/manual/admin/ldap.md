@@ -1,7 +1,7 @@
 ---
 title: "LDAP directories"
 audience: admins
-sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md
+sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/shell/DangerAction.tsx
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -143,8 +143,12 @@ fails and the next one tries again.
 
 A sync that would remove more than half of a directory's people or groups (when it has ten or
 more) stops before changing anything, because a broken filter must not deactivate everyone.
-The history says so. If the removals are right, select **Sync and remove**, which runs a full
-sync that confirms them.
+The history says so. If the removals are right, select **Sync and remove**, in the danger
+colour. It asks first, saying how many people or groups the full sync will remove and what
+happens to them: people are deactivated and keep their work, and groups are deleted, which
+cannot be undone. Whichever the stop counted, the question also says what happens to the other.
+Its answer, **Sync** *directory* **and remove what left it**, runs the full
+sync that confirms them; **Cancel** leaves everything as it is.
 
 ## Signing in through a directory
 
@@ -192,7 +196,8 @@ hold the same email address, the first one manages that account.
 
 ## Deleting a directory
 
-**Delete** deactivates every account the directory manages and ends their sessions; their work
+**Delete**, in the danger colour, first says what will happen, with the number of accounts.
+It deactivates every account the directory manages and ends their sessions; their work
 stays. Its groups stay as ordinary Taskmoor groups. Deleting is refused while the directory
 manages the last active site administrator: make another account a site administrator first.
 

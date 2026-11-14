@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -244,25 +245,18 @@ function ProviderItem({
   const intl = useIntl();
   const id = useId();
   const editButton = useRef<HTMLButtonElement>(null);
-  const deleteButton = useRef<HTMLButtonElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const value = (text: string) => t('common.value', { value: text });
 
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
-
+  // Asked first (D13). Once deleted, the list's heading takes the focus (the page's remove); a
+  // refusal keeps the question open, the reason under it.
   const confirmDelete = async () => {
-    setBusy(true);
     setError(null);
     try {
       await onDelete();
     } catch (e) {
       if (!refuse(e)) setError(t('admin.sso.actionFailed'));
-      setBusy(false);
+      throw e;
     }
   };
 
@@ -348,44 +342,15 @@ function ProviderItem({
           >
             {t('admin.sso.edit')}
           </button>
-          <button
-            ref={deleteButton}
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.sso.deleteNamed', { name: provider.name })}
-            disabled={busy}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.sso.delete')}
-          </button>
+          <DangerAction
+            label={t('admin.sso.delete')}
+            name={t('admin.sso.deleteNamed', { name: provider.name })}
+            outcome={t('admin.sso.deleteConfirm', { name: provider.name })}
+            confirmLabel={t('admin.sso.deleteNamed', { name: provider.name })}
+            onConfirm={confirmDelete}
+          />
         </div>
       </div>
-      {confirming && (
-        <div className="token-confirm">
-          <p>{t('admin.sso.deleteConfirm', { name: provider.name })}</p>
-          <div className="token-confirm-actions">
-            <button
-              ref={confirmButton}
-              type="button"
-              className="button-danger"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              {t('admin.sso.confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => {
-                setConfirming(false);
-                deleteButton.current?.focus();
-              }}
-            >
-              {t('admin.sso.cancel')}
-            </button>
-          </div>
-        </div>
-      )}
       {error && (
         <p role="alert" className="form-error">
           {error}

@@ -45,9 +45,16 @@ describe('configuration set administration (M1-053)', () => {
     await user.click(within(panel).getByLabelText('Bug'));
     await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
     expect(await screen.findByText('Support types was saved.')).toBeInTheDocument();
-    await user.click(within(panel).getByRole('button', { name: 'Delete set Support types' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = within(panel).getByRole('button', { name: 'Delete set Support types' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = within(panel).getByRole('group', {
+      name: 'Delete Support types? Nothing can use it afterwards, and this cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete set Support types' }));
     expect(await screen.findByText('Support types was deleted.')).toBeInTheDocument();
+    expect(within(typeSets).getByRole('heading', { name: 'Type sets' })).toHaveFocus();
     expect(client.calls.map((c) => [c.action, c.args.at(-1)])).toEqual([
       ['createTypeSet', { name: 'Support types', ticketTypeIds: [5, 6] }],
       ['updateTypeSet', { ticketTypeIds: [6] }],

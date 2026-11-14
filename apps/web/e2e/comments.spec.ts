@@ -69,7 +69,11 @@ test('[CORE-020] writes, restricts, reacts to, edits, links and deletes a commen
 
   // Delete.
   await linked.getByRole('button', { name: /^Delete the comment by Ada Attach/ }).click();
-  await linked.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13).
+  await linked
+    .getByRole('group', { name: /^Delete this comment\?/ })
+    .getByRole('button', { name: /^Delete the comment by Ada Attach/ })
+    .click();
   await expect(
     page.getByRole('region', { name: 'Comments' }).getByText('No comments yet.'),
   ).toBeVisible();

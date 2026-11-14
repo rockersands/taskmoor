@@ -479,6 +479,34 @@ describe('workflow editor (M1-030)', () => {
     );
   });
 
+  it('[WF-002] deletes a transition only after saying what happens (D13)', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(
+      await within(await screen.findByRole('list', { name: 'Transitions' })).findByRole('button', {
+        name: 'Reject',
+      }),
+    );
+    const trigger = screen.getByRole('button', { name: 'Delete transition' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Delete Reject? Tickets keep their history.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete transition' })).toHaveFocus();
+    expect(within(transitionList()).getByRole('button', { name: 'Reject' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Delete transition' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Delete Reject\?/ })).getByRole('button', {
+        name: 'Delete Reject',
+      }),
+    );
+    expect(within(transitionList()).queryByRole('button', { name: 'Reject' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Transitions' })).toHaveFocus();
+  });
+
   it('[WF-002] removes a status with the transitions that need it, after saying which', async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -489,20 +517,19 @@ describe('workflow editor (M1-030)', () => {
     );
     const panel = screen.getByRole('region', { name: 'Status: Under review' });
     expect(within(panel).getByText('1 transition leads here: Ask for review.')).toBeVisible();
+    const trigger = within(panel).getByRole('button', {
+      name: 'Remove Under review from the workflow',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13): the transitions that go and where tickets go.
+    const question = within(panel).getByRole('group', {
+      name: 'Remove Under review from this workflow? It also removes 3 transitions: Ask for review, Approve, and Rework. Tickets in Under review move to a status you choose when you publish.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.click(
-      within(panel).getByRole('button', { name: 'Remove Under review from the workflow' }),
+      within(question).getByRole('button', { name: 'Remove Under review from the workflow' }),
     );
-    expect(
-      within(panel).getByText(
-        'It also removes 3 transitions: Ask for review, Approve, and Rework.',
-      ),
-    ).toBeVisible();
-    expect(
-      within(panel).getByText(
-        'Tickets in Under review move to a status you choose when you publish.',
-      ),
-    ).toBeVisible();
-    await user.click(within(panel).getByRole('button', { name: 'Remove status' }));
     expect(screen.getByRole('heading', { name: 'Statuses in this workflow' })).toHaveFocus();
     expect(within(statusList()).queryByRole('button', { name: 'Under review' })).toBeNull();
     expect(

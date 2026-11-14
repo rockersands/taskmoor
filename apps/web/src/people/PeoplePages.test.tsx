@@ -164,15 +164,27 @@ describe('people (M1-053, IAM-008)', () => {
     );
   });
 
-  it('[IAM-008] deletes a group after a confirmation', async () => {
+  it('[IAM-008] deletes a group after a confirmation that says what goes (D13)', async () => {
     const user = userEvent.setup();
     renderPage('groups');
     await list();
     await user.click(screen.getByRole('button', { name: 'Manage Support' }));
-    await user.click(await screen.findByRole('button', { name: 'Delete group Support' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = await screen.findByRole('button', { name: 'Delete group Support' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Delete Support? Its members stay; permissions given to it go.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete group Support' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Delete group Support' }));
+    await user.click(
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete group Support' }),
+    );
     expect(await screen.findByText('Support was deleted.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Manage Support' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Groups' })).toHaveFocus();
   });
 
   it('[IAM-008] ASVS 8.3.2: erases a person once their email is typed, and opens their data', async () => {
@@ -351,10 +363,17 @@ describe('teams (M1-123, CORE-027)', () => {
     await user.click(screen.getByRole('button', { name: 'Manage Platform' }));
     await user.click(await screen.findByRole('button', { name: 'Remove Bo Rivera from Platform' }));
     expect(await screen.findByText('Bo Rivera is no longer in Platform.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Delete team Platform' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = screen.getByRole('button', { name: 'Delete team Platform' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = screen.getByRole('group', {
+      name: 'Delete Platform? Boards and areas let go of it, and Team fields that name it become empty.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete team Platform' }));
     expect(await screen.findByText('Platform was deleted.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Manage Platform' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toHaveFocus();
   });
 
   it('[CORE-027] says only administrators manage teams', () => {

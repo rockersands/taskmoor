@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
@@ -201,9 +202,22 @@ export function DashboardPage({
     setDashboard({ ...dashboard, isDefault: true });
     setStatus(t('dashboards.madeDefault'));
   };
+  // Asked first (D13); a refusal keeps the question open, the reason under it.
   const remove = async () => {
-    if (!window.confirm(t('dashboards.confirmDelete', { name: dashboard.name }))) return;
-    await client.remove(dashboard.id);
+    setProblem(null);
+    try {
+      await client.remove(dashboard.id);
+    } catch (error) {
+      // Everyone's home dashboard stays until another one takes its place: trying again cannot help.
+      setProblem(
+        t(
+          error instanceof ApiError && error.code === 'is_default'
+            ? 'dashboards.deleteDefault'
+            : 'dashboards.deleteFailed',
+        ),
+      );
+      throw error;
+    }
     navigate('#/dashboards');
   };
 
@@ -333,9 +347,16 @@ export function DashboardPage({
           >
             {t('dashboards.cancel')}
           </button>
-          <button type="button" className="button-danger" onClick={() => void remove()}>
-            {t('dashboards.delete')}
-          </button>
+          {dashboard.isDefault ? (
+            <p className="report-note">{t('dashboards.deleteDefault')}</p>
+          ) : (
+            <DangerAction
+              label={t('dashboards.delete')}
+              outcome={t('dashboards.confirmDelete', { name: dashboard.name })}
+              confirmLabel={t('dashboards.deleteOf', { name: dashboard.name })}
+              onConfirm={remove}
+            />
+          )}
         </div>
       )}
       {status && (

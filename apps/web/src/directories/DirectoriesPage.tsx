@@ -5,6 +5,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -65,6 +66,23 @@ function failureReason(t: Translate, error: string | null): string {
   };
   const id = known[error];
   return id ? t(id) : error;
+}
+
+/**
+ * What Sync and remove will do, with the counts the safety stop gave when it gave them (the
+ * server's text reads "safety_stop: the run would remove 812 of 1200 people; ...").
+ */
+function removalsOutcome(t: Translate, name: string, error: string | null): string {
+  const counts = /^safety_stop: the run would remove (\d+) of (\d+) (people|groups)\b/.exec(
+    error ?? '',
+  );
+  if (!counts) return t('admin.directories.confirmRemovalsOutcomeUncounted', { name });
+  return t('admin.directories.confirmRemovalsOutcome', {
+    name,
+    removed: Number(counts[1]),
+    known: Number(counts[2]),
+    what: counts[3] ?? 'people',
+  });
 }
 
 const WARNINGS: Record<string, MessageId> = {
@@ -302,6 +320,13 @@ export function DirectoriesPage({
                             if (editing === directory.id) setEditing(null);
                             await load();
                           }}
+                          onDeleted={async (message) => {
+                            setDone(message);
+                            if (editing === directory.id) setEditing(null);
+                            await load();
+                            // The directory's row is gone: the list's heading takes the focus.
+                            listHeading.current?.focus();
+                          }}
                           refuse={refuse}
                         />
                       ))}
@@ -332,6 +357,7 @@ function DirectoryItem({
   onTest,
   onMove,
   onChanged,
+  onDeleted,
   refuse,
 }: {
   directory: Directory;
@@ -346,25 +372,28 @@ function DirectoryItem({
   onTest: DirectoriesClient['test'];
   onMove: (by: -1 | 1) => Promise<void>;
   onChanged: (message: string) => Promise<void>;
+  onDeleted: (message: string) => Promise<void>;
   refuse: (error: unknown) => boolean;
 }) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
   const editButton = useRef<HTMLButtonElement>(null);
-  const deleteButton = useRef<HTMLButtonElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
+  const fullSyncButton = useRef<HTMLButtonElement>(null);
+  // Set when Sync and remove was asked for; focus moves once Full sync is drawn usable again.
+  const focusFullSync = useRef(false);
+  useEffect(() => {
+    const button = fullSyncButton.current;
+    if (!focusFullSync.current || !button || button.disabled) return;
+    focusFullSync.current = false;
+    button.focus();
+  });
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<DirectoryRun[] | null>(null);
   const formatDate = (value: string) =>
     intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' });
   const value = (text: string) => t('common.value', { value: text });
-
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
 
   const act = async (work: () => Promise<void>) => {
     setWorking(true);
@@ -392,6 +421,28 @@ function DirectoryItem({
       setHistory(null);
       await onChanged(t('admin.directories.syncQueued', { name: directory.name }));
     });
+
+  // Unlike syncNow, a refusal throws, so the question stays open with the reason beside it. Once
+  // asked for, the run is no longer stopped and the question goes: Full sync takes the focus.
+  const confirmRemovals = async () => {
+    setWorking(true);
+    setError(null);
+    try {
+      await client.sync(directory.id, 'full', true);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'directory_disabled') {
+        setError(t('admin.directories.syncDisabled'));
+      } else if (!refuse(e)) {
+        setError(t('admin.directories.actionFailed'));
+      }
+      throw e;
+    } finally {
+      setWorking(false);
+    }
+    setHistory(null);
+    focusFullSync.current = true;
+    await onChanged(t('admin.directories.syncQueued', { name: directory.name }));
+  };
 
   const toggleHistory = () =>
     act(async () => {
@@ -456,15 +507,17 @@ function DirectoryItem({
         <div className="token-actions directory-actions">
           {directory.lastRun?.status === 'failed' &&
             directory.lastRun.error?.startsWith('safety_stop') && (
-              <button
-                type="button"
-                className="button-danger"
-                aria-label={t('admin.directories.confirmRemovalsNamed', { name: directory.name })}
+              // Asks first, saying how much goes (D13); a refusal keeps the question open.
+              <DangerAction
+                label={t('admin.directories.confirmRemovals')}
+                name={t('admin.directories.confirmRemovalsNamed', { name: directory.name })}
+                outcome={removalsOutcome(t, directory.name, directory.lastRun.error)}
+                confirmLabel={t('admin.directories.confirmRemovalsNamed', {
+                  name: directory.name,
+                })}
                 disabled={working || !directory.enabled}
-                onClick={() => void syncNow('full', true)}
-              >
-                {t('admin.directories.confirmRemovals')}
-              </button>
+                onConfirm={confirmRemovals}
+              />
             )}
           <button
             type="button"
@@ -478,6 +531,7 @@ function DirectoryItem({
           <button
             type="button"
             className="button-secondary"
+            ref={fullSyncButton}
             aria-label={t('admin.directories.fullSyncNamed', { name: directory.name })}
             disabled={working || !directory.enabled}
             onClick={() => void syncNow('full')}
@@ -528,62 +582,36 @@ function DirectoryItem({
           >
             {t('admin.directories.edit')}
           </button>
-          <button
-            ref={deleteButton}
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.directories.deleteNamed', { name: directory.name })}
-            disabled={working}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.directories.delete')}
-          </button>
-        </div>
-      </div>
-      {confirming && (
-        <div className="token-confirm">
-          <p>
-            {t('admin.directories.deleteConfirm', {
+          {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+          <DangerAction
+            label={t('admin.directories.delete')}
+            name={t('admin.directories.deleteNamed', { name: directory.name })}
+            outcome={t('admin.directories.deleteConfirm', {
               name: directory.name,
               accounts: directory.accounts,
             })}
-          </p>
-          <div className="token-confirm-actions">
-            <button
-              ref={confirmButton}
-              type="button"
-              className="button-danger"
-              disabled={working}
-              onClick={() =>
-                void act(async () => {
-                  try {
-                    await client.remove(directory.id);
-                  } catch (e) {
-                    if (e instanceof ApiError && e.code === 'last_admin') {
-                      setError(t('admin.directories.lastAdmin'));
-                      return;
-                    }
-                    if (!(e instanceof ApiError && e.status === 404)) throw e;
-                  }
-                  await onChanged(t('admin.directories.deleted', { name: directory.name }));
-                })
+            confirmLabel={t('admin.directories.deleteNamed', { name: directory.name })}
+            disabled={working}
+            onConfirm={async () => {
+              setError(null);
+              try {
+                await client.remove(directory.id);
+              } catch (e) {
+                if (e instanceof ApiError && e.code === 'last_admin') {
+                  setError(t('admin.directories.lastAdmin'));
+                  throw e;
+                }
+                // Already gone is as good as deleted.
+                if (!(e instanceof ApiError && e.status === 404)) {
+                  if (!refuse(e)) setError(t('admin.directories.actionFailed'));
+                  throw e;
+                }
               }
-            >
-              {t('admin.directories.confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => {
-                setConfirming(false);
-                deleteButton.current?.focus();
-              }}
-            >
-              {t('admin.directories.cancel')}
-            </button>
-          </div>
+              await onDeleted(t('admin.directories.deleted', { name: directory.name }));
+            }}
+          />
         </div>
-      )}
+      </div>
       {error && (
         <p role="alert" className="form-error">
           {error}

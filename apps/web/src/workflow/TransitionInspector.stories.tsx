@@ -98,7 +98,8 @@ export const ConfirmingDelete: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Delete transition' }));
-    await expect(canvas.getByRole('button', { name: 'Delete transition' })).toHaveFocus();
+    await expect(canvas.getByRole('group', { name: /Tickets keep their history/ })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };
 

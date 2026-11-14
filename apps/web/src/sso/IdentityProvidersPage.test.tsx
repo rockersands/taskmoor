@@ -344,23 +344,28 @@ describe('identity provider administration (M1-080)', () => {
     });
     const partners = await providerItem('Partners');
     const remove = within(partners).getByRole('button', { name: 'Delete Partners' });
+    expect(remove).toHaveClass('button-danger-quiet');
     await user.click(remove);
-    expect(
-      within(partners).getByText(/^Delete Partners\? Nobody can sign in with it any more\./),
-    ).toBeVisible();
-    expect(within(partners).getByRole('button', { name: 'Delete provider' })).toHaveFocus();
-    await user.click(within(partners).getByRole('button', { name: 'Cancel' }));
-    expect(remove).toHaveFocus();
+    // Asks first, saying what will happen (D13): the focus on Cancel, the safe choice.
+    const question = within(partners).getByRole('group', {
+      name: /^Delete Partners\? Nobody can sign in with it any more\./,
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(within(partners).getByRole('button', { name: 'Delete Partners' })).toHaveFocus();
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
 
-    await user.click(remove);
-    await user.click(within(partners).getByRole('button', { name: 'Delete provider' }));
+    await user.click(within(partners).getByRole('button', { name: 'Delete Partners' }));
+    await user.click(
+      within(within(partners).getByRole('group')).getByRole('button', { name: 'Delete Partners' }),
+    );
     expect(await screen.findByText('Deleted Partners.')).toBeVisible();
     expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual([
       '/identity-providers/2',
     ]);
     const list = screen.getByRole('list', { name: 'Identity providers' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Identity providers' })).toHaveFocus();
   });
 
   it('[IAM-003] says when there are no providers yet', async () => {

@@ -412,20 +412,34 @@ describe('the layout editor (UI-T15)', () => {
     expect(fieldsIn(MAIN)).toEqual([]);
     expect(within(made).getAllByText(/No fields yet/)).toHaveLength(2);
     await user.click(within(made).getByRole('button', { name: 'Discard changes' }));
-    await user.click(within(made).getByRole('button', { name: 'Delete set Release layouts' }));
-    await user.click(within(made).getByRole('button', { name: 'Yes, delete' }));
+    const trigger = within(made).getByRole('button', { name: 'Delete set Release layouts' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = within(made).getByRole('group', {
+      name: 'Delete Release layouts? Its layouts go with it, and this cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete set Release layouts' }));
     expect(await screen.findByText('Release layouts was deleted.')).toBeInTheDocument();
     expect(await editor()).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Layout sets' })).toHaveFocus();
     expect(client.sets.map((s) => s.name)).not.toContain('Release layouts');
     // The default set offers no delete; a set in use is refused by the server.
     expect(screen.queryByRole('button', { name: /^Delete set/ })).toBeNull();
     await user.selectOptions(screen.getByLabelText('Layout set'), 'Ops layouts (a track’s own)');
     const ops = await editor('Ops layouts');
     await user.click(within(ops).getByRole('button', { name: 'Delete set Ops layouts' }));
-    await user.click(within(ops).getByRole('button', { name: 'Yes, delete' }));
+    await user.click(
+      within(within(ops).getByRole('group', { name: /^Delete Ops layouts\?/ })).getByRole(
+        'button',
+        { name: 'Delete set Ops layouts' },
+      ),
+    );
     expect(await within(ops).findByRole('alert')).toHaveTextContent(
       '1 track uses this set: give them another on Which sets a track uses first.',
     );
+    // Refused: the question stays open, to cancel.
+    expect(within(ops).getByRole('group', { name: /^Delete Ops layouts\?/ })).toBeVisible();
   });
 
   it('[CORE-008] a track’s own set places its own fields and previews that track by default', async () => {

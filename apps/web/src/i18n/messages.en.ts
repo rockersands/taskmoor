@@ -167,7 +167,7 @@ export const messagesEn = {
   'trackGroups.rename': 'Rename',
   'trackGroups.share': 'Share…',
   'trackGroups.setOn': 'Set on someone…',
-  'trackGroups.delete': 'Delete group',
+  'trackGroups.delete': 'Delete group…',
   'trackGroups.new.title': 'New group',
   'trackGroups.new.intro': 'Only you see it until you share it.',
   'trackGroups.rename.title': 'Rename group',
@@ -180,7 +180,7 @@ export const messagesEn = {
   'trackGroups.delete.title': 'Delete {name}?',
   'trackGroups.delete.body':
     'Its tracks stay on your page. Whoever it is shared with loses it, and the roles the share gave them.',
-  'trackGroups.delete.do': 'Delete group',
+  'trackGroups.delete.do': 'Delete {name}',
   // Leaving a group shared with you (T-204).
   'trackGroups.leave': 'Leave group…',
   'trackGroups.leave.title': 'Leave {name}?',
@@ -1350,6 +1350,8 @@ export const messagesEn = {
   'tokens.done': 'Done',
   'tokens.revoke': 'Revoke',
   'tokens.revokeNamed': 'Revoke {name}',
+  'tokens.revokeConfirm':
+    'Revoke {name}? Programs using it stop working at once, and a revoked token cannot be used again.',
   'tokens.revoked': 'Revoked {name}.',
   'tokens.revokeFailed': 'The token could not be revoked. Try again in a moment.',
   'tokenInfo.status.active': 'Active',
@@ -2025,8 +2027,6 @@ export const messagesEn = {
   'admin.frontends.remove': 'Remove',
   'admin.frontends.removeLabel': 'Remove {origin}',
   'admin.frontends.confirm': 'Remove {origin}? Its next request is refused.',
-  'admin.frontends.confirmRemove': 'Remove it',
-  'admin.frontends.cancel': 'Cancel',
   'admin.frontends.removed': '{origin} was removed.',
   'admin.frontends.removeFailed': 'The frontend could not be removed. Try again.',
   'admin.frontends.environment': 'From the server’s environment',
@@ -2245,6 +2245,8 @@ export const messagesEn = {
   'admin.serviceAccounts.hideNamed': 'Hide the tokens of {name}',
   'admin.serviceAccounts.deactivate': 'Deactivate',
   'admin.serviceAccounts.deactivateNamed': 'Deactivate {name}',
+  'admin.serviceAccounts.deactivateConfirm':
+    '{name} stops working at once: {count, plural, =0 {it has no active token now} one {its # active token is refused} other {its # active tokens are refused}}, and no new token can be issued until you reactivate it.',
   'admin.serviceAccounts.reactivate': 'Reactivate',
   'admin.serviceAccounts.reactivateNamed': 'Reactivate {name}',
   'admin.serviceAccounts.actionFailed': 'That did not work. Try again in a moment.',
@@ -2342,8 +2344,6 @@ export const messagesEn = {
   'admin.sso.deleteNamed': 'Delete {name}',
   'admin.sso.deleteConfirm':
     'Delete {name}? Nobody can sign in with it any more. Accounts stay; people without a password need a password link to sign in.',
-  'admin.sso.confirmDelete': 'Delete provider',
-  'admin.sso.cancel': 'Cancel',
   'admin.sso.added': 'Added {name}.',
   'admin.sso.saved': 'Saved {name}.',
   'admin.sso.unchanged': 'Nothing changed.',
@@ -2505,8 +2505,6 @@ export const messagesEn = {
   'admin.directories.deleteNamed': 'Delete {name}',
   'admin.directories.deleteConfirm':
     'Delete {name}? {accounts, plural, =0 {It manages no accounts.} one {The # account it manages is deactivated and keeps its work.} other {The # accounts it manages are deactivated and keep their work.}} Its groups stay as Taskmoor groups.',
-  'admin.directories.confirmDelete': 'Delete directory',
-  'admin.directories.cancel': 'Cancel',
   'admin.directories.lastAdmin':
     'This directory manages the last active site administrator, so it cannot be deleted. Make another account a site administrator first.',
   'admin.directories.added': 'Added {name}. Its first sync starts shortly.',
@@ -2533,6 +2531,10 @@ export const messagesEn = {
   'admin.directories.syncDisabled': 'This directory is disabled. Enable it to sync it.',
   'admin.directories.confirmRemovals': 'Sync and remove',
   'admin.directories.confirmRemovalsNamed': 'Sync {name} and remove what left it',
+  'admin.directories.confirmRemovalsOutcome':
+    'A full sync of {name} starts now and removes {removed, number} of its {known, number} {what, select, groups {groups} other {people}}: the ones that left the directory. {what, select, groups {Those groups are deleted, which cannot be undone. Any people who left it are deactivated and keep their work.} other {Those people are deactivated and keep their work. Any groups that left it are deleted, which cannot be undone.}}',
+  'admin.directories.confirmRemovalsOutcomeUncounted':
+    'A full sync of {name} starts now and removes every person and group that left the directory, more than half of them. People are deactivated and keep their work; groups are deleted.',
   'admin.directories.history': 'History',
   'admin.directories.historyNamed': 'History of {name}',
   'admin.directories.historyTitle': 'Recent syncs of {name}',
@@ -2950,8 +2952,6 @@ export const messagesEn = {
   'admin.groups.delete': 'Delete group',
   'admin.groups.deleteOf': 'Delete group {name}',
   'admin.groups.confirmDelete': 'Delete {name}? Its members stay; permissions given to it go.',
-  'admin.groups.confirmYes': 'Yes, delete',
-  'admin.groups.confirmNo': 'Keep it',
   'admin.groups.problem.nameTaken': 'There is a group with that name already.',
   'admin.groups.problem.cycle': 'That would put a group inside itself.',
   'admin.groups.problem.directory': 'A directory keeps this group: change it there.',
@@ -2995,8 +2995,6 @@ export const messagesEn = {
   'admin.teams.deleteOf': 'Delete team {name}',
   'admin.teams.confirmDelete':
     'Delete {name}? Boards and areas let go of it, and Team fields that name it become empty.',
-  'admin.teams.confirmYes': 'Yes, delete',
-  'admin.teams.confirmNo': 'Keep it',
   'admin.teams.problem.nameTaken': 'There is a team with that name already.',
   'admin.teams.problem.other': 'That did not work. Try again in a moment.',
   'permission.appoint_track_admins': 'Give the role that runs the track',
@@ -3249,9 +3247,8 @@ export const messagesEn = {
   'admin.maps.save': 'Save the map',
   'admin.maps.delete': 'Delete map',
   'admin.maps.deleteOf': 'Delete map {name}',
-  'admin.maps.confirmDelete': 'Delete {name}?',
-  'admin.maps.confirmYes': 'Yes, delete',
-  'admin.maps.confirmNo': 'Keep it',
+  'admin.maps.confirmDelete':
+    'Delete {name}? No track can use it afterwards, and this cannot be undone.',
   'admin.maps.problem.mapping':
     '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Give a status mapping through the API, then save.',
   'admin.maps.problem.migrating':
@@ -3315,9 +3312,8 @@ export const messagesEn = {
   'admin.sets.deleted': '{name} was deleted.',
   'admin.sets.delete': 'Delete set',
   'admin.sets.deleteOf': 'Delete set {name}',
-  'admin.sets.confirmDelete': 'Delete {name}?',
-  'admin.sets.confirmYes': 'Yes, delete',
-  'admin.sets.confirmNo': 'Keep it',
+  'admin.sets.confirmDelete':
+    'Delete {name}? Nothing can use it afterwards, and this cannot be undone.',
   'admin.sets.problem.inUse':
     '{tracks, plural, one {# track uses} other {# tracks use}} this set: give them another first.',
   'admin.sets.problem.default': 'A default set is not deleted.',
@@ -3374,9 +3370,8 @@ export const messagesEn = {
   'admin.fields.optionDeleteOf': 'Delete {value}',
   'admin.fields.delete': 'Delete field',
   'admin.fields.deleteOf': 'Delete field {name}',
-  'admin.fields.confirmDelete': 'Delete {name}?',
-  'admin.fields.confirmYes': 'Yes, delete',
-  'admin.fields.confirmNo': 'Keep it',
+  'admin.fields.confirmDelete':
+    'Delete {name}? Its field rules go with it and layouts stop showing it. This cannot be undone.',
   'admin.fields.type.text': 'Short text',
   'admin.fields.type.paragraph': 'Paragraph',
   'admin.fields.type.number': 'Number',
@@ -3422,8 +3417,6 @@ export const messagesEn = {
   'admin.permissions.deleteRoleOf': 'Delete role {name}',
   'admin.permissions.confirmDeleteRole':
     'Delete the role {name}? While an access policy still gives it, it is kept. Once deleted it cannot be brought back.',
-  'admin.permissions.confirmYes': 'Yes, delete',
-  'admin.permissions.confirmNo': 'Keep it',
   'admin.permissions.policies': 'Access policies',
   'admin.permissions.addPolicy': 'Add an access policy',
   'admin.permissions.newPolicy': 'New access policy',
@@ -3729,9 +3722,7 @@ export const messagesEn = {
   'comments.editOf': 'Edit the comment by {author} from {date}',
   'comments.delete': 'Delete',
   'comments.deleteOf': 'Delete the comment by {author} from {date}',
-  'comments.confirmDelete': 'Delete this comment?',
-  'comments.confirmYes': 'Yes, delete',
-  'comments.confirmNo': 'Keep it',
+  'comments.confirmDelete': 'Delete this comment? It disappears from the ticket for everyone.',
   'comments.save': 'Save',
   'comments.cancel': 'Cancel',
   'comments.add': 'Add a comment',
@@ -3823,8 +3814,6 @@ export const messagesEn = {
   'attachments.delete': 'Delete',
   'attachments.deleteOf': 'Delete {name}',
   'attachments.confirmDelete': 'Delete {name} for good?',
-  'attachments.confirmYes': 'Yes, delete',
-  'attachments.confirmNo': 'Keep it',
   'attachments.deleted': '{name} deleted.',
   'attachments.deleteFailed': '{name} could not be deleted. Try again in a moment.',
   'attachments.meta': '{size} · {author} · {date}',
@@ -4097,7 +4086,6 @@ export const messagesEn = {
     '{count, plural, one {# transition keeps its other starting statuses: {names}.} other {# transitions keep their other starting statuses: {names}.}}',
   'admin.workflow.status.ticketsMove':
     'Tickets in {name} move to a status you choose when you publish.',
-  'admin.workflow.status.confirmRemoveButton': 'Remove status',
   'admin.workflow.status.removed': 'Removed {name} from the workflow.',
   'admin.workflow.status.added': 'Added {name} to the workflow.',
   'admin.workflow.status.addFailed':
@@ -4155,7 +4143,7 @@ export const messagesEn = {
   'admin.workflow.transition.removeTrigger': 'Remove event {number}',
   'admin.workflow.transition.delete': 'Delete transition',
   'admin.workflow.transition.confirmDelete': 'Delete {name}? Tickets keep their history.',
-  'admin.workflow.transition.confirmDeleteButton': 'Delete transition',
+  'admin.workflow.transition.deleteNamed': 'Delete {name}',
   'admin.workflow.transition.deleted': 'Deleted {name}.',
   'admin.workflow.effects.status': 'Set the status to {status}',
   'admin.workflow.effects.layout': 'Save the fields entered on the transition',
@@ -5121,7 +5109,12 @@ export const messagesEn = {
   'dashboards.save': 'Save dashboard',
   'dashboards.cancel': 'Cancel',
   'dashboards.delete': 'Delete dashboard',
-  'dashboards.confirmDelete': 'Delete the dashboard {name}?',
+  'dashboards.confirmDelete':
+    'Delete the dashboard {name}? Whoever it is shared with loses it too, and this cannot be undone.',
+  'dashboards.deleteOf': 'Delete {name}',
+  'dashboards.deleteFailed': 'The dashboard could not be deleted. Try again in a moment.',
+  'dashboards.deleteDefault':
+    'Everyone’s home dashboard cannot be deleted. Make another dashboard everyone’s home first.',
   'dashboards.saved': 'Saved.',
   'dashboards.conflict': 'Someone changed this dashboard meanwhile. Reload it and try again.',
   'dashboards.invalid': 'A widget’s settings cannot be saved. Check them and try again.',
@@ -5925,6 +5918,8 @@ export const messagesEn = {
   'ai.keyFromEnvironment': 'It came from the server’s environment file.',
   'ai.saveKey': 'Save {slot}',
   'ai.removeKey': 'Remove {slot}',
+  'ai.removeKeyConfirm':
+    '{slot}: remove the stored value? AI features that need it stop until another one is saved.',
   'ai.keySaved': 'The key was saved. New AI calls use it from now on.',
   'ai.keyRemoved': 'The key was removed.',
   'ai.test': 'Test connection',
@@ -6194,7 +6189,8 @@ export const messagesEn = {
   'admin.visibility.policyDeleted': 'Policy {name} was deleted.',
   'admin.visibility.deletePolicy': 'Delete policy',
   'admin.visibility.deletePolicyOf': 'Delete policy {name}',
-  'admin.visibility.confirmDeletePolicy': 'Delete {name}?',
+  'admin.visibility.confirmDeletePolicy':
+    'Delete {name} with all its levels? This cannot be undone.',
   'admin.visibility.usedBy': 'Used by {tracks}',
   'admin.visibility.unused': 'No track uses this policy.',
   'admin.visibility.defaultLevel': 'New tickets take',
@@ -6216,7 +6212,8 @@ export const messagesEn = {
   'admin.visibility.changeLevelOf': 'Change level {name}',
   'admin.visibility.deleteLevel': 'Delete level',
   'admin.visibility.deleteLevelOf': 'Delete level {name}',
-  'admin.visibility.confirmDeleteLevel': 'Delete level {name}?',
+  'admin.visibility.confirmDeleteLevel':
+    'Delete level {name}? If tickets are at it, you choose where they go next.',
   'admin.visibility.up': 'Up',
   'admin.visibility.down': 'Down',
   'admin.visibility.moveUp': 'Move {name} up',
@@ -6399,7 +6396,7 @@ export const messagesEn = {
   'admin.aiLimits.delete': 'Delete',
   'admin.aiLimits.changeLimit': 'Change the limit: {what}, {period}',
   'admin.aiLimits.deleteLimit': 'Delete the limit: {what}, {period}',
-  'admin.aiLimits.confirmDelete': 'Delete the limit on {what}?',
+  'admin.aiLimits.confirmDelete': 'Delete the limit on {what}? AI calls it stops can run again.',
   'admin.aiLimits.limitAdded': 'The limit was added.',
   'admin.aiLimits.limitSaved': 'The limit was saved.',
   'admin.aiLimits.limitDeleted': 'The limit was deleted.',
@@ -6516,9 +6513,8 @@ export const messagesEn = {
   'tickets.templates.editOf': 'Edit template {name}',
   'tickets.templates.delete': 'Delete',
   'tickets.templates.deleteOf': 'Delete template {name}',
-  'tickets.templates.confirmDelete': 'Delete it',
-  'tickets.templates.confirmDeleteOf': 'Yes, delete template {name}',
-  'tickets.templates.keep': 'Keep it',
+  'tickets.templates.confirmDelete':
+    'Delete template {name}? Tickets already made from it stay as they are.',
   'tickets.templates.name': 'Name',
   'tickets.templates.purpose': 'What it is for',
   'tickets.templates.types': 'Ticket types it fits',
@@ -6858,9 +6854,7 @@ export const messagesEn = {
   'layouts.unsaved': 'Unsaved changes',
   'layouts.delete': 'Delete set',
   'layouts.deleteOf': 'Delete set {name}',
-  'layouts.confirmDelete': 'Delete {name}?',
-  'layouts.confirmYes': 'Yes, delete',
-  'layouts.confirmNo': 'Keep it',
+  'layouts.confirmDelete': 'Delete {name}? Its layouts go with it, and this cannot be undone.',
   'layouts.problem.inUse':
     '{tracks, plural, one {# track uses} other {# tracks use}} this set: give them another on Which sets a track uses first.',
   'layouts.problem.default': 'The default set is not deleted.',

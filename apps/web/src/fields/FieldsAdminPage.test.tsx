@@ -79,8 +79,12 @@ describe('field administration (M1-053)', () => {
       '3 tickets hold it, the trash included. Stop offering it instead.',
     );
     await user.click(screen.getByRole('button', { name: 'Delete field Severity' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const question = screen.getByRole('group', { name: /^Delete Severity\?/ });
+    await user.click(within(question).getByRole('button', { name: 'Delete field Severity' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('3 tickets hold it');
+    // Refused: the question stays open; Cancel gives the focus back to the first button (D13).
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete field Severity' })).toHaveFocus();
   });
 
   it('[CORE-003] renames a field and deletes one no ticket holds', async () => {
@@ -93,10 +97,18 @@ describe('field administration (M1-053)', () => {
     await user.type(name, 'Client');
     await user.click(within(rename).getByRole('button', { name: 'Rename' }));
     expect(await screen.findByText('Client was renamed.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Delete field Client' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = screen.getByRole('button', { name: 'Delete field Client' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); nothing is sent yet.
+    const question = screen.getByRole('group', {
+      name: 'Delete Client? Its field rules go with it and layouts stop showing it. This cannot be undone.',
+    });
+    expect(client.calls.map((c) => c.action)).toEqual(['updateField']);
+    await user.click(within(question).getByRole('button', { name: 'Delete field Client' }));
     expect(await screen.findByText('Client was deleted.')).toBeInTheDocument();
     expect(client.calls.map((c) => c.action)).toEqual(['updateField', 'deleteField']);
+    expect(screen.getByRole('heading', { level: 1, name: 'Fields' })).toHaveFocus();
   });
 
   it('fits a small phone', async () => {

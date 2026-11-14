@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import type { ApiToken, NewToken, PersonalTokensClient, TokenPolicy } from './client';
 import { TokenForm } from './TokenForm';
@@ -65,6 +66,7 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
     await load();
   };
 
+  // Asked first (D13). A refusal keeps the question open, the reason under the list.
   const revoke = async (token: ApiToken) => {
     setBusy(true);
     setDone('');
@@ -76,15 +78,15 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
         // Already gone: the outcome is the same.
         if (!(e instanceof ApiError && e.status === 404)) throw e;
       }
-      // The pressed button is about to disappear; keep focus in the section.
-      heading.current?.focus();
-      setDone(t('tokens.revoked', { name: token.name }));
     } catch (e) {
-      if (expired(e)) return;
-      setError(t('tokens.revokeFailed'));
+      if (!expired(e)) setError(t('tokens.revokeFailed'));
+      throw e;
     } finally {
       setBusy(false);
     }
+    // The question and its button are about to disappear; keep focus in the section.
+    heading.current?.focus();
+    setDone(t('tokens.revoked', { name: token.name }));
     await load();
   };
 
@@ -125,15 +127,14 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
                   timeZone={timeZone}
                   actions={
                     token.status === 'active' ? (
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        aria-label={t('tokens.revokeNamed', { name: token.name })}
+                      <DangerAction
+                        label={t('tokens.revoke')}
+                        name={t('tokens.revokeNamed', { name: token.name })}
+                        outcome={t('tokens.revokeConfirm', { name: token.name })}
+                        confirmLabel={t('tokens.revokeNamed', { name: token.name })}
                         disabled={busy}
-                        onClick={() => void revoke(token)}
-                      >
-                        {t('tokens.revoke')}
-                      </button>
+                        onConfirm={() => revoke(token)}
+                      />
                     ) : undefined
                   }
                 />

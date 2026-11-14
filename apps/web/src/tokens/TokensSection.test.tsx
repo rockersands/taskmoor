@@ -213,7 +213,16 @@ describe('API tokens on the Account page', () => {
         return noContent();
       },
     });
-    await user.click(await section.findByRole('button', { name: 'Revoke Deploy script' }));
+    const trigger = await section.findByRole('button', { name: 'Revoke Deploy script' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); nothing is sent yet.
+    const question = section.getByRole('group', {
+      name: 'Revoke Deploy script? Programs using it stop working at once, and a revoked token cannot be used again.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    await user.click(within(question).getByRole('button', { name: 'Revoke Deploy script' }));
     expect(await section.findByText('Revoked Deploy script.')).toHaveAttribute('role', 'status');
     await waitFor(() =>
       expect(section.queryByRole('button', { name: 'Revoke Deploy script' })).toBeNull(),
@@ -228,9 +237,13 @@ describe('API tokens on the Account page', () => {
       'DELETE /account/tokens/41': () => jsonResponse(500, { error: 'boom' }),
     });
     await user.click(await first.section.findByRole('button', { name: 'Revoke Deploy script' }));
+    const question = first.section.getByRole('group', { name: /^Revoke Deploy script\?/ });
+    await user.click(within(question).getByRole('button', { name: 'Revoke Deploy script' }));
     expect(await first.section.findByRole('alert')).toHaveTextContent(
       'The token could not be revoked. Try again in a moment.',
     );
+    // Refused: the question stays open, to try again or cancel.
+    expect(first.section.getByRole('group', { name: /^Revoke Deploy script\?/ })).toBeVisible();
   });
 
   it('[IAM-007] says when the tokens could not be read', async () => {

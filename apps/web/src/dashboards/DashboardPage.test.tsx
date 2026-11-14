@@ -212,6 +212,64 @@ describe('a dashboard (M1-064)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
   });
 
+  it('[RPT-004] its owner deletes it only after saying what goes (D13)', async () => {
+    const user = userEvent.setup();
+    const client = fakeDashboardClient();
+    let refuse = true;
+    const remove = client.remove;
+    client.remove = async (id) => {
+      if (refuse) throw new ApiError(500, {});
+      return remove(id);
+    };
+    open({ client });
+    await user.click(await screen.findByRole('button', { name: 'Edit dashboard' }));
+    const trigger = screen.getByRole('button', { name: 'Delete dashboard' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Delete the dashboard Checkout team? Whoever it is shared with loses it too, and this cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete Checkout team' }));
+    // Refused: the reason shows and the question stays, to try again.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The dashboard could not be deleted.',
+    );
+    refuse = false;
+    await user.click(within(question).getByRole('button', { name: 'Delete Checkout team' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/dashboards'));
+    expect(client.dashboards.some((d) => d.id === 5)).toBe(false);
+  });
+
+  it('[RPT-004] offers no Delete on everyone’s home dashboard, and says what to do instead', async () => {
+    const user = userEvent.setup();
+    open({ client: fakeDashboardClient([{ ...TEAM_DASHBOARD, isDefault: true }]) });
+    await user.click(await screen.findByRole('button', { name: 'Edit dashboard' }));
+    expect(screen.queryByRole('button', { name: 'Delete dashboard' })).toBeNull();
+    expect(
+      screen.getByText(
+        'Everyone’s home dashboard cannot be deleted. Make another dashboard everyone’s home first.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('[RPT-004] says why the server keeps a dashboard that became everyone’s home meanwhile', async () => {
+    const user = userEvent.setup();
+    const client = fakeDashboardClient();
+    open({ client });
+    await user.click(await screen.findByRole('button', { name: 'Edit dashboard' }));
+    await user.click(screen.getByRole('button', { name: 'Delete dashboard' }));
+    // An administrator made it everyone's home after the page loaded.
+    for (const d of client.dashboards) d.isDefault = d.id === 5;
+    await user.click(screen.getByRole('button', { name: 'Delete Checkout team' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Everyone’s home dashboard cannot be deleted. Make another dashboard everyone’s home first.',
+    );
+    expect(alert).not.toHaveTextContent('Try again');
+    expect(window.location.hash).not.toBe('#/dashboards');
+  });
+
   it('[RPT-004] says when someone else saved first', async () => {
     const user = userEvent.setup();
     const client = fakeDashboardClient();

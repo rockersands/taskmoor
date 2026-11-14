@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -34,6 +35,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const nameId = useId();
   const typeId = useId();
   const multipleId = useId();
@@ -99,6 +101,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.fields.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -245,8 +248,10 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                       client={client}
                       onChanged={said}
                       onDeleted={(deleted) => {
+                        // The field's row goes: the page's heading takes the focus.
                         setOpen(null);
                         said(t('admin.fields.deleted', { name: deleted }));
+                        title.current?.focus();
                       }}
                       onProblem={(error) => setProblem(refusal(error))}
                     />
@@ -278,7 +283,6 @@ function FieldPanel({
   const formId = useId();
   const [field, setField] = useState<Field | null>(null);
   const [name, setName] = useState('');
-  const [confirming, setConfirming] = useState(false);
 
   const show = (found: Field) => {
     setField(found);
@@ -335,34 +339,22 @@ function FieldPanel({
           />
         ))}
       <div className="form-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t('admin.fields.confirmDelete', { name: field.name })}
-            </span>
-            <button
-              type="button"
-              className="button-danger"
-              onClick={() =>
-                void client.deleteField(id).then(() => onDeleted(field.name), onProblem)
-              }
-            >
-              {t('admin.fields.confirmYes')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.fields.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.fields.deleteOf', { name: field.name })}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.fields.delete')}
-          </button>
-        )}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.fields.delete')}
+          name={t('admin.fields.deleteOf', { name: field.name })}
+          outcome={t('admin.fields.confirmDelete', { name: field.name })}
+          confirmLabel={t('admin.fields.deleteOf', { name: field.name })}
+          onConfirm={async () => {
+            try {
+              await client.deleteField(id);
+            } catch (error) {
+              onProblem(error);
+              throw error;
+            }
+            onDeleted(field.name);
+          }}
+        />
       </div>
     </div>
   );

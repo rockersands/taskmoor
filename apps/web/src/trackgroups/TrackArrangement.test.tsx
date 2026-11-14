@@ -233,9 +233,13 @@ describe('the Tracks page in groups (CORE-034)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(region('Go live')).toBeVisible());
     await user.click(screen.getByRole('button', { name: 'Move or change the group Go live' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Delete group' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete group…' }));
+    // Asks first, saying what will happen; the answer names the group (D13).
     const ask = screen.getByRole('dialog', { name: 'Delete Go live?' });
-    await user.click(within(ask).getByRole('button', { name: 'Delete group' }));
+    expect(within(ask).getByText(/Whoever it is shared with loses it/)).toBeVisible();
+    const yes = within(ask).getByRole('button', { name: 'Delete Go live' });
+    expect(yes).toHaveClass('button-danger');
+    await user.click(yes);
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Go live' })).toBeNull());
     expect(looseKeys()).toEqual(['SHOP', 'WEB', 'PAY', 'DATA']);
     expect(client.calls.map((c) => c.method)).toEqual(['update', 'remove']);
@@ -263,9 +267,9 @@ describe('the Tracks page in groups (CORE-034)', () => {
     });
     open(ARRANGED, client);
     await user.click(screen.getByRole('button', { name: 'Move or change the group Launch' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Delete group' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete group…' }));
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete group' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete Launch' }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent(/nobody to run it/);
     expect(region('Launch')).toBeVisible();
@@ -338,10 +342,10 @@ describe('after the review of the Tracks page in groups (CORE-034)', () => {
     open([ownGroup(1, 'Launch', [1]), ownGroup(2, 'Back office', [4])]);
     const remove = async (name: string) => {
       await user.click(screen.getByRole('button', { name: `Move or change the group ${name}` }));
-      await user.click(screen.getByRole('menuitem', { name: 'Delete group' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete group…' }));
       await user.click(
         within(screen.getByRole('dialog', { name: `Delete ${name}?` })).getByRole('button', {
-          name: 'Delete group',
+          name: `Delete ${name}`,
         }),
       );
       await waitFor(() => expect(screen.queryByRole('region', { name })).toBeNull());

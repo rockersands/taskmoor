@@ -182,7 +182,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackGroups.rename': 'Cambiar nombre',
   'trackGroups.share': 'Compartir…',
   'trackGroups.setOn': 'Asignar a alguien…',
-  'trackGroups.delete': 'Eliminar grupo',
+  'trackGroups.delete': 'Eliminar grupo…',
   'trackGroups.new.title': 'Nuevo grupo',
   'trackGroups.new.intro': 'Solo tú lo ves hasta que lo compartas.',
   'trackGroups.rename.title': 'Cambiar nombre del grupo',
@@ -195,7 +195,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackGroups.delete.title': '¿Eliminar {name}?',
   'trackGroups.delete.body':
     'Sus tracks se quedan en tu página. Quien lo tenga compartido lo pierde, junto con los roles que le dio.',
-  'trackGroups.delete.do': 'Eliminar grupo',
+  'trackGroups.delete.do': 'Eliminar {name}',
   'trackGroups.leave': 'Salir del grupo…',
   'trackGroups.leave.title': '¿Salir de {name}?',
   'trackGroups.leave.body':
@@ -1390,6 +1390,8 @@ export const messagesEs: Record<MessageId, string> = {
   'tokens.done': 'Hecho',
   'tokens.revoke': 'Revocar',
   'tokens.revokeNamed': 'Revocar {name}',
+  'tokens.revokeConfirm':
+    '¿Revocar {name}? Los programas que lo usan dejan de funcionar al momento, y un token revocado no se puede volver a usar.',
   'tokens.revoked': 'Se revocó {name}.',
   'tokens.revokeFailed': 'No se pudo revocar el token. Inténtalo de nuevo en un momento.',
   'tokenInfo.status.active': 'Activo',
@@ -2077,8 +2079,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.remove': 'Quitar',
   'admin.frontends.removeLabel': 'Quitar {origin}',
   'admin.frontends.confirm': '¿Quitar {origin}? Su próxima petición se rechaza.',
-  'admin.frontends.confirmRemove': 'Quitarlo',
-  'admin.frontends.cancel': 'Cancelar',
   'admin.frontends.removed': 'Se quitó {origin}.',
   'admin.frontends.removeFailed': 'No se pudo quitar el frontend. Inténtalo de nuevo.',
   'admin.frontends.environment': 'Del entorno del servidor',
@@ -2306,6 +2306,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.serviceAccounts.hideNamed': 'Ocultar los tokens de {name}',
   'admin.serviceAccounts.deactivate': 'Desactivar',
   'admin.serviceAccounts.deactivateNamed': 'Desactivar {name}',
+  'admin.serviceAccounts.deactivateConfirm':
+    '{name} deja de funcionar al momento: {count, plural, =0 {ahora no tiene ningún token activo} one {su # token activo se rechaza} other {sus # tokens activos se rechazan}}, y no se pueden emitir tokens nuevos hasta que lo reactives.',
   'admin.serviceAccounts.reactivate': 'Reactivar',
   'admin.serviceAccounts.reactivateNamed': 'Reactivar {name}',
   'admin.serviceAccounts.actionFailed': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
@@ -2409,8 +2411,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.deleteNamed': 'Eliminar {name}',
   'admin.sso.deleteConfirm':
     '¿Eliminar {name}? Ya nadie podrá iniciar sesión con él. Las cuentas se quedan; las personas sin contraseña necesitan un enlace de contraseña para iniciar sesión.',
-  'admin.sso.confirmDelete': 'Eliminar el proveedor',
-  'admin.sso.cancel': 'Cancelar',
   'admin.sso.added': 'Se añadió {name}.',
   'admin.sso.saved': 'Se guardó {name}.',
   'admin.sso.unchanged': 'No cambió nada.',
@@ -2579,8 +2579,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.deleteNamed': 'Eliminar {name}',
   'admin.directories.deleteConfirm':
     '¿Eliminar {name}? {accounts, plural, =0 {No gestiona ninguna cuenta.} one {La # cuenta que gestiona se desactiva y conserva su trabajo.} other {Las # cuentas que gestiona se desactivan y conservan su trabajo.}} Sus grupos se quedan como grupos de Taskmoor.',
-  'admin.directories.confirmDelete': 'Eliminar el directorio',
-  'admin.directories.cancel': 'Cancelar',
   'admin.directories.lastAdmin':
     'Este directorio gestiona al último administrador del sitio activo, así que no se puede eliminar. Nombra antes administrador del sitio a otra cuenta.',
   'admin.directories.added': 'Se añadió {name}. Su primera sincronización empieza en breve.',
@@ -2608,6 +2606,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Este directorio está desactivado. Actívalo para sincronizarlo.',
   'admin.directories.confirmRemovals': 'Sincronizar y quitar',
   'admin.directories.confirmRemovalsNamed': 'Sincronizar {name} y quitar lo que salió de él',
+  'admin.directories.confirmRemovalsOutcome':
+    'Una sincronización completa de {name} empieza ahora y quita {removed, number} de sus {known, number} {what, select, groups {grupos} other {personas}}: {what, select, groups {los que} other {las que}} salieron del directorio. {what, select, groups {Esos grupos se eliminan, y eso no se puede deshacer. Las personas que salieron de él se desactivan y conservan su trabajo.} other {Esas personas se desactivan y conservan su trabajo. Los grupos que salieron de él se eliminan, y eso no se puede deshacer.}}',
+  'admin.directories.confirmRemovalsOutcomeUncounted':
+    'Una sincronización completa de {name} empieza ahora y quita a todas las personas y grupos que salieron del directorio, más de la mitad. Las personas se desactivan y conservan su trabajo; los grupos se eliminan.',
   'admin.directories.history': 'Historial',
   'admin.directories.historyNamed': 'Historial de {name}',
   'admin.directories.historyTitle': 'Sincronizaciones recientes de {name}',
@@ -3034,8 +3036,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.groups.deleteOf': 'Eliminar el grupo {name}',
   'admin.groups.confirmDelete':
     '¿Eliminar {name}? Sus miembros se quedan; los permisos que tenía se van.',
-  'admin.groups.confirmYes': 'Sí, eliminar',
-  'admin.groups.confirmNo': 'Conservarlo',
   'admin.groups.problem.nameTaken': 'Ya hay un grupo con ese nombre.',
   'admin.groups.problem.cycle': 'Eso pondría un grupo dentro de sí mismo.',
   'admin.groups.problem.directory': 'Un directorio gestiona este grupo: cámbialo allí.',
@@ -3079,8 +3079,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.teams.deleteOf': 'Eliminar el equipo {name}',
   'admin.teams.confirmDelete':
     '¿Eliminar {name}? Los tableros y las áreas lo sueltan, y los campos de equipo que lo nombran quedan vacíos.',
-  'admin.teams.confirmYes': 'Sí, eliminar',
-  'admin.teams.confirmNo': 'Conservarlo',
   'admin.teams.problem.nameTaken': 'Ya hay un equipo con ese nombre.',
   'admin.teams.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'permission.appoint_track_admins': 'Dar el rol que administra el track',
@@ -3339,9 +3337,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.save': 'Guardar el mapa',
   'admin.maps.delete': 'Eliminar el mapa',
   'admin.maps.deleteOf': 'Eliminar el mapa {name}',
-  'admin.maps.confirmDelete': '¿Eliminar {name}?',
-  'admin.maps.confirmYes': 'Sí, eliminar',
-  'admin.maps.confirmNo': 'Conservarlo',
+  'admin.maps.confirmDelete':
+    '¿Eliminar {name}? Ningún track podrá usarlo después, y no se puede deshacer.',
   'admin.maps.problem.mapping':
     '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego guarda.',
   'admin.maps.problem.migrating':
@@ -3406,9 +3403,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sets.deleted': 'Se eliminó {name}.',
   'admin.sets.delete': 'Eliminar el conjunto',
   'admin.sets.deleteOf': 'Eliminar el conjunto {name}',
-  'admin.sets.confirmDelete': '¿Eliminar {name}?',
-  'admin.sets.confirmYes': 'Sí, eliminar',
-  'admin.sets.confirmNo': 'Conservarlo',
+  'admin.sets.confirmDelete':
+    '¿Eliminar {name}? Nada podrá usarlo después, y no se puede deshacer.',
   'admin.sets.problem.inUse':
     '{tracks, plural, one {# track usa} other {# tracks usan}} este conjunto: dales otro primero.',
   'admin.sets.problem.default': 'Un conjunto predeterminado no se elimina.',
@@ -3465,9 +3461,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.optionDeleteOf': 'Eliminar {value}',
   'admin.fields.delete': 'Eliminar el campo',
   'admin.fields.deleteOf': 'Eliminar el campo {name}',
-  'admin.fields.confirmDelete': '¿Eliminar {name}?',
-  'admin.fields.confirmYes': 'Sí, eliminar',
-  'admin.fields.confirmNo': 'Conservarlo',
+  'admin.fields.confirmDelete':
+    '¿Eliminar {name}? Sus reglas de campo se van con él y los diseños dejan de mostrarlo. No se puede deshacer.',
   'admin.fields.type.text': 'Texto corto',
   'admin.fields.type.paragraph': 'Párrafo',
   'admin.fields.type.number': 'Número',
@@ -3513,8 +3508,6 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.deleteRoleOf': 'Eliminar el rol {name}',
   'admin.permissions.confirmDeleteRole':
     '¿Eliminar el rol {name}? Mientras una política de acceso lo dé, se mantiene. Una vez eliminado no se puede recuperar.',
-  'admin.permissions.confirmYes': 'Sí, eliminar',
-  'admin.permissions.confirmNo': 'Conservarlo',
   'admin.permissions.policies': 'Políticas de acceso',
   'admin.permissions.addPolicy': 'Añadir una política de acceso',
   'admin.permissions.newPolicy': 'Nueva política de acceso',
@@ -3827,9 +3820,7 @@ export const messagesEs: Record<MessageId, string> = {
   'comments.editOf': 'Editar el comentario de {author} del {date}',
   'comments.delete': 'Eliminar',
   'comments.deleteOf': 'Eliminar el comentario de {author} del {date}',
-  'comments.confirmDelete': '¿Eliminar este comentario?',
-  'comments.confirmYes': 'Sí, eliminar',
-  'comments.confirmNo': 'Conservarlo',
+  'comments.confirmDelete': '¿Eliminar este comentario? Desaparece del ticket para todos.',
   'comments.save': 'Guardar',
   'comments.cancel': 'Cancelar',
   'comments.add': 'Añadir un comentario',
@@ -3921,8 +3912,6 @@ export const messagesEs: Record<MessageId, string> = {
   'attachments.delete': 'Eliminar',
   'attachments.deleteOf': 'Eliminar {name}',
   'attachments.confirmDelete': '¿Eliminar {name} definitivamente?',
-  'attachments.confirmYes': 'Sí, eliminar',
-  'attachments.confirmNo': 'Conservarlo',
   'attachments.deleted': 'Se eliminó {name}.',
   'attachments.deleteFailed': 'No se pudo eliminar {name}. Inténtalo de nuevo en un momento.',
   'attachments.meta': '{size} · {author} · {date}',
@@ -4203,7 +4192,6 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {# transición conserva sus otros estados de partida: {names}.} other {# transiciones conservan sus otros estados de partida: {names}.}}',
   'admin.workflow.status.ticketsMove':
     'Los tickets en {name} pasan al estado que elijas al publicar.',
-  'admin.workflow.status.confirmRemoveButton': 'Quitar el estado',
   'admin.workflow.status.removed': 'Se quitó {name} del flujo de trabajo.',
   'admin.workflow.status.added': 'Se añadió {name} al flujo de trabajo.',
   'admin.workflow.status.addFailed':
@@ -4262,7 +4250,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.transition.delete': 'Eliminar la transición',
   'admin.workflow.transition.confirmDelete':
     '¿Eliminar {name}? Los tickets conservan su historial.',
-  'admin.workflow.transition.confirmDeleteButton': 'Eliminar la transición',
+  'admin.workflow.transition.deleteNamed': 'Eliminar {name}',
   'admin.workflow.transition.deleted': 'Se eliminó {name}.',
   'admin.workflow.effects.status': 'Definir el estado como {status}',
   'admin.workflow.effects.layout': 'Guardar los campos introducidos en la transición',
@@ -5243,7 +5231,12 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.save': 'Guardar el panel',
   'dashboards.cancel': 'Cancelar',
   'dashboards.delete': 'Eliminar el panel',
-  'dashboards.confirmDelete': '¿Eliminar el panel {name}?',
+  'dashboards.confirmDelete':
+    '¿Eliminar el panel {name}? Quien lo tenga compartido también lo pierde, y no se puede deshacer.',
+  'dashboards.deleteOf': 'Eliminar {name}',
+  'dashboards.deleteFailed': 'No se pudo eliminar el panel. Inténtalo de nuevo en un momento.',
+  'dashboards.deleteDefault':
+    'El panel de inicio de todos no se puede eliminar. Haz primero de otro panel el inicio de todos.',
   'dashboards.saved': 'Guardado.',
   'dashboards.conflict':
     'Alguien cambió este panel mientras tanto. Recárgalo e inténtalo de nuevo.',
@@ -6060,6 +6053,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.keyFromEnvironment': 'Vino del archivo de entorno del servidor.',
   'ai.saveKey': 'Guardar {slot}',
   'ai.removeKey': 'Quitar {slot}',
+  'ai.removeKeyConfirm':
+    '{slot}: ¿quitar el valor guardado? Las funciones de IA que lo necesitan se detienen hasta que guardes otro.',
   'ai.keySaved': 'Se guardó la clave. Las nuevas llamadas de IA la usan desde ahora.',
   'ai.keyRemoved': 'Se quitó la clave.',
   'ai.test': 'Probar la conexión',
@@ -6337,7 +6332,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.policyDeleted': 'Se eliminó la política {name}.',
   'admin.visibility.deletePolicy': 'Eliminar política',
   'admin.visibility.deletePolicyOf': 'Eliminar la política {name}',
-  'admin.visibility.confirmDeletePolicy': '¿Eliminar {name}?',
+  'admin.visibility.confirmDeletePolicy':
+    '¿Eliminar {name} con todos sus niveles? No se puede deshacer.',
   'admin.visibility.usedBy': 'La usan {tracks}',
   'admin.visibility.unused': 'Ningún track usa esta política.',
   'admin.visibility.defaultLevel': 'Los tickets nuevos toman',
@@ -6359,7 +6355,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.changeLevelOf': 'Cambiar el nivel {name}',
   'admin.visibility.deleteLevel': 'Eliminar nivel',
   'admin.visibility.deleteLevelOf': 'Eliminar el nivel {name}',
-  'admin.visibility.confirmDeleteLevel': '¿Eliminar el nivel {name}?',
+  'admin.visibility.confirmDeleteLevel':
+    '¿Eliminar el nivel {name}? Si hay tickets en él, eliges a dónde van después.',
   'admin.visibility.up': 'Subir',
   'admin.visibility.down': 'Bajar',
   'admin.visibility.moveUp': 'Subir {name}',
@@ -6545,7 +6542,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.delete': 'Eliminar',
   'admin.aiLimits.changeLimit': 'Cambiar el límite: {what}, {period}',
   'admin.aiLimits.deleteLimit': 'Eliminar el límite: {what}, {period}',
-  'admin.aiLimits.confirmDelete': '¿Eliminar el límite de {what}?',
+  'admin.aiLimits.confirmDelete':
+    '¿Eliminar el límite de {what}? Las llamadas a la IA que detiene podrán hacerse de nuevo.',
   'admin.aiLimits.limitAdded': 'Se añadió el límite.',
   'admin.aiLimits.limitSaved': 'Se guardó el límite.',
   'admin.aiLimits.limitDeleted': 'Se eliminó el límite.',
@@ -6666,9 +6664,8 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.templates.editOf': 'Editar la plantilla {name}',
   'tickets.templates.delete': 'Eliminar',
   'tickets.templates.deleteOf': 'Eliminar la plantilla {name}',
-  'tickets.templates.confirmDelete': 'Sí, eliminarla',
-  'tickets.templates.confirmDeleteOf': 'Sí, eliminar la plantilla {name}',
-  'tickets.templates.keep': 'Conservarla',
+  'tickets.templates.confirmDelete':
+    '¿Eliminar la plantilla {name}? Los tickets ya creados con ella se quedan como están.',
   'tickets.templates.name': 'Nombre',
   'tickets.templates.purpose': 'Para qué sirve',
   'tickets.templates.types': 'Tipos de ticket a los que se aplica',
@@ -7018,9 +7015,7 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.unsaved': 'Cambios sin guardar',
   'layouts.delete': 'Eliminar conjunto',
   'layouts.deleteOf': 'Eliminar el conjunto {name}',
-  'layouts.confirmDelete': '¿Eliminar {name}?',
-  'layouts.confirmYes': 'Sí, eliminar',
-  'layouts.confirmNo': 'Conservarlo',
+  'layouts.confirmDelete': '¿Eliminar {name}? Sus diseños se van con él, y no se puede deshacer.',
   'layouts.problem.inUse':
     '{tracks, plural, one {# track usa} other {# tracks usan}} este conjunto: dales otro primero en Qué conjuntos usa un track.',
   'layouts.problem.default': 'El conjunto predeterminado no se elimina.',

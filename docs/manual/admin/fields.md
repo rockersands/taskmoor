@@ -95,7 +95,8 @@ that allow it, **Holds several values**. **Manage** on a field offers:
 - **Rename**.
 - The options of each context of a choice list: a **New option** with **Add the option**,
   **Rename**, **Stop offering**, **Offer again** and **Delete**.
-- **Delete field**.
+- **Delete field**, in the danger colour, asks first: its field rules go with it and layouts stop
+  showing it.
 
 Formula fields, contexts' scopes and defaults, child options of a two-level list and the type
 settings above are set through the API (`/api/v1/fields`).
@@ -209,7 +210,7 @@ A type set lists the ticket types a track offers, in order, with one preselected
 
 On **Administration**, **Configuration sets**, **Type sets**: **New type set** opens the form;
 **Add a type set** with a **Type set name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
-**Delete set** (not for a default set, nor one a track uses). The preselected type, the order and
+**Delete set**, which asks first (not for a default set, nor one a track uses). The preselected type, the order and
 which track types a set is the default for are set through `/api/v1/type-sets`
 (`defaultTypeId`, `ticketTypeIds`, `defaultFor`). A default set says what it is the default for,
 such as **Default for software tracks**.
@@ -282,7 +283,7 @@ administrators:
    appear.
 7. **Save the layouts** sends the set's layouts as a whole, and the server checks them as it
    checks any save. **Discard changes** goes back to what was saved. **Delete set** removes a set
-   that is not the default and that no track uses.
+   that is not the default and that no track uses, after asking: its layouts go with it.
 
 The **Preview** beside or under the layout shows the form as the server will give it, with the
 field rules applied, and follows each change before you save. **Preview as** picks the ticket type

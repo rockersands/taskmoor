@@ -102,14 +102,29 @@ describe('visibility policies (UI-T17)', () => {
   it('[IAM-011] asks where tickets go before deleting a level they use', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete level Internal' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = await screen.findByRole('button', { name: 'Delete level Internal' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = screen.getByRole('group', { name: /^Delete level Internal\?/ });
+    await user.click(within(question).getByRole('button', { name: 'Delete level Internal' }));
     const form = await screen.findByRole('form', { name: 'Where tickets at Internal go' });
     expect(within(form).getByText(/4 tickets are at Internal/)).toBeVisible();
-    await user.selectOptions(within(form).getByLabelText('Move them to'), 'Security');
-    await user.click(within(form).getByRole('button', { name: 'Delete level' }));
+    expect(within(form).getByLabelText('Move them to')).toHaveFocus();
+    // Cancel goes back to the level's Delete level.
+    await user.click(within(form).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete level Internal' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Delete level Internal' }));
+    await user.click(
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete level Internal' }),
+    );
+    const again = await screen.findByRole('form', { name: 'Where tickets at Internal go' });
+    await user.selectOptions(within(again).getByLabelText('Move them to'), 'Security');
+    await user.click(within(again).getByRole('button', { name: 'Delete level' }));
     expect(await screen.findByText('Level Internal was deleted.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Company levels' })).toHaveFocus();
     expect(client.calls.map((c) => c.args)).toEqual([
+      [1, 11, undefined],
       [1, 11, undefined],
       [1, 11, 12],
     ]);
@@ -125,8 +140,13 @@ describe('visibility policies (UI-T17)', () => {
       args: [1, 12, { position: 0 }],
     });
     await user.click(screen.getByRole('button', { name: 'Delete policy Company levels' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const question = screen.getByRole('group', { name: /^Delete Company levels/ });
+    await user.click(
+      within(question).getByRole('button', { name: 'Delete policy Company levels' }),
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent('Tracks still use');
+    // Refused: the question stays open, to cancel (D13).
+    expect(screen.getByRole('group', { name: /^Delete Company levels/ })).toBeVisible();
   });
 
   it('[IAM-009] is for site administrators', () => {

@@ -1,10 +1,11 @@
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -46,7 +47,8 @@ function fieldsOf(error: unknown): Fields | null {
 }
 
 interface Feedback {
-  said: (text: string) => void;
+  /** Says what happened and loads the list again; the promise settles once it is loaded. */
+  said: (text: string) => Promise<void>;
   failed: (error: unknown) => void;
 }
 
@@ -59,6 +61,7 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
   const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -86,7 +89,7 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
   const failed = () => setProblem(t('webhooks.failedAction'));
 
@@ -94,6 +97,7 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('webhooks.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -155,6 +159,7 @@ export function WebhooksPage({ client = webhooksClient }: { client?: WebhooksCli
                     client={client}
                     said={said}
                     failed={failed}
+                    onDeleted={() => title.current?.focus()}
                   />
                 ))}
               </ul>
@@ -170,10 +175,15 @@ function WebhookRow({
   client,
   said,
   failed,
-}: Feedback & { webhook: Webhook; client: WebhooksClient }) {
+  onDeleted,
+}: Feedback & {
+  webhook: Webhook;
+  client: WebhooksClient;
+  /** The webhook is gone: the page's heading takes the focus. */
+  onDeleted: () => void;
+}) {
   const t = useT();
   const [open, setOpen] = useState<'edit' | 'deliveries' | null>(null);
-  const [confirming, setConfirming] = useState(false);
   return (
     <li className="people-item people-group">
       <div className="people-main">
@@ -195,61 +205,41 @@ function WebhookRow({
         )}
       </div>
       <div className="people-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t('webhooks.confirmDelete', { name: webhook.name })}
-            </span>
-            <button
-              type="button"
-              className="button-danger people-action"
-              onClick={() => {
-                setConfirming(false);
-                client
-                  .remove(webhook.id)
-                  .then(() => said(t('webhooks.deleted', { name: webhook.name })), failed);
-              }}
-            >
-              {t('admin.permissions.confirmYes')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              onClick={() => setConfirming(false)}
-            >
-              {t('admin.permissions.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-expanded={open === 'deliveries'}
-              aria-label={t('webhooks.deliveriesOf', { name: webhook.name })}
-              onClick={() => setOpen(open === 'deliveries' ? null : 'deliveries')}
-            >
-              {t('webhooks.deliveries')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-expanded={open === 'edit'}
-              aria-label={t('webhooks.changeOf', { name: webhook.name })}
-              onClick={() => setOpen(open === 'edit' ? null : 'edit')}
-            >
-              {t('webhooks.change')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('webhooks.deleteOf', { name: webhook.name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('webhooks.delete')}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-expanded={open === 'deliveries'}
+          aria-label={t('webhooks.deliveriesOf', { name: webhook.name })}
+          onClick={() => setOpen(open === 'deliveries' ? null : 'deliveries')}
+        >
+          {t('webhooks.deliveries')}
+        </button>
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-expanded={open === 'edit'}
+          aria-label={t('webhooks.changeOf', { name: webhook.name })}
+          onClick={() => setOpen(open === 'edit' ? null : 'edit')}
+        >
+          {t('webhooks.change')}
+        </button>
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('webhooks.delete')}
+          name={t('webhooks.deleteOf', { name: webhook.name })}
+          outcome={t('webhooks.confirmDelete', { name: webhook.name })}
+          confirmLabel={t('webhooks.deleteOf', { name: webhook.name })}
+          onConfirm={async () => {
+            try {
+              await client.remove(webhook.id);
+            } catch (error) {
+              failed(error);
+              throw error;
+            }
+            await said(t('webhooks.deleted', { name: webhook.name }));
+            onDeleted();
+          }}
+        />
       </div>
       {open === 'edit' && (
         <div className="webhook-panel">

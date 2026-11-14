@@ -345,7 +345,8 @@ On **Administration**, **Workflow maps**:
   **Default workflow**.
 - **Manage** a map to change the **Workflow for every other type**, to **Give a type its own
   workflow**, to change what a type follows or **Remove** it, then **Save the map**.
-- **Delete map** removes a map no track uses. The default map cannot be deleted.
+- **Delete map** removes a map no track uses. It is in the danger colour and asks first, saying
+  that no track can use the map afterwards. The default map cannot be deleted.
 
 A map holds at most 150 workflows by default ([guardrails](tracks.md#configuration-guardrails)).
 A shared-mode track chooses its map under **Administration**, **Tracks**, **Manage**, **Workflow map**.

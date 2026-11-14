@@ -233,6 +233,25 @@ describe('directory administration (M1-082)', () => {
     });
 
     const failing = await directoryItem('Research lab');
+    const trigger = within(failing).getByRole('button', {
+      name: 'Sync Research lab and remove what left it',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    // Asks first, naming how many go (D13); Escape gives the focus back, sending nothing.
+    await user.click(trigger);
+    const question = within(failing).getByRole('group', {
+      name: 'A full sync of Research lab starts now and removes 812 of its 1,200 people: the ones that left the directory. Those people are deactivated and keep their work. Any groups that left it are deleted, which cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    ).toHaveFocus();
+    expect(calls.find((c) => c.path === '/directories/2/sync')).toBeUndefined();
+
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
     await user.click(
       within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
     );
@@ -241,6 +260,58 @@ describe('directory administration (M1-082)', () => {
       confirmRemovals: true,
     });
     expect(await within(failing).findByText('Full sync waiting to start…')).toBeVisible();
+    // The stop is answered, so the question goes: the full sync it started takes the focus.
+    expect(within(failing).queryByRole('group')).toBeNull();
+    expect(
+      within(failing).getByRole('button', { name: 'Sync all of Research lab now' }),
+    ).toHaveFocus();
+  });
+
+  it('[IAM-005] a stop that counts groups says they are deleted for good, and what happens to people', async () => {
+    const user = userEvent.setup();
+    const lab: Directory = {
+      ...LAB,
+      enabled: true,
+      lastRun: {
+        ...FAILED,
+        error:
+          'safety_stop: the run would remove 30 of 40 groups; check the filters, or run a full sync confirming removals',
+      },
+    };
+    openPage({
+      'GET /directories': () =>
+        jsonResponse(200, { directories: [HEAD_OFFICE, lab], presets: PRESETS }),
+    });
+    const failing = await directoryItem('Research lab');
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    expect(
+      within(failing).getByRole('group', {
+        name: 'A full sync of Research lab starts now and removes 30 of its 40 groups: the ones that left the directory. Those groups are deleted, which cannot be undone. Any people who left it are deactivated and keep their work.',
+      }),
+    ).toBeVisible();
+  });
+
+  it('[IAM-005] keeps the safety stop question open when the sync is refused', async () => {
+    const user = userEvent.setup();
+    const lab: Directory = { ...LAB, enabled: true };
+    openPage({
+      'GET /directories': () =>
+        jsonResponse(200, { directories: [HEAD_OFFICE, lab], presets: PRESETS }),
+      'POST /directories/2/sync': () => jsonResponse(409, { error: 'directory_disabled' }),
+    });
+    const failing = await directoryItem('Research lab');
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    expect(
+      await within(failing).findByText('This directory is disabled. Enable it to sync it.'),
+    ).toBeVisible();
+    expect(within(failing).getByRole('group')).toBeVisible();
   });
 
   it('[IAM-005] says when a disabled directory cannot sync', async () => {
@@ -300,25 +371,37 @@ describe('directory administration (M1-082)', () => {
   it('[IAM-005] deletes a directory only after confirmation, and explains the last administrator', async () => {
     const user = userEvent.setup();
     let refuse = true;
+    let deleted = false;
     const calls = openPage({
-      'DELETE /directories/1': () =>
-        refuse ? jsonResponse(409, { error: 'last_admin' }) : noContent(),
+      'GET /directories': () =>
+        jsonResponse(200, {
+          directories: deleted ? [LAB] : [HEAD_OFFICE, LAB],
+          presets: PRESETS,
+        }),
+      'DELETE /directories/1': () => {
+        if (refuse) return jsonResponse(409, { error: 'last_admin' });
+        deleted = true;
+        return noContent();
+      },
     });
     const office = await directoryItem('Head office');
-    await user.click(within(office).getByRole('button', { name: 'Delete Head office' }));
-    expect(
-      within(office).getByText(
-        'Delete Head office? The 1,180 accounts it manages are deactivated and keep their work. Its groups stay as Taskmoor groups.',
-      ),
-    ).toBeVisible();
-    expect(within(office).getByRole('button', { name: 'Delete directory' })).toHaveFocus();
-    await user.click(within(office).getByRole('button', { name: 'Delete directory' }));
+    const trigger = within(office).getByRole('button', { name: 'Delete Head office' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13): the focus on Cancel, the safe choice.
+    const question = within(office).getByRole('group', {
+      name: 'Delete Head office? The 1,180 accounts it manages are deactivated and keep their work. Its groups stay as Taskmoor groups.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete Head office' }));
     expect(await within(office).findByRole('alert')).toHaveTextContent(
       'manages the last active site administrator',
     );
+    // Refused: the question stays open, to try again.
     refuse = false;
-    await user.click(within(office).getByRole('button', { name: 'Delete directory' }));
+    await user.click(within(question).getByRole('button', { name: 'Delete Head office' }));
     expect(await screen.findByText('Deleted Head office.')).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: 'Directories' })).toHaveFocus();
     expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(2);
   });
 

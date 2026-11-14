@@ -8,6 +8,7 @@ import type { MentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { RichTextView } from '../richtext/RichTextView';
 import { addressRoute, onRouteChange, routeUrl } from '../routing/router';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import {
   type Audiences,
@@ -63,6 +64,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
   const lockText = useLockText();
   const client = useMemo(() => given ?? commentClient(ticket), [given, ticket]);
   const titleId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
   const composerId = useId();
   const [state, setState] = useState<
     { status: 'loading' } | { status: 'failed' } | ({ status: 'loaded' } & CommentList)
@@ -153,7 +155,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
   return (
     <section aria-labelledby={titleId} className="glass-card comment-panel">
       <div className="comment-header">
-        <h2 id={titleId} className="comment-title">
+        <h2 id={titleId} ref={heading} tabIndex={-1} className="comment-title">
           {t('comments.title')}
         </h2>
         {loaded && <span className="comment-count">{t('comments.count', { count })}</span>}
@@ -199,6 +201,8 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
                         : s,
                     );
                     setMessage(t('comments.deleted'));
+                    // The comment is gone: the list's heading takes the focus.
+                    heading.current?.focus();
                   }}
                   onMessage={setMessage}
                 />
@@ -436,7 +440,7 @@ function CommentItem({
   const intl = useIntl();
   const metaId = useId();
   const editId = useId();
-  const [mode, setMode] = useState<'view' | 'edit' | 'confirm'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [doc, setDoc] = useState<PmJson | null>(comment.body);
   const [visibility, setVisibility] = useState<VisibilityChoice>(choiceOf(comment.visibility));
   const [busy, setBusy] = useState(false);
@@ -466,17 +470,16 @@ function CommentItem({
       setBusy(false);
     }
   };
+  // Asked first (D13); a refusal keeps the question open, the reason above it.
   const remove = async () => {
-    setBusy(true);
+    setProblem(null);
     try {
       await client.remove(comment.id);
-      onDeleted();
     } catch (error) {
       setProblem(problemText(error));
-      setMode('view');
-    } finally {
-      setBusy(false);
+      throw error;
     }
+    onDeleted();
   };
   const react = async (emoji: string, on: boolean) => {
     setPicking(false);
@@ -639,54 +642,37 @@ function CommentItem({
         </fieldset>
       )}
 
-      {mode === 'confirm' ? (
+      {mode === 'view' && (
         <div className="comment-actions">
-          <span className="comment-confirm">{t('comments.confirmDelete')}</span>
           <button
             type="button"
-            className="button-danger"
-            disabled={busy}
-            onClick={() => void remove()}
+            className="button-secondary comment-action"
+            aria-label={t('comments.copyLinkOf', named)}
+            onClick={() => void copyLink()}
           >
-            {t('comments.confirmYes')}
+            {t('comments.copyLink')}
           </button>
-          <button type="button" className="button-secondary" onClick={() => setMode('view')}>
-            {t('comments.confirmNo')}
-          </button>
-        </div>
-      ) : (
-        mode === 'view' && (
-          <div className="comment-actions">
+          {comment.can.edit && (
             <button
               type="button"
               className="button-secondary comment-action"
-              aria-label={t('comments.copyLinkOf', named)}
-              onClick={() => void copyLink()}
+              aria-label={t('comments.editOf', named)}
+              onClick={() => setMode('edit')}
             >
-              {t('comments.copyLink')}
+              {t('comments.edit')}
             </button>
-            {comment.can.edit && (
-              <button
-                type="button"
-                className="button-secondary comment-action"
-                aria-label={t('comments.editOf', named)}
-                onClick={() => setMode('edit')}
-              >
-                {t('comments.edit')}
-              </button>
-            )}
-            {comment.can.delete && (
-              <button
-                type="button"
-                className="button-secondary comment-action"
-                aria-label={t('comments.deleteOf', named)}
-                onClick={() => setMode('confirm')}
-              >
-                {t('comments.delete')}
-              </button>
-            )}
-          </div>
-        )
+          )}
+          {comment.can.delete && (
+            <DangerAction
+              label={t('comments.delete')}
+              name={t('comments.deleteOf', named)}
+              outcome={t('comments.confirmDelete')}
+              confirmLabel={t('comments.deleteOf', named)}
+              disabled={busy}
+              onConfirm={remove}
+            />
+          )}
+        </div>
       )}
     </li>
   );

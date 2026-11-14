@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { useSessionExpiry } from '../../session/useSessionExpiry';
+import { DangerAction } from '../../shell/DangerAction';
 import { EmptyState } from '../../shell/EmptyState';
 import { PageHeader } from '../../shell/PageHeader';
 import {
@@ -34,6 +35,7 @@ export function TicketTemplatesPage({
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const track = trackKey ?? null;
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -41,7 +43,6 @@ export function TicketTemplatesPage({
     | { status: 'loaded'; list: TemplateList; options: TemplateOptions }
   >({ status: 'loading' });
   const [editing, setEditing] = useState<Editing>(null);
-  const [confirming, setConfirming] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -60,16 +61,19 @@ export function TicketTemplatesPage({
   const typeName = (options: TemplateOptions, id: number) =>
     options.types.find((type) => type.id === id)?.name ?? String(id);
 
-  const remove = (template: SavedTemplate) => {
-    client.remove(template.id).then(
-      () => {
-        setConfirming(null);
-        setProblem(null);
-        setMessage(t('tickets.templates.deleted', { name: template.name }));
-        void load();
-      },
-      (error) => setProblem(t(refusalOf(error))),
-    );
+  // Asked first (D13); a refusal keeps the question open, the reason above the list.
+  const remove = async (template: SavedTemplate) => {
+    try {
+      await client.remove(template.id);
+    } catch (error) {
+      setProblem(t(refusalOf(error)));
+      throw error;
+    }
+    setProblem(null);
+    setMessage(t('tickets.templates.deleted', { name: template.name }));
+    await load();
+    // The template's row is gone: the page's heading takes the focus.
+    titleRef.current?.focus();
   };
 
   // A track's templates sit under its tab bar (T-215): titled like its other pages, the track named
@@ -81,6 +85,7 @@ export function TicketTemplatesPage({
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={titleRef}
         title={title}
         eyebrow={track ? (trackName ?? track) : undefined}
         purpose={track ? t('tickets.templates.trackPurpose') : t('settings.ticketTemplatesHint')}
@@ -185,36 +190,13 @@ export function TicketTemplatesPage({
                         >
                           {t('tickets.templates.edit')}
                         </button>
-                        {confirming === template.id ? (
-                          <>
-                            <button
-                              type="button"
-                              className="button-danger people-action"
-                              aria-label={t('tickets.templates.confirmDeleteOf', {
-                                name: template.name,
-                              })}
-                              onClick={() => remove(template)}
-                            >
-                              {t('tickets.templates.confirmDelete')}
-                            </button>
-                            <button
-                              type="button"
-                              className="button-secondary people-action"
-                              onClick={() => setConfirming(null)}
-                            >
-                              {t('tickets.templates.keep')}
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="button-secondary people-action"
-                            aria-label={t('tickets.templates.deleteOf', { name: template.name })}
-                            onClick={() => setConfirming(template.id)}
-                          >
-                            {t('tickets.templates.delete')}
-                          </button>
-                        )}
+                        <DangerAction
+                          label={t('tickets.templates.delete')}
+                          name={t('tickets.templates.deleteOf', { name: template.name })}
+                          outcome={t('tickets.templates.confirmDelete', { name: template.name })}
+                          confirmLabel={t('tickets.templates.deleteOf', { name: template.name })}
+                          onConfirm={() => remove(template)}
+                        />
                       </div>
                     )}
                   </li>

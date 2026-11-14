@@ -47,11 +47,24 @@ export const CreatedAndShownOnce: Story = {
   },
 };
 
+/** Revoke asks first, saying what will happen (D13): the focus on Cancel, the safe choice. */
+export const ConfirmingRevoke: Story = {
+  args: { client: fakePersonalTokensClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Revoke Deploy script' }));
+    await expect(canvas.getByRole('group', { name: /^Revoke Deploy script\?/ })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
 export const Revoked: Story = {
   args: { client: fakePersonalTokensClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Revoke Deploy script' }));
+    const question = canvas.getByRole('group', { name: /^Revoke Deploy script\?/ });
+    await userEvent.click(within(question).getByRole('button', { name: 'Revoke Deploy script' }));
     await expect(await canvas.findByText('Revoked Deploy script.')).toBeVisible();
   },
 };

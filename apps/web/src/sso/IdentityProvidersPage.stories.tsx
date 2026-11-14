@@ -99,7 +99,7 @@ export const ConfirmingDelete: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Partners' }));
-    await expect(canvas.getByRole('button', { name: 'Delete provider' })).toHaveFocus();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };
 

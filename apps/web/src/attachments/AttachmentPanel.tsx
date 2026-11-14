@@ -12,6 +12,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
@@ -70,13 +71,13 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
   const lockText = useLockText();
   const client = useMemo(() => given ?? attachmentClient(ticket), [given, ticket]);
   const titleId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
   const hintId = useId();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [uploading, setUploading] = useState(0);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [confirming, setConfirming] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Attachment | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLElement>(null);
@@ -212,20 +213,21 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
     );
   };
 
+  // Asked first (D13); a refusal keeps the question open, the reason above the list.
   const remove = async (a: Attachment) => {
-    setConfirming(null);
     setErrors([]);
     try {
       await client.remove(a);
-      setState((s) =>
-        s.status === 'loaded'
-          ? { ...s, attachments: s.attachments.filter((x) => x.id !== a.id) }
-          : s,
-      );
-      setMessage(t('attachments.deleted', { name: a.name }));
-    } catch {
+    } catch (error) {
       setErrors([t('attachments.deleteFailed', { name: a.name })]);
+      throw error;
     }
+    setState((s) =>
+      s.status === 'loaded' ? { ...s, attachments: s.attachments.filter((x) => x.id !== a.id) } : s,
+    );
+    setMessage(t('attachments.deleted', { name: a.name }));
+    // The file is gone: the list's heading takes the focus.
+    heading.current?.focus();
   };
 
   const when = (iso: string) => intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
@@ -274,7 +276,7 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
       onPaste={onPaste}
     >
       <div className="attachment-header">
-        <h2 id={titleId} className="attachment-title">
+        <h2 id={titleId} ref={heading} tabIndex={-1} className="attachment-title">
           {t('attachments.title')}
         </h2>
         {loaded && (
@@ -383,49 +385,24 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
                       {note && <p className="attachment-warning">{note}</p>}
                     </div>
                     <div className="attachment-actions">
-                      {confirming === a.id ? (
-                        <>
-                          <span className="attachment-confirm">
-                            {t('attachments.confirmDelete', { name: a.name })}
-                          </span>
-                          <button
-                            type="button"
-                            className="button-danger attachment-action"
-                            onClick={() => void remove(a)}
-                          >
-                            {t('attachments.confirmYes')}
-                          </button>
-                          <button
-                            type="button"
-                            className="button-secondary attachment-action"
-                            onClick={() => setConfirming(null)}
-                          >
-                            {t('attachments.confirmNo')}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          {previewable(a) && (
-                            <button
-                              type="button"
-                              className="button-secondary attachment-action"
-                              aria-label={t('attachments.previewOf', { name: a.name })}
-                              onClick={() => setPreviewing(a)}
-                            >
-                              {t('attachments.preview')}
-                            </button>
-                          )}
-                          {a.canDelete && (
-                            <button
-                              type="button"
-                              className="button-secondary attachment-action"
-                              aria-label={t('attachments.deleteOf', { name: a.name })}
-                              onClick={() => setConfirming(a.id)}
-                            >
-                              {t('attachments.delete')}
-                            </button>
-                          )}
-                        </>
+                      {previewable(a) && (
+                        <button
+                          type="button"
+                          className="button-secondary attachment-action"
+                          aria-label={t('attachments.previewOf', { name: a.name })}
+                          onClick={() => setPreviewing(a)}
+                        >
+                          {t('attachments.preview')}
+                        </button>
+                      )}
+                      {a.canDelete && (
+                        <DangerAction
+                          label={t('attachments.delete')}
+                          name={t('attachments.deleteOf', { name: a.name })}
+                          outcome={t('attachments.confirmDelete', { name: a.name })}
+                          confirmLabel={t('attachments.deleteOf', { name: a.name })}
+                          onConfirm={() => remove(a)}
+                        />
                       )}
                     </div>
                   </li>

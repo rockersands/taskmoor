@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -29,6 +30,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
   const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -77,6 +79,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.groups.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -156,8 +159,10 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
                         groups={state.groups}
                         onChanged={said}
                         onDeleted={(name) => {
+                          // The group's row goes: the page's heading takes the focus.
                           setOpen(null);
                           said(t('admin.groups.deleted', { name }));
+                          title.current?.focus();
                         }}
                         onProblem={(error) => setProblem(refusal(error))}
                       />
@@ -258,7 +263,6 @@ function GroupPanel({
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<User[]>([]);
   const [child, setChild] = useState('');
-  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -453,30 +457,22 @@ function GroupPanel({
       )}
 
       <div className="form-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">{t('admin.groups.confirmDelete', { name })}</span>
-            <button
-              type="button"
-              className="button-danger"
-              onClick={() => void client.deleteGroup(id).then(() => onDeleted(name), onProblem)}
-            >
-              {t('admin.groups.confirmYes')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.groups.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.groups.deleteOf', { name })}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.groups.delete')}
-          </button>
-        )}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.groups.delete')}
+          name={t('admin.groups.deleteOf', { name })}
+          outcome={t('admin.groups.confirmDelete', { name })}
+          confirmLabel={t('admin.groups.deleteOf', { name })}
+          onConfirm={async () => {
+            try {
+              await client.deleteGroup(id);
+            } catch (error) {
+              onProblem(error);
+              throw error;
+            }
+            onDeleted(name);
+          }}
+        />
       </div>
     </div>
   );

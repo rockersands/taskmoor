@@ -4,6 +4,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -261,20 +262,34 @@ function AccountItem({
   const t = useT();
   const text = useTokenText(timeZone);
   const id = useId();
+  const manage = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const setActive = async (active: boolean) => {
+  const reactivate = async () => {
     setBusy(true);
     setError(null);
     try {
-      await client.setActive(account.id, active);
+      await client.setActive(account.id, true);
       await onChanged();
     } catch (e) {
       if (!refuse(e)) setError(t('admin.serviceAccounts.actionFailed'));
     } finally {
       setBusy(false);
     }
+  };
+  // Asked first, saying what stops (D13). Once done the account stays in the list, deactivated,
+  // and the focus goes back to its first button; a refusal keeps the question open.
+  const deactivate = async () => {
+    setError(null);
+    try {
+      await client.setActive(account.id, false);
+    } catch (e) {
+      if (!refuse(e)) setError(t('admin.serviceAccounts.actionFailed'));
+      throw e;
+    }
+    await onChanged();
+    manage.current?.focus();
   };
 
   return (
@@ -297,6 +312,7 @@ function AccountItem({
         </div>
         <div className="token-actions">
           <button
+            ref={manage}
             type="button"
             className="button-secondary"
             aria-expanded={open}
@@ -309,24 +325,29 @@ function AccountItem({
           >
             {t(open ? 'admin.serviceAccounts.hide' : 'admin.serviceAccounts.manage')}
           </button>
-          <button
-            type="button"
-            className="button-secondary"
-            aria-label={t(
-              account.active
-                ? 'admin.serviceAccounts.deactivateNamed'
-                : 'admin.serviceAccounts.reactivateNamed',
-              { name: account.name },
-            )}
-            disabled={busy}
-            onClick={() => void setActive(!account.active)}
-          >
-            {t(
-              account.active
-                ? 'admin.serviceAccounts.deactivate'
-                : 'admin.serviceAccounts.reactivate',
-            )}
-          </button>
+          {account.active ? (
+            <DangerAction
+              label={t('admin.serviceAccounts.deactivate')}
+              name={t('admin.serviceAccounts.deactivateNamed', { name: account.name })}
+              outcome={t('admin.serviceAccounts.deactivateConfirm', {
+                name: account.name,
+                count: account.activeTokens,
+              })}
+              confirmLabel={t('admin.serviceAccounts.deactivateNamed', { name: account.name })}
+              disabled={busy}
+              onConfirm={deactivate}
+            />
+          ) : (
+            <button
+              type="button"
+              className="button-secondary"
+              aria-label={t('admin.serviceAccounts.reactivateNamed', { name: account.name })}
+              disabled={busy}
+              onClick={() => void reactivate()}
+            >
+              {t('admin.serviceAccounts.reactivate')}
+            </button>
+          )}
         </div>
       </div>
       {error && (
@@ -410,11 +431,24 @@ function AccountTokens({
       return t('admin.serviceAccounts.rotated', { name: token.name });
     });
 
-  const revoke = (token: ApiToken) =>
-    act(async () => {
+  // Asked first (D13). A refusal keeps the question open, the reason under the list.
+  const revoke = async (token: ApiToken) => {
+    setBusy(true);
+    setDone('');
+    setError(null);
+    try {
       await client.revoke(token.id);
-      return t('tokens.revoked', { name: token.name });
-    });
+    } catch (e) {
+      if (!refuse(e)) setError(t('admin.serviceAccounts.actionFailed'));
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+    // The question and its button are about to disappear; keep focus in the section.
+    heading.current?.focus();
+    setDone(t('tokens.revoked', { name: token.name }));
+    await Promise.all([load(), onChanged()]);
+  };
 
   const issue = async (token: NewToken) => {
     const created = await client.issue(account.id, token);
@@ -483,15 +517,14 @@ function AccountTokens({
                           {t('admin.serviceAccounts.rotate')}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        aria-label={t('tokens.revokeNamed', { name: token.name })}
+                      <DangerAction
+                        label={t('tokens.revoke')}
+                        name={t('tokens.revokeNamed', { name: token.name })}
+                        outcome={t('tokens.revokeConfirm', { name: token.name })}
+                        confirmLabel={t('tokens.revokeNamed', { name: token.name })}
                         disabled={busy}
-                        onClick={() => void revoke(token)}
-                      >
-                        {t('tokens.revoke')}
-                      </button>
+                        onConfirm={() => revoke(token)}
+                      />
                     </>
                   ) : undefined
                 }

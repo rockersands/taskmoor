@@ -61,9 +61,18 @@ describe('the AI settings page (M1-076)', () => {
       `Stored, ending in ${key.slice(-4)}.`,
     );
     expect(document.body.textContent).not.toContain(key);
-    await user.click(screen.getByRole('button', { name: 'Remove API key' }));
+    const trigger = screen.getByRole('button', { name: 'Remove API key' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); nothing is sent yet.
+    const question = screen.getByRole('group', {
+      name: 'API key: remove the stored value? AI features that need it stop until another one is saved.',
+    });
+    expect(client.sent.removed).toEqual([]);
+    await user.click(within(question).getByRole('button', { name: 'Remove API key' }));
     await waitFor(() => expect(client.sent.removed).toEqual(['apiKey']));
     expect(screen.getByLabelText('API key')).toHaveAccessibleDescription('Not set.');
+    expect(screen.getByLabelText('API key')).toHaveFocus();
   });
 
   it('[AI-001] tests the connection with the typed key and lists the models the provider offers', async () => {

@@ -204,7 +204,11 @@ test('[CORE-008] [CORE-013] a layout set: fields placed by keyboard and by drag,
   ]);
 
   await editor.getByRole('button', { name: `Delete set ${name}` }).click();
-  await editor.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13).
+  await editor
+    .getByRole('group', { name: new RegExp(`^Delete ${name}\\?`) })
+    .getByRole('button', { name: `Delete set ${name}` })
+    .click();
   await expect(page.getByText(`${name} was deleted.`)).toBeVisible();
   expect(await sideways(page)).toEqual([]);
 });

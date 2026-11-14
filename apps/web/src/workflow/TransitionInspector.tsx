@@ -1,5 +1,6 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useRef } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { DangerAction } from '../shell/DangerAction';
 import { fieldsOf } from './catalogue';
 import {
   type CheckDef,
@@ -51,8 +52,6 @@ export function TransitionInspector({
   const t = useT();
   const id = useId();
   const nameInput = useRef<HTMLInputElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
   const statusIds = definition.statuses.map((s) => s.statusId);
   const rules = definition.rules?.[String(transition.id)] ?? [];
   const set = <K extends keyof Transition>(key: K, value: Transition[K] | undefined) =>
@@ -63,9 +62,6 @@ export function TransitionInspector({
   useEffect(() => {
     if (focusName) nameInput.current?.focus();
   }, [focusName]);
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
 
   const fromList = transition.from === 'any' ? [] : transition.from;
   const properties = Object.entries(transition.properties ?? {});
@@ -446,36 +442,17 @@ export function TransitionInspector({
       </div>
 
       <div className="workflow-danger">
-        {confirming ? (
-          <div className="token-confirm">
-            <p id={`${id}-confirm`}>
-              {t('admin.workflow.transition.confirmDelete', {
-                name: names.transition(transition.id),
-              })}
-            </p>
-            <div className="token-confirm-actions">
-              <button
-                ref={confirmButton}
-                type="button"
-                className="button-danger"
-                onClick={onDelete}
-              >
-                {t('admin.workflow.transition.confirmDeleteButton')}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setConfirming(false)}
-              >
-                {t('admin.workflow.cancel')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" className="button-secondary" onClick={() => setConfirming(true)}>
-            {t('admin.workflow.transition.delete')}
-          </button>
-        )}
+        {/* Asks first, saying what will happen (D13). */}
+        <DangerAction
+          label={t('admin.workflow.transition.delete')}
+          outcome={t('admin.workflow.transition.confirmDelete', {
+            name: names.transition(transition.id),
+          })}
+          confirmLabel={t('admin.workflow.transition.deleteNamed', {
+            name: names.transition(transition.id),
+          })}
+          onConfirm={onDelete}
+        />
       </div>
     </section>
   );

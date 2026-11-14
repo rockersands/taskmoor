@@ -179,14 +179,24 @@ describe('the attachment panel (M1-016)', () => {
   it('[CORE-021] deletes after a confirmation', async () => {
     const user = userEvent.setup();
     const calls = openTicket({ 'DELETE /tickets/41/attachments/13': () => noContent() });
-    await user.click(await screen.findByRole('button', { name: 'Delete server.log' }));
-    expect(screen.getByText('Delete server.log for good?')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+    const trigger = await screen.findByRole('button', { name: 'Delete server.log' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); Cancel gives the focus back.
+    const question = screen.getByRole('group', { name: 'Delete server.log for good?' });
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete server.log' })).toHaveFocus();
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
     await user.click(screen.getByRole('button', { name: 'Delete server.log' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Delete server.log for good?' })).getByRole(
+        'button',
+        { name: 'Delete server.log' },
+      ),
+    );
     expect(await screen.findByText('server.log deleted.')).toBeVisible();
     expect(within(panel()).queryByText('server.log')).toBeNull();
+    expect(within(panel()).getByRole('heading', { name: 'Attachments' })).toHaveFocus();
     expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual([
       '/tickets/41/attachments/13',
     ]);

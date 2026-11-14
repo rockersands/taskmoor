@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 
@@ -328,8 +329,19 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
     );
   };
 
-  const removeKey = (slot: CredentialSlot) =>
-    client.removeKey(slot).then(() => reloadStanding().then(() => done('ai.keyRemoved')), failed);
+  // Asked first (D13); a refusal keeps the question open, the reason above it. Once removed, the
+  // empty field takes the focus, ready for another key.
+  const removeKey = async (slot: CredentialSlot) => {
+    try {
+      await client.removeKey(slot);
+    } catch (error) {
+      failed(error);
+      throw error;
+    }
+    await reloadStanding();
+    done('ai.keyRemoved');
+    document.getElementById(`${id}-key-${slot}`)?.focus();
+  };
 
   const test = () => {
     setTesting(true);
@@ -580,13 +592,12 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
                     {t('ai.saveKey', { slot: t(SLOTS[slot]) })}
                   </button>
                   {found && (
-                    <button
-                      type="button"
-                      className="button-danger"
-                      onClick={() => void removeKey(slot)}
-                    >
-                      {t('ai.removeKey', { slot: t(SLOTS[slot]) })}
-                    </button>
+                    <DangerAction
+                      label={t('ai.removeKey', { slot: t(SLOTS[slot]) })}
+                      outcome={t('ai.removeKeyConfirm', { slot: t(SLOTS[slot]) })}
+                      confirmLabel={t('ai.removeKey', { slot: t(SLOTS[slot]) })}
+                      onConfirm={() => removeKey(slot)}
+                    />
                   )}
                 </div>
               </div>
