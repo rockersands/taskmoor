@@ -298,30 +298,92 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
     await user.click(within(teams).getByRole('checkbox', { name: 'Ops (1 person)' }));
     expect(within(teams).getByText('2 teams chosen')).toBeVisible();
     await user.selectOptions(screen.getByLabelText('Count work in'), 'hours');
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(window, 'confirm');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(confirm).toHaveBeenCalledWith(
-      'Change the unit? Every capacity set in this plan will be cleared.',
-    );
+    // Save asks first, in its own place, saying what goes (D13); Cancel has the focus.
+    const unitOutcome = 'Change the unit? Every capacity set in this plan will be cleared.';
+    const unitQuestion = screen.getByRole('group', { name: unitOutcome });
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(within(unitQuestion).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // Escape sends nothing and gives the focus back to Save.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: unitOutcome })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus();
     expect(client.saved).toEqual([]);
-    confirm.mockReturnValue(true);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    // Asked again, and answered by keyboard.
+    await user.keyboard('{Enter}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    expect(
+      within(screen.getByRole('group', { name: unitOutcome })).getByRole('button', {
+        name: 'Save and clear all capacity',
+      }),
+    ).toHaveFocus();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
     expect(client.saved.at(-1)).toMatchObject({
       teams: [3, 5],
       capacityUnit: 'hours',
       period: { kind: 'weeks', weeks: 2, anchor: '2026-11-02' },
     });
+    expect(screen.queryByRole('group', { name: unitOutcome })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus();
     // Periods of a month, after a question about the capacity set for single periods.
-    confirm.mockClear();
     await user.selectOptions(screen.getByLabelText('Periods'), 'month');
     expect(screen.queryByLabelText('A period starts on')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(confirm).toHaveBeenCalledWith(
-      'Change the periods? The capacity set for single periods will be cleared.',
+    const periodQuestion = screen.getByRole('group', {
+      name: 'Change the periods? The capacity set for single periods will be cleared.',
+    });
+    // A change to the settings while it asks closes the question: it was about the old ones.
+    await user.selectOptions(screen.getByLabelText('Periods'), '3');
+    expect(periodQuestion).not.toBeInTheDocument();
+    expect(client.saved).toHaveLength(1);
+    await user.selectOptions(screen.getByLabelText('Periods'), 'month');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Save and clear single periods’ capacity' }),
     );
     await waitFor(() => expect(client.saved.at(-1)).toMatchObject({ period: { kind: 'month' } }));
+    expect(confirm).not.toHaveBeenCalled();
     confirm.mockRestore();
+  });
+
+  it('[PLN-005] a save that gets no answer gives Save back, the question closed and the reason said (D13)', async () => {
+    const user = userEvent.setup();
+    const client = renderPlan('settings', '#/plans/12/settings');
+    await user.selectOptions(await screen.findByLabelText('Count work in'), 'hours');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const outcome = 'Change the unit? Every capacity set in this plan will be cleared.';
+    // The connection drops: fetch throws, never an answer from the server.
+    const update = vi
+      .spyOn(client, 'update')
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'Save and clear all capacity' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The plan could not be saved.');
+    expect(screen.queryByRole('group', { name: outcome })).toBeNull();
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeEnabled();
+    expect(save).toHaveFocus();
+    // Asked again, it saves.
+    update.mockRestore();
+    await user.click(save);
+    await user.click(screen.getByRole('button', { name: 'Save and clear all capacity' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
+    expect(client.saved.at(-1)).toMatchObject({ capacityUnit: 'hours' });
+  });
+
+  it('[PLN-005] typing in a list’s search box leaves the question open: it changes no setting (D13)', async () => {
+    const user = userEvent.setup();
+    renderPlan('settings', '#/plans/12/settings');
+    await user.selectOptions(await screen.findByLabelText('Count work in'), 'hours');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const outcome = 'Change the unit? Every capacity set in this plan will be cleared.';
+    const question = screen.getByRole('group', { name: outcome });
+    await user.type(screen.getByLabelText('Find a track or saved search'), 'sh');
+    expect(question).toBeInTheDocument();
+    // A setting changed while it asks still closes it.
+    await user.type(screen.getByLabelText('Name'), '!');
+    expect(question).not.toBeInTheDocument();
   });
 
   it('[PLN-005] fits a phone: a card per team and person, no sideways scroll', async () => {

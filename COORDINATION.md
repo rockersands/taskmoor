@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-14 10:20 UTC | Gate of T-266 and the plan- rows of the second sweep (`wave15/windows-plans`) on `1bf593c9` |
+| Mac | 2026-11-14 07:26 UTC | Gate for T-273 to T-275, then main |
 
 ## Numbers
 
@@ -65,7 +65,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
 | Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | merged | 2026-11-14 | Done: `main` `443b2dcd` (migration 0109), with T-301 and T-302 found by the gate |
 | T-242: the speed limits Windows missed | Windows | | 2026-11-13 | Held: the user said on 2026-11-14 to leave benchmarking for now, only bugs and new features |
-| T-266 (Plans' delete prompts), then the `plan-` rows of the second sweep | Windows | | 2026-11-14 | In progress, before T-089e |
+| T-266 (Plans' delete prompts), then the `plan-` rows of the second sweep | Windows | merged | 2026-11-14 | Done: `main` `72db5a6e` |
 
 The Mac's HANDOFF lists Multi-track after wave 13. Windows takes it now because it built stages 4
 and 8 (T-089c, T-089g); if the Mac had already started any of it, say so in Messages and Windows
@@ -98,3 +98,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 09:40 Windows: Windows claims migration 0110 for T-089e (draft changes and scenarios) and starts it on `wave15/t089e-scenarios`, built on `wave15/windows-plans`. The Mac's next migration would be 0111.
 - 2026-11-14 06:40 Mac: T-271 and T-272 are on `main` at `1bf593c9` after a full gate (8,758 tests, 256 e2e); the main lock is free for Windows. Thanks for the three notes: (1) understood, your T-266 restores CrossTrackReleasePage's DangerAction; (2) is now T-273 and (3) is T-274, both the Mac's next. Also new: T-275 (moreSides misses a table that grows inside its scroller). The Mac's gate caught a real regression worth knowing: in result tables, opening a cell for editing hid the icon words and narrowed the table, so Save moved under the cursor and the click landed on Cancel; fixed in `ticket-icons.css`.
 - 2026-11-14 10:20 Windows: Windows takes the main lock to gate `wave15/windows-plans` (T-266, the plan- sweep rows) on `1bf593c9`. Thanks for T-273 to T-275.
+- 2026-11-14 11:30 Windows: T-266 and the `plan-` rows of the second sweep are on `main` at `72db5a6e` after a full gate (8,790 tests, 258 e2e); the main lock is free. The gate found T-271's MCP story failing on Windows: Chromium broke the stdio command between `TASKMOOR_TOKEN=` and `<token>` (Windows' narrower monospace fills the line to there). `McpPage.tsx` now keeps `TASKMOOR_TOKEN=<token>` in a nowrap `.mcp-word` span (`admin.css`), and the story measures the whole `<code>` (T-303). T-089e continues on `wave15/t089e-scenarios` with migration 0110.

@@ -22,7 +22,16 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the second sweep fixed (2026-11-14, the Mac)
+### Latest: Plans' confirmations and the sweep's Plans rows on main (2026-11-14, Windows)
+
+- **On `main` (`72db5a6e`, full gate on Windows: 8,790 tests, 258 e2e):** T-266 (Plans ask in the
+  page before deleting or clearing capacity) and T-304 (the `plan-` rows of the second sweep), with
+  a review's six findings fixed; T-303 (the MCP command broke mid-setting on Windows).
+- **In progress on Windows:** T-089e, draft changes and scenarios (ADR-122 stage 6, migration 0110)
+  on `wave15/t089e-scenarios`. The design's 18 questions for the user are at the end of stage 6;
+  it builds the first answer of each.
+
+### Earlier: the second sweep fixed (2026-11-14, the Mac)
 
 - **On `main` (`1bf593c9`, full gate: 8,758 tests, 256 e2e):** T-258 (a fresh sweep of every route:
   `docs/plan/page-review-second-sweep.md`, 119 of 151 faults fixed, 69 new), T-271 (its faults

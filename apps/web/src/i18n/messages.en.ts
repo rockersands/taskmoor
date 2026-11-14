@@ -5268,6 +5268,9 @@ export const messagesEn = {
   'plans.settings.save': 'Save',
   'plans.settings.saved': 'Saved.',
   'plans.settings.delete': 'Delete plan',
+  'plans.settings.deleteNamed': 'Delete {name}',
+  'plans.settings.deleteFailed': 'The plan could not be deleted. Try again.',
+  'plans.settings.alreadyDeleted': 'Someone has already deleted this plan. Go back to Plans.',
   'plans.settings.confirmDelete':
     'Delete the plan “{name}” for everyone who sees it? Its views and capacity go with it; its tickets stay as they are.',
   'plans.settings.conflict': 'Someone changed this plan meanwhile. Reload the page and try again.',
@@ -5370,6 +5373,8 @@ export const messagesEn = {
   'plans.settings.confirmUnit': 'Change the unit? Every capacity set in this plan will be cleared.',
   'plans.settings.confirmPeriod':
     'Change the periods? The capacity set for single periods will be cleared.',
+  'plans.settings.confirmUnitAction': 'Save and clear all capacity',
+  'plans.settings.confirmPeriodAction': 'Save and clear single periods’ capacity',
   'dashboards.mine': 'Yours',
   'dashboards.others': 'Shared with you',
   'dashboards.chooseForWallboard': 'Show {name} on the wallboard',
@@ -7045,6 +7050,7 @@ export const messagesEn = {
   'crossTrack.edit.submit': 'Save',
   'crossTrack.edit.failed': 'The change could not be saved.',
   'crossTrack.delete': 'Delete',
+  'crossTrack.deleteNamed': 'Delete {name}',
   'crossTrack.delete.confirm':
     'Delete {name}? Its releases stay as they are, and free to join another.',
   'crossTrack.delete.failed': 'It could not be deleted.',
@@ -7208,6 +7214,7 @@ export const messagesEn = {
   'plans.releases.filtersNote':
     'Only the track filter applies here: a release has no assignee, type or stage.',
   'plans.releases.truncated': 'This lists the first 200 releases. Filter by track to see the rest.',
+  'plans.releases.noTickets': 'No tickets in it yet',
   'timeline.release.together': '{name}, {count, plural, one {# release} other {# releases}}',
   'timeline.release.outOfStep': '{name}, out of step',
   'plans.download': 'Download',

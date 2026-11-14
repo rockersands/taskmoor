@@ -5396,6 +5396,9 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.settings.save': 'Guardar',
   'plans.settings.saved': 'Guardado.',
   'plans.settings.delete': 'Eliminar plan',
+  'plans.settings.deleteNamed': 'Eliminar {name}',
+  'plans.settings.deleteFailed': 'No se pudo eliminar el plan. Inténtalo de nuevo.',
+  'plans.settings.alreadyDeleted': 'Alguien ya ha eliminado este plan. Vuelve a Planes.',
   'plans.settings.confirmDelete':
     '¿Eliminar el plan «{name}» para todas las personas que lo ven? Sus vistas y su capacidad se eliminan con él; sus tickets quedan como están.',
   'plans.settings.conflict':
@@ -5500,6 +5503,8 @@ export const messagesEs: Record<MessageId, string> = {
     '¿Cambiar la unidad? Se borrará toda la capacidad definida en este plan.',
   'plans.settings.confirmPeriod':
     '¿Cambiar los periodos? Se borrará la capacidad definida para periodos sueltos.',
+  'plans.settings.confirmUnitAction': 'Guardar y borrar toda la capacidad',
+  'plans.settings.confirmPeriodAction': 'Guardar y borrar la capacidad de periodos sueltos',
   'dashboards.mine': 'Tuyos',
   'dashboards.others': 'Compartidos contigo',
   'dashboards.chooseForWallboard': 'Mostrar {name} en la pantalla mural',
@@ -7209,6 +7214,7 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.edit.submit': 'Guardar',
   'crossTrack.edit.failed': 'No se pudo guardar el cambio.',
   'crossTrack.delete': 'Eliminar',
+  'crossTrack.deleteNamed': 'Eliminar {name}',
   'crossTrack.delete.confirm':
     '¿Eliminar {name}? Sus versiones quedan como están, y libres para unirse a otra.',
   'crossTrack.delete.failed': 'No se pudo eliminar.',
@@ -7375,6 +7381,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Aquí solo se aplica el filtro de track: una versión no tiene responsable, tipo ni etapa.',
   'plans.releases.truncated':
     'Se muestran las primeras 200 versiones. Filtra por track para ver el resto.',
+  'plans.releases.noTickets': 'Aún no tiene tickets',
   'timeline.release.together': '{name}, {count, plural, one {# versión} other {# versiones}}',
   'timeline.release.outOfStep': '{name}, desalineada',
   'plans.download': 'Descargar',

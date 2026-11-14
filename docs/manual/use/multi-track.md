@@ -1,8 +1,8 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts
-accessed: 2026-11-13
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Plans
@@ -46,7 +46,8 @@ The **Plans** page lists **Your plans** and those **Shared with you**.
 Every view shows at most the first 10,000 tickets of the plan and says so when there are more:
 filter the plan to see the rest.
 
-On a phone, the tab bar scrolls sideways and starts with the open tab in view.
+On a phone, the tab bar scrolls sideways and starts with the open tab in view. Where more tabs
+wait past an edge of the bar, that edge fades out.
 
 - **Summary**: how many tickets the plan holds, how many are **Open**, **Overdue**, **Due within 7
   days**, **Open without dates** and **Closed in the last 7 days**, then the tickets by stage, by
@@ -125,7 +126,13 @@ In the plan's **Settings**, under **Teams and capacity**:
   both ways, so any day of any period will do), or **Every calendar month**.
 
 Changing the unit clears every capacity set in the plan, since amounts in one unit mean nothing in
-another; changing the periods clears the capacity set for single periods. Settings asks first. A
+another; changing the periods clears the capacity set for single periods. So **Save** asks first,
+in its own place: it says what will be cleared and offers **Save and clear all capacity** (or **Save
+and clear single periods’ capacity**) beside **Cancel**, which has the focus. **Cancel** or Escape
+saves nothing and puts the focus back on **Save**; changing another setting meanwhile closes the
+question, which was about the old ones, while typing in a list's search box leaves it open. If the
+save gets no answer, say the connection dropped, the question closes, the page says the plan could
+not be saved, and **Save** is there to try again. A
 team that leaves the plan takes its capacity, and that of its people who are in none of the
 remaining teams, with it.
 
@@ -201,8 +208,12 @@ The plan's owner and site administrators see **Settings**: its name, description
 **Who sees it** (**Only me** or **Everyone signed in**). Sharing a plan needs the permission to
 share dashboards and saved searches. The sources hidden from the person editing stay in the plan,
 so nobody removes what they cannot see. Under **A period starts on**, the day chosen is also
-written out in words. **Delete plan**, in the danger colour, first asks whether to delete the plan
-for everyone who sees it, its views and capacity with it; its tickets stay as they are.
+written out in words. **Delete plan**, in the danger colour, asks first, in the page: whether to
+delete the plan for everyone who sees it, its views and capacity with it; its tickets stay as they
+are. **Delete** and the plan's name does it and takes you back to Plans; **Cancel**, which has the
+focus, or Escape puts the button back. If the plan could not be deleted, the page says so and the
+question stays, to try again or cancel. If someone else deleted the plan first, the page says so
+instead and the question closes, as there is nothing left to delete.
 
 Sharing a plan does not share its tracks or saved searches: someone who may not see a source sees
 nothing from it. Share those as well when they should.
@@ -330,8 +341,9 @@ by itself.
 Its owner and administrators see **Edit** and **Delete**. **Edit** changes its name and description,
 and can make it end **When its work completes**, which clears its date and moves nothing. If someone
 changed it while you typed, nothing is saved: what you typed stays in the dialog, the page behind it
-reads itself again, and you check it and save again. **Delete** removes the release across tracks and
-leaves all its releases as they are, on their own days.
+reads itself again, and you check it and save again. **Delete**, in the danger colour, asks first, in
+the page; **Delete** and its name removes the release across tracks and leaves all its releases as
+they are, on their own days. **Cancel**, which has the focus, or Escape puts the button back.
 
 ### Moving its date
 
@@ -366,7 +378,9 @@ out of step.
 - **A plan's Releases tab:** the releases of the plan's tracks you may browse, those of a release
   across tracks gathered under it first with its own whole numbers, then the rest by track, each
   group in date order with releases without a date last, at most 200. A shipped release says when
-  it shipped, an upcoming one when it is due. Only the **Track** filter applies here, and the tab says so.
+  it shipped, an upcoming one when it is due. Each says how many of its tickets are closed, or
+  **No tickets in it yet** when it has none. Only the **Track** filter applies here, and the tab
+  says so.
 - **The Timeline and the Calendar:** linked releases on its date become one marker, "Spring launch,
   3 releases"; those on another day keep their own, marked "out of step" in words. They are not
   dragged there.
