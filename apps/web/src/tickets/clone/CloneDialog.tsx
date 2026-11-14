@@ -7,6 +7,7 @@ import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import { navigate, routeHref } from '../../routing/router';
 import { useLeaveMotion } from '../../shell/motion';
+import { TrackSelect } from '../../shell/TrackSelect';
 import { type CloneClient, type CloneTrack, cloneClient } from './client';
 
 /** The ticket being cloned, as the ticket view knows it. */
@@ -239,19 +240,15 @@ export function CloneDialog({
             </div>
             <div className="form-field">
               <label htmlFor={`${id}-track`}>{t('clone.track')}</label>
-              <select
+              <TrackSelect
                 id={`${id}-track`}
+                tracks={tracks ?? [ticket.track]}
                 value={track}
                 disabled={subticket || tracks === null}
                 aria-describedby={subticket ? `${id}-track-hint` : undefined}
-                onChange={(event) => setTrack(event.target.value)}
-              >
-                {(tracks ?? [ticket.track]).map((tr) => (
-                  <option key={tr.id} value={tr.key}>
-                    {t('clone.trackOption', { key: tr.key, name: tr.name })}
-                  </option>
-                ))}
-              </select>
+                label={(tr) => t('clone.trackOption', { key: tr.key, name: tr.name })}
+                onChange={setTrack}
+              />
               {subticket && (
                 <p id={`${id}-track-hint`} className="form-hint">
                   {t('clone.subticketHint')}

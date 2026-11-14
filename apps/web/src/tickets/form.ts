@@ -43,6 +43,11 @@ export interface TicketForm {
   locks?: Lock[];
   /** The track's priority set: what a new ticket takes, and what it offers (CORE-014 (2)). */
   priorities?: { defaultId: number | null; offered: number[] };
+  /**
+   * Fields of a create form the person lacks the track permission to set (Assign tickets,
+   * Schedule tickets and so on; IAM-010). Absent in older fixtures and other operations.
+   */
+  withheld?: string[];
 }
 
 /** System fields: the key rules and layouts use, and the body key that writes it. */
@@ -77,6 +82,22 @@ export const EDITABLE_SYSTEM = new Set([
   'originalEstimate',
   'remainingEstimate',
 ]);
+/**
+ * System fields this form sets with a picker (T-253): people, the parent, releases and areas.
+ * Ticket templates still list a template's values for them under "Also from this template".
+ */
+export const PICKED_SYSTEM = new Set([
+  'assignee',
+  'parent',
+  'targetRelease',
+  'foundInRelease',
+  'area',
+]);
+/** Custom field types this form sets with a picker: people. */
+export const PICKED_CUSTOM = new Set(['user']);
+/** Fields whose values are lists of ids: releases and areas. */
+const ID_LISTS = new Set(['targetRelease', 'foundInRelease', 'area']);
+
 /** Custom field types this form edits. */
 export const EDITABLE_CUSTOM = new Set([
   'text',
@@ -138,6 +159,7 @@ function customValue(
       // A local date and time from the browser, sent as the instant it names.
       return new Date(raw).toISOString();
     case 'select':
+    case 'user':
       return Number(raw);
     case 'cascading-select': {
       const child = values[`${key}/child`];
@@ -181,8 +203,14 @@ export function createBody(
       continue;
     }
     const raw = values[key.key];
+    if (ID_LISTS.has(key.key)) {
+      // Releases and areas: the ids chosen, none sent when none is.
+      if (Array.isArray(raw) && raw.length > 0) body[name] = raw.map(Number);
+      continue;
+    }
     if (typeof raw !== 'string' || raw.trim() === '') continue;
-    if (key.key === 'description' || key.key === 'environment') body[name] = textDocument(raw);
+    if (key.key === 'assignee' || key.key === 'parent') body[name] = Number(raw);
+    else if (key.key === 'description' || key.key === 'environment') body[name] = textDocument(raw);
     else if (key.key === 'labels') body[name] = splitLabels(raw);
     else if (key.key === 'priority') body[name] = Number(raw);
     else body[name] = key.key === 'summary' ? raw : raw.trim();
@@ -216,5 +244,8 @@ const ERRORS: Record<string, MessageId> = {
   not_allowed: 'tickets.error.notAllowed',
   disabled_option: 'tickets.error.disabledOption',
   read_only: 'tickets.error.readOnly',
+  not_assignable: 'tickets.error.notAssignable',
+  wrong_level: 'tickets.error.wrongLevel',
+  other_track: 'tickets.error.otherTrack',
 };
 export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';

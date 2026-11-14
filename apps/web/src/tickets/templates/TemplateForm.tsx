@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { RichTextEditor } from '../../richtext/RichTextEditor';
+import { PersonPicker } from '../PersonPicker';
 import type {
   FieldChoice,
   FieldValueOption,
@@ -48,7 +49,7 @@ function Several({
   );
 }
 
-/** Finding the person a track's template assigns. */
+/** Finding the person a track's template assigns, with the create form's person picker. */
 function AssigneeChooser({
   client,
   track,
@@ -61,73 +62,19 @@ function AssigneeChooser({
   onChange: (person: Named | null) => void;
 }) {
   const t = useT();
-  const id = useId();
-  const [query, setQuery] = useState('');
-  const [found, setFound] = useState<Named[]>([]);
-  useEffect(() => {
-    const wanted = query.trim();
-    if (wanted === '') {
-      setFound([]);
-      return;
-    }
-    let live = true;
-    client.people(track, wanted).then(
-      (people) => live && setFound(people),
-      () => live && setFound([]),
-    );
-    return () => {
-      live = false;
-    };
-  }, [client, track, query]);
-  if (chosen) {
-    return (
-      <div className="form-field">
-        <span className="form-label">{t('workflow.field.assignee')}</span>
-        <p className="ticket-template-row">
-          <span>{chosen.name}</span>
-          <button
-            type="button"
-            className="button-secondary"
-            aria-label={t('tickets.templates.removeAssignee', { name: chosen.name })}
-            onClick={() => onChange(null)}
-          >
-            {t('tickets.templates.remove')}
-          </button>
-        </p>
-      </div>
-    );
-  }
   return (
     <div className="form-field">
-      <label htmlFor={id} className="form-label">
-        {t('workflow.field.assignee')}
-      </label>
-      <input
-        id={id}
-        type="search"
-        autoComplete="off"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+      <PersonPicker
+        label={t('workflow.field.assignee')}
+        hint={t('tickets.templates.assigneeHint')}
+        search={(typed) => client.people(track, typed)}
+        chosen={chosen ? [chosen] : []}
+        removeLabel={(name) => t('tickets.templates.removeAssignee', { name })}
+        onChange={(people) => {
+          const person = people[0];
+          onChange(person ? { id: person.id, name: person.name } : null);
+        }}
       />
-      <p className="form-hint">{t('tickets.templates.assigneeHint')}</p>
-      {found.length > 0 && (
-        <ul className="ticket-template-found">
-          {found.map((person) => (
-            <li key={person.id}>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => {
-                  setQuery('');
-                  onChange({ id: person.id, name: person.name });
-                }}
-              >
-                {person.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
