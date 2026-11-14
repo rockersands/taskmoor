@@ -151,6 +151,86 @@ describe('a template on the create form (CORE-030)', () => {
     expect(archived.picked).toEqual(['assigneeId']);
   });
 
+  it('[CORE-030] fills custom person, group, team, release and area pickers only with what it can name or offer (T-276)', () => {
+    const custom = (id: number, type: string, multiple = false) => ({
+      id,
+      name: `Field ${id}`,
+      description: '',
+      type,
+      multiple,
+    });
+    const form: TicketForm = {
+      layout: {
+        operation: 'create',
+        tabs: [
+          {
+            name: null,
+            sections: [
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [20, 21, 22, 23, 24, 25, 26].map((id) => field(`cf[${id}]`)),
+              },
+            ],
+          },
+        ],
+      },
+      customFields: [
+        custom(20, 'user'),
+        custom(21, 'group', true),
+        custom(22, 'team'),
+        custom(23, 'release'),
+        custom(24, 'area', true),
+        custom(25, 'user', true),
+        custom(26, 'team'),
+      ],
+    };
+    const start = {
+      summary: 'Release',
+      fields: { 20: 5, 21: [6, 7], 22: 8, 23: 41, 24: [31, 32], 25: [5, 9], 26: [8, 10] },
+    };
+    const pickers = {
+      keys: new Set(['cf[20]', 'cf[21]', 'cf[22]', 'cf[23]', 'cf[24]', 'cf[25]', 'cf[26]']),
+      assignee: null,
+      offered: { 'cf[23]': [41, 42], 'cf[24]': [31, 32, 33] },
+      names: {
+        'fields.20': [{ id: 5, name: 'Sam Rivera' }],
+        'fields.21': [
+          { id: 6, name: 'Operations' },
+          { id: 7, name: 'Ops leads' },
+        ],
+        'fields.22': [{ id: 8, name: 'Payments' }],
+        // Person 9 is not named for this reader.
+        'fields.25': [{ id: 5, name: 'Sam Rivera' }],
+        'fields.26': [
+          { id: 8, name: 'Payments' },
+          { id: 10, name: 'Search' },
+        ],
+      },
+    };
+    const fill = fillForm(start, form, pickers);
+    expect(fill.picks).toEqual({
+      'cf[20]': [{ id: 5, name: 'Sam Rivera' }],
+      'cf[21]': [
+        { id: 6, name: 'Operations' },
+        { id: 7, name: 'Ops leads' },
+      ],
+      'cf[22]': [{ id: 8, name: 'Payments' }],
+    });
+    expect(fill.values).toEqual({ 'cf[23]': '41', 'cf[24]': ['31', '32'] });
+    expect(fill.picked).toEqual(['fields.20', 'fields.21', 'fields.22', 'fields.23', 'fields.24']);
+    // Someone unnamed, or two values for a field that holds one, stay in the list.
+    expect(fill.extras).toEqual(['fields.25', 'fields.26']);
+    // Without its names, or without a picker for it, a value stays in the list too.
+    const unnamed = fillForm(start, form, { ...pickers, names: {}, offered: {} });
+    expect(unnamed.picks).toEqual({});
+    expect(unnamed.extras).toHaveLength(7);
+    expect(fillForm(start, form).extras).toHaveLength(7);
+    // Cleared in its picker, a value is left out; one in the body is the form's.
+    const body = { summary: 'Release', fields: { 20: 11, 22: 8, 23: 42, 24: [31] } };
+    expect(omitKeys(start, form, body, new Set(), fill.picked)).toEqual(['fields.21']);
+  });
+
   it('[CORE-030] leaves out only what the person cleared or turned off', () => {
     const start = {
       summary: 'Release',

@@ -317,6 +317,33 @@ describe('the create form (M1-012)', () => {
     expect(asked.every((c) => !c.path.includes('assignable=true'))).toBe(true);
   });
 
+  it('[CORE-015] [CORE-013] says so when a release chosen was archived meanwhile (T-276)', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'targetRelease', required: false, description: null },
+    ]);
+    openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /tracks/1/releases': () => jsonResponse(200, { releases: [{ id: 5, name: 'Spring' }] }),
+      // Spring was archived after the form loaded: the create route refuses it by name.
+      'POST /tickets': () =>
+        jsonResponse(400, { error: 'invalid_fields', fields: { targetReleaseIds: 'archived' } }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Card declined');
+    const target = await screen.findByRole('group', { name: 'Target releases' });
+    await user.click(await within(target).findByRole('checkbox', { name: 'Spring' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(
+      await screen.findByText('This release or area is archived. Choose another.'),
+    ).toBeVisible();
+    expect(screen.getByRole('group', { name: 'Target releases' })).toHaveAccessibleDescription(
+      'This release or area is archived. Choose another.',
+    );
+    expect(screen.queryByText('This value was refused.')).toBeNull();
+  });
+
   it('[CORE-008] [CORE-010] [CORE-006] keeps focus on the pickers as people and the parent are taken and removed', async () => {
     const user = userEvent.setup();
     const form = withFields(CHORE_FORM, [
@@ -436,7 +463,7 @@ describe('the create form (M1-012)', () => {
             { id: 42, name: 'Ops leads' },
           ],
         }),
-      'GET /teams': () =>
+      'GET /teams?query=pay': () =>
         jsonResponse(200, {
           teams: [{ id: 51, name: 'Payments', description: '', lead: null, memberCount: 3 }],
         }),
@@ -459,11 +486,14 @@ describe('the create form (M1-012)', () => {
     await user.click(screen.getByRole('button', { name: 'Ops leads' }));
     await user.type(groups, 'op');
     await user.click(await screen.findByRole('button', { name: 'Operations' }));
-    // One team, one release: a list to choose one from; areas a checkbox each.
-    const team = await screen.findByRole('combobox', { name: 'Team (required)' });
+    // Teams are found by name too (T-276); one release: a list to choose one from; areas a
+    // checkbox each.
+    const team = screen.getByRole('searchbox', { name: 'Team (required)' });
     expect(team).toHaveAttribute('aria-required', 'true');
-    await within(team).findByRole('option', { name: 'Payments' });
-    await user.selectOptions(team, 'Payments');
+    expect(team).toHaveAccessibleDescription('Type a name to find a team.');
+    await user.type(team, 'pay');
+    expect(await screen.findByText('1 team found')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Payments' }));
     const release = screen.getByRole('combobox', { name: 'Fixed in' });
     await within(release).findByRole('option', { name: 'Spring' });
     await user.selectOptions(release, 'Spring');
@@ -474,6 +504,10 @@ describe('the create form (M1-012)', () => {
     expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
     const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
     expect(sent?.body).toMatchObject({ fields: { 31: [42, 41], 32: 51, 33: 5, 34: [8] } });
+    // The site's teams are never all loaded at once: only those whose name holds the text.
+    expect(calls.filter((c) => c.path.startsWith('/teams')).map((c) => c.path)).toEqual([
+      '/teams?query=pay',
+    ]);
   });
 
   it('[CORE-009] a person field restricted to a group offers only the people it allows (T-265)', async () => {

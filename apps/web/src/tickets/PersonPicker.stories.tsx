@@ -18,6 +18,14 @@ const GROUPS: PickedPerson[] = [
 const searchGroups = async (typed: string) =>
   GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase()));
 
+const TEAMS: PickedPerson[] = [
+  { id: 51, name: 'Payments' },
+  { id: 52, name: 'Platform' },
+];
+const searchTeams = async (typed: string) =>
+  TEAMS.filter((t) => t.name.toLowerCase().includes(typed.toLowerCase()));
+const SEARCHES = { people: search, groups: searchGroups, teams: searchTeams };
+
 function Picker({
   multiple = false,
   label,
@@ -25,14 +33,14 @@ function Picker({
 }: {
   multiple?: boolean;
   label: string;
-  kind?: 'people' | 'groups';
+  kind?: 'people' | 'groups' | 'teams';
 }) {
   const [chosen, setChosen] = useState<PickedPerson[]>([]);
   return (
     <div style={{ maxWidth: '28rem' }}>
       <PersonPicker
         label={label}
-        search={kind === 'groups' ? searchGroups : search}
+        search={SEARCHES[kind]}
         chosen={chosen}
         onChange={setChosen}
         multiple={multiple}
@@ -101,5 +109,22 @@ export const SeveralGroups: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Ops leads' }));
     await userEvent.type(field, 'zz');
     await expect(await canvas.findByText('No group matches.')).toBeInTheDocument();
+  },
+};
+
+/** A team, for a custom team field (T-276): found by name, as a site can have many. */
+export const OneTeam: Story = {
+  args: { label: 'Team', kind: 'teams' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const field = canvas.getByRole('searchbox', { name: 'Team' });
+    await expect(field).toHaveAccessibleDescription('Type a name to find a team.');
+    await userEvent.type(field, 'zz');
+    await expect(await canvas.findByText('No team matches.')).toBeInTheDocument();
+    await userEvent.clear(field);
+    await userEvent.type(field, 'p');
+    await expect(await canvas.findByText('2 teams found')).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Payments' }));
+    await expect(canvas.getByRole('list', { name: 'Team' })).toHaveTextContent('Payments');
   },
 };
