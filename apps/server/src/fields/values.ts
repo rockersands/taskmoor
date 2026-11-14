@@ -130,7 +130,9 @@ export async function checkCustomValues(
       if (input !== undefined && key in input) continue;
       const context = catalog.contextOf(field.id, at.trackId, at.ticketTypeId) as ContextDef;
       if (context.defaultValue === undefined) continue;
-      // A default that no longer holds (an option disabled since) is left out, not refused.
+      // A default that no longer holds (an option disabled, a release archived since) is left
+      // out, not refused. An import's leave to keep archived ones is for the history it
+      // carries, which a default is not.
       const problem = await referenceProblem(
         db,
         catalog,
@@ -139,7 +141,7 @@ export async function checkCustomValues(
         context,
         context.defaultValue,
         undefined,
-        channel,
+        false,
       );
       if (problem === null) next[key] = context.defaultValue as JsonValue;
     }
@@ -153,7 +155,7 @@ export async function checkCustomValues(
       context,
       value,
       current[field.id],
-      channel,
+      channel === 'import',
     );
     if (problem !== null) errors[errorKey(field.id)] = problem;
   }
@@ -169,7 +171,7 @@ export async function checkCustomValues(
  * the context's (a cascade's child under its parent) and enabled, unless the ticket already has
  * it (CORE-009 (3)); people must be active and, where the context says so, in its group or track
  * role (CORE-009 (2)); releases and areas must be the ticket's track's and, unless the ticket
- * already has them or an import writes them, not archived (CORE-015, CORE-016).
+ * already has them or `keepArchived` (an import's own values), not archived (CORE-015, CORE-016).
  */
 export async function referenceProblem(
   db: Db,
@@ -179,7 +181,7 @@ export async function referenceProblem(
   context: ContextDef,
   value: Stored,
   had: JsonValue | undefined,
-  channel: Channel,
+  keepArchived: boolean,
 ): Promise<string | null> {
   const ref = REFERENCE_OF[field.type];
   if (ref === undefined) return null;
@@ -232,7 +234,7 @@ export async function referenceProblem(
       if (rows.length !== ids.length) return 'not_in_track';
       // An archived one stays on a ticket that has it; no ticket takes it anew, as the system
       // release and area fields refuse it (T-282), except from an import, which carries history.
-      if (channel === 'import') return null;
+      if (keepArchived) return null;
       return rows.some((r) => r.archived_at !== null && !kept.has(r.id)) ? 'archived' : null;
     }
   }

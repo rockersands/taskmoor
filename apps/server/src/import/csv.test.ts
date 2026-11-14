@@ -511,4 +511,42 @@ describe('CSV import (M1-098)', () => {
     expect(target.map((r) => r.release_id)).toEqual([old.id]);
     expect(await problems(id, '?outcome=warned')).toEqual([]);
   });
+
+  it('[IMP-012][CORE-015] gives no imported ticket an archived release as a field default (T-282)', async () => {
+    const admin = async (url: string, payload: Record<string, unknown> = {}) => {
+      const res = await as('admin', { method: 'POST', url, payload });
+      expect(res.statusCode, res.body).toBeLessThan(300);
+      return res.json();
+    };
+    const track = await database.db
+      .selectFrom('track')
+      .select('id')
+      .where('key', '=', 'CSV')
+      .executeTakeFirstOrThrow();
+    const gone = (await admin(`/api/v1/tracks/${track.id}/releases`, { name: '0.8' })).release;
+    const deliveredIn = (await admin('/api/v1/fields', { name: 'Delivered in', type: 'release' }))
+      .field.id as number;
+    // A default set before the release was archived (the API offers none for a release field;
+    // a configuration import may carry one).
+    await database.db
+      .updateTable('field_context')
+      .set({ default_value: JSON.stringify(gone.id) })
+      .where('field_id', '=', deliveredIn)
+      .execute();
+    await admin(`/api/v1/releases/${gone.id}/archive`);
+    await run({
+      source: {
+        format: 'csv',
+        system: 'archived-default',
+        data: 'Summary\nNo delivery column\n',
+        mapping: { track: 'CSV', columns: [{ column: 'Summary', to: 'summary' }] },
+      },
+    });
+    const made = await database.db
+      .selectFrom('ticket')
+      .select('fields')
+      .where('summary', '=', 'No delivery column')
+      .executeTakeFirstOrThrow();
+    expect(made.fields).not.toHaveProperty(String(deliveredIn));
+  });
 });
