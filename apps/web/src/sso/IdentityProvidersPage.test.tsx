@@ -187,7 +187,7 @@ describe('identity provider administration (M1-080)', () => {
         return jsonResponse(201, { provider: created });
       },
     });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     expect(within(form).getByLabelText('Name')).toHaveFocus();
     // A new provider has no domains and no mappings, each said as an empty state (T-289).
@@ -323,7 +323,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-003] keeps a typed text that is not a domain in the field, with the reason', async () => {
     const user = userEvent.setup();
     const calls = openPage();
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.type(within(form).getByLabelText('Domain'), 'good.example corp_example{Enter}');
     expect(within(form).getByRole('alert')).toHaveTextContent(
@@ -402,7 +402,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-003] says there is no group to map claim values to yet, as an empty state', async () => {
     const user = userEvent.setup();
     openPage({ 'GET /groups': () => jsonResponse(200, { groups: [] }) });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     // A short title; why and what to do first in its body (T-295).
     expect(await within(form).findByText('No groups yet')).toHaveClass('empty-state-title');
@@ -448,7 +448,7 @@ describe('identity provider administration (M1-080)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The identity providers could not be read. Try again in a moment.',
     );
-    expect(screen.queryByRole('button', { name: 'Add an identity provider' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New identity provider' })).toBeNull();
   });
 
   it('[IAM-001] an ended session leads to the sign-in prompt', async () => {
@@ -507,7 +507,7 @@ describe('identity provider administration (M1-080)', () => {
         return jsonResponse(201, { provider: created });
       },
     });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.keyboard('Agency');
     const protocol = within(form).getByRole('group', { name: 'Type of provider' });
@@ -549,7 +549,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-002] asks for metadata or the settings before sending a new SAML provider', async () => {
     const user = userEvent.setup();
     const calls = openPage();
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.keyboard('Agency');
     await user.click(within(form).getByRole('radio', { name: 'SAML 2.0' }));
@@ -682,7 +682,7 @@ describe('identity provider administration (M1-080)', () => {
 
   describe('the Google choice (IAM-031)', () => {
     async function openGoogleForm(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+      await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
       const form = screen.getByRole('form', { name: 'New identity provider' });
       await user.click(within(form).getByRole('radio', { name: 'Google' }));
       return form;

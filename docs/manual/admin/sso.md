@@ -35,7 +35,7 @@ part of this is included in Taskmoor; nothing needs a separate licence.
 Open **Administration** > **Single sign-on** (`#/admin/identity-providers`). Only site
 administrators see it. The page lists the **Identity providers** with a summary of each:
 protocol, issuer or entity ID, domains, whether it creates accounts, the group mapping, and a
-**Disabled** or **Single sign-on enforced** note. **Add an identity provider** opens the form;
+**Disabled** or **Single sign-on enforced** note. **New identity provider** opens the form;
 each provider has **Edit** and **Delete**. With no provider yet the list says so: everyone signs in
 with a password until you add one.
 
@@ -73,7 +73,7 @@ with **Create accounts at a first sign-in** on, anyone with such an address coul
    https://taskmoor.example.com/api/v1/auth/oidc/callback
    ```
 
-2. In Taskmoor, **Add an identity provider** and choose **OpenID Connect**.
+2. In Taskmoor, select **New identity provider** and choose **OpenID Connect**.
 3. Fill in **Name**, **Issuer URL** (such as `https://id.example.com/realms/staff`; Taskmoor
    reads the rest of the provider's settings from there), **Client ID** and
    **Client secret** (leave it blank if the client has none).
@@ -125,7 +125,7 @@ It refuses raw IP addresses. Changes at Google can take from five minutes to a f
 
 ### Add it to Taskmoor
 
-1. **Add an identity provider** and choose **Google**.
+1. Select **New identity provider** and choose **Google**.
 2. Paste the **Client ID** and **Client secret**, and select **Add provider**.
 
 The choice fills in these settings, and you can change any of them:
@@ -253,7 +253,7 @@ describe the rest.
 
 ## Adding a SAML 2.0 provider
 
-1. **Add an identity provider** and choose **SAML 2.0**.
+1. Select **New identity provider** and choose **SAML 2.0**.
 2. Paste the provider's **Identity provider metadata** XML. Taskmoor reads the entity ID, the
    sign-in URL (HTTP-Redirect binding) and the signing certificates from it. Or fill in
    **Entity ID**, **Sign-in URL** and **Signing certificates** (PEM, up to ten) yourself; what

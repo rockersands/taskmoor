@@ -130,7 +130,7 @@ describe('the layout editor (UI-T15)', () => {
       const tabs = create.definition.tabs.map((tab) => ({
         ...tab,
         sections: tab.sections.map((s, i) =>
-          i === 1 ? { ...s, fields: [...s.fields, 'closeReason'] } : s,
+          i === 1 ? { ...s, fields: [...s.fields, 'closeReason', 'targetRelease', 'area'] } : s,
         ),
       }));
       return {
@@ -154,6 +154,17 @@ describe('the layout editor (UI-T15)', () => {
         'Close reason: it is set on the ticket once it exists, so the create form leaves it out.',
       ),
     ).toBeVisible();
+    // Releases and areas show on the create form only when the track has some: the preview,
+    // which cannot tell, says so under them.
+    const row = (name: string) =>
+      [...preview().querySelectorAll('.layout-preview-field')].find(
+        (li) => li.querySelector('.layout-preview-label')?.firstChild?.textContent === name,
+      ) as HTMLElement;
+    expect(row('Target releases')).toHaveTextContent(
+      'On the form only when the track has releases.',
+    );
+    expect(row('Areas')).toHaveTextContent('On the form only when the track has areas.');
+    expect(row('Labels')).not.toHaveTextContent('On the form only');
     // Placed already, it can still be taken off; it is not offered again.
     expect(fieldsIn(SIDE)).toContain('Close reason');
     await choose(user, 'Move Close reason', 'Take off the layout');

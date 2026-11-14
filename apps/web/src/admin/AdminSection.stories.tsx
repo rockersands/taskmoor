@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
 import { AdminGroupPage } from './AdminGroupPage';
 import { AdminLayout } from './AdminLayout';
@@ -51,6 +52,27 @@ type Story = StoryObj<typeof meta>;
 
 /** What a site administrator opens on: every group, health, people and alerts. */
 export const Overview: Story = {};
+
+/**
+ * Beside the overview the list shows every group's heading, closed, so the last one is in view
+ * inside the card and nothing hides in its own scroller (S3-AD-2); the pages are on the overview.
+ */
+export const EveryGroupInView: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nav = canvas.getByRole('navigation', { name: 'Administration pages' });
+    const card = nav.closest('.admin-nav-side') as HTMLElement;
+    const last = within(nav).getByRole('button', { name: 'System' });
+    await expect(last).toHaveAttribute('aria-expanded', 'false');
+    // Within a pixel: the heights are rounded.
+    await expect(card.scrollHeight - card.clientHeight).toBeLessThanOrEqual(1);
+    await expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      card.getBoundingClientRect().bottom,
+    );
+    const every = canvas.getByRole('region', { name: 'Every page' });
+    await expect(within(every).getByRole('link', { name: 'Guardrails' })).toBeVisible();
+  },
+};
 
 /** Nothing back yet. */
 export const Reading: Story = {

@@ -17,6 +17,9 @@ import { ADMIN_HOME, type AdminGroup, adminGroupHref, adminPlace, groupsFor } fr
 /** Below this width the section's navigation folds away above the page. */
 const NARROW = '(max-width: 1023px)';
 
+/** The most groups the overview's list opens: more would push the last ones out of view. */
+const OPEN_ON_OVERVIEW = 2;
+
 /** A step a page adds after its own name in the breadcrumb: a track, a workflow, a sub-page. */
 export interface AdminCrumb {
   label: string;
@@ -117,9 +120,18 @@ function AdminNav({
   const groups = groupsFor(access ?? 'none');
   const currentGroup = place?.group.id ?? null;
   // A page shows only its own group's pages, so the list stays short (D18); any other group
-  // opens from its heading. The overview, where Administration is entered, shows them all.
+  // opens from its heading. The overview, which lists every page itself, shows every group's
+  // heading closed, so all of them fit beside it (S3-AD-2); with two groups or fewer, as for
+  // someone who only runs tracks or sets them up, they stay open.
   const [opened, setOpened] = useState<ReadonlySet<string>>(
-    () => new Set(currentGroup ? [currentGroup] : groups.map((g) => g.id)),
+    () =>
+      new Set(
+        currentGroup
+          ? [currentGroup]
+          : groups.length <= OPEN_ON_OVERVIEW
+            ? groups.map((g) => g.id)
+            : [],
+      ),
   );
   const toggle = (id: string) =>
     setOpened((was) => {

@@ -27,6 +27,21 @@ export interface AiPrice {
 
 export type NewPrice = Omit<AiPrice, 'source'>;
 
+/** The providers' names as the AI settings give them (S3-AD-3), by the ids the prices carry. */
+const PROVIDER_NAMES: Partial<Record<string, MessageId>> = {
+  anthropic: 'ai.provider.anthropic',
+  bedrock: 'ai.provider.bedrock',
+  vertex: 'ai.provider.vertex',
+  foundry: 'ai.provider.foundry',
+  'openai-compatible': 'ai.provider.openaiCompatible',
+};
+
+/** A provider by its name, 'Anthropic API' for `anthropic`; one the app does not know, as it is. */
+function providerName(t: ReturnType<typeof useT>, provider: string): string {
+  const id = PROVIDER_NAMES[provider];
+  return id ? t(id) : t('common.value', { value: provider });
+}
+
 export interface LimitInput {
   scope: AiLimit['scope'];
   feature: string | null;
@@ -610,7 +625,10 @@ function PriceRow({ price, client, said, failed }: Feedback & { price: AiPrice }
   const t = useT();
   const intl = useIntl();
   const [editing, setEditing] = useState(false);
-  const name = t('admin.aiLimits.priceName', { provider: price.provider, model: price.model });
+  const name = t('admin.aiLimits.priceName', {
+    provider: providerName(t, price.provider),
+    model: price.model,
+  });
   return (
     <li className="people-item people-group">
       <div className="people-main">

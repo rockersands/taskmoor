@@ -906,7 +906,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
   );
 
   // At first the provider only signs in people who already have an account.
-  await page.getByRole('button', { name: 'Add an identity provider' }).click();
+  await page.getByRole('button', { name: 'New identity provider' }).click();
   const form = page.getByRole('form', { name: 'New identity provider' });
   await form.getByLabel('Name', { exact: true }).fill('Staff accounts');
   await form.getByLabel('Issuer URL').fill(IDP.issuer);
@@ -995,7 +995,7 @@ test('[IAM-002] the administrator adds a SAML identity provider from its metadat
 }) => {
   await signInThroughApi(page.request, ADMIN);
   await page.goto('./#/admin/identity-providers');
-  await page.getByRole('button', { name: 'Add an identity provider' }).click();
+  await page.getByRole('button', { name: 'New identity provider' }).click();
   const form = page.getByRole('form', { name: 'New identity provider' });
   await form.getByLabel('Name', { exact: true }).fill('Partner SAML');
   await form.getByRole('radio', { name: 'SAML 2.0' }).check();
@@ -1096,7 +1096,7 @@ test('[IAM-005] the administrator adds a directory; it syncs and its people sign
   await page.goto('./#/admin');
   await page.getByRole('link', { name: 'LDAP and Active Directory' }).click();
   await expect(heading(page)).toHaveText('LDAP and Active Directory');
-  await page.getByRole('button', { name: 'Add a directory' }).click();
+  await page.getByRole('button', { name: 'New directory' }).click();
   const form = page.getByRole('form', { name: 'New directory' });
   await form.getByLabel('Name', { exact: true }).fill('Studio LDAP');
   await form.getByRole('radio', { name: 'OpenLDAP' }).check();

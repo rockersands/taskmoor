@@ -7,7 +7,7 @@ import { type Session, SessionProvider } from '../session/SessionProvider';
 import { visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { type AiLimitsClient, AiLimitsPage, type AiPrice, type StoredLimit } from './AiLimitsPage';
-import { fakeAiLimitsClient } from './aiLimitsFixtures';
+import { fakeAiLimitsClient, PRICES } from './aiLimitsFixtures';
 import { ADMIN, CONFIG_ADMIN } from './fixtures';
 
 function renderPage(
@@ -36,10 +36,24 @@ describe('AI limits and prices (UI-T19)', () => {
     expect(within(limits).getByText('200,000 tokens each')).toBeVisible();
     const prices = screen.getByRole('region', { name: 'Price table' });
     const list = within(prices)
-      .getByText(/anthropic, claude-example/)
+      .getByText(/Anthropic API, claude-example/)
       .closest('li');
     expect(within(list as HTMLElement).getByText('List price: check your bill')).toBeVisible();
     expect(within(list as HTMLElement).getByText(/Above 100,000 tokens/)).toBeVisible();
+  });
+
+  it('[OPS-020] names each price by its provider’s name, not its id (S3-AD-3)', async () => {
+    const prices: AiPrice[] = [
+      ...PRICES,
+      { ...(PRICES[1] as AiPrice), provider: 'acme-gateway', model: 'm-1' },
+    ];
+    renderPage(ADMIN, 'es', fakeAiLimitsClient(undefined, prices));
+    const table = await screen.findByRole('region', { name: 'Tabla de precios' });
+    expect(within(table).getByText(/^API de Anthropic, claude-example/)).toBeVisible();
+    expect(within(table).getByText(/^Amazon Bedrock, claude-other/)).toBeVisible();
+    // A provider the app has no name for keeps its id.
+    expect(within(table).getByText(/^acme-gateway, m-1/)).toBeVisible();
+    expect(within(table).queryByText(/^anthropic,/)).toBeNull();
   });
 
   it('[OPS-020] adds through filled "New …" buttons at the head of each card, the form above the list (D11, AD-19)', async () => {
@@ -166,10 +180,12 @@ describe('AI limits and prices (UI-T19)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     await user.click(
-      await screen.findByRole('button', { name: 'Change the rate of anthropic, claude-example' }),
+      await screen.findByRole('button', {
+        name: 'Change the rate of Anthropic API, claude-example',
+      }),
     );
     const form = screen.getByRole('form', {
-      name: 'Change the rate of anthropic, claude-example',
+      name: 'Change the rate of Anthropic API, claude-example',
     });
     expect(within(form).getByLabelText('Model')).toHaveAttribute('readonly');
     await user.clear(within(form).getAllByLabelText('Input')[0] as HTMLElement);
@@ -184,7 +200,7 @@ describe('AI limits and prices (UI-T19)', () => {
     });
     await user.click(
       await screen.findByRole('button', {
-        name: 'Back to the list price: anthropic, claude-example',
+        name: 'Back to the list price: Anthropic API, claude-example',
       }),
     );
     expect(

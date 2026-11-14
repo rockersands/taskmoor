@@ -42,7 +42,9 @@ the price table. A later price change does not rewrite the past.
 - Cache writes and cache reads have their own rates; batch requests cost half; a model with a
   dearer rate above a prompt size (Haiku above 100,000 tokens) has that rate too.
 
-**AI limits and prices** holds the price table, in US dollars per million tokens. Each row says
+**AI limits and prices** holds the price table, in US dollars per million tokens. Each row is
+named by its provider, as the AI page names it (**Anthropic API**, **Amazon Bedrock**), and its
+model; a provider the page has no name for shows as entered. Each row says
 **List price: check your bill** or **Your rate**. **Change** sets your rate for a model, with its input,
 output and cache rates, and a dearer rate above a prompt size if the model has one. **Back to the list
 price** drops your rate. **New rate**, at the head of the price table, covers a model with no list price: name its **Provider** and

@@ -2,7 +2,7 @@
 title: "Administration"
 audience: admins
 sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/TeamsPage.tsx, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/admin/FrontendsPage.tsx, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx
-accessed: 2026-11-13
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Administration
@@ -67,6 +67,7 @@ administrators.
   in. They are waiting for their [activation link](people-and-groups.md). It looks at the first 200
   people and says so when there are more.
 - **Security alerts**: the latest [alerts](people-and-groups.md), with a link to change their rules.
+- **Every page**: every page of Administration under its group's name, one click away.
 
 Each panel reads on its own, so one that fails says so and the others still show.
 
@@ -75,8 +76,10 @@ A configuration administrator sees the list of setup pages instead.
 ## Finding a page
 
 The section has its own list of pages. On a wide screen it sits beside the page and stays in view
-while the page scrolls. On the overview every group shows its pages. On any other page only the
-group of the page you are on does; the heading of any group opens or closes it, and a group you
+while the page scrolls. On the overview it shows only the groups' headings, closed, so all of
+them fit beside it, and **Every page** lists the pages (with two groups or fewer, as for someone
+who only runs or sets up tracks, the groups stay open). On any other page only the group of the
+page you are on shows its pages; the heading of any group opens or closes it, and a group you
 opened stays open while you stay within the group. On a group's own page its heading is marked as
 the page you are on. On a narrow screen the list is a bar
 named **Administration pages** at the top of every page, the overview too, with a chevron: it opens

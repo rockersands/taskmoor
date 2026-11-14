@@ -96,12 +96,47 @@ export function AdminOverviewPage({ client = overviewClient }: { client?: Overvi
           </div>
         ))}
       {access === 'site' && (
-        <div className="admin-overview">
-          <HealthPanel read={client.system} />
-          <NotSignedInPanel read={client.people} />
-          <AlertsPanel read={client.alerts} />
-        </div>
+        <>
+          <div className="admin-overview">
+            <HealthPanel read={client.system} />
+            <NotSignedInPanel read={client.people} />
+            <AlertsPanel read={client.alerts} />
+          </div>
+          <EveryPagePanel />
+        </>
       )}
+    </section>
+  );
+}
+
+/**
+ * Every page of Administration by its group, one click away (S3-AD-2): the list beside the
+ * overview shows only the groups' headings, so all six fit, and the pages are listed here.
+ */
+function EveryPagePanel() {
+  const t = useT();
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="glass-card admin-panel">
+      <h2 id={id} className="section-title">
+        {t('admin.overview.pages')}
+      </h2>
+      <div className="admin-every-page">
+        {groupsFor('site').map((group) => (
+          <div key={group.id}>
+            <h3 id={`${id}-${group.id}`} className="facts-title">
+              {t(group.labelId)}
+            </h3>
+            <ul className="link-list" aria-labelledby={`${id}-${group.id}`}>
+              {group.pages.map((page) => (
+                <li key={page.id}>
+                  <a href={routeHref(page.href)}>{t(page.labelId)}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

@@ -48,6 +48,17 @@ const REASONS: Record<LeftOutReason, MessageId> = {
   after_create: 'layouts.preview.reason.afterCreate',
 };
 
+/**
+ * Optional fields the create form leaves out when the track has nothing to offer in them
+ * (`CreateTicketPage`): the preview cannot know the track's releases and areas, so it says so
+ * under them rather than promising a row the form may not show.
+ */
+const ONLY_WHEN_LISTED: Partial<Record<string, MessageId>> = {
+  targetRelease: 'layouts.preview.onlyWithReleases',
+  foundInRelease: 'layouts.preview.onlyWithReleases',
+  area: 'layouts.preview.onlyWithAreas',
+};
+
 type Shown = Omit<Preview, 'leftOut'> & { leftOut: { field: string; reason: LeftOutReason }[] };
 
 /**
@@ -292,6 +303,13 @@ export function LayoutPreview({
                                   {field.description && (
                                     <span className="form-hint">{field.description}</span>
                                   )}
+                                  {shown.layout.operation === 'create' &&
+                                    !field.required &&
+                                    ONLY_WHEN_LISTED[field.key] && (
+                                      <span className="form-hint">
+                                        {t(ONLY_WHEN_LISTED[field.key] as MessageId)}
+                                      </span>
+                                    )}
                                 </li>
                               ))}
                             </ul>
