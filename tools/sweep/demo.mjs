@@ -1,14 +1,45 @@
-// Starts and stops a private `pnpm demo` for the sweep (tools/sweep/routes.mjs). Its output, with
-// the one-time links, goes only to a log file under .cache, ignored by git. The data stays, so a
-// later run reuses it; the demo's own Ctrl+C handling cannot run on Windows, where a process is
-// simply ended, so the database is stopped here with its own tool.
+// Starts and stops a private `pnpm demo` for the sweep (tools/sweep/routes.mjs). The demo prints
+// one-time password links: its output passes through here, the site administrator's link is kept
+// in memory for signing in (session.mjs), and only a redacted copy goes to the log under .cache.
+// The data stays, so a later run reuses it; the demo's own Ctrl+C handling cannot run on Windows,
+// where a process is simply ended, so the database is stopped here with its own tool.
 import { execFile, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readdirSync, rmSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { arch, platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
+import { redact } from './redact.mjs';
+import { adminLinkIn } from './session.mjs';
 
 const run = promisify(execFile);
+
+/**
+ * Reads the demo's output as it comes, in pieces that may split a line: keeps the administrator's
+ * link and passes each whole line on to `write`, redacted.
+ */
+export function demoOutput(write) {
+  let rest = '';
+  let previous = '';
+  let link = null;
+  const line = (text) => {
+    // The link is printed on the line after the name it belongs to.
+    link = adminLinkIn(`${previous}\n${text}`) ?? link;
+    previous = text;
+    write(`${redact(text, 2000)}\n`);
+  };
+  return {
+    push(chunk) {
+      const lines = (rest + String(chunk)).split(/\r?\n/);
+      rest = lines.pop() ?? '';
+      for (const text of lines) line(text);
+    },
+    end() {
+      if (rest) line(rest);
+      rest = '';
+    },
+    link: () => link,
+  };
+}
 
 function pgCtl(root) {
   const tag = platform() === 'win32' ? `windows-${arch()}` : `${platform()}-${arch()}`;
@@ -25,11 +56,15 @@ const answers = (url) =>
     () => false,
   );
 
-/** Starts the demo unless one answers already. Returns what stops it, or null if it was there. */
+/**
+ * Starts the demo unless one answers already. Returns null if it was there, else what stops it
+ * and the administrator's one-time link, which is never written anywhere.
+ */
 export async function startDemo({ root, url, logFile }) {
   if (await answers(url)) return null;
   mkdirSync(dirname(logFile), { recursive: true });
-  const log = openSync(logFile, 'w');
+  const log = createWriteStream(logFile, { flags: 'w', mode: 0o600 });
+  const output = demoOutput((text) => log.write(text));
   const child = spawn(
     process.execPath,
     [
@@ -38,13 +73,27 @@ export async function startDemo({ root, url, logFile }) {
       '--port',
       new URL(url).port,
     ],
-    { cwd: root, stdio: ['ignore', log, log], detached: platform() !== 'win32', windowsHide: true },
+    {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: platform() !== 'win32',
+      windowsHide: true,
+    },
   );
-  const stop = () => stopDemo({ root, pid: child.pid });
+  child.stdout.on('data', (chunk) => output.push(chunk));
+  child.stderr.on('data', (chunk) => output.push(chunk));
+  const stop = async () => {
+    await stopDemo({ root, pid: child.pid });
+    output.end();
+    await new Promise((resolve) => log.end(resolve));
+  };
   // A first start builds the frontend and adds the sample data: minutes, not seconds.
   const deadline = Date.now() + 10 * 60_000;
   while (!(await answers(url))) {
-    if (child.exitCode !== null) throw new Error(`The demo stopped; see ${logFile}.`);
+    if (child.exitCode !== null) {
+      await stop();
+      throw new Error(`The demo stopped; see ${logFile}.`);
+    }
     if (Date.now() > deadline) {
       await stop();
       throw new Error(`The demo did not answer in ten minutes; see ${logFile}.`);
@@ -52,8 +101,10 @@ export async function startDemo({ root, url, logFile }) {
     await new Promise((r) => setTimeout(r, 2000));
   }
   // The links are printed just after the server answers.
-  await new Promise((r) => setTimeout(r, 1500));
-  return stop;
+  for (let waited = 0; !output.link() && waited < 15_000; waited += 250) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return { stop, link: output.link() };
 }
 
 /** Ends the demo's processes, then stops its database cleanly. */

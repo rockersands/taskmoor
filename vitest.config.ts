@@ -44,6 +44,8 @@ export default defineConfig({
       'apps/web/vitest.config.ts',
       // The frontend build as an artefact (M1-105): real builds, so a project of its own.
       'apps/web/vitest.build.config.ts',
+      // The page sweep's pure parts (T-257); the tool itself is plain Node in tools/sweep.
+      'tools/sweep/vitest.config.ts',
       // Stories run as browser tests with axe checks (M0-031).
       ...storiesProject,
     ],

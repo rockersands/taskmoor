@@ -227,3 +227,47 @@ export function looksSettled() {
   const text = document.body?.innerText ?? '';
   return !/^\s*(Loading|Cargando|Checking|Comprobando)\b/m.test(text);
 }
+
+/**
+ * How much of the window bars stuck to its top and bottom cover, for stepping a phone picture
+ * through the page (plan.mjs windowStops). Wide fixed or sticky elements only; one taller than half
+ * the window is a backdrop or a veil, not a bar.
+ */
+export function stuckEdges() {
+  const height = window.innerHeight;
+  const width = window.innerWidth;
+  let top = 0;
+  let bottom = 0;
+  for (const el of document.body.querySelectorAll('*')) {
+    const { position } = getComputedStyle(el);
+    if (position !== 'fixed' && position !== 'sticky') continue;
+    const box = el.getBoundingClientRect();
+    if (box.width < width / 2 || box.height <= 0 || box.height > height / 2) continue;
+    if (!el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+    if (box.top <= 1 && box.bottom > 0) top = Math.max(top, box.bottom);
+    if (box.bottom >= height - 1 && box.top < height) bottom = Math.max(bottom, height - box.top);
+  }
+  return {
+    scrollHeight: document.documentElement.scrollHeight,
+    innerHeight: height,
+    stuckTop: Math.ceil(top),
+    stuckBottom: Math.ceil(bottom),
+  };
+}
+
+/** Scrolls the window at once (no smooth scrolling) and waits for two frames to be drawn. */
+export async function scrollWindowTo(y) {
+  window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+  await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+  return window.scrollY;
+}
+
+/** What the page believes about its pointer and window: a phone's touch, or a mouse. */
+export function pointerState() {
+  return {
+    coarse: window.matchMedia('(pointer: coarse)').matches,
+    touchPoints: navigator.maxTouchPoints,
+    innerWidth: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio,
+  };
+}
