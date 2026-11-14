@@ -22,7 +22,26 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
+### Latest: T-291 to T-295 (2026-11-14, the Mac)
+
+On `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e).
+
+- T-291: the ticket template form shows the server's reason under the field it belongs to and
+  shows custom release and area values by name, with a way to remove one. Its "None: saving
+  leaves this field empty." line is allowed by the empty-state guard as a field's value.
+- T-292: refused fields are named by their labels (a shared helper) on the ticket page and the
+  Outcomes panel; no raw API key shows.
+- T-293: on touch the timeline bar keeps its 24 px look with a 44 px press area (`::after`);
+  the Plans timeline shares it.
+- T-294: the finger-height guard catches fixed heights under 44 px on interactive selectors, and
+  a check over .tsx files catches grips styled inline.
+- T-295: the SSO group mapping says "No groups yet" with a body.
+- Small calls made without the user (not product decisions): the bar keeps its 24 px look on
+  phones; refusals keep the "Check these values." lead-in; no link from the SSO empty state.
+- The Mac's tickets T-259 to T-299 are used up; T-350 to T-399 are reserved in COORDINATION.md.
+- Next on the Mac: T-296 to T-299.
+
+### Earlier: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
 
 On `main` at `0f1a4e11` after a full gate (9,107 tests, 262 e2e; one speed limit missed on this
 Mac, not enforced, and benchmarking is set aside for now).
