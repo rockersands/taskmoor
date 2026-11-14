@@ -3701,6 +3701,8 @@ export const messagesEn = {
   'ticketView.history.rank': 'Rank',
   'ticketView.all.comment': 'Commented',
   'ticketView.all.time': 'Logged {hours} h',
+  'ticketView.all.more': 'Show older activity',
+  'ticketView.all.failed': 'The activity could not be read. Try again in a moment.',
   'ticketView.time.hours': '{hours} h',
   'ticketView.time.failed': 'The time entries could not be read. Try again in a moment.',
   'ticketView.time.empty': 'No time logged yet.',

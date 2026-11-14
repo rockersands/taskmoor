@@ -105,7 +105,8 @@ const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_fou
 const forbidden = (reply: FastifyReply, permission: TrackPermission) =>
   reply.code(403).send({ error: 'forbidden', permission });
 
-function entryQuery(db: Db) {
+/** Time entries with their authors' names, as the routes read them. */
+export function entryQuery(db: Db) {
   return db
     .selectFrom('time_entry as e')
     .innerJoin('app_user as a', 'a.id', 'e.author_id')
@@ -123,9 +124,12 @@ function entryQuery(db: Db) {
       'e.updated_at',
     ]);
 }
-type EntryRow = Awaited<ReturnType<ReturnType<typeof entryQuery>['executeTakeFirstOrThrow']>>;
+export type EntryRow = Awaited<
+  ReturnType<ReturnType<typeof entryQuery>['executeTakeFirstOrThrow']>
+>;
 
-const entryView = (e: EntryRow) => ({
+/** A time entry as the API shows it. */
+export const entryView = (e: EntryRow) => ({
   id: e.id,
   author: { id: e.author_id, name: e.author_name },
   startedAt: e.started_at.toISOString(),
@@ -140,6 +144,23 @@ const entryView = (e: EntryRow) => ({
   createdAt: e.created_at.toISOString(),
   updatedAt: e.updated_at.toISOString(),
 });
+
+/**
+ * Whether the caller sees an entry of a ticket in the track: it is open, theirs, or for a role or
+ * group they hold.
+ */
+export async function visibleTo(request: FastifyRequest, trackId: number) {
+  const userId = request.user?.id ?? null;
+  let audience: Awaited<ReturnType<typeof request.authz.audience>> | null = null;
+  return async (e: EntryRow) => {
+    if (e.visible_role_id === null && e.visible_group_id === null) return true;
+    if (e.author_id === userId) return true;
+    audience ??= await request.authz.audience(trackId);
+    return e.visible_role_id !== null
+      ? audience.roleIds.has(e.visible_role_id)
+      : audience.groupIds.has(e.visible_group_id as number);
+  };
+}
 
 const settingsView = (s: TimeSettings) => ({ ...s });
 
@@ -185,20 +206,6 @@ export function registerTimeRoutes(
       return null;
     }
     return row;
-  }
-
-  /** Whether the caller sees an entry: it is open, theirs, or for a role or group they hold. */
-  async function visibleTo(request: FastifyRequest, trackId: number) {
-    const userId = request.user?.id ?? null;
-    let audience: Awaited<ReturnType<typeof request.authz.audience>> | null = null;
-    return async (e: EntryRow) => {
-      if (e.visible_role_id === null && e.visible_group_id === null) return true;
-      if (e.author_id === userId) return true;
-      audience ??= await request.authz.audience(trackId);
-      return e.visible_role_id !== null
-        ? audience.roleIds.has(e.visible_role_id)
-        : audience.groupIds.has(e.visible_group_id as number);
-    };
   }
 
   /** A visibility the caller may give: a role of the workspace, or a group they are in. */

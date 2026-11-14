@@ -7,6 +7,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { historyFieldOf } from '../fields/values';
 import { commentText, onceAudience, readsComment } from '../tickets/comments';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
+import { entryQuery, entryView, visibleTo } from './time';
 
 /**
  * Activity streams (M1-058; CORE-022, NTF-003; ADR-047): what happened, newest first, built
@@ -25,6 +26,12 @@ import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
  * name and how its values read, as the ticket history does (T-277, T-282): the name only while
  * the field applies to the ticket where it is now, so the reader sees the field on it. `limit` counts history rows; a change set
  * is never split across pages, so a page can hold a few more rows.
+ *
+ * A ticket's `kind=all` page also carries its time entries (`timeEntries`, newest first, those
+ * the reader may see, as the time entries list shows them), by when the work started: those of
+ * the stretch of time its rows cover, from its oldest row up to the row the cursor names (the
+ * first page: up to now; the last: back to the start). A time entry may have no history row
+ * (an import writes none), and its row says neither whose work it was nor when it began (T-309).
  */
 const MAX_INT = 2_147_483_647;
 const RICH_TEXT = new Set(['description', 'environment']);
@@ -260,7 +267,30 @@ export function registerActivityRoutes(
           )
         ).rows,
     );
-    return { activity: await entries(request, result.rows), next: result.next };
+    const activity = await entries(request, result.rows);
+    if (kind !== 'all') return { activity, next: result.next };
+    // The time entries of the stretch this page covers, so that page by page each comes once.
+    let upper: Date | null = null;
+    if (cursor !== undefined) {
+      const named = await db
+        .selectFrom('ticket_change')
+        .select('at')
+        .where('id', '=', cursor)
+        .where('ticket_id', '=', ticket.id)
+        .where('workspace_id', '=', ws)
+        .executeTakeFirst();
+      if (!named) return { activity, timeEntries: [], next: result.next };
+      upper = named.at;
+    }
+    const oldest = result.next === null ? null : result.rows[result.rows.length - 1];
+    let query = entryQuery(db).where('e.ticket_id', '=', ticket.id);
+    if (upper !== null) query = query.where('e.started_at', '<', upper);
+    if (oldest) query = query.where('e.started_at', '>=', oldest.at);
+    const inStretch = await query.orderBy('e.started_at', 'desc').orderBy('e.id', 'desc').execute();
+    const sees = await visibleTo(request, ticket.track_id);
+    const timeEntries = [];
+    for (const e of inStretch) if (await sees(e)) timeEntries.push(entryView(e));
+    return { activity, timeEntries, next: result.next };
   });
 
   app.get('/api/v1/tracks/:id/activity', async (request, reply) => {

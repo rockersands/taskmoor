@@ -13,6 +13,7 @@ import { SessionProvider } from '../../session/SessionProvider';
 import { onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
+import type { TicketClient } from './client';
 import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
 import { TicketPage } from './TicketPage';
 
@@ -96,6 +97,44 @@ export const History: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'History' }));
     await expect(await canvas.findByText('Changed Status from New to Active')).toBeVisible();
+  },
+};
+
+/** SHOP-41 whose All feed comes in two pages, the older behind "Show older activity" (T-309). */
+function inTwoPages(): TicketClient {
+  const client = fakeTicketClient();
+  return {
+    ...client,
+    activity: async (id, cursor) => {
+      const page = await client.activity(id);
+      return cursor === undefined
+        ? { activity: page.activity.slice(0, 2), timeEntries: [], next: '11' }
+        : { activity: page.activity.slice(2), timeEntries: page.timeEntries, next: null };
+    },
+  };
+}
+
+/**
+ * The All tab of a busy ticket: the newest activity first, the older a finger-wide button away
+ * on a touch screen (T-309).
+ */
+export const AllInPages: Story = {
+  args: { client: inTwoPages() },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'All' }));
+    const all = within(canvas.getByRole('tabpanel', { name: 'All' }));
+    await expect(await all.findByText('Changed Status from New to Active')).toBeVisible();
+    await expect(all.queryByText('Logged 2 h')).toBeNull();
+    const more = all.getByRole('button', { name: 'Show older activity' });
+    await expect(tooSmallForAFinger(canvasElement, ['.ticket-tabpanel .button-secondary'])).toEqual(
+      [],
+    );
+    await userEvent.click(more);
+    await expect(await all.findByText('Logged 2 h')).toBeVisible();
+    await expect(all.getByText('Commented')).toBeVisible();
+    await expect(all.queryByRole('button', { name: 'Show older activity' })).toBeNull();
   },
 };
 

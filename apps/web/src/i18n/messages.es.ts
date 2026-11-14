@@ -3800,6 +3800,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.history.rank': 'Orden',
   'ticketView.all.comment': 'Comentó',
   'ticketView.all.time': 'Registró {hours} h',
+  'ticketView.all.more': 'Mostrar actividad anterior',
+  'ticketView.all.failed': 'No se pudo leer la actividad. Inténtalo de nuevo en un momento.',
   'ticketView.time.hours': '{hours} h',
   'ticketView.time.failed':
     'No se pudieron leer los registros de tiempo. Inténtalo de nuevo en un momento.',

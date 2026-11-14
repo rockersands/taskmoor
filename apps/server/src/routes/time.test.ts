@@ -368,4 +368,79 @@ describe('time tracking (M1-019)', () => {
         .statusCode,
     ).toBe(201);
   });
+
+  // The All feed reads a ticket's activity page by page (T-309): every time entry the reader
+  // sees comes once, on the page whose stretch of time holds its start, an imported one with no
+  // history row included, and a restricted one only for its audience.
+  it("[CORE-022] [TIM-001] gives each time entry once across the pages of a ticket's activity", async () => {
+    const ticket = await create();
+    const logged: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const entry = await record(i % 2 === 0 ? 'alice' : 'dave', ticket, {
+        duration: `${i + 1}h`,
+        startedAt: new Date().toISOString(),
+      });
+      logged.push(entry.id);
+    }
+    const restricted = await record('alice', ticket, {
+      duration: '1h',
+      startedAt: new Date().toISOString(),
+      visibility: { roleId: roles.Administrators },
+    });
+    // An import writes the entry and no history row for it, from long before.
+    const imported = await database.db
+      .insertInto('time_entry')
+      .values({
+        workspace_id: 1,
+        ticket_id: ticket.id,
+        author_id: users.dave?.id as number,
+        started_at: new Date('2020-03-02T09:00:00Z'),
+        duration: 30 * 60,
+        description: 'Imported',
+        visible_role_id: null,
+        visible_group_id: null,
+        created_by: users.dave?.id as number,
+        created_at: new Date('2020-03-02T09:30:00Z'),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+
+    const walk = async (who: string) => {
+      const pages: EntryJson[][] = [];
+      let cursor: string | null = null;
+      do {
+        const res = await get(
+          who,
+          `/api/v1/tickets/${ticket.id}/activity?kind=all&limit=1${cursor ? `&cursor=${cursor}` : ''}`,
+        );
+        expect(res.statusCode, res.body).toBe(200);
+        const body = res.json() as { timeEntries: EntryJson[]; next: string | null };
+        pages.push(body.timeEntries);
+        cursor = body.next;
+      } while (cursor !== null);
+      return pages;
+    };
+    const carol = await walk('carol');
+    const seen = carol.flat().map((e) => e.id);
+    expect([...seen].sort((a, b) => a - b)).toEqual(
+      [...logged, restricted.id, imported.id].sort((a, b) => a - b),
+    );
+    // Spread over the pages, newest first within each, the imported one on the last.
+    expect(carol.filter((p) => p.length > 0).length).toBeGreaterThan(1);
+    expect(carol.at(-1)?.map((e) => e.description)).toContain('Imported');
+    for (const p of carol) {
+      const starts = p.map((e) => e.startedAt);
+      expect(starts).toEqual([...starts].sort().reverse());
+    }
+    const bob = (await walk('bob')).flat().map((e) => e.id);
+    expect([...bob].sort((a, b) => a - b)).toEqual([...logged, imported.id].sort((a, b) => a - b));
+    // The default page holds them all; a cursor naming no row of the ticket, none.
+    const first = (await get('carol', `/api/v1/tickets/${ticket.id}/activity`)).json();
+    expect(first.timeEntries.length).toBe(6);
+    expect(first.timeEntries[0]).toMatchObject({ author: { name: expect.any(String) } });
+    const stray = await get('carol', `/api/v1/tickets/${ticket.id}/activity?cursor=999999999`);
+    expect(stray.json().timeEntries).toEqual([]);
+    const history = await get('carol', `/api/v1/tickets/${ticket.id}/activity?kind=history`);
+    expect(history.json().timeEntries).toBeUndefined();
+  });
 });

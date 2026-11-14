@@ -1,16 +1,8 @@
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type IntlShape, useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { CommentsPanel } from '../../comments/CommentsPanel';
-import { type CommentClient, commentClient } from '../../comments/client';
+import type { CommentClient } from '../../comments/client';
 import { dayText, isCalendarDay, isInstant, momentText } from '../../i18n/days';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
@@ -19,7 +11,7 @@ import { EmptyState } from '../../shell/EmptyState';
 import { useMoreSides } from '../../shell/moreSides';
 import { useMotionOnChange } from '../../shell/motion';
 import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
-import type { HistoryEntry, TicketClient, TimeEntry } from './client';
+import type { ActivityPage, HistoryEntry, TicketClient, TimeEntry } from './client';
 
 export type ActivityTab = 'comments' | 'history' | 'time' | 'all';
 const TABS: { id: ActivityTab; label: MessageId }[] = [
@@ -171,7 +163,7 @@ export function ActivityPanel({
         )}
         {tab === 'history' && <HistoryList ticket={ticket} client={client} revision={revision} />}
         {tab === 'time' && <TimeEntries ticket={ticket} client={client} />}
-        {tab === 'all' && <AllActivity ticket={ticket} client={client} comments={comments} />}
+        {tab === 'all' && <AllActivity ticket={ticket} client={client} revision={revision} />}
       </div>
     </section>
   );
@@ -182,6 +174,9 @@ function useWhen() {
   return (iso: string) => momentText(intl, iso);
 }
 
+/** What a history row or an activity entry says changed. */
+type Change = Pick<HistoryEntry, 'field' | 'fieldName' | 'valueType' | 'from' | 'to'>;
+
 /** The fields whose values are calendar days (`YYYY-MM-DD`), read in the reader's locale. */
 const DAY_FIELDS = new Set(['startDate', 'dueDate']);
 
@@ -190,7 +185,7 @@ const DAY_FIELDS = new Set(['startDate', 'dueDate']);
  * date, a custom date field) or a moment (a custom date-and-time field, T-277) in the reader's
  * locale; else as recorded.
  */
-function sideText(intl: IntlShape, c: HistoryEntry, side: HistoryEntry['from']): string | null {
+function sideText(intl: IntlShape, c: Change, side: Change['from']): string | null {
   if (side.display !== null) return side.display;
   const day = DAY_FIELDS.has(c.field) || c.valueType === 'date';
   if (day && isCalendarDay(side.value)) return dayText(intl, side.value);
@@ -202,7 +197,7 @@ function sideText(intl: IntlShape, c: HistoryEntry, side: HistoryEntry['from']):
 function useChangeText() {
   const t = useT();
   const intl = useIntl();
-  return (c: HistoryEntry) => {
+  return (c: Change) => {
     const id = FIELDS[c.field];
     // A custom field by its name where the reader sees it on the ticket (T-277).
     const field = id
@@ -440,85 +435,140 @@ interface FeedItem {
   text: string;
 }
 
-/** Comments, history and time entries in one stream, newest first (CORE-022 "All"). */
+/**
+ * Comments, history and time entries in one stream, newest first (CORE-022 "All"), read from the
+ * ticket's activity a page at a time (T-309): a busy ticket's newest comments and its oldest
+ * changes are all there, the older ones behind "Show older activity". A page carries the time
+ * entries that started in the stretch of time its changes cover, so the stream stays in order
+ * as pages are added. Read again when the ticket changes, live updates included.
+ */
 function AllActivity({
   ticket,
   client,
-  comments,
+  revision,
 }: {
   ticket: { id: number };
   client: TicketClient;
-  comments?: CommentClient | undefined;
+  revision: number;
 }) {
   const t = useT();
   const when = useWhen();
   const text = useChangeText();
   const intl = useIntl();
-  const [items, setItems] = useState<FeedItem[] | null>(null);
-  const said = useMemo(() => comments ?? commentClient(ticket.id), [comments, ticket.id]);
+  const [pages, setPages] = useState<ActivityPage[] | null>(null);
+  const [next, setNext] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const [reading, setReading] = useState(false);
+  /** Bumped by every fresh read, so a page asked for before it is dropped. */
+  const reads = useRef(0);
 
-  // Read once per ticket; the words are the reader's, whatever renders meanwhile.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: t, text and intl only word the rows
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
     let live = true;
-    const someone = t('ticketView.someone');
-    void Promise.allSettled([
-      client.history(ticket.id),
-      client.timeEntries(ticket.id),
-      said.list(),
-    ]).then(([history, time, said]) => {
-      if (!live) return;
-      const out: FeedItem[] = [];
-      if (history.status === 'fulfilled') {
-        for (const c of history.value.changes) {
-          // Comments and time entries show as themselves below.
-          if (c.field === 'comment' || c.field === 'timeEntry') continue;
-          out.push({ key: `h${c.id}`, at: c.at, actor: c.actor?.name ?? someone, text: text(c) });
-        }
-      }
-      if (time.status === 'fulfilled') {
-        for (const e of time.value) {
-          out.push({
-            key: `t${e.id}`,
-            at: e.startedAt,
-            actor: e.author.name,
-            text: t('ticketView.all.time', {
-              hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
-            }),
-          });
-        }
-      }
-      if (said.status === 'fulfilled') {
-        for (const c of said.value.comments) {
-          out.push({
-            key: `c${c.id}`,
-            at: c.createdAt,
-            actor: c.author?.name ?? someone,
-            text: t('ticketView.all.comment'),
-          });
-        }
-      }
-      out.sort((a, b) => b.at.localeCompare(a.at));
-      setItems(out);
-    });
+    const read = ++reads.current;
+    setFailed(false);
+    setMoreFailed(false);
+    client.activity(ticket.id).then(
+      (page) => {
+        if (!live || read !== reads.current) return;
+        setPages([page]);
+        setNext(page.next);
+      },
+      () => live && setFailed(true),
+    );
     return () => {
       live = false;
     };
-  }, [client, said, ticket.id]);
+  }, [client, ticket.id, revision]);
 
-  if (items === null) return <p className="page-note">{t('ticketView.loading')}</p>;
-  if (items.length === 0) return <EmptyState compact title={t('ticketView.history.empty')} />;
+  const more = async () => {
+    if (next === null || reading) return;
+    const read = reads.current;
+    setReading(true);
+    setMoreFailed(false);
+    try {
+      const page = await client.activity(ticket.id, next);
+      if (read !== reads.current) return;
+      setPages((p) => [...(p ?? []), page]);
+      setNext(page.next);
+    } catch {
+      if (read === reads.current) setMoreFailed(true);
+    } finally {
+      setReading(false);
+    }
+  };
+
+  const someone = t('ticketView.someone');
+  const items: FeedItem[] = [];
+  const timeSeen = new Set<number>();
+  for (const page of pages ?? []) {
+    for (const entry of page.activity) {
+      entry.changes.forEach((c, index) => {
+        const key = `h${entry.changeSet}-${index}`;
+        const actor = entry.actor?.name ?? someone;
+        if (c.field === 'comment') {
+          // A comment shows while it is there; its deletion and deleted ones do not.
+          if (c.to.value !== null && entry.comment && entry.comment.excerpt !== null) {
+            items.push({ key, at: entry.at, actor, text: t('ticketView.all.comment') });
+          }
+          return;
+        }
+        // Time entries show as themselves, below.
+        if (c.field === 'timeEntry') return;
+        items.push({ key, at: entry.at, actor, text: text(c) });
+      });
+    }
+    for (const e of page.timeEntries) {
+      if (timeSeen.has(e.id)) continue;
+      timeSeen.add(e.id);
+      items.push({
+        key: `t${e.id}`,
+        at: e.startedAt,
+        actor: e.author.name,
+        text: t('ticketView.all.time', {
+          hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
+        }),
+      });
+    }
+  }
+  items.sort((a, b) => b.at.localeCompare(a.at));
+
+  if (failed) return <p className="page-note">{t('ticketView.all.failed')}</p>;
+  if (pages === null) return <p className="page-note">{t('ticketView.loading')}</p>;
+  if (items.length === 0 && next === null) {
+    return <EmptyState compact title={t('ticketView.history.empty')} />;
+  }
   return (
-    <ol className="ticket-feed">
-      {items.map((item) => (
-        <li key={item.key} className="ticket-feed-item">
-          <p className="ticket-feed-meta">
-            <span className="ticket-feed-actor">{item.actor}</span>
-            <span className="ticket-feed-date">{when(item.at)}</span>
-          </p>
-          <p className="ticket-feed-text">{item.text}</p>
-        </li>
-      ))}
-    </ol>
+    <>
+      {items.length > 0 && (
+        <ol className="ticket-feed">
+          {items.map((item) => (
+            <li key={item.key} className="ticket-feed-item">
+              <p className="ticket-feed-meta">
+                <span className="ticket-feed-actor">{item.actor}</span>
+                <span className="ticket-feed-date">{when(item.at)}</span>
+              </p>
+              <p className="ticket-feed-text">{item.text}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {moreFailed && (
+        <p role="alert" className="form-error">
+          {t('ticketView.all.failed')}
+        </p>
+      )}
+      {next !== null && (
+        <button
+          type="button"
+          className="button-secondary"
+          aria-busy={reading}
+          onClick={() => void more()}
+        >
+          {t('ticketView.all.more')}
+        </button>
+      )}
+    </>
   );
 }
