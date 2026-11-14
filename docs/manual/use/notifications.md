@@ -168,10 +168,11 @@ it, and links to your **Tracks** page. It follows your choice under **Email** li
 it is not sent if the group is no longer yours by the time it would go.
 
 A run of checklist changes is one line in the ticket's email, such as "Ana made 5 changes to
-checklists", with no checklist's name and no item's words. With email as changes happen, a run
-that starts within the couple of minutes of the ticket's email holds that email until the run's
-own couple of minutes have passed, so you get one email with the whole run in it. A run that
-starts later comes in an email of its own.
+checklists", with no checklist's name and no item's words. With email as changes happen, the
+ticket's email waits while someone is still in the middle of a run of checklist changes, so the
+earlier changes and the run arrive together in one email instead of two. It never waits more
+than one batch window (a couple of minutes) past when it would have gone: a run still going on
+then is counted as it stands, and its next changes come in a later email.
 
 ## Unsubscribing from email
 

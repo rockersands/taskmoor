@@ -99,12 +99,15 @@ track's administrators turn on, off by default.
   next change after that starts a new one. It counts its changes and keeps who made them (up to 50
   people), so the inbox says "Ana and 2 more made 7 changes to checklists" and the email one line
   of the same. Reading the notice in the inbox marks its email read too (NTF-003 (2)), so both
-  channels start afresh together. A run that begins inside an instant email's window holds that
-  email until the run's own window has passed, at most one window more, so the run goes whole in
-  the same email as the changes made just before it (NTF-002 (1)); a run that begins after the
-  email's window is a batch of its own, waits for its own window, and does not hold the email
-  (T-232). A digest at its hour, or a mailer that runs while a change made inside the window is
-  still on its way to the worker, can still send one in mid-run; the inbox notice goes on and the
+  channels start afresh together. While a run is still gathering, the ticket's instant email
+  waits for it, older changes and all, so they go together in one email (NTF-002 (1)), but never
+  more than one window after the email fell due. A run that began inside the email's window has
+  ended by then and goes whole (T-232); one that began after the email fell due (the mailer runs
+  every 30 seconds) goes as it stands at that bound. Wave 10 sent the older changes on their own
+  in that second case, and the run in an email of its own; the user chose on 2026-11-13 (T-248,
+  decisions.csv) to hold them for one email, at most one window later. A digest at its hour, the
+  bound above, or a mailer that runs while a change made inside the window is still on its way to
+  the worker can send a run in mid-run; the inbox notice goes on and the
   next change starts another email, so one notice can cover several emails, and reading it marks
   all of them read, found by the events the notice lists. The reverse never happens, so a read
   never has to split an email: when an inbox notice closes, by a snooze or its window, the email

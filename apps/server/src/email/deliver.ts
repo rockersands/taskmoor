@@ -33,10 +33,11 @@ import type { MailTransport } from './transport';
  *   while the group is still theirs, under its name at send time, and is dropped otherwise.
  *   Instant ones within the window go together in one email.
  * - A checklist notice (NTF-015) already gathers a run of changes to one ticket; it is one line
- *   of its ticket's email, saying how many changes and by whom, never what an item says. A run
- *   that began inside an instant email's window holds that email until the run's own window has
- *   passed (at most one window more), so the run goes whole in the same email as the changes
- *   made just before it; one that began after the window waits for its own and goes on its own.
+ *   of its ticket's email, saying how many changes and by whom, never what an item says. While a
+ *   run is still gathering, the ticket's instant email waits for it, so the older changes and
+ *   the run go together in one email (T-248): never more than one window after the email fell
+ *   due. A run that began inside the email's window has ended by then and goes whole; one that
+ *   began later goes as it stands at that bound, and its next change starts another email.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -318,18 +319,19 @@ export async function deliverEmail(
           byTicket.set(n.ticket_id, list);
         }
         for (const list of byTicket.values()) {
-          const closes = (list[0]?.created_at.getTime() ?? now.getTime()) + windowMs;
-          const runs = list.filter(gathering);
-          // A run that began inside the batch's window belongs to its email (NTF-002 (1)): the
-          // batch waits for the run's own window, at most one window more, so the run goes whole
-          // as one line of it (NTF-015 (2)).
-          if (now.getTime() < closes || runs.some((n) => n.created_at.getTime() < closes)) {
+          const due = (list[0]?.created_at.getTime() ?? now.getTime()) + windowMs;
+          // A checklist run still gathering holds the whole email, older changes and all, so
+          // they go together as one email (NTF-002 (1)) with the run as one line (NTF-015 (2)):
+          // the user's choice of 2026-11-13 (T-248) over sending the older changes on their own.
+          // The wait ends one window after the email fell due, whatever the checklist work: a
+          // run that began inside the email's window has ended by then and goes whole, and one
+          // that began later goes as it stands (its next change starts another email).
+          const holds = list.some(gathering) && now.getTime() < due + windowMs;
+          if (now.getTime() < due || holds) {
             run.held += list.length;
             continue;
           }
-          // One that began after it is a batch of its own and waits for its own window.
-          batches.push(list.filter((n) => !runs.includes(n)));
-          run.held += runs.length;
+          batches.push(list);
         }
       } else {
         const hour = setting?.digest_hour ?? 8;
