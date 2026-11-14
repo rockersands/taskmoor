@@ -37,6 +37,8 @@ export interface BulkError {
   permission?: string;
   locks?: Lock[];
   by?: string;
+  /** A refused edit's fields and why (`invalid_fields`), by the ticket route's keys. */
+  fields?: Record<string, string>;
 }
 
 export interface BulkItem {

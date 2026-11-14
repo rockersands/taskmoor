@@ -2,7 +2,7 @@
 title: "Tracks"
 audience: admins
 sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx
-accessed: 2026-11-13
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Tracks
@@ -378,8 +378,11 @@ API. The form says how many it cannot show, and saving keeps them.
 Applying a template checks everything as the person making the ticket. Values they may not set, and
 fields a rule hides or the layout leaves out, stay off the ticket, and the form names them, so a
 template can name an assignee even if some of its users may not assign. A template is checked for
-what it refers to when you save it; whether a value suits a type or a person is only known when a
-ticket is made. Each track or the every-track list holds at most 500 templates. Deleting a template
+what it refers to when you save it: an archived release or area, in its own field or a custom
+one, is refused as it would be on a new ticket, and so is a custom field's release or area of
+another track. One the template already held before it was archived stays, so you can still edit
+the rest of the template after a release ships; a ticket made from it leaves that value out and
+says so. Whether a value suits a type or a person is only known when a ticket is made. Each track or the every-track list holds at most 500 templates. Deleting a template
 changes no ticket already made from it.
 
 Every ticket made records its template in its `ticket.created` event, as `templateId`, and adding,

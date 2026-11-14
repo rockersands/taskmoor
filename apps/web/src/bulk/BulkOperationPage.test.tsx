@@ -47,6 +47,39 @@ describe('bulk operation progress (M1-021)', () => {
     );
   });
 
+  it('[CORE-024][CORE-015] names a choice a ticket’s track does not offer, or an archived one, as the create form does (T-287)', async () => {
+    const refused = (position: number, ref: string, fields: Record<string, string>): BulkItem => ({
+      position,
+      ref,
+      key: ref,
+      outcome: 'failed',
+      statusCode: 400,
+      error: { error: 'invalid_fields', fields },
+    });
+    const client = fakeBulkClient(
+      { ...RUNNING, failed: 3 },
+      {
+        failures: [
+          refused(2, 'SHOP-2', { areaIds: 'not_in_track' }),
+          refused(3, 'SHOP-3', { 'fields.33': 'archived' }),
+          refused(4, 'SHOP-4', { labels: 'too_long' }),
+        ],
+      },
+    );
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={60_000} />
+      </I18nProvider>,
+    );
+    const failures = await screen.findByRole('region', { name: 'Tickets that were not changed' });
+    const items = await within(failures).findAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual([
+      'SHOP-2This track does not offer this choice. Choose one of its own.',
+      'SHOP-3This release or area is archived. Choose another.',
+      'SHOP-4Some of the values do not fit this ticket.',
+    ]);
+  });
+
   it('[CORE-024] cancels the rest of a running bulk change', async () => {
     const user = userEvent.setup();
     const calls = openPage();

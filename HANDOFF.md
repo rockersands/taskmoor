@@ -22,7 +22,13 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: lists read past their first page; plans.css at full lint (2026-11-14, Windows)
+### Latest: the phone and accessibility pass closed (2026-11-14, the Mac)
+
+- **On `main` (`77c00547`, full gate: 9,078 tests, 262 e2e):** T-222, T-226, T-228, T-229 and T-231,
+  closing T-164 (the wave 8 phone pass). New: T-288 (for the user: try the calendar grip on real
+  phones), T-289, T-290.
+
+### Earlier: lists read past their first page; plans.css at full lint (2026-11-14, Windows)
 
 - **On `main` (`ee3aed97`, full gate on Windows: 9,035 tests, 262 e2e):** T-305 (every list read
   for "all" follows its pages: track pickers and lists, a ticket's work log, the Jira-compatible
