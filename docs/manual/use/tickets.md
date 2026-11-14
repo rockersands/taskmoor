@@ -149,7 +149,9 @@ track's summary page links to its templates, under **Ticket templates**, for any
 
 When the server refuses a value, the message shows next to the field, for example **This field
 is required.**, or **This release or area is archived. Choose another.** for one archived after
-the form opened. If there is no track you may create tickets in, the form says so.
+the form opened. A release, area, priority or ticket type that is not the track's own, in a field
+of its own or a custom field, says **This track does not offer this choice. Choose one of its
+own.** If there is no track you may create tickets in, the form says so.
 
 Boards' backlogs and a track's list can also make a ticket from a summary alone: see
 [the backlog](boards.md#the-backlog) and [the list view](views.md#the-list-view).

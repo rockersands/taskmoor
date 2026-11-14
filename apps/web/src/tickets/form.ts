@@ -259,5 +259,8 @@ const ERRORS: Record<string, MessageId> = {
   other_track: 'tickets.error.otherTrack',
   // A release or area archived since it was offered (the create route's placement check; T-276).
   archived: 'tickets.error.archived',
+  // A release or area of another track, in a field of its own or a custom one; a priority, ticket
+  // type or visibility level the track does not offer (T-282).
+  not_in_track: 'tickets.error.notInTrack',
 };
 export const errorMessage = (code: string): MessageId => ERRORS[code] ?? 'tickets.error.other';

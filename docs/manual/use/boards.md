@@ -357,7 +357,8 @@ shipped, to the release's name, with the notice under it. The page shows:
 - **Release notes**: the closed tickets, grouped by ticket type. Tickets closed without being
   done (not planned, duplicates) are left out and counted. Once there are notes, use **Copy as
   Markdown** or **Download Markdown**. The Markdown is in English and writes its day in full,
-  "Released on October 1, 2026.", the same day this page says it shipped.
+  "Released on October 1, 2026.", the same day this page says it shipped. The file comes from
+  the site's server, also when the app is hosted at another address.
 
 To ship, the track's administrators press **Ship this release…**, an ordinary button beside the
 title. It opens **Ship 2.0?** (with the release's name), which says what shipping does: the
