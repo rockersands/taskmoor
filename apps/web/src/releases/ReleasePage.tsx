@@ -793,14 +793,17 @@ function NotesView({
         </p>
       )}
       {notes.truncated && <p className="board-hint">{t('release.notes.truncated')}</p>}
-      <div className="form-actions">
-        <button type="button" className="button-secondary" onClick={copy}>
-          {t('release.notes.copy')}
-        </button>
-        <a className="button-secondary" href={notesFileHref(releaseId)} download>
-          {t('release.notes.download')}
-        </a>
-      </div>
+      {/* Notes with nothing in them are nothing to copy or keep (D27). */}
+      {notes.sections.length > 0 && (
+        <div className="form-actions">
+          <button type="button" className="button-secondary" onClick={copy}>
+            {t('release.notes.copy')}
+          </button>
+          <a className="button-secondary" href={notesFileHref(releaseId)} download>
+            {t('release.notes.download')}
+          </a>
+        </div>
+      )}
     </section>
   );
 }

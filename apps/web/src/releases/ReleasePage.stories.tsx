@@ -117,6 +117,23 @@ export const LinkedOnATouchScreen: Story = {
   },
 };
 
+/**
+ * A release with no closed tickets yet (D27; PLN-007): "Add to a release across tracks…" is a
+ * normal button, not a bar across the card, and empty notes offer no Markdown.
+ */
+export const NothingClosedYet: Story = {
+  args: { releaseId: 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const add = await canvas.findByRole('button', { name: 'Add to a release across tracks…' });
+    const card = add.closest('section')?.getBoundingClientRect();
+    if (!card) throw new Error('the button is in its section');
+    await expect(add.getBoundingClientRect().width).toBeLessThan(card.width / 2);
+    const notes = within(canvas.getByRole('region', { name: 'Release notes' }));
+    await expect(notes.queryByRole('button', { name: 'Copy as Markdown' })).toBeNull();
+  },
+};
+
 /** In a release across tracks on another day: said in words, with Align for its administrators. */
 export const OutOfStep: Story = {
   args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
