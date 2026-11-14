@@ -78,6 +78,7 @@ const FROM = '2027-03-01';
  * - Accept (SKA): Atlas (u1) at 20 points a period and six 10-point tickets, a1 to a6.
  * - Fill (SKC): Cirrus (u2) at 20; a closed ticket and work elsewhere (SKX) already there; c4,
  *   ranked last, blocks c1.
+ * - Closed (SKK): Kilo (u7) at 10; a closed 5-point ticket due in the first period blocks k1.
  * - Private (SKD, SKV, and SKH, which only administrators see): Delta (u3) at 100 and Empty,
  *   with no capacity; a ticket of every kind a run keeps, leaves out or cannot place, and two
  *   blocked by tickets the owner may not see. Ana sees SKD only; Cy sees none of its tracks.
@@ -274,6 +275,7 @@ describe('the auto-scheduler (PLN-004)', () => {
       ['u2', false],
       ['u3', false],
       ['u6', false],
+      ['u7', false],
       ['u9', false],
     ] as const) {
       const row = await database.db
@@ -328,7 +330,7 @@ describe('the auto-scheduler (PLN-004)', () => {
         r.id,
       ]),
     );
-    for (const key of ['SKA', 'SKC', 'SKX', 'SKD', 'SKH', 'SKV', 'SKF', 'SKW', 'SKG']) {
+    for (const key of ['SKA', 'SKC', 'SKX', 'SKD', 'SKH', 'SKV', 'SKF', 'SKW', 'SKG', 'SKK']) {
       tracks[key] = (
         await call(
           'admin',
@@ -347,7 +349,7 @@ describe('the auto-scheduler (PLN-004)', () => {
           user_id: user(who),
         })
         .execute();
-    for (const key of ['SKA', 'SKC', 'SKX', 'SKD', 'SKF', 'SKW', 'SKG'])
+    for (const key of ['SKA', 'SKC', 'SKX', 'SKD', 'SKF', 'SKW', 'SKG', 'SKK'])
       await member('owner', key, 'Members');
     await member('owner', 'SKV', 'Viewers');
     await member('ana', 'SKD', 'Members');
@@ -357,6 +359,7 @@ describe('the auto-scheduler (PLN-004)', () => {
       ['Delta', ['u3']],
       ['Empty', []],
       ['Fox', ['u6']],
+      ['Kilo', ['u7']],
     ] as const) {
       teams[name] = (
         await call('admin', { method: 'POST', url: '/api/v1/teams', payload: { name } }, 201)
@@ -435,6 +438,18 @@ describe('the auto-scheduler (PLN-004)', () => {
     );
     await link(t.c4 as Ticket, t.c1 as Ticket);
     await makePlan('Fill', ['SKC'], ['Cirrus'], { Cirrus: 20 });
+
+    // Closed: a closed ticket of the plan, due in the first period, blocks an open one.
+    t.k0 = await ticket('SKK', 'Kilo closed', { ...pts(5), dueDate: '2027-03-03' });
+    t.k1 = await ticket('SKK', 'Kilo open', pts(10));
+    await database.db
+      .updateTable('ticket')
+      .set({ status_id: await stageStatus('closed') })
+      .where('id', '=', t.k0.id)
+      .execute();
+    await assign([t.k0.id, t.k1.id], 'u7');
+    await link(t.k0, t.k1);
+    await makePlan('Closed', ['SKK'], ['Kilo'], { Kilo: 10 });
 
     // Private: every kind of ticket a run keeps, leaves out or cannot place.
     t.h1 = await ticket('SKH', SENTINEL_WORDS[0] as string, {
@@ -1031,6 +1046,27 @@ describe('the auto-scheduler (PLN-004)', () => {
     // Nothing for c1: a start of 8 Mar would be late against c4's due of 20 Mar.
     expect(await days(sid, t.c1 as Ticket)).toBeNull();
     expect(await days(sid, t.c2 as Ticket)).not.toBeNull();
+  });
+
+  it('[PLN-004] [PLN-005] [PLN-006] counts a closed ticket’s load where it is due, and a closed blocker holds nothing up', async () => {
+    const run = await schedule(
+      'owner',
+      'Closed',
+      { into: { newScenario: { name: 'Closed' } }, from: FROM, periods: 3 },
+      201,
+    );
+    // The closed 5 points leave 5 of Kilo's 10 in the first period, so k1's 10 go to the second;
+    // the closed ticket that blocks it neither hides it nor holds it up.
+    expect(entry(run, t.k1 as Ticket)).toMatchObject({ outcome: 'placed' });
+    expect(entry(run, t.k0 as Ticket)).toBeUndefined();
+    expect(await days(run.scenario.id, t.k1 as Ticket)).toEqual(['2027-03-08', '2027-03-14']);
+    const capacity = await call('owner', {
+      method: 'GET',
+      url: `/api/v1/plans/${plans.Closed}/capacity?scenario=${run.scenario.id}&from=${FROM}&periods=3`,
+    });
+    const team = (capacity.teams as { cells: { load: number; over: boolean }[] }[])[0];
+    expect(team?.cells.map((c) => c.load)).toEqual([5, 10, 0]);
+    expect(team?.cells.some((c) => c.over)).toBe(false);
   });
 
   let priv = 0;
