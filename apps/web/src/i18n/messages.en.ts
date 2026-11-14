@@ -5096,6 +5096,8 @@ export const messagesEn = {
     'Delete the dashboard {name}? Whoever it is shared with loses it too, and this cannot be undone.',
   'dashboards.deleteOf': 'Delete {name}',
   'dashboards.deleteFailed': 'The dashboard could not be deleted. Try again in a moment.',
+  'dashboards.deleteDefault':
+    'Everyone’s home dashboard cannot be deleted. Make another dashboard everyone’s home first.',
   'dashboards.saved': 'Saved.',
   'dashboards.conflict': 'Someone changed this dashboard meanwhile. Reload it and try again.',
   'dashboards.invalid': 'A widget’s settings cannot be saved. Check them and try again.',

@@ -208,7 +208,14 @@ export function DashboardPage({
     try {
       await client.remove(dashboard.id);
     } catch (error) {
-      setProblem(t('dashboards.deleteFailed'));
+      // Everyone's home dashboard stays until another one takes its place: trying again cannot help.
+      setProblem(
+        t(
+          error instanceof ApiError && error.code === 'is_default'
+            ? 'dashboards.deleteDefault'
+            : 'dashboards.deleteFailed',
+        ),
+      );
       throw error;
     }
     navigate('#/dashboards');
@@ -340,12 +347,16 @@ export function DashboardPage({
           >
             {t('dashboards.cancel')}
           </button>
-          <DangerAction
-            label={t('dashboards.delete')}
-            outcome={t('dashboards.confirmDelete', { name: dashboard.name })}
-            confirmLabel={t('dashboards.deleteOf', { name: dashboard.name })}
-            onConfirm={remove}
-          />
+          {dashboard.isDefault ? (
+            <p className="report-note">{t('dashboards.deleteDefault')}</p>
+          ) : (
+            <DangerAction
+              label={t('dashboards.delete')}
+              outcome={t('dashboards.confirmDelete', { name: dashboard.name })}
+              confirmLabel={t('dashboards.deleteOf', { name: dashboard.name })}
+              onConfirm={remove}
+            />
+          )}
         </div>
       )}
       {status && (

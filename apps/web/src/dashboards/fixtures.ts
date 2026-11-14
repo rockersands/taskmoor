@@ -1,3 +1,4 @@
+import { ApiError } from '../api/client';
 import type {
   Dashboard,
   DashboardClient,
@@ -384,6 +385,10 @@ export function fakeDashboardClient(
       return made;
     },
     remove: async (id) => {
+      // As the server: everyone's home dashboard is not deleted (409 is_default).
+      if (client.dashboards.some((d) => d.id === id && d.isDefault)) {
+        throw new ApiError(409, { error: 'is_default' });
+      }
       client.dashboards = client.dashboards.filter((d) => d.id !== id);
     },
     setDefault: async (id) => {

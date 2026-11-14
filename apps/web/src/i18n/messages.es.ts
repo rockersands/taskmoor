@@ -5217,6 +5217,8 @@ export const messagesEs: Record<MessageId, string> = {
     '¿Eliminar el panel {name}? Quien lo tenga compartido también lo pierde, y no se puede deshacer.',
   'dashboards.deleteOf': 'Eliminar {name}',
   'dashboards.deleteFailed': 'No se pudo eliminar el panel. Inténtalo de nuevo en un momento.',
+  'dashboards.deleteDefault':
+    'El panel de inicio de todos no se puede eliminar. Haz primero de otro panel el inicio de todos.',
   'dashboards.saved': 'Guardado.',
   'dashboards.conflict':
     'Alguien cambió este panel mientras tanto. Recárgalo e inténtalo de nuevo.',
