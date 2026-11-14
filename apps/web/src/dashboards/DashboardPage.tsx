@@ -306,7 +306,12 @@ export function DashboardPage({
                   className="button-secondary"
                   onClick={() => void makeDefault()}
                 >
-                  {t('dashboards.makeDefault')}
+                  {/* Beside 'Who sees it: Only me' it says it shares the dashboard too. */}
+                  {t(
+                    dashboard.editable && visibility === 'private'
+                      ? 'dashboards.makeDefaultAndShare'
+                      : 'dashboards.makeDefault',
+                  )}
                 </button>
               )}
               {dashboard.editable && (

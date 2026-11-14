@@ -5178,6 +5178,8 @@ export const messagesEn = {
   'dashboards.fullScreen': 'Full screen',
   'dashboards.leaveWallboard': 'Leave the wallboard',
   'dashboards.makeDefault': 'Make it everyone’s home',
+  // Beside 'Who sees it: Only me' the button says it shares the dashboard too (T-359).
+  'dashboards.makeDefaultAndShare': 'Share it and make it everyone’s home',
   'dashboards.madeDefault': 'It is everyone’s home dashboard now.',
   'dashboards.madeDefaultShared':
     'It is everyone’s home dashboard now, so everyone signed in sees it.',

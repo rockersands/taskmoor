@@ -5303,6 +5303,7 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.fullScreen': 'Pantalla completa',
   'dashboards.leaveWallboard': 'Salir de la pantalla mural',
   'dashboards.makeDefault': 'Hacerlo el inicio de todos',
+  'dashboards.makeDefaultAndShare': 'Compartirlo y hacerlo el inicio de todos',
   'dashboards.madeDefault': 'Ahora es el panel de inicio de todos.',
   'dashboards.madeDefaultShared':
     'Ahora es el panel de inicio de todos, así que lo ven todos los que iniciaron sesión.',
