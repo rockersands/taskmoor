@@ -344,6 +344,42 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByText('This value was refused.')).toBeNull();
   });
 
+  it('[CORE-015] [CORE-013] [CORE-010] says so when an area or a custom release is not the track’s own (T-282)', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'area', required: false, description: null },
+      { key: 'cf[33]', required: false, description: null },
+    ]);
+    form.customFields = [
+      { id: 33, name: 'Fixed in', description: '', type: 'release', multiple: false },
+    ];
+    openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'GET /tracks/1/releases': () => jsonResponse(200, { releases: [{ id: 5, name: 'Spring' }] }),
+      'GET /tracks/1/areas': () => jsonResponse(200, { areas: [{ id: 7, name: 'Checkout' }] }),
+      // Both moved to another track after the form loaded: the create route refuses them.
+      'POST /tickets': () =>
+        jsonResponse(400, {
+          error: 'invalid_fields',
+          fields: { areaIds: 'not_in_track', 'fields.33': 'not_in_track' },
+        }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Card declined');
+    const areas = await screen.findByRole('group', { name: 'Areas' });
+    await user.click(await within(areas).findByRole('checkbox', { name: 'Checkout' }));
+    const release = screen.getByRole('combobox', { name: 'Fixed in' });
+    await within(release).findByRole('option', { name: 'Spring' });
+    await user.selectOptions(release, 'Spring');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    const words = 'This track does not offer this choice. Choose one of its own.';
+    expect(await screen.findAllByText(words)).toHaveLength(2);
+    expect(screen.getByRole('group', { name: 'Areas' })).toHaveAccessibleDescription(words);
+    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveAccessibleDescription(words);
+    expect(screen.queryByText('This value was refused.')).toBeNull();
+  });
+
   it('[CORE-008] [CORE-010] [CORE-006] keeps focus on the pickers as people and the parent are taken and removed', async () => {
     const user = userEvent.setup();
     const form = withFields(CHORE_FORM, [
@@ -463,7 +499,7 @@ describe('the create form (M1-012)', () => {
             { id: 42, name: 'Ops leads' },
           ],
         }),
-      'GET /teams?query=pay': () =>
+      'GET /teams?query=pay&limit=8': () =>
         jsonResponse(200, {
           teams: [{ id: 51, name: 'Payments', description: '', lead: null, memberCount: 3 }],
         }),
@@ -504,9 +540,10 @@ describe('the create form (M1-012)', () => {
     expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
     const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
     expect(sent?.body).toMatchObject({ fields: { 31: [42, 41], 32: 51, 33: 5, 34: [8] } });
-    // The site's teams are never all loaded at once: only those whose name holds the text.
+    // The site's teams are never all loaded at once: only the first eight whose name holds the
+    // text, which the server picks (T-282).
     expect(calls.filter((c) => c.path.startsWith('/teams')).map((c) => c.path)).toEqual([
-      '/teams?query=pay',
+      '/teams?query=pay&limit=8',
     ]);
   });
 

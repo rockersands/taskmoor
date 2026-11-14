@@ -3,6 +3,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import type { FieldCatalogs } from '../fields/catalog';
+import { historyFieldOf } from '../fields/values';
 import { commentText, onceAudience, readsComment } from '../tickets/comments';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
 
@@ -19,7 +21,9 @@ import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
  *
  * Only what the reader may see: comment entries of comments they may not read are left out (a
  * readable one carries a short excerpt), as in the ticket history. Rich text values are not
- * repeated (the entry says the description changed). `limit` counts history rows; a change set
+ * repeated (the entry says the description changed). A custom field's change says the field's
+ * name and how its values read, as the ticket history does (T-277, T-282): the name only while
+ * the field applies to the ticket where it is now, so the reader sees the field on it. `limit` counts history rows; a change set
  * is never split across pages, so a page can hold a few more rows.
  */
 const MAX_INT = 2_147_483_647;
@@ -61,11 +65,12 @@ interface ChangeRow {
   ticket_key: string;
   summary: string;
   track_id: number;
+  ticket_type_id: number;
 }
 
 const COLUMNS = sql`c.id::text AS id, c.ticket_id, c.change_set::text AS change_set, c.at,
   c.actor_id, u.name AS actor_name, c.field, c.from_value, c.to_value, c.from_display,
-  c.to_display, c.transition_id, t.key || '-' || k.number AS ticket_key, k.summary, k.track_id`;
+  c.to_display, c.transition_id, t.key || '-' || k.number AS ticket_key, k.summary, k.track_id, k.ticket_type_id`;
 
 function kindFilter(kind: (typeof KINDS)[number]): RawBuilder<boolean> {
   switch (kind) {
@@ -80,7 +85,11 @@ function kindFilter(kind: (typeof KINDS)[number]): RawBuilder<boolean> {
   }
 }
 
-export function registerActivityRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export function registerActivityRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+): void {
   /**
    * Turns history rows (newest first) into entries, leaving out rows of comments the reader may
    * not read, and quoting the readable ones.
@@ -137,6 +146,10 @@ export function registerActivityRoutes(app: FastifyInstance, db: Kysely<Database
         readable.set(id, comment.deleted_at ? null : commentText(comment.body as JsonValue, 280));
       }
     }
+    // A custom field's change names the field and says how its values read (T-282).
+    const catalog = rows.some((r) => r.field.startsWith('cf['))
+      ? await catalogs.get(request.workspaceId)
+      : null;
     const out: {
       changeSet: string;
       at: string;
@@ -146,6 +159,8 @@ export function registerActivityRoutes(app: FastifyInstance, db: Kysely<Database
       comment: { id: number; excerpt: string | null } | null;
       changes: {
         field: string;
+        fieldName?: string | null;
+        valueType?: 'date' | 'datetime' | null;
         from: { value: string | null; display: string | null };
         to: { value: string | null; display: string | null };
       }[];
@@ -160,6 +175,13 @@ export function registerActivityRoutes(app: FastifyInstance, db: Kysely<Database
       const rich = RICH_TEXT.has(row.field);
       const change = {
         field: row.field,
+        ...(catalog
+          ? historyFieldOf(
+              catalog,
+              { trackId: row.track_id, ticketTypeId: row.ticket_type_id },
+              row.field,
+            )
+          : null),
         from: { value: rich ? null : row.from_value, display: rich ? null : row.from_display },
         to: { value: rich ? null : row.to_value, display: rich ? null : row.to_display },
       };

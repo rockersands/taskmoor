@@ -668,4 +668,63 @@ describe('inbox, mentions and activity (M1-058)', () => {
     expect(sets.every((s: bigint, i: number) => i === 0 || s <= sets[i - 1])).toBe(true);
     expect((await get('dave', `/api/v1/tracks/${trackId}/activity`)).statusCode).toBe(404);
   });
+
+  it("[CORE-022] names a custom field's change in both activity streams and says how its values read (T-282)", async () => {
+    const made: Record<string, { id: number; contexts: { id: number }[] }> = {};
+    for (const [name, type] of [
+      ['Go-live day', 'date'],
+      ['Cut-over', 'datetime'],
+      ['Rollout note', 'text'],
+      ['Audit day', 'date'],
+    ] as const) {
+      const res = await post('admin', '/api/v1/fields', { name, type });
+      expect(res.statusCode, res.body).toBe(201);
+      made[name] = res.json().field;
+    }
+    const f = (name: string) => made[name] as { id: number; contexts: { id: number }[] };
+    const t = await ticket('alice', {
+      summary: 'Custom values',
+      fields: {
+        [f('Go-live day').id]: '2026-10-13',
+        [f('Cut-over').id]: '2026-10-13T09:00:00Z',
+        [f('Rollout note').id]: 'Soon',
+        [f('Audit day').id]: '2026-11-01',
+      },
+    });
+    // Audit day stops applying to the ticket's track: its rows keep how they read, not the name.
+    const narrowed = await patch(
+      'admin',
+      `/api/v1/fields/${f('Audit day').id}/contexts/${f('Audit day').contexts[0]?.id}`,
+      { trackIds: [otherTrackId] },
+    );
+    expect(narrowed.statusCode, narrowed.body).toBe(200);
+    type Change = { field: string; fieldName?: string | null; valueType?: string | null };
+    const changesOf = (body: {
+      activity: { ticket: { id: number }; changes: Change[] }[];
+    }): Change[] => body.activity.filter((a) => a.ticket.id === t.id).flatMap((a) => a.changes);
+    for (const url of [
+      `/api/v1/tickets/${t.id}/activity`,
+      `/api/v1/tracks/${trackId}/activity?limit=200`,
+    ]) {
+      const res = await get('bob', url);
+      expect(res.statusCode, res.body).toBe(200);
+      const changes = changesOf(res.json());
+      const row = (name: string) => changes.find((c) => c.field === `cf[${f(name).id}]`);
+      expect(row('Go-live day'), url).toMatchObject({
+        fieldName: 'Go-live day',
+        valueType: 'date',
+      });
+      expect(row('Cut-over'), url).toMatchObject({ fieldName: 'Cut-over', valueType: 'datetime' });
+      expect(row('Rollout note'), url).toMatchObject({
+        fieldName: 'Rollout note',
+        valueType: null,
+      });
+      expect(row('Audit day'), url).toMatchObject({ fieldName: null, valueType: 'date' });
+      // A system field's change carries neither.
+      const summary = changes.find((c) => c.field === 'summary');
+      expect(summary, url).toBeDefined();
+      expect(summary).not.toHaveProperty('fieldName');
+      expect(summary).not.toHaveProperty('valueType');
+    }
+  });
 });

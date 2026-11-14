@@ -1,4 +1,4 @@
-import { knownTimeZone } from '@taskmoor/query';
+import { knownTimeZone, localDate } from '@taskmoor/query';
 import type { FastifyRequest } from 'fastify';
 
 /**
@@ -24,3 +24,14 @@ export function viewerTimeZone(request: FastifyRequest, asked?: string | null): 
   if (usable(own)) return own;
   return 'UTC';
 }
+
+/**
+ * Today as the viewer's own screens say it (T-282): the calendar day now in `viewerTimeZone`,
+ * for what turns on whether a day has come (a release overdue, the day a release ships on).
+ */
+export function viewerDay(request: FastifyRequest, asked?: string | null): string {
+  return localDate(new Date(), viewerTimeZone(request, asked));
+}
+
+/** Today in UTC, for callers with no viewer. */
+export const utcDay = (): string => new Date().toISOString().slice(0, 10);

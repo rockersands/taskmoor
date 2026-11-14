@@ -2873,6 +2873,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.wrongLevel': 'Un ticket de este tipo no puede ir debajo de ese ticket.',
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
   'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
+  'tickets.error.notInTrack': 'Este track no ofrece esta opción. Elige una de las suyas.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',

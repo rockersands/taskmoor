@@ -506,7 +506,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerNotificationRoutes(app, db);
     // The in-app inbox and activity streams (M1-058).
     registerInboxRoutes(app, db);
-    registerActivityRoutes(app, db);
+    registerActivityRoutes(app, db, fieldCatalogs);
     await registerEmailRoutes(app, db, {
       smtpConfigured: deps.smtpConfigured ?? false,
       ...(deps.smtpPassword ? { smtpPassword: deps.smtpPassword } : {}),

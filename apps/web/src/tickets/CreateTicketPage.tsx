@@ -155,10 +155,13 @@ export const createClient: CreateClient = {
         `/fields/${fieldId}/groups?q=${encodeURIComponent(typed)}&limit=8`,
       )
     ).groups.map((g) => ({ id: g.id, name: g.name })),
+  // The server keeps to the limit (T-282), as the people and group searches do.
   teams: async (typed) =>
-    (await api<{ teams: NamedChoice[] }>(`/teams?query=${encodeURIComponent(typed)}`)).teams
-      .slice(0, PICKER_LIMIT)
-      .map((t) => ({ id: t.id, name: t.name })),
+    (
+      await api<{ teams: NamedChoice[] }>(
+        `/teams?query=${encodeURIComponent(typed)}&limit=${PICKER_LIMIT}`,
+      )
+    ).teams.map((t) => ({ id: t.id, name: t.name })),
   template: async (key) =>
     templateOf(
       (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,
