@@ -64,6 +64,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-276, T-277, T-281 | Mac | merged | 2026-11-14 | Done: `main` `4155d809` |
 | T-282 | Mac | merged | 2026-11-14 | Done: `main` `34a7bb37` |
 | The wave 8 phone tickets' open parts: T-222, T-226, T-228, T-229, T-231 (T-164) | Mac | merged | 2026-11-14 | Done: `main` `77c00547` |
+| T-287 (the Mac's parts: templates, refusals elsewhere, the sweep's probe), T-289 (outside Plans), T-290 | Mac | `wave21m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
