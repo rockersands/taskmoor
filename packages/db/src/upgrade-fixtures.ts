@@ -1784,7 +1784,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
-  '0115_program_boards': {
+  '0108_program_boards': {
     tables: {
       program_board: `name = 'Seed program board' AND periods = 4 AND from_day = DATE '2026-11-02'
         AND team_field_id = (SELECT id FROM field WHERE name = 'Seed board team')`,

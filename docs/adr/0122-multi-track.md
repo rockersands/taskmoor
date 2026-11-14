@@ -973,7 +973,7 @@ holds no tickets, and moving a card is the ticket's own change.
 
 #### Dependency options (PLN-013)
 
-- **Stored on the plan** (migration 0115): `plan_dependency_type` (`plan_id`, `link_type_id`, both
+- **Stored on the plan** (migration 0108): `plan_dependency_type` (`plan_id`, `link_type_id`, both
   cascading on delete; at most 20 a plan) and `plan.flag_same_sprint` (false by default).
 - **Other link types as dependencies:** a chosen type counts beside blocking links, everywhere a
   plan shows dependencies: the Timeline's lines, badges and list (stage 2), its file and image (stage
@@ -999,7 +999,7 @@ holds no tickets, and moving a card is the ticket's own change.
   (`apps/server/src/plans/dependencies.ts`), and one decides their state on the page
   (`dependenciesOf`), so the two cannot disagree.
 
-#### What is stored (migration 0115)
+#### What is stored (migration 0108)
 
 - `program_board`: `workspace_id`, `plan_id` (cascading), `name` (1 to 255), `team_field_id` (a
   field, set to null when it is deleted), `from_day` (any day; the first period is the one holding
@@ -1148,7 +1148,7 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
   not chosen; `always_counted`; the direction; hidden and outside blockers still only counted; (2)
   `sameSprint` with the flag and never without it; a closed sprint marks nothing.
 - `plans.large.test.ts`: the board's budget. `scopes.test.ts`, `[IAM-007]`: each route's class.
-  `contract.test.ts`, `[AUT-010]`: a scenario per mutating route. An upgrade fixture for 0115.
+  `contract.test.ts`, `[AUT-010]`: a scenario per mutating route. An upgrade fixture for 0108.
 - Web: `ProgramBoardPage.test.tsx` (the table, the Move dialog's request, the conflict and refusal
   words, reading again when the local copy moves, the phone's team picker with
   `setViewportWidth()`), `ProgramBoardsPage.test.tsx`, `PlanDependencies.test.tsx` and
