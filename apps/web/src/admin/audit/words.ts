@@ -205,13 +205,21 @@ export function auditActionWords(t: Translate, action: string): string {
   });
 }
 
-/** What a record is about: "Track 4", or the bare type and id when the type has no words. */
-export function auditSubjectText(t: Translate, subject: { type: string; id: string | null }) {
+/**
+ * What a record is about: 'Track “Shop”' by its name when the server gives one (AD-2), 'Track 4'
+ * by its id otherwise, or the bare type and id when the type has no words.
+ */
+export function auditSubjectText(
+  t: Translate,
+  subject: { type: string; id: string | null; name?: string },
+) {
   const words = auditSubjectWords(t, subject.type);
+  const shown = subject.name ?? subject.id;
   if (words === null) {
-    return t('common.value', {
-      value: subject.id ? `${subject.type} ${subject.id}` : subject.type,
-    });
+    return t('common.value', { value: shown ? `${subject.type} ${shown}` : subject.type });
+  }
+  if (subject.name !== undefined) {
+    return t('admin.audit.subjectNamed', { subject: words, name: subject.name });
   }
   return subject.id ? t('admin.audit.subjectId', { subject: words, id: subject.id }) : words;
 }

@@ -2,10 +2,17 @@ import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
 import { CSV_CONTENT_TYPE, csvLine as csvRecord, withBom } from '@taskmoor/webconfig';
 import type { FastifyInstance } from 'fastify';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { appendAudit, verifyChain } from '../audit/chain';
-import { type AuditFilter, CSV_COLUMNS, csvLine, exportAudit, searchAudit } from '../audit/query';
+import {
+  type AuditFilter,
+  type AuditView,
+  CSV_COLUMNS,
+  csvLine,
+  exportAudit,
+  searchAudit,
+} from '../audit/query';
 import { AUDIT_ACTIONS } from '../audit/record';
 import { MAX_RETENTION_MONTHS, RETENTION_SETTING, retentionMonths } from '../audit/retention';
 import { latestSeq, type SyslogTarget, sendSyslog, syslogMessage } from '../audit/syslog';
@@ -48,6 +55,73 @@ const settingsBody = z
   .strict();
 
 type FilterQuery = z.infer<typeof filterQuery>;
+
+/**
+ * The tables that name a record's subject, by its type (AD-2): each has an id, the workspace and
+ * a name. A subject of another type keeps its id alone.
+ */
+const NAMED_SUBJECTS = {
+  track: 'track',
+  user: 'app_user',
+  group: 'user_group',
+  team: 'team',
+  workflow: 'workflow',
+  status: 'status',
+  board: 'board',
+  dashboard: 'dashboard',
+  release: 'release',
+  field: 'field',
+  role: 'role',
+  access_policy: 'access_policy',
+  ticket_template: 'ticket_template',
+  layout_set: 'layout_set',
+  field_rule_set: 'field_rule_set',
+} as const satisfies Record<string, keyof Database>;
+
+type NamedSubject = keyof typeof NAMED_SUBJECTS;
+const isNamed = (type: string): type is NamedSubject => Object.hasOwn(NAMED_SUBJECTS, type);
+
+/**
+ * The records with their subject's name as it is now, read in one query per type (AD-2): 'Track
+ * Shop' rather than 'Track 1'. An erased person is not named, nor is a subject since deleted.
+ * The stored records are unchanged.
+ */
+async function withSubjectNames(
+  db: Kysely<Database>,
+  workspaceId: number,
+  records: AuditView[],
+): Promise<(AuditView & { subject: { name?: string } | null })[]> {
+  const wanted = new Map<NamedSubject, Set<number>>();
+  for (const record of records) {
+    const subject = record.subject;
+    if (!subject?.id || !isNamed(subject.type) || !/^[0-9]{1,9}$/.test(subject.id)) continue;
+    const ids = wanted.get(subject.type) ?? new Set<number>();
+    ids.add(Number(subject.id));
+    wanted.set(subject.type, ids);
+  }
+  const names = new Map<string, string>();
+  for (const [type, ids] of wanted) {
+    // Every table here has the same id, workspace and name columns as track.
+    const table = NAMED_SUBJECTS[type] as 'track';
+    let query = db
+      .selectFrom(table)
+      .select(['id', 'name'])
+      .where('workspace_id', '=', workspaceId)
+      .where('id', 'in', [...ids]);
+    if (type === 'user') {
+      query = query.where(sql<boolean>`erased_at IS NULL`);
+    }
+    for (const row of await query.execute()) names.set(`${type}:${row.id}`, row.name);
+  }
+  return records.map((record) => {
+    const name = record.subject
+      ? names.get(`${record.subject.type}:${record.subject.id}`)
+      : undefined;
+    return name === undefined || !record.subject
+      ? record
+      : { ...record, subject: { ...record.subject, name } };
+  });
+}
 
 function toFilter(query: FilterQuery): AuditFilter {
   const filter: AuditFilter = {};
@@ -108,10 +182,11 @@ export function registerAuditRoutes(
     const parsed = searchQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const { cursor, limit, ...rest } = parsed.data;
-    return searchAudit(db, request.workspaceId, toFilter(rest), {
+    const found = await searchAudit(db, request.workspaceId, toFilter(rest), {
       limit,
       ...(cursor ? { before: Number(cursor) } : {}),
     });
+    return { ...found, records: await withSubjectNames(db, request.workspaceId, found.records) };
   });
 
   app.get('/api/v1/audit/export', async (request, reply) => {

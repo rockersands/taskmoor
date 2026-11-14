@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { NotFoundContext } from '../shell/NotFoundPage';
 import { useMediaQuery } from '../shell/useMediaQuery';
 import { useAdminAccess } from './access';
 import { ADMIN_HOME, type AdminGroup, adminGroupHref, adminPlace, groupsFor } from './sections';
@@ -51,12 +52,29 @@ export function AdminLayout({ hash, children }: { hash: string; children: ReactN
   const narrow = useMediaQuery(NARROW);
   const [trail, setTrailState] = useState<readonly AdminCrumb[] | null>(null);
   const setTrail = useCallback((next: readonly AdminCrumb[] | null) => setTrailState(next), []);
+  // A not-found page inside Administration, such as a workflow that does not exist, marks no
+  // section (D4, PL-43): the app's own navigation marks nothing, so neither does this list.
+  const tellFrame = useContext(NotFoundContext);
+  const [notFoundAt, setNotFoundAt] = useState<string | null>(null);
+  const tellNotFound = useCallback(
+    (route: string | null) => {
+      setNotFoundAt(route);
+      tellFrame?.(route);
+    },
+    [tellFrame],
+  );
   if (!access || access === 'none') return <>{children}</>;
+  const lost = notFoundAt !== null && notFoundAt === hash;
   const overview = hash === ADMIN_HOME || hash.startsWith(`${ADMIN_HOME}?`);
   // Which groups are open starts again on each group: what a person opened by hand stays open
   // while they stay within the group.
   const nav = (
-    <AdminNav key={adminPlace(hash)?.group.id ?? 'overview'} hash={hash} overview={overview} />
+    <AdminNav
+      key={adminPlace(hash)?.group.id ?? 'overview'}
+      hash={hash}
+      overview={overview}
+      lost={lost}
+    />
   );
   // On a phone the list of pages is one bar at the top of every page, the overview too, with a
   // chevron saying it opens (D21). On a wide screen it stays beside the page while it scrolls.
@@ -70,18 +88,29 @@ export function AdminLayout({ hash, children }: { hash: string; children: ReactN
   );
   return (
     <TrailContext.Provider value={setTrail}>
-      <div className="admin-section">
-        {side}
-        <div className="admin-section-main">
-          {!overview && <AdminBreadcrumb hash={hash} trail={trail} />}
-          {children}
+      <NotFoundContext.Provider value={tellNotFound}>
+        <div className="admin-section">
+          {side}
+          <div className="admin-section-main">
+            {!overview && <AdminBreadcrumb hash={hash} trail={trail} />}
+            {children}
+          </div>
         </div>
-      </div>
+      </NotFoundContext.Provider>
     </TrailContext.Provider>
   );
 }
 
-function AdminNav({ hash, overview }: { hash: string; overview: boolean }) {
+function AdminNav({
+  hash,
+  overview,
+  lost,
+}: {
+  hash: string;
+  overview: boolean;
+  /** The page at this address is a not-found page: nothing is marked current. */
+  lost: boolean;
+}) {
   const t = useT();
   const access = useAdminAccess();
   const place = adminPlace(hash);
@@ -117,8 +146,10 @@ function AdminNav({ hash, overview }: { hash: string; overview: boolean }) {
           group={group}
           open={opened.has(group.id)}
           onToggle={() => toggle(group.id)}
-          groupCurrent={place !== null && place.page === null && place.group.id === group.id}
-          currentPage={place?.page?.id ?? null}
+          groupCurrent={
+            !lost && place !== null && place.page === null && place.group.id === group.id
+          }
+          currentPage={lost ? null : (place?.page?.id ?? null)}
         />
       ))}
     </nav>

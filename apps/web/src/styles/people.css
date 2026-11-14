@@ -257,10 +257,18 @@
   margin-top: var(--space-1);
 }
 
+/* One column of limits: each field is as wide as the others, whatever its label's length, so
+   every input starts at the same x and has the same width. */
 .guardrails-form {
   display: grid;
   gap: var(--space-1);
   margin: 0;
+}
+
+.people-item > .guardrails-form {
+  flex: 0 0 14rem;
+  width: 14rem;
+  max-width: 100%;
 }
 
 .guardrails-limits {

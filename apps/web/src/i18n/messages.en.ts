@@ -1506,6 +1506,7 @@ export const messagesEn = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject} {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} “{name}”',
   'admin.audit.entryAbout': 'About: {subject}',
   'admin.audit.entryFrom': 'From {address}',
   'admin.audit.subject.access': 'Access',

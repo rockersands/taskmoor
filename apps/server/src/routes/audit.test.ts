@@ -216,10 +216,54 @@ describe('audit log API (M1-003, IAM-013)', () => {
       ip: '198.51.100.88',
       sourceEventId: String(event.id),
     });
+    // The subject is named as it is now, not only by its id (AD-2).
+    expect(records[0]?.subject).toEqual({ type: 'group', id: String(groupId), name: 'Auditors' });
     // The sign-ins of the setup became records too.
     const signIns = (await search(`action=session.started&actor=${ids.admin}`)).records;
     expect(signIns).toHaveLength(1);
     expect(signIns[0]?.details).toMatchObject({ method: 'password' });
+  });
+
+  it('[IAM-013] names a track and a person a record is about, but never an erased person (AD-2)', async () => {
+    const policy = await database.db
+      .selectFrom('access_policy')
+      .select('id')
+      .where('workspace_id', '=', 1)
+      .executeTakeFirstOrThrow();
+    const track = await database.db
+      .insertInto('track')
+      .values({ workspace_id: 1, key: 'NAMED', name: 'Named track', access_policy_id: policy.id })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const gone = await createUser('gone@example.com');
+    await database.db
+      .updateTable('app_user')
+      .set({ erased_at: new Date() })
+      .where('id', '=', gone)
+      .execute();
+    await appendAudit(database.db, [
+      {
+        workspaceId: 1,
+        actorId: null,
+        action: 'test.named',
+        subjectType: 'track',
+        subjectId: track.id,
+      },
+      {
+        workspaceId: 1,
+        actorId: null,
+        action: 'test.named',
+        subjectType: 'user',
+        subjectId: ids.target ?? 0,
+      },
+      { workspaceId: 1, actorId: null, action: 'test.named', subjectType: 'user', subjectId: gone },
+    ]);
+    const { records } = await search('action=test.named');
+    expect(records.map((r) => r.subject)).toEqual([
+      { type: 'user', id: String(gone) },
+      { type: 'user', id: String(ids.target), name: 'target' },
+      { type: 'track', id: String(track.id), name: 'Named track' },
+    ]);
   });
 
   it('[IAM-013] searches by action, actor, subject and time, newest first, a page at a time', async () => {

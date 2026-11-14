@@ -1550,6 +1550,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.audit.system': 'Taskmoor',
   'admin.audit.actionWords': '{subject}: {verb}',
   'admin.audit.subjectId': '{subject} {id}',
+  'admin.audit.subjectNamed': '{subject} «{name}»',
   'admin.audit.entryAbout': 'Sobre: {subject}',
   'admin.audit.entryFrom': 'Desde {address}',
   'admin.audit.subject.access': 'Acceso',
