@@ -949,6 +949,66 @@ describe('plan structures and the Grid (PLN-010)', () => {
     ).toEqual([]);
   });
 
+  it('[PLN-010] groups by a custom field only where its context covers the ticket', async () => {
+    const team = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/fields',
+          payload: {
+            name: 'Grid team',
+            type: 'select',
+            context: { options: [{ value: 'Blue' }, { value: 'Red' }] },
+          },
+        },
+        201,
+      )
+    ).field.id as number;
+    const blue = (
+      await database.db
+        .selectFrom('field_option')
+        .select('id')
+        .where('field_id', '=', team)
+        .where('value', '=', 'Blue')
+        .executeTakeFirstOrThrow()
+    ).id;
+    for (const x of [t.o1, t.a3]) {
+      const { version } = (await call('admin', { method: 'GET', url: `/api/v1/tickets/${x.key}` }))
+        .ticket;
+      await call('admin', {
+        method: 'PATCH',
+        url: `/api/v1/tickets/${x.key}`,
+        payload: { fields: { [team]: blue }, version },
+      });
+    }
+    const s = await save('admin', 'By team', {
+      steps: [{ kind: 'insert' }, { kind: 'group', field: `cf[${team}]` }],
+      columns: [],
+    });
+    const before = await rows('ana', s.id);
+    expect(before.rows.parent[row(before, t.a3)]).toBe(before.groups[0]?.row);
+    expect(before.groups[0]?.label).toBe('Blue');
+    // The field narrowed to Outcomes: A3, a Feature, keeps its stored option but has no value.
+    const context = (
+      await database.db
+        .selectFrom('field_context')
+        .select('id')
+        .where('field_id', '=', team)
+        .executeTakeFirstOrThrow()
+    ).id;
+    await call('admin', {
+      method: 'PATCH',
+      url: `/api/v1/fields/${team}/contexts/${context}`,
+      payload: { ticketTypeIds: [outcome] },
+    });
+    const after = await rows('ana', s.id);
+    const group = (r: number) => after.groups.find((g) => g.row === after.rows.parent[r]);
+    expect(group(row(after, t.o1))?.label).toBe('Blue');
+    expect(group(row(after, t.a3))).toMatchObject({ value: null, label: null });
+    await call('admin', { method: 'DELETE', url: `${plan()}/structures/${s.id}?version=1` }, 204);
+  });
+
   it('[PLN-010] counts the tickets a links step adds against the row limit, not its link pairs', async () => {
     const linked = await trackPlan('Linked', ['GRL']);
     const template = await ticket('GRL', 'Linked');

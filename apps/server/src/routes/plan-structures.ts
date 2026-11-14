@@ -829,11 +829,19 @@ async function readSkeleton(trx: Trx, input: SkeletonInput) {
     if (step.kind !== 'group' || inserted.length === 0) continue;
     const axis = parseAxis(step.field, input.scope);
     if (typeof axis === 'string') continue;
+    // A custom field's value counts only where its context covers the ticket's track and type,
+    // as in the cells and the totals; a value kept from a wider context is "No value".
     const values = (
-      await sql<{ id: number; v: string | null }>`
-        SELECT k.id, (${axisValues(axis)})[1] AS v FROM ticket k
+      await sql<{ id: number; v: string | null; track_id: number; ticket_type_id: number }>`
+        SELECT k.id, (${axisValues(axis)})[1] AS v, k.track_id, k.ticket_type_id FROM ticket k
          WHERE k.id = ANY(${inserted}::int[])`.execute(trx)
-    ).rows;
+    ).rows.map((r) =>
+      axis.kind === 'custom' &&
+      r.v !== null &&
+      !input.catalog.contextOf(axis.fieldId, r.track_id, r.ticket_type_id)
+        ? { ...r, v: null }
+        : r,
+    );
     const distinct = [...new Set(values.flatMap((r) => (r.v === null ? [] : [r.v])))];
     const named = await axisNames(trx, ws, axis, distinct);
     groups.push({
