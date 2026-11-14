@@ -104,7 +104,8 @@ recommendation of a plain button). A provider whose issuer is Google's (the same
 already uses for `prompt=select_account` and for believing Google only about Gmail and hosted domains)
 is marked `brand: "google"` in the public provider list and in discovery, and the sign-in page draws
 Google's button for it, as Google's sign-in branding guidelines describe: the four-colour "G" at the
-left, "Sign in with Google" in the person's language whatever name the operator gave the provider,
+left, "Sign in with Google" in the person's language whatever name the operator gave the provider
+(also as the form's submit button where a Google provider requires single sign-on for the domain),
 Google's light or dark look with the skin, 40 px high and the pill shape, and a finger's height on
 touch. Its colours are tokens of each skin (`--color-google-*`) and stay Google's. The "G" is an inline
 SVG written from Google's published four-colour geometry, not a file downloaded from Google; it is to

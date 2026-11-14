@@ -134,6 +134,27 @@ export const SingleSignOnEnforced: Story = {
   },
 };
 
+/** A Google Workspace domain that signs in only through Google: the form's one button is Google's (T-061). */
+const STAFF_GOOGLE = { id: 9, name: 'Staff Google', brand: 'google' as const };
+export const GoogleRequired: Story = {
+  args: {
+    ssoClient: fakeSignInSso([STAFF_GOOGLE], {
+      'example.com': { provider: STAFF_GOOGLE, password: false },
+    }),
+  },
+  decorators: anonymous,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText('Email'), 'ann@example.com');
+    await userEvent.tab();
+    const form = canvas.getByRole('form', { name: 'Sign in' });
+    const google = await within(form).findByRole('button', { name: 'Sign in with Google' });
+    await expect(google).toHaveAttribute('type', 'submit');
+    await expect(google).toHaveClass('google-sign-in');
+    await expect(canvas.queryByLabelText('Password')).toBeNull();
+  },
+};
+
 export const BreakGlass: Story = {
   args: { ssoClient: providers },
   decorators: anonymous,

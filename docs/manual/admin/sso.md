@@ -148,7 +148,10 @@ it: Google's four-colour "G" at the left and **Sign in with Google** in the pers
 person's skin: Google's light button (white, with a grey edge) in the light skin, Google's dark
 button in the dark skin. It keeps Google's colours and shape rather than Taskmoor's, is 40 pixels
 high, and a finger's height on a touch screen. For a Gmail address it takes the place of the
-highlighted button under the email field. Other providers keep Taskmoor's plain button.
+highlighted button under the email field. Where a Google provider has **Single sign-on required**
+(a Google Workspace domain, say), the form's one button, which the password field gives way to, is
+Google's button too, and pressing Enter in the email field leads there. Other providers keep
+Taskmoor's plain button.
 
 What decides it is the issuer, not the name: the button appears for an OpenID Connect provider
 whose **Issuer URL** is `https://accounts.google.com`, and the public provider list marks it with

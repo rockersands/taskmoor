@@ -12,10 +12,14 @@ import { SignInPage } from './SignInPage';
 const GOOGLE: SsoProviderSummary = { id: 8, name: 'Personal Gmail', brand: 'google' };
 const STAFF: SsoProviderSummary = { id: 1, name: 'Staff accounts' };
 
+/** A Google Workspace domain whose provider requires single sign-on (T-061 with IAM-004). */
+const STAFF_GOOGLE: SsoProviderSummary = { id: 9, name: 'Staff Google', brand: 'google' };
+
 function openSignIn(locale: 'en' | 'es' = 'en') {
   const went: string[] = [];
   const domains: Record<string, Discovery> = {
     'gmail.com': { provider: GOOGLE, password: true },
+    'example.com': { provider: STAFF_GOOGLE, password: false },
   };
   const client: SignInSsoClient = {
     providers: async () => [GOOGLE, STAFF],
@@ -97,6 +101,26 @@ describe("Google's sign-in button (T-061)", () => {
     expect(google).not.toHaveClass('sso-button-emphasis');
     await user.click(google);
     expect(went).toEqual(['/api/v1/auth/oidc/8/start?returnTo=%2F']);
+  });
+
+  it("[IAM-031] where the domain signs in only through Google, the form's one button is Google's", async () => {
+    const user = userEvent.setup();
+    const went = openSignIn();
+    await user.type(await screen.findByLabelText('Email'), 'ann@example.com');
+    await user.tab();
+    const form = screen.getByRole('form', { name: 'Sign in' });
+    expect(await within(form).findByText('This address signs in with Staff Google.')).toBeVisible();
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    // Google's look and words, not the accent button with the provider's name.
+    const google = within(form).getByRole('button', { name: 'Sign in with Google' });
+    expect(google).toHaveClass('google-sign-in');
+    expect(google).toHaveAttribute('type', 'submit');
+    expect(google.querySelector('svg')).not.toBeNull();
+    expect(within(form).queryByRole('button', { name: /Staff Google/ })).toBeNull();
+    expect(within(form).getAllByRole('button')).toHaveLength(1);
+    // Enter in the email field leads there too, as the form's submit.
+    await user.type(screen.getByLabelText('Email'), '{Enter}');
+    expect(went).toEqual(['/api/v1/auth/oidc/9/start?returnTo=%2F']);
   });
 
   it("[IAM-031] keeps Google's words in Spanish on the page", async () => {

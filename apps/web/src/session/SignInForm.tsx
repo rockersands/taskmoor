@@ -305,10 +305,15 @@ export function SignInForm({
             {t('auth.forgotPassword')}
           </p>
         )}
-        {/* One button: when the domain enforces single sign-on it leads there, so focus stays. */}
-        <button type="submit" className="button-primary" disabled={busy}>
-          {enforced ? t('auth.sso.signInWith', { name: enforced.name }) : t('auth.signIn')}
-        </button>
+        {/* One button: when the domain enforces single sign-on it leads there, so focus stays.
+            Through Google it is Google's own button (T-061), whatever the provider's name. */}
+        {enforced?.brand === 'google' ? (
+          <GoogleSignInButton type="submit" disabled={busy} />
+        ) : (
+          <button type="submit" className="button-primary" disabled={busy}>
+            {enforced ? t('auth.sso.signInWith', { name: enforced.name }) : t('auth.signIn')}
+          </button>
+        )}
       </form>
       {others.length > 0 && (
         <fieldset className="sso-options">
