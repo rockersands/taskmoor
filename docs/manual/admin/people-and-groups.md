@@ -152,7 +152,8 @@ The ZIP holds JSON files: the profile (with groups, teams, single sign-on links,
 second factors, API tokens by name, and sessions), settings and saved searches, the
 plans they own and their capacity in them, with its notes, the scenarios they made in plans, the
 draft changes they last changed (by plan, scenario and ticket id, with the field and its values),
-the baselines they captured (by plan, name, source and time, without their days), the releases
+the baselines they captured (by plan, name, source and time, without their days), the structures
+they made for plans' Grids (by plan, name and time, without their steps or columns), the releases
 across tracks they own, their groups of tracks and the groups shared with them
 (`track-groups.json`), the tickets the person reported, created or is assigned, their comments
 and time entries, the files they uploaded, and the audit records about them. `manifest.json` lists every file with its size and

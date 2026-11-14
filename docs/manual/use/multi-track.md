@@ -1,7 +1,7 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts, apps/web/src/plans/PlanBaselinesPage.tsx, apps/web/src/plans/BaselineCompare.tsx, apps/web/src/plans/baselineClient.ts, apps/web/src/plans/baselineExport.ts, apps/server/src/routes/plan-baselines.ts, apps/web/src/timeline/CriticalPathList.tsx, apps/web/src/timeline/critical.ts, apps/server/src/plans/criticalPath.ts, apps/server/src/plans/evenOut.ts
+sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts, apps/web/src/plans/PlanBaselinesPage.tsx, apps/web/src/plans/BaselineCompare.tsx, apps/web/src/plans/baselineClient.ts, apps/web/src/plans/baselineExport.ts, apps/server/src/routes/plan-baselines.ts, apps/web/src/timeline/CriticalPathList.tsx, apps/web/src/timeline/critical.ts, apps/server/src/plans/criticalPath.ts, apps/server/src/plans/evenOut.ts, apps/web/src/plans/PlanGridPage.tsx, apps/web/src/plans/StructureDialog.tsx, apps/web/src/plans/MoveUnderDialog.tsx, apps/web/src/plans/grid/client.ts, apps/web/src/plans/grid/compute.ts, apps/web/src/plans/grid/tree.ts, apps/web/src/plans/grid/rowWindow.ts, apps/web/src/plans/grid/words.ts, apps/web/src/styles/grid.css, apps/server/src/routes/plan-structures.ts, apps/server/src/plans/structures.ts, apps/server/src/plans/structureTree.ts, apps/server/src/routes/ticket-types.ts
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -9,7 +9,7 @@ attestation: own-words
 
 Plans bring the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
-shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
+shows them as a **Summary**, a **Timeline**, a **List**, a **Grid**, a **Calendar**, its teams'
 **Capacity**, its tracks' **Releases** and its **Program boards**, and holds **scenarios** of draft
 changes to try before they change anything and **baselines** of its days to compare with later.
 Open **Plans** in the sidebar, under **Plan and track**. The help mark beside a plan's name says
@@ -48,7 +48,7 @@ The **Plans** page lists **Your plans** and those **Shared with you**.
 ## The views
 
 Every view shows at most the first 10,000 tickets of the plan and says so when there are more:
-filter the plan to see the rest.
+filter the plan to see the rest. The Grid stops at 100,000 rows instead.
 
 On a wide screen, tabs that do not fit on one line, as can happen in Spanish, go on to a second
 line, so none is ever hidden. On a phone, the tab bar scrolls sideways and starts with the open
@@ -67,6 +67,8 @@ tab in view. Where more tabs wait past an edge of the bar, that edge fades out.
   page, as on search), sorted newest created first, by recent update, due date or priority. You
   edit cells in place, as in search results; on a phone each ticket is a stacked row of its key,
   summary, status, assignee and priority. It stops at 10,000 rows.
+- **Grid**: the plan's tickets as a tree, with their children and linked tickets below them and
+  columns that add up the rows below: see [The Grid](#the-grid).
 - **Calendar**: a month of the tickets on their due and start days. A day shows six tickets and a
   button for the rest. A sprint named after its track puts what tells it apart first and its
   track after, so "Mobile apps Sprint 2" reads **Sprint 2 · Mobile apps**.
@@ -661,6 +663,213 @@ A copy of a plan takes no baselines, and deleting a plan deletes them. The basel
 are in your data download by name, plan, source and time, without their days. Capturing, renaming
 and deleting one are kept in the audit log.
 
+## The Grid
+
+The **Grid** tab, after **List**, shows the plan's tickets as a tree, with columns that edit tickets
+in place and columns that add up the rows below each row. What it shows comes from a
+**structure**: a named recipe of **steps**, which decide the rows, and **columns**. A structure holds
+no tickets. Its rows are built for each person when they open it, from what that person may see,
+so two people can read different rows from the same structure.
+
+### Structures
+
+A plan with no saved structure shows the **Default structure**, unsaved: the plan's tickets with
+their children below them, and the columns key, summary, status and assignee, a count of the rows
+below and their progress.
+
+The plan's owner and site administrators, its editors, see **New structure…**, **Edit
+structure…** and **Delete structure**; on the default, **Save as a structure…** saves it under a
+name. Everyone else who sees the plan uses its structures as they are, and the page says that the
+plan's editors can save others.
+
+- **Structure** chooses among the saved ones, listed by name. The address keeps the choice, so a
+  copied link opens the same structure. Once a plan has a saved structure, the default is no
+  longer offered. If the structure a link names was deleted since, the page says so and shows the
+  plan's first.
+- A plan holds up to 20 structures. A name has 1 to 100 characters and is unique in the plan,
+  whatever its capitals.
+- **Delete structure** asks first, in the page, and deletes it for everyone who sees the plan; its
+  tickets stay as they are.
+- If someone changed a structure while you were editing it, saving says so and changes nothing:
+  close it and open it again.
+
+### Steps
+
+The dialog lists the steps in the order they apply, whatever order you pick them in:
+
+1. **Add tickets**: the plan's tickets, as the page's filters leave them. A query in the search
+   language, up to 2,000 characters, narrows them further; it never brings tickets from outside the
+   plan. Leave it empty to start from every ticket of the plan. A ticket whose parent is also added
+   sits under it. A query that does not read is refused on save. When it names something you may
+   not search, the structure adds nothing for you and says why, while the others who see the plan
+   still get their rows.
+2. **Group by** and **Then group by**: up to two fields, the second nesting inside the first.
+   They take track, assignee, status, type and priority, or a custom select, person, team or
+   release field that holds one value, so no ticket falls in two groups. Groups come in the order of
+   their names, **No value** last. A group row reads, for example, "Status: Active", with how many
+   rows it holds. Grouping applies to the top rows, and their rows below go with them.
+3. **Add children, down every level**: under each row, its children, then theirs, down to the
+   lowest level of the hierarchy, whether they are in the plan or not.
+4. **Add linked tickets**: up to two steps, each a link type and its direction (tickets this one
+   blocks, say, or tickets that block this one), and **How far**: one link away, or up to two or
+   three. A ticket already on the way stops it, so links that go round never repeat.
+
+Rows below a parent are in rank order, and in the order they were created where ranks are equal.
+
+- **A ticket appears once,** where the steps first reach it. A row that reaches it again says so:
+  "Also reached once more, shown elsewhere".
+- **Not in this plan** marks a child or linked ticket from outside the plan.
+- **Placed by a link** marks a row that an Add linked tickets step put there.
+- **The Grid stops at 100,000 rows** and then says "Shows the first 100,000 rows."
+- **A field or link type deleted since** breaks only the step or column that names it, which says
+  why; the rest of the structure still works, and the picker marks the structure "(partly
+  broken)".
+
+The page's filters narrow only the Add tickets step: children and linked tickets are added
+whatever the filters say. The plan's own grouping is not used here; Group by steps take its place.
+
+### Columns
+
+A structure has up to 30 columns, of which up to 10 totals and 5 formulas; the dialog counts them.
+Each column in the dialog says in words what it does, and **Up**, **Down** and **Remove** order
+them. **Add a column** adds one of three kinds:
+
+- **Ticket column**: any column search results offer, or a custom field. Its cells edit in place
+  as in search results, through the ticket's own checks; a field search results do not edit is
+  only shown. The parent is never edited in a cell: move the row instead. The key always goes in
+  the first column, **Ticket**, as a link to the ticket.
+- **Total of rows below**: **Sum**, **Lowest**, **Highest**, **Count of rows below** or
+  **Progress by closed tickets**. Sum takes the original and remaining estimates, time spent,
+  number fields and formula fields that give a number, an amount, a percentage or a duration.
+  Lowest and Highest also take the start and due dates, date fields and formula fields that give a
+  date, and then read **Earliest** and **Latest**. Count and Progress take no field.
+- **Formula**: a column name, an expression in the language of
+  [formula fields](../admin/fields.md#formula-fields), what it gives and its decimals (0 to 3). It
+  is checked when you leave the expression or choose **Check formula**, and again on save: a
+  formula that does not check says where and why, and is not saved. Fields go in braces by name and
+  must be fields every track shares. Once saved, the dialog shows them by id, such as `{cf[41]}`,
+  so renaming a field never breaks the column. A new formula column starts as `count(children)`,
+  named **Child rows**, ready to change.
+
+### Totals and formulas
+
+A total at a row adds up its **child rows**, not the row's own value. Sum adds the child rows'
+totals, Lowest and Highest take theirs, and a row with nothing below gives its own value. So on
+every row, a sum is the sum of the rows directly below it. The row's own value stays in its ticket
+column beside the total, which is why the column's header says **Total of rows below**.
+
+- **Count** is every ticket row below, at any depth.
+- **Progress** is how many of those are in a status of the closed stage, out of how many: "3 of 8
+  closed", with a bar, never a percentage.
+- **Empty values** are skipped, and the total says so: "5 of 8 have a value".
+- **A group row** totals its rows, and the last row, **All rows**, totals the top rows.
+- Durations read in hours ("12 h") and dates as dates.
+
+A **formula column** computes a value for each ticket row, as a formula field would, except that
+`children` means the row's child rows in the Grid, whichever step put them there:
+`sum(children.{Points})` adds their own values and `count(children)` counts them. `today` is your
+day, in your time zone, and working days follow the time tracking setting. Group rows and the last
+row show nothing in a formula column. `sum(children.{Points})` equals the Sum total of Points only
+where no child row has rows of its own: the formula reads each child's own value, the total each
+child's total.
+
+Totals and formula columns are computed in your browser from the rows shown, and never stored, so
+they cannot be searched or sorted. An edit changes the totals above it at once.
+
+**A stored formula field can differ from a total over the same rows.** Shown as a ticket column, a
+formula field keeps the value stored on the ticket, which counts every child of the ticket that is
+not deleted, whether you may see it or not, and nothing else. A total counts only the rows the Grid
+shows you, linked tickets included.
+
+### Reading and editing
+
+On a wide screen the Grid is a table whose rows open and close; the header row, the **Ticket**
+column and the **All rows** row stay in view as you scroll. Every row opens expanded. **Expand
+all** and **Collapse all** do every row at once, and the rows you closed are remembered in this
+browser for each structure. Cells load as their rows come into view: a row not loaded yet shows
+its key and a quiet line. **Refresh** reads the structure again, with other people's changes: the
+Grid does not update by itself.
+
+After you edit a cell, the totals above it change at once, and the rows above are read again,
+since a formula field stored on them may have changed. A refusal shows on the cell, as in search
+results.
+
+**Keyboard:** the Grid is one stop for Tab. The arrow keys move between rows and cells. On a
+row's **Ticket** cell, Right and Left open and close the row, and Left on a closed row goes to its
+parent. Enter edits a cell and Escape cancels. Home and End go to the ends of a row, and Control
+with Home or End to the first and last rows. Page Up and Page Down move ten rows. Shift and F10,
+or the menu key, open a row's menu.
+
+**On a row:**
+
+- "+4 not shown": tickets below the row that you may not see. They are counted, never named and
+  never in a total.
+- **Not in this plan**, **Placed by a link** and "shown elsewhere", as above.
+
+If reading a structure takes too long, the page says so and shows nothing rather than part of it:
+narrow it with the filters or a query, or choose **Try again**.
+
+### Moving a row
+
+A row moves under another parent with everything below it, one row at a time.
+
+- **Drag** it by its grip, at the start of its row, onto the new parent. A label beside the pointer
+  says "Move ABC-12 under DEF-3", or why it cannot go there, and the row under the pointer is
+  outlined. Escape cancels. On a touch screen, rest a finger on the grip a moment, or move it
+  sideways, to start dragging; a quick flick up or down scrolls.
+- **Move under…**, in the row's menu (the grip, Shift and F10, or the menu key), lists the Grid's
+  ticket rows that can be its parent, at most 50 with how many more match, and **Find the new
+  parent by key or summary** narrows them. Once you type, the rows that cannot be its parent are listed too, each saying why.
+- **Remove from parent**, in the same menu, takes its parent away.
+
+Every move asks first: "Move ABC-12 under DEF-3? Its parent changes from GHI-1 to DEF-3. 6 rows
+move with it." Nothing changes until you choose **Move**. The move is the ticket's own change,
+with every check a change of parent has anywhere: you need permission to edit the moved ticket and
+must see the new parent; the parent is a ticket exactly one level up, named by your administrators'
+names for levels; a subticket stays in its parent's track and always needs a parent; and a status
+that locks the ticket keeps it where it is. A refusal says why, and nothing moves. If someone
+changed the ticket since the Grid read it, nothing moves either: it is read again, and you can
+check and move it again. A parent you may not see is called "a ticket you may not see", never
+named.
+
+These never move: a group row, which is also never a parent ("A group is not a parent"); a row
+placed by a link, whose place comes from the link; and any row in a scenario.
+
+After a move the row and its rows go under the new parent at once, the totals above both places
+follow, the new parent opens and the page reads the structure again. Until then, the moved row is
+last among its new parent's rows.
+
+### The Grid on a phone
+
+The Grid is a list of cards, each with a 44-pixel button to open and close it. Cards step in a
+little for each level, up to four, and deeper cards say their level's name instead. Each shows its
+key, summary and the first two columns, with their names. Tapping a card opens a sheet with every
+column, where cells edit, and **Move under…** and **Remove from parent**. There is no dragging on a
+phone, and nothing scrolls sideways.
+
+### In a scenario
+
+With a scenario open, the Grid shows the tickets as they are, not their drafts, and its cells and
+rows cannot be changed: the page says so. Its editors can still change the structures, which
+belong to the plan.
+
+### Who sees what in the Grid
+
+- **Rows are only tickets you may see**: the Add tickets step through the plan, like every view,
+  and the other steps through your own access to tickets, across tracks.
+- **A parent you may not see breaks the path**: its children you may see become top rows.
+- **Hidden tickets below a row** are only counted, as "+N not shown": children under the rows an
+  Add children step opened, and linked tickets of the steps' link types. They are never keyed,
+  valued or added into a total.
+- **Group names** come only from the rows shown.
+- **Formula fields** stored on tickets keep their stored value, which may count children you may
+  not see, as anywhere else.
+
+Making, changing and deleting a structure are kept in the audit log, by its name. Edits and moves
+are the tickets' own changes, in their history. A copy of a plan takes its structures, as made by
+whoever copies it, and deleting a plan deletes them. The structures you made are in your data
+download by plan and name, without their steps or columns; if your account is erased, they stay.
+
 ## Changing and sharing a plan
 
 The plan's owner and site administrators see **Settings**: its name, description, sources and
@@ -858,8 +1067,8 @@ hear of the release across tracks itself, and a full export leaves it out; a bac
 Anyone who sees a plan may copy it, and the copy is theirs alone. Choose **Duplicate plan** at the top
 of any of its tabs and give the copy a name.
 
-- **What comes:** the description, the sources you may see, in their order, the unit, the periods and
-  the teams. Saved searches come by reference, so the copy changes when they do. Sources that are
+- **What comes:** the description, the sources you may see, in their order, the unit, the periods,
+  the teams and the Grid's structures. Saved searches come by reference, so the copy changes when they do. Sources that are
   archived or no longer run come too, and say so as usual.
 - **What does not:** sources hidden from you, which are only counted ("2 sources you may not see
   were left out"), never named; who it is shared with, since a copy should not reach anyone by
@@ -870,7 +1079,8 @@ of any of its tabs and give the copy a name.
 
 Choose **Copy link** at the top of any tab. The link holds the view as it stands: the tab, the
 filters, the grouping, and where the view is, which means the Timeline's zoom, the Calendar's month,
-the first period of Capacity and the order of the List. Columns stay yours, in this browser.
+the first period of Capacity, the order of the List and the Grid's structure. The rows you closed in
+the Grid stay yours, in this browser. Columns stay yours, in this browser.
 
 A link gives no access. It is only an address:
 
@@ -899,7 +1109,7 @@ hidden from you, and a cell that a spreadsheet would run as a formula starts wit
 | **Releases** | CSV | The tab's releases, each release across tracks before those linked to it. What is hidden stays two numbers |
 | **Baselines** | CSV | **Download CSV** in a comparison: the tickets of the list chosen, with their days then and now and their delay. Tickets in the baseline not shown to you stay one number |
 
-Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
+The Grid has no download yet. Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
 cannot draw it, the page says that too and no file comes. Headers are in your language, and the image
 is drawn in light colours whatever your skin.
 
@@ -943,3 +1153,10 @@ keep start and due days only, not estimates, Team values, sprints or releases, n
 The Timeline does not draw a baseline's bars under today's, and the Scenarios comparison cannot
 take a baseline as one of its sides. Delays, slack and the critical path count calendar days, not
 working days, and the critical path does not count capacity or go through parents' spans.
+
+The Grid moves one row at a time, never several at once, and never by dropping a row on a group to
+set its field; it cannot draft changes in a scenario, sort rows by a column, show other people's
+changes without **Refresh**, or be downloaded, and a total does not link to the search of its
+rows. Grouping takes only fields with one value, never labels; linked tickets go at most three
+links away; progress counts closed tickets, never a percentage or a weight of their estimates; and
+a structure belongs to its plan, with no filters of its own beyond the plan's and its query.
