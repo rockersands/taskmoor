@@ -78,7 +78,11 @@ describe('projects of the Jira-compatible API read every track (T-305)', () => {
     const body = last.body as { total: number; isLast: boolean; values: { key: string }[] };
     expect(body.total).toBe(260);
     expect(body.isLast).toBe(true);
-    expect(body.values.map((p) => p.key)).toEqual(tracksOf(260).slice(250).map((t) => t.key));
+    expect(body.values.map((p) => p.key)).toEqual(
+      tracksOf(260)
+        .slice(250)
+        .map((t) => t.key),
+    );
     const middle = await call('/rest/api/:v/project/search', native, {
       startAt: '200',
       maxResults: '50',

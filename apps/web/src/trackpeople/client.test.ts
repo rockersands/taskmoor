@@ -31,7 +31,11 @@ describe('a track’s pending invitations (T-305)', () => {
           canCopyLinks: false,
         };
         return after === null
-          ? jsonResponse(200, { invitations: [invitation(9)], next: '1700000000000000-9', ...flags })
+          ? jsonResponse(200, {
+              invitations: [invitation(9)],
+              next: '1700000000000000-9',
+              ...flags,
+            })
           : jsonResponse(200, { invitations: [invitation(4)], next: null, ...flags });
       }),
     );
@@ -44,6 +48,9 @@ describe('a track’s pending invitations (T-305)', () => {
       canCopyLinks: false,
     });
     expect(view).not.toHaveProperty('next');
-    expect(asked).toEqual(['/tracks/3/invitations', '/tracks/3/invitations?after=1700000000000000-9']);
+    expect(asked).toEqual([
+      '/tracks/3/invitations',
+      '/tracks/3/invitations?after=1700000000000000-9',
+    ]);
   });
 });
