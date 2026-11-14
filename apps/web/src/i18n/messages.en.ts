@@ -6974,7 +6974,6 @@ export const messagesEn = {
   'crossTrack.edit.submit': 'Save',
   'crossTrack.edit.failed': 'The change could not be saved.',
   'crossTrack.delete': 'Delete',
-  'crossTrack.deleteNamed': 'Delete {name}',
   'crossTrack.delete.confirm':
     'Delete {name}? Its releases stay as they are, and free to join another.',
   'crossTrack.delete.failed': 'It could not be deleted.',

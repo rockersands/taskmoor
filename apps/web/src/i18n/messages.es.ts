@@ -7137,7 +7137,6 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.edit.submit': 'Guardar',
   'crossTrack.edit.failed': 'No se pudo guardar el cambio.',
   'crossTrack.delete': 'Eliminar',
-  'crossTrack.deleteNamed': 'Eliminar {name}',
   'crossTrack.delete.confirm':
     '¿Eliminar {name}? Sus versiones quedan como están, y libres para unirse a otra.',
   'crossTrack.delete.failed': 'No se pudo eliminar.',
