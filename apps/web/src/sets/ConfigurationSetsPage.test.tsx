@@ -255,6 +255,39 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     });
   });
 
+  it('[CORE-013] keeps the rule of a field that reached the track while the panel was open (T-223)', async () => {
+    const user = userEvent.setup();
+    const client = fakeSetsClient();
+    const arrived = {
+      ticketTypeId: null,
+      field: 'cf[99]',
+      required: true,
+      hidden: false,
+      description: null,
+      editableBy: null,
+    };
+    const read = client.ruleSet;
+    client.ruleSet = async (id) => ({ ...(await read(id)), rules: [arrived] });
+    const fields = client.customFields;
+    let reached = false;
+    client.customFields = async (trackId) => [
+      ...(await fields(trackId)),
+      ...(reached ? [{ id: 99, name: 'Region' }] : []),
+    ];
+    renderOwn(4, { client });
+    await user.click(await screen.findByRole('button', { name: 'Manage Ops rules' }));
+    const panel = await screen.findByRole('form', { name: 'Settings of Ops rules' });
+    // Someone gives the field to the track; the page reads the fields again after the assignment.
+    reached = true;
+    await user.click(within(panel).getByRole('button', { name: 'Use this set for OPS' }));
+    expect(await screen.findByText('OPS now uses Ops rules.')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Ops rules was saved.')).toBeInTheDocument();
+    expect(client.calls.find((c) => c.action === 'updateRuleSet')?.args[1]).toEqual({
+      rules: [arrived],
+    });
+  });
+
   it('links to the track’s own layout sets and back to its Manage page', async () => {
     renderOwn(4);
     expect(

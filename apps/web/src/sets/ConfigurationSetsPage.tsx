@@ -716,7 +716,11 @@ function RuleSetPanel({
         event.preventDefault();
         // The every-type rules are the rows. Rules for one ticket type are kept as they are, and
         // so are those of a field with no row, such as a shared field that does not reach the track.
-        const kept = set.rules.filter((r) => r.ticketTypeId !== null || !keys.includes(r.field));
+        // The rows shown decide, not the fields as they are now: the fields refresh while the panel
+        // is open, and a field that reached the track since has a rule here but no row (T-223).
+        const kept = set.rules.filter(
+          (r) => r.ticketTypeId !== null || !rows.some((row) => row.field === r.field),
+        );
         const shown: FieldRule[] = rows
           .filter((r) => !FIXED_FIELDS.has(r.field) || r.description)
           .filter((r) => r.required || r.hidden || r.description || r.editableBy)
