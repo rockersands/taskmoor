@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
 import { TrackSummaryPage } from './TrackSummaryPage';
 
@@ -185,7 +185,7 @@ export const AskingToGoBackOnAPhone: Story = {
 
 /** A finger reaches both answers (ADR-033). */
 export const AskingToGoBackOnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   args: RESETTABLE,
   play: async ({ canvasElement }) => {
     await askToGoBack(canvasElement);
@@ -209,7 +209,7 @@ export const PhoneCustomizing: Story = {
 
 /** A finger reaches every number, however few its digits (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('listitem');
     await expect(tooSmallForAFinger(canvasElement, ['.report-stats a', '.summary-list a'])).toEqual(
@@ -266,11 +266,11 @@ export const FilteredOnAPhone: Story = {
 
 /** A finger reaches the filter's field and each of its buttons (ADR-033). */
 export const FilterOnATouchScreen: Story = {
-  beforeEach: () => {
-    const touch = asOnATouchScreen();
+  beforeEach: async () => {
+    const touch = await onARealTouchScreen();
     const address = filtered('assignee = currentUser()')();
-    return () => {
-      touch();
+    return async () => {
+      await touch();
       address();
     };
   },

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 /**
@@ -76,7 +76,7 @@ export const BothSkins: Story = {
 
 /** On a touch screen it is a finger's height. */
 export const OnTouch: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(tooSmallForAFinger(canvasElement, ['.google-sign-in'])).toEqual([]);
   },

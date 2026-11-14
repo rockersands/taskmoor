@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { DEFAULT_WORKFLOW, fakeWorkflowsClient, SUPPORT_WORKFLOW } from './fixtures';
 import { WorkflowsPage } from './WorkflowsPage';
 
@@ -151,7 +151,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each workflow's name (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'Support' });
     await expect(tooSmallForAFinger(canvasElement, ['.workflow-name-link'])).toEqual([]);

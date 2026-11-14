@@ -780,8 +780,8 @@ details[open] > summary.admin-disclosure::after,
   font-family: var(--font-mono);
 }
 
-.import-kinds td,
-.import-kinds th {
+/* One selector for both cells, so the header cell is not read against `.api-usage-table tbody th`. */
+.import-kinds :is(td, th) {
   white-space: nowrap;
 }
 
@@ -917,7 +917,7 @@ details[open] > summary.admin-disclosure::after,
 
 /* A path or an address wraps only after a '/' (admin/BreakAtSlashes.tsx): a piece breaks inside
    only when it is wider than the line on its own. */
-.fact dd .slash-breaks,
-.mcp-snippet .slash-breaks {
+.mcp-snippet .slash-breaks,
+.fact dd .slash-breaks {
   overflow-wrap: break-word;
 }

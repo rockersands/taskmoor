@@ -10,7 +10,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
-import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import { fakeCloneClient } from '../clone/fixtures';
 import { fakeToolsClient } from '../tools/fixtures';
 import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
@@ -251,7 +251,7 @@ export const AtPhoneWidth: Story = {
 
 /** On a touch screen a child's key and a short Activity tab are a finger wide (PL-26). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('tab', { name: 'All' });

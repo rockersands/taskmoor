@@ -10,13 +10,13 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 - [Bulk changes](#bulk-changes)
 - [Checklists](#checklists)
 - [Comments](#comments)
-- [Instance](#instance)
 - [Links](#links)
 - [Properties](#properties)
 - [Reference](#reference)
 - [Releases](#releases)
 - [Search](#search)
 - [Session](#session)
+- [Site](#site)
 - [Tickets](#tickets)
 - [Time](#time)
 - [Tracks](#tracks)
@@ -619,25 +619,6 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
 - 409: The resource changed or is in a state that refuses this; read it again.
-
-## Instance
-
-### What this site is and which clients it works with
-
-`GET /api/meta`, operation `getMeta`, access: public.
-
-Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.
-
-| Parameter | In | Type | Required | Meaning |
-| --- | --- | --- | --- | --- |
-| `nonce` | query | string | no | 16 to 128 base64url characters the site signs, chosen afresh by the caller. |
-| `frontend` | query | string | no | The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. |
-
-Responses:
-
-- 200: The site. Body: [Meta](#schema-meta).
-- 400: The request is not valid: see `error` and, for fields, `fields`.
-- 403: The session or token may not do this (its scope, or the person’s permissions).
 
 ## Links
 
@@ -1446,6 +1427,25 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 409: The resource changed or is in a state that refuses this; read it again.
 
+## Site
+
+### What this site is and which clients it works with
+
+`GET /api/meta`, operation `getMeta`, access: public.
+
+Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `nonce` | query | string | no | 16 to 128 base64url characters the site signs, chosen afresh by the caller. |
+| `frontend` | query | string | no | The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. |
+
+Responses:
+
+- 200: The site. Body: [Meta](#schema-meta).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+
 ## Tickets
 
 ### List tickets, a page at a time
@@ -2002,7 +2002,7 @@ Responses:
 | `version` | string | yes | The backend’s version. |
 | `api` | object | yes |  |
 | `frontend` | object | yes | The oldest frontend this backend serves (older ones must update) and the one it was built with (older ones should). Null on a development build, which takes any frontend. |
-| `instance` | object | yes |  |
+| `instance` | object | yes | Who this site is: its id, its name and the key it signs with. |
 | `signIn` | object | yes |  |
 | `signature` | object | no |  |
 

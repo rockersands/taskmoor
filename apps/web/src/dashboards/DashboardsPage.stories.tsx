@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { DashboardsPage } from './DashboardsPage';
 import { fakeDashboardClient, TEAM_DASHBOARD } from './fixtures';
 
@@ -107,7 +107,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each dashboard's name and the box that puts it on the wallboard (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('checkbox');
     await expect(

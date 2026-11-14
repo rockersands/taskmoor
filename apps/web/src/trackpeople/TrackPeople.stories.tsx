@@ -6,7 +6,7 @@ import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeSignInSso } from '../sso/fixtures';
-import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
 import { CreateTracksBox } from './CreateTracksBox';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES, WAITING } from './fixtures';
@@ -289,7 +289,7 @@ export const ChecklistNoticesAtPhoneWidth: Story = {
       </I18nProvider>
     ),
   ],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const box = await canvas.findByRole('checkbox', {
@@ -513,7 +513,7 @@ export const AnswerBesideTheRowAtPhoneWidth: Story = {
       </I18nProvider>
     ),
   ],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const card = await canvas.findByRole('region', { name: 'Quién tiene cada rol' });
@@ -554,7 +554,7 @@ export const InvitationAnswerInItsRow: Story = {
 export const InvitationAnswerInItsRowAtPhoneWidth: Story = {
   args: { client: twoWaiting() },
   decorators: [atPhoneWidth],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const card = await canvas.findByRole('region', { name: 'Invitations waiting' });

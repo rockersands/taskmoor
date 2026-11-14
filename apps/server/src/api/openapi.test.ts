@@ -92,6 +92,15 @@ describe('the API document (M1-065)', () => {
     expect(breakingChanges(baseline, doc)).toEqual([]);
   });
 
+  it('[API-001] names its areas in the product’s words: the site, never the instance (T-270)', () => {
+    // The tags head the reference's sections; paths, operation ids and JSON fields keep
+    // `instance` (docs/specs/00-terminology.md).
+    const tags = (doc.tags as { name: string }[]).map((t) => t.name);
+    expect(tags).toContain('Site');
+    expect(tags.filter((t) => /instance|workspace/i.test(t))).toEqual([]);
+    expect(OPERATIONS.find((o) => o.id === 'getMeta')?.tag).toBe('Site');
+  });
+
   it('[API-001] writes the reference page from the document', async () => {
     await expect(renderReference(doc)).toMatchFileSnapshot('../../../../docs/api/reference.md');
   });

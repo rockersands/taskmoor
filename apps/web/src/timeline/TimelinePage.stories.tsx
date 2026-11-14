@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 import { expectWithinBudget } from '../test/budget';
-import { asOnATouchScreen, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeTimelineClient, manyItems, timelineFixture } from './fixtures';
 import { TimelinePage } from './TimelinePage';
 
@@ -121,7 +121,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket's key, which fills its row (ADR-033). */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('link', { name: /^[A-Z]+-\d+$/ });
     await expect(tooSmallForAFinger(canvasElement, ['.timeline-key'])).toEqual([]);
@@ -291,7 +291,7 @@ export const ReachesTheEdge: Story = {
 /** TR-21: on a touch screen a one-day bar still takes a finger, past its own ends. */
 export const ThinBarOnATouchScreen: Story = {
   args: { client: fakeTimelineClient({ data: crowded }) },
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const bar = await within(canvasElement).findByRole('button', { name: /^LCH-7: / });
     bar.scrollIntoView({ block: 'center', inline: 'center' });
@@ -444,7 +444,7 @@ export const TodaysLineUnderEarlierOnAPhone: Story = {
 /** ADR-033: on a touch screen the Earlier and Later markers take a finger. */
 export const EdgeMarkersOnATouchScreen: Story = {
   decorators: [narrow],
-  beforeEach: asOnATouchScreen,
+  beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await scrolledTo(canvasElement, 'end');
     await expect(tooSmallForAFinger(canvasElement, ['.timeline-edge'])).toEqual([]);
