@@ -329,6 +329,29 @@ export function SprintReportPage({
   const title = report
     ? t('sprints.report.title', { name: report.sprint.name })
     : t('sprints.report.link');
+  // Whether the sprint still runs or finished, and its dates, so a closed sprint's report never
+  // reads like the running one's (S3-ST-5).
+  const when = (() => {
+    const sprint = report?.sprint;
+    if (!sprint) return null;
+    const date = (at: string) =>
+      intl.formatDate(new Date(at), { month: 'short', day: 'numeric', year: 'numeric' });
+    const start = sprint.startedAt ?? sprint.startAt;
+    if (sprint.state === 'closed') {
+      const completed = sprint.completedAt ?? sprint.endAt;
+      if (!completed) return null;
+      return start && sprint.endAt
+        ? t('sprints.report.dates.closed', {
+            completed: date(completed),
+            start: date(start),
+            end: date(sprint.endAt),
+          })
+        : t('sprints.report.dates.closedOnly', { completed: date(completed) });
+    }
+    return start && sprint.endAt
+      ? t('sprints.report.dates.active', { start: date(start), end: date(sprint.endAt) })
+      : null;
+  })();
   // Inside a track the Backlog tab is right above: no pill repeats it (D7).
   const toBacklog = embedded ? null : (
     <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
@@ -355,6 +378,7 @@ export function SprintReportPage({
           actions={toBacklog}
         />
       )}
+      {when && <p className="report-note sprint-report-when">{when}</p>}
       {failed && (
         <p className="board-problem" role="alert">
           {t('sprints.report.failed')}

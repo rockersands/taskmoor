@@ -34,7 +34,9 @@ const M = { top: 12, right: 64, bottom: 28, left: 48 };
  * A line chart (M1-060; ADR-057): 2px lines with round ends, an end dot ringed in the surface
  * color and the series' last value beside it, recessive hairline gridlines, a legend from two
  * series on, a crosshair with the day's values on hover, and the numbers as a table for
- * keyboards, screen readers and print. Colors come from the skin's chart tokens.
+ * keyboards, screen readers and print. Colors come from the skin's chart tokens. A data line that
+ * a later one runs along for a stretch is drawn wider beneath it, so both stay in sight where
+ * they agree (the release report's scope once all of it is done).
  */
 export function LineChart({
   title,
@@ -68,6 +70,25 @@ export function LineChart({
     .map((label, i) => ({ label, i }))
     .filter(({ i }) => i === 0 || i === n - 1 || (i % every === 0 && n - 1 - i >= every));
 
+  // A data line that a later data line covers somewhere: two neighbouring points the same.
+  const covered = series.map((s, k) =>
+    s.tone === 'guide'
+      ? false
+      : series.slice(k + 1).some(
+          (later) =>
+            later.tone !== 'guide' &&
+            s.values.some((v, i) => {
+              const next = s.values[i + 1];
+              return (
+                v !== null &&
+                next !== null &&
+                next !== undefined &&
+                later.values[i] === v &&
+                later.values[i + 1] === next
+              );
+            }),
+        ),
+  );
   const paths = series.map((s) => {
     let d = '';
     let pen = false;
@@ -151,7 +172,11 @@ export function LineChart({
             />
           )}
           {series.map((s, k) => (
-            <path key={s.id} className={`chart-line chart-line-${s.tone}`} d={paths[k]} />
+            <path
+              key={s.id}
+              className={`chart-line chart-line-${s.tone}${covered[k] ? ' chart-line-under' : ''}`}
+              d={paths[k]}
+            />
           ))}
           {ends.map((e) => (
             <g key={e.s.id}>

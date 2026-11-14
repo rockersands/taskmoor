@@ -58,7 +58,8 @@ function column(x: number, base: number, w: number, h: number): string {
  * Grouped columns (M1-060; ADR-057), velocity's form: one group per category, at most 24px
  * per column with a 2px gap between neighbours, rounded at the data end and square at the
  * baseline, the value at each tip where it fits, a legend from two series on, the group's
- * values on hover, and the numbers as a table.
+ * values on hover, and the numbers as a table. A group whose values are all zero writes no
+ * zeros over its empty slots: the bare baseline says it, and the tooltip and table give them.
  */
 export function ColumnChart({
   title,
@@ -145,6 +146,7 @@ export function ColumnChart({
               )}
               {series.map((s, k) => {
                 const v = s.values[i] ?? 0;
+                const empty = series.every((other) => (other.values[i] ?? 0) === 0);
                 const x = x0(i) + k * (bar + GAP);
                 return (
                   <g key={s.id}>
@@ -152,7 +154,7 @@ export function ColumnChart({
                       className={`chart-column chart-column-${s.tone}`}
                       d={column(x, base, bar, h(v))}
                     />
-                    {labelFits && (
+                    {labelFits && !empty && (
                       <text
                         className="chart-value"
                         x={x + bar / 2}

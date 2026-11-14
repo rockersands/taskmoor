@@ -107,6 +107,82 @@ describe('charts (M1-060)', () => {
         .map((r) => r.textContent),
     ).toEqual(['Sprint 81210', 'Sprint 91010']);
   });
+  it('[RPT-001] a column group of zeros writes no zeros over its empty slots (TR-13)', () => {
+    render(
+      <ColumnChart
+        title="Work per sprint"
+        summary="Work per sprint"
+        categories={[
+          { key: '1', label: 'Sprint 1' },
+          { key: '2', label: 'Sprint 2' },
+          { key: 'outside', label: 'Outside the sprints' },
+        ]}
+        series={[
+          { id: 'completed', label: 'Completed', tone: 'one', values: [0, 3, 2] },
+          { id: 'added', label: 'Added', tone: 'two', values: [0, 0, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        categoryHeader="Sprint"
+      />,
+    );
+    const figure = screen.getByRole('figure', { name: 'Work per sprint' });
+    // Sprint 1 has nothing: no '0 0'. Sprint 2's zero beside a 3 still says so.
+    expect([...figure.querySelectorAll('.chart-value')].map((v) => v.textContent)).toEqual([
+      '3',
+      '0',
+      '2',
+      '2',
+    ]);
+    // The table still gives every number.
+    expect(within(figure).getAllByRole('row')[1]?.textContent).toBe('Sprint 100');
+  });
+
+  it('[RPT-001] lines that only touch, or cross, are drawn as they are', () => {
+    render(
+      <LineChart
+        title="Release progress"
+        summary="Release progress"
+        xLabels={['Aug 18', 'Aug 27', 'Sep 5']}
+        series={[
+          { id: 'scope', label: 'Estimate in scope', tone: 'two', values: [0, 2, 2] },
+          { id: 'completed', label: 'Estimate completed', tone: 'one', values: [0, 0, 2] },
+          { id: 'guide', label: 'Guide', tone: 'guide', values: [0, 2, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        xHeader="Day"
+      />,
+    );
+    // Scope and completed share single points, never a stretch; a guide line does not count.
+    expect(
+      [...document.querySelectorAll('.chart-line')].map((l) =>
+        l.classList.contains('chart-line-under'),
+      ),
+    ).toEqual([false, false, false]);
+  });
+
+  it('[RPT-001] the release report’s scope stays in sight once all of it is done (second sweep)', () => {
+    render(
+      <LineChart
+        title="Release progress"
+        summary="Release progress"
+        xLabels={['Aug 18', 'Aug 27', 'Sep 5', 'Nov 14']}
+        series={[
+          { id: 'scope', label: 'Estimate in scope', tone: 'two', values: [0, 2, 2, 2] },
+          { id: 'completed', label: 'Estimate completed', tone: 'one', values: [0, 0, 2, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        xHeader="Day"
+      />,
+    );
+    const [scope, completed] = [...document.querySelectorAll('.chart-line')];
+    // The completed line runs along the scope from Sep 5: the scope is the wider band beneath.
+    expect(scope).toHaveClass('chart-line-under');
+    expect(completed).not.toHaveClass('chart-line-under');
+  });
+
   it('[RPT-001] stacks ordered stages with the last at the bottom, on one ramp', () => {
     render(
       <StackedAreaChart

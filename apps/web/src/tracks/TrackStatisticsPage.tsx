@@ -158,7 +158,9 @@ function TicketReport({
   const [statistic, setStatistic] = useState<WorkStatistic>('remainingEstimate');
   const [open, setOpen] = useState(true);
   const [custom, setCustom] = useState<{ id: string; name: string }[]>([]);
-  const [releases, setReleases] = useState<{ id: number; name: string }[] | null>(null);
+  const [releases, setReleases] = useState<
+    { id: number; name: string; shipped?: boolean; archived?: boolean }[] | null
+  >(null);
   const [release, setRelease] = useState<number | null>(null);
   const byField = [
     'pie',
@@ -199,8 +201,11 @@ function TicketReport({
       (list) => {
         if (!live) return;
         setReleases(list);
-        // A release's workload needs one; time tracking starts on the whole track.
-        if (report === 'release-workload') setRelease((r) => r ?? list[0]?.id ?? null);
+        // A release's workload needs one: the first still to ship, whose open tickets are its
+        // workload, not one that shipped with none left (S3-ST-9). Time tracking starts on the
+        // whole track.
+        const upcoming = list.find((r) => !r.shipped && !r.archived) ?? list[0];
+        if (report === 'release-workload') setRelease((r) => r ?? upcoming?.id ?? null);
       },
       () => live && setReleases([]),
     );
@@ -536,7 +541,8 @@ export function TrackStatisticsPage({
         // Titled by the section, the track named above it like its other pages (D26).
         title={t('track.section.statistics')}
         eyebrow={name}
-        purpose={t('statistics.purpose')}
+        // A track with no sprints names only the reports it lists (S3-ST-3).
+        purpose={t(hasSprints ? 'statistics.purpose' : 'statistics.purposeNoSprints')}
         about={t('statistics.about')}
       />
       {compact ? (

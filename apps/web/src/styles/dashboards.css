@@ -172,11 +172,17 @@
   list-style: none;
 }
 
+/* Keys, summaries and statuses in shared columns: every summary starts at one place, however
+   long the key before it, and a wrapped summary stays in its column (S3-ST-7). */
+.widget-tickets {
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+}
+
 .widget-tickets li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: var(--space-2);
 }
 
 .widget-ticket-summary {
@@ -190,10 +196,31 @@
 
 .widget-groups {
   display: grid;
-  gap: var(--space-4);
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  gap: var(--space-4) var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* Every group's tickets share the columns of the whole report, so they line up across groups. */
+.widget-groups > li {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.widget-groups > li > * {
+  grid-column: 1 / -1;
+}
+
+.widget-groups .widget-tickets {
+  grid-template-columns: subgrid;
+}
+
+/* The rest of a long group: apart from its last ticket, as the next group is (S3-ST-2). */
+.widget-group-more {
+  margin-block-start: var(--space-2);
 }
 
 .widget-group-head {
@@ -236,7 +263,8 @@
   overflow: hidden;
   border-radius: var(--radius-mark);
   background: var(--glass-surface-sunken);
-  box-shadow: inset 0 0 0 1px var(--glass-edge);
+  /* The field's edge, at 3:1 in both skins: an empty track still shows (S3-ST-6). */
+  box-shadow: inset 0 0 0 1px var(--color-field-border);
 }
 
 .widget-share-bar {
@@ -522,7 +550,8 @@
   .dashboard-row .reports-check,
   .dashboard-row > a,
   .summary-list a,
-  .widget-tickets a {
+  .widget-tickets a,
+  .widget-group-more a {
     min-height: var(--hit-target-touch);
   }
 
@@ -538,7 +567,8 @@
     min-width: var(--hit-target-touch);
   }
 
-  .widget-tickets a {
+  .widget-tickets a,
+  .widget-group-more a {
     display: inline-flex;
     align-items: center;
   }

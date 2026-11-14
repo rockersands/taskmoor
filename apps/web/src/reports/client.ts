@@ -144,8 +144,10 @@ export interface ReportClient {
   cumulativeFlow(boardId: number, params: ReportParams): Promise<CumulativeFlow>;
   cycleTime(boardId: number, params: CycleParams): Promise<CycleTime>;
   timeInStatus(boardId: number, params: ReportParams): Promise<TimeInStatus>;
-  /** The releases of a track, for the release reports. */
-  releases(trackId: number): Promise<{ id: number; name: string }[]>;
+  /** The releases of a track, for the release reports, with whether each has shipped. */
+  releases(
+    trackId: number,
+  ): Promise<{ id: number; name: string; shipped?: boolean; archived?: boolean }[]>;
   releaseBurndown(boardId: number, releaseId: number): Promise<ScopeBurndown>;
   /** An outcome by key or id. */
   outcomeBurndown(boardId: number, outcome: string): Promise<ScopeBurndown>;
@@ -176,8 +178,11 @@ export const reportClient: ReportClient = {
   timeInStatus: (boardId, params) =>
     api<TimeInStatus>(reportPath(boardId, 'time-in-status', params)),
   releases: async (trackId) =>
-    (await api<{ releases: { id: number; name: string }[] }>(`/tracks/${trackId}/releases`))
-      .releases,
+    (
+      await api<{ releases: { id: number; name: string; shipped: boolean; archived: boolean }[] }>(
+        `/tracks/${trackId}/releases`,
+      )
+    ).releases,
   releaseBurndown: (boardId, releaseId) =>
     api<ScopeBurndown>(`/boards/${boardId}/reports/release-burndown?release=${releaseId}`),
   outcomeBurndown: (boardId, outcome) =>

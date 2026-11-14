@@ -89,6 +89,26 @@ describe('sprint charts on the report (M1-060)', () => {
     expect(screen.getByText('Committed at the start').closest('dl')).toHaveClass('glass-card');
   });
 
+  it('[AGL-010] says whether the sprint still runs or finished, and its dates (S3-ST-5)', async () => {
+    open();
+    expect(await screen.findByText('In progress: Oct 26, 2026 to Nov 9, 2026.')).toBeVisible();
+    const closed = fakeSprintClient();
+    const report = closed.report;
+    closed.report = async (id) => {
+      const read = await report(id);
+      return {
+        ...read,
+        sprint: { ...read.sprint, state: 'closed', completedAt: '2026-11-10T16:00:00Z' },
+      };
+    };
+    open('es', closed);
+    expect(
+      await screen.findByText(
+        'Terminó el 10 nov 2026. Estaba previsto del 26 oct 2026 al 9 nov 2026.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[RPT-001] explains a sprint with no estimates instead of drawing empty charts and zero totals (TR-13)', async () => {
     const client = fakeSprintClient();
     const report = client.report;

@@ -95,6 +95,22 @@ describe('a track’s statistics (ADR-116)', () => {
     expect(within(nav).queryByRole('group', { name: 'Releases' })).toBeNull();
   });
 
+  it('[CORE-002] a Kanban track’s purpose names only the reports it lists (S3-ST-3)', async () => {
+    open('cumulative-flow', KANBAN);
+    expect(
+      await screen.findByText(
+        'Every report of this track in one place: how its work flows, its tickets and the time spent on them.',
+      ),
+    ).toBeVisible();
+    cleanup();
+    open('cumulative-flow', SCRUM);
+    expect(
+      await screen.findByText(
+        'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
+      ),
+    ).toBeVisible();
+  });
+
   it('[RPT-001] [RPT-002] lists every report of the track, each link inside its tabs', async () => {
     open('cumulative-flow', SCRUM);
     expect(await screen.findByRole('heading', { level: 1, name: 'Statistics' })).toBeVisible();
@@ -282,6 +298,49 @@ describe('a track’s statistics (ADR-116)', () => {
     );
   });
 
+  it('[RPT-002] a long group links to the search that finds all of it (S3-ST-2)', async () => {
+    open('group-by');
+    const groups = await screen.findByRole('list', { name: 'Grouped tickets' });
+    const all = within(groups).getByRole('link', { name: 'See all 3 in Search' });
+    expect(new URLSearchParams(all.getAttribute('href')?.split('?')[1]).get('q')).toBe(
+      'track = "SHOP" AND assignee = 2',
+    );
+    // The group with every ticket listed needs no way to the rest.
+    expect(within(groups).getAllByRole('link', { name: /^See all/ })).toHaveLength(1);
+  });
+
+  it('[RPT-002] time tracking with nothing estimated gives no verdict on the estimate (S3-ST-1)', async () => {
+    const client = fakeTrackClient();
+    const zero = { release: null, tickets: 53, estimated: 0, original: 0, remaining: 0, spent: 0 };
+    client.statistics = async () => ({ ...zero, rows: [] });
+    open('time-tracking', SCRUM, { client });
+    expect(await screen.findByText('Nothing estimated or logged yet')).toBeVisible();
+    expect(screen.queryByText('On the estimate')).toBeNull();
+    cleanup();
+    // Time logged, but no original estimate: the totals show, the verdict says why it has none.
+    const logged = fakeTrackClient();
+    logged.statistics = async () => ({ ...zero, spent: 3600, rows: [] });
+    open('time-tracking', SCRUM, { client: logged });
+    expect(await screen.findByText('Nothing estimated to compare')).toBeVisible();
+    expect(screen.queryByText('On the estimate')).toBeNull();
+    expect(screen.queryByText(/over the estimate/)).toBeNull();
+  });
+
+  it('[RPT-002] time tracking with nothing estimated, in Spanish (S3-ST-1)', async () => {
+    const client = fakeTrackClient();
+    client.statistics = async () => ({
+      release: null,
+      tickets: 2,
+      estimated: 0,
+      original: 0,
+      remaining: 0,
+      spent: 0,
+      rows: [],
+    });
+    open('time-tracking', SCRUM, { client, locale: 'es' });
+    expect(await screen.findByText('Aún no hay nada estimado ni registrado')).toBeVisible();
+  });
+
   it('[RPT-002] time tracking adds up the track, or one release', async () => {
     const user = userEvent.setup();
     const { client } = open('time-tracking', SCRUM);
@@ -337,6 +396,80 @@ describe('a track’s statistics (ADR-116)', () => {
         view: 'pie',
       }),
     );
+  });
+
+  it('[RPT-002] a release’s workload starts on a release still to ship, and says why one has no open tickets (S3-ST-9)', async () => {
+    const reports = fakeReportClient(SCRUM);
+    reports.releases = async () => [
+      { id: 30, name: 'Checkout 1.0', shipped: true, archived: false },
+      { id: 31, name: 'Checkout 2.0', shipped: false, archived: false },
+    ];
+    const client = fakeTrackClient();
+    const read = client.statistics;
+    client.statistics = async (key, kind, settings) => {
+      const data = await read(key, kind, settings);
+      // The shipped release: every one of its tickets is closed.
+      return (settings as { release?: number }).release === 30
+        ? { ...(data as object), values: [], total: 0, seconds: 0, unestimated: 0 }
+        : data;
+    };
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <TrackStatisticsPage
+          trackKey="SHOP"
+          board={SCRUM}
+          report="release-workload"
+          reports={reports}
+          sprints={fakeSprintClient()}
+          client={client}
+        />
+      </I18nProvider>,
+    );
+    const release = await screen.findByRole('combobox', { name: 'Release' });
+    await waitFor(() => expect(release).toHaveDisplayValue('Checkout 2.0'));
+    await user.selectOptions(release, 'Checkout 1.0');
+    expect(await screen.findByText('No open tickets target this release')).toBeVisible();
+    expect(screen.queryByText('No tickets.')).toBeNull();
+  });
+
+  it('[RPT-002] a workload pie with no time names the measure in the sentence’s own words', async () => {
+    const client = fakeTrackClient();
+    const read = client.statistics;
+    client.statistics = async (key, kind, settings) => {
+      const data = (await read(key, kind, settings)) as { values: { seconds: number }[] };
+      // The measure asked for, with no ticket having any of it.
+      const { statistic } = settings as { statistic: string };
+      return {
+        ...data,
+        statistic,
+        values: data.values.map((v) => ({ ...v, seconds: 0 })),
+        seconds: 0,
+      };
+    };
+    const user = userEvent.setup();
+    open('workload-pie', KANBAN, { client });
+    expect(await screen.findByText('No ticket here has a remaining estimate.')).toBeVisible();
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Measure' }),
+      'Original estimate',
+    );
+    expect(await screen.findByText('No ticket here has an original estimate.')).toBeVisible();
+    cleanup();
+    open('workload-pie', KANBAN, { client, locale: 'es' });
+    expect(
+      await screen.findByText('Ningún ticket de aquí tiene estimación restante.'),
+    ).toBeVisible();
+  });
+
+  it('[RPT-005] two-dimensional statistics head the row names with their field (S3-ST-8)', async () => {
+    open('two-dimensional');
+    const table = await screen.findByRole('region', { name: 'Two-dimensional statistics' });
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Status', 'High', 'None', 'Total']);
   });
 
   it('[RPT-002] a release’s workload explains a track with no releases', async () => {

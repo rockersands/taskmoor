@@ -130,6 +130,7 @@ export const GROUP_BY = {
         listed(41, 'Checkout fails for expired cards', false),
         listed(40, 'Card payments', true),
       ],
+      query: 'track = "SHOP" AND assignee = 2',
     },
     {
       id: null,
@@ -138,6 +139,7 @@ export const GROUP_BY = {
       total: 1,
       closed: 0,
       tickets: [listed(44, 'Gift cards', false)],
+      query: 'track = "SHOP" AND assignee IS EMPTY',
     },
   ],
   total: 4,
