@@ -19,8 +19,8 @@ machine runs Windows without Docker.
 - **Lint and format:** Biome 2 (one fast tool) instead of ESLint plus Prettier. Module boundary
   rules come from dependency-cruiser (M0-010). A warning fails the lint step as an error does
   (`--error-on-warnings`, T-281), so a new one cannot hide among old ones: a rule that should
-  not stop the gate is set to `info` in `biome.json`, for the files it concerns. Plans'
-  stylesheet has its descending-specificity findings at `info` until they are cleared.
+  not stop the gate is set to `info` in `biome.json`, for the files it concerns. None is today:
+  Plans' stylesheet, the last with such an override, has no finding left (T-285).
 - **Tests:** one root Vitest 4 config that lists every package as a project, so one run covers
   the repo and shares one test database server (ADR-030).
 - **Turborepo:** deferred. With source-consumed packages there is nothing to cache yet; it comes

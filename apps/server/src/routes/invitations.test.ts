@@ -799,6 +799,88 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
       });
       expect(locked.statusCode).toBe(429);
     });
+
+    it('[IAM-027] lists every pending invitation of a track, a page at a time past 500 (T-305)', async () => {
+      const paged = await addTrack('PAGED');
+      const base = Date.parse('2026-11-01T12:00:00.123Z');
+      // 503 pending, the newest first by when they were sent; three share a moment, in the
+      // microsecond, so the order there is by id.
+      const sent = (n: number) => new Date(base - (n < 3 ? 0 : n) * 1000);
+      const made = await database.db
+        .insertInto('track_invitation')
+        .values(
+          Array.from({ length: 503 }, (_, n) => ({
+            workspace_id: 1,
+            track_id: paged,
+            role_id: roles.Members as number,
+            email: `paged-${n}@example.net`,
+            token_hash: `paged-invitation-${n}`,
+            invited_by: null,
+            delivery: 'email' as const,
+            last_error: null,
+            last_sent_at: sent(n),
+            expires_at: new Date(base + 86_400_000),
+          })),
+        )
+        .returning(['id', 'last_sent_at'])
+        .execute();
+      // An accepted and a revoked one are not pending.
+      await database.db
+        .updateTable('track_invitation')
+        .set({ accepted_at: new Date(base) })
+        .where('id', '=', made[10]?.id as number)
+        .execute();
+      await database.db
+        .updateTable('track_invitation')
+        .set({ revoked_at: new Date(base) })
+        .where('id', '=', made[11]?.id as number)
+        .execute();
+      const expected = made
+        .filter((_, n) => n !== 10 && n !== 11)
+        .sort((a, b) => b.last_sent_at.getTime() - a.last_sent_at.getTime() || b.id - a.id)
+        .map((r) => r.id);
+
+      const read = async (limit?: number) => {
+        const ids: number[] = [];
+        const pages: number[] = [];
+        let after: string | null = null;
+        do {
+          const query = new URLSearchParams();
+          if (limit) query.set('limit', String(limit));
+          if (after) query.set('after', after);
+          const res = await as('admin', {
+            method: 'GET',
+            url: `/api/v1/tracks/${paged}/invitations${query.toString() ? `?${query}` : ''}`,
+          });
+          expect(res.statusCode, res.body).toBe(200);
+          const body = res.json() as { invitations: { id: number }[]; next: string | null };
+          ids.push(...body.invitations.map((i) => i.id));
+          pages.push(body.invitations.length);
+          after = body.next;
+        } while (after !== null && pages.length < 1000);
+        return { ids, pages };
+      };
+      const whole = await read();
+      expect(whole.pages).toEqual([500, 1]);
+      expect(whole.ids).toEqual(expected);
+      // Small pages break inside the invitations sent at one moment and still lose none.
+      const small = await read(2);
+      expect(small.ids).toEqual(expected);
+      expect(small.pages.length).toBe(Math.ceil(expected.length / 2));
+
+      for (const bad of ['x', '12-0x', '1-99999999999', '-1']) {
+        const refused = await as('admin', {
+          method: 'GET',
+          url: `/api/v1/tracks/${paged}/invitations?after=${bad}`,
+        });
+        expect(refused.statusCode, bad).toBe(400);
+      }
+      const tooMany = await as('admin', {
+        method: 'GET',
+        url: `/api/v1/tracks/${paged}/invitations?limit=501`,
+      });
+      expect(tooMany.statusCode).toBe(400);
+    });
   });
 
   describe('giving the role that runs a track', () => {

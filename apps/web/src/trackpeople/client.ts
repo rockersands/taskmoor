@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyPage } from '../api/pages';
 import type { SessionUser } from '../session/SessionProvider';
 
 /** A track the signed-in person runs (IAM-030). */
@@ -125,7 +126,19 @@ export const trackPeopleClient: TrackPeopleClient = {
         `/people/mentionable?track=${encodeURIComponent(trackKey)}&limit=8&q=${encodeURIComponent(query)}`,
       )
     ).people,
-  invitations: (trackId) => api<InvitationsView>(`/tracks/${trackId}/invitations`),
+  invitations: async (trackId) => {
+    // The server answers 500 a page, newest sent first (T-305); the first page's flags stand.
+    const pages: (InvitationsView & { next?: string | null })[] = [];
+    const invitations = await everyPage<Invitation, string>(async (after) => {
+      const page = await api<InvitationsView & { next?: string | null }>(
+        `/tracks/${trackId}/invitations${after === null ? '' : `?after=${encodeURIComponent(after)}`}`,
+      );
+      pages.push(page);
+      return { items: page.invitations, next: page.next };
+    });
+    const { canInvite, invitingGiven, emailAvailable, canCopyLinks } = pages[0] as InvitationsView;
+    return { invitations, canInvite, invitingGiven, emailAvailable, canCopyLinks };
+  },
   invite: async (trackId, body) =>
     (
       await api<{ results: InviteResult[] }>(`/tracks/${trackId}/invitations`, {

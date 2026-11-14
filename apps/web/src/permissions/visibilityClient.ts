@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 import type { Grantee, Named, NewGrant } from './client';
 
 /** A member of a level, as `GET /api/v1/visibility-policies` shows it. */
@@ -147,9 +148,7 @@ export interface ExplainClient {
 export const explainClient: ExplainClient = {
   catalogue: async () =>
     (await api<{ track: Record<string, string[]> }>('/permissions/catalogue')).track,
-  tracks: async () =>
-    (await api<{ tracks: { id: number; key: string; name: string }[] }>('/tracks?limit=500'))
-      .tracks,
+  tracks: () => everyTrack<{ id: number; key: string; name: string }>(),
   findPeople: visibilityClient.findPeople,
   explain: (question) => {
     const query = new URLSearchParams({ permission: question.permission });

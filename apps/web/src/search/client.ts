@@ -1,4 +1,5 @@
 import { API_BASE, api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import type { ChoiceField } from './basic';
 
@@ -155,7 +156,7 @@ export const searchClient: SearchClient = {
       body: { q, limit: 50, ...(cursor ? { cursor } : {}) },
     }),
   check: (q) => api<CheckResult>(`/search/check?q=${encodeURIComponent(q)}`),
-  tracks: async () => (await api<{ tracks: SearchTrack[] }>('/tracks?limit=200')).tracks,
+  tracks: () => everyTrack<SearchTrack>(),
   choiceOptions,
   fields: async () =>
     (await api<{ fields: SearchField[] }>('/fields')).fields.map((f) => ({

@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 
 export interface Named {
   id: number;
@@ -117,7 +118,7 @@ export interface ConfigurationClient {
 }
 
 export const configurationClient: ConfigurationClient = {
-  tracks: async () => (await api<{ tracks: Track[] }>('/tracks?archived=include&limit=200')).tracks,
+  tracks: () => everyTrack<Track>('archived=include'),
   createTrack: (body) => api<{ track: Track; board?: Named }>('/tracks', { method: 'POST', body }),
   updateTrack: async (id, change) =>
     (await api<{ track: Track }>(`/tracks/${id}`, { method: 'PATCH', body: change })).track,
