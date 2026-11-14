@@ -962,6 +962,57 @@ describe('the auto-scheduler (PLN-004)', () => {
     }
   });
 
+  it('[PLN-004] [PLN-006] leaves out a proposal whose kept blocker changed while the run worked', async () => {
+    // c4 is dated and kept by the run's condition; c1, which it blocks, is placed after it.
+    await call('owner', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${t.c4?.key}`,
+      payload: { startDate: '2027-03-01', dueDate: '2027-03-07' },
+    });
+    const sid = (
+      await call(
+        'owner',
+        {
+          method: 'POST',
+          url: `/api/v1/plans/${plans.Fill}/scenarios`,
+          payload: { name: 'Fill meanwhile' },
+        },
+        201,
+      )
+    ).scenario.id as number;
+    let res: Awaited<ReturnType<typeof as>> | undefined;
+    await await whileScenarioLocked(
+      sid,
+      async () => {
+        res = await as('owner', {
+          method: 'POST',
+          url: `/api/v1/plans/${plans.Fill}/schedule`,
+          payload: { into: { scenarioId: sid }, from: FROM, keep: { query: `key = "${t.c4?.key}"` } },
+        });
+      },
+      async () => {
+        await call('owner', {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${t.c4?.key}`,
+          payload: { dueDate: '2027-03-20' },
+        });
+      },
+    );
+    expect(res?.statusCode, res?.body).toBe(200);
+    const run = res?.json() as Run;
+    expect(entry(run, t.c4 as Ticket)).toMatchObject({ outcome: 'kept', reason: 'kept_by_query' });
+    expect(entry(run, t.c1 as Ticket)).toMatchObject({
+      outcome: 'placed',
+      reason: 'after_blocker',
+      args: { blockerEnd: '2027-03-07' },
+      changedMeanwhile: true,
+    });
+    expect(run.counts.changedMeanwhile).toBe(1);
+    // Nothing for c1: a start of 8 Mar would be late against c4's due of 20 Mar.
+    expect(await days(sid, t.c1 as Ticket)).toBeNull();
+    expect(await days(sid, t.c2 as Ticket)).not.toBeNull();
+  });
+
   let priv = 0;
 
   it('[PLN-004] [PLN-006] (2) (3) (4) keeps, leaves out and does not place by rule, and never names a hidden blocker', async () => {
@@ -1359,5 +1410,41 @@ describe('the auto-scheduler (PLN-004)', () => {
     ]);
     expect([...out.meanwhile]).toEqual([6]);
     expect([...out.placed].sort()).toEqual([1, 2, 4]);
+  });
+
+  it('[PLN-004] [PLN-006] leaves out every proposal placed after a ticket that changed meanwhile', () => {
+    const at = (due: string | null) => ({ start: null, due });
+    // 10 blocks 11, which blocks 12; kept 20 blocks 21; 30 blocks 31; nothing changed but 10 and 20.
+    const read = new Map<number, DaySnapshot>(
+      [10, 11, 12, 20, 21, 30, 31].map((id) => [id, at(id === 20 ? '2027-03-07' : null)]),
+    );
+    const locked = new Map(read);
+    locked.set(10, at('2027-03-20'));
+    locked.set(20, at('2027-03-20'));
+    const proposal = (id: number, start: string, due: string) => ({ id, start, due });
+    const out = diffProposals({
+      proposals: [
+        proposal(10, '2027-03-01', '2027-03-07'),
+        proposal(11, '2027-03-08', '2027-03-14'),
+        proposal(12, '2027-03-15', '2027-03-21'),
+        proposal(21, '2027-03-08', '2027-03-14'),
+        proposal(30, '2027-03-01', '2027-03-07'),
+        proposal(31, '2027-03-08', '2027-03-14'),
+      ],
+      read,
+      locked,
+      earlier: new Map(),
+      links: [
+        { from: 10, to: 11 },
+        { from: 11, to: 12 },
+        { from: 20, to: 21 },
+        { from: 30, to: 31 },
+      ],
+    });
+    expect([...out.meanwhile].sort((a, b) => a - b)).toEqual([10, 11, 12, 21]);
+    expect([...out.placed].sort((a, b) => a - b)).toEqual([30, 31]);
+    expect([...new Set(out.writes.map((w) => w.ticketId))].sort((a, b) => a - b)).toEqual([
+      30, 31,
+    ]);
   });
 });

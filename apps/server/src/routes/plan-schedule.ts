@@ -142,8 +142,10 @@ export function diffProposals(options: {
   locked: ReadonlyMap<number, DaySnapshot>;
   /** The auto-scheduler's drafts in the scenario on tickets the runner is shown. */
   earlier: ReadonlyMap<number, ReadonlyMap<string, { was: DraftValue; to: DraftValue }>>;
+  /** The run's blocking links between open tickets: a proposal placed after a changed one goes too. */
+  links?: readonly { from: number; to: number }[];
 }) {
-  const { proposals, read, locked, earlier } = options;
+  const { proposals, read, locked, earlier, links = [] } = options;
   const writes: DraftWrite[] = [];
   const clears: { ticketId: number; field: string }[] = [];
   const meanwhile = new Set<number>();
@@ -155,10 +157,27 @@ export function diffProposals(options: {
     const now = locked.get(id);
     return !now || snapshotKey(now) !== snapshotKey(before);
   };
-  const proposed = new Set<number>();
+  const proposed = new Set(proposals.map((p) => p.id));
+  // A proposal was placed after its blockers' days as the run read them. When a blocker changed
+  // meanwhile (placed, kept or left out), so is every proposal placed after it, directly or
+  // through other proposals: writing them would make a late link the run never saw.
+  const after = new Map<number, number[]>();
+  for (const l of links) {
+    if (!proposed.has(l.to)) continue;
+    const list = after.get(l.from) ?? [];
+    list.push(l.to);
+    after.set(l.from, list);
+  }
+  const stale = new Set<number>();
+  const queue = [...new Set([...proposed, ...after.keys()])].filter(changed);
+  while (queue.length > 0) {
+    const id = queue.pop() as number;
+    if (stale.has(id)) continue;
+    stale.add(id);
+    for (const next of after.get(id) ?? []) if (!stale.has(next)) queue.push(next);
+  }
   for (const p of proposals) {
-    proposed.add(p.id);
-    if (changed(p.id)) {
+    if (stale.has(p.id)) {
       meanwhile.add(p.id);
       continue;
     }
@@ -424,14 +443,20 @@ export function registerPlanScheduleRoutes(
           fields.set(r.field, { was: draftValue(r.old_value), to: draftValue(r.new_value) });
           earlier.set(r.ticket_id, fields);
         }
-        // 4. The tickets it would touch, read again under the lock.
-        const touched = [...new Set([...output.proposals.map((x) => x.id), ...earlier.keys()])];
+        // 4. The tickets it would touch and the blockers of those it places, read again under
+        // the lock: a proposal after a blocker that changed meanwhile is left out with it.
+        const proposedIds = new Set(output.proposals.map((x) => x.id));
+        const links = inputs.input.links.filter((l) => proposedIds.has(l.to));
+        const touched = [
+          ...new Set([...proposedIds, ...earlier.keys(), ...links.map((l) => l.from)]),
+        ];
         const now = await lockedSnapshots(trx, scenarioId, touched);
         const diff = diffProposals({
           proposals: output.proposals,
           read: inputs.read,
           locked: now,
           earlier,
+          links,
         });
         // 5. Removals and writes, in chunks under Postgres's limit on bound values.
         const removed: { ticketId: number; field: string }[] = [];
