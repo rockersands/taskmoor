@@ -20,7 +20,28 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the Mac, after the Windows wrap-up (2026-11-08)
+### Latest: the page review fixed (2026-11-13, the Mac)
+
+- **On `main` (`bff9aa24`, full gate: 8,299 tests, 250 e2e):** wave 12, the page review's fixes.
+  The user answered all 38 questions of direction, the design tickets marked You and T-241's
+  17 Multi-track questions on 2026-11-13 (decisions.csv, from "Phone ticket table"). 147 of 151
+  faults were fixed in six groups (stand-alone and not-found pages; administration; tickets,
+  search and Home; plans, timelines and calendars; track pages and reports; shared menus and
+  dialogs). Shared pieces to reuse: `shell/NotFoundPage`, `shell/StandaloneFrame`,
+  `shell/OverlayLayer` (menus and dialogs are portaled and opaque, `--overlay-fill`; a design
+  test guards it), `shell/DangerAction` (D13), `shell/moreSides`, `admin/TableScroller`.
+- **A real bug found by the gate:** "today" was the UTC day, so west of UTC in the evening the
+  timeline, calendar and plans jumped a day ahead. `localDay()` in `timeline/client.ts` is the
+  person's own day; e2e that drag dates pin their clock and time zone.
+- **A test that aged:** `sprints.test.ts` sent a fixed end date; it is relative to now.
+- **Next:** the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure
+  part, T-205a, T-246 with migration 0107, T-248, T-252), the renames T-256 with T-217, then
+  T-253 to T-255 and T-257/T-258; then Multi-track T-089d (with PLN-013), T-089e, T-089f and the
+  hierarchy grid and baselines brought into 1.0 (T-089a); the fuzz stages; the release.
+- **Still with the user:** T-240 (dates), T-120, T-155, and the hands-on items (T-002, T-005,
+  T-024, T-031, T-033, T-034, T-036, T-059, T-171, T-199).
+
+### The Mac, after the Windows wrap-up (2026-11-08)
 
 - **On `main` (`819c5ae4`, full gate on the Mac: 8,048 tests, 248 e2e):** the Windows work below
   plus wave 10: T-013a (the retries were an already-fixed board race; two flaky specs fixed),
