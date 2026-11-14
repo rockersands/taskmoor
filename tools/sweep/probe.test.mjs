@@ -95,11 +95,13 @@ describe('the sweep probe: a press area drawn by a pseudo-element (T-296)', () =
   /**
    * The timeline bar on touch (T-293): a button 28 x 24, placed absolutely in its row, with an
    * `::after` a finger's size centred on it by `translate(-50%, -50%)`, which a browser gives as a
-   * matrix. A press anywhere finds only the bar's own box here, so only reading the `::after`
-   * counts its press area. `after` changes that style; `row` is the row's own style.
+   * matrix. `after` changes that style; `row` is the row's own style. A press finds the bar in
+   * `press` (left, top, width, height), as a browser finds an element through its pseudo-element:
+   * by default the `::after`'s 44 x 44 around the bar. `over` is a box another element lies over
+   * it in, such as the sticky ticket column.
    */
-  function bar({ after = {}, row = '' } = {}) {
-    document.body.innerHTML = `<div style="position: relative; ${row}"><button style="position: absolute">Bar</button></div>`;
+  function bar({ after = {}, row = '', press = [92, 190, 44, 44], over = null } = {}) {
+    document.body.innerHTML = `<div style="position: relative; ${row}"><button style="position: absolute">Bar</button></div><div id="over"></div>`;
     const [div, button] = [document.body.firstElementChild, document.querySelector('button')];
     const rect = (left, top, width, height) => () => ({
       left,
@@ -147,8 +149,12 @@ describe('the sweep probe: a press area drawn by a pseudo-element (T-296)', () =
       if (!which) return real(el);
       return el === button && which === '::after' ? pseudo : { content: 'none' };
     });
-    document.elementFromPoint = (x, y) =>
-      x >= 100 && x < 128 && y >= 200 && y < 224 ? button : document.body;
+    const inside = ([left, top, width, height], x, y) =>
+      x >= left && x < left + width && y >= top && y < top + height;
+    document.elementFromPoint = (x, y) => {
+      if (over && inside(over, x, y)) return document.getElementById('over');
+      return inside(press, x, y) ? button : document.body;
+    };
     Element.prototype.scrollIntoView = () => {};
     Element.prototype.checkVisibility = () => true;
     window.scrollTo = () => {};
@@ -172,22 +178,12 @@ describe('the sweep probe: a press area drawn by a pseudo-element (T-296)', () =
     expect(small()).toEqual([]);
   });
 
-  it('[NFR-005] still lists a bar whose pseudo-element no finger presses', () => {
-    // No press area: none drawn, none taking presses, one in the flow, one placed apart.
-    for (const after of [
-      { content: 'none' },
-      { pointerEvents: 'none' },
-      { visibility: 'hidden' },
-      { position: 'static' },
-      { top: '200px', left: '200px' },
-    ]) {
-      bar({ after });
-      expect(small(), JSON.stringify(after)).toEqual([[28, 24]]);
-    }
-    // A press area a row's hidden overflow cuts to 30 px: it reaches 7 px over and under the bar.
-    bar({ row: 'overflow-x: hidden; overflow-y: hidden' });
-    Object.defineProperty(document.body.firstElementChild, 'clientHeight', { value: 30 });
-    document.body.firstElementChild.getBoundingClientRect = () => ({
+  /** A row 30 px tall around the bar whose overflow is `overflow`: it cuts the press area. */
+  function clippedRow(overflow) {
+    bar({ row: `overflow-x: ${overflow}; overflow-y: ${overflow}`, press: [92, 197, 44, 30] });
+    const row = document.body.firstElementChild;
+    Object.defineProperty(row, 'clientHeight', { value: 30 });
+    row.getBoundingClientRect = () => ({
       left: 0,
       top: 197,
       width: 400,
@@ -197,6 +193,37 @@ describe('the sweep probe: a press area drawn by a pseudo-element (T-296)', () =
       x: 0,
       y: 197,
     });
+  }
+
+  it('[NFR-005] lists a bar whose press area another element lies over, by its own size', () => {
+    // The sticky ticket column over the press area's left half: a press there finds the column.
+    bar({ over: [0, 190, 112, 44] });
+    expect(measureControls(44).small).toEqual([
+      { role: 'button', name: 'Bar', width: 28, height: 24, covered: true },
+    ]);
+  });
+
+  it('[NFR-005] cuts a press area where a scrolling box clips it, as where it hides it', () => {
+    for (const overflow of ['hidden', 'clip', 'auto', 'scroll']) {
+      clippedRow(overflow);
+      expect(small(), overflow).toEqual([[44, 30]]);
+    }
+  });
+
+  it('[NFR-005] still lists a bar whose pseudo-element no finger presses', () => {
+    // No press area: none drawn, none taking presses, one in the flow, one placed apart.
+    for (const after of [
+      { content: 'none' },
+      { pointerEvents: 'none' },
+      { visibility: 'hidden' },
+      { position: 'static' },
+      { top: '200px', left: '200px' },
+    ]) {
+      bar({ after, press: [100, 200, 28, 24] });
+      expect(small(), JSON.stringify(after)).toEqual([[28, 24]]);
+    }
+    // A press area a row's hidden overflow cuts to 30 px: it reaches 3 px over and under the bar.
+    clippedRow('hidden');
     expect(small()).toEqual([[44, 30]]);
   });
 });

@@ -66,9 +66,11 @@ export async function runAxe() {
 /**
  * Controls under 44 px, and controls whose accessible name leaves out words they show (WCAG 2.5.3,
  * T-212). Links inside running text are left out of the first list, as the rule allows, and so is
- * a control whose box is smaller but whose press area holds a 44 px square: one its `::before` or
- * `::after` draws (`target`, T-296), or one a press is found to reach (`pressable`). A size listed
- * is the press area's.
+ * a control whose box is smaller but whose press area holds a 44 px square a press is found to
+ * reach (`pressable`). A size listed is the press area drawn (`target`): the box with what its
+ * `::before` or `::after` draws over it (T-296), cut where its boxes clip it. One drawn a finger's
+ * size that a press does not reach whole, as when another element lies over part of it, is listed
+ * with its own size and `covered`.
  */
 export function measureControls(minimum) {
   const CONTROLS = [
@@ -183,7 +185,9 @@ export function measureControls(minimum) {
    * (T-293). One counts when it is drawn (content), placed out of the flow (absolute or fixed) and
    * takes presses (pointer-events, visibility). Its place comes from its computed style, whose
    * offsets and size a browser gives in pixels for a placed box, moved by its 2D transform and its
-   * `translate`, and cut by every box on its way up whose overflow hides what it does not hold.
+   * `translate`, and cut by every box on its way up that clips what it does not hold: overflow
+   * hidden, clip, auto or scroll, at the box's padding edge as it is in the window (a scroller's
+   * own scroll moves what is in it, not where it cuts).
    */
   const pseudoBoxes = (el) => {
     const boxes = [];
@@ -264,18 +268,16 @@ export function measureControls(minimum) {
         right: Math.max(...corners.map(([cx]) => cx)),
         bottom: Math.max(...corners.map(([, cy]) => cy)),
       };
-      // What hides overflow cuts it, from its containing block up; a box placed in another skips
+      // What clips overflow cuts it, from its containing block up; a box placed in another skips
       // those between.
       for (let up = block; up && up !== document.documentElement && up !== document.body; ) {
         const style = getComputedStyle(up);
-        const p = paddingBox(up, false);
-        const edge = {
-          left: p.left,
-          top: p.top,
-          right: p.left + p.width,
-          bottom: p.top + p.height,
-        };
-        const hides = (v) => v === 'hidden' || v === 'clip';
+        const outer = up.getBoundingClientRect();
+        const left = outer.left + up.clientLeft;
+        const top = outer.top + up.clientTop;
+        const edge = { left, top, right: left + up.clientWidth, bottom: top + up.clientHeight };
+        // Only `visible` lets what is drawn past the edge be seen and pressed.
+        const hides = (v) => Boolean(v) && v !== 'visible';
         const cut = meet(box, edge);
         if (hides(style.overflowX)) box = { ...box, left: cut.left, right: cut.right };
         if (hides(style.overflowY)) box = { ...box, top: cut.top, bottom: cut.bottom };
@@ -291,9 +293,11 @@ export function measureControls(minimum) {
   };
 
   /**
-   * What a finger can press: a control hidden behind its label is pressed through the label, and a
-   * control smaller than a finger through the press area its `::before` or `::after` draws over it,
-   * together with its own box (`pseudoBoxes`, T-296).
+   * What a finger can press, as drawn: a control hidden behind its label is pressed through the
+   * label (`own`), and a control smaller than a finger also through the press area its `::before`
+   * or `::after` draws over it, together with its own box (`drawn`, `pseudoBoxes`, T-296). What is
+   * drawn is not yet what a press reaches: another element may lie over it, so a control whose
+   * `own` is under a finger is still pressed (`pressable`), and `drawn` only sizes what is listed.
    */
   const target = (el) => {
     const own = el.getBoundingClientRect();
@@ -304,6 +308,8 @@ export function measureControls(minimum) {
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
     }
+    const round = (n) => Math.round(n * 10) / 10;
+    const labelled = { width: round(width), height: round(height) };
     if (width < minimum || height < minimum) {
       const mine = { left: own.left, top: own.top, right: own.right, bottom: own.bottom };
       for (const box of pseudoBoxes(el)) {
@@ -314,7 +320,7 @@ export function measureControls(minimum) {
         height = Math.max(height, Math.max(mine.bottom, box.bottom) - Math.min(mine.top, box.top));
       }
     }
-    return { width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10 };
+    return { own: labelled, drawn: { width: round(width), height: round(height) } };
   };
 
   /** Whether a press at this point of the window reaches the control, itself or by its label. */
@@ -443,9 +449,11 @@ export function measureControls(minimum) {
         name = [...el.labels].map((label) => label.textContent ?? '').join(' ');
       }
       name = name.trim().replace(/\s+/g, ' ');
-      const size = target(el);
-      if ((size.width < minimum || size.height < minimum) && !inText(el) && !pressable(el)) {
-        small.push({ role, name: name.slice(0, 80), ...size });
+      const { own, drawn } = target(el);
+      if ((own.width < minimum || own.height < minimum) && !inText(el) && !pressable(el)) {
+        // Drawn a finger's size but not pressed so: something lies over the press area.
+        const covered = drawn.width >= minimum && drawn.height >= minimum;
+        small.push({ role, name: name.slice(0, 80), ...(covered ? { ...own, covered } : drawn) });
       }
       const seen = words(visibleWords(el));
       const said = words(name).join(' ');
