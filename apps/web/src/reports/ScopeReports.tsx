@@ -287,7 +287,15 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
         />
         <ColumnChart
           title={t('reports.scope.sprintTitle')}
-          summary={t('reports.scope.sprintSummary', { count: b.sprints.length })}
+          summary={
+            outside
+              ? t('reports.scope.sprintSummaryOutside', {
+                  count: b.sprints.length,
+                  completed: value(outside.completed),
+                  added: value(outside.added),
+                })
+              : t('reports.scope.sprintSummary', { count: b.sprints.length })
+          }
           categories={columns.map((c) => ({ key: c.key, label: c.label }))}
           series={[
             {

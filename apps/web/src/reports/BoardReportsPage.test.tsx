@@ -256,6 +256,12 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
     ]);
     const perSprint = screen.getByRole('figure', { name: 'Work per sprint' });
     expect(within(perSprint).getByRole('list').textContent).toBe('CompletedAdded');
+    // Its text alternative counts the column outside the sprints as well (TR-13).
+    expect(
+      within(perSprint).getByRole('img', {
+        name: 'Completed and added work in each of 3 sprints, and outside the sprints: 12 completed, 54 added.',
+      }),
+    ).toBeInTheDocument();
     const table = screen.getAllByRole('table').at(-1) as HTMLElement;
     expect(cells(within(table).getAllByRole('row')[2] as HTMLElement)).toEqual([
       'Checkout Sprint 9',

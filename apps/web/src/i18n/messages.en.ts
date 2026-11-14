@@ -4926,6 +4926,8 @@ export const messagesEn = {
   'reports.scope.sprintTitle': 'Work per sprint',
   'reports.scope.sprintSummary':
     'Completed and added work in each of {count, plural, one {# sprint} other {# sprints}}.',
+  'reports.scope.sprintSummaryOutside':
+    'Completed and added work in each of {count, plural, one {# sprint} other {# sprints}}, and outside the sprints: {completed} completed, {added} added.',
   'reports.scope.completed': 'Completed',
   'reports.scope.added': 'Added',
   'reports.scope.removed': 'Removed',
@@ -5411,9 +5413,9 @@ export const messagesEn = {
   'statistics.axis.status': 'Status',
   'statistics.axis.priority': 'Priority',
   'statistics.axis.type': 'Type',
+  'statistics.axis.track': 'Track',
   'statistics.axis.assignee': 'Assignee',
   'statistics.axis.requester': 'Requester',
-  'statistics.axis.track': 'Track',
   'statistics.axis.creator': 'Creator',
   'statistics.axis.closeReason': 'Close reason',
   'statistics.axis.labels': 'Labels',

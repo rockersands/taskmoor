@@ -5047,6 +5047,8 @@ export const messagesEs: Record<MessageId, string> = {
   'reports.scope.sprintTitle': 'Trabajo por sprint',
   'reports.scope.sprintSummary':
     'Trabajo completado y añadido en cada uno de {count, plural, one {# sprint} other {# sprints}}.',
+  'reports.scope.sprintSummaryOutside':
+    'Trabajo completado y añadido en cada uno de {count, plural, one {# sprint} other {# sprints}}, y fuera de los sprints: {completed} completado, {added} añadido.',
   'reports.scope.completed': 'Completado',
   'reports.scope.added': 'Añadido',
   'reports.scope.removed': 'Quitado',
@@ -5547,9 +5549,9 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.axis.status': 'Estado',
   'statistics.axis.priority': 'Prioridad',
   'statistics.axis.type': 'Tipo',
+  'statistics.axis.track': 'Track',
   'statistics.axis.assignee': 'Asignado',
   'statistics.axis.requester': 'Solicitante',
-  'statistics.axis.track': 'Track',
   'statistics.axis.creator': 'Creador',
   'statistics.axis.closeReason': 'Motivo de cierre',
   'statistics.axis.labels': 'Etiquetas',
