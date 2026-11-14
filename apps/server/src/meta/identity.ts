@@ -110,7 +110,7 @@ export async function loadIdentity(
       .onConflict((oc) => oc.column('key').doNothing())
       .execute();
     stored = await read();
-    if (!stored) throw new Error('the instance identity could not be stored');
+    if (!stored) throw new Error('the site identity could not be stored');
   }
   const { id, publicKey } = stored;
   const privateKey = openPrivateKey(stored.privateKey, peppers);

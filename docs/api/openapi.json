@@ -1347,7 +1347,7 @@
                 "type": "string"
               },
               "value": {
-                "description": "Ed25519 over `taskmoor-meta-v1`, the instance id and the nonce, one per line; base64url.",
+                "description": "Ed25519 over `taskmoor-meta-v1`, the site’s id (`instance.id`) and the nonce, one per line; base64url.",
                 "type": "string"
               }
             },
@@ -3588,11 +3588,11 @@
   "paths": {
     "/api/meta": {
       "get": {
-        "description": "Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.",
+        "description": "Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.",
         "operationId": "getMeta",
         "parameters": [
           {
-            "description": "16 to 128 base64url characters the instance signs, chosen afresh by the caller.",
+            "description": "16 to 128 base64url characters the site signs, chosen afresh by the caller.",
             "in": "query",
             "name": "nonce",
             "required": false,
@@ -3621,7 +3621,7 @@
                 }
               }
             },
-            "description": "The instance."
+            "description": "The site."
           },
           "400": {
             "content": {
@@ -3645,7 +3645,7 @@
           }
         },
         "security": [],
-        "summary": "What this instance is and which clients it works with",
+        "summary": "What this site is and which clients it works with",
         "tags": [
           "Instance"
         ],
@@ -10392,7 +10392,7 @@
         "x-taskmoor-stability": "stable"
       },
       "post": {
-        "description": "Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).",
+        "description": "Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The site limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).",
         "operationId": "createBulkOperation",
         "requestBody": {
           "content": {
@@ -26856,7 +26856,7 @@
                   "additionalProperties": {},
                   "properties": {
                     "enabled": {
-                      "description": "Links are on in the workspace.",
+                      "description": "Links are on for the site.",
                       "type": "boolean"
                     },
                     "links": {

@@ -44,7 +44,7 @@ open, so switching breaks no bookmark or email. Behind a reverse proxy that serv
 Taskmoor under a path, put that path in `PUBLIC_URL` (`https://example.com/tracker`).
 
 A frontend kit made by the Builder (`pnpm builder --project <file>`, ADR-031) is that folder
-ready for a static host: index.html carries the configuration, pinned to its instance, with
+ready for a static host: index.html carries the configuration, pinned to its site, with
 integrity hashes on every script and stylesheet. For clean URLs it brings `.htaccess` (Apache),
 `_redirects` (Netlify, Cloudflare Pages) and an `nginx.conf` snippet. The single-file form is
 one index.html with everything inside, for hosts that take one file; it uses hash routing.
@@ -63,7 +63,7 @@ fallback files. Signing in from another origin waits for M1-107.
 
 ## Upgrades
 
-One command takes an instance from any of the last three releases (and from the latest
+One command takes a site from any of the last three releases (and from the latest
 long-term-support release) to a new one, with no step per version (OPS-006, ADR-022):
 
 | Kit | Upgrade |
@@ -129,7 +129,7 @@ back by the transaction alone, and plans with online migrations are refused.
 
 A backup is a directory with the database (`pg_dump` custom format), the uploaded files, the
 password keyring, the non-secret configuration and a manifest with a checksum per entry
-(OPS-008). With the keyring inside, a backup is as sensitive as the live instance: store it
+(OPS-008). With the keyring inside, a backup is as sensitive as the live site: store it
 encrypted or on a protected host.
 
 ```
@@ -146,8 +146,8 @@ docker compose exec taskmoor node cli.mjs restore /data/backups/<timestamp> --ye
 ```
 
 The restore verifies the checksums first, replaces the database contents and the files, and
-leaves the instance exactly as it was backed up, including the administrators and their
-sessions. The backup's password keys are added to this instance's keyring, never replacing it,
+leaves the site exactly as it was backed up, including the administrators and their
+sessions. The backup's password keys are added to this site's keyring, never replacing it,
 so the restored passwords keep working. `node cli.mjs checksum` prints one checksum per table; CI runs the whole drill
 (back up, wipe, restore, compare) with `tools/image/drill-backup.sh` on every push.
 
@@ -206,7 +206,7 @@ Site administrators set the largest file allowed (1 GB by default, no upper limi
 
 ## Exports and imports
 
-Site administrators download the whole workspace at any time as documented files
+Site administrators download the whole site at any time as documented files
 (`docs/export-format.md`): `GET /api/v1/admin/export` streams a ZIP, and
 `docker compose exec taskmoor node cli.mjs export /data/exports/<name>` writes the same into a
 folder. Imports of CSV files (`docs/csv-import.md`) and of such exports read files named by path
@@ -243,7 +243,7 @@ and `effective_cache_size` to about three quarters of the memory Postgres can us
 ## Sign-in security
 
 - **Password pepper.** Every password hash also depends on a secret key kept outside the
-  database (ASVS 2.4.5). The instance creates it on first start in
+  database (ASVS 2.4.5). The site creates it on first start in
   `/data/secrets/password-peppers`; keep that volume, and keep backups, which carry the key.
   To manage the key yourself, set `TASKMOOR_PASSWORD_PEPPER` (32 characters or more). The Helm
   chart creates one Secret for every pod and keeps it across upgrades and uninstalls.
@@ -272,7 +272,7 @@ worker drops the months older than that. To check that no record was edited, rem
 docker compose exec taskmoor node cli.mjs audit-verify
 ```
 
-It prints each workspace's chain status and exits with 1 when a chain is broken. Someone with
+It prints each site's chain status and exits with 1 when a chain is broken. Someone with
 full rights on the database could rewrite a chain from start to end, so keep the head hash it
 prints, or the last line of an export, somewhere else as well.
 

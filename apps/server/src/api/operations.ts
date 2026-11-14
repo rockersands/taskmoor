@@ -134,11 +134,11 @@ export const OPERATIONS: readonly Operation[] = [
     path: '/api/meta',
     id: 'getMeta',
     tag: 'Instance',
-    summary: 'What this instance is and which clients it works with',
+    summary: 'What this site is and which clients it works with',
     description:
-      'Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.',
+      'Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the site’s id and public key. With a nonce, the site signs it, so a client can check it reached the site it expects.',
     query: metaQuery,
-    responses: { 200: { description: 'The instance.', schema: metaAnswer } },
+    responses: { 200: { description: 'The site.', schema: metaAnswer } },
   }),
 
   // Session.
@@ -465,7 +465,7 @@ export const OPERATIONS: readonly Operation[] = [
             mayLink: z
               .boolean()
               .meta({ description: 'May this person add and remove links here.' }),
-            enabled: z.boolean().meta({ description: 'Links are on in the workspace.' }),
+            enabled: z.boolean().meta({ description: 'Links are on for the site.' }),
           })
           .loose(),
       },
@@ -1069,7 +1069,7 @@ export const OPERATIONS: readonly Operation[] = [
     tag: 'Bulk changes',
     summary: 'Start a bulk change',
     description:
-      'Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).',
+      'Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The site limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).',
     body: bulkBody,
     responses: {
       202: {

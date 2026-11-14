@@ -30,9 +30,10 @@ Nothing here was taken from another product: no competing product, its documenta
 screens were opened (ADR-003). The views reuse Taskmoor's own track timeline (ADR-064), list and
 calendar (ADR-065) and summary (ADR-116).
 
-The terminology file maps the other product's "Plans" to our "roadmaps". The user named the
+The terminology file first mapped the other product's "Plans" to "roadmaps". The user named the
 feature Multi-track and calls one a plan; "plan" is ordinary English for it, the feature's name is
-our own, and the terminology file now lists Multi-track. If the user prefers another word for one
+our own, and the terminology file then listed Multi-track. Since 2026-11-13 it lists Plans, with
+one of them a plan and never a "roadmap". If the user prefers another word for one
 plan, the rename is in the UI strings and the manual; the tables and routes can keep theirs.
 
 ## Decision

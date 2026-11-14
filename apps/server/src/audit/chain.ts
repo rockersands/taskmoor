@@ -227,7 +227,7 @@ async function appendToChain(
     SELECT head_seq, head_hash, head_recorded_at, clock_timestamp() AS now
       FROM audit_chain WHERE workspace_id = ${workspaceId} FOR UPDATE`.execute(trx);
   const head = rows[0];
-  if (!head) throw new Error(`audit chain of workspace ${workspaceId} is missing`);
+  if (!head) throw new Error(`audit chain of site ${workspaceId} is missing`);
 
   // Never earlier than the previous record or than what it records: the oldest partitions
   // then hold the start of the chain, and recorded_at >= occurred_at bounds searches by time.

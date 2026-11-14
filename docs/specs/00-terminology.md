@@ -180,8 +180,10 @@ These belong to public methods or to the industry as a whole and stay as they ar
 backlog, board, Scrum, Kanban, swimlane, WIP limit, velocity, burndown, burnup, cumulative flow,
 cycle time, lead time, status, workflow, transition, priority, label, assignee, due date, start
 date, estimate, time spent, approval, form, queue, SLA, incident, problem, change, CMDB,
-configuration item, on-call, roadmap, timeline, dashboard, goal, team, vote, comment,
-attachment, archive, audit log, site, group, role.
+configuration item, on-call, timeline, dashboard, goal, team, vote, comment, attachment,
+archive, audit log, site, group, role. "Roadmap" is not among them: what other tools call a
+roadmap is a **plan** in **Plans** here (see "Planning, service, discovery and platform"), and a
+view over dates is a **timeline**.
 
 ## Query vocabulary
 

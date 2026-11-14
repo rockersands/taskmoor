@@ -233,7 +233,7 @@ const ENTERPRISE_ATTRIBUTES: AttributeDef[] = [
 ];
 
 const GROUP_ATTRIBUTES: AttributeDef[] = [
-  text('displayName', 'The name of the group; unique in the workspace, ignoring case.', {
+  text('displayName', 'The name of the group; unique on the site, ignoring case.', {
     required: true,
     uniqueness: 'server',
   }),
@@ -303,7 +303,7 @@ export const USER_TYPE: ResourceTypeDef = {
 export const GROUP_TYPE: ResourceTypeDef = {
   name: 'Group',
   endpoint: '/Groups',
-  description: 'Groups of people in the workspace.',
+  description: 'Groups of people on the site.',
   schema: schemaById(GROUP_SCHEMA),
   extensions: [],
 };

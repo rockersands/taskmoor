@@ -26,16 +26,16 @@
 //                                       leave alone; --repair gives any other its free moves as
 //                                       a new published version; exit 1 when some are left
 //                                       without
-//   node cli.mjs export <dir>           the workspace in Taskmoor's export format (M1-098,
+//   node cli.mjs export <dir>           the site in Taskmoor's export format (M1-098,
 //        [--tracks KEY,KEY]             docs/export-format.md) into a new folder <dir>; the
 //                                       last line is the manifest's summary as JSON
 //   node cli.mjs checksum [--wait]      one checksum per table, for restore drills; --wait first
 //                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
 //                                       is locked out, or after a lost password keyring)
-//   node cli.mjs audit-verify           checks every workspace's audit hash chain (IAM-013);
+//   node cli.mjs audit-verify           checks every site's audit hash chain (IAM-013);
 //                                       exit 1 when one is broken
-//   node cli.mjs allowlist-off          turns every workspace's IP allowlist off (M1-085), for
+//   node cli.mjs allowlist-off          turns every site's IP allowlist off (M1-085), for
 //                                       an administrator who locked themselves out
 //   node cli.mjs mcp                    MCP over stdio for local MCP clients (M1-072): each line
 //                                       is a JSON-RPC message sent to TASKMOOR_URL with the API
@@ -51,7 +51,7 @@
 //                                       (M1-078) with the bundled model (or the configured
 //                                       endpoint), and sets pgvector's index up where offered;
 //                                       --rebuild drops every vector first. One JSON line per
-//                                       workspace with the counts and coverage
+//                                       site with the counts and coverage
 //   node cli.mjs report-verify          replays every ticket's report events (M1-059, RPT-003)
 //                                       and compares them with the tickets; exit 1 when one
 //                                       differs. Tickets older than the change history
@@ -506,7 +506,7 @@ try {
         }
         return rows.length;
       });
-      say(turned === 0 ? 'no allowlist was on' : `allowlist turned off in ${turned} workspace(s)`);
+      say(turned === 0 ? 'no allowlist was on' : `allowlist turned off in ${turned} site(s)`);
       break;
     }
     case 'report-verify': {

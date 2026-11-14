@@ -39,7 +39,7 @@ export interface TicketLinks {
   webLinks: WebLink[];
   /** May this person add and remove links here. */
   mayLink?: boolean;
-  /** Links are on in the workspace. */
+  /** Links are on for the site. */
   enabled?: boolean;
 }
 
