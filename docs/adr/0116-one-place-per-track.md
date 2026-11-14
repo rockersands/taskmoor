@@ -211,9 +211,17 @@ them.
       the free moves wherever it becomes a version: a draft saved through the editor or the API
       (already so, T-210), **a publish** (a draft restored from an empty version, or imported
       empty, reaches Publish without a save; the draft's version is rewritten with the moves
-      under the publish's lock, then published, still one `workflow.published`), and **an
-      import**, as a new workflow and as the next draft (`withMovesIfNone`, inside the import's
-      one transaction and one `workflow.imported`). A restore still keeps what the version holds
+      under the publish's lock, then published, still one `workflow.published`; the rewrite
+      comes after every check that can refuse the publish, since a refusal is a normal answer and
+      its transaction commits, so a refused publish leaves the draft as its author saved it and
+      writes nothing no event records), **an import of a workflow file**, as a new workflow and
+      as the next draft (`withMovesIfNone`, inside the import's one transaction and one
+      `workflow.imported`), and **an import run** (a Data Center backup or a
+      Taskmoor export: the workflow loader publishes a workflow that converts to none, one with
+      only its create action, as version 1 with the moves). What free moves cannot reach stays
+      empty wherever it comes from: a definition whose only statuses are closed-stage ones when
+      the workspace has no reason to name gets no move, is published or imported as it is, and
+      the check lists it. A restore still keeps what the version holds
       until it is published, and the editor's publish step says that such a draft is published
       with a move into every status. An import keeps every transition and rule a file has
       (WF-008 (4): imported workflows keep their rules); only a file with none gets moves.

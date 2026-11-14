@@ -279,11 +279,14 @@ exactly as sent; the editor always does, since its **Add a status** gives the st
 already, so a move you delete before saving stays deleted. A draft with no transitions at all still
 gets its free moves.
 
-A workflow is never published with no transitions at all, so that no ticket in it could move:
-a draft that has none (an earlier, empty version restored as the draft, or a file imported as
-the next draft) is published with a transition from any status into each of its statuses, as a
-new workflow gets, and **Publish version** says so before you publish. A draft with a rule, or
-the workflow of a board that manages it, is published as it is.
+So that no ticket is left unable to move, a draft with no transitions at all (an earlier, empty
+version restored as the draft, or a file imported as the next draft) is published with a
+transition from any status into each of its statuses, as a new workflow gets, and **Publish
+version** says so before you publish. The moves are added only when the publish goes through: a
+publish refused, for example to ask where the tickets of a dropped status go, leaves the draft as
+it was. A draft with a rule, and the workflow of a board that manages it, are published as they
+are. So is a draft whose only statuses are closed-stage ones when no close reason exists to set:
+it is published with no transitions, and `cli.mjs workflow-moves` lists it until you add some.
 
 A workflow left with no transitions by an earlier version of Taskmoor got those moves when the
 server was upgraded, as a new published version; a draft you had saved stays as you saved it,
