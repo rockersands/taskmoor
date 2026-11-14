@@ -53,8 +53,14 @@ export function readProgress(body: unknown): TutorialProgress {
 
 export const tutorialClient: TutorialClient = {
   progress: async () => readProgress(await api<unknown>('/account/tutorial')),
+  // Sent without waiting, as the person goes on: Finish followed at once by leaving the page
+  // still saves Done (T-245).
   save: async (section, state, step) => {
-    await api(`/account/tutorial/${section}`, { method: 'PUT', body: { state, step } });
+    await api(`/account/tutorial/${section}`, {
+      method: 'PUT',
+      body: { state, step },
+      keepalive: true,
+    });
   },
   answerOffer: async (answer) => {
     await api('/account/tutorial/offer', { method: 'PUT', body: { state: answer } });

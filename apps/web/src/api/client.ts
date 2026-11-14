@@ -106,9 +106,15 @@ export const socketToken: (() => Promise<string>) | null = oauthClient
 
 export async function api<T>(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    /** The request goes on even if the page closes meanwhile (a small save made on the way out). */
+    keepalive?: boolean;
+  } = {},
 ): Promise<T> {
   const request: RequestInit = { method: init.method ?? 'GET' };
+  if (init.keepalive) request.keepalive = true;
   if (init.body !== undefined) {
     request.headers = { 'content-type': 'application/json' };
     request.body = JSON.stringify(init.body);
