@@ -414,7 +414,7 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
       </dl>
       <p className="report-note">
         {r.forecast
-          ? t('reports.release.forecast', { date: day(r.forecast) })
+          ? t('reports.release.forecast', { date: dayText(intl, r.forecast) })
           : t('reports.release.noForecast')}
       </p>
       {byDay(r.days, 'outcome')}
