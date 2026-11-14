@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { gripsTooSmall, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { BY_STATUS, ESTIMATES, fakeGridClient } from './grid/clientFixtures';
 import { PlanGridPage } from './PlanGridPage';
 
@@ -188,5 +188,48 @@ export const OnATouchScreen: Story = {
         '.plan-grid-expand button',
       ]),
     ).toEqual([]);
+  },
+};
+
+/** Moving a row: its grip's menu, Move under, a parent chosen, then the question before it moves. */
+export const MoveUnder: Story = {
+  args: (() => {
+    const client = estimates();
+    return { client, search: client.search };
+  })(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('treegrid', { name: 'Estimates' });
+    await canvas.findByText('Dark mode for receipts');
+    await userEvent.click(canvas.getByRole('button', { name: 'Move SHOP-70' }));
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Move under…' }));
+    const dialog = await body.findByRole('dialog', { name: 'Move SHOP-70 under…' });
+    await userEvent.click(within(dialog).getByRole('radio', { name: /^SHOP-2/ }));
+    await expect(within(dialog).getByText('Move SHOP-70 under SHOP-2?')).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
+    await expect(await canvas.findByText('SHOP-70 moved under SHOP-2.')).toBeVisible();
+    await waitFor(() =>
+      expect(canvas.getByRole('rowheader', { name: /SHOP-70/ }).parentElement).toHaveAttribute(
+        'aria-level',
+        '2',
+      ),
+    );
+  },
+};
+
+/** A desktop on a touch screen: each row's grip is a finger's size. */
+export const GripsOnATouchScreen: Story = {
+  args: (() => {
+    const client = estimates();
+    return { client, search: client.search };
+  })(),
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('treegrid');
+    await expect(await gripsTooSmall(canvasElement, ['.plan-grid-grip .move-grip-handle'])).toEqual(
+      [],
+    );
   },
 };

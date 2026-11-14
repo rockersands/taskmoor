@@ -19,8 +19,12 @@ import { useColumnName } from '../search/useColumnName';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { ModalDialog } from '../shell/ModalDialog';
+import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
+import { OverlayLayer } from '../shell/OverlayLayer';
+import { followPointerDrag } from '../shell/pointerDrag';
 import { fieldName } from '../shell/seededNames';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
+import { COARSE_QUERY } from '../timeline/touch';
 import { GROUP_LABELS, type PlanGroup, type PlanView, planHref } from './address';
 import { type GridClient, isTimeout, type LevelName, savedTicketOf } from './grid/client';
 import {
@@ -31,6 +35,7 @@ import {
   editOfTicket,
   formulaCell,
   type GridCompute,
+  moveRow,
   type TotalCell,
   totalCell,
 } from './grid/compute';
@@ -39,6 +44,8 @@ import {
   allCollapsible,
   childCount,
   collapsedFromKeys,
+  type MoveProblem,
+  moveProblem,
   rowKeys,
   setSize,
   visibleRows,
@@ -52,6 +59,13 @@ import {
   type StructureSummary,
 } from './grid/types';
 import { STRUCTURE_REFUSED, useRefName } from './grid/words';
+import {
+  MOVE_PROBLEM,
+  type MoveCandidate,
+  type MoveParent,
+  MoveUnderDialog,
+  moveRefusal,
+} from './MoveUnderDialog';
 import { StructureDialog } from './StructureDialog';
 
 export interface PlanGridPageProps {
@@ -75,6 +89,10 @@ const CELL_CACHE = 5_000;
 const CARD_ROW = 120;
 /** Cards indent a level at a time up to this many; deeper ones name their level in words. */
 const CARD_LEVELS = 4;
+/** Rows the Move under picker lists at once; typing narrows the rest. */
+const MOVE_PAGE = 50;
+/** The label that follows the pointer in a drag, placed by its coordinates (`drag-ghost`). */
+const ghostAt = (x: number, y: number) => `translate(${x + 12}px, ${y + 12}px)`;
 
 const storageKey = (planId: number, sid: number | 'default') => `taskmoor.grid.${planId}.${sid}`;
 
@@ -148,6 +166,8 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
   const [editing, setEditing] = useState<Editing | null>(null);
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  // The ticket just moved: its row keeps focus when the skeleton read again behind arrives.
+  const [keepFocus, setKeepFocus] = useState<number | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again after each change, by `listVersion`
   useEffect(() => {
@@ -344,6 +364,12 @@ export function PlanGridPage({ planId, view, scenario, client, search }: PlanGri
           search={search}
           fields={fields}
           levels={levels}
+          focusTicket={keepFocus}
+          onStatus={setStatus}
+          onMoved={(ticket) => {
+            setKeepFocus(ticket);
+            setReads((r) => r + 1);
+          }}
         />
       )}
       {editing && (
@@ -389,6 +415,20 @@ interface BodyProps {
   search: SearchClient;
   fields: readonly SearchField[];
   levels: readonly LevelName[];
+  /** A ticket whose row takes focus when drawn, if focus was in the grid: the one just moved. */
+  focusTicket: number | null;
+  /** Says what happened, in the page's status line. */
+  onStatus: (text: string) => void;
+  /** A row moved: the page reads the skeleton again behind. */
+  onMoved: (ticket: number) => void;
+}
+
+/** A move asked for: the row, its ticket as last read, and the new parent if already chosen. */
+interface Moving {
+  row: number;
+  ticket: SearchTicket;
+  /** A row dropped on, -1 for Remove from parent; left out, the dialog offers rows to choose. */
+  target?: number;
 }
 
 /** A column as drawn: its place in the structure and what it is. */
@@ -422,6 +462,9 @@ function GridBody({
   search,
   fields,
   levels,
+  focusTicket,
+  onStatus,
+  onMoved,
 }: BodyProps) {
   const t = useT();
   const intl = useIntl();
@@ -430,7 +473,10 @@ function GridBody({
   const refName = useRefName(fields);
   const groupFieldName = useGroupFieldName(fields);
   // The browser's own copy of the totals; an edit changes it in place and `tick` draws it again.
-  const grid = useMemo<GridCompute>(() => computeGrid(answer, columns), [answer, columns]);
+  const base = useMemo<GridCompute>(() => computeGrid(answer, columns), [answer, columns]);
+  // After a move the rows are moved here at once, until the skeleton read again behind arrives.
+  const [after, setAfter] = useState<{ base: GridCompute; grid: GridCompute } | null>(null);
+  const grid = after?.base === base ? after.grid : base;
   const [tick, setTick] = useState(0);
   const { tree, skeleton } = grid;
   const n = tree.n;
@@ -475,9 +521,21 @@ function GridBody({
   }, [grid, answer.problems]);
   const stepProblems = answer.problems.filter((p) => !p.path.startsWith('columns.'));
 
-  // Keyboard focus, by skeleton row; it stays drawn while scrolled away.
-  const [focus, setFocus] = useState<Focus>({ row: 0, col: -1 });
-  const moved = useRef(false);
+  // Keyboard focus, by skeleton row; it stays drawn while scrolled away. A row just moved keeps
+  // it when this grid is drawn again from the skeleton read behind, if it was in the grid.
+  const [focus, setFocus] = useState<Focus>(() => {
+    const at = focusTicket === null ? -1 : skeleton.rows.ticket.indexOf(focusTicket);
+    return { row: Math.max(0, at), col: -1 };
+  });
+  const moved = useRef(
+    focusTicket !== null &&
+      typeof document !== 'undefined' &&
+      (document.activeElement === null ||
+        document.activeElement === document.body ||
+        document.activeElement.closest('.plan-grid-table') !== null),
+  );
+  /** A row to bring into view once drawn: the moved row in its new place. */
+  const scrollTo = useRef<number | null>(focusTicket === null ? null : focus.row);
   const focusShown = Math.max(0, shownIndex(visible, focus.row));
   const scroller = useRef<HTMLDivElement>(null);
   const rowHeight = compact ? CARD_ROW : undefined;
@@ -492,6 +550,15 @@ function GridBody({
     if (win.pinned >= win.last) out.push(win.pinned);
     return out;
   }, [win.first, win.last, win.pinned]);
+
+  // A row moved is brought into view in its new place, once the rows shown include it.
+  useEffect(() => {
+    const row = scrollTo.current;
+    if (row === null) return;
+    scrollTo.current = null;
+    const at = shownIndex(visible, row);
+    if (at >= 0) win.scrollToRow(at);
+  });
 
   // The tickets of the rows drawn, read by window, 500 at a time; about 5,000 are kept.
   const cache = useRef(new Map<number, SearchTicket>());
@@ -568,6 +635,240 @@ function GridBody({
 
   const [sheet, setSheet] = useState<number | null>(null);
 
+  // --- Moving a row (acceptance 2): one at a time, after confirmation, by the ticket's change ---
+  const [moving, setMoving] = useState<Moving | null>(null);
+  /** The row a drag holds, and the row under the pointer with why it cannot be the parent. */
+  const [inHand, setInHand] = useState<number | null>(null);
+  const [over, setOver] = useState<{ row: number; problem: MoveProblem | null } | null>(null);
+  const ghost = useRef<HTMLDivElement>(null);
+  const stopDrag = useRef<(() => void) | null>(null);
+  /** Where focus goes once the move dialog closes: the moved row, else where it was. */
+  const movedTo = useRef<number | null>(null);
+  useEffect(() => () => stopDrag.current?.(), []);
+  const ticketOf = (row: number) => skeleton.rows.ticket[row] as number;
+  const keyOf = (row: number) => skeleton.rows.key[row] as string;
+  const levelName = (rank: number) => levels.find((l) => l.rank === rank)?.name ?? '';
+  /** Rows a person may pick up: ticket rows, outside a scenario, not placed by a link. */
+  const movable = (row: number) =>
+    !readOnly && tree.isTicket[row] === 1 && !placedByLink(skeleton.rows.via[row] as number);
+
+  /**
+   * Why `row` cannot move under `target` (-1: Remove from parent), before the server is asked:
+   * the levels and tracks of `moveProblem`, and the ticket's own parent as last read, which may sit
+   * outside the grid.
+   */
+  const whyNot = (row: number, target: number): MoveProblem | null => {
+    const own = cache.current.get(ticketOf(row))?.parent as { id: number } | null | undefined;
+    if (target === -1) {
+      if (!tree.isTicket[row]) return 'group_row';
+      if (placedByLink(skeleton.rows.via[row] as number)) return 'placed_by_link';
+      if ((skeleton.rows.level[row] as number) === -1) return 'required';
+      const above = tree.parent[row] as number;
+      const hasParent = own === undefined ? above < n && tree.isTicket[above] === 1 : own !== null;
+      return hasParent ? null : 'same_parent';
+    }
+    const p = moveProblem(skeleton, tree, row, target);
+    if (p) return p;
+    return own && own.id === ticketOf(target) ? 'same_parent' : null;
+  };
+  const problemText = (p: MoveProblem, row: number) => {
+    if (p === 'wrong_level') {
+      const up = levelName((skeleton.rows.level[row] as number) + 1);
+      if (up) return t('grid.move.no.levelNamed', { level: up });
+    }
+    return t(MOVE_PROBLEM[p]);
+  };
+
+  /** Opens the move of a row: its ticket as last read, read now if not held. */
+  const openMove = (row: number, target?: number) => {
+    const id = ticketOf(row);
+    const open = (ticket: SearchTicket) =>
+      setMoving(target === undefined ? { row, ticket } : { row, ticket, target });
+    const held = cache.current.get(id);
+    if (held) {
+      open(held);
+      return;
+    }
+    client.tickets(planId, [id]).then(
+      (found) => {
+        const ticket = found.find((f) => f.id === id);
+        if (!ticket) {
+          onStatus(t('grid.move.readFailed', { key: keyOf(row) }));
+          return;
+        }
+        cache.current.set(id, ticket);
+        open(ticket);
+      },
+      () => onStatus(t('grid.move.readFailed', { key: keyOf(row) })),
+    );
+  };
+
+  /**
+   * Sends the move through the ticket's own change, with its version. Once saved, the rows move
+   * here at once, the new parent opens, and the skeleton is read again behind; a refusal is said
+   * in the dialog and nothing moves. A stale version reads the ticket again, for another try.
+   */
+  const sendMove = async (m: Moving, target: number): Promise<string | null> => {
+    const key = keyOf(m.row);
+    let updated: SearchTicket;
+    try {
+      updated = await search.edit(m.ticket.id, {
+        parent: target === -1 ? null : ticketOf(target),
+        ...(m.ticket.version !== undefined ? { version: m.ticket.version } : {}),
+      });
+    } catch (error) {
+      const refused = moveRefusal(error);
+      if (refused.stale) {
+        cache.current.delete(m.ticket.id);
+        const again = await client.tickets(planId, [m.ticket.id]).catch(() => []);
+        const fresh = again.find((f) => f.id === m.ticket.id);
+        if (fresh) {
+          cache.current.set(fresh.id, fresh);
+          setMoving((was) => (was && was.row === m.row ? { ...was, ticket: fresh } : was));
+        }
+      }
+      return t(refused.id, { key });
+    }
+    cache.current.set(updated.id, updated);
+    const above = tree.parent[m.row] as number;
+    // Removed from a parent the grid does not show: its row stays where it is.
+    const stays = target === -1 && (above >= n || tree.isTicket[above] !== 1);
+    if (!stays) {
+      const next = moveRow(grid, m.row, target);
+      const kept = [...collapsed].map((r) => keys[r] as string);
+      const nextKeys = rowKeys(next.skeleton, next.tree);
+      const placed = next.skeleton.rows.ticket.indexOf(updated.id);
+      const opened = collapsedFromKeys(next.skeleton, next.tree, kept);
+      // Its new parent opens, so the row moved is in view.
+      for (let at = next.tree.parent[placed] as number; at < next.tree.n; ) {
+        opened.delete(at);
+        at = next.tree.parent[at] as number;
+      }
+      setAfter({ base, grid: next });
+      setCollapsed(opened);
+      saveCollapsed(
+        store,
+        [...opened].map((r) => nextKeys[r] as string),
+      );
+      setFocus({ row: placed, col: -1 });
+      movedTo.current = placed;
+      scrollTo.current = placed;
+    } else {
+      movedTo.current = m.row;
+    }
+    onStatus(
+      target === -1
+        ? t('grid.move.removed', { key })
+        : t('grid.move.done', { key, to: keyOf(target) }),
+    );
+    setMoving(null);
+    onMoved(updated.id);
+    return null;
+  };
+
+  /** The rows offered as the new parent for the text typed: those that can be, unless searched. */
+  const candidates = (row: number) => (text: string) => {
+    const want = text.trim().toLocaleLowerCase();
+    const list: MoveCandidate[] = [];
+    let more = 0;
+    for (let at = 0; at < n; at++) {
+      if (!tree.isTicket[at] || at === row) continue;
+      const key = keyOf(at);
+      const summary = cache.current.get(ticketOf(at))?.summary ?? null;
+      if (
+        want !== '' &&
+        !key.toLocaleLowerCase().includes(want) &&
+        !(summary ?? '').toLocaleLowerCase().includes(want)
+      ) {
+        continue;
+      }
+      const p = whyNot(row, at);
+      // Unsearched, only the rows that can be the parent; searched, the others say why not.
+      if (p !== null && want === '') continue;
+      if (list.length >= MOVE_PAGE) {
+        more++;
+        continue;
+      }
+      list.push({
+        row: at,
+        key,
+        summary,
+        level: levelName(skeleton.rows.level[at] as number),
+        problem: p === null ? null : problemText(p, row),
+      });
+    }
+    return { list, more };
+  };
+
+  /** A row's menu, from its grip, Shift and F10 or the menu key, and a phone's sheet. */
+  const moveItems = (row: number): MoveMenuItem[] => {
+    const items: MoveMenuItem[] = [
+      { key: 'under', label: t('grid.move.under'), onSelect: () => openMove(row) },
+    ];
+    const p = whyNot(row, -1);
+    if (p === null || p === 'required') {
+      items.push({
+        key: 'remove',
+        label: t('grid.move.remove'),
+        onSelect: () => openMove(row, -1),
+      });
+    }
+    return items;
+  };
+
+  const rowAt = (x: number, y: number): number | null => {
+    const tr = document.elementFromPoint?.(x, y)?.closest<HTMLElement>('tr[data-row]');
+    return tr && table.current?.contains(tr) ? Number(tr.dataset.row) : null;
+  };
+  /**
+   * A press on a row's grip that may become a drag: let go on a row that can be its parent, the
+   * move is asked for as Move under would ask; on any other, it says why and nothing moves.
+   */
+  function beginDrag(event: React.PointerEvent<HTMLButtonElement>, row: number) {
+    if (stopDrag.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    const key = keyOf(row);
+    const done = () => {
+      setInHand(null);
+      setOver(null);
+    };
+    const scrollFirst = window.matchMedia?.(COARSE_QUERY).matches === true;
+    stopDrag.current = followPointerDrag(
+      event,
+      {
+        start: (x, y) => {
+          setInHand(row);
+          onStatus(t('grid.move.drag.start', { key }));
+          if (ghost.current) ghost.current.style.transform = ghostAt(x, y);
+        },
+        move: (x, y) => {
+          if (ghost.current) ghost.current.style.transform = ghostAt(x, y);
+          const at = rowAt(x, y);
+          const next = at === null ? null : { row: at, problem: whyNot(row, at) };
+          setOver((was) => (was?.row === next?.row && was?.problem === next?.problem ? was : next));
+        },
+        drop: (x, y) => {
+          const at = rowAt(x, y);
+          done();
+          if (at === null || at === row) {
+            onStatus(t('grid.move.drag.cancelled', { key }));
+            return;
+          }
+          const p = whyNot(row, at);
+          if (p) onStatus(t('grid.move.drag.refused', { key, reason: problemText(p, row) }));
+          else openMove(row, at);
+        },
+        cancel: () => {
+          done();
+          onStatus(t('grid.move.drag.cancelled', { key }));
+        },
+        end: () => {
+          stopDrag.current = null;
+        },
+      },
+      { scrollFirst },
+    );
+  }
+
   // Keyboard focus follows `focus` once the person moved it; the grid is one stop for Tab.
   const table = useRef<HTMLTableElement>(null);
   // On each drawing, where focus is meant to be.
@@ -600,8 +901,8 @@ function GridBody({
   const lastCol = drawn.length;
   const onKeyDown = (event: KeyboardEvent<HTMLTableElement>) => {
     const target = event.target as HTMLElement;
-    // Typing in a cell's editor is the editor's own.
-    if (target.closest('form')) return;
+    // Typing in a cell's editor is the editor's own, and a row's grip and menu take their keys.
+    if (target.closest('form, .move-grip')) return;
     const at = focusShown;
     const row = visible[at] as number;
     const expandable = (tree.end[row] as number) > row + 1;
@@ -647,10 +948,26 @@ function GridBody({
         else handled = false;
         break;
       }
+      case 'F10':
+      case 'ContextMenu':
+        if (event.key === 'F10' && !event.shiftKey) handled = false;
+        else openRowMenu(row);
+        break;
       default:
         handled = false;
     }
     if (handled) event.preventDefault();
+  };
+  /** Shift and F10, or the menu key: the row's menu, as its grip opens it; or why it has none. */
+  const openRowMenu = (row: number) => {
+    if (readOnly || !tree.isTicket[row]) return;
+    if (!movable(row)) {
+      onStatus(t('grid.move.byLink', { key: keyOf(row) }));
+      return;
+    }
+    table.current?.tBodies[0]
+      ?.querySelector<HTMLButtonElement>(`tr[data-row="${row}"] .move-grip-handle`)
+      ?.click();
   };
   const onFocusIn = (event: React.FocusEvent<HTMLElement>) => {
     const tr = (event.target as HTMLElement).closest<HTMLTableRowElement>('tr[data-row]');
@@ -761,8 +1078,6 @@ function GridBody({
       value: g.label === null ? t('grid.noValue') : g.label === '' ? t('grid.unnamed') : g.label,
     });
   }
-  const levelName = (rank: number) => levels.find((l) => l.rank === rank)?.name ?? '';
-
   /** The marks beside a row: outside the plan, hidden below, shown elsewhere, placed by a link. */
   const marks = (row: number) => {
     const out: string[] = [];
@@ -842,6 +1157,35 @@ function GridBody({
     </>
   );
   const sheetRow = sheet;
+
+  const moveDialog = (() => {
+    if (moving === null) return null;
+    const m = moving;
+    const parent = m.ticket.parent as { key?: string | null } | null | undefined;
+    const from: MoveParent = parent ? (parent.key ? { key: parent.key } : 'hidden') : null;
+    const blocked = m.target === undefined ? null : whyNot(m.row, m.target);
+    return (
+      <MoveUnderDialog
+        moving={keyOf(m.row)}
+        from={from}
+        below={(tree.end[m.row] as number) - m.row - 1}
+        {...(m.target === undefined
+          ? { candidates: candidates(m.row) }
+          : { target: m.target === -1 ? 'none' : { row: m.target, key: keyOf(m.target) } })}
+        blocked={blocked === null ? null : problemText(blocked, m.row)}
+        onMove={(target) => sendMove(m, target)}
+        onClose={() => setMoving(null)}
+        restoreFocus={(opener) => {
+          const row = movedTo.current;
+          movedTo.current = null;
+          if (row !== null && !compact) {
+            moved.current = true;
+            setFocus({ row, col: -1 });
+          } else opener?.focus();
+        }}
+      />
+    );
+  })();
 
   if (compact) {
     const first = drawn[0];
@@ -937,6 +1281,8 @@ function GridBody({
           <RowSheet
             title={`${rowLabel(sheetRow)} ${cache.current.get(skeleton.rows.ticket[sheetRow] as number)?.summary ?? ''}`.trim()}
             marks={marks(sheetRow)}
+            actions={movable(sheetRow) ? moveItems(sheetRow) : []}
+            onAction={() => setSheet(null)}
             onClose={() => setSheet(null)}
           >
             {drawn.map((d) => {
@@ -958,6 +1304,7 @@ function GridBody({
             })}
           </RowSheet>
         )}
+        {moveDialog}
       </>
     );
   }
@@ -1050,6 +1397,18 @@ function GridBody({
                   tabIndex={focus.row === row && focus.col < 0 ? 0 : -1}
                   className={isTicket ? 'plan-grid-row' : 'plan-grid-row is-group'}
                   data-out={skeleton.rows.inPlan[row] ? undefined : 'true'}
+                  data-drop={
+                    inHand !== null && over?.row === row && row !== inHand
+                      ? over.problem
+                        ? 'no'
+                        : 'yes'
+                      : undefined
+                  }
+                  data-in-hand={
+                    inHand !== null && row >= inHand && row < (tree.end[inHand] as number)
+                      ? 'true'
+                      : undefined
+                  }
                 >
                   <th
                     scope="row"
@@ -1057,6 +1416,17 @@ function GridBody({
                     style={{ '--grid-depth': tree.depth[row] } as React.CSSProperties}
                   >
                     <span className="plan-grid-tree-cell">
+                      {movable(row) ? (
+                        <MoveMenu
+                          className="plan-grid-grip"
+                          label={t('grid.move.grip', { key: label })}
+                          handle={`row-${ticketId}`}
+                          items={moveItems(row)}
+                          onDragStart={(event) => beginDrag(event, row)}
+                        />
+                      ) : (
+                        !readOnly && <span className="plan-grid-grip-space" />
+                      )}
                       {below ? (
                         <button
                           type="button"
@@ -1116,6 +1486,18 @@ function GridBody({
       </p>
       {/* `tick` and `cells` only draw the grid again after an edit or a read of cells. */}
       <span hidden data-tick={tick} data-cells={cells} />
+      {inHand !== null && (
+        <OverlayLayer>
+          <div ref={ghost} className="drag-ghost" aria-hidden="true">
+            {over === null || over.row === inHand
+              ? keyOf(inHand)
+              : over.problem
+                ? problemText(over.problem, inHand)
+                : t('grid.move.drag.on', { key: keyOf(inHand), to: keyOf(over.row) })}
+          </div>
+        </OverlayLayer>
+      )}
+      {moveDialog}
     </>
   );
 }
@@ -1153,11 +1535,16 @@ function Chevron({ open }: { open: boolean }) {
 function RowSheet({
   title,
   marks,
+  actions,
+  onAction,
   onClose,
   children,
 }: {
   title: string;
   marks: string[];
+  /** Moves offered for the row (Move under, Remove from parent); the sheet closes first. */
+  actions: MoveMenuItem[];
+  onAction: () => void;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -1176,6 +1563,19 @@ function RowSheet({
         <tbody>{children}</tbody>
       </table>
       <div className="form-actions">
+        {actions.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="button-secondary"
+            onClick={() => {
+              onAction();
+              item.onSelect();
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
         <button type="button" className="button-secondary" onClick={onClose}>
           {t('grid.sheet.close')}
         </button>

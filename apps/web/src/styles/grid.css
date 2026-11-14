@@ -335,12 +335,122 @@
   gap: var(--space-2);
 }
 
+/*
+ * Moving a row (acceptance 2): a grip on each ticket row that may move, which drags or opens the
+ * row's menu; a row placed by a link keeps the grip's room, so the keys stay in line. While a row
+ * is in hand it and its rows below fade, and the row under the pointer is outlined as a parent it
+ * may or may not take.
+ */
+.plan-grid-grip .move-grip-popup {
+  inset-inline: 0 auto;
+}
+
+.plan-grid-grip-space {
+  display: inline-block;
+  flex: none;
+  width: var(--hit-target);
+}
+
+/* The grip's menu rises above the sticky tree cells of the rows after it. */
+.plan-grid-table tbody th:has(.move-grip-popup) {
+  z-index: 4;
+}
+
+.plan-grid-row[data-in-hand] {
+  opacity: 0.5;
+}
+
+.plan-grid-row[data-drop="yes"] th,
+.plan-grid-row[data-drop="yes"] td {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.plan-grid-row[data-drop="no"] th,
+.plan-grid-row[data-drop="no"] td {
+  box-shadow: inset 0 0 0 2px var(--color-danger);
+}
+
+.plan-grid-move-dialog h2 {
+  margin-block-start: 0;
+}
+
+.plan-grid-move-dialog fieldset.plan-grid-move-targets {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.plan-grid-move-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 40vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.plan-grid-move-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-2);
+}
+
+.plan-grid-move-item label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.plan-grid-move-item[data-refused] label {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.plan-grid-move-key {
+  font-weight: var(--font-weight-strong);
+}
+
+.plan-grid-move-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-grid-move-level,
+.plan-grid-move-why {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.plan-grid-move-why {
+  grid-column: 2;
+}
+
+.plan-grid-move-ask p {
+  margin: 0 0 var(--space-2);
+}
+
+.plan-grid-move-question {
+  font-weight: var(--font-weight-strong);
+}
+
 @media (pointer: coarse) {
   .plan-grid-tools select,
   .plan-grid-actions button,
   .plan-grid-expand button,
   .plan-grid-table a,
   .plan-grid-sheet button,
+  .plan-grid-move-dialog button,
+  .plan-grid-move-dialog input[type="search"],
+  .plan-grid-move-item label,
   .structure-dialog input,
   .structure-dialog select,
   .structure-dialog textarea,
@@ -351,6 +461,10 @@
   .plan-grid-toggle {
     width: var(--hit-target-touch);
     height: var(--hit-target-touch);
+  }
+
+  .plan-grid-grip-space {
+    width: var(--hit-target-touch);
   }
 
   .plan-grid-table a {

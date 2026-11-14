@@ -1000,4 +1000,43 @@ describe('plan structures and the Grid (PLN-010)', () => {
     const s = await rows('ana', 'default');
     expect(s.rows.parent[row(s, t.a3)]).toBe(row(s, t.o1));
   });
+
+  it('[PLN-010] [QRY-008] moves as the Grid does: the parent by id, with the version of the rows in view', async () => {
+    const inView = async (who: string, x: Ticket) =>
+      (
+        await call(who, {
+          method: 'POST',
+          url: `${plan()}/grid/tickets`,
+          payload: { ids: [x.id] },
+        })
+      ).tickets[0] as {
+        version: number;
+        parent: { id: number; key: string | null; summary: string | null } | null;
+      };
+    // The page says "a ticket you may not see" for A4's parent: the rows in view never name it.
+    const seen = await inView('ana', t.a4);
+    expect(seen.parent).toMatchObject({ key: null, summary: null });
+    // Move under: `parent` is the row's ticket id and `version` the one the rows in view gave.
+    const before = await inView('admin', t.a4);
+    expect(before.parent?.key).toBe(t.hiddenParent.key);
+    const moved = await as('admin', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${t.a4.id}`,
+      payload: { parent: t.o1.id, version: before.version },
+    });
+    expect(moved.statusCode, moved.body).toBe(200);
+    const after = await inView('ana', t.a4);
+    expect(after.parent).toMatchObject({ id: t.o1.id, key: t.o1.key });
+    expect(after.version).toBeGreaterThan(before.version);
+    // The same version again is stale: 409, and nothing moves.
+    const again = await as('admin', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${t.a4.id}`,
+      payload: { parent: null, version: before.version },
+    });
+    expect(again.statusCode, again.body).toBe(409);
+    expect(again.json()).toMatchObject({ error: 'version_conflict' });
+    const s = await rows('ana', 'default');
+    expect(s.rows.parent[row(s, t.a4)]).toBe(row(s, t.o1));
+  });
 });

@@ -5,6 +5,7 @@ import { fakeSearchClient } from '../../search/fixtures';
 import type { LinkTypeOption } from '../client';
 import type { FormulaCheck, GridAt, GridClient, LevelName, StructureOutcome } from './client';
 import { bigSkeleton, type FixtureRow, skeletonOf } from './fixtures';
+import { buildTree, moveSubtree } from './tree';
 import {
   DEFAULT_STRUCTURE,
   GRID_LIMITS,
@@ -200,11 +201,28 @@ export const BY_STATUS: StructureSpec = {
 
 const sampleSkeleton = (rows: SampleRow[]): GridSkeleton => skeletonOf(rows, GRID_FIELDS);
 
-/** The sample's tickets in the search route's shape. */
-export function sampleTickets(rows: readonly SampleRow[] = SAMPLE_ROWS): SearchTicket[] {
+/**
+ * The sample's tickets in the search route's shape. A ticket's parent is the ticket row above it,
+ * where its place comes from its parent (not a link); `hiddenParents` names tickets whose parent
+ * the viewer may not see, as the ticket route shows one (an id, no key).
+ */
+export function sampleTickets(
+  rows: readonly SampleRow[] = SAMPLE_ROWS,
+  hiddenParents: readonly number[] = [],
+): SearchTicket[] {
   return rows
     .filter((r) => r.ticket > 0)
     .map((r) => {
+      const above = r.parent >= 0 && (r.via ?? 1) < 2 ? rows[r.parent] : undefined;
+      const parent = hiddenParents.includes(r.ticket)
+        ? { id: 900 + r.ticket, key: null, summary: null }
+        : above && above.ticket > 0
+          ? {
+              id: above.ticket,
+              key: above.key ?? `T-${above.ticket}`,
+              summary: above.summary ?? null,
+            }
+          : null;
       const stage = r.stage ?? 'new';
       const estimate = r.values?.originalEstimate;
       const points = r.values?.['cf[41]'];
@@ -226,6 +244,7 @@ export function sampleTickets(rows: readonly SampleRow[] = SAMPLE_ROWS): SearchT
           remainingEstimate: null,
           timeSpent: 0,
         },
+        parent,
         version: 1,
         updatedAt: '2026-11-10T08:00:00Z',
       } satisfies SearchTicket;
@@ -260,6 +279,10 @@ export interface FakeGridOptions {
   problems?: StructureProblem[];
   /** The rows are cut at the limit. */
   more?: boolean;
+  /** Tickets whose parent the viewer may not see. */
+  hiddenParents?: number[];
+  /** Tickets whose status locks them against change (403 with the lock). */
+  locked?: number[];
 }
 
 export interface FakeGridClient extends GridClient {
@@ -268,6 +291,8 @@ export interface FakeGridClient extends GridClient {
     tickets: number[][];
     created: { name: string; spec: StructureSpec }[];
     changed: { sid: number; change: object }[];
+    /** Every change of a ticket's parent sent, refused or not. */
+    moves: { id: number; parent: number | null; version: unknown }[];
   };
   /** Tickets as the fake backend holds them, edited by the search client's `edit`. */
   store: Map<number, SearchTicket>;
@@ -313,7 +338,7 @@ export function fakeGridClient(options: FakeGridOptions = {}): FakeGridClient {
   let nextId = Math.max(0, ...structures.map((s) => s.id)) + 1;
   let generation = 0;
   let slow = options.timeout ?? false;
-  const skeleton: GridSkeleton =
+  let skeleton: GridSkeleton =
     typeof options.skeleton === 'number'
       ? bigSkeleton(options.skeleton)
       : options.skeleton === 'grouped'
@@ -322,8 +347,40 @@ export function fakeGridClient(options: FakeGridOptions = {}): FakeGridClient {
           ? sampleSkeleton([])
           : (options.skeleton ?? sampleSkeleton(SAMPLE_ROWS));
   if (options.more) skeleton.more = true;
-  const store = new Map(sampleTickets().map((t) => [t.id, t]));
-  const calls: FakeGridClient['calls'] = { rows: [], tickets: [], created: [], changed: [] };
+  const store = new Map(
+    sampleTickets(SAMPLE_ROWS, options.hiddenParents ?? []).map((t) => [t.id, t]),
+  );
+  const calls: FakeGridClient['calls'] = {
+    rows: [],
+    tickets: [],
+    created: [],
+    changed: [],
+    moves: [],
+  };
+  /**
+   * A change of parent, as the ticket route checks it (`placementProblem`): a parent exactly one
+   * level up, a subticket's in its own track and never none. Once saved, the skeleton follows.
+   */
+  const reparent = (id: number, to: number | null): Record<string, string> | null => {
+    const rows = skeleton.rows;
+    const row = rows.ticket.indexOf(id);
+    const level = rows.level[row] as number;
+    if (to === null) return level === -1 ? { parent: 'required' } : null;
+    const target = rows.ticket.indexOf(to);
+    if (target < 0) return { parent: 'not_found' };
+    if (to === id) return { parent: 'self' };
+    if ((rows.level[target] as number) !== level + 1) return { parent: 'wrong_level' };
+    if (level === -1 && rows.track[target] !== rows.track[row]) return { parent: 'other_track' };
+    return null;
+  };
+  const placeRow = (id: number, to: number | null) => {
+    const row = skeleton.rows.ticket.indexOf(id);
+    const tree = buildTree(skeleton);
+    const top = (tree.parent[row] as number) >= tree.n;
+    if (to === null && top) return;
+    const target = to === null ? -1 : skeleton.rows.ticket.indexOf(to);
+    skeleton = moveSubtree(skeleton, tree, row, target).skeleton;
+  };
   const named = (name: string, except: number | null) =>
     structures.some((s) => s.id !== except && s.name.toLowerCase() === name.trim().toLowerCase());
   const badFormula = (spec: StructureSpec): StructureOutcome<StructureSummary> | null => {
@@ -347,13 +404,34 @@ export function fakeGridClient(options: FakeGridOptions = {}): FakeGridClient {
       const found = store.get(id);
       if (!found) throw new ApiError(404, { error: 'not_found' });
       const c = change as Record<string, unknown>;
+      if ('parent' in c) {
+        calls.moves.push({ id, parent: c.parent as number | null, version: c.version });
+      }
       if (c.version !== undefined && c.version !== found.version) {
         throw new ApiError(409, { error: 'version_conflict' });
+      }
+      if (options.locked?.includes(id)) {
+        throw new ApiError(403, {
+          error: 'forbidden',
+          permission: 'edit_tickets',
+          locks: [{ status: found.status.name }],
+        });
       }
       if (found.status.stage === 'closed') {
         throw new ApiError(403, { error: 'forbidden', permission: 'edit' });
       }
       const next: SearchTicket = { ...found, version: (found.version ?? 1) + 1 };
+      if ('parent' in c) {
+        const to = c.parent as number | null;
+        const refused = reparent(id, to);
+        if (refused) throw new ApiError(400, { error: 'invalid_fields', fields: refused });
+        const parent = to === null ? undefined : store.get(to);
+        next.parent =
+          to === null
+            ? null
+            : { id: to, key: parent?.key ?? null, summary: parent?.summary ?? null };
+        placeRow(id, to);
+      }
       if (typeof c.summary === 'string') next.summary = c.summary;
       if (c.fields && typeof c.fields === 'object') {
         next.fields = { ...found.fields, ...(c.fields as Record<string, unknown>) };
