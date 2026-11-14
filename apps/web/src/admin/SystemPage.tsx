@@ -45,7 +45,13 @@ export interface BackupRun {
 
 export interface BackupsInfo {
   schedule: { enabled: boolean; time: string; keep: number; verify: boolean };
+  /** Null when they are off or no worker can take one (`workers`). */
   nextAt: string | null;
+  /**
+   * Whether a worker can take scheduled backups: `off` and `no-directory` when only workers
+   * that cannot checked lately; `unknown` when none checked (older servers leave it out).
+   */
+  workers?: 'ready' | 'off' | 'no-directory' | 'unknown';
   running: BackupRun | null;
   lastSuccess: BackupRun | null;
   lastFailure: BackupRun | null;
@@ -280,6 +286,15 @@ function Backups({
   const failing =
     lastFailure !== null &&
     (lastSuccess === null || Date.parse(lastFailure.startedAt) > Date.parse(lastSuccess.startedAt));
+  // A run no worker could take says why in words, not as the server's note to the operator.
+  const failureReason = (run: BackupRun) => {
+    const reason = (run.details as { reason?: unknown } | null)?.reason;
+    return reason === 'off'
+      ? t('admin.system.failure.off')
+      : reason === 'no-directory'
+        ? t('admin.system.failure.noPlace')
+        : null;
+  };
   const restoreSeconds = (run: BackupRun) => {
     const seconds = (run.details as { seconds?: { restore?: unknown } } | null)?.seconds?.restore;
     return typeof seconds === 'number' ? seconds : null;
@@ -294,11 +309,17 @@ function Backups({
         )}
       </Fact>
       <Fact label={t('admin.system.nextBackup')}>
-        {backups.running
-          ? t('admin.system.backupRunning', { at: when(backups.running.startedAt) })
-          : backups.nextAt
-            ? plain(when(backups.nextAt))
-            : t('admin.system.none')}
+        {backups.running ? (
+          t('admin.system.backupRunning', { at: when(backups.running.startedAt) })
+        ) : schedule.enabled && backups.workers === 'off' ? (
+          <span className="status-warn">{t('admin.system.noWorkerOff')}</span>
+        ) : schedule.enabled && backups.workers === 'no-directory' ? (
+          <span className="status-warn">{t('admin.system.noWorkerPlace')}</span>
+        ) : backups.nextAt ? (
+          plain(when(backups.nextAt))
+        ) : (
+          t('admin.system.none')
+        )}
       </Fact>
       <Fact label={t('admin.system.lastSuccess')}>
         {lastSuccess ? (
@@ -315,7 +336,7 @@ function Backups({
           <span className={failing ? 'status-bad' : ''}>
             {t('admin.system.failureValue', {
               at: when(lastFailure.startedAt),
-              error: lastFailure.error ?? '',
+              error: failureReason(lastFailure) ?? lastFailure.error ?? '',
             })}
           </span>
         ) : (

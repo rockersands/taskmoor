@@ -24,6 +24,8 @@ import {
   backupDirectory,
   backupDue,
   backupSchedule,
+  backupStatus,
+  backupWorkerState,
   DEFAULT_BACKUP_SCHEDULE,
   nextBackupAt,
   recordedBackup,
@@ -87,6 +89,10 @@ describe('the backup schedule (M1-101, OPS-008)', () => {
     );
     expect(backupDirectory({ dataDir: '/data', backupDir: 'off' })).toBeNull();
     expect(backupDirectory({})).toBeNull();
+    // Off is said apart from nowhere to put them (S3-AC-1).
+    expect(backupWorkerState({ dataDir: '/data' })).toBe('ready');
+    expect(backupWorkerState({ dataDir: '/data', backupDir: 'off' })).toBe('off');
+    expect(backupWorkerState({})).toBe('no-directory');
   });
 });
 
@@ -265,6 +271,72 @@ describe('scheduled backups (M1-101, OPS-008)', () => {
     const [run] = await database.db.selectFrom('backup_run').selectAll().execute();
     expect(run).toMatchObject({ kind: 'scheduled', state: 'failed' });
     expect(run?.error).toMatch(/TASKMOOR_BACKUP_DIR/);
+  });
+
+  it('[OPS-008] gives the reason a worker with backups turned off took none, not a setting to set (S3-AC-1)', async () => {
+    await runScheduledBackup(database.db, {
+      databaseUrl: database.url,
+      backupDir: null,
+      declined: 'off',
+      version: 'test',
+    });
+    const [run] = await database.db.selectFrom('backup_run').selectAll().execute();
+    expect(run).toMatchObject({ kind: 'scheduled', state: 'failed', details: { reason: 'off' } });
+    expect(run?.error).toMatch(/off on this worker/);
+    expect(run?.error).not.toMatch(/TASKMOOR_DATA/);
+  });
+
+  it('[OPS-008] leaves the backup to a worker that has a place for it, and promises none when no worker has (S3-AC-1)', async () => {
+    await writeSetting(database.db, 'setup', { completed: true });
+    const now = at('2026-12-20T03:00:00Z');
+    const slot = '2026-12-20T02:30:00.000Z';
+    // A worker with scheduled backups turned off (TASKMOOR_BACKUP_DIR=off) queues nothing, and
+    // the status page promises no next backup and says why.
+    expect(await scheduleBackups(database.db, now, 'off')).toBe(false);
+    expect(await database.db.selectFrom('job').select('id').execute()).toEqual([]);
+    expect(await backupStatus(database.db, now)).toMatchObject({ workers: 'off', nextAt: null });
+    // Nor with nowhere to put one.
+    expect(await scheduleBackups(database.db, now, 'no-directory')).toBe(false);
+    expect(await backupStatus(database.db, now)).toMatchObject({
+      workers: 'no-directory',
+      nextAt: null,
+    });
+
+    // Once a worker that can take it checks, the backup is queued and promised.
+    expect(await scheduleBackups(database.db, now, 'ready')).toBe(true);
+    expect(await backupStatus(database.db, now)).toMatchObject({ workers: 'ready', nextAt: slot });
+    // The worker without a place never claims the job, so it records no failure and spends
+    // none of the job's attempts; the one with a place takes it.
+    const off = new JobRunner(database.db, 'worker-off');
+    registerBackupJobs(off, database.db, {
+      databaseUrl: database.url,
+      backupDir: null,
+      declined: 'off',
+      version: 'test',
+      now: () => now,
+    });
+    expect(await off.runOnce()).toBe(0);
+    expect(await database.db.selectFrom('job').select(['attempts', 'done_at']).execute()).toEqual([
+      { attempts: 0, done_at: null },
+    ]);
+    expect(await database.db.selectFrom('backup_run').select('id').execute()).toEqual([]);
+    const ready = new JobRunner(database.db, 'worker-ready');
+    registerBackupJobs(ready, database.db, {
+      databaseUrl: database.url,
+      backupDir: join(dir, 'shared'),
+      version: 'test',
+      now: () => now,
+      take: fakeBackup,
+    });
+    expect(await ready.runOnce()).toBe(1);
+    expect(await database.db.selectFrom('backup_run').select(['kind', 'state']).execute()).toEqual([
+      { kind: 'scheduled', state: 'succeeded' },
+    ]);
+
+    // A worker that stopped checking no longer counts: three missed checks.
+    const later = new Date(now.getTime() + 16 * 60_000);
+    await scheduleBackups(database.db, later, 'off');
+    expect(await backupStatus(database.db, later)).toMatchObject({ workers: 'off', nextAt: null });
   });
 
   it('[OPS-008] runs one backup at a time and fails runs whose process died', async () => {

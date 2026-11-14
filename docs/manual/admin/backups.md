@@ -1,8 +1,8 @@
 ---
 title: "Backups and restore"
 audience: admins
-sources: apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/backups/runs.ts, apps/server/src/backups/drill.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/secrets.ts, apps/server/src/routes/backups.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/purge.ts, apps/server/src/trash/policy.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/docker-compose.yml, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, tools/image/drill-backup.sh, docs/adr/0022-upgrades-and-migrations.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-11-03
+sources: apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/backups/runs.ts, apps/server/src/backups/drill.ts, apps/server/src/events/queue.ts, apps/server/src/main.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/secrets.ts, apps/server/src/routes/backups.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/purge.ts, apps/server/src/trash/policy.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/docker-compose.yml, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, tools/image/drill-backup.sh, docs/adr/0022-upgrades-and-migrations.md, docs/specs/05b-administration-security-and-self-hosting.md
+accessed: 2026-11-14
 attestation: own-words
 ---
 # Backups and restore
@@ -76,8 +76,15 @@ hand or before an upgrade: remove those yourself. A scheduled backup that fails 
 directory behind.
 
 Only one backup and one drill run at a time. A run whose process stopped answering is marked
-failed after five minutes. A worker without a backup directory records a failed run that says
-so, and the admin status page shows it.
+failed after five minutes.
+
+A worker with `TASKMOOR_BACKUP_DIR=off`, or with neither that nor `TASKMOOR_DATA`, takes no
+scheduled backups: it neither queues the day's backup nor picks it up, so a worker with a backup
+directory takes it. Each worker reports at every check whether it can take backups. When only
+workers that cannot have reported in the last 15 minutes, System status shows no next backup
+and says why instead: every worker has scheduled backups turned off, or none has a place to keep
+them. Give at least one worker a backup directory, or turn the schedule off with
+`PUT /api/v1/admin/backups/schedule` if the database provider keeps your backups.
 
 ### Changing the schedule
 
@@ -171,9 +178,9 @@ Under **Administration**, **System status**, site administrators see a **Schedul
 | Label | Shows |
 |---|---|
 | **Schedule** | "Every day at 02:30 UTC, keeping the last 14", or **Off** |
-| **Next backup** | When the next one starts, or that one is running |
+| **Next backup** | When the next one starts, that one is running, or a warning that none will run because no worker can take it |
 | **Last success** | Time and size of the last good backup |
-| **Last failure** | Time and error of the last failed one, in red until a backup succeeds after it |
+| **Last failure** | Time and error of the last failed one, in red until a backup succeeds after it; a run no worker could take gives its reason in words |
 | **Restore drill** | When the last drill passed and how long the restore took, or why it failed |
 
 The **Storage** section shows **Last backup** from the marker, with a warning once it is older

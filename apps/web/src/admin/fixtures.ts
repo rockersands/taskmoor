@@ -105,6 +105,31 @@ export const STALE_BACKUP: SystemInfo = {
   },
 };
 
+/**
+ * Every worker has scheduled backups turned off (TASKMOOR_BACKUP_DIR=off, as the demo runs), and
+ * a run from before workers declined the job failed for it (S3-AC-1).
+ */
+export const NO_BACKUP_WORKER: SystemInfo = {
+  ...HEALTHY,
+  backup: null,
+  backups: {
+    schedule: { enabled: true, time: '02:30', keep: 14, verify: true },
+    nextAt: null,
+    workers: 'off',
+    running: null,
+    lastSuccess: null,
+    lastFailure: run({
+      kind: 'scheduled',
+      state: 'failed',
+      startedAt: '2026-10-12T02:30:00.000Z',
+      details: { reason: 'off' },
+      error: 'scheduled backups are off on this worker (TASKMOOR_BACKUP_DIR=off)',
+    }),
+    lastDrill: null,
+    kept: 0,
+  },
+};
+
 export const ADMIN: Session = {
   status: 'signed-in',
   user: {

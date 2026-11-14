@@ -47,12 +47,16 @@ export async function enqueue(db: Db, jobs: readonly NewJob[]): Promise<number> 
   return Number(result.numAffectedRows ?? 0);
 }
 
-/** Claims up to `limit` due jobs; with `tasks`, only jobs of those tasks. */
+/**
+ * Claims up to `limit` due jobs; with `tasks`, only jobs of those tasks, and never a job of a
+ * task in `declined` (left to the workers that take it).
+ */
 export async function claim(
   db: Db,
   worker: string,
   limit: number,
   tasks?: readonly string[],
+  declined: readonly string[] = [],
 ): Promise<ClaimedJob[]> {
   const { rows } = await sql<{
     id: string;
@@ -66,6 +70,7 @@ export async function claim(
       SELECT id FROM job
        WHERE done_at IS NULL AND locked_at IS NULL AND run_at <= now()
          AND (${tasks === undefined} OR task = ANY(${[...(tasks ?? [])]}::text[]))
+         AND NOT (task = ANY(${[...declined]}::text[]))
        ORDER BY run_at, id LIMIT ${limit}
        FOR UPDATE SKIP LOCKED)
     UPDATE job j
@@ -114,10 +119,12 @@ export type JobHandler = (job: ClaimedJob) => Promise<void>;
 
 /**
  * Runs claimed jobs through their task's handler; unknown tasks fail and retry later. A runner
- * given `tasks` claims only those, and leaves every other job to the workers.
+ * given `tasks` claims only those, and leaves every other job to the workers. A task it
+ * declines it never claims, so a worker that has what the task needs takes it.
  */
 export class JobRunner {
   private readonly handlers = new Map<string, JobHandler>();
+  private readonly declined = new Set<string>();
 
   constructor(
     private readonly db: Kysely<Database>,
@@ -127,11 +134,21 @@ export class JobRunner {
 
   handle(task: string, handler: JobHandler): void {
     this.handlers.set(task, handler);
+    this.declined.delete(task);
+  }
+
+  /**
+   * Leaves the jobs of `task` to other workers: this process cannot run them (a worker with
+   * scheduled backups turned off, say), so it must not claim one and spend its attempts.
+   */
+  decline(task: string): void {
+    this.handlers.delete(task);
+    this.declined.add(task);
   }
 
   /** Claims and runs one batch. Returns how many jobs completed. */
   async runOnce(batch = 25): Promise<number> {
-    const jobs = await claim(this.db, this.name, batch, this.options.tasks);
+    const jobs = await claim(this.db, this.name, batch, this.options.tasks, [...this.declined]);
     const done: string[] = [];
     for (const job of jobs) {
       const handler = this.handlers.get(job.task);

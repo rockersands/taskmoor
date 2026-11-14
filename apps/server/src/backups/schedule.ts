@@ -35,6 +35,11 @@ import {
  *   measured, a redacted error), which the admin status page reads. At most one backup and one
  *   drill run at a time; a run whose process died is marked failed after five minutes without
  *   a heartbeat.
+ * - **Workers that take none:** a worker with `TASKMOOR_BACKUP_DIR=off`, or with neither it nor
+ *   `TASKMOOR_DATA`, neither queues the day's backup nor claims it, so a worker that can take
+ *   it does. Every worker says at each check whether it can (`backup_worker_ready` and
+ *   `backup_worker_declined`), so the status page names no next backup when none can, and
+ *   says why, instead of promising one that would fail.
  *
  * Administrators change the schedule with `PUT /api/v1/admin/backups/schedule`; the location
  * is the operator's (an environment variable), never something the API can point elsewhere.
@@ -91,6 +96,54 @@ export function backupDirectory(config: {
   if (configured === 'off') return null;
   if (configured) return resolve(configured);
   return config.dataDir ? resolve(config.dataDir, 'backups') : null;
+}
+
+/**
+ * Whether this process takes scheduled backups: `ready` with a backup directory, `off` when
+ * `TASKMOOR_BACKUP_DIR` is `off`, `no-directory` when neither it nor `TASKMOOR_DATA` is set.
+ */
+export type BackupWorkerState = 'ready' | 'off' | 'no-directory';
+
+export function backupWorkerState(config: {
+  backupDir?: string | undefined;
+  dataDir?: string | undefined;
+}): BackupWorkerState {
+  if (config.backupDir?.trim() === 'off') return 'off';
+  return backupDirectory(config) === null ? 'no-directory' : 'ready';
+}
+
+/** When a worker that can take scheduled backups last checked (every five minutes). */
+export const BACKUP_WORKER_READY_SETTING = 'backup_worker_ready';
+/** When a worker that cannot last checked, and why. */
+export const BACKUP_WORKER_DECLINED_SETTING = 'backup_worker_declined';
+/** A check older than this is from a worker that has stopped: three missed checks. */
+export const BACKUP_WORKER_FRESH_MS = 15 * 60_000;
+
+/**
+ * What the workers said about scheduled backups: `ready` when one that can take them checked
+ * lately; `off` or `no-directory` when only workers that cannot did; `unknown` when no worker
+ * checked lately (none runs, or none has this version yet).
+ */
+export type BackupWorkers = BackupWorkerState | 'unknown';
+
+async function checkIn(db: Kysely<Database>, state: BackupWorkerState, now: Date): Promise<void> {
+  if (state === 'ready') {
+    await writeSetting(db, BACKUP_WORKER_READY_SETTING, { at: now.toISOString() });
+  } else {
+    await writeSetting(db, BACKUP_WORKER_DECLINED_SETTING, { at: now.toISOString(), why: state });
+  }
+}
+
+export async function backupWorkers(db: Kysely<Database>, now: Date): Promise<BackupWorkers> {
+  const [ready, declined] = await Promise.all([
+    readSetting<{ at?: string }>(db, BACKUP_WORKER_READY_SETTING),
+    readSetting<{ at?: string; why?: string }>(db, BACKUP_WORKER_DECLINED_SETTING),
+  ]);
+  const fresh = (at: string | undefined) =>
+    at !== undefined && Math.abs(now.getTime() - Date.parse(at)) <= BACKUP_WORKER_FRESH_MS;
+  if (fresh(ready?.at)) return 'ready';
+  if (fresh(declined?.at)) return declined?.why === 'off' ? 'off' : 'no-directory';
+  return 'unknown';
 }
 
 /** The scheduled time on the day of `at`, in UTC. */
@@ -234,6 +287,8 @@ export async function pruneScheduledBackups(
 export interface ScheduledBackupDeps extends BackupTarget {
   /** From `backupDirectory`; null when this process has none. */
   backupDir: string | null;
+  /** Why `backupDir` is null (`backupWorkerState`); `no-directory` when not given. */
+  declined?: Exclude<BackupWorkerState, 'ready'>;
   now?: () => Date;
   take?: typeof backup;
 }
@@ -261,11 +316,16 @@ export async function runScheduledBackup(
     .executeTakeFirst();
   if (done) return { state: 'skipped', reason: 'already backed up' };
   if (!deps.backupDir) {
+    // A worker like this declines the job (`registerBackupJobs`); this is for a direct call.
+    const reason = deps.declined ?? 'no-directory';
     const runId = await startRun(db, 'scheduled', null, now);
     await finishRun(db, runId, {
       state: 'failed',
+      details: { reason },
       error:
-        'this worker has no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR, or turn scheduled backups off',
+        reason === 'off'
+          ? 'scheduled backups are off on this worker (TASKMOOR_BACKUP_DIR=off)'
+          : 'this worker has no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR',
     });
     return { state: 'skipped', reason: 'no backup directory' };
   }
@@ -298,9 +358,17 @@ export const VERIFY_TASK = 'backup.verify';
 
 /**
  * Queues today's backup when it is due, once across all workers (the key names the slot).
- * Nothing is due before first-run setup: an empty instance needs no backup.
+ * Nothing is due before first-run setup: an empty instance needs no backup. Each worker says
+ * whether it can take scheduled backups (`worker`); one that cannot queues none, since it
+ * would leave a job that it declines.
  */
-export async function scheduleBackups(db: Kysely<Database>, now = new Date()): Promise<boolean> {
+export async function scheduleBackups(
+  db: Kysely<Database>,
+  now = new Date(),
+  worker: BackupWorkerState = 'ready',
+): Promise<boolean> {
+  await checkIn(db, worker, now);
+  if (worker !== 'ready') return false;
   const schedule = await backupSchedule(db);
   if (!schedule.enabled || !(await setupState(db)).completed) return false;
   const last = await db
@@ -328,20 +396,24 @@ export function registerBackupJobs(
   db: Kysely<Database>,
   deps: ScheduledBackupDeps,
 ): void {
-  runner.handle(BACKUP_TASK, async (job) => {
-    const outcome = await runScheduledBackup(db, deps, job.id);
-    if (outcome.state === 'succeeded' && outcome.verify) {
-      await enqueue(db, [
-        {
-          workspaceId: job.workspaceId,
-          task: VERIFY_TASK,
-          key: `${VERIFY_TASK}:${outcome.runId}`,
-          payload: { path: outcome.path },
-          maxAttempts: 1,
-        },
-      ]);
-    }
-  });
+  // A worker with nowhere to put a backup leaves the job to one that has a place: claiming it
+  // would only record a failure and spend the job's attempts.
+  if (!deps.backupDir) runner.decline(BACKUP_TASK);
+  else
+    runner.handle(BACKUP_TASK, async (job) => {
+      const outcome = await runScheduledBackup(db, deps, job.id);
+      if (outcome.state === 'succeeded' && outcome.verify) {
+        await enqueue(db, [
+          {
+            workspaceId: job.workspaceId,
+            task: VERIFY_TASK,
+            key: `${VERIFY_TASK}:${outcome.runId}`,
+            payload: { path: outcome.path },
+            maxAttempts: 1,
+          },
+        ]);
+      }
+    });
   runner.handle(VERIFY_TASK, async (job) => {
     const { path } = job.payload as { path: string };
     // The drill records its own outcome; a failed one is a finding, not a job to retry.
@@ -358,7 +430,10 @@ export function registerBackupJobs(
 
 export interface BackupStatus {
   schedule: BackupSchedule;
+  /** When the next scheduled backup starts; null when they are off or no worker can take one. */
   nextAt: string | null;
+  /** Whether a worker can take scheduled backups (`backupWorkers`). */
+  workers: BackupWorkers;
   running: RunView | null;
   lastSuccess: RunView | null;
   lastFailure: RunView | null;
@@ -384,7 +459,7 @@ export async function backupStatus(db: Kysely<Database>, now = new Date()): Prom
   const latest = (where: (q: ReturnType<typeof base>) => ReturnType<typeof base>) =>
     where(base()).orderBy('started_at', 'desc').orderBy('id', 'desc').limit(1).executeTakeFirst();
   const base = () => db.selectFrom('backup_run').select(columns);
-  const [running, success, failure, drill, scheduled, kept] = await Promise.all([
+  const [running, success, failure, drill, scheduled, kept, workers] = await Promise.all([
     latest((q) => q.where('kind', '!=', 'drill').where('state', '=', 'running')),
     latest((q) => q.where('kind', '!=', 'drill').where('state', '=', 'succeeded')),
     latest((q) => q.where('kind', '!=', 'drill').where('state', '=', 'failed')),
@@ -397,11 +472,17 @@ export async function backupStatus(db: Kysely<Database>, now = new Date()): Prom
       .where('state', '=', 'succeeded')
       .where('pruned_at', 'is', null)
       .executeTakeFirstOrThrow(),
+    backupWorkers(db, now),
   ]);
   const view = (r: RunRow | undefined) => (r ? runView(r) : null);
+  // No next backup to promise when every worker that checked lately cannot take one.
+  const canRun = workers === 'ready' || workers === 'unknown';
   return {
     schedule,
-    nextAt: nextBackupAt(schedule, scheduled?.started_at ?? null, now)?.toISOString() ?? null,
+    nextAt: canRun
+      ? (nextBackupAt(schedule, scheduled?.started_at ?? null, now)?.toISOString() ?? null)
+      : null,
+    workers,
     running: view(running as RunRow | undefined),
     lastSuccess: view(success as RunRow | undefined),
     lastFailure: view(failure as RunRow | undefined),

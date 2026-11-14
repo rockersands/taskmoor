@@ -2164,6 +2164,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.system.scheduleOff': 'Desactivada',
   'admin.system.nextBackup': 'Próxima copia',
   'admin.system.backupRunning': 'En curso desde {at}',
+  'admin.system.noWorkerOff':
+    'No se hará ninguna: todos los procesos de este sitio tienen desactivadas las copias programadas. Quien administra el servidor puede activarlas en uno.',
+  'admin.system.noWorkerPlace':
+    'No se hará ninguna: ningún proceso de este sitio tiene dónde guardar copias. Quien administra el servidor puede darle a uno una carpeta de datos o de copias.',
+  'admin.system.failure.off': 'el proceso que la tomó tiene desactivadas las copias programadas',
+  'admin.system.failure.noPlace': 'el proceso que la tomó no tenía dónde guardar copias',
   'admin.system.lastSuccess': 'Último éxito',
   'admin.system.successValue': '{at}, {size}',
   'admin.system.lastFailure': 'Último fallo',

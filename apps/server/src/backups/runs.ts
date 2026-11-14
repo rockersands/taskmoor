@@ -131,7 +131,11 @@ export type RunRow = {
   pruned_at: Date | null;
 };
 
+/** How a run failed by a worker with no backup directory began, before such runs said why. */
+const NO_DIRECTORY = 'this worker has no backup directory';
+
 export function runView(r: RunRow): RunView {
+  const details = (r.details ?? {}) as Record<string, unknown>;
   return {
     id: String(r.id),
     kind: r.kind,
@@ -140,7 +144,11 @@ export function runView(r: RunRow): RunView {
     finishedAt: r.finished_at?.toISOString() ?? null,
     path: r.path,
     sizeBytes: r.size_bytes === null ? null : Number(r.size_bytes),
-    details: r.details,
+    // An older run of this kind gets its reason, so the status page words it the same way.
+    details:
+      r.state === 'failed' && r.error?.startsWith(NO_DIRECTORY) && details.reason === undefined
+        ? { ...details, reason: 'no-directory' }
+        : r.details,
     error: r.error,
     pruned: r.pruned_at !== null,
   };

@@ -4,7 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import { ADMIN, HEALTHY, MEMBER, NEEDS_ATTENTION, STALE_BACKUP } from './fixtures';
+import {
+  ADMIN,
+  HEALTHY,
+  MEMBER,
+  NEEDS_ATTENTION,
+  NO_BACKUP_WORKER,
+  STALE_BACKUP,
+} from './fixtures';
 
 function stubSystem(answer: () => Response) {
   const fetch = vi.fn(async (url: string) =>
@@ -79,6 +86,29 @@ describe('system status page', () => {
     expect((await screen.findByText(/No space left on device/)).className).toBe('status-bad');
     expect(screen.getByText(/restored with other row counts/).className).toBe('status-bad');
     expect(fact('Scheduled backups', 'Next backup')).not.toBe('None');
+  });
+
+  it('[OPS-008] promises no next backup when no worker can take one, and says why in words (S3-AC-1)', async () => {
+    window.location.hash = '#/admin/system';
+    stubSystem(() => jsonResponse(200, NO_BACKUP_WORKER));
+    render(<App session={ADMIN} />);
+    const next = await screen.findByText(/^None will run: every worker/);
+    expect(next.className).toBe('status-warn');
+    expect(fact('Scheduled backups', 'Next backup')).toBe(
+      'None will run: every worker of this site has scheduled backups turned off. Whoever runs the site can turn them on for one worker.',
+    );
+    expect(fact('Scheduled backups', 'Last failure')).toMatch(
+      /: the worker that took it has scheduled backups turned off$/,
+    );
+    expect(section('Scheduled backups').textContent).not.toMatch(/TASKMOOR_/);
+    // A site whose workers have no place at all says that instead.
+    const nowhere = {
+      ...NO_BACKUP_WORKER,
+      backups: { ...NO_BACKUP_WORKER.backups, workers: 'no-directory' as const },
+    };
+    stubSystem(() => jsonResponse(200, nowhere));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByText(/^None will run: no worker/)).toHaveClass('status-warn');
   });
 
   it('[OPS-010] tells other users the page is for administrators, without asking the backend', async () => {
