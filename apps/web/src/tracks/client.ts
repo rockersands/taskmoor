@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 import type { Board } from '../boards/client';
 import type { Layout, Widget, WidgetInput } from '../dashboards/client';
 
@@ -228,8 +229,7 @@ export const trackClient: TrackClient = {
     ).fields
       .filter((f) => GROUPABLE_TYPES.has(f.type))
       .map((f) => ({ id: `cf[${f.id}]`, name: f.name })),
-  list: async () =>
-    (await api<{ tracks: TrackListItem[] }>('/tracks?limit=200')).tracks.filter((t) => t.key),
+  list: async () => (await everyTrack<TrackListItem>()).filter((t) => t.key),
   files: (key) => api<TrackFiles>(`/tracks/${encodeURIComponent(key)}/files`),
   outcomes: (key, cursor) =>
     api<TrackOutcomes>(

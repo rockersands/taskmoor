@@ -1,4 +1,5 @@
 import { api } from '../../api/client';
+import { everyTrack } from '../../api/tracks';
 import type { BulkItem, BulkOperation } from '../../bulk/client';
 
 /** A track the copies may go to, as `GET /api/v1/tracks` lists it. */
@@ -31,19 +32,8 @@ export interface CloneClient {
 }
 
 export const cloneClient: CloneClient = {
-  tracks: async () => {
-    // Every track the person sees, a page at a time.
-    const all: CloneTrack[] = [];
-    let after: string | null = null;
-    do {
-      const page: { tracks: CloneTrack[]; next: string | null } = await api(
-        `/tracks?limit=500${after === null ? '' : `&after=${encodeURIComponent(after)}`}`,
-      );
-      all.push(...page.tracks);
-      after = page.next;
-    } while (after !== null && all.length < 10_000);
-    return all;
-  },
+  // Every track the person sees, a page at a time.
+  tracks: () => everyTrack<CloneTrack>(),
   start: async (ticketId, request) =>
     (
       await api<{ bulkOperation: BulkOperation }>(`/tickets/${ticketId}/clone`, {

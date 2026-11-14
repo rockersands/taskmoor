@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 
 /** A set a track can use. `trackId` names a local-mode track's own. */
 export interface TrackSet {
@@ -43,7 +44,7 @@ export interface TrackSetsClient {
 }
 
 export const trackSetsClient: TrackSetsClient = {
-  tracks: async () => (await api<{ tracks: TrackWithSets[] }>('/tracks?limit=500')).tracks,
+  tracks: () => everyTrack<TrackWithSets>(),
   choices: async (track) => {
     const own = track.mode === 'local' ? `?trackId=${track.id}` : '';
     const list = async (path: string, key: string, ownToo: boolean) => {

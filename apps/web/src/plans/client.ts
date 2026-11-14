@@ -1,4 +1,5 @@
 import { API_BASE, ApiError, api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
 import type {
   CrossTrackEndRule,
@@ -493,16 +494,12 @@ export const planClient: PlanClient = {
   move: calendarClient.move,
   sourceOptions: async () => {
     const searches = api<{ savedSearches: { id: number; name: string }[] }>('/saved-searches');
-    // Every track the person sees, a page of 500 at a time, up to a plan's 500 sources twice.
-    const tracks: SourceOptions['tracks'] = [];
-    let after: string | null = null;
-    do {
-      const page: { tracks: SourceOptions['tracks']; next: string | null } = await api(
-        `/tracks?limit=500${after ? `&after=${encodeURIComponent(after)}` : ''}`,
-      );
-      tracks.push(...page.tracks.map((t) => ({ id: t.id, key: t.key, name: t.name })));
-      after = page.next;
-    } while (after && tracks.length < 1000);
+    // Every track the person sees: a plan holds at most 500 sources, but any track may be one.
+    const tracks = (await everyTrack<SourceOptions['tracks'][number]>()).map((t) => ({
+      id: t.id,
+      key: t.key,
+      name: t.name,
+    }));
     return {
       tracks,
       savedSearches: (await searches).savedSearches.map((s) => ({ id: s.id, name: s.name })),
