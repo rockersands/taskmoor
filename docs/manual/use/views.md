@@ -162,15 +162,24 @@ To reschedule a ticket, drag it to another day:
 With a mouse, drag the entry itself. Each entry also has a grip, six dots at its end, which shows
 when the pointer or the keyboard is on the entry and always on a touch screen, where it sits under
 the entry on a day too narrow to hold both: with a finger, drag the entry by its grip, since a
-finger elsewhere scrolls the page. While you drag, the day it would land on is outlined and a label with the ticket follows the pointer; near the top or bottom of the
-screen the page scrolls. **Escape** puts it back, and so does letting go on its own day or outside
-the calendar.
+finger elsewhere scrolls the page. Touch and hold the grip a moment, then drag it anywhere; a
+finger that moves sideways first drags at once, and a quick flick up or down that happens to start
+on a grip scrolls the page as it would anywhere else. A pen, like a mouse, drags at once in any
+direction. While you drag, the day it would land on is
+outlined and a label with the ticket follows the pointer; near the top or bottom of the screen the
+page scrolls. **Escape** puts it back, and so does letting go on its own day or outside the
+calendar. If the grip's menu is open when you start a drag, it closes.
 
 Pressing or tapping the grip, **Move the due day of PAY-42** (or **Move the start of PAY-42**),
 opens a menu with **One day earlier**, **One day later**, **One week earlier** and **One week
-later**: a way to reschedule with one finger and no drag. With the keyboard, focus an entry or its
-grip and press Alt with the left or right arrow to move it a day, or with the up or down arrow to
-move it a week; the keyboard stays with the entry on its new day. Clicking an entry, or Enter,
+later**: a way to reschedule with one finger and no drag. In the open menu the arrow keys move
+between its choices, with Alt or without; they never move the ticket themselves. With the
+keyboard, focus an entry or its grip and press Alt with the left or right arrow to move it a day,
+or with the up or down arrow to move it a week; the keyboard stays with the entry on its new day.
+When that day is in a month the calendar is not showing (on a phone, any day outside the month
+listed), the calendar turns to that month; when the ticket lands beyond the six a day shows, the
+day opens to show them all. If the moved ticket is no longer on the calendar at all, the keyboard goes to its
+day, or to the line under the month that says what happened. Clicking an entry, or Enter,
 opens the ticket over the calendar, where **Start date** and **Due date** are among its details.
 Rescheduling needs the **Set due dates** permission. When a change is refused, the calendar says
 why: you may not schedule tickets in the track, its status or dates are locked for you, the track
@@ -182,7 +191,7 @@ release, or the first day of a sprint), each named by its weekday and date, such
 A month with nothing on it says so. A drag reaches only the days in the list; to move a ticket to
 a day the list does not show, use its grip's menu, which moves it a day or a week at a time. On a
 phone or a touch screen, the hint under the month speaks of fingers and grips instead of the
-keyboard, and on a phone it says that a drag reaches the days listed and the grip's menu any day.
+keyboard (touch and hold a grip, then drag), and on a phone it says that a drag reaches the days listed and the grip's menu any day.
 
 ## The timeline
 

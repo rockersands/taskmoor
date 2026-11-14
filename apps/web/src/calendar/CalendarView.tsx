@@ -17,7 +17,7 @@ import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { dayNumber, isoDay, localDay } from '../timeline/client';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
-import { useTouchWording } from '../timeline/touch';
+import { COARSE_QUERY, useTouchWording } from '../timeline/touch';
 import type { CalendarData, CalendarTicket, Moved } from './client';
 
 /** What a calendar draws: a track's, or a Multi-track plan's (ADR-065, ADR-122). */
@@ -27,6 +27,18 @@ export type CalendarEntries = Pick<CalendarData, 'tickets' | 'sprints' | 'releas
 interface Entry {
   ticket: CalendarTicket;
   kind: 'due' | 'start';
+}
+
+/**
+ * An entry moved by the keyboard (T-229): its name and its ticket's other entry, the part that had
+ * the keyboard, and once the move is answered the day it is on and the tickets drawn then.
+ */
+interface Refocus {
+  entry: string;
+  other: string;
+  part: 'chip' | 'grip';
+  day: number | null;
+  drawn: CalendarTicket[] | null;
 }
 
 /** How many tickets a day shows before a button for the rest. */
@@ -76,6 +88,10 @@ export interface CalendarViewProps {
   data: CalendarEntries;
   /** The month shown, as the day number of its first day. */
   month: number;
+  /**
+   * Turns to another month, which the page then reads: by its buttons, or after a move to a day
+   * the calendar does not draw (T-229), which then asks for no `reload` of its own.
+   */
   onMonth: (month: number) => void;
   /** More controls beside the month's. */
   tools?: ReactNode;
@@ -107,8 +123,11 @@ export interface CalendarViewProps {
  *
  * Drags use pointer events (T-162b; ADR-114, section 12): a mouse drags an entry from anywhere
  * on it, and a finger or a mouse by its grip, whose press opens a menu of the same moves as the
- * keys; elsewhere a finger scrolls. The day it would land on is outlined, a label follows the
- * pointer, the page says what is in hand, Escape cancels, and near an edge the page scrolls.
+ * keys; elsewhere a finger scrolls. A finger on a grip drags once it has rested there or moved
+ * sideways, so a quick flick up or down from a grip still scrolls (T-228). The day it would land
+ * on is outlined, a label follows the pointer, the page says what is in hand, Escape cancels, and
+ * near an edge the page scrolls. With the keyboard, the entry keeps the keyboard on its new day,
+ * the month turning to it when it is not drawn (T-229).
  *
  * On a phone (D9) the month is a list of only the days that have something on them, each named
  * by its weekday and date, and the hint speaks of fingers rather than keys (D6).
@@ -142,30 +161,21 @@ export function CalendarView({
   /** The label in hand and where the pointer is: moved by hand, so a drag draws no day again. */
   const ghost = useRef<HTMLDivElement>(null);
   const pointerAt = useRef({ x: 0, y: 0 });
-  /** An entry moved by its keys or its grip's menu, and which of the two had the keyboard. */
-  const refocus = useRef<{ entry: string; part: 'chip' | 'grip' } | null>(null);
+  /**
+   * An entry moved by its keys or its grip's menu, and which of the two had the keyboard. Once the
+   * move is answered: the day it is on, and the tickets drawn then, so the reading after the move
+   * can be told from the one before it (T-229).
+   */
+  const refocus = useRef<Refocus | null>(null);
   const grid = useRef<HTMLUListElement>(null);
+  const status = useRef<HTMLParagraphElement>(null);
+  /** What is drawn now, for a move answered after the drawing it began in. */
+  const drawing = useRef({ tickets: data.tickets, month, first, last, compact, onMonth });
+  drawing.current = { tickets: data.tickets, month, first, last, compact, onMonth };
 
   // A page that goes mid-drag stops following the pointer.
   useEffect(() => () => stopDrag.current?.(), []);
-  // An entry moved by the keyboard is drawn on its new day: the keyboard goes there with it.
-  useEffect(() => {
-    const want = refocus.current;
-    if (!want || !data) return;
-    refocus.current = null;
-    const holder = grid.current?.querySelector(`[data-entry="${want.entry}"]`);
-    holder
-      ?.querySelector<HTMLElement>(want.part === 'grip' ? '[data-handle]' : '.calendar-chip')
-      ?.focus();
-  }, [data]);
 
-  const dateText = (day: number) =>
-    intl.formatDate(new Date(day * 86_400_000), {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
   const entries = new Map<number, Entry[]>();
   const put = (day: number, entry: Entry) => {
     const list = entries.get(day);
@@ -178,13 +188,73 @@ export function CalendarView({
       put(dayNumber(ticket.start), { ticket, kind: 'start' });
   }
 
+  // An entry moved by the keyboard goes to its new day, and the keyboard with it (T-229): after
+  // every drawing until it is found there, a day full enough to hide it opening on the way. Once
+  // the calendar has been read again without it, the keyboard goes to the ticket's other entry on
+  // that day, the day, or the line that says what happened; never to the page's body.
+  useEffect(() => {
+    const want = refocus.current;
+    if (!want || want.day === null) return;
+    // Someone who has gone elsewhere on the page meanwhile keeps the keyboard where they put it.
+    const active = document.activeElement;
+    if (active && active !== document.body && !grid.current?.contains(active)) {
+      refocus.current = null;
+      return;
+    }
+    const onDay = grid.current?.querySelector<HTMLElement>(`[data-drop-day="${want.day}"]`);
+    const part = want.part === 'grip' ? '[data-handle]' : '.calendar-chip';
+    const found = onDay
+      ?.querySelector(`[data-entry="${want.entry}"]`)
+      ?.querySelector<HTMLElement>(part);
+    if (found) {
+      refocus.current = null;
+      found.focus();
+      return;
+    }
+    const at = (entries.get(want.day) ?? []).findIndex((e) => entryId(e) === want.entry);
+    if (at >= PER_DAY && !opened.has(want.day)) {
+      const day = want.day;
+      setOpened((current) => new Set(current).add(day));
+      return;
+    }
+    // The move's own reading has not come yet.
+    if (data.tickets === want.drawn) return;
+    refocus.current = null;
+    const other = onDay
+      ?.querySelector(`[data-entry="${want.other}"]`)
+      ?.querySelector<HTMLElement>(part);
+    if (other) other.focus();
+    else if (onDay) {
+      onDay.tabIndex = -1;
+      onDay.focus();
+    } else status.current?.focus();
+  });
+
+  const dateText = (day: number) =>
+    intl.formatDate(new Date(day * 86_400_000), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
   /**
    * Moves an entry's day by `delta` days: a due day takes its start along, keeping the length.
-   * A move by the keyboard says which part of the entry gets the keyboard back on its new day.
+   * A move by the keyboard says which part of the entry gets the keyboard back on its new day; a
+   * day the calendar does not draw turns it to that day's month (T-229).
    */
   const move = async (entry: Entry, delta: number, focus?: 'chip' | 'grip') => {
     if (delta === 0) return;
-    if (focus) refocus.current = { entry: entryId(entry), part: focus };
+    const name = entryId(entry);
+    const mine: Refocus | null = focus
+      ? {
+          entry: name,
+          other: `${entry.ticket.id}-${entry.kind === 'due' ? 'start' : 'due'}`,
+          part: focus,
+          day: null,
+          drawn: null,
+        }
+      : null;
+    if (mine) refocus.current = mine;
     const { ticket } = entry;
     const shift = (d: string | null) => (d === null ? null : isoDay(dayNumber(d) + delta));
     let days: { startDate?: string | null; dueDate?: string | null };
@@ -201,9 +271,26 @@ export function CalendarView({
     }
     setProblem(null);
     const outcome = await moveTicket(ticket.key, days);
+    // Only the latest move by the keyboard takes it along.
+    const keyboard = mine !== null && refocus.current === mine ? mine : null;
+    const view = drawing.current;
+    let turned = false;
     if (outcome.ok) {
       const day = days[entry.kind === 'due' ? 'dueDate' : 'startDate'] as string;
-      const words = { key: ticket.key, date: dateText(dayNumber(day)) };
+      const newDay = dayNumber(day);
+      if (keyboard) {
+        keyboard.day = newDay;
+        keyboard.drawn = view.tickets;
+      }
+      // Out of sight, on a phone's list of the month's days or past the weeks drawn: its month.
+      const drawnHere = view.compact
+        ? monthOf(newDay) === view.month
+        : view.first <= newDay && newDay <= view.last;
+      if (!drawnHere) {
+        view.onMonth(monthOf(newDay));
+        turned = true;
+      }
+      const words = { key: ticket.key, date: dateText(newDay) };
       setNotice(
         draftIn !== undefined
           ? t(entry.kind === 'due' ? 'calendar.draftedDue' : 'calendar.draftedStart', {
@@ -214,8 +301,14 @@ export function CalendarView({
       );
     } else {
       setProblem(scheduleRefusal(t, ticket.key, outcome));
+      // Refused: the keyboard stays with the entry where it is.
+      if (keyboard) {
+        keyboard.day = dayOf(entry);
+        keyboard.drawn = view.tickets;
+      }
     }
-    reload();
+    // A month turned to is read by the page; a reading of the weeks left could land after it.
+    if (!turned) reload();
   };
 
   // A drag outlives the drawing it began in: it moves through the latest one.
@@ -240,37 +333,45 @@ export function CalendarView({
       setOver(null);
       setInHandNotice('');
     };
-    stopDrag.current = followPointerDrag(event, {
-      start: (x, y) => {
-        pointerAt.current = { x, y };
-        setDragging(entry);
-        setInHandNotice(t('calendar.drag.start', words));
+    // On a touch screen a finger on a grip may be scrolling the page: a drag needs a rest or a
+    // move sideways (T-228). Only there do the grips leave scrolling to the page (`pan-y`).
+    const scrollFirst = window.matchMedia?.(COARSE_QUERY).matches === true;
+    stopDrag.current = followPointerDrag(
+      event,
+      {
+        start: (x, y) => {
+          pointerAt.current = { x, y };
+          setDragging(entry);
+          setInHandNotice(t('calendar.drag.start', words));
+        },
+        move: (x, y) => {
+          pointerAt.current = { x, y };
+          if (ghost.current) ghost.current.style.transform = ghostAt(pointerAt.current);
+          const day = dayAt(x, y);
+          setOver((current) => (current === day ? current : day));
+        },
+        drop: (x, y) => {
+          const day = dayAt(x, y);
+          endDrag();
+          if (day === null || day === dayOf(entry)) setNotice(t('calendar.drag.cancelled', words));
+          else void live.current(entry, day - dayOf(entry));
+        },
+        cancel: () => {
+          endDrag();
+          setNotice(t('calendar.drag.cancelled', words));
+        },
+        end: () => {
+          stopDrag.current = null;
+        },
       },
-      move: (x, y) => {
-        pointerAt.current = { x, y };
-        if (ghost.current) ghost.current.style.transform = ghostAt(pointerAt.current);
-        const day = dayAt(x, y);
-        setOver((current) => (current === day ? current : day));
-      },
-      drop: (x, y) => {
-        const day = dayAt(x, y);
-        endDrag();
-        if (day === null || day === dayOf(entry)) setNotice(t('calendar.drag.cancelled', words));
-        else void live.current(entry, day - dayOf(entry));
-      },
-      cancel: () => {
-        endDrag();
-        setNotice(t('calendar.drag.cancelled', words));
-      },
-      end: () => {
-        stopDrag.current = null;
-      },
-    });
+      { scrollFirst },
+    );
   }
 
   /** Alt with an arrow, on an entry's link or its grip: a day sideways, a week up or down. */
   const onEntryKey = (event: KeyboardEvent, entry: Entry) => {
-    if (!event.altKey) return;
+    // The grip's open menu takes its own keys, which reach the entry only by bubbling (T-228).
+    if (!event.altKey || (event.target as Element).closest('[role="menu"]')) return;
     const delta = KEY_STEPS[event.key];
     if (delta === undefined) return;
     event.preventDefault();
@@ -345,7 +446,8 @@ export function CalendarView({
         {/* A phone lists only some days (D9): its hint says the grip's menu reaches the others. */}
         {t(compact ? 'calendar.hintList' : touch ? 'calendar.hintTouch' : 'calendar.hint')}
       </p>
-      <p className="board-hint" role="status">
+      {/* Where the keyboard goes when a moved ticket is nowhere to be drawn (T-229). */}
+      <p className="board-hint" role="status" ref={status} tabIndex={-1}>
         {notice}
       </p>
       {/* Said, not shown: a line appearing here would move the page under the finger. */}

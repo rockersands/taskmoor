@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import { MoveMenu } from './MoveMenu';
+import { followPointerDrag } from './pointerDrag';
 
 /** Rows, each led by a grip whose menu and Alt with the arrows reorder them. */
 function Rows({ onDragStart, start }: { onDragStart: () => void; start: string[] }) {
@@ -20,7 +21,11 @@ function Rows({ onDragStart, start }: { onDragStart: () => void; start: string[]
           <MoveMenu
             label={`Move ${row}`}
             handle={row}
-            onDragStart={onDragStart}
+            onDragStart={(event) => {
+              onDragStart();
+              // A press followed as the pages follow theirs, so it can become a drag.
+              followPointerDrag(event, { start() {}, move() {}, drop() {}, cancel() {} });
+            }}
             onStep={(direction) => move(i, i + direction)}
             items={[
               ...(i > 0 ? [{ key: 'up', label: 'Move up', onSelect: () => move(i, i - 1) }] : []),
@@ -95,6 +100,32 @@ export const MenuOpen: Story = {
       'Move up',
       'Move down',
     ]);
+  },
+};
+
+/** The grip pressed again with its menu open and dragged: the menu goes once it is a drag (T-228). */
+export const DragClosesTheMenu: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = canvas.getByRole('button', { name: 'Move Order total' });
+    await userEvent.click(grip);
+    await expect(canvas.getByRole('menu')).toBeVisible();
+    const box = grip.getBoundingClientRect();
+    const at = (type: string, dy: number) =>
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: 31,
+        pointerType: 'mouse',
+        isPrimary: true,
+        button: 0,
+        buttons: type === 'pointerup' ? 0 : 1,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2 + dy,
+      });
+    grip.dispatchEvent(at('pointerdown', 0));
+    window.dispatchEvent(at('pointermove', 30));
+    await waitFor(() => expect(canvas.queryByRole('menu')).toBeNull());
+    window.dispatchEvent(at('pointerup', 30));
   },
 };
 

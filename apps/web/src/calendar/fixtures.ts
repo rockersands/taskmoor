@@ -5,9 +5,13 @@ import type { CalendarClient, CalendarData, CalendarTicket } from './client';
  * A track's calendar in memory for stories and tests (M1-049): November 2026 with a ticket due
  * on the 10th that started on the 4th, one due on the 12th, one closed on the 3rd, a sprint from
  * the 9th to the 20th and a release on the 21st. Moves change the tickets as the server would;
- * `refuse` answers as for someone who may not schedule.
+ * `refuse` answers as for someone who may not schedule, and `more` adds tickets after these.
  */
-const ticket = (id: number, summary: string, extra: Partial<CalendarTicket>): CalendarTicket => ({
+export const calendarTicket = (
+  id: number,
+  summary: string,
+  extra: Partial<CalendarTicket>,
+): CalendarTicket => ({
   id,
   key: `CAL-${id}`,
   summary,
@@ -19,12 +23,13 @@ const ticket = (id: number, summary: string, extra: Partial<CalendarTicket>): Ca
 });
 
 export function fakeCalendarClient(
-  options: { refuse?: boolean } = {},
+  options: { refuse?: boolean; more?: CalendarTicket[] } = {},
 ): CalendarClient & { tickets: () => CalendarTicket[] } {
   let tickets: CalendarTicket[] = [
-    ticket(1, 'Build the site', { start: '2026-11-04', due: '2026-11-10' }),
-    ticket(2, 'Press kit', { due: '2026-11-12' }),
-    ticket(3, 'Book the venue', { due: '2026-11-03', stage: 'closed' }),
+    calendarTicket(1, 'Build the site', { start: '2026-11-04', due: '2026-11-10' }),
+    calendarTicket(2, 'Press kit', { due: '2026-11-12' }),
+    calendarTicket(3, 'Book the venue', { due: '2026-11-03', stage: 'closed' }),
+    ...(options.more ?? []),
   ];
   return {
     tickets: () => tickets,
