@@ -94,3 +94,35 @@ export const MoreBelowFades: Story = {
     await waitFor(() => expect(fadesAtFoot(list)).toBe(false));
   },
 };
+
+/**
+ * TR-4, PL-49: focus stays in the search field, so the fade is lifted by the active option. Once
+ * the arrow keys move it on, nothing it reaches is faded, and it stays in the list's view all the
+ * way down, past the fold of a phone's half-window list.
+ */
+export const ArrowKeysLiftTheFade: Story = {
+  args: { commands: many },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /Search or jump to/ }));
+    const list = await within(document.body).findByRole('listbox', { name: 'Commands' });
+    await expect(fadesAtFoot(list)).toBe(true);
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(false));
+    const inView = () => {
+      const option = within(list).getByRole('option', { selected: true });
+      const box = option.getBoundingClientRect();
+      const view = list.getBoundingClientRect();
+      return box.top >= view.top - 0.5 && box.bottom <= view.bottom + 0.5;
+    };
+    for (let step = 1; step < many.length - 1; step++) {
+      await userEvent.keyboard('{ArrowDown}');
+      await expect(inView()).toBe(true);
+    }
+    await expect(list.scrollTop).toBeGreaterThan(0);
+    // Back at the first command, the list shows its top again and the fade returns.
+    for (let step = 0; step < many.length; step++) await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(true));
+    await expect(inView()).toBe(true);
+  },
+};

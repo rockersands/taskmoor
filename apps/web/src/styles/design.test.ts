@@ -943,8 +943,10 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   });
 
   it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {
-    // Any focus in it, or (Account's sections, whose link keeps focus after a tap) keyboard focus.
-    const lifted = /:not\(:focus-within\)|:not\(:has\(:focus-visible\)\)/;
+    // Any focus in it, or (Account's sections, whose link keeps focus after a tap) keyboard focus,
+    // or (the command palette, whose focus stays in its search field) an active option moved on.
+    const lifted =
+      /:not\(:focus-within\)|:not\(:has\(:focus-visible\)\)|:not\(:has\(\[aria-selected="true"\]/;
     const fades = cssSources.flatMap(([file, source]) =>
       cssDeclarations(source)
         .filter((d) => /^(-webkit-)?mask(-image)?$/.test(d.property))

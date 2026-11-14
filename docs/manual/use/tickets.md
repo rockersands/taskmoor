@@ -66,7 +66,8 @@ Mac) anywhere, opens the **Command palette** over a dimmed page. Type a few lett
 commands, move with the arrow keys, press Enter to run one and Escape or a tap outside to close.
 On a phone or a touch screen its prompt is shorter and leaves out the Ctrl K hint. The list holds
 half the window; while more commands wait below it, its last line fades out, so scroll the list
-to reach them. It offers:
+to reach them. The arrow keys keep the chosen command in view, and the fade goes once they move
+past the first one. It offers:
 
 - the pages of the navigation (Home, Inbox, Tracks, Boards, Search, Dashboards, Settings);
 - **Create ticket**, **Account**, the three appearance choices and **Sign out**;

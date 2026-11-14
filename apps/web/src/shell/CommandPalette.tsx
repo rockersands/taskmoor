@@ -90,6 +90,20 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
     return () => window.removeEventListener('resize', measureMore);
   }, [open, items]);
 
+  // The active option stays in the list's view as the arrow keys move it, or as a filter puts it
+  // back at the top (TR-4): focus stays in the search field, so the browser scrolls nothing itself.
+  // Only the list scrolls, never the page under the palette.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items move the active option too
+  useLayoutEffect(() => {
+    const el = list.current;
+    const option = el?.querySelector('[aria-selected="true"]');
+    if (!open || !el || !option) return;
+    const box = option.getBoundingClientRect();
+    const view = el.getBoundingClientRect();
+    if (box.top < view.top) el.scrollTop -= view.top - box.top;
+    else if (box.bottom > view.bottom) el.scrollTop += box.bottom - view.bottom;
+  }, [open, active, items]);
+
   useEffect(() => {
     if (open) {
       input.current?.focus();

@@ -419,9 +419,11 @@ a {
 /*
  * While commands wait below the list's foot, its last line fades out, as the edge of a tab bar with
  * more beyond it does, so a list that happens to end on a whole command still shows that more
- * follow. The fade stays at the foot as the list scrolls, and goes at its end.
+ * follow. The fade stays at the foot as the list scrolls, and goes at its end. Focus stays in the
+ * search field (a combobox), so the fade is lifted by the active option instead (TR-4): once the
+ * arrow keys move it past the first command, nothing it can reach is faded.
  */
-.palette-list[data-more] {
+.palette-list[data-more]:not(:has([aria-selected="true"]:not(:first-child))) {
   mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-8) * 2), transparent);
 }
 
