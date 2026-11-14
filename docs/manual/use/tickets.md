@@ -129,9 +129,13 @@ in the form.
 
 A template's summary can hold today's date, the track's key and your name, and its dates count from
 today. Its assignee, releases and areas are filled into the form's pickers like everything else:
-choose another assignee, or untick an area, and your choice takes the place of the template's. A
-value the form has no picker for shows under **Also from this template** with a checkbox, as do
-the template's subtickets (**Create its 2 subtickets**).
+choose another assignee, or untick an area, and your choice takes the place of the template's.
+Its values for custom person, group, team, release and area fields, such as a **Team** field, are
+not filled into those pickers: they show under **Also from this template** with a checkbox, as do
+the template's subtickets (**Create its 2 subtickets**). So do its releases or areas when one of
+them is no longer offered, for example a release archived since the template was saved: untick the
+checkbox to leave them out. A release or area you tick in the form yourself takes the place of the
+template's.
 
 A template never gets round what you may do. Fields that are hidden for this type or that you may
 not set do not show, and they stay off the ticket. After **Create** the form names them: **Left
