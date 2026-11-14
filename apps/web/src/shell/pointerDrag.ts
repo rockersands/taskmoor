@@ -35,8 +35,9 @@ export interface PointerDragOptions {
    * A finger's press on a handle that leaves scrolling up and down to the page (`touch-action:
    * pan-y`, the calendar's grips; T-228): it becomes a drag once the finger has rested `HOLD`
    * milliseconds, or when it first moves at least as far sideways as up or down. A quicker flick
-   * up or down is the page's scroll: the press lets go and nothing moves. A mouse and a pen drag
-   * as usual.
+   * up or down is the page's scroll: the press lets go and nothing moves. A mouse drags as usual,
+   * and so does a pen, at once in any direction; as `touch-action` applies to a pen's touches too,
+   * the page is held still under a pen from its first move (ADR-114 section 12).
    */
   scrollFirst?: boolean;
 }
@@ -120,6 +121,12 @@ export function followPointerDrag(
   const byTouch = event.pointerType === 'touch';
   /** A finger whose first move up or down may be the page's scroll, not a drag. */
   const scrollFirst = byTouch && options.scrollFirst === true;
+  /**
+   * A pen on such a handle: it drags at once, as on any other, but the browser would pan the page
+   * under it as under a finger (an Apple Pencil in Safari, a stylus in Chrome on Android), so its
+   * touches never scroll while it is pressed.
+   */
+  const penHeld = event.pointerType === 'pen' && options.scrollFirst === true;
   const pressedAt = event.timeStamp;
   const origin = { x: event.clientX, y: event.clientY };
   const pressed = event.target instanceof Element ? event.target : null;
@@ -163,10 +170,8 @@ export function followPointerDrag(
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onCancel);
     window.removeEventListener('keydown', onKey, true);
-    if (scrollFirst) {
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('contextmenu', onContextMenu, true);
-    }
+    if (scrollFirst || penHeld) window.removeEventListener('touchmove', onTouchMove);
+    if (scrollFirst) window.removeEventListener('contextmenu', onContextMenu, true);
     if (frame) cancelFrame(frame);
     frame = 0;
     // The page's drop reads what is under the finger, so the drag's styles stay until it has:
@@ -248,10 +253,11 @@ export function followPointerDrag(
 
   /**
    * A finger's drag on a handle that lets the page scroll: the page stays still under it. The
-   * touch's move comes after its pointer's, which has already said whether this is a drag.
+   * touch's move comes after its pointer's, which has already said whether this is a drag. A pen's
+   * press is never the page's scroll, so the page stays still under it from the start.
    */
   function onTouchMove(e: TouchEvent) {
-    if (dragging && e.cancelable) e.preventDefault();
+    if ((dragging || penHeld) && e.cancelable) e.preventDefault();
   }
 
   /** A finger resting on the handle is a drag about to begin, not a call for the browser's menu. */
@@ -278,10 +284,8 @@ export function followPointerDrag(
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onCancel);
   window.addEventListener('keydown', onKey, true);
-  if (scrollFirst) {
-    // Not passive, or the page scrolls whatever the drag says.
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('contextmenu', onContextMenu, true);
-  }
+  // Not passive, or the page scrolls whatever the drag says.
+  if (scrollFirst || penHeld) window.addEventListener('touchmove', onTouchMove, { passive: false });
+  if (scrollFirst) window.addEventListener('contextmenu', onContextMenu, true);
   return () => stop();
 }

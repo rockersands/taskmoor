@@ -17,7 +17,7 @@ import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { dayNumber, isoDay, localDay } from '../timeline/client';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
-import { useTouchWording } from '../timeline/touch';
+import { COARSE_QUERY, useTouchWording } from '../timeline/touch';
 import type { CalendarData, CalendarTicket, Moved } from './client';
 
 /** What a calendar draws: a track's, or a Multi-track plan's (ADR-065, ADR-122). */
@@ -333,7 +333,9 @@ export function CalendarView({
       setOver(null);
       setInHandNotice('');
     };
-    // A finger on a grip may be scrolling the page: a drag needs a rest or a move sideways (T-228).
+    // On a touch screen a finger on a grip may be scrolling the page: a drag needs a rest or a
+    // move sideways (T-228). Only there do the grips leave scrolling to the page (`pan-y`).
+    const scrollFirst = window.matchMedia?.(COARSE_QUERY).matches === true;
     stopDrag.current = followPointerDrag(
       event,
       {
@@ -362,7 +364,7 @@ export function CalendarView({
           stopDrag.current = null;
         },
       },
-      { scrollFirst: true },
+      { scrollFirst },
     );
   }
 

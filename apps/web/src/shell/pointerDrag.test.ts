@@ -266,7 +266,7 @@ const following: Array<() => void> = [];
  * A press by pointer 7 at (10, 10) at time 1,000 on a handle that leaves scrolling up and down to
  * the page (T-228), and its moves at times of the test's choosing.
  */
-function pressScrollFirst(pointerType: 'mouse' | 'touch' = 'touch') {
+function pressScrollFirst(pointerType: 'mouse' | 'pen' | 'touch' = 'touch') {
   const box = document.createElement('div');
   const handle = document.createElement('button');
   box.append(handle);
@@ -347,6 +347,25 @@ describe('a finger on a handle that lets the page scroll (T-228)', () => {
     const { calls, moveTo } = pressScrollFirst('mouse');
     moveTo(10, 40, 1_010);
     expect(calls).toEqual(['start 10,40']);
+  });
+
+  it('[NFR-005] a pen drags at once straight down, and the page never pans under it', () => {
+    const { calls, moveTo, touchMoveHeld } = pressScrollFirst('pen');
+    // `touch-action: pan-y` applies to a pen's touches too: from its very first move, before the
+    // press has become a drag, the page is held still, or the browser pans and cancels the press.
+    expect(touchMoveHeld()).toBe(true);
+    moveTo(10, 40, 1_010);
+    expect(touchMoveHeld()).toBe(true);
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 60, pointerId: 7 });
+    expect(calls).toEqual(['start 10,40', 'drop 10,60', 'end']);
+    // Over: the page scrolls as usual again.
+    expect(touchMoveHeld()).toBe(false);
+  });
+
+  it('[NFR-005] a mouse leaves the page’s touches alone', () => {
+    const { moveTo, touchMoveHeld } = pressScrollFirst('mouse');
+    moveTo(10, 40, 1_010);
+    expect(touchMoveHeld()).toBe(false);
   });
 
   it('[NFR-005] a press that becomes a drag says so on the element pressed, once', () => {

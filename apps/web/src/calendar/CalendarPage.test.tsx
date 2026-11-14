@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   act,
   createEvent,
@@ -12,7 +14,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { HOLD } from '../shell/pointerDrag';
 import { useTimeZone } from '../test/timeZone';
-import { setViewportWidth } from '../test/viewport';
+import { setCoarsePointer, setViewportWidth } from '../test/viewport';
 import { CalendarPage, withoutTrackName } from './CalendarPage';
 import type { CalendarClient, CalendarTicket } from './client';
 import { calendarTicket, fakeCalendarClient } from './fixtures';
@@ -43,7 +45,7 @@ function pointerDrag(
   from: Element,
   over: Element | null,
   options: {
-    pointerType?: 'mouse' | 'touch';
+    pointerType?: 'mouse' | 'pen' | 'touch';
     up?: boolean;
     sideways?: boolean;
     rest?: number;
@@ -160,6 +162,7 @@ describe('a track’s calendar (M1-049)', () => {
   it('[AGL-017] a finger drags an entry by its grip, not by its link; a tap opens its menu', async () => {
     // On a phone, where a finger is the pointer and only the days with something on them show.
     setViewportWidth(375);
+    setCoarsePointer(true);
     const user = userEvent.setup();
     const client = renderCalendar();
     const chip = await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
@@ -195,6 +198,7 @@ describe('a track’s calendar (M1-049)', () => {
 
   it('[AGL-017] a quick flick up or down from a grip scrolls the page; a finger that moves sideways drags', async () => {
     setViewportWidth(375);
+    setCoarsePointer(true);
     const client = renderCalendar();
     const grip = await screen.findByRole('button', { name: 'Move the due day of CAL-2' });
     // A flick down the page that happens to start on the grip: the page's scroll, no drag (T-228).
@@ -207,6 +211,59 @@ describe('a track’s calendar (M1-049)', () => {
     // Sideways first, at once: a drag.
     pointerDrag(grip, day(/^Nov 10, 2026/), { pointerType: 'touch', sideways: true });
     await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-10'));
+  });
+
+  it('[NFR-007] where a mouse is the pointer, a finger or a pen on a grip drags straight away', async () => {
+    // A laptop with a touch screen or a pen: its grips keep `touch-action: none`, so nothing
+    // scrolls under them, and a press straight down the page is a drag at once, as before T-228.
+    const client = renderCalendar();
+    const grip = await screen.findByRole('button', { name: 'Move the due day of CAL-2' });
+    pointerDrag(grip, day(/^Nov 10, 2026/), { pointerType: 'touch' });
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-10'));
+    const moved = screen.getByRole('button', { name: 'Move the due day of CAL-2' });
+    pointerDrag(moved, day(/^Nov 17, 2026/), { pointerType: 'pen' });
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-17'));
+  });
+
+  it('[NFR-007] a pen on a touch screen drags by the grip straight down at once', async () => {
+    // An iPad with a pencil: the grips leave scrolling to the page there, and the pen still drags
+    // at once in any direction (ADR-114 section 12).
+    setCoarsePointer(true);
+    const client = renderCalendar();
+    const grip = await screen.findByRole('button', { name: 'Move the due day of CAL-2' });
+    pointerDrag(grip, day(/^Nov 19, 2026/), { pointerType: 'pen' });
+    await waitFor(() => expect(ticketOf(client, 'CAL-2')?.due).toBe('2026-11-19'));
+  });
+
+  it('[NFR-007] only under a touch screen’s pointer do the grips leave scrolling to the page', () => {
+    // jsdom's style sheets drop `touch-action`, so the rules are read from the text: each rule
+    // with the media block it sits in, if any.
+    const dir = ['apps/web/src/styles', 'src/styles'].find((d) => existsSync(d)) ?? 'src/styles';
+    const text = readFileSync(join(dir, 'views.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules: Array<{ media: string; selector: string; body: string }> = [];
+    const open: string[] = [];
+    let from = 0;
+    for (let at = 0; at < text.length; at += 1) {
+      if (text[at] === '{') {
+        open.push(text.slice(from, at).trim());
+        from = at + 1;
+      } else if (text[at] === '}') {
+        const selector = open.pop() ?? '';
+        if (!selector.startsWith('@')) {
+          const media = open.find((head) => head.startsWith('@media')) ?? '';
+          rules.push({ media, selector, body: text.slice(from, at) });
+        }
+        from = at + 1;
+      }
+    }
+    /** The grip's `touch-action` where the media block's condition says so ('' is top level). */
+    const touchActions = (media: (condition: string) => boolean) =>
+      rules
+        .filter((rule) => media(rule.media) && rule.selector === '.calendar-grip .move-grip-handle')
+        .flatMap((rule) => /touch-action:\s*([^;]+);/.exec(rule.body)?.[1] ?? []);
+    // Under a mouse the grip keeps drag.css's `none`: a pen or a finger there drags at once.
+    expect(touchActions((media) => media === '')).toEqual([]);
+    expect(touchActions((media) => media.includes('pointer: coarse'))).toEqual(['pan-y']);
   });
 
   it('[AGL-017] a mouse drags by the grip straight away, in any direction', async () => {
