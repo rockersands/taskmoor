@@ -1,8 +1,8 @@
 ---
 title: "The operator CLI"
 audience: admins
-sources: apps/server/src/updates/check.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
-accessed: 2026-11-06
+sources: apps/server/src/updates/check.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/workflows/free-moves.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-13
 attestation: own-words
 ---
 # The operator CLI
@@ -49,7 +49,7 @@ links. See [Configuration reference](configuration.md).
 | `export <dir> [--tracks KEY,KEY]` | The workspace in Taskmoor's export format | 2 no folder, folder not empty or unknown track |
 | `purge-trash` | Deletes for good what outlived the trash retention | 1 failed |
 | `field-values [--repair]` | Checks the custom field search tables | 1 differences left unrepaired |
-| `workflow-moves [--repair]` | Lists the workflows in which no ticket can move, and gives them free moves | 1 some left without moves |
+| `workflow-moves [--repair]` | Checks for workflows in which no ticket can move (the upgrade gave the others free moves); `--repair` gives them free moves | 1 some left without moves |
 | `report-verify` | Replays every ticket's report events | 1 a ticket differs |
 | `embeddings [--rebuild]` | Embeds every ticket and comment that lacks an embedding, for similar tickets | 2 embeddings are off |
 | `password-link <email>` | A one-time link to set a password | 1 no active account, 2 no email |
@@ -156,16 +156,18 @@ the ones that differ. The worker runs the same check once a day.
 
 ### workflow-moves
 
-Lists the workflows whose published version has no transitions at all, so no ticket in them can
-move: workflows made empty before free moving became the rule, and any imported from a file, or
-published from an earlier version, that had none. It prints one JSON line per workspace: how many
-it found (`withoutMoves`), how many it repaired and their ids. `--repair` gives each one a
-transition from any status into each of its statuses, as a new workflow gets, and publishes that
-as the workflow's next version; a move into a closed-stage status sets the close reason free
-moves close with. Each workflow it repairs records one published version by the system in the
-audit log. A draft someone saved stays as it is; saving it gives it the same moves. A workflow
-with a rule, or one a board manages, is left for you to edit, stays listed and makes the command
-exit with 1. See [Workflows](workflows.md).
+Checks for workflows whose published version has no transitions at all, so no ticket in them can
+move. The upgrade to this version already gave every such workflow its free moves (a transition
+from any status into each of its statuses, as a new workflow gets, published as its next version),
+and Taskmoor no longer publishes or imports a workflow with none, so on an upgraded server this
+finds only what free moves leave alone: a workflow with a rule, one a board manages, and one whose
+only statuses are closed-stage ones with no close reason to set. It prints one JSON line per
+workspace: how many it found (`withoutMoves`), how many it repaired and their ids. `--repair`
+gives any it can its free moves, as the upgrade does; a move into a closed-stage status sets the
+close reason free moves close with. Each workflow it repairs records one published version by the
+system in the audit log. A draft someone saved stays as it is. The workflows it cannot repair
+are left for you to edit, stay listed and make the command exit with 1. You do not need to run it
+after an upgrade. See [Workflows](workflows.md).
 
 ### report-verify
 
