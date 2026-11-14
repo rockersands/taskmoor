@@ -5142,7 +5142,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} en el periodo mostrado.',
   'dashboards.widget.groupDone': '{closed} de {total} hechos',
   'dashboards.widget.unestimated': 'Sin estimación',
-  'dashboards.widget.noTime': 'Ningún ticket de aquí tiene valor en «{statistic}».',
+  'dashboards.widget.noTime': 'Ningún ticket de aquí tiene un valor para «{statistic}».',
+  'dashboards.widget.noneClosed': 'Ningún ticket se cerró en este periodo.',
   'dashboards.widget.workSummary':
     '{statistic} por valor: {value} en {count, plural, one {# ticket} other {# tickets}}.',
   'dashboards.widget.ticket': 'Ticket',
@@ -5224,6 +5225,8 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.leaveWallboard': 'Salir de la pantalla mural',
   'dashboards.makeDefault': 'Hacerlo el inicio de todos',
   'dashboards.madeDefault': 'Ahora es el panel de inicio de todos.',
+  'dashboards.madeDefaultShared':
+    'Ahora es el panel de inicio de todos, así que lo ven todos los que iniciaron sesión.',
   'dashboards.visibility': 'Quién lo ve',
   'dashboards.visibility.private': 'Solo yo',
   'dashboards.visibility.any_user': 'Todos los que iniciaron sesión',

@@ -30,6 +30,26 @@ export const Widgets: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('figure', { name: 'Tickets by Priority' })).toBeVisible();
     await expect(await canvas.findByRole('figure', { name: 'Created vs closed' })).toBeVisible();
+    // Each Share bar's length follows its share, not a tick of the same few pixels.
+    const stats = within(await canvas.findByRole('article', { name: 'Ticket statistics' }));
+    await stats.findByRole('table');
+    const bars = [
+      ...canvasElement.querySelectorAll<HTMLElement>(
+        '[aria-label="Ticket statistics"] .widget-share-bar',
+      ),
+    ].map((bar) => bar.getBoundingClientRect().width);
+    // checkout 22 and ux 6 of 51.
+    await expect(bars[0]).toBeGreaterThan(10);
+    await expect((bars[2] ?? 0) / (bars[0] ?? 1)).toBeCloseTo(6 / 22, 1);
+    // Every number column aligns at its end, the first one included.
+    const grid = within(canvas.getByRole('article', { name: 'Two-dimensional statistics' }));
+    const first = grid.getAllByRole('row')[1]?.querySelectorAll('td')[0] as HTMLElement;
+    await expect(['end', 'right']).toContain(getComputedStyle(first).textAlign);
+    // A group's progress stays on one line ('1 of 3 done').
+    const done = canvas.getByText('1 of 3 done');
+    await expect(done.getBoundingClientRect().height).toBeLessThan(
+      1.8 * Number.parseFloat(getComputedStyle(done).fontSize),
+    );
   },
 };
 
@@ -68,6 +88,53 @@ export const Wallboard: Story = {
   },
 };
 
+/**
+ * Two widgets on a wall, each card the screen's height (PL-15): its title at its top, its content
+ * right under it rather than spread over the card, and the ring grown to fill it.
+ */
+export const WallboardFewWidgets: Story = {
+  args: {
+    wallboard: { rotation: [5], seconds: 60 },
+    client: fakeDashboardClient([
+      {
+        ...TEAM_DASHBOARD,
+        layout: 'two',
+        widgets: TEAM_DASHBOARD.widgets
+          .filter((w) => w.id === 'intro' || w.id === 'pie')
+          .map((w) => ({ ...w, column: w.id === 'pie' ? 1 : 0 })),
+      },
+    ]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const pie = await canvas.findByRole('figure', { name: 'Tickets by Priority' });
+    await canvas.findByText('Ask in #checkout.');
+    for (const card of canvasElement.querySelectorAll<HTMLElement>('.dashboard-widget')) {
+      const title = card.querySelector('.dashboard-widget-title') as HTMLElement;
+      const body = card.querySelector('.dashboard-widget-head + *') as HTMLElement;
+      const top = card.getBoundingClientRect().top;
+      await expect(title.getBoundingClientRect().top - top).toBeLessThanOrEqual(40);
+      const gap = body.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+      await expect(gap).toBeLessThanOrEqual(24);
+    }
+    // The ring grows with the screen rather than staying the size of a card on a desk.
+    await expect(within(pie).getByRole('img').getBoundingClientRect().width).toBeGreaterThan(168);
+  },
+};
+
+/** On a phone the hidden way out takes no room: the first card sits under the title. */
+export const WallboardPhone: Story = {
+  args: { wallboard: { rotation: [5], seconds: 60 } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const title = await canvas.findByRole('heading', { level: 1, name: 'Checkout team' });
+    const first = (await canvas.findAllByRole('article'))[0] as HTMLElement;
+    const gap = first.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+    await expect(gap).toBeLessThanOrEqual(48);
+  },
+};
+
 /** No widgets yet, for its owner: what a widget is and how to add the first. */
 export const NoWidgets: Story = {
   args: { client: fakeDashboardClient([{ ...TEAM_DASHBOARD, widgets: [], editable: true }]) },
@@ -78,8 +145,18 @@ export const NoWidgets: Story = {
   },
 };
 
+/** On a phone the ring stands in the middle of its card, the legend under it. */
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const pie = await canvas.findByRole('figure', { name: 'Tickets by Priority' });
+    const ring = within(pie).getByRole('img').getBoundingClientRect();
+    const box = (pie.querySelector('.chart-donut') as HTMLElement).getBoundingClientRect();
+    await expect(
+      Math.abs(ring.left + ring.width / 2 - (box.left + box.width / 2)),
+    ).toBeLessThanOrEqual(4);
+  },
 };
 
 /** A dashboard that cannot be found: the shared not-found page, with a way on (D4). */

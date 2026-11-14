@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import type { MessageId } from '../i18n/messages.en';
 import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { DangerAction } from '../shell/DangerAction';
@@ -197,10 +198,24 @@ export function DashboardPage({
     const made = await client.copy(dashboard.id);
     navigate(`#/dashboards/${made.id}`);
   };
+  // Everyone signed in sees everyone's home whatever its shares, so one that only its owner saw
+  // is shared with everyone signed in too: the choice of who sees it then says what is true.
   const makeDefault = async () => {
     await client.setDefault(dashboard.id);
-    setDashboard({ ...dashboard, isDefault: true });
-    setStatus(t('dashboards.madeDefault'));
+    let next: Dashboard = { ...dashboard, isDefault: true };
+    let said: MessageId = 'dashboards.madeDefault';
+    if (dashboard.editable && visibilityOf(dashboard.shares) === 'private') {
+      const outcome = await client.update(dashboard.id, {
+        shares: [{ scope: 'any_user' }],
+        version: dashboard.version,
+      });
+      if (outcome.ok) {
+        next = { ...outcome.dashboard, isDefault: true };
+        said = 'dashboards.madeDefaultShared';
+      }
+    }
+    setDashboard(next);
+    setStatus(t(said));
   };
   // Asked first (D13); a refusal keeps the question open, the reason under it.
   const remove = async () => {

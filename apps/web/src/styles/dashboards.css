@@ -12,8 +12,10 @@
   max-width: 100%;
 }
 
+/* Every card's title on the list is one style: 'Yours', 'Shared with you' and 'Wallboard' alike. */
 .dashboards-page > .glass-card > h2 {
   margin-block: 0 var(--space-3);
+  font-size: var(--font-size-300);
 }
 
 /* The page's actions end level with its visibility choice, a label over a field. */
@@ -217,17 +219,29 @@
   line-height: 1.1;
 }
 
+/* A share and its label stay on one line, so '6 of 6 done' never breaks (group-by). */
 .widget-share {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--space-2);
+  white-space: nowrap;
+}
+
+/* The bar sits in a track of fixed length, so its own length follows the share. */
+.widget-share-track {
+  flex: none;
+  width: 4rem;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-mark);
+  background: var(--glass-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
 
 .widget-share-bar {
-  display: inline-block;
-  max-width: 4rem;
-  min-width: 2px;
-  height: 6px;
+  display: block;
+  height: 100%;
   border-radius: var(--radius-mark);
   background: var(--color-chart-1);
 }
@@ -258,10 +272,9 @@
   font-size: var(--font-size-200);
 }
 
-.dashboard-wallboard > h2 {
+.dashboards-page > .dashboard-wallboard > h2 {
   flex-basis: 100%;
   margin: 0;
-  font-size: var(--font-size-300);
 }
 
 /*
@@ -301,6 +314,22 @@
   font-size: var(--font-size-400);
 }
 
+/* A card's content starts at its top, under its title, rather than spread over its height
+   (PL-15): the card still fills the screen, the words and charts sit where the eye starts. */
+.is-wallboard .dashboard-widget {
+  align-content: start;
+}
+
+.is-wallboard .widget-text {
+  font-size: var(--font-size-400);
+}
+
+/* The ring grows with the screen, so a card across a room is filled by its chart, not by space. */
+.is-wallboard .chart-donut svg {
+  width: clamp(10.5rem, min(28vw, 40vh), 26rem);
+  height: auto;
+}
+
 .is-wallboard .chart-table {
   display: none;
 }
@@ -311,7 +340,13 @@
   gap: var(--space-3);
 }
 
+/* The way out floats over the screen's top corner, so, hidden, it takes no room above the cards
+   (on a phone it stood as a blank band between the title and the first card). */
 .wallboard-exits {
+  position: fixed;
+  z-index: 10;
+  top: var(--space-3);
+  inset-inline-end: var(--space-3);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);

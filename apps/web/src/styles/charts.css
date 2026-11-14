@@ -452,6 +452,12 @@
   text-align: start;
 }
 
+/* A table of numbers after its first column: every number column aligns at its end, the first
+   one included (two-dimensional statistics, the widgets' tables). */
+.report-table table.report-numbers :is(th, td):nth-child(2) {
+  text-align: end;
+}
+
 /* No word or number breaks in the middle (TR-12): values and headings stay whole, the first
    column keeps room for a name and wraps only between words, and past the card's edge the table
    scrolls with a fade on the side that has more. */
@@ -518,9 +524,12 @@
 
 /* Shares of a whole (M1-064): a ring in the categorical hues' fixed order, parted by the
    surface, the numbers beside each swatch. */
+/* On a narrow card the legend wraps under the ring and the ring stands in the middle, not at the
+   left with the right half empty. */
 .chart-donut {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: var(--space-4);
 }

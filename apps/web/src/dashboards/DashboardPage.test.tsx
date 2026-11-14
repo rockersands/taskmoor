@@ -176,6 +176,79 @@ describe('a dashboard (M1-064)', () => {
     );
   });
 
+  it('[RPT-005] heads a table with the field it counts by, and says when nothing closed', async () => {
+    const { WIDGET_DATA } = await import('./fixtures');
+    const client = fakeDashboardClient(undefined, {
+      ...WIDGET_DATA,
+      close: {
+        ...(WIDGET_DATA.close as object),
+        closed: [0, 0, 0, 0, 0, 0, 0],
+        average: [0, 0, 0, 0, 0, 0, 0],
+      },
+    });
+    open({ client });
+    // Not 'Value': the field the table counts by.
+    const stats = await within(
+      await screen.findByRole('article', { name: 'Ticket statistics' }),
+    ).findByRole('table');
+    expect(within(stats).getAllByRole('columnheader')[0]).toHaveTextContent('Labels');
+    const pie = await screen.findByRole('figure', { name: 'Tickets by Priority' });
+    expect(within(pie).getAllByRole('columnheader')[0]).toHaveTextContent('Priority');
+    const work = within(widget('Workload')).getByRole('table');
+    expect(within(work).getAllByRole('columnheader')[0]).toHaveTextContent('Assignee');
+    // A line on 0h would read as closing taking no time: nothing closed says so instead.
+    const close = widget('Time to close');
+    expect(await within(close).findByText('No ticket was closed in this period.')).toBeVisible();
+    expect(within(close).queryByRole('figure')).toBeNull();
+    // A table past the card's edge scrolls with a fade on the side that has more (D2, TR-12).
+    expect(
+      within(widget('Two-dimensional statistics')).getByRole('region', {
+        name: 'Two-dimensional statistics',
+      }),
+    ).toHaveAttribute('data-more');
+  });
+
+  it('[RPT-005] names the statistic a workload pie has no value for, mid-sentence', async () => {
+    const { WIDGET_DATA } = await import('./fixtures');
+    const client = fakeDashboardClient(
+      [
+        {
+          ...TEAM_DASHBOARD,
+          widgets: [
+            {
+              id: 'work',
+              kind: 'workload',
+              column: 0,
+              title: '',
+              config: {
+                query: 'track = SHOP',
+                field: 'assignee',
+                statistic: 'remainingEstimate',
+                view: 'pie',
+              },
+            },
+          ],
+        },
+      ],
+      {
+        ...WIDGET_DATA,
+        // Tickets there are, none with any time of that statistic.
+        work: {
+          ...(WIDGET_DATA.work as object),
+          values: (WIDGET_DATA.work as { values: object[] }).values.map((v) => ({
+            ...v,
+            seconds: 0,
+          })),
+          seconds: 0,
+        },
+      },
+    );
+    open({ client });
+    expect(
+      await screen.findByText('No ticket here has a value for Remaining estimate.'),
+    ).toBeVisible();
+  });
+
   it('[RPT-004] its owner adds, sets up, moves and removes widgets, saved with the version', async () => {
     const user = userEvent.setup();
     const { client } = open();
@@ -309,6 +382,25 @@ describe('a dashboard (M1-064)', () => {
       'It is everyone’s home dashboard now.',
     );
     expect(client.defaultId).toBe(5);
+  });
+
+  it('[RPT-004] everyone’s home is seen by everyone, and its choice of who sees it says so', async () => {
+    const user = userEvent.setup();
+    const { client } = open({
+      session: ADMIN,
+      client: fakeDashboardClient([{ ...TEAM_DASHBOARD, shares: [] }]),
+    });
+    const who = await screen.findByRole('combobox', { name: 'Who sees it' });
+    expect(who).toHaveDisplayValue('Only me');
+    await user.click(screen.getByRole('button', { name: 'Make it everyone’s home' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is everyone’s home dashboard now, so everyone signed in sees it.',
+    );
+    expect(client.defaultId).toBe(5);
+    expect(client.patches.at(-1)?.patch).toEqual({ shares: [{ scope: 'any_user' }], version: 3 });
+    expect(screen.getByRole('combobox', { name: 'Who sees it' })).toHaveDisplayValue(
+      'Everyone signed in',
+    );
   });
 
   it('[RPT-004] a wallboard has no controls and turns to the next dashboard', async () => {

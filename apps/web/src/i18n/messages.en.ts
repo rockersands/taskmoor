@@ -5022,7 +5022,8 @@ export const messagesEn = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} in the period shown.',
   'dashboards.widget.groupDone': '{closed} of {total} done',
   'dashboards.widget.unestimated': 'Without an estimate',
-  'dashboards.widget.noTime': 'No ticket here has any {statistic}.',
+  'dashboards.widget.noTime': 'No ticket here has a value for {statistic}.',
+  'dashboards.widget.noneClosed': 'No ticket was closed in this period.',
   'dashboards.widget.workSummary':
     '{statistic} by value: {value} over {count, plural, one {# ticket} other {# tickets}}.',
   'dashboards.widget.ticket': 'Ticket',
@@ -5101,6 +5102,8 @@ export const messagesEn = {
   'dashboards.leaveWallboard': 'Leave the wallboard',
   'dashboards.makeDefault': 'Make it everyone’s home',
   'dashboards.madeDefault': 'It is everyone’s home dashboard now.',
+  'dashboards.madeDefaultShared':
+    'It is everyone’s home dashboard now, so everyone signed in sees it.',
   'dashboards.visibility': 'Who sees it',
   'dashboards.visibility.private': 'Only me',
   'dashboards.visibility.any_user': 'Everyone signed in',
