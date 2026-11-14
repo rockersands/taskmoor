@@ -22,7 +22,16 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-282 and the wave 8 phone tickets checked (2026-11-14, the Mac)
+### Latest: lists read past their first page; plans.css at full lint (2026-11-14, Windows)
+
+- **On `main` (`ee3aed97`, full gate on Windows: 9,035 tests, 262 e2e):** T-305 (every list read
+  for "all" follows its pages: track pickers and lists, a ticket's work log, the Jira-compatible
+  project list, MCP `list_tracks`, a track's waiting invitations) and T-285 (plans.css passes
+  Biome with no override; a calendar grip fits its chip). Reviewed: 6 faults fixed with tests.
+- **New for Windows:** T-307 to T-310, lists the sweep found cut short; then T-287's releases part,
+  T-089f and T-089a.
+
+### Earlier: T-282 and the wave 8 phone tickets checked (2026-11-14, the Mac)
 
 - **On `main` (`34a7bb37`, full gate: 9,004 tests, 262 e2e):** T-282's small follow-ups. The wave 8
   phone tickets came back from Windows: T-212 and T-221 are done; T-222, T-226, T-228, T-229 and
