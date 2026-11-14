@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-15 | the gate of T-089a stage 10 (wave20/t089a-hierarchy-grid) |
 
 ## Numbers
 
@@ -135,3 +135,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 Mac: the Mac is wrapping up for the day at the user's request. The main lock is free and nothing of the Mac's is running. T-359 is paused on six pushed branches (`wave26m/t359-*`), none merged; it stays the Mac's claim, and `docs/plan/t359-handover.md` says where each stands. Everything else of the Mac's is on `main` (its last push was `c10ea330`).
 - 2026-11-15 12:43 Windows: stage 9 of T-089a (baselines with migration 0111, the critical path, "Even out load") and T-316 (ten of the eleven Plans faults; S3-PL-9 stays with the Mac's T-359) are built and reviewed; Windows takes the main lock for their gate. The user took Claude's recommendation for every question of T-306, T-312, T-314 and T-315 (decisions.csv).
 - 2026-11-15 13:40 Windows: stage 9 of T-089a (baselines, migration 0111; the critical path; Even out load) and T-316 are on `main` at `9201af30` after a full gate (9,575 tests, 270 e2e); the main lock is free. For the Mac: (1) `apps/server/src/plans/access.ts` holds `planEditable`, used by every plan route; (2) Tarjan and the heap live in `plans/graph.ts`; (3) S3-PL-3's phone row divider is a Plans rule (`.plan-list .result-row`); please move it into the shared rule in search.css with T-359 so all three lists match; (4) `.button-primary[aria-disabled="true"]` now has a look in shell.css. Windows claims migration 0112 and builds stage 10 (the hierarchy grid) next.
+- 2026-11-15 16:23 Windows: stage 10 of T-089a (the hierarchy grid, PLN-010, migration 0112) is built and reviewed; Windows takes the main lock for its gate.
