@@ -275,7 +275,8 @@ export function registerPlanScheduleRoutes(
       q.data.scenario === undefined
         ? null
         : ((await scenarioOf(ws, plan.id, Number(q.data.scenario))) ?? 'not_found');
-    if (scenario === 'not_found') return invalidFields(reply, { scenario: 'not_found' });
+    // A scenario of another plan answers as a missing id, as a run into one does.
+    if (scenario === 'not_found') return notFound(reply);
     const periods = periodsFrom(
       periodOf(plan),
       q.data.from ?? today(),

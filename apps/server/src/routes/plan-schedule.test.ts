@@ -609,13 +609,13 @@ describe('the auto-scheduler (PLN-004)', () => {
       for (const word of [...SENTINEL_WORDS, ...SENTINEL_DAYS, t.h1?.key, t.h2?.key])
         expect(body).not.toContain(word);
     }
-    // A scenario that is not the plan's.
+    // A scenario that is not the plan's: missing, or another plan's, word for word as a missing id.
     const res = await as('owner', {
       method: 'GET',
       url: `/api/v1/plans/${plans.Accept}/schedule?scenario=999999`,
     });
-    expect(res.statusCode).toBe(400);
-    expect(res.json()).toEqual({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'not_found' });
   });
 
   it('[PLN-004] [PLN-002] (1) fills three periods with 60 points of ranked work, into a new scenario made main', async () => {
@@ -1174,6 +1174,10 @@ describe('the auto-scheduler (PLN-004)', () => {
         method: 'POST',
         url: `/api/v1/plans/${plans.Bulk}/schedule`,
         payload: { into: { scenarioId: priv } },
+      }),
+      await as('owner', {
+        method: 'GET',
+        url: `/api/v1/plans/${plans.Bulk}/schedule?scenario=${priv}`,
       }),
     ]) {
       expect(res.statusCode).toBe(404);
