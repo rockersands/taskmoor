@@ -91,6 +91,7 @@ import * as m0104 from './0104_default_workflow_left_strict';
 import * as m0105 from './0105_close_reason_left_dangling';
 import * as m0106 from './0106_cross_track_releases';
 import * as m0107 from './0107_workflows_left_without_moves';
+import * as m0116 from './0116_checklist_item_edited_by';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -192,4 +193,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0105_close_reason_left_dangling': m0105,
   '0106_cross_track_releases': m0106,
   '0107_workflows_left_without_moves': m0107,
+  '0116_checklist_item_edited_by': m0116,
 };

@@ -1795,6 +1795,13 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async () => {},
   },
+  '0116_checklist_item_edited_by': {
+    tables: {
+      // The seed item of 0096 was never rewritten: its words stay its creator's (T-203).
+      ticket_checklist_item: "text = 'Seed item' AND edited_by IS NULL",
+    },
+    seed: async () => {},
+  },
 };
 
 /**

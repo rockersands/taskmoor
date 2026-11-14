@@ -472,6 +472,52 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     );
   });
 
+  it('[CORE-033] [IAM-008] a checklist item someone else rewrote leaves its new words out of its creator’s download and in its writer’s', async () => {
+    const made = await post('kalo', '/api/v1/tickets', { track: 'PRV', summary: 'Toner runs out' });
+    expect(made.statusCode, made.body).toBe(201);
+    const ticket = made.json().ticket as { id: number };
+    const listed = await post('kalo', `/api/v1/tickets/${ticket.id}/checklists`, {
+      name: 'Toner steps',
+      items: ['Order toner', 'Shake the cartridge'],
+    });
+    expect(listed.statusCode, listed.body).toBe(201);
+    const list = listed.json().checklists[0] as { id: number; items: { id: number }[] };
+    const [ordered, shaken] = list.items.map((i) => i.id) as [number, number];
+    const edit = (who: string, itemId: number, payload: Record<string, unknown>) =>
+      as(who, {
+        method: 'PATCH',
+        url: `/api/v1/tickets/${ticket.id}/checklists/${list.id}/items/${itemId}`,
+        payload,
+      });
+    // Mi rewrites one item's words and only ticks the other.
+    expect((await edit('mi', ordered, { text: 'Order the cheap toner' })).statusCode).toBe(200);
+    expect((await edit('mi', shaken, { state: 'done' })).statusCode).toBe(200);
+
+    const download = async (who: string) => {
+      const asked = await post(who, '/api/v1/account/data-exports');
+      expect(asked.statusCode, asked.body).toBe(202);
+      await work();
+      const res = await get(who, `/api/v1/account/data-exports/${asked.json().export.id}/download`);
+      expect(res.statusCode, res.body).toBe(200);
+      const file = (await unzip(res.rawPayload))['checklist-items.ndjson'];
+      return { file: String(file), items: lines(file).filter((i) => i.ticketId === ticket.id) };
+    };
+    const kalos = await download('kalo');
+    expect(kalos.items).toEqual([
+      // Kalo added it, but the words are Mi's now: the item, its state and date, not the words.
+      expect.objectContaining({ id: ordered, rewrittenByOthers: true, state: 'open' }),
+      // A tick leaves Kalo's words Kalo's.
+      expect.objectContaining({ id: shaken, text: 'Shake the cartridge', state: 'done' }),
+    ]);
+    expect(kalos.items[0]).not.toHaveProperty('text');
+    expect(kalos.file).not.toMatch(/cheap toner/);
+    // The words are in Mi's download, who wrote them; the item Mi only ticked is not.
+    const mis = await download('mi');
+    expect(mis.items).toEqual([
+      expect.objectContaining({ id: ordered, text: 'Order the cheap toner', state: 'open' }),
+    ]);
+  });
+
   it('[IAM-008] ASVS 8.3.2: erasure asks for the email, refuses oneself, the last administrator and managed accounts', async () => {
     const erase = (who: string, id: number, confirmEmail: string) =>
       post(who, `/api/v1/users/${id}/erase`, { confirmEmail });

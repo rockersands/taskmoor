@@ -592,6 +592,64 @@ describe('upgrade from earlier releases', () => {
     });
   });
 
+  describe('who wrote a checklist item’s words (0116)', () => {
+    it('[CORE-033] names the last person who rewrote an item from its events, and nobody for an item never rewritten', async () => {
+      const database = await createDatabase(testPgAdminUrl());
+      const db = createDb({ connectionString: database.url, maxConnections: 2 });
+      try {
+        for (const name of all.slice(0, all.indexOf('0107_workflows_left_without_moves') + 1)) {
+          await migrateTo(db, name);
+          await UPGRADE_SEEDS[name]?.seed(db as never);
+        }
+        const person = async (email: string) =>
+          (
+            await sql<{ id: number }>`
+              INSERT INTO app_user (workspace_id, email, name, password_hash)
+              VALUES (1, ${email}, ${email}, 'scrypt$x') RETURNING id`.execute(db)
+          ).rows[0]?.id as number;
+        const first = await person('first@example.com');
+        const last = await person('last@example.com');
+        const items = await sql<{ id: number; checklist_id: number }>`
+          INSERT INTO ticket_checklist_item (workspace_id, checklist_id, text, position)
+          SELECT 1, c.id, w.text, w.position FROM ticket_checklist c,
+                 (VALUES ('Rewritten twice', 1), ('Ticked only', 2)) AS w (text, position)
+           WHERE c.name = 'Seed checklist'
+          ORDER BY w.position
+          RETURNING id, checklist_id`.execute(db);
+        const [twice, ticked] = items.rows as [
+          { id: number; checklist_id: number },
+          { id: number; checklist_id: number },
+        ];
+        const event = (actor: number, change: string, itemId: number | null, at: string) =>
+          sql`
+          INSERT INTO domain_event (workspace_id, type, actor_id, subject_type, subject_id,
+              payload, occurred_at)
+          VALUES (1, 'ticket.checklist_changed', ${actor}, 'ticket', '1',
+                  ${JSON.stringify({ change, checklistId: twice.checklist_id, itemId })}::jsonb,
+                  ${at}::timestamptz)`.execute(db);
+        await event(first, 'item_edited', twice.id, '2026-11-01T10:00:00Z');
+        await event(last, 'item_edited', twice.id, '2026-11-02T10:00:00Z');
+        // A later tick by someone else leaves the words as their last writer left them.
+        await event(first, 'item_state', twice.id, '2026-11-03T10:00:00Z');
+        await event(first, 'item_state', ticked.id, '2026-11-03T10:00:00Z');
+        // A list renamed names no item.
+        await event(first, 'checklist_renamed', null, '2026-11-03T10:00:00Z');
+
+        await migrateTo(db, '0116_checklist_item_edited_by');
+        const { rows } = await sql<{ text: string; edited_by: number | null }>`
+          SELECT text, edited_by FROM ticket_checklist_item ORDER BY position`.execute(db);
+        expect(rows).toEqual([
+          { text: 'Seed item', edited_by: null },
+          { text: 'Rewritten twice', edited_by: last },
+          { text: 'Ticked only', edited_by: null },
+        ]);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+  });
+
   it('[OPS-006] reports a database migrated by a newer release as unknown', async () => {
     const database = await createDatabase(testPgAdminUrl());
     const db = createDb({ connectionString: database.url, maxConnections: 1 });

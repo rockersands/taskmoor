@@ -831,6 +831,8 @@ export interface TicketChecklistItemTable {
   state: Generated<string>;
   position: number;
   created_by: number | null;
+  /** Who wrote the words as they read now, when not the creator (0116; T-203). */
+  edited_by: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
 }
