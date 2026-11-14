@@ -914,16 +914,290 @@ touch drags), and how the image looks, which needs a person to look at it.
    Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
    Excel.
 
+### Stage 5 (T-089d): the program board and dependency options
+
+**Designed on 2026-11-13.** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
+built (the wordings are under "Tests"). The user decided on 2026-11-13 (`decisions.csv`, rows on
+T-089i and T-241) to build PLN-013 with the program board in 1.0, that blockers outside the plan
+stay a count only, that the section is called **Plans** and that the interface says **site**. The
+questions at the end are the user's; the design takes the first answer each time.
+
+A **program board** lays a plan's work out by team and iteration: a row per team, a column per
+period, and in each cell the outcomes and the work (levels 1 and 0, spec 00) that team has due in
+that period, with their dependencies. Several people move cards on one board at the same time and
+see each other's moves within a second. It belongs to a plan, as its views do: it gives no access,
+holds no tickets, and moving a card is the ticket's own change.
+
+#### What a cell is
+
+- **Rows** are the plan's teams (stage 3), in the plan's order, then one row **Other or no team**
+  for work whose Team value is empty or a team the plan does not plan with. A team gives no access
+  (ADR-076), and everyone signed in reads teams, so naming them tells nobody anything new.
+- **A card's team** is its value in the board's **Team field**: a shared, single-value field of type
+  `team` (ADR-076), chosen per board; a new board takes the site's oldest one. A board without one
+  (the field was deleted) puts every card in the last row and moves cards between periods only.
+- **Columns** are the plan's own periods (stage 3: every 1 to 6 weeks from its anchor, or months):
+  `periods` of them (1 to 12, 6 by default) from the period holding the board's `from` day, after a
+  first column, **Not scheduled**, for open work with no due day. These are the plan's iterations:
+  a plan spans tracks whose sprints differ or do not exist, and capacity already counts by these
+  periods, so a cell's work is the same work stage 3 counts against that team (question 1).
+- **A card's period** is the one holding its own due day, as capacity counts it: a ticket counts
+  whole in the period of its due day. A day taken from a sprint (the Timeline's `dated: sprint`) is
+  not used, so the board and Capacity never disagree (question 2).
+- **Which tickets:** the plan's tickets as the viewer sees them, with the views' filters
+  (`planTickets`), at levels 1 and 0 (`hierarchyLevel IN (0, 1)`), due in the board's periods or
+  open with no due day. Closed work due in a period stays in its cell, marked closed in words.
+- **Every count equals a search.** Each row has a `clause` (`cf[12] = 3`, and for the last row
+  `cf[12] IS EMPTY OR cf[12] NOT IN (3, 4)`), each column a `clause` (stage 3's `due >= ... AND
+  due <= ...`, or `stage != closed AND due IS EMPTY`), and the board a `clause`
+  (`hierarchyLevel IN (0, 1)`). The plan's `query` ANDed with the three is the cell's link, and a
+  test checks each count against its search for three viewers.
+- **A cell shows its first 20 cards**, outcomes first, then by rank, and says "and 14 more" as a
+  link to its search. With at most 51 rows and 13 columns no read can grow past that, so the board
+  needs no cap of its own beside PLN-012's.
+
+#### Hidden work
+
+- A board lists only tickets the viewer may see, through the plan's query, so a hidden ticket is
+  never a card, never counted in a cell and never named. Cells carry **no count of hidden work**:
+  the periods are the plan's, which its owner sets a day at a time, so a count per team and period
+  would give away due days, which stage 3 had to close with whole weeks. Capacity remains the place
+  where a person's hidden load is counted, by those weeks.
+- A card's blockers that the board does not show are counted per card as stage 2 counts them on the
+  Timeline (`blockersElsewhere: { id, outside, unlisted }`): `outside` the plan or hidden from the
+  viewer as one number, never a key, summary, track, team, sprint or day; `unlisted` the plan's own
+  tickets for this viewer that the board leaves out (other periods, other levels, the filters, past a
+  cell's 20). Outside blockers stay a count only (the user's answer on T-089i).
+- A plan, or a board of a plan, the person may not see answers 404, word for word as an id that
+  does not exist; so does a board id under another plan's id.
+
+#### Dependency options (PLN-013)
+
+- **Stored on the plan** (migration 0115): `plan_dependency_type` (`plan_id`, `link_type_id`, both
+  cascading on delete; at most 20 a plan) and `plan.flag_same_sprint` (false by default).
+- **Other link types as dependencies:** a chosen type counts beside blocking links, everywhere a
+  plan shows dependencies: the Timeline's lines, badges and list (stage 2), its file and image (stage
+  8), and the program board. A link's **source must finish first** and its target waits for it, as a
+  blocking link reads ("A blocks B"): the settings show each type as "A *precedes* B: B waits for A"
+  (question 9). A type whose outward phrase is "blocks" is always counted and cannot be chosen
+  (`always_counted`). Two links between the same pair are one dependency, a blocking one first. A
+  plan that chooses none shows only blocking links, as before; the track's own timeline is unchanged.
+- **Late** is PLN-006's rule (`dependencyState`), whatever the type.
+- **Same sprint:** with the flag on, a dependency whose two tickets are both in the same sprint now
+  (in it, `sprint_ticket.open`, and the sprint neither closed nor deleted) is marked **Same sprint**
+  in words beside its colour: on the line's description, the badge ("Blocked by 3 tickets, 1 late, 1
+  in the same sprint"), the list and the board. Only dependencies between tickets the viewer sees are
+  judged, and the sprint is never named, so the flag says nothing about hidden work. Without the
+  flag nothing is marked and nothing is read.
+- **Answers:** the Timeline's and the board's `links` items gain `linkTypeId` and, when flagged,
+  `sameSprint: true`; both answers gain `linkTypes` (id, name and outward phrase of each type used)
+  and `sameSprint` (whether the plan asks). `GET /plans/:id` gains `dependencies: { linkTypes,
+  sameSprint }`, and `PATCH /plans/:id` takes `dependencies: { linkTypeIds, sameSprint }` from the
+  plan's editors, in `plan.updated` as `dependencyTypes` and `sameSprint`. A copy of a plan (stage 8)
+  copies them, as it copies its other settings.
+- One function reads dependencies for both the Timeline and the board
+  (`apps/server/src/plans/dependencies.ts`), and one decides their state on the page
+  (`dependenciesOf`), so the two cannot disagree.
+
+#### What is stored (migration 0115)
+
+- `program_board`: `workspace_id`, `plan_id` (cascading), `name` (1 to 255), `team_field_id` (a
+  field, set to null when it is deleted), `from_day` (any day; the first period is the one holding
+  it), `periods` (1 to 12), `archived_at`, `version`, `created_at`, `updated_at`; an index on
+  `(plan_id, id)` and one on `team_field_id`.
+- `plan_dependency_type` and `plan.flag_same_sprint` above.
+- Nothing about cards is stored: a card is a ticket, and where it stands is its Team value and due
+  day. The schema golden file, the types in `schema.ts` and an `upgrade-fixtures.ts` entry come with
+  the migration.
+- **No limit per plan**, as PLN-008 says: a plan lists all its boards, active first. Boards are small
+  rows and each reads only when opened.
+
+#### Routes and token scopes
+
+All are internal in the API document, as the other plan routes, and scopes follow the method.
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/plans/:id/program-boards` | read | The plan's boards, active then archived: `{ boards, editable, teamFields }` |
+| `POST /api/v1/plans/:id/program-boards` | write | `{ name, teamFieldId?, from?, periods? }`; the plan's editors |
+| `GET /api/v1/plans/:id/program-boards/:boardId` | read | The board with the views' filters: `{ board, plan, query, clause, editable, periods, unscheduledClause, rows, cards, links, linkTypes, sameSprint, blockersElsewhere }` |
+| `PATCH /api/v1/plans/:id/program-boards/:boardId` | write | `{ name?, teamFieldId?, from?, periods?, archived?, version }`; a stale version answers 409 |
+| `DELETE /api/v1/plans/:id/program-boards/:boardId` | write | Removes the board; no ticket changes |
+
+Creating, changing, archiving and deleting a board is for the plan's owner and site administrators
+(`forbidden` with `edit_plan`), as the plan's other settings. **Moving a card has no route of its
+own:** it is `PATCH /tickets/:key`, so the mover's own permissions decide ("Schedule tickets" for the
+day, "Edit tickets" or the field's own rule for the Team value), with the ticket's history, events,
+locks (WF-007) and webhooks, ticket by ticket across tracks, as stage 1's rescheduling does.
+
+#### Moving a card
+
+- **To another row:** the Team value becomes that team; to **Other or no team** it is cleared.
+- **To another period:** the start and due days move by the distance between the two periods' first
+  days, the due day kept inside the new period (a 31 January due day moved a month lands on 28 or
+  29 February), and a start after the new due day becomes that day. From **Not scheduled** the due
+  day becomes the period's last day and a start after it moves to the period's first. To **Not
+  scheduled** the due day is cleared and the start stays (question 3).
+- One request carries both, with the `version` the board read: the card moves at once on the page,
+  marked "Moving" in words, and the board reads again when the answer comes.
+- **Conflicts:** a ticket changed meanwhile (someone else moved or edited it) answers 409
+  `version_conflict`; nothing is changed, the board reads again, and the page says "SPA-12 changed
+  while you moved it; it now shows where it is. Move it again if you still want to." So two people
+  moving the same card never overwrite each other unseen; the first move stands (question 6). Two
+  people moving different cards both succeed.
+- A refusal says why in plain words from the ticket route's codes, as the Timeline does: no
+  permission (naming it), a lock, an archived track, a field the ticket's track does not use, a
+  ticket gone or hidden.
+- **Closed cards do not move** on the board: closed work is done, and a closed card moved to Not
+  scheduled would vanish from it.
+- **On a desktop** a card is dragged to a cell (the browser's drag and drop) and every card has
+  **Move…**, which opens a dialog with the team and the period: the way for the keyboard, screen
+  readers and touch. Archived boards show their cards and move nothing.
+
+#### Live edits
+
+- **No new transport.** The app already keeps a local copy (ADR-013): every change to a ticket writes
+  a row to the change log, the realtime socket tells each signed-in client within 250 ms that the log
+  moved, and the client reads the rows it may see. A board subscribes to that copy, as a track's
+  board does (NTF-008): when it moves, the board reads its cards again, at most once per 100 ms, not
+  while a card is being dragged or a move is waiting for its answer. A move made here shows at once
+  without waiting for the socket. Without a local copy (storage refused, private browsing) the board
+  reads again every 15 seconds while it is open.
+- **What travels:** only that the log moved. The board then reads its own answer as the viewer, so a
+  move by someone else reaches each viewer only as far as they may see it: a ticket that becomes
+  hidden simply leaves their board.
+- **Budget:** two people on one board, one moves a card, the other sees it in its new cell within
+  1 s (PLN-008 (1)): e2e, measured from the drop to the card in the second browser's cell, by
+  `expectWithinBudget`.
+- A board's own settings (name, periods, field) changed by an editor reach others on their next
+  read, which any ticket change or reload brings; the change log carries tickets, not plans.
+
+#### The pages, on a desktop and on a phone
+
+- **A plan's Program boards tab** (`#/plans/12/boards`), after Releases: the boards, active first,
+  each with its name, periods and Team field, and for its editors **New program board** (a dialog,
+  a sheet on a phone: name, Team field, first period, number of periods), **Edit**, **Archive** or
+  **Restore**, and **Delete** through the shared DangerAction (D13).
+- **One board** (`#/plans/12/boards/5`), with the plan's filter bar: a table, teams as row headers
+  and periods as column headers ("Now" in words on the current one), each cell a list of cards with
+  its count; the team column stays in place while the table scrolls sideways, with a fade showing it
+  goes on. A card shows its key, summary, type, status in words, "Closed" when closed, and its
+  dependency badge ("Waits for 2, 1 late", "Same sprint"). Below the table, **Dependencies**: each
+  card with blockers, its blockers on the board with their team, period and state in words, and the
+  others counted.
+- **On a phone** (`COMPACT_QUERY`) the table becomes one team at a time, chosen with a **Team**
+  picker, and each period a section with its cards as a list; **Move…** is the only way to move,
+  44 px under a coarse pointer, and its dialog is a sheet. No sideways scrolling.
+- **Settings** gains **Dependencies**: the site's link types other than blocking ones, ticked, each
+  read as "A *phrase* B: B waits for A", and **Flag dependencies within one sprint**.
+- Glass per ADR-114; status messages announced; strings in both catalogues; a story for each
+  component and dialog, with axe, at phone width too.
+
+#### Events, audit and records
+
+- `plan.program_board_created` (board id, name, team field, from, periods),
+  `plan.program_board_updated` (board id, changes) and `plan.program_board_deleted` (board id,
+  name), subject the plan, audited as `plan.*` are: configuration others see. `plan.updated` carries
+  `dependencyTypes` and `sameSprint`. Webhooks get none of them, as for `plan.*`.
+- A board holds nothing personal (no owner, no names), so the data download and erasure do not
+  change. A copy of a plan leaves its boards out (stage 8, "later stages' contents"; question 12).
+
+#### Performance
+
+- PLN-012's bar, by `expectWithinBudget` in `plans.large.test.ts`: a board of six periods and the
+  plan's team, read under a second, median of five, at 10,000 tickets in every gate and 100,000
+  with `TASKMOOR_LARGE_PLANS=1`. The cells come from one statement over the plan's tickets in the
+  board's window, each with its place, `row_number()` and `count()` per cell, so what reaches the
+  server is at most 20 cards a cell; the cards' details, the dependencies and the same-sprint check
+  each read only those cards.
+- The Timeline with chosen link types and the flag, against its budget as before.
+- The live move within 1 s (above), in the e2e on Chromium.
+
+#### What the manual says
+
+`docs/manual/use/multi-track.md` gains **Program boards** (rows, columns, which tickets, moving a
+card and what it changes, who may, the live updates, conflicts, the phone) and **Dependency
+options** (other link types and their direction, the same-sprint flag); "Not yet in Multi-track"
+loses the program board. `sources` stay current.
+
+#### Tests
+
+PLN-008 as it should read when built: *Taskmoor shall provide program boards in a plan, showing its
+level-1 and level-0 tickets by team (a Team field) and by the plan's periods, with their
+dependencies, which several people edit at once, each seeing the others' moves as they happen; a plan
+holds any number of them, and a viewer sees only what they may see.* Acceptance: (1) two people
+moving cards see each other's moves within 1 s; (2) a plan holds 3 or more active program boards;
+(3) moving a card changes the ticket's Team value and due day through the ticket's own rules, and a
+stale move is refused, never applied over another's; (4) a hidden ticket is never a card, counted in
+a cell or named, and its dependencies are only counted.
+
+PLN-013 as it should read when built: *Taskmoor shall let a plan treat link types it chooses as
+dependencies, beside blocking links, the source finishing first, drawn, counted and judged late as
+PLN-006 says, on the Timeline and the program board; and, when asked, mark each dependency whose two
+tickets are in the same sprint now.* Acceptance (1) and (2) as now.
+
+- `routes/program-boards.test.ts`, `[PLN-008]`: making, changing, archiving and deleting boards,
+  editors only; (2) three active boards and an archived one; 404 bodies for a hidden plan and for a
+  board of another plan equal to a missing id's; rows, columns and cells for a fixture of two teams,
+  other and no team, four periods and unscheduled work, levels 2 and -1 left out; (4) three viewers
+  (site administrator, browses one of two tracks, ticket-level grant only) with sentinel summaries of
+  hidden tickets that appear in no answer; `[PLN-008] [QRY-008]` every cell's count equals its
+  search's for each viewer; (3) a move through `PATCH /tickets/:key` with a stale `version` answers
+  409 and changes nothing; a deleted Team field; a stale board `version`; the events.
+- `routes/plan-dependencies.test.ts`, `[PLN-013]`: (1) a chosen type drawn and counted, and none when
+  not chosen; `always_counted`; the direction; hidden and outside blockers still only counted; (2)
+  `sameSprint` with the flag and never without it; a closed sprint marks nothing.
+- `plans.large.test.ts`: the board's budget. `scopes.test.ts`, `[IAM-007]`: each route's class.
+  `contract.test.ts`, `[AUT-010]`: a scenario per mutating route. An upgrade fixture for 0115.
+- Web: `ProgramBoardPage.test.tsx` (the table, the Move dialog's request, the conflict and refusal
+  words, reading again when the local copy moves, the phone's team picker with
+  `setViewportWidth()`), `ProgramBoardsPage.test.tsx`, `PlanDependencies.test.tsx` and
+  `DependencyList.test.tsx` additions (type names, "Same sprint" in words), the settings section;
+  stories with axe.
+- e2e `program-board.spec.ts`: on a desktop, two people signed in in two browsers on one board, one
+  drags a card to another team and period, the other sees it there within 1 s; then both move the
+  same card and the second is told it changed; on a phone, a move through the Move dialog.
+
+#### Asked by the spec or nearby, not built here
+
+- Lines drawn between cards on the board (the badges and the list carry the same; question 7).
+- Presence: who else has the board open, their cursors or a card someone is holding (question 5).
+- Columns from each team's own sprints, and per-team iterations (question 1).
+- Objectives, risks and milestones on the board; level-2 tickets; capacity in each cell.
+- Copying boards with a plan, a board's file or image, webhooks for boards.
+
+#### Questions for the user (the design takes the first answer each time)
+
+1. **Columns:** the plan's periods, the same for every team; or each team's own sprints (the sprints
+   of boards that team owns), which differ by team.
+2. **A card's period:** its own due day, as Capacity counts; or its sprint's days when it has no due
+   day of its own, as the Timeline draws.
+3. **Moving to another period:** the days shift by the periods' distance, kept in the new period;
+   or the due day becomes the period's last day.
+4. **Rows:** the plan's teams and one "Other or no team"; or only the plan's teams.
+5. **Live edits:** the board reads again when the change log moves, with no presence; or presence
+   too (who is looking, which card someone holds), which needs a channel of its own.
+6. **Two people moving one card:** the second is refused and shown where it is now; or the last
+   move wins.
+7. **Dependencies on the board:** badges and a list; or lines between cards too.
+8. **Hidden work in a cell:** not counted at all; or counted per board as one number.
+9. **A chosen link type's direction:** the source finishes first ("A precedes B"); or chosen per
+   type.
+10. **Same sprint:** both tickets in the same sprint now, neither closed nor deleted; or also sprints
+    already completed.
+11. **How many boards a plan holds:** no limit, as PLN-008 says; or a limit (say 100).
+12. **A copy of a plan:** leaves its boards out; or copies them.
+
 ### Later stages
 
-Each adds its section here when it starts: the program board (T-089d; PLN-008), draft changes and
-scenarios (T-089e; PLN-002, PLN-003) and the auto-scheduler (T-089f; PLN-004). Releases across
-tracks (T-089c; stage 4) and duplicating, linking and exporting (T-089g; stage 8) are designed
-above and not built. PLN-002 to PLN-009 move to M1 in the spec with their stage,
-so nothing lists them for 1.0 before they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009
-with stage 3. PLN-013 (other link
-types as dependencies, dependencies within one sprint) has no stage yet: the user's answer in
-`decisions.csv` decides it.
+Each adds its section here when it starts: draft changes and scenarios (T-089e; PLN-002,
+PLN-003), the auto-scheduler (T-089f; PLN-004), and the hierarchy grid and baselines (T-089a;
+PLN-010, PLN-011), which the user brought into 1.0 on 2026-11-13. Releases across tracks (stage 4),
+duplicating, linking and exporting (stage 8) and the program board with dependency options (stage
+5) are designed above. PLN-002 to PLN-011 move to M1 in the spec with their stage, so nothing lists
+them for 1.0 before they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009 with stage 3,
+PLN-007 with stage 4, and PLN-008 and PLN-013 with stage 5, which builds PLN-013 with the program
+board as the user decided on 2026-11-13 (T-089i).
 
 ## Options considered
 
