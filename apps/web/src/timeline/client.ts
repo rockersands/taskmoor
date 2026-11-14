@@ -12,7 +12,15 @@ export interface DraftMark {
   /** Team values now, by the Team field's id. */
   fields?: Record<string, { now: number | null }>;
   stale: boolean;
+  /**
+   * Who drafted it: `scheduler` when any drafted day is the auto-scheduler's proposal (ADR-122
+   * stage 7), as the change list says it; `person` otherwise. Absent reads as `person`.
+   */
+  origin?: 'person' | 'scheduler';
 }
+
+/** Whether a ticket's draft is the auto-scheduler's, tagged "Draft, auto-scheduled" in words. */
+export const autoScheduled = (mark: DraftMark | undefined) => mark?.origin === 'scheduler';
 
 /** A ticket on a track's timeline (M1-048; AGL-015). Dates are calendar days (YYYY-MM-DD). */
 export interface TimelineItem {

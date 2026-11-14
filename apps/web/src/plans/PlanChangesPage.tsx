@@ -6,7 +6,9 @@ import { EmptyState } from '../shell/EmptyState';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { type PlanView, planHref } from './address';
 import { trackKeyOf, useChangeWords } from './changeWords';
+import type { CapacityUnit } from './client';
 import { AskFirst, scenarioRefusal } from './ScenarioDialogs';
+import { type HeldRun, ScheduleResult } from './ScheduleResult';
 import type {
   ApplyResult,
   ChangeList,
@@ -14,7 +16,9 @@ import type {
   ScenarioClient,
   ScenarioList,
   ScenarioRow,
+  ScheduleEntry,
 } from './scenarioClient';
+import { type ScheduleLookup, useScheduleWords } from './scheduleWords';
 
 export interface PlanChangesPageProps {
   planId: number;
@@ -27,6 +31,20 @@ export interface PlanChangesPageProps {
   onChanged: () => void;
   /** The phone's layout whatever the width (stories, whose browser is not a phone). */
   phone?: boolean;
+  /**
+   * The last auto-schedule run into this scenario while the plan is open (ADR-122 stage 7): its
+   * result on top, and the run's why on each change it proposed.
+   */
+  schedule?: ScheduleShown | undefined;
+}
+
+/** A run's result as the Changes tab shows it, with what its words need. */
+export interface ScheduleShown {
+  run: HeldRun;
+  unit: CapacityUnit;
+  names: Partial<ScheduleLookup>;
+  /** Opens the dialog again, for the plan's editors. */
+  onRunAgain?: (() => void) | undefined;
 }
 
 /** What an apply has done so far, and what it said of each refused ticket. */
@@ -46,11 +64,26 @@ interface Applied {
  * Applying asks first, runs 100 tickets at a time and says how far it has got; its result is
  * announced, focus moves to its heading, and refused tickets stay chosen with their reasons. On a
  * desktop it is a table; on a phone each ticket is a card with a finger-sized check box, and an
- * action bar stays at the bottom.
+ * action bar stays at the bottom. After an auto-schedule run into the scenario (ADR-122 stage 7),
+ * its result stands on top and each change it proposed says the run's why, while the page holds it.
  */
 export function PlanChangesPage(props: PlanChangesPageProps) {
   // Each scenario's list afresh: what was chosen, a result shown and pages read stay with theirs.
-  return <ScenarioChanges key={props.scenario?.id ?? 'none'} {...props} />;
+  // A new run into the scenario reads its list again too.
+  const run = props.schedule ? runNumber(props.schedule.run.result) : 0;
+  return <ScenarioChanges key={`${props.scenario?.id ?? 'none'}/${run}`} {...props} />;
+}
+
+/** Each run's answer, numbered as the page first sees it. */
+const runNumbers = new WeakMap<object, number>();
+let runsSeen = 0;
+function runNumber(result: object): number {
+  let n = runNumbers.get(result);
+  if (n === undefined) {
+    n = ++runsSeen;
+    runNumbers.set(result, n);
+  }
+  return n;
 }
 
 function ScenarioChanges({
@@ -61,6 +94,7 @@ function ScenarioChanges({
   view,
   onChanged,
   phone = false,
+  schedule,
 }: PlanChangesPageProps) {
   const t = useT();
   const id = useId();
@@ -77,6 +111,12 @@ function ScenarioChanges({
   // Focus goes here when the control that had it goes: Keep, Make main, Apply while it runs.
   const heading = useRef<HTMLHeadingElement>(null);
   const words = useChangeWords(data);
+  const scheduleWords = useScheduleWords(schedule?.unit ?? 'points', schedule?.names);
+  // The run's word on each ticket it listed, for the why of its proposals; none on a ticket it
+  // left as it was because it changed meanwhile, whose drafts are not this run's.
+  const ran = new Map(
+    (schedule?.run.result.tickets ?? []).filter((x) => !x.changedMeanwhile).map((x) => [x.id, x]),
+  );
   const sid = scenario?.id;
   const editable = list?.editable ?? false;
 
@@ -278,6 +318,12 @@ function ScenarioChanges({
   };
 
   const main = list?.scenarios.find((s) => s.main) ?? null;
+  // The run's scenario against main, or against Live when it is main or none is.
+  const compareA = main && main.id !== scenario.id ? String(main.id) : 'live';
+  const compareHref = planHref(planId, 'scenarios', {
+    ...view,
+    compare: { a: compareA, b: String(scenario.id) },
+  });
   const chooseBox = (c: PlanChange) => (
     <input
       id={`${id}-c${c.ticketId}`}
@@ -296,6 +342,11 @@ function ScenarioChanges({
       </span>
       {c.origin === 'scheduler' && (
         <span className="scenario-meta">{t('scenario.state.scheduler')}</span>
+      )}
+      {c.origin === 'scheduler' && ran.has(c.ticketId) && (
+        <span className="scenario-meta">
+          {t('schedule.why', { why: scheduleWords.why(ran.get(c.ticketId) as ScheduleEntry) })}
+        </span>
       )}
       {editable && c.state === 'changed' && (
         <button
@@ -383,6 +434,16 @@ function ScenarioChanges({
 
   return (
     <section className="plan-changes" aria-labelledby={`${id}-title`}>
+      {schedule && (
+        <ScheduleResult
+          run={schedule.run}
+          unit={schedule.unit}
+          names={schedule.names}
+          compareHref={compareHref}
+          compareWith={compareA === 'live' ? 'live' : 'main'}
+          onRunAgain={editable ? schedule.onRunAgain : undefined}
+        />
+      )}
       <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
         {t(scenario.main ? 'scenario.changes.titleMain' : 'scenario.changes.title', {
           name: scenario.name,

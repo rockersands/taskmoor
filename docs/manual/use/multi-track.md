@@ -1,7 +1,7 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts
+sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -210,7 +210,7 @@ A **scenario** is a named set of **draft changes** to a plan's tickets: their st
 their value in a Team field. A draft changes nothing about a ticket until it is **applied**, so you
 can try a new schedule, see it on the plan's views and compare it with the tickets as they are.
 Scenarios belong to their plan: everyone who sees the plan sees its scenarios, and a scenario gives
-no access.
+no access. [Auto-scheduling](#auto-scheduling) can fill a scenario with proposed days for you.
 
 ### Live and a scenario
 
@@ -339,6 +339,162 @@ each team is a card. The numbers are of the tickets you see, so two people can s
 Drafts do not appear in a ticket's history and send no notifications until they are applied. The
 scenarios you made and the drafts you last changed are in your data download; a copy of a plan
 takes no scenarios.
+
+## Auto-scheduling
+
+**Auto-schedule** proposes start and due days for a plan's open tickets: it takes them in rank
+order, blockers first, and fills the plan's periods within the capacity set on the Capacity tab. It
+changes no ticket. What it proposes are draft changes in a scenario, marked as the auto-scheduler's,
+which you review, compare, apply or discard as you would your own (see
+[Scenarios and draft changes](#scenarios-and-draft-changes)). It follows fixed rules, described
+below, and says for each ticket why it went where it did, why it stayed, or why it could not be
+placed.
+
+### Starting a run
+
+The plan's owner and site administrators see **Auto-schedule…** below the plan's name, after
+**Review N changes**, on every tab, and beside **New scenario** on the Scenarios tab. Nobody else
+sees it. The dialog, a sheet on a phone, first checks what the run would use, counting only the
+tickets the plan shows you:
+
+- which of the plan's teams have capacity, and which have none, so that their tickets will not be
+  placed, with a link to the Capacity tab;
+- the plan's unit: points from the Points field, or hours from each ticket's original estimate. When
+  the plan counts points and no Points field exists, nothing can be sized;
+- how many open tickets the plan shows you, how many people in its teams have capacity of their
+  own, and how many tickets will not be placed for want of an estimate, an assignee, or an assignee
+  in one of the plan's teams.
+
+**Run** is off, with the reason beside it, when the plan has no teams, no team has capacity, tickets
+cannot be sized, or there is nowhere to write the result. It is also off while the dialog checks the
+plan again for choices you changed, so a run never starts on what was said for other ones.
+
+Then you choose:
+
+- **Where the result goes:** **A new scenario** (the default), named "Auto-schedule" and today's
+  date unless you rename it, with **Start from** empty or a copy of one of the plan's scenarios (the
+  one open is chosen first); if the plan has no scenario yet, the new one becomes its main
+  scenario. Or **This scenario: Faster**, when a scenario is open. A plan already holding 20
+  scenarios cannot take a new one, and a scenario being applied cannot take a run; the dialog says
+  so.
+- **What it may move:** **Keep tickets in progress** and **Keep tickets in an active sprint** (both
+  ticked at first), **Also keep tickets matching** a query, **Leave out ticket types** and **Leave
+  out releases** (up to 20 of each), and **Also leave out tickets matching** a query. The types
+  offered are those of the open tickets the plan shows you; the releases, those they target that
+  are neither shipped nor archived, in tracks you can browse. The queries are written as in
+  search. One that does not read as a query is pointed out under its field, which takes the
+  focus, and nothing runs.
+- **When:** **Schedule from**, today at first, and **Look ahead**, 1 to 12 of the plan's periods
+  (6 at first). The dialog names the span, for example "6 periods of 2 weeks: Nov 17 to Feb 8."
+
+The dialog remembers your choices for this plan in this browser, apart from the first day and where
+the result goes; a type or release the plan no longer offers is forgotten. When you run again into a scenario that already holds proposals, it says how many
+the run will replace and how many drafts people made there, which stay. While the run works,
+**Run** reads "Scheduling…", a line says how many tickets it is scheduling, and the dialog stays
+open until the run has answered.
+
+### Which tickets it moves
+
+Only open tickets at the lowest level of the hierarchy, the ones parents roll up from, are
+scheduled, whether they have days already or not. Each one the plan shows you is:
+
+- **Left out** when it is at a higher level, its type or one of its target releases is left out,
+  or it matches the leave-out query. The run counts it and does not draft it.
+- **Kept** where it is when a person drafted its start or due day in this scenario, you may not
+  schedule tickets in its track, it matches the keep query, or it is in progress or in an active
+  sprint and those boxes are ticked.
+- **Moved** otherwise, if the run can place it.
+
+Closed tickets never move. Tickets that are kept or left out still count where their days put them,
+and still hold up the tickets they block. So does work already done: closed tickets due in a period
+count against its capacity, as on the Capacity tab, and so does each person's work elsewhere, by
+whole weeks.
+
+### How it places work
+
+- **Who carries a ticket:** its assignee and every plan team the assignee belongs to, the same
+  rows that count it on the Capacity tab. A ticket fits a period when, for each of them with a
+  capacity set in that period, what is already there plus the ticket's estimate is no more than
+  that capacity. Someone with no capacity set in a period limits nothing there; a capacity of 0
+  takes nothing.
+- **Order:** tickets go by rank. A ticket that blocks a higher-ranked one goes as early as the
+  ticket it holds up, so a low-ranked blocker is placed first.
+- **Blockers:** a ticket starts the day after each of its blockers ends, never on or before it, so
+  the run makes no late dependency between the tickets it places. A blocker that is kept or left
+  out ends on its own last day, or its sprint's.
+- **In rank order for each person and team:** a ticket never lands in an earlier period than the
+  higher-ranked work of the same people and teams. Room left in an earlier period can stay unused.
+- **Its days:** a placed ticket starts on the first day of its period, or later if a blocker ends
+  later, and is due on the period's last day.
+
+### Reading the result
+
+After a run the page opens the scenario's **Changes** tab, with an **Auto-schedule** section on top,
+for example "180 placed, 14 kept, 9 not placed, 22 earlier proposals removed. 3 drafts people
+made stay." **Placed**, **Not placed** and **Kept** each show their tickets, the key a link, with the
+reason in words; the section opens on Not placed when there are any. **Compare with main**, or
+**Compare with Live** when this scenario is main or the plan has none, opens the comparison. **Run
+again…** opens the dialog, and **Its choices** says what the run was asked, naming the ticket
+types and releases it left out. The section stays while
+the plan is open; it is not saved, so nobody else sees it.
+
+In the change list, each change the run made says **Proposed by the auto-scheduler** and, while
+the result is on the page, why. On the Timeline and the Calendar such a draft says "Draft,
+auto-scheduled". Moving it, even only one of its ends, makes both its days your draft: the page
+says "Your draft now: a re-run will plan around it." Capacity, opened in the scenario, shows how the run filled each period.
+
+The reasons read, for example:
+
+- **Placed:** "Placed in Dec 1 to Dec 14: Atlas had 8 of 20 points free after 4 higher-ranked
+  tickets.", "Starts Dec 9, the day after SPA-10 ends; SPA-10 blocks it.", "Placed early because
+  it blocks SPA-3.", or "Placed where it already is: nothing to change."
+- **Kept:** "Kept: a person drafted its days in this scenario." (anyone's draft, as scenarios are
+  shared), "Kept: you may not schedule tickets in OPS.",
+  "Kept: it is in progress.", "Kept: it is in an active sprint." or "Kept: it matches the tickets to
+  keep."
+- **Not placed**, keeping its days: no estimate in the plan's unit; nobody assigned; an assignee in
+  none of the plan's teams; no capacity set for them in any period of the run; bigger than every
+  capacity set for them ("Not placed: bigger than Atlas's 20 points in any period."); in a circle
+  of blockers ("Not placed: in a circle with SPA-3 and SPA-4."); waiting on a blocker with no
+  dates, kept or itself not placed; waiting on a ticket the plan does not show you; or no room
+  ("Not placed: no room for Atlas up to Feb 8.").
+
+A **Note:** follows a reason when something is worth a look: a ticket due after its target
+release's date ("Note: due 9 days after its release 2.1 (Dec 1)."), since a release date is a
+warning here, never a limit; a ticket that blocks a kept ticket starting on or before its due day,
+a late dependency the run cannot fix; or a ticket not placed whose days, where they are, take
+someone over capacity in a period the run filled.
+
+### Running again
+
+A run in a scenario replaces only the auto-scheduler's own earlier proposals there, and only on
+tickets the plan shows you. Drafts people made stay, and the run plans around them, after both
+their days. An earlier proposal on a ticket the run no longer places is removed. Running again on
+tickets that have not changed changes nothing. A ticket someone changed while the run was working is
+left as it was, and so is every ticket the run placed after it; they are listed apart, never as
+placed, and counted: "1 ticket was left as it was: it or a ticket blocking it changed while the run
+worked. Run again."
+
+### What a run sees
+
+- The run reads only what the plan shows you. Tickets hidden from you are never moved, counted or
+  named.
+- A ticket blocked by a ticket that is outside the plan or hidden from you is not placed, with the
+  reason "waits on a ticket this plan does not show you". The hidden ticket's days are never read,
+  so no proposed day gives anything away. People's work elsewhere counts only as each person's
+  weekly totals, as on the Capacity tab.
+- Earlier proposals on tickets the plan does not show you stay as they were, and are counted: "2
+  earlier proposals stay on tickets this plan does not show you."
+- Others see the run's drafts as they see any draft: on the tickets the plan shows them, the rest
+  counted.
+- A run plans around every blocker its runner sees. When someone who sees more than you runs it,
+  a site administrator for example, a ticket you see may be proposed to start the day after a
+  blocker you cannot see ends, so its proposed start can hint at when that blocker ends. Your own
+  run in the scenario withdraws such proposals.
+
+A run stops before writing anything when it would move more than 10,000 tickets (leave some out and
+run again), when the plan has more than 50,000 open tickets, or when the scenario would end up with
+drafts on more than 10,000 tickets.
 
 ## Changing and sharing a plan
 
@@ -590,11 +746,10 @@ you send it to reads what it holds.
 
 ## Not yet in plans
 
-The auto-scheduler comes in a later version. Drafts hold start and due days and Team values only:
-the assignee, estimates, sprint, release, rank, status and new tickets cannot be drafted yet. Only
-the main scenario is applied from, a whole ticket at a time, and an apply cannot be undone (the
-ticket's history shows it). Scenarios are shared, never private, and a scenario has no capacity of
-its own; the comparison does not compare late dependencies or team loads. A link cannot be
+Drafts hold start and due days and Team values only: the assignee, estimates, sprint, release,
+rank, status and new tickets cannot be drafted yet. Only the main scenario is applied from, a whole
+ticket at a time, and an apply cannot be undone (the ticket's history shows it). Scenarios are
+shared, never private, and a scenario has no capacity of its own; the comparison does not compare late dependencies or team loads. A link cannot be
 named and saved as a view, or made public; files come as CSV and PNG only, by hand, with no
 schedule; and a copy cannot follow its original. A program board draws no lines between its cards
 (its badges and list say the same), shows no one else's cursor, cannot take its columns from each
@@ -603,3 +758,10 @@ hours: velocity from past sprints, capacity in days or as a percentage of a work
 aside for leave as its own entry, and copying capacity between periods are not in plans yet.
 Releases across tracks cannot yet be shipped together, have no combined notes, burndown or forecast
 date, gather no approvals in one place and send no notifications.
+
+Auto-scheduling fills the plan's periods, not sprints, with the capacity set for them, not velocity
+from past sprints. It proposes days only, never a sprint, a Team value or an assignee. It does not
+go back to fill room an earlier ticket left, split a ticket across periods, keep a ticket's own
+length, or skip weekends and holidays. A release's date is a note, not a limit. A run's choices and
+its result are not saved with the plan, and it never runs by itself, for example when capacity
+changes. No single action discards only the auto-scheduler's drafts.

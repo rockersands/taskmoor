@@ -3758,6 +3758,40 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { version: 1 },
         }),
     },
+    // The auto-scheduler (PLN-004; ADR-122 stage 7): a run writes its proposals as drafts with
+    // origin `scheduler` (`plan.drafts_set`), then says what it did (`plan.schedule_ran`).
+    {
+      route: 'POST /api/v1/plans/:id/schedule',
+      expect: 'plan.schedule_ran',
+      also: ['plan.drafts_set'],
+      // The drafted ticket, sized and assigned to a member of the plan's team, which has capacity.
+      prepare: async () => {
+        await admin({
+          method: 'PUT',
+          url: `/api/v1/teams/${state.capacityTeam}/members/${state.adminId}`,
+        });
+        const points = await database.db
+          .selectFrom('field')
+          .select('id')
+          .where('name', '=', 'Points')
+          .where('track_id', 'is', null)
+          .executeTakeFirstOrThrow();
+        await database.db
+          .updateTable('ticket')
+          .set({
+            assignee_id: Number(state.adminId),
+            fields: JSON.stringify({ [String(points.id)]: 3 }),
+          })
+          .where('id', '=', Number(state.draftTicket))
+          .execute();
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/schedule`,
+          payload: { into: { scenarioId: state.scenario }, from: '2027-08-02', periods: 2 },
+        }),
+    },
     {
       route: 'DELETE /api/v1/plans/:id/scenarios/:sid',
       expect: 'plan.scenario_deleted',

@@ -1595,9 +1595,11 @@ change's does. Enforcing them waits for the user's 2026-11-14 hold on benchmarki
 
 #### Seams left for T-089f (the auto-scheduler, PLN-004)
 
-- `writeDrafts(trx, { scenarioId, updatedBy, origin, changes })` in `plans/drafts.ts` is the one
-  writer, under the checks and limits above; the scheduler writes `origin: 'scheduler'` into a new or
-  chosen scenario, which is then previewed, compared, made main and applied unchanged.
+- `writeDrafts(trx, { workspaceId, planId, scenarioId, updatedBy, origin, changes, keep? })` in
+  `plans/drafts.ts` is the one writer; each change carries the field's live value, and the caller
+  holds the scenario's row lock and makes the checks and limits above (corrected by stage 7). The
+  scheduler writes `origin: 'scheduler'` into a new or chosen scenario, which is then previewed,
+  compared, made main and applied unchanged.
 - `draftOverlay(scenarioId)` lets it start from a scenario's days; Capacity takes `scenario`, so it
   reads loads with drafts.
 - `field` is text: a `sprint` kind would apply through the sprint route, and applying maps kinds to
@@ -1875,16 +1877,691 @@ and the page notes above say what changed where they belong):
     or other numbers.
 18. **A copy of a plan:** no scenarios or drafts; or its scenarios with the drafts its maker is shown.
 
+### Stage 7 (T-089f): the auto-scheduler
+
+**Designed on 2026-11-14; built the same day (see "As built (T-089f)" below for where the build
+differs).**
+PLN-004 moves to M1 with this stage, reworded to what will be built (the wording is under
+"Tests"). The new wording narrows the spec's: the run fills the plan's periods, not sprints; it
+uses capacity, not velocity; and a release's date is a warning, not a limit (questions 1, 2 and
+15). Three designs were made and judged against the spec, privacy, the earlier stages and the
+code; this one is the smallest (no migration, stage 6's writer, preview and apply unchanged) with
+the others' safer pieces grafted in (a diff under the scenario's lock so a second run changes
+nothing, writes in chunks under Postgres's limit on bound values, blockers first in rank order,
+cycles found, tickets the runner may not schedule kept, work elsewhere counted as Capacity counts
+it, a readiness check before the run and a reason in words for every ticket). The questions at
+the end are the user's; the design takes the first answer each time.
+
+The **auto-scheduler** proposes start and due days for a plan's open tickets. A **run** places
+them in rank order, blockers first, into the plan's **periods** (stage 3), within the capacity set
+for each person and team, and never starts a ticket on or before the day one of its blockers ends.
+It changes no ticket. Its only output is **draft changes** of start and due days with origin
+`scheduler`, written into a **scenario** through stage 6's writer. From there stage 6's views,
+change list, comparison, making main, applying and discarding work unchanged. A run follows rules a
+person can read, with no AI, and says of each ticket why it landed where it did, why it was kept, or
+why it was not placed.
+
+**On the words:** the interface says **Auto-schedule**, **run**, **proposed**, **kept** (a ticket
+whose days a rule keeps) and **not placed** (a ticket the run could not place, which keeps its
+days too) (question 23). It never says "optimise", "AI", "level" or "commit". The buckets are the
+plan's periods, never "sprints", which belong to boards (question 1).
+
+#### What a run is
+
+- **One run writes into one scenario,** a new one or the one open, chosen in the dialog
+  (question 16). It runs in the request, as the editor who started it, and stores nothing but
+  drafts.
+- **It drafts start and due days only** (question 3), so `plan_draft`'s field check, apply's
+  mapping of fields to the ticket's `PATCH` and the change list need no change.
+- **A re-run in the same scenario replaces the auto-scheduler's own earlier proposal** on the
+  tickets the runner is shown. Drafts a person made stay, and the run keeps those tickets where the
+  person put them (question 17). A person who drags a proposed bar turns that draft into theirs,
+  since `writeDrafts` writes the origin of the last writer.
+- **The same tickets, capacity and choices give the same drafts and reasons,** whatever order the
+  rows come in. A second run on unchanged tickets changes no draft and emits no `plan.drafts_set`.
+- **Its report** (counts, and each ticket's outcome and reason) is in the run's answer. The page
+  keeps it while the plan stays open; it is not stored (question 18).
+
+#### What is stored
+
+Nothing new, and **no migration**: `docs/plan/multi-track-tasks.md`'s "Migration: none expected"
+for MT-07 stays true.
+
+- The output is `plan_draft` rows with `origin = 'scheduler'` and `field` `startDate` or `dueDate`,
+  all of which migration 0110's checks already allow (`0110_plan_scenarios.ts:43` and `:47`).
+- A run's choices travel in its request. The dialog starts from the last ones used in this browser
+  (a per-viewer convenience in `localStorage`, read and written in `try`, never needed).
+- The schema golden file, `upgrade-fixtures.ts`, the data download and erasure do not change:
+  drafts are already covered by stage 6.
+
+#### Routes and token scopes
+
+Both are internal in the API document (`x-taskmoor-stability: internal`), as the other plan
+routes, and scopes follow the method. A plan the person may not see, and a scenario of another
+plan, answer 404 word for word as a missing id. The run is for the plan's editors, its owner and
+site administrators; anyone else gets `forbidden` with `edit_plan`, the rule of `opened()` in
+`routes/plan-scenarios.ts:230` (question 22). They live in a new
+`apps/server/src/routes/plan-schedule.ts`, registered beside `registerPlanScenarioRoutes`
+(`app.ts:611`), with its own `visiblePlan`, as `plan-capacity.ts` has.
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/plans/:id/schedule?scenario=&from=&periods=` | read | **Readiness**, for anyone who sees the plan: `{ plan: { id, name }, unit, pointsField, periods: [{ start, end }], period, teams: [{ id, name, withCapacity }], people: { withCapacity, without }, tickets: { open, unestimated, unassigned, noTeam }, scenarios, editable, limits }`, and with `scenario=` also `scenario: { id, name, main, version, applying, proposals, drafts, notShown }`; counted over the tickets the reader is shown; no ticket is named |
+| `POST /api/v1/plans/:id/schedule` | write | Runs. Body below; 200 with the run's answer, or 201 when it made the scenario |
+
+**The body** (zod `scheduleBody`, new, in `apps/server/src/plans/scheduler.ts`):
+
+- `into`: `{ scenarioId }`, or `{ newScenario: { name, from? } }` where `from` is a scenario to
+  copy, as `POST /scenarios` takes it. A name is 1 to 100 characters.
+- `from`: the first day, `YYYY-MM-DD`. The page sends the person's own today; without it the server
+  takes today in UTC.
+- `periods`: 1 to 12, 6 by default: exactly one Capacity view (`MAX_PERIODS`, `plans/model.ts:165`),
+  so the person can check the whole run on the Capacity tab (question 20).
+- `leaveOut`: `{ typeIds?: ≤ 20, releaseIds?: ≤ 20, query?: text ≤ 2,000 characters }`.
+- `keep`: `{ inProgress?: true, inActiveSprint?: true, query?: text ≤ 2,000 characters }`;
+  the two flags are on by default.
+
+**The answer:** `{ scenario: { id, name, main, version }, created, from, periods, counts, tickets,
+more }`.
+
+- `counts`: `placed`, `unchanged`, `withdrawn` (earlier proposals removed), `changedMeanwhile`,
+  `kept` by reason, `notPlaced` by reason, `leftOut` by reason, `warnings` by kind, and
+  `notShown` (earlier proposals on tickets the runner is not shown, left as they were).
+- `tickets`: at most 2,000 entries `{ id, key, outcome: 'placed' | 'kept' | 'not_placed', reason,
+  args, warnings }`, in this order: not placed, placed with a warning, kept, placed; `more` counts
+  the rest. `args` holds ids, days and amounts only; a blocker's id is there only when the runner is
+  shown that ticket.
+
+**Refusals:** 400 `invalid_fields` (bad body; `leaveOut.query` or `keep.query` that does not
+compile: `invalid_query`); 409 `too_many_scenarios`, `apply_in_progress`, `too_many_to_schedule`
+`{ limit, count }`, `plan_too_large` `{ limit }` and `too_many_drafts` `{ limit }`; 404 as above; a
+search that runs too long answers as `searchRefusal` (`routes/search.ts:102`) does.
+
+#### What a run reads
+
+Everything is read as the runner sees it, outside the write's transaction, through `readOnly`
+(`search/run.ts:208`) with the plan views' statement timeout.
+
+- **Tickets:** `planTickets(db, catalogs, request, await sourceRows(db, [planId]))`
+  (`plans/query.ts:244`) and its `unfiltered` condition: the whole plan for the runner, never the
+  views' filters, never the trash. One statement reads the plan's open tickets (`status.stage <>
+  'closed'`): id, key, rank, track, type, hierarchy level rank (`ticket_type.level_id` →
+  `hierarchy_level.rank`, as the Timeline reads it at `plan-views.ts:440`), stage, assignee, the
+  estimate, the days, the sprint days and the fields a permission check needs.
+- **Days:** through `draftOverlay(scenarioId, unfiltered, 'so', { origin: 'person' })`. The fourth
+  argument is new and optional: it folds only people's drafts, so the run starts from live days
+  plus people's drafts and ignores its own earlier proposal, which it replaces. Without it the
+  overlay is unchanged. For a new scenario the overlay is the copied scenario's (or none).
+- **Rank:** `ticket.rank` compared by UTF-16 code unit (`a < b`), never `localeCompare`, so it
+  agrees with the "C" collation (`tickets/rank.ts`), then by id.
+- **Estimates and capacity:** the plan's unit; points from the Points field (`pointsField`) or
+  hours from the original estimate (`estimate`), and `plan_capacity` resolved as Capacity resolves
+  it: a person's period row, else their every-period row; a team's own, else its every-period row,
+  else the sum of its members' where any has one. These are closures in
+  `routes/plan-capacity.ts:141-185` and `:354-430` today and move to a new
+  `apps/server/src/plans/capacity.ts` (see "Shared code"). Amounts are whole hundredths: an
+  estimate is rounded half up to hundredths, as Capacity rounds (`plan-capacity.ts:84`), so no
+  floating point decides a fit.
+- **Load already there**, per person and plan team and period, exactly as `GET .../capacity`
+  counts it for this scenario, less the tickets the run may move:
+  - the plan's tickets due in the period, closed ones included (Capacity's `planned` query,
+    `plan-capacity.ts:240-253`, counts them), except those the run may move;
+  - the person's work elsewhere, by whole weeks in the period that holds each week's Thursday
+    (`weekThursday`), as Capacity's `elsewhere` and `away` do (question 10).
+  A team's load is the sum of its members', and a person in two plan teams loads both, as on the
+  Capacity tab.
+- **Dependencies:** every link whose target is one of the open tickets read, by the predicate of
+  `readDependencies` (`plans/dependencies.ts:86`): `lower(outward) = 'blocks'` or a type the plan
+  chose (`dependencyOptions`, `:47`), one link per pair with the blocking one first, blockers in the
+  trash left out. The source finishes first. A blocker outside the open tickets read is either in
+  the plan for the runner (`unfiltered`), and so closed, or not, and so outside the plan or hidden.
+- **Sprints:** the sprint a ticket is dated by, as `SPRINT_OF` (`plan-views.ts:102`) takes it, for
+  a blocker without days of its own; and whether the ticket is in an active sprint
+  (`sprint_ticket.open`, `sprint.state = 'active'`, not deleted, on a Scrum board).
+- **Target releases:** for each ticket, the earliest `release.release_date` among its
+  `ticket_release` rows with role `target` whose release is neither shipped nor archived. A
+  release across tracks with a fixed date already moves its members' `release_date`
+  (stage 4), so only `release.release_date` is read, as it stands.
+- **May the runner set its days:** `request.authz.ticket(row)` per ticket, as the change list asks
+  it (`plan-scenarios.ts:424`). Without `schedule_tickets` (an archived track grants none) the
+  ticket is kept, so applying never refuses what the preview proposed for that reason.
+
+#### Sorting the tickets
+
+Each open ticket of the plan the runner is shown falls in exactly one class, by the first rule
+that matches, in this order. Closed tickets are never moved and hold nothing up as blockers,
+which agrees with the Timeline: a closed blocker is never late (PLN-006 (1)).
+
+1. **Left out** (never drafted): its level is not 0 (question 6), its type is in
+   `leaveOut.typeIds`, it targets a release in `leaveOut.releaseIds`, or it matches
+   `leaveOut.query`. Its load still counts where its days put it, and it still holds up what it
+   blocks, through its days.
+2. **Kept** (its days stay; question 4): a person drafted its start or due day in this scenario
+   (`person_draft`); the runner may not set its days (`may_not_schedule`); it matches `keep.query`
+   (`kept_by_query`); it is in progress, stage `active`, and `keep.inProgress` is on
+   (`in_progress`); it is in an active sprint and `keep.inActiveSprint` is on (`in_sprint`). Its
+   load counts where its days put it, and it holds up what it blocks.
+3. **Movable:** every other open level-0 ticket, dated or not (question 5).
+
+`leaveOut.query` and `keep.query` are compiled by `compileCondition(db, tickets.scope, text, now)`
+(`boards/data.ts:261`), as the plans' filters are, in the runner's scope. They replace any word
+people would have to spell, such as a label (question 4).
+
+More than 10,000 movable tickets refuse the run with `too_many_to_schedule`; more than 50,000 open
+tickets read (PLN-001's plan size) refuse it with `plan_too_large`. Nothing is written.
+
+#### The rules, in the order a person can follow
+
+The engine is a new pure function, `schedule(input): ScheduleOutput`, in
+`apps/server/src/plans/scheduler.ts`, with no database. Days are whole numbers from `dayNumber`
+(`plans/periods.ts:17`); periods come from `periodsFrom(periodOf(plan), from, periods)`
+(`plans/periods.ts:41`, `routes/plans.ts:88`).
+
+1. **Who carries a ticket:** its **subjects** are its assignee and every plan team the assignee
+   is in (`planTeams`, `routes/plans.ts:129`, and `team_member`), the people and teams whose rows
+   on the Capacity tab count it (question 7).
+2. **Not placed before placing**, with the reason; the ticket keeps its days, and its load counts
+   there from the start:
+   - `no_estimate`: no estimate in the plan's unit (question 8);
+   - `no_assignee`: nobody is assigned (question 9);
+   - `no_team`: the assignee is in none of the plan's teams;
+   - `no_capacity`: no subject has a capacity set in any period of the run;
+   - `too_big`: in every period where a subject has a capacity, the estimate is more than one of
+     them (the reason gives the largest capacity seen);
+   - `cycle`: the ticket is in a circle of dependencies, found with Tarjan's strongly connected
+     components (a component of two or more, or a link to itself); the reason names up to five of
+     its keys, only those the reader is shown;
+   - `hidden_blocker`: an open or closed blocker outside the plan or hidden from the runner. Its
+     days are never read and it is never named, keyed or counted beyond what the Timeline already
+     counts, so no drafted day says anything about it (question 14);
+   - `blocker_undated`: a blocker that is open, not movable and has no days of its own or of its
+     sprint.
+3. **Order:** each movable ticket gets an **effective rank**, the best rank among itself and every
+   movable ticket it blocks, directly or not, computed in one pass over the reverse topological
+   order. Tickets are visited in Kahn's order with a heap on (effective rank, rank, id), so a ticket
+   is visited only after all its movable blockers. A low-ranked blocker therefore goes ahead of what
+   it holds up (question 11).
+4. **Earliest day:** the latest of `from` and the day after each blocker's **end**. A placed
+   blocker ends on its drafted due day; any other ends on its later day, a single day counting as
+   both start and end (as `barOf` reads a bar, `apps/web/src/timeline/dependencies.ts:9`), else on
+   its sprint's end. A blocker the run could not place keeps its days and ends where they do; one
+   with no days makes the ticket `blocker_not_placed`, naming it.
+5. **Rank order per person and team** (question 12): each subject has a cursor, the last period
+   it took a ticket in. A ticket is tried from the latest of the period holding its earliest day
+   and its subjects' cursors. So for one team, lower-ranked work never lands before higher-ranked
+   work, and room can stay unused.
+6. **Fit:** the first period `p` from there to the end of the run where at least one subject has a
+   capacity set in `p`, and every subject with one has **load + estimate ≤ capacity** (Capacity's
+   `over` is `load > limit`, `plan-capacity.ts:383-387`), and the ticket's start fits in `p`. A
+   subject with no capacity in `p` limits nothing, as a person with no capacity is never over
+   (PLN-009 (2)). A capacity of 0 holds nothing.
+7. **Days** (question 13): **start** = the latest of `p`'s first day and the earliest day; **due**
+   = `p`'s last day. The start is never after the due, so `start_after_due` cannot arise.
+8. **Take it:** add the estimate to every subject's load in `p` and move their cursors to `p`.
+9. **Nothing fits** before the run's last period: `no_room`, naming the fullest subject and the
+   run's last day. The ticket keeps its days, and its load is added where they fall; if a period
+   there was already filled by placed work, the ticket gets the warning `over_where_kept`.
+10. **Warnings on a placed ticket:** `after_release` (its due day is after its target release's
+    date: the days late and the release; question 15); `late_against_kept` (it blocks a kept or
+    left-out ticket that starts on or before its due day: that dependency stays late and the run
+    cannot help it).
+11. **Reasons for a placed ticket:** `fits` (the first period with room), `after_blocker` (pushed
+    by a blocker's end, naming it), `after_higher_ranked` (pushed by its subjects' cursors),
+    `first_for_blocked` (pulled forward because it blocks a higher-ranked ticket, naming it), and
+    `already` (the proposal equals its days now, so nothing is drafted).
+
+**What the rules promise** (the property tests):
+
+- (a) No placed ticket starts on or before the end of a blocker that is placed, kept or left out
+  and dated. Read by `dependencyState` (`apps/web/src/timeline/dependencies.ts:34`: late when the
+  blocked ticket's start is on or before the blocker's due), no such link is late. The server's
+  twin is `isLate(blockerEnd, blockedStart)` in `scheduler.ts`, tested against the same table of
+  cases as the web's rule.
+- (b) No placed ticket takes a subject's load in a period over its capacity. A cell can go over
+  only through a ticket kept where it was, and that ticket carries `over_where_kept`.
+- (c) Kept, left-out and closed tickets get no draft.
+- (d) Every movable ticket is placed or not placed exactly once, with one reason.
+- (e) The output does not depend on the order of the input; a second run on unchanged tickets
+  changes no draft.
+
+#### Writing the result
+
+One transaction, after the reads and the engine, so the scenario's lock is held only while
+writing:
+
+1. **The scenario:** for `newScenario`, the plan's row is locked and the scenario made by
+   `createScenario` (lifted from `POST /scenarios`, `plan-scenarios.ts:517-593`): the 20-scenario
+   limit, the first made is main, a copy of `from`'s drafts the maker is shown with their origin,
+   and `plan.scenario_created`.
+2. **Lock the scenario** (`lockScenario`, lifted from `plan-scenarios.ts:864-872`). An apply
+   holding it (`applying`, `drafts.ts:485`) refuses with `apply_in_progress`. This check is new:
+   `PUT .../drafts` does not make it, but a run rewrites many drafts an apply may be reading.
+3. **Read again under the lock**, for the tickets the run would touch: their live days and the
+   scenario's people's drafts on days. A ticket whose live days or people's drafts changed since
+   the run read them is left out of the write and counted `changedMeanwhile` ("changed while the
+   run worked; run again").
+4. **Diff against the auto-scheduler's drafts there** (only on tickets the runner is shown):
+   - a proposal equal to the live day writes nothing, and removes an earlier proposal on that
+     field;
+   - a proposal equal to an earlier proposal whose value when drafted is still the live one is left
+     as it is;
+   - any other proposal is written with `keep: true`, so its value when drafted is the live one
+     now and never a stale one from an earlier run;
+   - an earlier proposal on a ticket the run did not place is removed, except on a ticket kept for
+     a person's draft, where it stays: removing it alone could put that ticket's start after its
+     due.
+   Removal is by a new `clearSchedulerDrafts(trx, scenarioId, pairs)`, which deletes only rows
+   whose origin is still `scheduler`.
+5. **Write** through `writeDrafts(trx, { workspaceId, planId, scenarioId, updatedBy, origin:
+   'scheduler', changes, keep: true })` (`drafts.ts:267`), in calls of at most 2,000 changes. Its
+   insert binds 13 values a row, and one statement takes at most 65,535, so 20,000 rows at once
+   would fail. Each change carries `live` from step 3.
+6. **The limit:** more than 10,000 drafted tickets in the scenario (`draftedTickets`, lifted from
+   `plan-scenarios.ts:275`) throws `TooManyDrafts` (lifted from `:1434`); the whole run rolls back
+   and answers `too_many_drafts`.
+7. **Events,** through `emitMany` (`events/bus.ts:62`): `plan.drafts_set` with origin
+   `scheduler`, at most 1,000 entries (changes plus removals) each, none when nothing changed; then
+   one `plan.schedule_ran`.
+
+#### Shared code (moved, not changed)
+
+These moves keep behaviour as it is; the existing tests and golden files of Capacity and
+scenarios prove it by passing unchanged.
+
+- **`apps/server/src/plans/capacity.ts` (new):** `pointsField(db, ws)`, `estimateSql(unit,
+  fieldId)`, `membersOf(q, ws, teamIds)`, `capacityRows(db, planId)`, `capacityOf(rows, periods,
+  subject)`, `teamCapacity(own, members)` and `elsewhereWork(trx, { ws, people, where, value,
+  periods })` with the weeks rule, from `routes/plan-capacity.ts`. The Capacity route imports them.
+- **`apps/server/src/plans/drafts.ts`:** exports `lockPlan`, `lockScenario`, `draftedTickets`,
+  `TooManyDrafts` and `createScenario`, from `routes/plan-scenarios.ts`, which then uses them; adds
+  `clearSchedulerDrafts`, the `origin` option of `draftOverlay`, and `origin` on `DraftMark`
+  (`'scheduler'` when any drafted day of the ticket is, as the change list says it, `:466`).
+- **`apps/server/src/plans/dependencies.ts`:** `blockingLinks(trx, ws, targetIds, options)`, the
+  first statement of `readDependencies`, which then calls it.
+- **`apps/server/src/plans/sprints.ts` (new):** `sprintDay(column)` (today's `SPRINT_OF`, which
+  `plan-views.ts` then imports) and `inActiveSprint`.
+- **`apps/server/src/plans/scheduleInputs.ts` (new):** reads everything above for one run and
+  builds the engine's input.
+- **Stage 6's seam text is corrected** above: `writeDrafts` also takes `workspaceId`, `planId`, a
+  live value per change and `keep`, and the caller holds the scenario's row lock.
+
+#### Who sees what
+
+- **A run reads only what its runner is shown:** hidden tickets are never moved, drafted,
+  counted by reason or named in its answer.
+- **A blocker outside the plan or hidden from the runner** keeps the ticket it blocks where it
+  is, with a reason that names nothing ("waits on a ticket this plan does not show you"). Its days
+  are never read, so no drafted day reveals them.
+- **Work elsewhere** enters only as each person's weekly totals, the figure the Capacity tab
+  already shows; a drafted day reveals nothing finer than a week about hidden work.
+- **Readiness** gives counts only, over the reader's tickets.
+- **Other viewers** see the run's drafts only on tickets the plan shows them, and the rest as a
+  count, by stage 6's rules (`draftOverlay`'s `shown`, `draftCounts`). A second editor who sees less
+  replaces only the proposals on tickets they are shown; the rest stay and are counted in
+  `notShown` ("2 earlier proposals stay on tickets this plan does not show you"), as stage 6's
+  question 14 keeps drafts.
+- **What a run's drafts say to others** (found in review, 2026-11-14): "no drafted day says
+  anything about it" holds for the runner only. A run plans around every blocker its runner sees,
+  so when a site administrator runs it, a ticket other viewers are shown can be proposed to start
+  the day after a blocker hidden from them ends, and that drafted start bounds the hidden
+  blocker's end (exactly, when nothing else held the ticket back). A person drafting by hand can
+  say as much, and a run by someone who sees less withdraws such proposals as `hidden_blocker`.
+  The build leaves it so and the manual says it; question 24 asks the user.
+
+#### The pages, on a desktop and on a phone
+
+- **Scenario bar** (`ScenarioBar.tsx`): editors get **Auto-schedule…** after **Review N
+  changes**, on every tab. The Scenarios tab (`PlanScenariosPage.tsx`) has it beside **New
+  scenario**. Others never see it.
+- **The dialog** (`AutoScheduleDialog.tsx`, new), a sheet on a phone. It reads readiness first, so
+  problems show before the run:
+  - "Atlas and Borealis have capacity. Cirrus has none, so its tickets will not be placed.", with
+    a link to the Capacity tab; "Capacity is in points, from the field Story points."; "No Points
+    field exists, so tickets cannot be sized. Switch the plan to hours or add a shared number field
+    named Points." When no team has capacity, **Run** is off and the reason is beside it in words.
+  - **Where the result goes** (a radio group): **A new scenario** (default; name prefilled
+    "Auto-schedule 14 Nov"; "Start from": the scenario open, or empty in Live), or **This
+    scenario: Faster** when one is open. At 20 scenarios the first is off, with the reason in words.
+    If the plan has none, the dialog says the new one becomes main. While an apply holds the open
+    one, the second is off: "Faster is being applied."
+  - **What it may move:** "Closed tickets never move." **Keep tickets in progress** and **Keep
+    tickets in an active sprint** (checked); **Also keep tickets matching** (a query field, empty);
+    **Leave out ticket types** and **Leave out releases** (multi-selects); **Also leave out
+    tickets matching** (a query field). Query errors show under their field in words.
+  - **When:** **Schedule from** (a day, today by default) and **Look ahead** (1 to 12 periods, 6 by
+    default), with a hint naming them: "6 periods of 2 weeks: 17 Nov to 8 Feb."
+  - The unit is shown, not chosen.
+  - The footer: **Run** and **Cancel**, and "It changes no ticket: it writes draft changes you can
+    review, compare and apply." In a scenario with earlier proposals: "Re-running replaces the
+    auto-scheduler's 180 proposals here. Your 3 drafts stay, and it plans around them." While it
+    runs, **Run** reads "Scheduling…" and is off, a `role="status"` line says "Scheduling 2,140
+    tickets.", and the dialog closes only once the run has answered.
+- **After the run** the page opens that scenario's **Changes** tab with a **result panel**
+  (`ScheduleResult.tsx`, new) on top, a `section` headed "Auto-schedule" that takes focus:
+  - "180 placed, 14 kept, 9 not placed, 22 earlier proposals removed. 3 of your drafts stay.";
+  - three filter buttons with `aria-pressed`: **Placed**, **Not placed**, **Kept**; each row a
+    key and summary as a link, and the reason in words;
+  - **Compare with main** (or **with Live** when the open scenario is main, or no main exists):
+    the Scenarios tab with `a=` and `b=` (`address.ts:150`) and the existing comparison;
+  - **Run again…** and a disclosure "Its choices" in sentences ("From 17 Nov, 6 periods; tickets
+    in progress kept; Bugs left out").
+- **Change list rows** of origin `scheduler` (`PlanChangesPage.tsx:297` already says "Proposed by
+  the auto-scheduler") gain the run's **why** sentence while the page holds the result, and a
+  warning after "Note:", in words, never colour alone.
+- **Timeline and Calendar:** a bar or chip whose draft is the auto-scheduler's says "Draft,
+  auto-scheduled" in text, from `DraftMark.origin`, with stage 6's dashed edge. Dragging it says
+  "Your draft now: a re-run will plan around it."
+- **Capacity in the scenario** is unchanged code: its heading names the scenario and its loads
+  include the drafted due days, which is how a person checks the fill.
+- **Words** come from `scheduleWords.ts` (new, beside `changeWords.ts`), one sentence per reason
+  and warning, for example: "Placed in 1 to 14 Dec: Atlas had 8 of 20 points free after 4
+  higher-ranked tickets.", "Starts 9 Dec, the day after SPA-10 ends; SPA-10 blocks it.", "Placed
+  early because it blocks SPA-3.", "Kept: your draft in this scenario.", "Kept: you may not
+  schedule tickets in OPS.", "Not placed: no estimate.", "Not placed: Cirrus has no capacity set.",
+  "Not placed: bigger than Atlas's 20 points in any period.", "Not placed: in a circle with SPA-3
+  and SPA-4.", "Not placed: waits on a ticket this plan does not show you.", "Not placed: no room
+  for Atlas up to 8 Feb.", "Note: due 9 days after its release 2.1 (1 Dec)."
+- **Everywhere:** glass per ADR-114, strings under `schedule.*` in both catalogues
+  (`pnpm i18n:check` clean, the `en-XA` test passing), 44 px targets under a coarse pointer, no
+  sideways scrolling at 360 px, and stories with axe for the dialog (ready, not ready, re-run,
+  running) and the panel, at phone width too. `scenarioClient.ts` gains `readiness()` and
+  `schedule()` with `ScheduleReadiness` and `ScheduleResult`; `scenarioFixtures.ts` gains
+  scheduler-origin changes and a result.
+
+#### Events, audit and records
+
+Each event is emitted in the run's transaction with the plan as its subject and is audited, as
+`plan.*` events are; webhooks get none. Payloads hold ids, days and numbers, never names or query
+text.
+
+- `plan.drafts_set` (`events/catalogue.ts:1179`), unchanged in shape, with origin `scheduler`, in
+  chunks of 1,000 entries.
+- `plan.schedule_ran` (new): `{ scenarioId, created, from, periods, leftOut: { typeIds,
+  releaseIds, query: boolean }, keep: { inProgress, inActiveSprint, query: boolean }, counts }`.
+- `plan.scenario_created` when the run made the scenario, as `POST /scenarios` emits it.
+
+The data download and erasure gain nothing: a run stores no row of its own, and the drafts are
+stage 6's. A copy of a plan takes no drafts (stage 6 question 18).
+
+#### Limits and performance
+
+| Limit | Value | Refusal |
+|---|---|---|
+| Movable tickets a run places | 10,000 (`MAX_DRAFTED_TICKETS`) | `too_many_to_schedule` |
+| Open tickets a run reads | 50,000 (PLN-001's plan) | `plan_too_large` |
+| Periods a run looks ahead | 1 to 12 (Capacity's `MAX_PERIODS`), 6 by default | `invalid_fields` |
+| Ticket types and releases left out | 20 each | `invalid_fields` |
+| A query condition | 2,000 characters | `invalid_fields` |
+| Drafted tickets in the scenario after a run | 10,000 | `too_many_drafts`, all rolled back |
+| Scenarios, when the run makes one | 20 | `too_many_scenarios` |
+| A run while an apply holds the scenario | 0 | `apply_in_progress` |
+| Changes per `writeDrafts` call | 2,000 | |
+| Entries per `plan.drafts_set` event | 1,000 | |
+| Tickets listed in the answer | 2,000, the rest counted | |
+
+Runs on one scenario take turns on its row lock, which is held only while writing. PLN-012's bar,
+by `expectWithinBudget`: the engine alone on 10,000 tickets, 20,000 links, 50 teams, 300 people
+and 12 periods under 300 ms (`plans/scheduler.large.test.ts`); a whole run over 10,000 tickets
+under 5 s and readiness under 1 s (`plans.large.test.ts`). The engine is O((V + E) log V + V × P ×
+S) for V tickets, E links, P periods and S subjects a ticket. Enforcing the budgets waits for the
+user's 2026-11-14 hold on benchmarking.
+
+#### Seams left for later stages
+
+- The engine's input is plain data: sprints as buckets, velocity as capacity, Team values as
+  subjects or working days change `scheduleInputs.ts` and the fit and days steps, not the route.
+- A `sprint` draft kind still needs a migration widening 0110's field check, a sprint expression in
+  `draftOverlay`, and a row in apply's mapping of fields to requests (`plan-scenarios.ts:1117-1119`)
+  that calls `POST /sprints/:id/tickets`.
+- A Team-value proposal writes `cf:<teamField>` drafts, which `writeDrafts` already takes.
+- A stored report would be one table keyed by scenario, filled from the answer as it is.
+
+#### What the manual says
+
+When built, `docs/manual/use/multi-track.md` gains **Auto-scheduling**, linked from "Scenarios and
+draft changes": what a run does and does not change; where its result goes; readiness; what it
+keeps, leaves out and never moves; how it orders work, fills periods and starts a ticket after its
+blockers; each reason in the app's words; release dates as a warning; that a re-run replaces only
+its own proposals on tickets you are shown; and who may run it. "Not yet in plans" loses "The
+auto-scheduler comes in a later version." and says what this stage leaves out, and `sources` stay
+current.
+
+#### Tests
+
+PLN-004 as it should read when built: *Taskmoor shall let a plan's editors auto-schedule the
+plan's open level-0 tickets they are shown into the plan's periods, as draft changes of start and
+due days in a scenario: in rank order with blockers first; within the capacity set for each person
+and plan team in the plan's unit, counting their other work as the Capacity view does; never
+starting a ticket on or before the day a blocker of it ends; keeping the days of tickets a rule
+keeps and leaving out the tickets a run leaves out; and saying of each ticket why it was placed,
+kept or not placed, and which end after their target release. A plan gives no access: a run reads
+only what its runner may see, and a blocker the runner may not see keeps the ticket where it is
+without being named.* Acceptance: (1) with a capacity of 20 points in every period, 60 points of
+ranked work fill three periods in rank order; (2) no ticket a run places starts on or before the
+day a blocker of it ends, and a ticket whose blocker the runner may not see is not moved; (3)
+tickets kept by a rule (a person's draft, may not be scheduled by the runner, in progress, in an
+active sprint, or matching the run's keep condition) and tickets left out are not moved; (4) a
+second run on unchanged tickets changes no draft, and every ticket a run does not place is listed
+with its reason.
+
+The spec's PLN-004 row and `requirements-index.csv` move to M1 with this wording; it drops
+"velocity", "sprints" as the buckets and release dates as a limit (questions 1, 2 and 15).
+
+- `plans/scheduler.test.ts` (new, pure), `[PLN-004]`: (1) six 10-point tickets, a team at 20
+  points a period, land in periods 1, 1, 2, 2, 3, 3; 8, 7 and 5-point tickets keep rank order and
+  leave room unused. (2) `[PLN-004] [PLN-006]`: a low-ranked blocker goes first and its blocked
+  ticket starts the day after it ends; a kept dated blocker pushes; an undated one leaves the
+  ticket not placed; a closed one holds nothing; a hidden one leaves the ticket not placed; a 2-,
+  a 3-ticket circle and a self-link are `cycle`; a chain behind a blocker not placed. (3) kept and
+  left-out tickets never appear among the placed. Each reason and warning has a case: `too_big`
+  against `no_room`, the run's last period, a person in two teams loading both, a team's capacity
+  from its members, a capacity of 0, a zero estimate, hundredths that would round wrongly as
+  floats, rank strings that `localeCompare` would order differently. fast-check properties with
+  `fc` from `@taskmoor/testkit/property`: (a) to (e) above, the shuffled input included. `isLate`
+  against the web's `dependencyState` cases, from one shared table.
+- `routes/plan-schedule.test.ts` (new; the harness of `plan-scenarios.test.ts:81-210`),
+  `[PLN-004] [PLN-002]`: a run into a new scenario (made main when it is the first; a copy keeps
+  origins) and into the open one; people's drafts kept and planned around; a re-run with changed
+  capacity replaces and withdraws only scheduler drafts; a second run on unchanged tickets writes
+  nothing and emits no `plan.drafts_set`; a proposal over an earlier one takes the live value when
+  drafted; a ticket changed between the read and the write is `changedMeanwhile`; applying
+  scheduler drafts through stage 6, with `refusalOf` unchanged; 2,500 placed tickets written in
+  chunks. `[PLN-004] [PLN-005]`: after a run, `GET .../capacity?scenario=` as the runner has no
+  cell over that the run filled, with work elsewhere and closed work in the periods.
+  `[PLN-004] [PLN-006]`: after a run, the Timeline with `scenario=` has no late link between
+  placed tickets. `[PLN-004] [QRY-008]`: four viewers with sentinel keys, summaries and days on
+  hidden tickets and a hidden blocker, which appear in no answer and shape no day; readiness counts
+  only the reader's tickets; a second editor who sees less leaves the hidden proposals, counted.
+  Refusals: 403 `edit_plan`, 404 word for word, `too_many_scenarios`, `apply_in_progress`,
+  `too_many_to_schedule`, `plan_too_large`, `too_many_drafts` rolled back, `invalid_query`, a
+  ticket the runner may not schedule kept.
+- `routes/plan-capacity.test.ts`, `routes/plan-scenarios.test.ts` and
+  `routes/plan-dependencies.test.ts` pass unchanged after the moves; `plan-scenarios.test.ts` adds
+  a change list and `draftMarks` that say `scheduler`.
+- `scopes.test.ts`, `[IAM-007]`: the two routes' classes. `contract.test.ts`, `[AUT-010]`:
+  `plan.schedule_ran` and a scheduler-origin `plan.drafts_set`. `audit/subscriber.test.ts`:
+  `plan.schedule_ran` audited. `plans.large.test.ts` and `plans/scheduler.large.test.ts`: the
+  budgets above.
+- Web: `AutoScheduleDialog.test.tsx` (readiness sentences, Run off with its reason, choices sent,
+  the re-run notice, the running status, a sheet with `setViewportWidth()` at 360),
+  `ScheduleResult.test.tsx` (counts in words, filters, focus, compare link), `scheduleWords.test.ts`
+  (every reason and warning in both catalogues), additions to `PlanChanges.test.tsx` (the why line),
+  `ScenarioBar.test.tsx` (the button for editors only), `TimelineView.test.tsx` ("Draft,
+  auto-scheduled"); stories with axe.
+- e2e `plan-schedule.spec.ts`, desktop and phone: run into a new scenario, read the result, open
+  the Timeline, drag one bar, run again and see that bar kept, compare with main, make main, apply
+  three; the Not placed list with a reason.
+
+#### Asked by the spec or nearby, not built here
+
+- Velocity from history (decisions.csv keeps it for 2.0, T-089j), and capacity in days.
+- Sprints as the buckets, other boards' sprints, and drafting sprint membership, Team values,
+  assignees or rank.
+- Backfilling room an earlier ticket left, splitting a ticket across periods, keeping a ticket's
+  own length, working days and holidays.
+- Release dates as a hard limit, and section 1's warning "ticket outside its sprint or release
+  dates" on the Timeline; the run's `after_release` covers only its own placements.
+- Exclusion rules and "Keep its dates" stored on the plan, and a stored report of the last run.
+- Running by itself when capacity changes (stage 3's note), as a background job, or on a schedule.
+- Discarding only the auto-scheduler's drafts in one action; a re-run, or Discard, does it.
+- Resource levelling and saved snapshots of dates (PLN-011, T-089a).
+
+#### As built (T-089f)
+
+Built on 2026-11-14 in `plans/scheduler.ts` (the engine), `plans/scheduleInputs.ts` (its reads),
+`routes/plan-schedule.ts`, the moves of "Shared code" (`plans/capacity.ts`, `plans/drafts.ts`,
+`plans/dependencies.ts`, `plans/sprints.ts`), and on the web `AutoScheduleDialog.tsx`,
+`ScheduleResult.tsx`, `scheduleWords.ts`, `scenarioClient.ts`, `ScenarioBar.tsx`,
+`PlanScenariosPage.tsx`, `PlanChangesPage.tsx`, `PlanPage.tsx`, `TimelineView.tsx` and
+`CalendarView.tsx`, with the manual's "Auto-scheduling" section. No migration. Where this differs
+from the design above, or settles what it left open:
+
+- **The engine's input** is plain data: `ScheduleInput { from, periods, tickets, links, teams,
+  people, leaveOut: { typeIds, releaseIds }, keep: { inProgress, inActiveSprint } }`. The two
+  queries arrive as per-ticket flags (`leftOutByQuery`, `keptByQuery`), and a blocker outside the
+  plan or hidden from the runner only as `hiddenBlocker`. A person's `load` is Capacity's count for
+  the scenario less every ticket passed; the engine adds those back at their due days. A blank
+  query is no query.
+- **Rounding:** the engine's `hundredths` rounds half up from the decimal (1.005 gives 101), so
+  floats decide no fit. Capacity's own `round`, moved unchanged to `plans/capacity.ts`, is still
+  `Math.round(n * 100) / 100` for what the Capacity tab shows.
+- **Choices the design left open:** the effective rank passes only through movable tickets, and
+  the members of a circle share their best rank; circles are found over every link between open
+  tickets the runner is shown, kept ones included. A placed ticket's reason is the first of
+  `already`, `after_blocker`, `after_higher_ranked`, `first_for_blocked` and `fits`. When a team
+  and its member tie, a reason names the team; `no_room` names the subject with the least room
+  left over the periods it could use; `no_capacity` names the assignee's plan teams.
+- **Ids, not keys, in `args`:** `cycle` names up to five other members by id with the circle's
+  `size`, and `late_against_kept` is one warning a ticket with up to five ids and a count. The page
+  says the keys of tickets the answer lists and "another ticket" for the rest, so nothing hidden is
+  named.
+- **`over_where_kept`** goes to any ticket the run could not place (`no_room` or
+  `blocker_not_placed`) whose load, at its due day, takes a cell over capacity after placed work
+  went into that cell.
+- **Left-out tickets** are counted by reason (`level`, `type`, `release`, `query`), never listed.
+- **The answer's counts:** `placed` counts the tickets whose proposal now stands, so those changed
+  meanwhile are not in it; `unchanged` those whose drafts the run did not touch; `withdrawn`
+  those whose earlier proposal went entirely; `notShown` distinct tickets with scheduler drafts the
+  runner is not shown. A listed ticket left out of the write carries `changedMeanwhile: true`.
+  `too_many_to_schedule` is checked after the engine (it takes about 0.1 s), from its counts.
+- **An earlier proposal stays on any ticket a person drafted a day of** under the lock, not only on
+  those kept for `person_draft` (a ticket left out by the run can have one). Since the review this
+  arises only from drafts written before it: a person's day draft takes over the ticket's other
+  day (below).
+- **Changed meanwhile, with what follows it** (review): under the lock the run also reads again
+  the blockers of the tickets it places, and leaves out of the write every proposal placed after a
+  ticket that changed meanwhile, directly or through other proposals, so no late link is written.
+  `changedMeanwhile` counts all of them, and the page lists them apart from the placed. A
+  changed ticket's load can still sit in a cell the run filled, until the next run.
+- **The answer's scenario** is read inside the run's transaction, under its lock, so it is never
+  null.
+- **Refusals:** a query that does not compile answers 400 `{ error: 'invalid_fields', fields:
+  { 'keep.query' | 'leaveOut.query': 'invalid_query' }, messages }`; `into.newScenario.from` of
+  another plan answers 400 `{ 'into.newScenario.from': 'not_found' }`; readiness with `scenario=`
+  missing or of another plan answers 404 word for word as a missing id, as a run into one does
+  (built as 400 at first; fixed in review). The open tickets are counted first, with `LIMIT
+  50,001`, before `plan_too_large`.
+- **Drafts:** `clearSchedulerDrafts` also clears the refusal of a ticket that lost a draft, as
+  `writeDrafts` does; `createScenario` returns `main` too; `MAX_DRAFT_WRITE` (2,000) is the chunk
+  size. `sprintDay` and `inActiveSprint` read the ticket as `k`.
+- **A dragged proposal:** a person who moves one end of a proposed bar resends the other day
+  unchanged, or does not send it (the Calendar's start chip). `writeDrafts` with origin `person`
+  therefore turns the auto-scheduler's drafts of the days of every ticket a person drafts a day of
+  into the person's (fixed in review: before, the run read only the moved day while the scenario
+  kept the scheduler's other one, so what it blocked could be placed before it ended, and the bar
+  said "Draft, auto-scheduled" beside "Your draft now"). The change emits nothing more: the values
+  do not change.
+- **The web app:** the dialog remembers its choices per plan in `localStorage`
+  (`taskmoor.autoSchedule.<planId>`), apart from the first day and the target; it is the target
+  "This scenario" by default only when the plan holds 20 scenarios. Escape does not close it while
+  a run works. "Its choices" is built from the request the dialog sent, never read back from
+  storage, and names the types and releases left out. The lists count and remember only what
+  readiness still offers. Run is off until readiness answers for the choices as they are, and
+  says it is running with `aria-disabled`, keeping the focus; a refusal naming a field moves the
+  focus there. The result is kept per scenario while the plan page is open. Readiness sends
+  `types` (of the reader's open level-0 tickets, at most 200) and `releases` (those they target,
+  neither shipped nor archived, of tracks the reader browses, as the views show releases); a run's
+  answer sends `names` (the plan's teams, people and releases its reasons name, and the keys of
+  tickets named but not listed). `ScheduleEntry.summary` is still not sent, so result rows show
+  keys without summaries.
+- **Words:** the panel says "N drafts people made stay" and a kept ticket "Kept: a person drafted
+  its days in this scenario.": scenarios are shared, so the drafts are anyone's (review).
+- **Measured** on this machine, budgets not enforced (the user's hold on benchmarking): the engine
+  alone on 10,000 tickets, 20,000 links, 50 teams, 300 people and 12 periods, 87 ms; readiness's
+  median 26 ms and a whole run over 10,000 tickets 503 ms (`plans.large.test.ts`). At the 100,000
+  size the whole plan is refused with `plan_too_large` before the engine (the open tickets are
+  counted first), so the case then measures a run over nine of the tracks, 45,000 tickets, which
+  ends in `too_many_to_schedule`; not yet run at that size.
+- **The e2e** departs from "Tests": the run makes the plan's first scenario, Proposal, so it is
+  main from the start; the result compares it with Live and nobody makes a scenario main. Both runs
+  set **Schedule from** to the day the fixture computed, so a test that crosses midnight still
+  plans the weeks it checks.
+
+#### Questions for the user (the design takes the first answer each time)
+
+1. **What a run fills:** the plan's periods, with the capacity set on the Capacity tab (PLN-004
+   says sprints and is reworded); or the sprints of each team's Scrum board (`board.team_id`), with
+   capacity per sprint; or both, chosen per run.
+2. **Velocity** (PLN-004 says "capacity or velocity"; velocity from history went to 2.0, T-089j):
+   capacity only, and PLN-004 drops the word; or a board's velocity where a team has no capacity
+   set; or reopen velocity for 1.0.
+3. **What a run drafts in 1.0:** start and due days only; or the Team value too; or sprint
+   membership too (a migration, applied through the sprint route).
+4. **What keeps a ticket's days:** rules per run (a person's draft, may not be scheduled by the
+   runner, in progress, in an active sprint, a keep query); or a "Keep its dates" mark per plan
+   (a migration); or a shared checkbox field named "Fixed dates"; or a label.
+5. **Which tickets a run may move:** every open level-0 ticket not kept or left out, dated or
+   not; or only tickets without days.
+6. **Which levels:** level 0 only, parents rolling up; or levels chosen per run; or every level.
+7. **Whose capacity a ticket uses:** its assignee's and every plan team's the assignee is in, as
+   the Capacity tab counts; or its Team value's team, as program boards place it; or the Team value
+   when set, else the assignee's teams.
+8. **Tickets without an estimate:** not placed, with the reason; or a default size chosen per run;
+   or placed with no load.
+9. **Tickets without an assignee:** not placed, with the reason; or placed by a chosen Team field
+   (Capacity would then need loads by Team value).
+10. **People's work elsewhere:** counted by whole weeks, as the Capacity tab does; or not counted.
+11. **Order:** rank, with a blocker pulled forward to the best rank it holds up; or strict rank
+    (a low-ranked blocker waits its turn, and what it blocks with it); or the earliest target
+    release first, then rank.
+12. **Room an earlier ticket could not use:** stays unused, so each person's and team's work lands
+    in rank order; or a smaller, lower-ranked ticket may fill it.
+13. **The days a placed ticket gets:** start as early as allowed in its period, due on the
+    period's last day; or its own length, ending on the period's last day; or a share of the
+    period sized by its estimate, after the work before it.
+14. **A blocker the runner may not see:** the ticket is not placed, with a reason naming nothing;
+    or the ticket is placed as if it had no blocker.
+15. **Target release dates:** a warning on tickets proposed after them; or a limit, leaving a
+    ticket that cannot make its date not placed; or ignored.
+16. **Where a run writes:** a new scenario by default, or the one open; or always a new one; or
+    always main.
+17. **A re-run:** replaces only the auto-scheduler's own proposals on tickets the runner is shown,
+    keeping people's drafts and planning around them; or replaces every draft in the scenario.
+18. **The run's report:** in its answer, kept on the page while the plan is open; or stored with
+    the scenario (a migration), so its reasons show later and to others.
+19. **A run's choices:** made per run, the dialog starting from the last ones used in this browser;
+    or stored per plan (a migration) and shared.
+20. **How far a run looks:** 6 periods by default, at most 12, one Capacity view; or more.
+21. **Which days count:** calendar days, as the rest of plans; or working days.
+22. **Who may run it:** the plan's owner and site administrators, who draft today; or everyone who
+    sees the plan, into a scenario of their own.
+23. **Its name:** "Auto-schedule"; or "Schedule work"; or "Suggest dates".
+24. **A runner who sees more than the plan's other viewers** (asked after the build, 2026-11-14):
+    their proposals may start the day after a blocker the others cannot see, as built; or a run
+    treats as hidden every blocker some viewer of the plan may not see (fewer placements, and the
+    plan's viewers read on every run); or the proposals record what their runner saw and other
+    viewers see them only as a count.
+
 ### Later stages
 
-Each adds its section here when it starts: the auto-scheduler (T-089f; PLN-004), and the hierarchy
-grid and baselines (T-089a; PLN-010, PLN-011), which the user brought into 1.0 on 2026-11-13.
-Releases across tracks (stage 4), duplicating, linking and exporting (stage 8), the program board
-with dependency options (stage 5) and draft changes and scenarios (stage 6) are designed above.
+Each adds its section here when it starts: the hierarchy grid and baselines (T-089a; PLN-010,
+PLN-011), which the user brought into 1.0 on 2026-11-13. Releases across tracks (stage 4),
+duplicating, linking and exporting (stage 8), the program board with dependency options (stage 5),
+draft changes and scenarios (stage 6) and the auto-scheduler (stage 7) are designed above.
 PLN-002 to PLN-011 move to M1 in the spec with their stage, so nothing lists them for 1.0 before
 they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009 with stage 3, PLN-007 with stage 4,
 PLN-008 and PLN-013 with stage 5, which builds PLN-013 with the program board as the user decided on
-2026-11-13 (T-089i), and PLN-002 and PLN-003 with stage 6.
+2026-11-13 (T-089i), PLN-002 and PLN-003 with stage 6, and PLN-004 with stage 7.
 
 ## Options considered
 

@@ -61,6 +61,7 @@ const meta = {
     view: { filters: {}, group: null, compare: { a: '1', b: '2' } },
     onChanged: fn(),
     onCompare: fn(),
+    onAutoSchedule: fn(),
   },
 } satisfies Meta<typeof PlanScenariosPage>;
 
@@ -69,8 +70,11 @@ type Story = StoryObj<typeof meta>;
 
 /** Each scenario, the main one in words; the two compared, the difference said. */
 export const Scenarios: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
+    // Auto-schedule… beside New scenario, for the plan's editors (ADR-122 stage 7).
+    await userEvent.click(canvas.getByRole('button', { name: 'Auto-schedule…' }));
+    await expect(args.onAutoSchedule).toHaveBeenCalled();
     await expect(
       canvas.getByRole('heading', { name: /^Main plan.*Main$/, level: 3 }),
     ).toBeVisible();

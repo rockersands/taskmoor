@@ -63,7 +63,8 @@ const SRC = ['apps/web/src', 'src'].find((d) => existsSync(join(d, 'styles/token
 
 function filesUnder(dir: string, wanted: (name: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
+    // Forward slashes on any system, so paths match the imports resolved below (T-313).
+    const path = join(dir, entry.name).replaceAll('\\', '/');
     if (entry.isDirectory()) return filesUnder(path, wanted);
     return wanted(entry.name) ? [path] : [];
   });
@@ -2091,7 +2092,7 @@ function importsOf(
     if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return;
     const from = node.moduleSpecifier.text;
     if (!from.startsWith('.')) return;
-    const path = join(file, '..', from);
+    const path = join(file, '..', from).replaceAll('\\', '/');
     const target = [`${path}.tsx`, `${path}.ts`].find((f) => exists(f));
     const bindings = node.importClause?.namedBindings;
     if (!target || !bindings || !ts.isNamedImports(bindings)) return;

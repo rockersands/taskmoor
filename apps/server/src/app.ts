@@ -80,6 +80,7 @@ import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes
 import { registerPersonalDataRoutes } from './routes/personal-data';
 import { registerPlanCapacityRoutes } from './routes/plan-capacity';
 import { registerPlanScenarioRoutes } from './routes/plan-scenarios';
+import { registerPlanScheduleRoutes } from './routes/plan-schedule';
 import { registerPlanViewRoutes } from './routes/plan-views';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -611,6 +612,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPlanScenarioRoutes(app, db, {
       catalogs: fieldCatalogs,
       authorizer,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // The auto-scheduler (ADR-122 stage 7): proposals as draft days in a scenario, nothing more.
+    registerPlanScheduleRoutes(app, db, {
+      catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerCrossTrackReleaseRoutes(app, db, {

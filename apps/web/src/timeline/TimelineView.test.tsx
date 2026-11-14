@@ -70,6 +70,61 @@ describe('a ticket whose team alone is drafted (PLN-002)', () => {
   });
 });
 
+describe('a ticket the auto-scheduler drafted (PLN-004)', () => {
+  it('[PLN-004] [PLN-002] tags it "Draft, auto-scheduled" in words, and moving it makes it the person’s draft', async () => {
+    const data = manyItems(3);
+    const second = data.items[1] as (typeof data.items)[number];
+    const third = data.items[2] as (typeof data.items)[number];
+    data.items[1] = {
+      ...second,
+      draft: {
+        startDate: { now: null },
+        dueDate: { now: null },
+        stale: false,
+        origin: 'scheduler',
+      },
+    };
+    data.items[2] = {
+      ...third,
+      draft: { dueDate: { now: null }, stale: false, origin: 'person' },
+    };
+    const reschedule = vi.fn(async () => ({ ok: true }) as const);
+    render(
+      <I18nProvider locale="en">
+        <TimelineView
+          data={data}
+          reschedule={reschedule}
+          reload={() => {}}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+          truncatedText="cut"
+          draft={{ scenario: 'Faster', undo: async () => ({ ok: true }) }}
+        />
+      </I18nProvider>,
+    );
+    // The tag is text beside the dashed edge, never the edge alone; a person's draft says Draft.
+    const row = (key: string) =>
+      screen.getByRole('link', { name: key }).closest('li') as HTMLElement;
+    expect(within(row(second.key)).getByText('Draft, auto-scheduled')).toBeVisible();
+    expect(within(row(third.key)).getByText('Draft')).toBeVisible();
+    expect(within(row(third.key)).queryByText('Draft, auto-scheduled')).toBeNull();
+    const bar = screen.getByRole('button', {
+      name: new RegExp(`^${second.key}, draft, auto-scheduled: `),
+    });
+    expect(bar).toHaveClass('is-draft');
+    expect(
+      screen.getByRole('button', { name: new RegExp(`^${third.key}, draft: `) }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.keyDown(bar, { key: 'ArrowRight', altKey: true });
+    });
+    expect(reschedule).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Nothing changed yet. Your draft now: a re-run will plan around it.',
+    );
+  });
+});
+
 describe('a long timeline (PLN-012)', () => {
   it('[PLN-012] draws the rows where the list stands when it is windowed again', () => {
     const { rerender } = render(view(manyItems(300)));

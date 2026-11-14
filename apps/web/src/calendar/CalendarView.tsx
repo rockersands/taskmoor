@@ -14,7 +14,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { MoveMenu, type MoveMenuItem } from '../shell/MoveMenu';
 import { followPointerDrag } from '../shell/pointerDrag';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
-import { dayNumber, isoDay, localDay } from '../timeline/client';
+import { autoScheduled, dayNumber, isoDay, localDay } from '../timeline/client';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { scheduleRefusal } from '../timeline/refusal';
 import { COARSE_QUERY, useTouchWording } from '../timeline/touch';
@@ -107,7 +107,8 @@ export interface CalendarViewProps {
   truncatedText: string;
   /**
    * A plan read in this scenario (ADR-122 stage 6): a move is a draft in it and is said so, and a
-   * drafted ticket's entry begins with "Draft".
+   * drafted ticket's entry begins with "Draft" ("Draft, auto-scheduled" for the auto-scheduler's
+   * proposal, ADR-122 stage 7).
    */
   draftIn?: string;
 }
@@ -144,6 +145,9 @@ export function CalendarView({
   draftIn,
 }: CalendarViewProps) {
   const t = useT();
+  /** A drafted entry's tag in words: "Draft", or "Draft, auto-scheduled" for a proposal. */
+  const draftTag = (ticket: CalendarTicket) =>
+    t(autoScheduled(ticket.draft) ? 'draft.tagAuto' : 'draft.tag');
   const intl = useIntl();
   const id = useId();
   const today = dayNumber(localDay(now()));
@@ -291,13 +295,20 @@ export function CalendarView({
         turned = true;
       }
       const words = { key: ticket.key, date: dateText(newDay) };
-      setNotice(
+      const drafted =
         draftIn !== undefined
           ? t(entry.kind === 'due' ? 'calendar.draftedDue' : 'calendar.draftedStart', {
               ...words,
               scenario: draftIn,
             })
-          : t(entry.kind === 'due' ? 'calendar.movedDue' : 'calendar.movedStart', words),
+          : null;
+      // An auto-scheduled entry moved by a person becomes their draft, which a re-run keeps.
+      setNotice(
+        drafted === null
+          ? t(entry.kind === 'due' ? 'calendar.movedDue' : 'calendar.movedStart', words)
+          : autoScheduled(ticket.draft)
+            ? `${drafted} ${t('draft.yoursNow')}`
+            : drafted,
       );
     } else {
       setProblem(scheduleRefusal(t, ticket.key, outcome));
@@ -534,7 +545,7 @@ export function CalendarView({
                       data-stage={entry.ticket.stage}
                       aria-describedby={`${id}-hint`}
                       // The name begins with the words shown, "Starts:" and "Draft" included (TR-19).
-                      aria-label={`${entry.ticket.draft ? `${t('draft.tag')} ` : ''}${t(
+                      aria-label={`${entry.ticket.draft ? `${draftTag(entry.ticket)} ` : ''}${t(
                         entry.kind === 'due' ? 'calendar.chipDue' : 'calendar.chipStart',
                         { key: entry.ticket.key, summary: entry.ticket.summary },
                       )}${entry.ticket.draft?.stale ? `, ${t('draft.staleShort')}` : ''}`}
@@ -545,7 +556,7 @@ export function CalendarView({
                     >
                       {/* The text is its own line, so a finger-tall chip centres it (D9). */}
                       <span className="calendar-chip-text">
-                        {entry.ticket.draft ? `${t('draft.tag')} ` : ''}
+                        {entry.ticket.draft ? `${draftTag(entry.ticket)} ` : ''}
                         {entry.kind === 'start' ? `${t('calendar.starts')} ` : ''}
                         {entry.ticket.key} {entry.ticket.summary}
                       </span>

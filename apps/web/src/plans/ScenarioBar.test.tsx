@@ -1,11 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import type { PlanSection } from './address';
 import { fakePlanClient } from './fixtures';
 import { PlanPage } from './PlanPage';
+import { ScenarioBar } from './ScenarioBar';
 import { type FakeScenarioOptions, fakeScenarioClient } from './scenarioFixtures';
 
 /** "Spring launch" with its main scenario and Faster, which drafts SHOP-2 due a day later. */
@@ -142,5 +143,48 @@ describe('the scenario bar (ADR-122 stage 6)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Make scenario' }));
     await waitFor(() => expect(window.location.hash).toBe('#/plans/12/timeline?scenario=4'));
     await waitFor(() => expect(select).toHaveDisplayValue('Slower'));
+  });
+});
+
+describe('Auto-schedule on the scenario bar (ADR-122 stage 7)', () => {
+  async function renderBar(editable: boolean, withAction = true) {
+    const scenarios = fakeScenarioClient(fakePlanClient(), { scenarios: TWO, editable });
+    const list = await scenarios.list(12);
+    const onAutoSchedule = vi.fn();
+    render(
+      <I18nProvider locale="en">
+        <ScenarioBar
+          list={list}
+          active={list.scenarios.find((s) => s.name === 'Faster') ?? null}
+          missing={false}
+          changesHref="#/plans/12/changes?scenario=2"
+          onChoose={() => {}}
+          onNew={() => {}}
+          {...(withAction ? { onAutoSchedule } : {})}
+        />
+      </I18nProvider>,
+    );
+    return { onAutoSchedule };
+  }
+
+  it('[PLN-004] offers the plan’s editors Auto-schedule… after Review N changes', async () => {
+    const user = userEvent.setup();
+    const { onAutoSchedule } = await renderBar(true);
+    const review = screen.getByRole('link', { name: 'Review 1 change' });
+    const run = screen.getByRole('button', { name: 'Auto-schedule…' });
+    expect(review.compareDocumentPosition(run) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(run);
+    expect(onAutoSchedule).toHaveBeenCalledTimes(1);
+  });
+
+  it('[PLN-004] never shows it to someone who may not draft', async () => {
+    await renderBar(false);
+    expect(screen.queryByRole('button', { name: 'Auto-schedule…' })).toBeNull();
+    screen.getByRole('combobox', { name: 'Scenario' });
+  });
+
+  it('[PLN-004] leaves it out when the page gives no way to run', async () => {
+    await renderBar(true, false);
+    expect(screen.queryByRole('button', { name: 'Auto-schedule…' })).toBeNull();
   });
 });

@@ -27,6 +27,8 @@ export interface PlanScenariosPageProps {
   onCompare: (sides: { a: string; b: string }) => void;
   /** The phone's layout whatever the width (stories, whose browser is not a phone). */
   phone?: boolean;
+  /** Opens Auto-schedule (ADR-122 stage 7) beside New scenario; without it the action is not offered. */
+  onAutoSchedule?: () => void;
 }
 
 /**
@@ -34,8 +36,8 @@ export interface PlanScenariosPageProps {
  * tickets the plan does not show the reader only counted), who made it and when; Open, Rename,
  * Make main (asks first: the chosen scenario's drafts become the plan's drafts to apply, and the
  * former main stays a scenario with its own) and Delete (names how many drafts go, hidden ones
- * counted), with New scenario for the plan's editors. Scenarios are shared with everyone who sees
- * the plan. Below, two sides compared. Every dialog is a sheet on a phone.
+ * counted), with New scenario and Auto-schedule… for the plan's editors. Scenarios are shared with
+ * everyone who sees the plan. Below, two sides compared. Every dialog is a sheet on a phone.
  */
 export function PlanScenariosPage({
   planId,
@@ -46,6 +48,7 @@ export function PlanScenariosPage({
   onChanged,
   onCompare,
   phone = false,
+  onAutoSchedule,
 }: PlanScenariosPageProps) {
   const t = useT();
   const intl = useIntl();
@@ -108,14 +111,21 @@ export function PlanScenariosPage({
           {t('scenario.list.title')}
         </h2>
         {list.editable && (
-          <button
-            type="button"
-            className="button-primary"
-            disabled={full}
-            onClick={() => setMaking(true)}
-          >
-            {t('scenario.new')}
-          </button>
+          <div className="scenario-item-actions">
+            <button
+              type="button"
+              className="button-primary"
+              disabled={full}
+              onClick={() => setMaking(true)}
+            >
+              {t('scenario.new')}
+            </button>
+            {onAutoSchedule && (
+              <button type="button" className="button-secondary" onClick={onAutoSchedule}>
+                {t('schedule.bar.run')}
+              </button>
+            )}
+          </div>
         )}
       </div>
       <p className="board-hint">{t('scenario.list.intro')}</p>

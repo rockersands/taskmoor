@@ -7545,6 +7545,96 @@ export const messagesEs: Record<MessageId, string> = {
   'draft.stale':
     'Cambió desde el borrador: el ticket ya no tiene los valores de los que partió este borrador.',
   'draft.staleShort': 'cambió desde el borrador',
+  'draft.tagAuto': 'Borrador, programado automáticamente',
+  'draft.yoursNow': 'Ahora es tu borrador: al volver a ejecutar se planificará a su alrededor.',
+  'timeline.bar.autoDraft':
+    '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',
+  'timeline.bar.autoDraftStale':
+    '{key}, borrador programado automáticamente: del {start} al {due}. Ahora del {nowStart} al {nowDue}. Cambió desde el borrador.',
+  'schedule.result.title': 'Programación automática',
+  'schedule.result.counts':
+    '{placed} colocados, {kept} conservados, {notPlaced} sin colocar, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
+  'schedule.result.peopleDrafts':
+    '{count, plural, one {# borrador hecho por una persona se queda} other {# borradores hechos por personas se quedan}}.',
+  'schedule.result.leftOut':
+    '{count, plural, one {# ticket quedó fuera} other {# tickets quedaron fuera}}.',
+  'schedule.result.changedMeanwhile':
+    '{count, plural, one {# ticket se dejó como estaba: él o un ticket que lo bloquea cambió mientras se ejecutaba. Vuelve a ejecutarlo.} other {# tickets se dejaron como estaban: ellos o tickets que los bloquean cambiaron mientras se ejecutaba. Vuelve a ejecutarlo.}}',
+  'schedule.result.meanwhileList': 'Tickets que se dejaron como estaban',
+  'schedule.result.notShown':
+    '{count, plural, one {# propuesta anterior se queda} other {# propuestas anteriores se quedan}} en tickets que este plan no te muestra.',
+  'schedule.result.in': 'En {scenario}.',
+  'schedule.result.made': 'En {scenario}, un escenario nuevo.',
+  'schedule.result.show': 'Mostrar',
+  'schedule.result.placed': 'Colocados ({count})',
+  'schedule.result.notPlaced': 'Sin colocar ({count})',
+  'schedule.result.kept': 'Conservados ({count})',
+  'schedule.result.list': 'Tickets: {which}',
+  'schedule.result.none': 'No hay tickets aquí.',
+  'schedule.result.more':
+    '{count, plural, one {# ticket más se cuenta} other {# tickets más se cuentan}} pero no se lista.',
+  'schedule.result.compareMain': 'Comparar con el principal',
+  'schedule.result.compareLive': 'Comparar con En vivo',
+  'schedule.result.again': 'Volver a ejecutar…',
+  'schedule.result.choices': 'Sus opciones',
+  'schedule.choices.from': 'Desde el {day}, {count, plural, one {# periodo} other {# periodos}}.',
+  'schedule.choices.inProgress': 'Se conservan los tickets en curso.',
+  'schedule.choices.inSprint': 'Se conservan los tickets de un sprint activo.',
+  'schedule.choices.moveAll': 'Los tickets en curso y de un sprint activo pueden moverse.',
+  'schedule.choices.keepQuery': 'Se conservan los tickets que coinciden con “{query}”.',
+  'schedule.choices.types': '{types}: fuera.',
+  'schedule.choices.releases': 'Versiones {releases}: fuera.',
+  'schedule.choices.typeCount':
+    '{count, plural, one {# tipo de ticket queda fuera} other {# tipos de ticket quedan fuera}}.',
+  'schedule.choices.releaseCount':
+    '{count, plural, one {# versión queda fuera} other {# versiones quedan fuera}}.',
+  'schedule.choices.leaveQuery': 'Quedan fuera los tickets que coinciden con “{query}”.',
+  'schedule.why': 'Por qué: {why}',
+  'schedule.name.ticket': 'otro ticket',
+  'schedule.name.team': 'un equipo',
+  'schedule.name.person': 'su responsable',
+  'schedule.name.someone': 'su gente',
+  'schedule.name.more': '{count, plural, one {# más} other {# más}}',
+  'schedule.reason.fits':
+    'Colocado del {start} al {end}: {subject} tenía {free} de {capacity} libres.',
+  'schedule.reason.fitsAfter':
+    'Colocado del {start} al {end}: {subject} tenía {free} de {capacity} libres tras {count, plural, one {# ticket de mayor rango} other {# tickets de mayor rango}}.',
+  'schedule.reason.afterBlocker':
+    'Empieza el {day}, el día después de que termine {blocker}; {blocker} lo bloquea.',
+  'schedule.reason.afterHigherRanked':
+    'Colocado desde el {start}: primero van los tickets de mayor rango de {subject}.',
+  'schedule.reason.firstForBlocked': 'Colocado antes porque bloquea {ticket}.',
+  'schedule.reason.already': 'Colocado donde ya está: no hay nada que cambiar.',
+  'schedule.reason.personDraft':
+    'Conservado: una persona hizo un borrador de sus días en este escenario.',
+  'schedule.reason.mayNotSchedule': 'Conservado: no puedes programar tickets en {track}.',
+  'schedule.reason.keptByQuery': 'Conservado: coincide con los tickets que se conservan.',
+  'schedule.reason.inProgress': 'Conservado: está en curso.',
+  'schedule.reason.inSprint': 'Conservado: está en un sprint activo.',
+  'schedule.reason.noEstimate': 'Sin colocar: no tiene estimación.',
+  'schedule.reason.noAssignee': 'Sin colocar: no tiene responsable.',
+  'schedule.reason.noTeam': 'Sin colocar: {person} no está en ningún equipo del plan.',
+  'schedule.reason.noCapacity':
+    'Sin colocar: {teams} no {count, plural, one {tiene} other {tienen}} capacidad definida.',
+  'schedule.reason.tooBig':
+    'Sin colocar: es mayor que los {capacity} de {subject} en cualquier periodo.',
+  'schedule.reason.cycle': 'Sin colocar: está en un círculo con {tickets}.',
+  'schedule.reason.hiddenBlocker': 'Sin colocar: espera a un ticket que este plan no te muestra.',
+  'schedule.reason.blockerUndated': 'Sin colocar: {blocker} lo bloquea y no tiene fechas.',
+  'schedule.reason.blockerNotPlaced':
+    'Sin colocar: {blocker} lo bloquea, no se colocó y no tiene fechas.',
+  'schedule.reason.noRoom': 'Sin colocar: no hay hueco para {subject} hasta el {until}.',
+  'schedule.reason.noRoomAnyone': 'Sin colocar: no hay hueco hasta el {until}.',
+  'schedule.reason.unknown': 'Sin motivo indicado.',
+  'schedule.warning.afterRelease':
+    'Nota: vence {days, plural, one {# día} other {# días}} después de su versión {release} ({date}).',
+  'schedule.warning.afterTargetRelease':
+    'Nota: vence {days, plural, one {# día} other {# días}} después de su versión objetivo ({date}).',
+  'schedule.warning.lateAgainstKept':
+    'Nota: bloquea {tickets}, que no se {count, plural, one {mueve y empieza} other {mueven y empiezan}} en su fecha de vencimiento o antes; esa dependencia sigue con retraso.',
+  'schedule.warning.overWhereKept':
+    'Nota: donde está, deja a {subject} por encima de su capacidad en el periodo desde el {start}.',
+  'schedule.warning.unknown': 'Nota: revisa sus fechas.',
   'timeline.drafted': 'Borrador: {key} del {start} al {due} en {scenario}. Aún no cambió nada.',
   'timeline.undone': 'Se deshizo el borrador de {key} en {scenario}.',
   'timeline.bar.draft': '{key}, borrador: del {start} al {due}. Ahora del {nowStart} al {nowDue}.',
@@ -7596,6 +7686,114 @@ export const messagesEs: Record<MessageId, string> = {
   'scenario.bar.missing': 'Ese escenario ya no existe, así que esto es el plan en vivo.',
   'scenario.bar.nowIn': 'Ahora se muestra {name}: borradores, sin aplicar.',
   'scenario.bar.nowLive': 'Ahora se muestra el plan en vivo.',
+  // The auto-scheduler's dialog and its action (T-089f; ADR-122 stage 7).
+  'schedule.bar.run': 'Programar automáticamente…',
+  'schedule.dialog.title': 'Programar automáticamente',
+  'schedule.dialog.intro':
+    'Propone días de inicio y de vencimiento para los tickets abiertos del plan: por rango y con los bloqueadores primero, dentro de la capacidad fijada para cada equipo y persona.',
+  'schedule.dialog.readiness': 'Lo que usará la ejecución',
+  'schedule.dialog.reading': 'Revisando el plan…',
+  'schedule.dialog.readinessFailed':
+    'No se pudo leer lo que usaría la ejecución. Puedes ejecutarla igualmente o volver a intentarlo en un momento.',
+  'schedule.dialog.teams.with': '{teams} {count, plural, one {tiene} other {tienen}} capacidad.',
+  'schedule.dialog.teams.without':
+    '{teams} {count, plural, one {no tiene, así que sus tickets no se colocarán.} other {no tienen, así que sus tickets no se colocarán.}}',
+  'schedule.dialog.teams.noCapacity':
+    '{count, plural, one {El equipo del plan no tiene capacidad fijada, así que no se puede colocar ningún ticket.} other {Ninguno de los # equipos del plan tiene capacidad fijada, así que no se puede colocar ningún ticket.}}',
+  'schedule.dialog.teams.none':
+    'El plan no tiene equipos, así que no se puede colocar ningún ticket. Añade equipos en la configuración del plan.',
+  'schedule.dialog.capacityLink': 'Fijar la capacidad en la pestaña Capacidad',
+  'schedule.dialog.unit.points': 'La capacidad es en puntos, del campo {field}.',
+  'schedule.dialog.unit.hours':
+    'La capacidad es en horas, de la estimación original de cada ticket.',
+  'schedule.dialog.unit.noPoints':
+    'No existe un campo Puntos, así que los tickets no se pueden dimensionar. Cambia el plan a horas o añade un campo numérico compartido llamado Points.',
+  'schedule.dialog.tickets':
+    '{count, plural, =0 {El plan no te muestra tickets abiertos.} one {El plan te muestra # ticket abierto.} other {El plan te muestra # tickets abiertos.}}',
+  'schedule.dialog.people':
+    '{count, plural, =0 {Nadie en sus equipos tiene capacidad propia} one {# persona de sus equipos tiene capacidad propia} other {# personas de sus equipos tienen capacidad propia}}{without, plural, =0 {.} one {; # otra no limita nada.} other {; # otras no limitan nada.}}',
+  'schedule.dialog.notPlacedAhead': 'Estos no se colocarán: {list}.',
+  'schedule.dialog.unestimated': '{count, plural, other {# sin estimación}}',
+  'schedule.dialog.unassigned': '{count, plural, other {# sin responsable}}',
+  'schedule.dialog.noTeam':
+    '{count, plural, one {# cuyo responsable no está en ningún equipo del plan} other {# cuyos responsables no están en ningún equipo del plan}}',
+  'schedule.dialog.where': 'Dónde va el resultado',
+  'schedule.dialog.new': 'Un escenario nuevo',
+  'schedule.dialog.newFull': 'El plan tiene {count} escenarios, el máximo posible.',
+  'schedule.dialog.becomesMain':
+    'El plan aún no tiene escenarios, así que este será su escenario principal.',
+  'schedule.dialog.this': 'Este escenario: {name}',
+  'schedule.dialog.thisApplying': '{name} se está aplicando.',
+  'schedule.dialog.defaultName': 'Programación automática {day}',
+  'schedule.dialog.nameError': 'Ese nombre no se puede usar. Dale otro al escenario.',
+  'schedule.dialog.what': 'Qué puede mover',
+  'schedule.dialog.closedNever': 'Los tickets cerrados nunca se mueven.',
+  'schedule.dialog.keepInProgress': 'Conservar los tickets en curso',
+  'schedule.dialog.keepInSprint': 'Conservar los tickets de un sprint activo',
+  'schedule.dialog.keepQuery': 'Conservar también los tickets que coincidan con',
+  'schedule.dialog.keepQueryHint':
+    'Una consulta, como en la búsqueda. Los tickets que encuentra conservan sus días.',
+  'schedule.dialog.leaveTypes': 'Dejar fuera tipos de ticket',
+  'schedule.dialog.leaveTypesNone': 'No hay tipos de ticket que dejar fuera.',
+  'schedule.dialog.leaveReleases': 'Dejar fuera versiones',
+  'schedule.dialog.leaveReleasesNone':
+    'Los tickets abiertos del plan no apuntan a ninguna versión.',
+  'schedule.dialog.releaseOn': '{name} ({day})',
+  'schedule.dialog.leaveMax': 'Se pueden dejar fuera {count} como máximo.',
+  'schedule.dialog.leaveQuery': 'Dejar fuera también los tickets que coincidan con',
+  'schedule.dialog.leaveQueryHint':
+    'Una consulta, como en la búsqueda. Los tickets que encuentra no se programan.',
+  'schedule.dialog.queryError': 'Esto no se lee como una consulta. Revisa sus palabras y comillas.',
+  'schedule.dialog.when': 'Cuándo',
+  'schedule.dialog.from': 'Programar desde',
+  'schedule.dialog.lookAhead': 'Mirar hacia adelante',
+  'schedule.dialog.periods': '{count, plural, one {# periodo} other {# periodos}}',
+  'schedule.dialog.months': '{count, plural, one {# mes} other {# meses}}',
+  'schedule.dialog.spanWeeks':
+    '{count, plural, one {# periodo} other {# periodos}} de {weeks, plural, one {# semana} other {# semanas}}: del {start} al {end}.',
+  'schedule.dialog.spanMonths':
+    '{count, plural, one {# mes} other {# meses}}: del {start} al {end}.',
+  'schedule.dialog.rerun':
+    'Volver a ejecutarla reemplaza {count, plural, one {la # propuesta} other {las # propuestas}} de la programación automática aquí.{drafts, plural, =0 {} one { El # borrador que hizo una persona se queda, y se planifica a su alrededor.} other { Los # borradores que hicieron personas se quedan, y se planifica a su alrededor.}}',
+  'schedule.dialog.changesNothing':
+    'No cambia ningún ticket: escribe borradores que puedes revisar, comparar y aplicar.',
+  'schedule.dialog.run': 'Ejecutar',
+  'schedule.dialog.runningButton': 'Programando…',
+  'schedule.dialog.running':
+    '{count, plural, one {Programando # ticket.} other {Programando # tickets.}}',
+  'schedule.dialog.runningAll': 'Programando los tickets del plan.',
+  'schedule.dialog.off.notEditor':
+    'Solo el propietario del plan y los administradores del sitio pueden programarlo automáticamente.',
+  'schedule.dialog.off.nowhere':
+    'No hay dónde escribir el resultado: elimina un escenario o espera a que termine la aplicación.',
+  'schedule.dialog.off.noTeams': 'Ejecutar no está disponible: el plan no tiene equipos.',
+  'schedule.dialog.off.noCapacity':
+    'Ejecutar no está disponible: ningún equipo tiene capacidad fijada.',
+  'schedule.dialog.off.noSizes':
+    'Ejecutar no está disponible: los tickets no se pueden dimensionar en puntos.',
+  'schedule.dialog.off.reading':
+    'Ejecutar no está disponible hasta que responda la comprobación del plan.',
+  'schedule.dialog.refused.tooManyScenarios':
+    'El plan ya tiene todos los escenarios que puede. Ejecútala en el escenario abierto o elimina uno antes.',
+  'schedule.dialog.refused.applying':
+    'Ese escenario se está aplicando. Vuelve a ejecutarla cuando termine la aplicación.',
+  'schedule.dialog.refused.tooManyToSchedule':
+    'Esta ejecución colocaría {count, number} tickets, y una ejecución coloca como máximo {limit, number}. Deja algunos fuera y vuelve a ejecutarla.',
+  'schedule.dialog.refused.planTooLarge':
+    'El plan tiene más de {limit, number} tickets abiertos, demasiados para una ejecución.',
+  'schedule.dialog.refused.tooManyDrafts':
+    'El escenario tendría borradores en más de {limit, number} tickets, así que no se escribió nada.',
+  'schedule.dialog.refused.forbidden':
+    'Solo el propietario del plan y los administradores del sitio pueden programarlo automáticamente.',
+  'schedule.dialog.refused.gone': 'El plan o el escenario ya no existe.',
+  'schedule.dialog.refused.timeout':
+    'Una condición tardó demasiado en buscar, así que no se escribió nada. Acótala y vuelve a ejecutarla.',
+  'schedule.dialog.refused.query':
+    'Una condición no se lee como una consulta, así que no se escribió nada. Revisa sus palabras y vuelve a ejecutarla.',
+  'schedule.dialog.refused.invalid':
+    'Algunas opciones no son válidas. Revísalas y vuelve a ejecutarla.',
+  'schedule.dialog.refused.other':
+    'La ejecución no pudo terminar. Vuelve a intentarlo en un momento.',
   'scenario.notShown':
     '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
   'scenario.listFailed':

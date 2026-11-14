@@ -79,6 +79,33 @@ export async function linkTypesNamed(
 }
 
 /**
+ * Every dependency whose target is one of `targetIds`: a blocking link or a link of a type the
+ * plan chose, one per pair of tickets with the blocking one first (then the lowest type id), and
+ * never one whose blocker is in the trash. Blockers are not checked against the plan or the
+ * reader: callers decide which they may show. Ordered by blocker, then target.
+ */
+export async function blockingLinks(
+  trx: Db,
+  ws: number,
+  targetIds: readonly number[],
+  options: Pick<DependencyOptions, 'linkTypeIds'>,
+): Promise<Omit<DependencyLink, 'sameSprint'>[]> {
+  if (targetIds.length === 0) return [];
+  const rows = (
+    await sql<{ from: number; to: number; link_type_id: number }>`
+      SELECT DISTINCT ON (l.source_id, l.target_id)
+             l.source_id AS from, l.target_id AS to, l.link_type_id
+        FROM ticket_link l JOIN link_type lt ON lt.id = l.link_type_id
+        JOIN ticket b ON b.id = l.source_id
+       WHERE l.workspace_id = ${ws}::int
+         AND (lower(lt.outward) = 'blocks' OR lt.id = ANY(${[...options.linkTypeIds]}::int[]))
+         AND l.target_id = ANY(${[...targetIds]}::int[]) AND b.deleted_at IS NULL
+       ORDER BY l.source_id, l.target_id, (lower(lt.outward) = 'blocks') DESC, lt.id`.execute(trx)
+  ).rows;
+  return rows.map((r) => ({ from: r.from, to: r.to, linkTypeId: r.link_type_id }));
+}
+
+/**
  * The dependencies of the listed tickets `ids`: the links among them to draw, and the blockers
  * they do not list, counted. `unfiltered` is the plan's tickets for this viewer without the
  * filters; `checkPlan` false says every ticket of the plan is listed, so no blocker is the plan's.
@@ -91,18 +118,7 @@ export async function readDependencies(
   plan: { unfiltered: RawBuilder<boolean>; checkPlan: boolean },
 ): Promise<{ links: DependencyLink[]; elsewhere: BlockersElsewhere[]; linkTypeIds: number[] }> {
   if (ids.length === 0) return { links: [], elsewhere: [], linkTypeIds: [] };
-  const chosen = [...options.linkTypeIds];
-  const all = (
-    await sql<{ from: number; to: number; link_type_id: number }>`
-      SELECT DISTINCT ON (l.source_id, l.target_id)
-             l.source_id AS from, l.target_id AS to, l.link_type_id
-        FROM ticket_link l JOIN link_type lt ON lt.id = l.link_type_id
-        JOIN ticket b ON b.id = l.source_id
-       WHERE l.workspace_id = ${ws}::int
-         AND (lower(lt.outward) = 'blocks' OR lt.id = ANY(${chosen}::int[]))
-         AND l.target_id = ANY(${[...ids]}::int[]) AND b.deleted_at IS NULL
-       ORDER BY l.source_id, l.target_id, (lower(lt.outward) = 'blocks') DESC, lt.id`.execute(trx)
-  ).rows;
+  const all = await blockingLinks(trx, ws, ids, options);
   const listed = new Set(ids);
   const drawn = all.filter((l) => listed.has(l.from));
   const others = all.filter((l) => !listed.has(l.from));
@@ -140,12 +156,12 @@ export async function readDependencies(
   const links: DependencyLink[] = drawn.map((l) => ({
     from: l.from,
     to: l.to,
-    linkTypeId: l.link_type_id,
+    linkTypeId: l.linkTypeId,
     ...(together.has(`${l.from}>${l.to}`) ? { sameSprint: true as const } : {}),
   }));
   return {
     links,
     elsewhere: [...counted.values()].sort((a, b) => a.id - b.id),
-    linkTypeIds: [...new Set(drawn.map((l) => l.link_type_id))].sort((a, b) => a - b),
+    linkTypeIds: [...new Set(drawn.map((l) => l.linkTypeId))].sort((a, b) => a - b),
   };
 }

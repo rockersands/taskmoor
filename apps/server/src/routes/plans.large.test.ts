@@ -49,6 +49,8 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
   let adminCookie = '';
   /** The plan's team, which the program board's rows read (PLN-008). */
   let bigTeam = 0;
+  /** The plan's tracks, in order. */
+  let bigTracks: number[] = [];
 
   const read = async (options: InjectOptions) => {
     const res = await app.inject({
@@ -256,6 +258,7 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     });
     expect(made.statusCode, made.body).toBe(201);
     plan = made.json().plan.id;
+    bigTracks = trackIds;
     // Teams and capacity (PLN-005): the plan plans with the member's team, 30 points a period.
     const team = await as({ method: 'POST', url: '/api/v1/teams', payload: { name: 'Big team' } });
     expect(team.statusCode, team.body).toBe(201);
@@ -536,5 +539,81 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     const m = median(times);
     process.stdout.write(`PLN-007 a move of 100 releases: median ${Math.round(m)} ms\n`);
     expectWithinBudget(m, 1000, 'a move of 100 linked releases, with its 101 events, median (ms)');
+  }, 900_000);
+
+  it(`[PLN-004] [PLN-012] checks readiness in under a second and runs the auto-scheduler over ${TICKETS} tickets in under 5 s`, async () => {
+    // Three points on every feature: the member's are placed or find no room, the rest have no one.
+    const points = await database.db
+      .selectFrom('field')
+      .select('id')
+      .where('name', '=', 'Points')
+      .where('track_id', 'is', null)
+      .executeTakeFirstOrThrow();
+    await sql`
+      UPDATE ticket SET fields = fields || jsonb_build_object(${String(points.id)}::text, 3)
+       WHERE summary LIKE 'Feature %'`.execute(database.db);
+    const ready = await timed('auto-schedule readiness', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/schedule?from=2027-03-01&periods=6`,
+    });
+    expect((ready.tickets as { open: number }).open).toBeGreaterThan(0);
+    const run = (planId: number) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/plans/${planId}/schedule`,
+        payload: { into: { newScenario: { name: 'At size' } }, from: '2027-03-01', periods: 6 },
+        remoteAddress: nextAddress(),
+        headers: { cookie: adminCookie },
+      });
+    let target = plan;
+    let size = TICKETS;
+    if (LARGE) {
+      // Past 50,000 open tickets a run reads nothing more: the open tickets are counted first.
+      const whole = await run(plan);
+      expect(whole.statusCode, whole.body).toBe(409);
+      expect(whole.json()).toEqual({ error: 'plan_too_large', limit: 50_000 });
+      // So the run at size is measured over nine of the tracks, 45,000 tickets, the most it reads.
+      const as = (options: InjectOptions) =>
+        app.inject({ ...options, remoteAddress: nextAddress(), headers: { cookie: adminCookie } });
+      const nine = await as({
+        method: 'POST',
+        url: '/api/v1/plans',
+        payload: {
+          name: 'Nine tracks',
+          sources: bigTracks.slice(0, 9).map((trackId) => ({ kind: 'track', trackId })),
+        },
+      });
+      expect(nine.statusCode, nine.body).toBe(201);
+      target = nine.json().plan.id as number;
+      size = (9 * PER_TRACK).toLocaleString('en');
+      const planned = await as({
+        method: 'PATCH',
+        url: `/api/v1/plans/${target}`,
+        payload: { teams: [bigTeam], period: { kind: 'weeks', weeks: 2, anchor: '2027-01-04' } },
+      });
+      expect(planned.statusCode, planned.body).toBe(200);
+      const set = await as({
+        method: 'PUT',
+        url: `/api/v1/plans/${target}/capacity`,
+        payload: { entries: [{ teamId: bigTeam, period: null, amount: 30 }] },
+      });
+      expect(set.statusCode, set.body).toBe(200);
+    }
+    const started = performance.now();
+    const res = await run(target);
+    const ms = performance.now() - started;
+    process.stdout.write(`PLN-004 a run over ${size} tickets: ${Math.round(ms)} ms
+`);
+    if (LARGE) {
+      // It reads them all and runs the engine; past 10,000 tickets to move it writes nothing.
+      expect(res.statusCode, res.body).toBe(409);
+      expect(res.json().error).toBe('too_many_to_schedule');
+    } else {
+      expect(res.statusCode, res.body).toBe(201);
+      const counts = res.json().counts as { placed: number; notPlaced: Record<string, number> };
+      expect(counts.placed).toBeGreaterThan(0);
+      expect(counts.notPlaced.no_room).toBeGreaterThan(0);
+    }
+    expectWithinBudget(ms, 5000, `auto-schedule run, ${size} tickets (ms)`);
   }, 900_000);
 });

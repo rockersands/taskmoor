@@ -19,6 +19,8 @@ export interface ScenarioBarProps {
   onChoose: (scenario: number | null) => void;
   /** Asks for a new scenario. */
   onNew: () => void;
+  /** Opens Auto-schedule (ADR-122 stage 7); without it the action is not offered. */
+  onAutoSchedule?: () => void;
 }
 
 /**
@@ -27,8 +29,9 @@ export interface ScenarioBarProps {
  * then New scenario… for those who may draft; and a sentence that says what an edit does here.
  * Live, edits change tickets at once; in a scenario they are drafts, which change nothing until
  * they are applied, and **Review N changes** opens the change list. The choice is in the page's
- * address, so a link opens the same scenario; a change of it is announced. On a phone the select
- * is full width and a finger's height, the sentence under it.
+ * address, so a link opens the same scenario; a change of it is announced. The plan's editors also
+ * get **Auto-schedule…** (ADR-122 stage 7) after it, on every tab; others never see it. On a phone
+ * the select is full width and a finger's height, the sentence under it.
  */
 export function ScenarioBar({
   list,
@@ -37,6 +40,7 @@ export function ScenarioBar({
   changesHref,
   onChoose,
   onNew,
+  onAutoSchedule,
 }: ScenarioBarProps) {
   const t = useT();
   const id = useId();
@@ -94,6 +98,15 @@ export function ScenarioBar({
           <a className="button-secondary scenario-bar-review" href={routeHref(changesHref)}>
             {t('scenario.bar.review', { count: active.drafts })}
           </a>
+        )}
+        {editable && onAutoSchedule && (
+          <button
+            type="button"
+            className="button-secondary scenario-bar-schedule"
+            onClick={onAutoSchedule}
+          >
+            {t('schedule.bar.run')}
+          </button>
         )}
       </div>
       <p id={`${id}-sentence`} className={`scenario-bar-sentence${active ? ' is-draft' : ''}`}>

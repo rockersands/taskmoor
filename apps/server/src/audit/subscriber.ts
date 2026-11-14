@@ -256,6 +256,8 @@ export const AUDITED_EVENTS = [
   'plan.drafts_set',
   'plan.drafts_discarded',
   'plan.drafts_committed',
+  // A run of the auto-scheduler (PLN-004): its choices and counts, beside its drafts.
+  'plan.schedule_ran',
   // Releases across tracks (PLN-007): configuration others may see, as plans are.
   'cross_track_release.created',
   'cross_track_release.updated',
