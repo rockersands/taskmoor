@@ -308,15 +308,21 @@ take on.
   the plan's are no longer those (an anchor moved by whole periods is the same), nothing is set
   and the answer is 409 `settings_changed` with the plan's, since 30 points are not 30 hours. One `plan.capacity_set` event lists every change with its amount and note before
   and after; nothing changed records nothing. Audited, as `plan.updated` is: capacity is
-  configuration others see. A note is in the event as typed, as a plan's description is, so
-  the audit log keeps it after an erasure deletes the row: notes should say "Leave", not why.
+  configuration others see. A note is in the event as typed, as a plan's description is.
+- **An erased person's notes leave the history too** (T-089j, the user's decision of 2026-11-13).
+  The erasure's scrub job (`ERASE_SCRUB_TASK`, ADR-111) finds the `plan.capacity_set` events
+  that changed `user:<id>` and empties the notes of those changes, before and after; the amounts
+  and other subjects' notes stay. The audit log is append-only and never rewritten (ADR-034), so
+  it keeps the stored words but shows them empty when read or exported, with `masked: true`, as it
+  masks an erased person's name (`audit/query.ts`); `audit-verify` still checks the stored
+  records. Notes should still say "Leave", not why: until the erasure they are as typed.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
 - Both routes are internal in the API document, as the other plan routes. Token scopes: read for
   the GET, write for the PUT.
 - A person's data download lists their capacity in plans with its notes, by the plan's id (the
   plan may be hidden from them); erasure deletes it (`PERSONAL_TABLES`), as notes may say why
-  someone was away. The plan stays.
+  someone was away, and clears its notes from the events as above. The plan stays.
 
 #### The page
 

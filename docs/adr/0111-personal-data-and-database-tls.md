@@ -55,9 +55,10 @@ administrators only, in one transaction, emitting `user.erased`:
 
 - Refused: the last active site administrator, oneself, service accounts (not people), an
   account a directory or SCIM still manages (the next sync would bring it back: remove the person
-  there first), an erased account, a confirmation that is not the account's email, and an
-  erasure whose track groups' shares gave the role to run a track to the only other person
-  running it (`last_track_admin` with the tracks; ADR-121, T-205).
+  there first), an erased account, and a confirmation that is not the account's email. Someone
+  else's role never refuses it: the first build's `last_track_admin`, for a share that gave the
+  only other person running a track their role, became "that person keeps the role" (ADR-121,
+  T-205a, 2026-11-13).
 - The `app_user` row stays, so every reference keeps working: name `Former user <id>`, email
   `erased-<id>@erased.invalid` (a reserved domain, so it can never receive mail or match a real
   address), no password, time zone or locale, not an administrator, deactivated, `erased_at`
@@ -70,7 +71,10 @@ administrators only, in one transaction, emitting `user.erased`:
   downloads with their files. Taskmoor stores no avatar (IAM-008 lists one; none is built yet).
 - Their track groups go, with what their shares gave others, and the shares they received go
   with what those gave them, by ADR-121's rules for taking a share back; `user.erased` lists those
-  roles (`groupAccess`). Roles given otherwise are kept, as below.
+  roles (`groupAccess`), and the roles that stayed with the last person running a track as their
+  own (`groupAccessKept`). Roles given otherwise are kept, as below.
+- Their capacity in Multi-track plans goes with its notes (ADR-122), and the scrub job below
+  empties those notes in the plans' `plan.capacity_set` events (T-089j).
 - Kept: tickets, comments, time, attachments, group and team memberships, grants, saved searches
   and dashboards they own, all attributed to the placeholder.
 - Domain events about the person (created, updated, provisioned) have the old name and email
@@ -93,7 +97,9 @@ searched, exported or sent to syslog (`audit/query.ts` `maskDetails`, keys `emai
 `displayName`, `userName`, `givenName`, `familyName`, including `{ from, to }` changes), and drops
 the address of every request the erased person made. Such records are marked `masked: true`;
 their `hash` covers the stored record, which `audit-verify` checks unchanged. The stored values
-leave with the partition that holds them when retention drops it (ADR-034). This is the
+leave with the partition that holds them when retention drops it (ADR-034). The same applies to
+an erased person's capacity notes in a plan's `plan.capacity_set` records, whose subject is the
+plan: they are shown empty (T-089j). This is the
 exception GDPR article 17 (3) allows for records kept for security and legal claims; the
 manual says so.
 

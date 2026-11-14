@@ -145,12 +145,16 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
   page does; a site administrator's lists every track.
 - Erasure removes the person's groups and the shares they received, after the person is
   deactivated in the erasure's transaction, so they no longer count as running a track. What
-  their groups' shares gave others is taken back by the rules above, and a share that gave the
-  only other person who runs a track refuses the erasure (`last_track_admin`, the whole
-  transaction rolled back): an administrator gives someone else that role first. What the shares
-  they received gave them goes without that check: once deactivated their roles run nothing.
-  Copies they set on others stay, as the others' own; `user.erased` lists the roles that went
-  (`groupAccess`).
+  their groups' shares gave others is taken back by the rules above, except a role that is the
+  last way to run its track: **the erasure goes through and that person keeps the role** (T-205a,
+  the user's decision of 2026-11-13, replacing the first build's `409 last_track_admin`). The
+  share's record goes with the share, so the role is the person's own from then on, as a role
+  given on the People page is (`releaseShares` with `keepLast`); taking it away later is the People
+  page's ordinary rule, which keeps the last one to run a track. An erasure request is never held
+  up by someone else's role. What the shares they received gave them goes without that check:
+  once deactivated their roles run nothing. Copies they set on others stay, as the others' own;
+  `user.erased` lists the roles that went (`groupAccess`) and the roles that stayed with their
+  holders (`groupAccessKept`), and `POST /users/:id/erase` no longer answers `last_track_admin`.
 - The erasure takes the routes' locks in the routes' order before it locks the person's account
   row: the arrangements of the person and of everyone whose group they received, then the tracks
   those shares and the shares of their groups hold roles on. Someone who shared with the person

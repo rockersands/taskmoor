@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-03
 - Backlog: track invitations (workstream `claude/track-invites`); requirements IAM-027 to IAM-030;
-  who may create tracks (T-087a, IAM-033)
+  who may create tracks (T-087a, IAM-033); the permission goes with the role (T-087b, 2026-11-13)
 
 ## Context
 
@@ -185,11 +185,40 @@ The rules, which the server enforces whatever the web app shows:
   the grant is written only if whoever backs the invitation (its inviter, or whoever sent it again)
   still may give it. If not, the role still comes, alone, as an invitation's role does.
 
-**Removing the role leaves the grant** (to confirm with the user). The permission is site-wide and
-may already have been used; taking it away silently when someone leaves a track would also take it
-from a person who holds it for another reason, and the grant does not record which role brought it.
-A site administrator removes it on **Global permissions**, where each holder is listed by name.
-Withdrawing an invitation that gave the role at once likewise leaves the grant.
+**The grant goes with the role** (T-087b, the user's decision of 2026-11-13, replacing "removing
+the role leaves the grant"). When someone loses the manager role, the permission to create tracks
+that came with it goes too:
+
+- **Which grant.** Only one that came with a role: a `global_grant` whose id a
+  `track_role.actor_added`, `track_invitation.created` or `track_invitation.accepted` event names
+  as `createTracksGrantId`. The events are the record of where it came from; no column was added.
+  **A grant given separately stays**: one a site administrator gave on **Global permissions**, and
+  one the person already held when the box was ticked (no second grant is written, so the event
+  names none). A site administrator removes those as before. A site administrator who wants a
+  former manager to keep creating tracks gives the permission again there, and it then stays.
+- **When.** Once the person runs no track: they hold `administer_track` on no live track through a
+  role (their own, a group's, nested groups included, or one a shared track group gave), a grant
+  to them or a group of theirs, or as an owner (the ways `trackKeepsAdministrator` counts), or they
+  are deactivated. Someone who still runs another track keeps it: they are still a manager.
+- **Where.** Every change that can take that last role away, in its own transaction: taking a
+  person's or a group's role on the People page, withdrawing an invitation that gave the role at
+  once, removing someone from a group, taking a group out of another, deleting a group, deactivating
+  a person (Administration, SCIM `active: false` or DELETE, a directory sync's removal), and a SCIM
+  group's members or deletion.
+- **One event.** The change's own event lists what went, `createTracksGrantsRemoved: [{ userId,
+  grantId }]`, on `track_role.actor_removed`, `track_invitation.revoked`, `group.member_removed`,
+  `group.unnested`, `group.deleted`, `user.deactivated`, `scim.user_updated`, `scim.user_removed`,
+  `scim.group_updated`, `scim.group_deleted` and `directory.user_removed`, and so its audit record;
+  no `global_grant.removed` beside it (M1-005). Optional, so older events still match.
+- **Cost.** The check reads the events only for a person who holds a grant of their own and runs
+  no track any more; it scans `domain_event` by type, which a site with many events may notice on
+  those rare changes. A column on `global_grant` saying where it came from would make it one read;
+  that needs a migration, left for when one is due.
+- **Not covered**, since they take no person's role away directly: a role losing `administer_track`
+  in an access policy, a track moved to another policy, a track deleted, a role deleted, a shared
+  track group taken back, and a directory sync's or single sign-on's group changes. Those leave the
+  grant until the person's next change of the kinds above or a site administrator removes it.
+  Reactivating a person does not give it back.
 
 ## Options considered
 
@@ -203,7 +232,9 @@ Withdrawing an invitation that gave the role at once likewise leaves the grant.
 | Sign in directly after redeeming, as password links do | One step fewer in code | Skips two-factor, which breaks the external-people rule |
 | Create tracks: anyone who gives the manager role may tick the box (rejected) | Fewer refusals | A manager could hand on a site-wide permission they do not hold |
 | Create tracks: a migration removes everyone's grant on upgrade (rejected) | One default everywhere | Takes an ability away from people on an upgraded site; the user asked only about new sites |
-| Create tracks: removing the role removes the grant (open) | Nothing left behind | Takes away a site-wide right the person may hold for another reason; the grant does not say why it was given |
+| Create tracks: removing the role removes the grant that came with it, once the person runs no track (chosen, T-087b) | A former manager cannot keep creating tracks | Reads the events to tell a role's grant from one given separately |
+| Create tracks: removing the role leaves the grant (the first build; replaced 2026-11-13) | Never takes a right given for another reason | A former manager keeps a site-wide right nobody meant to leave them |
+| Create tracks: removing a role removes any grant the person holds (rejected) | No record needed | Takes a permission a site administrator gave separately |
 
 ## Consequences
 

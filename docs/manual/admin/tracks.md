@@ -75,7 +75,8 @@ group only**:
   already had, or that someone gives them afterwards on the track's page, by an invitation or by
   an import, stays. A role two shared groups gave stays until both are taken back.
 - Nothing is taken back that would leave a track with nobody to run it; give someone else that
-  role on the track first.
+  role on the track first. If the group's owner is erased, such a role stays with the person
+  instead, as their own (see [Erasing a person](people-and-groups.md#erasing-a-person)).
 - Only active people can receive a group. A person deactivated after you shared stays listed as
   deactivated, and you can still take the share back.
 
