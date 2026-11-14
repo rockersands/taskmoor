@@ -224,7 +224,10 @@ test('[PLN-004] [PLN-002] auto-schedules a plan into a new scenario, says why, p
     dialog.getByText('The plan has no scenario yet, so this one becomes its main scenario.'),
   ).toBeVisible();
   await expect(dialog.getByRole('checkbox', { name: 'Keep tickets in progress' })).toBeChecked();
-  await expect(dialog.getByLabel('Schedule from')).toHaveValue(f.today);
+  // The first day is the person's today. The run is held to the fixture's day, so a test that
+  // crosses midnight still plans the weeks its checks expect.
+  await expect(dialog.getByLabel('Schedule from')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+  await dialog.getByLabel('Schedule from').fill(f.today);
   await expect(dialog.getByRole('combobox', { name: 'Look ahead' })).toHaveValue('6');
   await dialog.getByLabel('Name').fill('Proposal');
   expect(await seriousAxeViolations(page)).toEqual([]);
@@ -298,6 +301,7 @@ test('[PLN-004] [PLN-002] auto-schedules a plan into a new scenario, says why, p
   // Run again into Proposal: Write the brief is kept where the owner put it, and planned around.
   await page.getByRole('button', { name: 'Auto-schedule…' }).click();
   await dialog.getByRole('radio', { name: 'This scenario: Proposal' }).check();
+  await dialog.getByLabel('Schedule from').fill(f.today);
   await expect(dialog.getByText(/^Re-running replaces the auto-scheduler’s /)).toBeVisible();
   expect(await noSidewaysScroll(page)).toBe(true);
   await dialog.getByRole('button', { name: 'Run' }).click();
