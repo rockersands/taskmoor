@@ -636,6 +636,13 @@
   .board-row:not(.board-heads) {
     align-items: start;
   }
+
+  /* While a card is in hand the cells reach the row's full height again: a finger deep in a long
+     column that moves sideways is still over the short column beside it, and the card lands at
+     its end. The drag's styles last until the drop has read what is under the finger. */
+  body.is-pointer-dragging .board-row:not(.board-heads) {
+    align-items: stretch;
+  }
 }
 
 @media (pointer: coarse) {

@@ -390,6 +390,53 @@ export const ShortColumnBesideALongOneOnAPhone: Story = {
 };
 
 /**
+ * The same phone board, a card dragged by its grip from deep in the long column sideways into the
+ * short one, far below its last card (M1-046, NFR-007; T-162b): Doing is the place under the
+ * finger, and the card lands at its end.
+ */
+export const DropBelowAShortColumnOnAPhone: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('list', { name: 'To do' });
+    const doing = canvas.getByRole('list', { name: 'Doing' });
+    const grip = canvas.getByRole('button', { name: 'Move SHOP-14' });
+    grip.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const from = grip.getBoundingClientRect();
+    const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+    grip.dispatchEvent(pointer('pointerdown', a));
+    window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
+    // The columns scroll sideways, the page stays: Doing is beside the finger, its cards far above.
+    const scroller = doing.closest('.board-scroll') as HTMLElement;
+    scroller.scrollLeft += doing.getBoundingClientRect().left - 40;
+    const box = doing.getBoundingClientRect();
+    const b = { x: box.left + box.width / 2, y: a.y + 12 };
+    const cards = within(doing).getAllByRole('listitem');
+    await expect(cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0).toBeLessThan(
+      b.y - 200,
+    );
+    window.dispatchEvent(pointer('pointermove', b));
+    await waitFor(() => expect(doing).toHaveClass('is-drop-target'));
+    window.dispatchEvent(pointer('pointerup', b));
+    await waitFor(() =>
+      expect(
+        within(doing)
+          .getAllByRole('link')
+          .map((link) => link.textContent?.split(' ')[0]),
+      ).toEqual(['SHOP-1', 'SHOP-2', 'SHOP-14']),
+    );
+    await expect(args.client).toHaveProperty('moves', [
+      expect.objectContaining({ ticket: 114, after: 102 }),
+    ]);
+    // Once the card is down, the short column ends at its last card again.
+    const last = within(doing).getAllByRole('listitem').at(-1)?.getBoundingClientRect().bottom;
+    await expect(doing.getBoundingClientRect().bottom - (last ?? 0)).toBeLessThan(24);
+    window.scrollTo(0, 0);
+  },
+};
+
+/**
  * A Scrum board with an active sprint, for someone who manages its sprints (T-106; AGL-010):
  * Complete sprint opens a pop-up that counts its done and open tickets from the board.
  */

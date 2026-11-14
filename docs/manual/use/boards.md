@@ -51,7 +51,9 @@ holds its **Backlog** (Scrum boards only) and its
 own to them. The filters sit on a panel of their own above the columns. Each column is at least
 16 rem wide, so a board with more columns than the window holds scrolls sideways inside the board,
 never the whole page: the edge past which more columns wait fades, and the columns keep a scroll
-bar. On a phone each column ends at its last card, however long the column beside it. Under the
+bar. On a phone each column ends at its last card, however long the column beside it; while you
+drag a card, every column reaches down the whole row again, so you can drop it into a short column
+from far below its last card. Under the
 filters, a line says how to move cards: the keys when you work with a mouse and a
 keyboard, however narrow the window, and on a phone or another touch screen, "Drag a card by its
 grip to another column, or tap the grip for a menu of every move." 
