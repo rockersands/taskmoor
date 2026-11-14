@@ -156,7 +156,7 @@ export function parseAxis(name: string, scope: Scope): Axis | 'not_found' | 'not
 export const MAX_AXIS_VALUES = 50;
 
 /** The ids of an axis' values on the ticket `k`, as text; empty where it has none. */
-function axisValues(axis: Axis): RawBuilder<string[]> {
+export function axisValues(axis: Axis): RawBuilder<string[]> {
   if (axis.kind === 'all') return sql<string[]>`ARRAY['all']::text[]`;
   if (axis.kind === 'custom') {
     const table =
@@ -207,7 +207,7 @@ interface Named {
 }
 
 /** The names of an axis' values, in the order the axis lists them. */
-async function names(
+export async function names(
   db: Db,
   workspaceId: number,
   axis: Axis,

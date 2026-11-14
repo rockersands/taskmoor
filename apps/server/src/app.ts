@@ -82,6 +82,7 @@ import { registerPlanBaselineRoutes } from './routes/plan-baselines';
 import { registerPlanCapacityRoutes } from './routes/plan-capacity';
 import { registerPlanScenarioRoutes } from './routes/plan-scenarios';
 import { registerPlanScheduleRoutes } from './routes/plan-schedule';
+import { registerPlanStructureRoutes } from './routes/plan-structures';
 import { registerPlanViewRoutes } from './routes/plan-views';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -617,6 +618,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // Baselines (ADR-122 stage 9): frozen copies of a plan's days, compared with the days now.
     registerPlanBaselineRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // The Grid (ADR-122 stage 10): saved structures and their rows, built for each viewer.
+    registerPlanStructureRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

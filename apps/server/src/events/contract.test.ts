@@ -92,6 +92,8 @@ const EXEMPT: Record<string, string> = {
     'reads only: how many tickets under shown tickets are closed, as the viewer (CORE-032)',
   'POST /api/v1/search/format-rules':
     'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
+  'POST /api/v1/plans/:id/grid/tickets':
+    'reads only: the tickets of a Grid’s rows in view, as the viewer (PLN-010)',
   'PUT /api/v1/me/recent-tickets/:id':
     'personal history: the tickets a person opened, for their own Recent list (M1-052)',
 };
@@ -3866,6 +3868,42 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         admin({
           method: 'DELETE',
           url: `/api/v1/plans/${state.plan}/baselines/${state.baseline}?version=2`,
+        }),
+    },
+    // Structures of the Grid (PLN-010; ADR-122 stage 10): ids and the name.
+    {
+      route: 'POST /api/v1/plans/:id/structures',
+      expect: 'plan.structure_created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/structures`,
+          payload: {
+            name: 'Contract structure',
+            spec: { steps: [{ kind: 'insert' }, { kind: 'children' }], columns: [] },
+          },
+        });
+        state.structure = res.json().structure?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id/structures/:sid',
+      expect: 'plan.structure_changed',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}/structures/${state.structure}`,
+          payload: { name: 'Contract structure, renamed', version: 1 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id/structures/:sid',
+      expect: 'plan.structure_deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/plans/${state.plan}/structures/${state.structure}?version=2`,
         }),
     },
     // Releases across tracks (PLN-007; ADR-122 stage 4).
