@@ -378,9 +378,22 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/*
+ * Wide enough for two, the sections stack in two columns, each card under the one before it in its
+ * column: a short list beside a long one leaves neither an empty card (second sweep) nor a hole
+ * under it (third sweep). The order reads down the first column, then the second.
+ */
 @container track-numbers (min-width: 36rem) {
   .track-numbers .summary-sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: block;
+    columns: 2;
+    column-gap: var(--space-4);
+    margin-block-end: calc(-1 * var(--space-4));
+  }
+
+  .track-numbers .summary-section {
+    break-inside: avoid;
+    margin-block-end: var(--space-4);
   }
 }
 

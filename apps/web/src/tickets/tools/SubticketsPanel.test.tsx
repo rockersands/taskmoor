@@ -461,7 +461,17 @@ describe('SubticketProgressMini', () => {
 });
 
 describe('the result table (CORE-032)', () => {
-  it('[CORE-032] shows the same small progress under the key of a ticket that has subtickets, named (PL-31)', async () => {
+  const rowOf = (id: number, key: string) => ({
+    id,
+    key,
+    summary: key,
+    status: { name: 'New', stage: 'new' as const },
+    ticketType: { name: 'Feature' },
+    assignee: null,
+    updatedAt: '2026-11-03T10:00:00Z',
+  });
+
+  it('[CORE-032] shows the same small progress under the key of a ticket that has subtickets, named (PL-31, S3-TR-3)', async () => {
     const client = {
       priorities: async () => [],
       subticketProgress: async () => ({ 7: { total: 2, closed: 2 } }),
@@ -486,8 +496,33 @@ describe('the result table (CORE-032)', () => {
         />
       </I18nProvider>,
     );
-    expect(await screen.findByText('2/2 subtickets closed')).toBeVisible();
-    expect(screen.getByText('Subtickets: 2 of 2 closed (100%)')).toBeInTheDocument();
-    expect(screen.getAllByText(/^[0-9]+.[0-9]+ subtickets closed$/)).toHaveLength(1);
+    // In the table's narrow key cell the subticket icon says what the numbers count, and the
+    // words are its name and tooltip (S3-TR-3).
+    expect(await screen.findByText('Subtickets: 2 of 2 closed (100%)')).toBeInTheDocument();
+    const shown = screen.getByText('2/2');
+    expect(shown).toBeVisible();
+    expect(shown.querySelector('svg')).not.toBeNull();
+    expect(shown.closest('[title]')).toHaveAttribute('title', 'Subtickets: 2 of 2 closed (100%)');
+    expect(screen.getAllByText('Subtickets: 2 of 2 closed (100%)')).toHaveLength(1);
+  });
+
+  it('[CORE-032] names it in words on a phone, where the row has room (PL-31)', async () => {
+    setViewportWidth(360);
+    const client = {
+      priorities: async () => [],
+      subticketProgress: async () => ({ 7: { total: 3, closed: 1 } }),
+    } as unknown as SearchClient;
+    render(
+      <I18nProvider locale="en">
+        <ResultTable
+          tickets={[rowOf(7, 'SHOP-7')]}
+          columns={[]}
+          fields={[]}
+          client={client}
+          onSaved={() => {}}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('1/3 subtickets closed')).toBeVisible();
   });
 });

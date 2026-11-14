@@ -133,7 +133,7 @@ const LONG: SearchTicket[] = [
   updatedAt: updatedAt as string,
 }));
 
-/** One subticket under MOB-2, so its key cell carries '0/1 subtickets closed' (PL-31). */
+/** One subticket under MOB-2, so its key cell carries its progress (PL-31, S3-TR-3). */
 const withProgress = {
   ...fakeSearchClient(),
   subticketProgress: async () => ({ '1': { total: 1, closed: 0 } }),
@@ -163,7 +163,7 @@ export const FitsTheCardAt1280: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const region = canvas.getByRole('region', { name: 'Result table' });
-    await canvas.findByText('0/1 subtickets closed');
+    await canvas.findByText('Subtickets: 0 of 1 closed (0%)');
     await expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth);
     await expect(region).toHaveAttribute('data-more', 'none');
     const table = canvas.getByRole('table');
@@ -171,6 +171,17 @@ export const FitsTheCardAt1280: Story = {
     const [summary] = cellsOf(table, 'summary');
     if (!key || !summary) throw new Error('No first row');
     await expect(key.getBoundingClientRect().width).toBeLessThan(150);
+    // The progress under the key: its icon and numbers on one line, no wider than the key, so the
+    // column keeps the key's width and the row its neighbours' height (S3-TR-3, S3-PL-9).
+    const count = key.querySelector('.tool-progress-count');
+    const link = key.querySelector('a');
+    if (!count || !link) throw new Error('No progress under the key');
+    await expect(count).toHaveTextContent('0/1');
+    await expect(count.querySelector('svg')).not.toBeNull();
+    await expect(oneLine(count)).toBe(true);
+    await expect(count.getBoundingClientRect().width).toBeLessThanOrEqual(
+      link.getBoundingClientRect().width,
+    );
     await expect(summary.getBoundingClientRect().width).toBeGreaterThan(
       2 * key.getBoundingClientRect().width,
     );

@@ -85,15 +85,18 @@ function KeyCell({
   ticket,
   progress,
   marks,
+  narrow = false,
 }: {
   ticket: SearchTicket;
   progress: SubticketProgress | undefined;
   marks: RowFormat | null;
+  /** In the table's key column, as narrow as the key: the progress takes its icon (S3-TR-3). */
+  narrow?: boolean;
 }) {
   return (
     <>
       <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>{ticket.key}</a>
-      {progress && <SubticketProgressMini progress={progress} named />}
+      {progress && <SubticketProgressMini progress={progress} named={narrow ? 'icon' : 'words'} />}
       {marks && marks.names.length > 0 && (
         <span className="format-marks">
           {marks.names.map((name) => (
@@ -229,7 +232,7 @@ export function ResultGrid({
             return (
               <tr key={ticket.id} data-tone={marks?.row ?? undefined}>
                 <th scope="row" className="search-key">
-                  <KeyCell ticket={ticket} progress={progress[ticket.id]} marks={marks} />
+                  <KeyCell ticket={ticket} progress={progress[ticket.id]} marks={marks} narrow />
                 </th>
                 {columns.map((column) => (
                   <Cell

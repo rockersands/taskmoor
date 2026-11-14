@@ -729,6 +729,12 @@ button.timeline-bar:focus-visible {
     min-height: var(--hit-target-touch);
   }
 
+  /* A row with no children holds a toggle's place at the toggle's width, so a child's key starts
+     right of its parent's, as the indent says (S3-TR-2). */
+  .timeline-toggle-space {
+    min-width: var(--hit-target-touch);
+  }
+
   .dependency-list a {
     display: inline-flex;
     flex-wrap: wrap;
