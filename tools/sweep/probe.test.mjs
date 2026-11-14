@@ -86,3 +86,58 @@ describe('the sweep probe: controls too small for a finger (ADR-033)', () => {
     expect(small.map(({ name }) => name)).toEqual(['Covered']);
   });
 });
+
+describe('the sweep probe: names that leave out visible words (WCAG 2.5.3)', () => {
+  /** Radios drawn as the appearance choices are: a label holding the name and a hint. */
+  function radios(options) {
+    document.body.innerHTML = options
+      .map(
+        ({ id, name, hint, describedBy }) => `
+          <label for="${id}">
+            <input id="${id}" type="radio" name="skin" aria-labelledby="${id}-name"
+              ${describedBy ? `aria-describedby="${id}-hint"` : ''} />
+            <span><span id="${id}-name">${name}</span> <span id="${id}-hint">${hint}</span></span>
+          </label>`,
+      )
+      .join('');
+    Element.prototype.getBoundingClientRect = () => ({
+      left: 0,
+      top: 100,
+      width: 300,
+      height: 60,
+      right: 300,
+      bottom: 160,
+      x: 0,
+      y: 100,
+    });
+    Element.prototype.checkVisibility = () => true;
+    window.axe = {
+      setup() {},
+      teardown() {},
+      commons: {
+        aria: { getRole: (el) => el.getAttribute('type') ?? el.tagName.toLowerCase() },
+        text: {
+          accessibleText: (el) =>
+            document.getElementById(el.getAttribute('aria-labelledby'))?.textContent ?? '',
+        },
+      },
+    };
+  }
+
+  it('[NFR-005] leaves out a hint the control names as its description, even inside its label (T-287)', () => {
+    radios([
+      { id: 'glass', name: 'Glass', hint: 'Frosted panels over a soft wash', describedBy: true },
+      // The same kind of hint, not named as a description: its words are left out of the name.
+      { id: 'plain', name: 'Plain', hint: 'Flat solid panels', describedBy: false },
+    ]);
+    const { names } = measureControls(44);
+    expect(names).toEqual([
+      {
+        role: 'radio',
+        name: 'Plain',
+        visible: 'plain flat solid panels',
+        leftOut: ['flat', 'solid', 'panels'],
+      },
+    ]);
+  });
+});
