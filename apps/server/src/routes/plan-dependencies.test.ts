@@ -333,6 +333,25 @@ describe('a plan’s dependencies (PLN-006)', () => {
       expect(answer.blockersElsewhere).toEqual([{ id: t.ship?.id, outside: 2, unlisted: 0 }]);
     });
 
+    it('[PLN-013] [PLN-014] copies a plan’s dependency options with it', async () => {
+      const relates = await linkType('relates to');
+      expect((await options([relates], true)).statusCode).toBe(200);
+      const copy = await call(
+        'ana',
+        {
+          method: 'POST',
+          url: `/api/v1/plans/${planId}/duplicate`,
+          payload: { name: 'Delivery, copied' },
+        },
+        201,
+      );
+      expect(copy.plan.dependencies).toEqual({
+        linkTypes: [expect.objectContaining({ id: relates })],
+        sameSprint: true,
+      });
+      await options([], false);
+    });
+
     it('[PLN-013] refuses blocking types, which are always counted, and types that do not exist', async () => {
       const refused = await options([blocks, 999_999], false);
       expect(refused.statusCode).toBe(400);

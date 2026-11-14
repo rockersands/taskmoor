@@ -916,7 +916,7 @@ touch drags), and how the image looks, which needs a person to look at it.
 
 ### Stage 5 (T-089d): the program board and dependency options
 
-**Designed on 2026-11-13.** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
+**Designed and built on 2026-11-13, not merged.** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
 built (the wordings are under "Tests"). The user decided on 2026-11-13 (`decisions.csv`, rows on
 T-089i and T-241) to build PLN-013 with the program board in 1.0, that blockers outside the plan
 stay a count only, that the section is called **Plans** and that the interface says **site**. The
@@ -1165,6 +1165,35 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
 - Columns from each team's own sprints, and per-team iterations (question 1).
 - Objectives, risks and milestones on the board; level-2 tickets; capacity in each cell.
 - Copying boards with a plan, a board's file or image, webhooks for boards.
+
+#### As built
+
+- **The board reads again 30 ms after the local copy moves**, not 100 ms as a track's board does: the
+  socket's poll (250 ms), the change read and the board's own read already take most of the second,
+  and a burst of changes still comes as one read.
+- **The live-edit e2e measures with `waitFor`**, not an assertion's polling steps, so the number is
+  the page's: three single runs on Windows, 2026-11-13, with other work on the machine: 861 ms and
+  840 ms (with a settle of 100 ms) and 354 ms (30 ms). One sample each; the margin under load is
+  not known.
+- **A move made from the Move dialog carries the version read when the dialog opened**, so a card
+  moved by someone else while it was open is refused, which is how the e2e proves the conflict.
+- **A badge says "Blocked by 2 tickets, 1 late"**, the Timeline's words, rather than a new
+  "Waits for"; the list below the board is the Timeline's `DependencyList`, fed with the cards.
+- **The routes refuse to delete a Team field in use** (`in_use`), so a board loses its field only
+  when the field held no values, or was removed outside the routes; the test removes it in the
+  database to check the board then shows one row.
+- **Dependency options are read from `GET /link-types`** on the settings page, blocking types left
+  out; a type the plan already counts still shows ticked if the list lacks it.
+- **A copy of a plan copies its dependency options**, as the design says; a test checks it.
+- **Cells carry `data-cell="<team>:<column>"`**, for the e2e's drops; the cell's name says the team,
+  the period and its count.
+- **Measured** (`plans.large.test.ts`, medians of five, Windows, 2026-11-13): a board of six two-week
+  periods over 10,000 tickets, half of them in the plan's team, 47 and 48 ms over two runs; its first
+  cell equals its search. Not run: the 100,000 bar (`TASKMOOR_LARGE_PLANS=1`).
+- **Tested viewers:** a site administrator, a member of one of the plan's two tracks, and someone
+  who sees the plan and none of its tracks. A viewer with only a ticket-level grant is not in this
+  stage's tests; the board reads the plan's tickets through `planTickets`, whose stage 1 tests cover
+  that viewer.
 
 #### Questions for the user (the design takes the first answer each time)
 
