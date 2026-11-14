@@ -27,8 +27,10 @@ import {
 import { type Plan, type PlanChoices, type PlanClient, planClient } from './client';
 import { PlanCalendarPage } from './PlanCalendarPage';
 import { PlanCapacityPage } from './PlanCapacityPage';
+import { PlanChangesPage } from './PlanChangesPage';
 import { PlanListPage } from './PlanListPage';
 import { PlanReleasesPage } from './PlanReleasesPage';
+import { PlanScenariosPage } from './PlanScenariosPage';
 import { PlanSettingsPage } from './PlanSettingsPage';
 import { PlanShareActions } from './PlanShareActions';
 import { PlanSummaryPage } from './PlanSummaryPage';
@@ -36,6 +38,14 @@ import { PlanTimelinePage } from './PlanTimelinePage';
 import { ProgramBoardPage } from './ProgramBoardPage';
 import { ProgramBoardsPage } from './ProgramBoardsPage';
 import type { ProgramBoardClient } from './programBoardClient';
+import { ScenarioBar } from './ScenarioBar';
+import { NewScenarioDialog } from './ScenarioDialogs';
+import {
+  type ScenarioClient,
+  type ScenarioList,
+  type ScenarioRow,
+  scenarioClient,
+} from './scenarioClient';
 
 export interface PlanPageProps {
   id: number;
@@ -45,6 +55,8 @@ export interface PlanPageProps {
   client?: PlanClient;
   /** The program boards' own client; the real one by default. */
   boards?: ProgramBoardClient;
+  /** Scenarios and draft changes (ADR-122 stage 6); the real client by default. */
+  scenarios?: ScenarioClient;
   search?: SearchClient;
   list?: ListClient;
   /** Today, for the Timeline and the Calendar. */
@@ -90,6 +102,7 @@ export function PlanPage({
   boardId,
   client = planClient,
   boards,
+  scenarios = scenarioClient,
   search = searchClient,
   list = listClient,
   now = () => new Date(),
@@ -112,6 +125,28 @@ export function PlanPage({
   const more = useMoreSides(tabBar, `${section}/${loaded}/${plan?.editable}`);
   // The plan this page shows has loaded: a missing one is asked for nothing more (D4).
   const shown = plan?.id === id;
+  // The plan's scenarios (ADR-122 stage 6), read again after a draft, an apply or a change to one.
+  const [scenarioList, setScenarioList] = useState<ScenarioList | null>(null);
+  const [scenariosFailed, setScenariosFailed] = useState(false);
+  const [scenarioVersion, setScenarioVersion] = useState(0);
+  const [making, setMaking] = useState(false);
+  const scenariosChanged = () => setScenarioVersion((v) => v + 1);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again after each change to them
+  useEffect(() => {
+    if (!shown) return;
+    let live = true;
+    scenarios.list(id).then(
+      (l) => {
+        if (!live) return;
+        setScenarioList(l);
+        setScenariosFailed(false);
+      },
+      () => live && setScenariosFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [scenarios, id, shown, scenarioVersion]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the view in the address changes
   useEffect(() => {
@@ -172,6 +207,26 @@ export function PlanPage({
   if (!plan) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const go = (next: PlanView) => navigate(here(next));
+  // The scenario the address names, once the plan's scenarios are known: one that no longer
+  // exists (or a list that could not be read) leaves the plan live, and the page says so.
+  const asked = view.scenario;
+  const active: ScenarioRow | null =
+    asked === undefined ? null : (scenarioList?.scenarios.find((s) => s.id === asked) ?? null);
+  const waiting = asked !== undefined && scenarioList === null && !scenariosFailed;
+  const missing = asked !== undefined && !waiting && active === null;
+  const editsDraft = scenarioList?.editable ?? false;
+  const inScenario = active
+    ? {
+        scenario: {
+          id: active.id,
+          name: active.name,
+          main: active.main,
+          drafts: active.drafts,
+          notShown: active.notShown,
+          editable: editsDraft,
+        },
+      }
+    : {};
   const tabs = PLAN_SECTIONS.filter((s) => s.id !== 'settings' || plan.editable);
   const broken = plan.sources.filter((s) => s.kind === 'savedSearch' && s.state === 'broken');
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
@@ -190,6 +245,9 @@ export function PlanPage({
     now,
     position: view.position ?? {},
     onPosition,
+    ...inScenario,
+    scenarios,
+    onDrafted: scenariosChanged,
   };
 
   return (
@@ -206,6 +264,33 @@ export function PlanPage({
         actions={<PlanShareActions plan={plan} client={client} />}
       />
       {plan.description && <p className="plan-description">{plan.description}</p>}
+      {section !== 'settings' && (
+        <ScenarioBar
+          list={scenarioList}
+          active={active}
+          missing={missing}
+          changesHref={planHref(id, 'changes', view)}
+          onChoose={(scenario) => go({ ...view, scenario: scenario ?? undefined })}
+          onNew={() => setMaking(true)}
+        />
+      )}
+      {scenariosFailed && asked !== undefined && (
+        <p className="board-problem" role="alert">
+          {t('scenario.listFailed')}
+        </p>
+      )}
+      {making && (
+        <NewScenarioDialog
+          scenarios={scenarioList?.scenarios ?? []}
+          onCreate={(name, from) => scenarios.create(id, name, from)}
+          onMade={(made) => {
+            setMaking(false);
+            scenariosChanged();
+            go({ ...view, scenario: made.id });
+          }}
+          onClose={() => setMaking(false)}
+        />
+      )}
       <nav
         ref={tabBar}
         className="track-tabs"
@@ -246,49 +331,86 @@ export function PlanPage({
           ))}
         </ul>
       )}
-      {section !== 'settings' && !(section === 'boards' && boardId === undefined) && (
-        <PlanFilterBar view={view} choices={choices} grouped={grouped} onChange={go} />
+      {section !== 'settings' &&
+        section !== 'changes' &&
+        !(section === 'boards' && boardId === undefined) && (
+          <PlanFilterBar view={view} choices={choices} grouped={grouped} onChange={go} />
+        )}
+      {active && (section === 'summary' || section === 'releases') && (
+        <p className="board-hint scenario-live-note">{t('scenario.staysLive')}</p>
       )}
-      <div ref={body}>
-        {/* The plan for this address did not load: no view runs with the last address's query. */}
-        {problem === 'failed' && (
-          <p className="board-problem" role="alert">
-            {t('plans.failed')}
-          </p>
-        )}
-        {problem !== 'failed' && section === 'summary' && <PlanSummaryPage {...viewProps} />}
-        {problem !== 'failed' && section === 'timeline' && (
-          <PlanTimelinePage {...viewProps} group={view.group} />
-        )}
-        {problem !== 'failed' && section === 'list' && (
-          <PlanListPage {...viewProps} group={view.group} search={search} list={list} />
-        )}
-        {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
-        {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
-        {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
-        {problem !== 'failed' && section === 'boards' && boardId === undefined && (
-          <ProgramBoardsPage
-            planId={id}
-            view={view}
-            now={now}
-            {...(boards ? { client: boards } : {})}
-          />
-        )}
-        {problem !== 'failed' && section === 'boards' && boardId !== undefined && (
-          <ProgramBoardPage
-            key={boardId}
-            planId={id}
-            boardId={boardId}
-            filters={view.filters}
-            view={view}
-            now={now}
-            {...(boards ? { client: boards } : {})}
-          />
-        )}
-        {problem !== 'failed' && section === 'settings' && plan.editable && (
-          <PlanSettingsPage plan={plan} client={client} onSaved={() => setVersion((v) => v + 1)} />
-        )}
-      </div>
+      {waiting ? (
+        <p className="report-loading">{t('reports.loading')}</p>
+      ) : (
+        <div ref={body}>
+          {/* The plan for this address did not load: no view runs with the last address's query. */}
+          {problem === 'failed' && (
+            <p className="board-problem" role="alert">
+              {t('plans.failed')}
+            </p>
+          )}
+          {problem !== 'failed' && section === 'summary' && <PlanSummaryPage {...viewProps} />}
+          {problem !== 'failed' && section === 'timeline' && (
+            <PlanTimelinePage {...viewProps} group={view.group} />
+          )}
+          {problem !== 'failed' && section === 'list' && (
+            <PlanListPage {...viewProps} group={view.group} search={search} list={list} />
+          )}
+          {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
+          {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
+          {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
+          {problem !== 'failed' && section === 'boards' && boardId === undefined && (
+            <ProgramBoardsPage
+              planId={id}
+              view={view}
+              now={now}
+              {...(boards ? { client: boards } : {})}
+            />
+          )}
+          {problem !== 'failed' && section === 'boards' && boardId !== undefined && (
+            <ProgramBoardPage
+              key={boardId}
+              planId={id}
+              boardId={boardId}
+              filters={view.filters}
+              view={view}
+              now={now}
+              {...(boards ? { client: boards } : {})}
+              {...inScenario}
+              scenarios={scenarios}
+              onDrafted={scenariosChanged}
+            />
+          )}
+          {problem !== 'failed' && section === 'settings' && plan.editable && (
+            <PlanSettingsPage
+              plan={plan}
+              client={client}
+              onSaved={() => setVersion((v) => v + 1)}
+            />
+          )}
+          {problem !== 'failed' && section === 'changes' && (
+            <PlanChangesPage
+              planId={id}
+              scenario={active}
+              list={scenarioList}
+              client={scenarios}
+              view={view}
+              onChanged={scenariosChanged}
+            />
+          )}
+          {problem !== 'failed' && section === 'scenarios' && (
+            <PlanScenariosPage
+              planId={id}
+              list={scenarioList}
+              failed={scenariosFailed}
+              client={scenarios}
+              view={view}
+              onChanged={scenariosChanged}
+              onCompare={(compare) => redirectRoute(here({ ...view, compare }))}
+            />
+          )}
+        </div>
+      )}
     </section>
   );
 }

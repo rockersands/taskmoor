@@ -65,6 +65,8 @@ export const ALLOWED = {
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
     '.program-board tbody th': STICKY,
+    '.scenario-action-bar':
+      'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
     '.plan-timeline .timeline-edge':
       "a plan timeline's Earlier or Later marker: today's line runs under it, and would cross its words through glass (PL-6)",
     '.timeline-fade':

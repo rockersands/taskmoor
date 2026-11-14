@@ -9,6 +9,7 @@ import type { PlanSection } from './address';
 import { type FakePlanOptions, fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage, showCurrentTab } from './PlanPage';
 import { fakeBoardClient } from './programBoardFixtures';
+import { fakeScenarioClient } from './scenarioFixtures';
 
 function renderPlan(section: PlanSection, hash: string, options: FakePlanOptions = {}) {
   window.location.hash = hash;
@@ -21,6 +22,7 @@ function renderPlan(section: PlanSection, hash: string, options: FakePlanOptions
         id={12}
         section={section}
         client={client}
+        scenarios={fakeScenarioClient(client)}
         search={search}
         list={list}
         now={() => new Date('2026-11-04T09:00:00Z')}
@@ -49,6 +51,8 @@ describe('a plan (PLN-001, PLN-012)', () => {
       'Capacity',
       'Releases',
       'Program boards',
+      'Changes',
+      'Scenarios',
       'Settings',
     ]);
     const searched = (link: HTMLElement) =>
