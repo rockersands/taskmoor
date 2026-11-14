@@ -178,6 +178,28 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   const grip = calendar.getByRole('button', { name: `Move the due day of ${ticket}` });
   const eighteenth = calendar.getByRole('listitem', { name: new RegExp(`^${label(18)}, `) });
   if (isMobile) {
+    // A quick flick up the page that happens to start on the grip scrolls the page, as anywhere
+    // else in the month, and picks nothing up (T-228). Two days fit on the screen, so room is made
+    // under the page for it to scroll into, and taken away again after.
+    await page.evaluate(() => {
+      document.documentElement.style.paddingBottom = '1200px';
+      scrollTo(0, 0);
+    });
+    await grip.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const start = await grip.boundingBox();
+    if (!start) throw new Error('the grip is on the page');
+    const scrolled = await page.evaluate(() => scrollY);
+    const flick = await finger(page);
+    await flick.down({ x: start.x + start.width / 2, y: start.y + start.height / 2 });
+    await flick.moveTo({ x: start.x + start.width / 2, y: start.y + start.height / 2 - 160 }, 4);
+    await flick.up();
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scrolled);
+    await expect(calendar.locator('.is-drop-target, .is-dragging')).toHaveCount(0);
+    await expect(calendar.getByRole('status')).toBeEmpty();
+    await page.evaluate(() => {
+      document.documentElement.style.paddingBottom = '';
+    });
+
     // In the middle of the screen, clear of the edges where a drag scrolls the page.
     await grip.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const from = await grip.boundingBox();
@@ -185,6 +207,9 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
     if (!from || !to) throw new Error('the grip and the next day are on the page');
     const hand = await finger(page);
     await hand.down({ x: from.x + from.width / 2, y: from.y + from.height / 2 });
+    // The finger rests on the grip first, longer than the 300 ms hold (`HOLD`), so a move down
+    // the page drags rather than scrolls.
+    await page.waitForTimeout(500);
     await hand.moveTo({ x: to.x + to.width / 2, y: to.y + to.height / 2 });
     await expect(eighteenth).toHaveClass(/is-drop-target/);
     await hand.up();

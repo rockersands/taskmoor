@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { HOLD } from '../shell/pointerDrag';
 import { onARealTouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
@@ -33,11 +34,13 @@ const pointer = (type: string, at: { x: number; y: number }) =>
 /**
  * A finger on an entry's grip (T-162b) moved over the middle of the day `to`, laid out by the
  * browser itself: `to` is first brought into view, and the press is on the grip wherever it is.
+ * The finger rests on the grip first, as a drag in any direction needs (T-228).
  */
-function dragOver(grip: Element, to: Element) {
+async function dragOver(grip: Element, to: Element) {
   const from = grip.getBoundingClientRect();
   const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
   grip.dispatchEvent(pointer('pointerdown', a));
+  await new Promise((rest) => setTimeout(rest, HOLD + 50));
   to.scrollIntoView({ block: 'center' });
   const box = to.getBoundingClientRect();
   const b = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
@@ -111,7 +114,7 @@ export const EntryInHand: Story = {
     const month = canvas.getByRole('heading', { level: 2 });
     const gap = () => day.getBoundingClientRect().top - month.getBoundingClientRect().top;
     const before = gap();
-    dragOver(grip, day);
+    await dragOver(grip, day);
     await waitFor(() => expect(day).toHaveClass('is-drop-target'));
     await expect(
       canvas.getByText('Moving CAL-2: drop it on another day. Escape cancels.'),
@@ -159,6 +162,31 @@ export const EntryOnATouchTablet: Story = {
   },
 };
 
+/**
+ * A quick flick down the page that starts on a grip (T-228): the grip leaves scrolling up and down
+ * to the page, and the flick picks nothing up.
+ */
+export const FlickFromAGrip: Story = {
+  args: { client: fakeCalendarClient() },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
+    await expect(getComputedStyle(grip).touchAction).toBe('pan-y');
+    const from = grip.getBoundingClientRect();
+    const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+    grip.dispatchEvent(pointer('pointerdown', a));
+    for (let i = 1; i <= 6; i++) {
+      window.dispatchEvent(pointer('pointermove', { x: a.x + i, y: a.y + 20 * i }));
+    }
+    await expect(document.querySelector('.drag-ghost')).toBeNull();
+    await expect(document.body).not.toHaveClass('is-pointer-dragging');
+    await expect(canvasElement.querySelector('.is-drop-target')).toBeNull();
+    window.dispatchEvent(pointer('pointerup', { x: a.x + 6, y: a.y + 120 }));
+    await expect(canvas.getByRole('status')).toBeEmptyDOMElement();
+  },
+};
+
 /** Let go there: CAL-2 is due on the 16th. */
 export const EntryDropped: Story = {
   args: { client: fakeCalendarClient() },
@@ -166,7 +194,7 @@ export const EntryDropped: Story = {
     const canvas = within(canvasElement);
     const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-2' });
     const day = canvas.getByRole('listitem', { name: /^Nov 16, 2026/ });
-    window.dispatchEvent(pointer('pointerup', dragOver(grip, day)));
+    window.dispatchEvent(pointer('pointerup', await dragOver(grip, day)));
     await waitFor(() =>
       expect(
         within(canvas.getByRole('listitem', { name: /^Nov 16, 2026/ })).getByRole('link', {
