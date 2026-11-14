@@ -66,7 +66,9 @@ export async function runAxe() {
 /**
  * Controls under 44 px, and controls whose accessible name leaves out words they show (WCAG 2.5.3,
  * T-212). Links inside running text are left out of the first list, as the rule allows, and so is
- * a control whose box is smaller but whose press area holds a 44 px square (`pressable`).
+ * a control whose box is smaller but whose press area holds a 44 px square: one its `::before` or
+ * `::after` draws (`target`, T-296), or one a press is found to reach (`pressable`). A size listed
+ * is the press area's.
  */
 export function measureControls(minimum) {
   const CONTROLS = [
@@ -118,7 +120,181 @@ export function measureControls(minimum) {
     return around.trim().split(/\s+/).filter(Boolean).length >= 3;
   };
 
-  /** What a finger can press: a control hidden behind its label is pressed through the label. */
+  /** A length in pixels, a percentage of `basis`, or null for anything else (auto, normal). */
+  const length = (value, basis) => {
+    if (typeof value !== 'string') return null;
+    const px = /^(-?[\d.]+(?:e-?\d+)?)px$/.exec(value.trim());
+    if (px) return Number(px[1]);
+    const percent = /^(-?[\d.]+)%$/.exec(value.trim());
+    return percent ? (Number(percent[1]) * basis) / 100 : null;
+  };
+  /** Whether a box is the containing block of what is placed absolutely (or, `fixed`, fixed) in it. */
+  const contains = (style, fixed) =>
+    (!fixed && style.position !== 'static') ||
+    (style.transform && style.transform !== 'none') ||
+    (style.filter && style.filter !== 'none') ||
+    (style.perspective && style.perspective !== 'none') ||
+    /\b(paint|layout|strict|content)\b/.test(style.contain ?? '') ||
+    /\b(transform|filter|perspective)\b/.test(style.willChange ?? '');
+  /** The element whose padding box something placed in `from` (itself included) is set against. */
+  const containingBlock = (from, fixed) => {
+    for (let up = from; up && up !== document.documentElement; up = up.parentElement) {
+      if (contains(getComputedStyle(up), fixed)) return up;
+    }
+    return null;
+  };
+  /** The padding box of a containing block in the window, as its contents scroll in it. */
+  const paddingBox = (block, fixed) => {
+    if (!block) {
+      return fixed
+        ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+        : {
+            left: -window.scrollX,
+            top: -window.scrollY,
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+          };
+    }
+    const box = block.getBoundingClientRect();
+    return {
+      left: box.left + block.clientLeft - block.scrollLeft,
+      top: box.top + block.clientTop - block.scrollTop,
+      width: block.clientWidth,
+      height: block.clientHeight,
+    };
+  };
+  /** The six numbers of a 2D transform matrix (a 3D one's 2D part), or null when there is none. */
+  const matrixOf = (transform) => {
+    const m = /^matrix(3d)?\(([^)]*)\)$/.exec((transform ?? '').trim());
+    if (!m) return null;
+    const n = m[2].split(',').map(Number);
+    return m[1] ? [n[0], n[1], n[4], n[5], n[12], n[13]] : n;
+  };
+  const meet = (a, b) => ({
+    left: Math.max(a.left, b.left),
+    top: Math.max(a.top, b.top),
+    right: Math.min(a.right, b.right),
+    bottom: Math.min(a.bottom, b.bottom),
+  });
+
+  /**
+   * The boxes of an element's `::before` and `::after` that a finger presses it through (T-296): a
+   * press area drawn over a control that keeps its look, such as the timeline bar's on touch
+   * (T-293). One counts when it is drawn (content), placed out of the flow (absolute or fixed) and
+   * takes presses (pointer-events, visibility). Its place comes from its computed style, whose
+   * offsets and size a browser gives in pixels for a placed box, moved by its 2D transform and its
+   * `translate`, and cut by every box on its way up whose overflow hides what it does not hold.
+   */
+  const pseudoBoxes = (el) => {
+    const boxes = [];
+    for (const which of ['::before', '::after']) {
+      const s = getComputedStyle(el, which);
+      if (!s?.content || s.content === 'none' || s.content === 'normal') continue;
+      if (s.display === 'none' || s.pointerEvents === 'none' || s.visibility === 'hidden') continue;
+      const fixed = s.position === 'fixed';
+      if (s.position !== 'absolute' && !fixed) continue;
+      const block = containingBlock(el, fixed);
+      const pad = paddingBox(block, fixed);
+      const px = (value, basis) => length(value, basis) ?? 0;
+      const [ml, mr, mt, mb] = ['marginLeft', 'marginRight', 'marginTop', 'marginBottom'].map(
+        (side) => px(s[side], pad.width),
+      );
+      // Padding and border, added to a size given for the content box.
+      const extra = (a, b, c, d) =>
+        s.boxSizing === 'content-box'
+          ? px(s[a], pad.width) + px(s[b], pad.width) + px(s[c], 0) + px(s[d], 0)
+          : 0;
+      const across = (start, end, size, from, span, m1, m2, more) => {
+        const a = length(s[start], span);
+        const b = length(s[end], span);
+        let w = length(s[size], span);
+        w = w === null ? (a !== null && b !== null ? span - a - b - m1 - m2 : null) : w + more;
+        if (w === null) return null;
+        if (a !== null) return [from + a + m1, w];
+        if (b !== null) return [from + span - b - m2 - w, w];
+        return null;
+      };
+      const x = across(
+        'left',
+        'right',
+        'width',
+        pad.left,
+        pad.width,
+        ml,
+        mr,
+        extra('paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'),
+      );
+      const y = across(
+        'top',
+        'bottom',
+        'height',
+        pad.top,
+        pad.height,
+        mt,
+        mb,
+        extra('paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'),
+      );
+      if (!x || !y || x[1] <= 0 || y[1] <= 0) continue;
+      let corners = [
+        [x[0], y[0]],
+        [x[0] + x[1], y[0]],
+        [x[0], y[0] + y[1]],
+        [x[0] + x[1], y[0] + y[1]],
+      ];
+      const [ox = x[1] / 2, oy = y[1] / 2] = (s.transformOrigin ?? '')
+        .split(/\s+/)
+        .map((v, i) => length(v, i === 0 ? x[1] : y[1]) ?? undefined);
+      const m = matrixOf(s.transform);
+      if (m) {
+        const [a, b, c, d, e, f] = m;
+        const [cx, cy] = [x[0] + ox, y[0] + oy];
+        corners = corners.map(([px0, py0]) => {
+          const [dx, dy] = [px0 - cx, py0 - cy];
+          return [cx + a * dx + c * dy + e, cy + b * dx + d * dy + f];
+        });
+      }
+      if (s.translate && s.translate !== 'none') {
+        const [tx = '0px', ty = '0px'] = s.translate.split(/\s+/);
+        const [dx, dy] = [length(tx, x[1]) ?? 0, length(ty, y[1]) ?? 0];
+        corners = corners.map(([cx, cy]) => [cx + dx, cy + dy]);
+      }
+      let box = {
+        left: Math.min(...corners.map(([cx]) => cx)),
+        top: Math.min(...corners.map(([, cy]) => cy)),
+        right: Math.max(...corners.map(([cx]) => cx)),
+        bottom: Math.max(...corners.map(([, cy]) => cy)),
+      };
+      // What hides overflow cuts it, from its containing block up; a box placed in another skips
+      // those between.
+      for (let up = block; up && up !== document.documentElement && up !== document.body; ) {
+        const style = getComputedStyle(up);
+        const p = paddingBox(up, false);
+        const edge = {
+          left: p.left,
+          top: p.top,
+          right: p.left + p.width,
+          bottom: p.top + p.height,
+        };
+        const hides = (v) => v === 'hidden' || v === 'clip';
+        const cut = meet(box, edge);
+        if (hides(style.overflowX)) box = { ...box, left: cut.left, right: cut.right };
+        if (hides(style.overflowY)) box = { ...box, top: cut.top, bottom: cut.bottom };
+        if (style.position === 'fixed') break;
+        up =
+          style.position === 'absolute'
+            ? containingBlock(up.parentElement, false)
+            : up.parentElement;
+      }
+      if (box.right > box.left && box.bottom > box.top) boxes.push(box);
+    }
+    return boxes;
+  };
+
+  /**
+   * What a finger can press: a control hidden behind its label is pressed through the label, and a
+   * control smaller than a finger through the press area its `::before` or `::after` draws over it,
+   * together with its own box (`pseudoBoxes`, T-296).
+   */
   const target = (el) => {
     const own = el.getBoundingClientRect();
     let width = own.width;
@@ -127,6 +303,16 @@ export function measureControls(minimum) {
       const box = label.getBoundingClientRect();
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
+    }
+    if (width < minimum || height < minimum) {
+      const mine = { left: own.left, top: own.top, right: own.right, bottom: own.bottom };
+      for (const box of pseudoBoxes(el)) {
+        const both = meet(mine, box);
+        // Only a press area that meets the box: one placed elsewhere is no part of this target.
+        if (both.left > both.right + 0.5 || both.top > both.bottom + 0.5) continue;
+        width = Math.max(width, Math.max(mine.right, box.right) - Math.min(mine.left, box.left));
+        height = Math.max(height, Math.max(mine.bottom, box.bottom) - Math.min(mine.top, box.top));
+      }
     }
     return { width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10 };
   };
