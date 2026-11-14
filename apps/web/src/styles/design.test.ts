@@ -330,6 +330,27 @@ export function unlistedGrips(sources: string[], listed: readonly string[]): str
   return [...pinned].filter((part) => grabbed.has(part) && !known(part)).sort();
 }
 
+/**
+ * What is wrong with `checkedBy` (`file#Story`, the file under `root`) as the story that checks a
+ * dragged-whole element's finger's size (T-290): no such file, no such story exported from it, or a
+ * story that does not run on a real touch screen. Undefined when it is that story.
+ */
+export function touchStoryProblem(root: string, checkedBy: string): string | undefined {
+  const [file, story] = checkedBy.split('#');
+  if (!file || !story) return `${checkedBy} is not file#Story`;
+  const path = join(root, file);
+  if (!/\.stories\.tsx$/.test(file) || !existsSync(path)) return `${file} is not a story file`;
+  const source = readFileSync(path, 'utf8');
+  const start = source.search(new RegExp(`export const ${story}\\b`));
+  if (start < 0) return `${file} exports no ${story}`;
+  const next = source.slice(start + 1).search(/\nexport const /);
+  const body = next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
+  if (!/beforeEach:\s*onARealTouchScreen\b/.test(body)) {
+    return `${checkedBy} does not run on a real touch screen`;
+  }
+  return undefined;
+}
+
 /* ---------------------------------------- TSX ---------------------------------------- */
 
 const parse = (file: string, source: string) =>
@@ -985,6 +1006,19 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     ]);
   });
 
+  it('[NFR-007] holds what is dragged whole to a story on a real touch screen (T-290)', () => {
+    const story = (name: string) =>
+      touchStoryProblem(SRC, `timeline/TimelinePage.stories.tsx#${name}`);
+    expect(story('ThinBarOnATouchScreen')).toBeUndefined();
+    // A story that runs under a mouse, a story that is not there, a file that is not a story file.
+    expect(story('Timeline')).toContain('does not run on a real touch screen');
+    expect(story('ThinBar')).toContain('exports no ThinBar');
+    expect(touchStoryProblem(SRC, 'timeline/TimelinePage.tsx#TimelinePage')).toContain(
+      'is not a story file',
+    );
+    expect(touchStoryProblem(SRC, 'the side panel')).toContain('is not file#Story');
+  });
+
   it('[NFR-005] holds a list to what is there, in both directions', () => {
     const found = new Map([['a.css', ['one', 'two']]]);
     expect(ratchet(found, { 'a.css': 2 })).toEqual([]);
@@ -1045,7 +1079,11 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
     expect(unlistedGrips(sources, [...GRIP_SELECTORS, ...Object.keys(DRAGGED_WHOLE)])).toEqual([]);
     // What is let through is still there to let through, each with its reason.
     expect(unlistedGrips(sources, GRIP_SELECTORS)).toEqual(Object.keys(DRAGGED_WHOLE).sort());
-    for (const reason of Object.values(DRAGGED_WHOLE)) expect(reason.length).toBeGreaterThan(20);
+    // Each says why, and names the story that checks its finger's size on a real touch screen.
+    for (const [grip, { reason, checkedBy }] of Object.entries(DRAGGED_WHOLE)) {
+      expect(reason.length, grip).toBeGreaterThan(20);
+      expect(touchStoryProblem(SRC, checkedBy), grip).toBeUndefined();
+    }
   });
 
   it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {

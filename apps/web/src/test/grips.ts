@@ -22,10 +22,16 @@ export const GRIP_SELECTORS = [
 ] as const;
 
 /**
- * What a finger drags by itself rather than by a grip, each with the reason it is not held to a
- * grip's 44 px. The design guard lets these through, and only these.
+ * What a finger drags by itself rather than by a grip. Each is still a finger's size on a touch
+ * screen, but in a way `gripsTooSmall` cannot measure from the element's own box, so each names the
+ * story that checks it instead (`checkedBy`: a story file under `src`, then the story's export) and
+ * the reason the grip check would get it wrong. The design guard lets these through, and only these,
+ * and holds each `checkedBy` to a story that exists and runs on a real touch screen.
  */
-export const DRAGGED_WHOLE: Readonly<Record<string, string>> = {
-  '.timeline-bar':
-    "A ticket's bar on the timeline is what moves: its length is its days and its height the lane's. A tap opens the ticket's days in the side panel, the touch screen's way to change them.",
+export const DRAGGED_WHOLE: Readonly<Record<string, { reason: string; checkedBy: string }>> = {
+  '.timeline-bar': {
+    reason:
+      "A ticket's bar on the timeline is what moves. On a touch screen it is a finger's height, and a bar shorter than a finger's width still takes one: its press area reaches past its ends through ::after (TR-21), which the grip check, measuring the bar's own box, does not see.",
+    checkedBy: 'timeline/TimelinePage.stories.tsx#ThinBarOnATouchScreen',
+  },
 };
