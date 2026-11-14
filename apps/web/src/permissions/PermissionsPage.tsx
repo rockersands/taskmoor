@@ -539,6 +539,7 @@ function PolicyPanel({
   onDeleted: (name: string) => Promise<void>;
 }) {
   const t = useT();
+  const giving = useNewForm();
   const [policy, setPolicy] = useState<Policy | null>(null);
   const reload = useCallback(() => client.policy(id).then(setPolicy, failed), [client, id, failed]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per policy
@@ -551,6 +552,39 @@ function PolicyPanel({
   const name = policy.policy.name;
   return (
     <div className="people-panel">
+      {/* As in Global permissions below: the list, and a "New …" button that opens the form
+          above it (D11, AD-18). */}
+      <div className="form-actions">
+        <NewButton
+          label={t('admin.permissions.newGrantIn', { name })}
+          open={giving.open}
+          onToggle={giving.toggle}
+          ref={giving.button}
+        />
+      </div>
+      {giving.open && (
+        <GrantForm
+          label={t('admin.permissions.addGrantTo', { name })}
+          permissions={catalogue.track}
+          grantees={POLICY_GRANTEES}
+          roles={roles}
+          groups={groups}
+          client={client}
+          onCancel={giving.close}
+          onGive={(grant, grantee) =>
+            client.addGrant(id, grant).then(() => {
+              giving.close();
+              void reload();
+              said(
+                t('admin.permissions.granted', {
+                  permission: permissionName(t, grant.permission),
+                  grantee,
+                }),
+              );
+            }, failed)
+          }
+        />
+      )}
       <GrantList
         grants={policy.grants}
         order={order}
@@ -561,25 +595,6 @@ function PolicyPanel({
               t('admin.permissions.removed', {
                 grantee: granteeName(t, grant),
                 permission: permissionName(t, grant.permission),
-              }),
-            );
-          }, failed)
-        }
-      />
-      <GrantForm
-        label={t('admin.permissions.addGrantTo', { name })}
-        permissions={catalogue.track}
-        grantees={POLICY_GRANTEES}
-        roles={roles}
-        groups={groups}
-        client={client}
-        onGive={(grant, grantee) =>
-          client.addGrant(id, grant).then(() => {
-            void reload();
-            said(
-              t('admin.permissions.granted', {
-                permission: permissionName(t, grant.permission),
-                grantee,
               }),
             );
           }, failed)

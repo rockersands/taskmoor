@@ -3545,6 +3545,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
   'admin.permissions.global': 'Permisos globales',
+  'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
   'admin.permissions.newGlobal': 'Nuevo permiso global',
   'admin.permissions.addGlobal': 'Dar un permiso global',
   'admin.permissions.grantee.role': 'Rol {name}',

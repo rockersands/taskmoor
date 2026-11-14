@@ -3454,6 +3454,7 @@ export const messagesEn = {
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
   'admin.permissions.global': 'Global permissions',
+  'admin.permissions.newGrantIn': 'New permission in {name}',
   'admin.permissions.newGlobal': 'New global permission',
   'admin.permissions.addGlobal': 'Give a global permission',
   'admin.permissions.grantee.role': 'Role {name}',

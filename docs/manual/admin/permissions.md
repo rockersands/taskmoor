@@ -128,8 +128,9 @@ To work with policies under **Access policies**:
 1. **New access policy** opens the form: give a **Policy name** and **Start from** another
    policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
-3. **Give a permission**: choose the **Permission** and who it goes **To**, then **Give**.
-   **Remove** takes a grant away.
+3. **New permission in** the policy's name opens the form above its grants, as on **Global
+   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**
+   takes a grant away.
 4. **Delete policy** works only when no track uses it. Like **Delete** on a role, it is in the
    danger colour and asks first, saying what will happen.
 
