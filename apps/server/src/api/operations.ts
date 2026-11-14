@@ -818,12 +818,15 @@ export const OPERATIONS: readonly Operation[] = [
     path: '/api/v1/saved-searches',
     id: 'listSavedSearches',
     tag: 'Search',
-    summary: 'The saved searches the caller owns or that are shared with them',
+    summary: 'The saved searches the caller owns or that are shared with them, a page at a time',
+    description:
+      'By name ignoring case, then id. A page holds `limit` of them, 500 at most and by default; `cursor` takes the `next` of the page before.',
     query: savedSearchListQuery,
+    paged: true,
     responses: {
       200: {
-        description: 'The saved searches.',
-        schema: z.object({ savedSearches: z.array(s.savedSearch) }).loose(),
+        description: 'A page of saved searches.',
+        schema: z.object({ savedSearches: z.array(s.savedSearch), next: s.next }).loose(),
       },
     },
   }),

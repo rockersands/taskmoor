@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyPage } from '../api/pages';
 
 /** Who a saved search is shared with (QRY-011); none is private. */
 export type SavedSearchShare =
@@ -62,8 +63,22 @@ const bare = (s: SavedSearchShare): SavedSearchShare =>
         ? { scope: s.scope, trackId: s.trackId, roleId: s.roleId ?? null }
         : { scope: s.scope };
 
+/**
+ * Every saved search `GET /saved-searches` lists for the person, following its pages (500 a
+ * page, by name). A reader of the first page alone left out every one past the 500th (T-310):
+ * the saved search bar and a plan's source picker could not offer them.
+ */
+export function everySavedSearch<T>(): Promise<T[]> {
+  return everyPage<T, string>(async (after) => {
+    const path =
+      after === null ? '/saved-searches' : `/saved-searches?${new URLSearchParams({ after })}`;
+    const page: { savedSearches: T[]; next?: string | null } = await api(path);
+    return { items: page.savedSearches, next: page.next };
+  });
+}
+
 export const savedSearchClient: SavedSearchClient = {
-  list: async () => (await api<{ savedSearches: SavedSearch[] }>('/saved-searches')).savedSearches,
+  list: () => everySavedSearch<SavedSearch>(),
   get: async (id) => (await api<{ savedSearch: SavedSearch }>(`/saved-searches/${id}`)).savedSearch,
   create: async (input) =>
     (

@@ -708,4 +708,114 @@ describe('saved searches (M1-063)', () => {
     expect(own.statusCode, own.body).toBe(200);
     expect((await del('alice', `/api/v1/saved-searches/${source.id}`)).statusCode).toBe(204);
   });
+
+  describe('a page at a time (T-310)', () => {
+    type Page = { savedSearches: Saved[]; next: string | null };
+    const page = async (who: string, query: string): Promise<Page> => {
+      const res = await get(who, `/api/v1/saved-searches${query}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json() as Page;
+    };
+    /** Every page, `limit` at a time, following `next`. */
+    async function everyPage(who: string, extra: string, limit?: number): Promise<Saved[]> {
+      const all: Saved[] = [];
+      let after: string | null = null;
+      for (let i = 0; i < 1000; i++) {
+        const params = new URLSearchParams(extra);
+        if (limit !== undefined) params.set('limit', String(limit));
+        if (after !== null) params.set('after', after);
+        const body = await page(who, `?${params}`);
+        all.push(...body.savedSearches);
+        if (body.next === null) return all;
+        after = body.next;
+      }
+      throw new Error('the list never ended');
+    }
+
+    it('[QRY-011] lists more than 500 saved searches over pages, the first page as before', async () => {
+      const dave = users.dave?.id as number;
+      const made = await database.db
+        .insertInto('saved_search')
+        .values(
+          Array.from({ length: 520 }, (_, i) => ({
+            workspace_id: 1,
+            owner_id: dave,
+            // Out of id order, so the name decides the order.
+            name: `Bulk ${String(520 - i).padStart(4, '0')}`,
+            query: 'track = SA',
+          })),
+        )
+        .returning('id')
+        .execute();
+      const first = await page('dave', '?filter=mine');
+      // The first page is the 500 the list always answered, and it says more follow.
+      expect(first.savedSearches).toHaveLength(500);
+      expect(first.next).toEqual(expect.any(String));
+      const all = await everyPage('dave', 'filter=mine');
+      expect(all.slice(0, 500)).toEqual(first.savedSearches);
+      // `cursor`, as the API's other paged lists name it, is the same as `after`.
+      const second = await page('dave', `?filter=mine&cursor=${first.next}`);
+      expect(second).toEqual(await page('dave', `?filter=mine&after=${first.next}`));
+      expect(second.savedSearches).toEqual(all.slice(500));
+      const ids = all.map((s) => s.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids).toEqual(expect.arrayContaining(made.map((m) => m.id)));
+      const names = all.map((s) => s.name.toLowerCase());
+      expect(names).toEqual([...names].sort());
+      expect(all.at(-1)?.name).toBe('Bulk 0520');
+      await database.db
+        .deleteFrom('saved_search')
+        .where(
+          'id',
+          'in',
+          made.map((m) => m.id),
+        )
+        .execute();
+    });
+
+    it('[QRY-011] pages through equal names in id order, never skipping or repeating one', async () => {
+      // Four people save the same name, ignoring case, and share it with everyone signed in.
+      const ties: number[] = [];
+      for (const [who, name] of [
+        ['carol', 'Same name'],
+        ['alice', 'SAME NAME'],
+        ['bob', 'same name'],
+        ['admin', 'Same Name'],
+      ] as const) {
+        ties.push(
+          (await save(who, { name, query: 'track = SA', shares: [{ scope: 'any_user' }] })).id,
+        );
+      }
+      const whole = (await page('dave', '?limit=500')).savedSearches;
+      expect(whole.length).toBeLessThan(500);
+      const tied = whole.filter((s) => s.name.toLowerCase() === 'same name').map((s) => s.id);
+      expect(tied).toEqual([...ties].sort((a, b) => a - b));
+      for (const limit of [1, 2, 3]) {
+        const paged = await everyPage('dave', '', limit);
+        expect(
+          paged.map((s) => s.id),
+          `limit ${limit}`,
+        ).toEqual(whole.map((s) => s.id));
+      }
+      // Filters page the same way.
+      const starredWhole = (await page('alice', '?filter=starred')).savedSearches;
+      expect(await everyPage('alice', 'filter=starred', 1)).toEqual(starredWhole);
+    });
+
+    it('[QRY-011] refuses a cursor it did not give, a limit out of range and unknown parameters', async () => {
+      const forged = Buffer.from(JSON.stringify(['x', 0])).toString('base64url');
+      const nul = Buffer.from(JSON.stringify(['a b', 1])).toString('base64url');
+      for (const query of [
+        '?after=not%20a%20cursor',
+        '?after=bm90IGpzb24',
+        `?after=${forged}`,
+        `?after=${nul}`,
+        '?limit=0',
+        '?limit=501',
+        '?page=2',
+      ]) {
+        expect((await get('dave', `/api/v1/saved-searches${query}`)).statusCode, query).toBe(400);
+      }
+    });
+  });
 });

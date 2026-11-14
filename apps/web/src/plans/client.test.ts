@@ -17,6 +17,22 @@ describe('the sources a plan may take (T-305)', () => {
     ]);
   });
 
+  it('[PLN-001] offers every saved search as a source, past the list’s first page (T-310)', async () => {
+    const asked = stubTwoTrackPages({
+      '/saved-searches': { savedSearches: [{ id: 7, name: 'Open bugs' }], next: 'after-7' },
+      '/saved-searches?after=after-7': { savedSearches: [{ id: 3, name: 'Zebra' }], next: null },
+    });
+    const options = await planClient.sourceOptions();
+    expect(options.savedSearches).toEqual([
+      { id: 7, name: 'Open bugs' },
+      { id: 3, name: 'Zebra' },
+    ]);
+    expect(asked.filter((path) => path.startsWith('/saved-searches'))).toEqual([
+      '/saved-searches',
+      '/saved-searches?after=after-7',
+    ]);
+  });
+
   it('[PLN-001] offers a track past the first thousand, read 500 at a time', async () => {
     // 1,203 tracks sorted by key, as the server pages them: `limit`, after `after`, `next` the
     // last key while more follow.

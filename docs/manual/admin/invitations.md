@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -15,7 +15,8 @@ the people who run a track.
 ## Tracks you run
 
 If you run a track you do not need to be a site administrator to manage it. Open **Administration**,
-then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page shows:
+then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. The list holds every track
+you run that is not archived, however many there are. A track's page shows:
 
 - **Who holds which role**, with **Remove** on the roles you may take away;
 - **Give a role**: choose the **Role**, find a person by name and **Add**. With the role that runs
@@ -231,7 +232,7 @@ own checks replace Taskmoor's second factor there. For invitations to Gmail addr
 
 | Method and path | What it does |
 |---|---|
-| `GET /api/v1/me/managed-tracks` | The tracks the person runs |
+| `GET /api/v1/me/managed-tracks` | The tracks the person runs, by key, 500 a page: `limit` (500 at most) and `after`, the `next` of the page before; `next` is null on the last page |
 | `GET /api/v1/tracks/:id/roles` | The roles, with `runsTrack` and `givable` |
 | `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations, with `emailAvailable` and `canCopyLinks`; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
 | `PUT /api/v1/tracks/:id/roles/:roleId/users/:userId` | Give a person a role; `{"createTracks": true}` with a role that runs the track |

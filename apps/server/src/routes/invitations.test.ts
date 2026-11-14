@@ -1383,6 +1383,107 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
       }
     });
 
+    it('[IAM-030] lists more than 500 tracks a person runs over pages, the first page as before (T-310)', async () => {
+      type Run = { id: number; key: string };
+      type Page = { tracks: Run[]; next: string | null };
+      const page = async (who: string, query = ''): Promise<Page> => {
+        const res = await as(who, { method: 'GET', url: `/api/v1/me/managed-tracks${query}` });
+        expect(res.statusCode, res.body).toBe(200);
+        return res.json() as Page;
+      };
+      async function everyPage(who: string, limit?: number): Promise<Run[]> {
+        const all: Run[] = [];
+        let after: string | null = null;
+        for (let i = 0; i < 2000; i++) {
+          const params = new URLSearchParams();
+          if (limit !== undefined) params.set('limit', String(limit));
+          if (after !== null) params.set('after', after);
+          const body = await page(who, `?${params}`);
+          all.push(...body.tracks);
+          if (body.next === null) return all;
+          after = body.next;
+        }
+        throw new Error('the list never ended');
+      }
+      const runner = await addUser('runner');
+      // Made out of key order, so the key decides the order, not the id.
+      const made = await database.db
+        .insertInto('track')
+        .values(
+          Array.from({ length: 506 }, (_, i) => {
+            const key = `RUN${String(506 - i).padStart(4, '0')}`;
+            return { workspace_id: 1, key, name: `Track ${key}`, access_policy_id: policy };
+          }),
+        )
+        .returning(['id', 'key'])
+        .execute();
+      await database.db
+        .insertInto('track_role_actor')
+        .values(
+          made.map((t) => ({
+            workspace_id: 1,
+            track_id: t.id,
+            role_id: roles.Administrators as number,
+            user_id: runner,
+          })),
+        )
+        .execute();
+      // An archived track they run is left out, as it always was.
+      const archived = made.find((t) => t.key === 'RUN0003') as Run;
+      await database.db
+        .updateTable('track')
+        .set({ archived_at: new Date() })
+        .where('id', '=', archived.id)
+        .execute();
+      const expected = made
+        .filter((t) => t.id !== archived.id)
+        .sort((a, b) => (a.key < b.key ? -1 : 1))
+        .map((t) => t.key);
+
+      const first = await page('runner');
+      expect(first.tracks.map((t) => t.key)).toEqual(expected.slice(0, 500));
+      expect(first.next).toEqual(expect.any(String));
+      expect((await everyPage('runner')).map((t) => t.key)).toEqual(expected);
+      expect((await everyPage('runner', 7)).map((t) => t.key)).toEqual(expected);
+      // A manager of one track gets the one page they always did.
+      expect(await page('manager')).toEqual({
+        tracks: [expect.objectContaining({ key: 'PAY' })],
+        next: null,
+      });
+      expect(await page('bystander')).toEqual({ tracks: [], next: null });
+
+      // A site administrator runs every track: by key, then id, each once.
+      const every = await database.db
+        .selectFrom('track')
+        .select(['id', 'key'])
+        .where('workspace_id', '=', 1)
+        .where('deleted_at', 'is', null)
+        .where('archived_at', 'is', null)
+        .orderBy('key')
+        .orderBy('id')
+        .execute();
+      expect(every.length).toBeGreaterThan(500);
+      for (const limit of [undefined, 97]) {
+        const all = await everyPage('admin', limit);
+        expect(all.map((t) => t.id)).toEqual(every.map((t) => t.id));
+      }
+
+      const forged = Buffer.from(JSON.stringify(['RUN0001', -1])).toString('base64url');
+      for (const query of [
+        '?after=RUN0001',
+        `?after=${forged}`,
+        '?limit=0',
+        '?limit=501',
+        '?all=1',
+      ]) {
+        expect(
+          (await as('runner', { method: 'GET', url: `/api/v1/me/managed-tracks${query}` }))
+            .statusCode,
+          query,
+        ).toBe(400);
+      }
+    });
+
     it('[IAM-027] the emails escape what comes from data, and speak Spanish to Spanish readers', () => {
       const body = {
         inviterName: '<b>Eve</b>',

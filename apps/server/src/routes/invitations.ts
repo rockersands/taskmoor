@@ -36,6 +36,7 @@ import { lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import { keepRole, lockTracks } from '../trackgroups/access';
 import { trackInTrash } from '../trash/policy';
 import { isExternal, readPolicy } from '../two-factor';
+import { decodeSortCursor, encodeSortCursor, sortCursorParam } from './sort-cursor';
 
 /** How long an invitation's link works: longer than a password link, people read mail late. */
 export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -62,6 +63,13 @@ const invitationsQuery = z
       .regex(/^\d{1,18}-\d{1,10}$/)
       .refine((v) => Number(v.split('-')[1]) <= 2_147_483_647)
       .optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(500),
+  })
+  .strict();
+/** A page of the tracks the person runs (T-310); the first holds 500 at most, as it always did. */
+const managedTracksQuery = z
+  .object({
+    after: sortCursorParam.optional(),
     limit: z.coerce.number().int().min(1).max(500).default(500),
   })
   .strict();
@@ -178,11 +186,18 @@ export function registerInvitationRoutes(
   const refuseRole = (reply: FastifyReply) =>
     reply.code(403).send({ error: 'forbidden', permission: 'appoint_track_admins' });
 
-  /** The tracks the person runs: their way to each track's Manage page (IAM-030). */
+  /**
+   * The tracks the person runs: their way to each track's Manage page (IAM-030). A page at a
+   * time by key, then id (T-310): `after` is the `next` of the page before, so someone who runs
+   * more than 500 tracks reaches every one.
+   */
   app.get('/api/v1/me/managed-tracks', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
+    const parsed = managedTracksQuery.safeParse(request.query);
+    if (!parsed.success) return invalid(reply);
+    const { after, limit } = parsed.data;
     const allowed = await request.authz.allowedTracks('administer_track');
-    if (allowed !== 'all' && allowed.length === 0) return { tracks: [] };
+    if (allowed !== 'all' && allowed.length === 0) return { tracks: [], next: null };
     let query = db
       .selectFrom('track')
       .select(['id', 'key', 'name', 'mode'])
@@ -190,7 +205,19 @@ export function registerInvitationRoutes(
       .where('deleted_at', 'is', null)
       .where('archived_at', 'is', null);
     if (allowed !== 'all') query = query.where('id', 'in', allowed);
-    return { tracks: await query.orderBy('key').limit(500).execute() };
+    const start = after === undefined ? null : decodeSortCursor(after);
+    if (start) {
+      query = query.where(sql<boolean>`(key, id) > (${start[0]}::text, ${start[1]}::int)`);
+    }
+    const tracks = await query
+      .orderBy('key')
+      .orderBy('id')
+      .limit(limit + 1)
+      .execute();
+    const more = tracks.length > limit;
+    if (more) tracks.length = limit;
+    const last = tracks[tracks.length - 1];
+    return { tracks, next: more && last ? encodeSortCursor(last.key, last.id) : null };
   });
 
   /** The roles of a track's Manage page, and which of them the person may give. */

@@ -346,7 +346,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The saved searches the caller owns or that are shared with them */
+        /**
+         * The saved searches the caller owns or that are shared with them, a page at a time
+         * @description By name ignoring case, then id. A page holds `limit` of them, 500 at most and by default; `cursor` takes the `next` of the page before.
+         */
         get: operations["listSavedSearches"];
         put?: never;
         /** Save a search */
@@ -3630,7 +3633,12 @@ export interface operations {
     listSavedSearches: {
         parameters: {
             query?: {
+                /** @description The same as `cursor`. */
+                after?: string;
+                /** @description The `next` of the page before; the list starts after it. */
+                cursor?: string;
                 filter?: "visible" | "mine" | "starred";
+                limit?: number;
                 q?: string;
             };
             header?: never;
@@ -3639,13 +3647,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The saved searches. */
+            /** @description A page of saved searches. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        /** @description The cursor of the next page; null on the last one. */
+                        next: string | null;
                         savedSearches: components["schemas"]["SavedSearch"][];
                     } & {
                         [key: string]: unknown;

@@ -1221,18 +1221,23 @@ Responses:
 
 ## Search
 
-### The saved searches the caller owns or that are shared with them
+### The saved searches the caller owns or that are shared with them, a page at a time
 
-`GET /api/v1/saved-searches`, operation `listSavedSearches`, access: read.
+`GET /api/v1/saved-searches`, operation `listSavedSearches`, access: read, paged by cursor.
+
+By name ignoring case, then id. A page holds `limit` of them, 500 at most and by default; `cursor` takes the `next` of the page before.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `filter` | query | `"visible"`, `"mine"`, `"starred"` | no |  |
 | `q` | query | string | no |  |
+| `cursor` | query | string | no | The `next` of the page before; the list starts after it. |
+| `after` | query | string | no | The same as `cursor`. |
+| `limit` | query | integer | no |  |
 
 Responses:
 
-- 200: The saved searches. Body: `savedSearches` (array of [SavedSearch](#schema-savedsearch)).
+- 200: A page of saved searches. Body: `savedSearches` (array of [SavedSearch](#schema-savedsearch)), `next` (string or null).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
