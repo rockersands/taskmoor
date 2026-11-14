@@ -20,8 +20,10 @@ const ticketHref = (key: string) => routeHref(`#/tickets/${encodeURIComponent(ke
  * the keyboard, screen readers and phones. A sentence first (how many tickets are on the path and
  * when the plan ends), that it covers the tickets the plan shows this viewer, then each chain from
  * its first ticket to its last: "SPA-3 starts 1 Dec, ends 4 Dec, then SPA-7 starts 5 Dec, ends 12
- * Feb, the plan's end." Tickets in a circle, waiting for work the viewer is not shown, or without
- * dates are only counted, never named.
+ * Feb, the plan's end." Tickets in a circle or without dates are only counted, never named, and so
+ * is work outside the plan or not shown to the viewer that a ticket waits for (the ticket waiting
+ * is named where it is on the path). With a plan end and no chain, the sentence and its notes
+ * still say why.
  */
 export function CriticalPathList({ path, failed = false, headingId }: CriticalPathListProps) {
   const t = useT();
@@ -36,9 +38,9 @@ export function CriticalPathList({ path, failed = false, headingId }: CriticalPa
       );
     }
     if (!path) return <p className="report-loading">{t('critical.loading')}</p>;
-    if (path.planEnd === null || path.chains.length === 0) {
-      return <EmptyState compact title={t('critical.noPath')} />;
-    }
+    // No open ticket has dates. With a plan end and no chain (the latest work is in a circle, say),
+    // the sentence and its notes still say why.
+    if (path.planEnd === null) return <EmptyState compact title={t('critical.noPath')} />;
     const planEnd = path.planEnd;
     const notes = [
       ...(path.more > 0 ? [t('critical.more', { count: path.more })] : []),
@@ -59,43 +61,45 @@ export function CriticalPathList({ path, failed = false, headingId }: CriticalPa
             {note}
           </p>
         ))}
-        <ol className="dependency-entries critical-chains">
-          {path.chains.map((chain, index) => {
-            const first = chain.tickets[0]?.id ?? index;
-            return (
-              <li key={first} className="dependency-entry">
-                <p className="dependency-by">{t('critical.chain', { number: index + 1 })}</p>
-                <ol className="critical-steps">
-                  {chain.tickets.map((ticket, at) => {
-                    const ends = at === chain.tickets.length - 1 && ticket.end === planEnd;
-                    const words = { start: day(ticket.start), end: day(ticket.end) };
-                    const step =
-                      at === 0
-                        ? t(ends ? 'critical.step.firstEnd' : 'critical.step.first', words)
-                        : t(ends ? 'critical.step.thenEnd' : 'critical.step.then', words);
-                    return (
-                      <li key={ticket.id}>
-                        <a href={ticketHref(ticket.key)}>
-                          <span className="dependency-key">{ticket.key}</span>{' '}
-                          <span className="dependency-summary">{ticket.summary}</span>
-                        </a>{' '}
-                        {step}
-                        {ticket.slack < 0 && (
-                          <>
-                            {' '}
-                            <span className="dependency-state is-late">
-                              {t('critical.step.late', { days: -ticket.slack })}
-                            </span>
-                          </>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </li>
-            );
-          })}
-        </ol>
+        {path.chains.length > 0 && (
+          <ol className="dependency-entries critical-chains">
+            {path.chains.map((chain, index) => {
+              const first = chain.tickets[0]?.id ?? index;
+              return (
+                <li key={first} className="dependency-entry">
+                  <p className="dependency-by">{t('critical.chain', { number: index + 1 })}</p>
+                  <ol className="critical-steps">
+                    {chain.tickets.map((ticket, at) => {
+                      const ends = at === chain.tickets.length - 1 && ticket.end === planEnd;
+                      const words = { start: day(ticket.start), end: day(ticket.end) };
+                      const step =
+                        at === 0
+                          ? t(ends ? 'critical.step.firstEnd' : 'critical.step.first', words)
+                          : t(ends ? 'critical.step.thenEnd' : 'critical.step.then', words);
+                      return (
+                        <li key={ticket.id}>
+                          <a href={ticketHref(ticket.key)}>
+                            <span className="dependency-key">{ticket.key}</span>{' '}
+                            <span className="dependency-summary">{ticket.summary}</span>
+                          </a>{' '}
+                          {step}
+                          {ticket.slack < 0 && (
+                            <>
+                              {' '}
+                              <span className="dependency-state is-late">
+                                {t('critical.step.late', { days: -ticket.slack })}
+                              </span>
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </>
     );
   };

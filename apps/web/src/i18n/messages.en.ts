@@ -7288,7 +7288,7 @@ export const messagesEn = {
   'critical.covers':
     'It covers the tickets this plan shows you, whatever the filters, so it can differ from someone else’s.',
   'critical.summary':
-    '{count, plural, one {# ticket is} other {# tickets are}} on the critical path. The plan ends {end}.',
+    '{count, plural, =0 {No ticket is} one {# ticket is} other {# tickets are}} on the critical path. The plan ends {end}.',
   'critical.noPath': 'No open ticket of this plan has dates, so there is no critical path.',
   'critical.chain': 'Chain {number, number}',
   'critical.step.first': 'starts {start}, ends {end}',

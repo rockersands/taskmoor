@@ -7453,7 +7453,7 @@ export const messagesEs: Record<MessageId, string> = {
   'critical.covers':
     'Abarca los tickets que este plan te muestra, sean cuales sean los filtros, así que puede ser distinta de la de otra persona.',
   'critical.summary':
-    '{count, plural, one {# ticket está} other {# tickets están}} en la ruta crítica. El plan termina el {end}.',
+    '{count, plural, =0 {Ningún ticket está} one {# ticket está} other {# tickets están}} en la ruta crítica. El plan termina el {end}.',
   'critical.noPath':
     'Ningún ticket abierto de este plan tiene fechas, así que no hay ruta crítica.',
   'critical.chain': 'Cadena {number, number}',

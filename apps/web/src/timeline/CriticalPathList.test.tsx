@@ -80,6 +80,26 @@ describe('the critical path in words (PLN-011)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('The critical path could not be read.');
   });
 
+  it('[PLN-011] says the plan’s end and why no ticket is critical when the latest work is in a circle', () => {
+    // SPA-1 (1-5 Dec) has 15 days of slack; SPA-2 and SPA-3 block each other and end on 20 Dec.
+    show({
+      ...criticalPathFixture(),
+      planEnd: '2026-12-20',
+      chains: [],
+      more: 0,
+      counts: { critical: 0, cycles: 2, undated: 0, waitsElsewhere: 0 },
+      listed: [{ id: 1, slack: 15 }],
+    });
+    expect(
+      screen.getByText('No ticket is on the critical path. The plan ends Dec 20, 2026.'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('2 tickets are in a circle of dependencies and have no slack.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/^No open ticket of this plan has dates/)).toBeNull();
+    expect(screen.queryByRole('list')).toBeNull();
+  });
+
   it('[PLN-011] speaks Spanish from the catalogue', () => {
     show(criticalPathFixture(), { locale: 'es' });
     expect(screen.getByRole('region', { name: 'Ruta crítica' })).toBeVisible();
