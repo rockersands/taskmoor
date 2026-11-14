@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -67,20 +67,37 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
     };
   }, [client, expired]);
 
-  // A change shows at once and goes back if it cannot be saved.
-  const save = async (changes: PreferenceChanges) => {
+  // A change shows at once. Saves go one after the other, in the order they were made, and only
+  // the answer to the latest is shown: an earlier answer arriving after a later change never
+  // takes that change back. When a save fails, the settings go back to what the server holds,
+  // and the failure stays said until the next save that works.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const latest = useRef(0);
+  const failed = useRef(false);
+  const save = (changes: PreferenceChanges) => {
     if (typeof prefs === 'string') return;
     const before = prefs;
-    setPrefs(applied(prefs, changes));
+    const mine = ++latest.current;
+    setPrefs((shown) => (typeof shown === 'string' ? shown : applied(shown, changes)));
     setStatus('idle');
-    try {
-      setPrefs(await client.update(changes));
-      setStatus('saved');
-    } catch (error) {
-      setPrefs(before);
-      if (expired(error)) return;
-      setStatus('failed');
-    }
+    queue.current = queue.current.then(async () => {
+      try {
+        const saved = await client.update(changes);
+        if (mine !== latest.current) return;
+        setPrefs(saved);
+        setStatus(failed.current ? 'failed' : 'saved');
+        failed.current = false;
+      } catch (error) {
+        if (expired(error)) return;
+        failed.current = true;
+        setStatus('failed');
+        const held = await client.preferences().catch(() => before);
+        if (mine === latest.current) {
+          setPrefs(held);
+          failed.current = false;
+        }
+      }
+    });
   };
 
   const title = (

@@ -127,6 +127,39 @@ describe('notification settings (M1-057)', () => {
     );
   });
 
+  it('[NTF-004] keeps a change made while an earlier one was saving, whatever answer comes first', async () => {
+    const user = userEvent.setup();
+    const saved: PreferenceChanges[] = [];
+    const base = fakeNotificationsClient();
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const section = renderSection({
+      ...base,
+      update: async (changes) => {
+        saved.push(changes);
+        // The first answer holds the state from before the second change, and comes late.
+        const answer = await base.update(changes);
+        if (saved.length === 1) await held;
+        return answer;
+      },
+    });
+    await user.click(await section.findByRole('radio', { name: /Daily digest/ }));
+    const updates = section.getByRole('checkbox', { name: 'Email: Ticket updated' });
+    await user.click(updates);
+    expect(updates).not.toBeChecked();
+    release();
+    expect(await section.findByText('Notification settings saved.')).toBeVisible();
+    expect(updates).not.toBeChecked();
+    expect(section.getByRole('radio', { name: /Daily digest/ })).toBeChecked();
+    // One after the other, in the order made.
+    expect(saved).toEqual([
+      { emailDelivery: 'daily' },
+      { events: { ticket_updated: { email: false } } },
+    ]);
+  });
+
   it('reports a change that could not be saved and shows the saved choice again', async () => {
     const user = userEvent.setup();
     const section = renderSection(
