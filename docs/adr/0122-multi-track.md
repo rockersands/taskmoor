@@ -1268,16 +1268,465 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
 11. **How many boards a plan holds:** no limit, as PLN-008 says; or a limit (say 100).
 12. **A copy of a plan:** leaves its boards out; or copies them.
 
+### Stage 6 (T-089e): draft changes and scenarios
+
+**Designed on 2026-11-14, not built.** PLN-002 and PLN-003 move to M1 with this stage, reworded to
+what will be built (the wordings are under "Tests"). Two designs were made and judged against the
+spec, privacy, the earlier stages and the code; this one is the server-first design with the
+person-first one's safer pieces grafted in (a lock per scenario while applying, deleting only a
+draft still holding the value applied, no editing in place in a scenario, counts that drafts touch
+shown without a link, a two-sided comparison and no "baseline" in the interface). The questions at
+the end are the user's; the design takes the first answer each time.
+
+A **scenario** is a named set of **draft changes** to a plan's tickets. A draft changes nothing about
+a ticket until it is **applied**, which is the ticket's own change (`PATCH /tickets/:key`) with the
+applier's permissions, ticket by ticket, as rescheduling is today (stage 1). One scenario of a plan
+is its **main** scenario, the only one applied from; the others are ideas to try and compare, and
+any of them can be made main. A scenario belongs to its plan, as its views do: it gives no access
+and holds no tickets, and a viewer sees a draft only on a ticket the plan shows them.
+
+**On the words:** the interface says **scenario**, **main**, **draft change**, **Apply** and
+**Discard**; the spec and the code say commit. It never says "baseline": PLN-011 uses that word for
+saved snapshots of dates, another feature, so what PLN-003 first called "the baseline" is the main
+scenario (question 16).
+
+#### What a draft is
+
+- **One field of one ticket in one scenario:** its start day, its due day, or its value in a Team
+  field (a shared, single-value field of type `team`, as program boards use). These are what the
+  Timeline, the Calendar and the program board already change; the assignee, estimates, sprint and
+  the rest are left out of 1.0 (question 5).
+- Each draft keeps the field's **value when drafted** (the live value the first time the field was
+  drafted in that scenario), its **new value** (null clears the field), who changed it last and
+  when, its `origin` (`person`, or `scheduler` for T-089f) and its last refusal.
+- **A change**, the unit of the change list, of choosing and of applying, is **one ticket**: all its
+  drafts in the scenario, applied together in one `PATCH`, so a start and a due day never land apart
+  (the ticket route does not check that one comes before the other). "Apply 3 of 10" means 3 tickets
+  (question 6).
+- **Drafting never touches the ticket:** no history, no `ticket.updated`, no row in the change log,
+  no follow, no webhook.
+- **Setting a field back to its live value removes that draft**; moving a bar back where it was
+  undoes it. Two editors drafting the same field: the last write wins (question 15).
+- **Changed since drafted:** a field whose live value no longer equals its value when drafted. The
+  change list shows the value now, the draft and the value when drafted. Drafting that field again
+  (**Keep my draft** writes the same value) takes the live value as the new value when drafted, so
+  the person acts having seen it marked. A draft whose new value is already live reads as **already
+  so** and goes on the next apply.
+- **The ticket's `version` alone never makes a draft stale.** A comment or a new summary leaves every
+  drafted field as drafted, and applying then uses the live `version`, so unrelated edits never block
+  a plan (question 4).
+
+#### What is stored (migration 0110)
+
+- **`plan_scenario`**: `id`, `workspace_id`, `plan_id` (deleted with the plan), `name` (1 to 100),
+  `main` (boolean, false by default), `created_by`, `applying_since` (a timestamp or null),
+  `version`, `created_at`, `updated_at`; a partial unique index on `(plan_id) WHERE main`, so a plan
+  has at most one main scenario, and an index on `(plan_id, id)`.
+- **`plan_draft`**: `workspace_id`, `plan_id`, `scenario_id` (deleted with the scenario), `ticket_id`
+  (deleted when the ticket is purged), `field` (`startDate`, `dueDate` or `cf:<id>`),
+  `team_field_id` (set exactly when `field` is `cf:<id>`, by a check, and deleted with the field),
+  `old_value` and `new_value` (JSON scalars: a day as text, a team's id, or null), `origin`
+  (`person` or `scheduler`, checked, `person` by default), `updated_by`, `updated_at`, `refusal`
+  (JSON or null) and `refused_at`. Primary key `(scenario_id, ticket_id, field)`; indexes on
+  `ticket_id` and on `updated_by`.
+- **One row per field, not per ticket,** so a later kind (sprint, say, for T-089f) is a new `field`
+  value and not a new column.
+- **The migration writes no rows.** A plan without scenarios has no drafts and works as now; the
+  first scenario made is main. `POST /plans` and its copy are unchanged.
+- The schema golden file, the types in `schema.ts` and an `upgrade-fixtures.ts` entry come with the
+  migration.
+
+#### Routes and token scopes
+
+All are internal in the API document (`x-taskmoor-stability: internal`), as the other plan routes,
+and scopes follow the method. Writes are for the plan's editors, its owner and site administrators;
+anyone else gets `forbidden` with `edit_plan`, as capacity and program boards do (question 2). A plan
+the person may not see, and a scenario of another plan, answer 404 word for word as a missing id.
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/plans/:id/scenarios` | read | `{ scenarios: [{ id, name, main, drafts, notShown, createdBy, updatedAt, version }], editable, limits }`, counted for this viewer |
+| `POST /api/v1/plans/:id/scenarios` | write | `{ name, from? }`: 201 `{ scenario, left: { notShown } }`; copies the drafts of `from` its maker is shown and counts the rest; the first is main |
+| `PATCH /api/v1/plans/:id/scenarios/:sid` | write | `{ name, version }`; a stale `version` answers 409 |
+| `DELETE /api/v1/plans/:id/scenarios/:sid?version=` | write | It and all its drafts; main is refused (`main_scenario`) while other scenarios exist |
+| `POST /api/v1/plans/:id/scenarios/:sid/promote` | write | `{ version }`: makes it main; refused while applying (`apply_in_progress`) |
+| `GET /api/v1/plans/:id/scenarios/:sid/changes?cursor=&only=` | read | The change list, 100 tickets a page; `only=ready\|refused\|changed` |
+| `PUT /api/v1/plans/:id/scenarios/:sid/drafts` | write | `{ changes: [{ ticketId, startDate?, dueDate?, fields?: { "<teamFieldId>": teamId \| null } }] }`, 1 to 200 tickets, all or nothing |
+| `POST /api/v1/plans/:id/scenarios/:sid/discard` | write | `{ tickets }` or `{ all: true }`: `{ discarded, notShown }` |
+| `POST /api/v1/plans/:id/scenarios/:sid/apply` | write | `{ tickets }` (1 to 100) or `{ all: true, after? }`; main only (`not_main`; question 3) |
+| `GET /api/v1/plans/:id/compare?a=&b=` and the views' filters | read | Two sides, each `live` or a scenario id (see Comparing) |
+| `GET .../timeline`, `.../calendar`, `.../capacity`, `.../program-boards/:boardId` | read | Gain `scenario=<id>`; without it they answer live, as now |
+
+**What `PUT .../drafts` checks, per ticket:**
+
+- It must be a ticket of the plan for the editor (it matches `unfiltered`, the plan's condition
+  without the filters, with their ticket filter). Otherwise `changes.N.ticketId: not_found`, word for
+  word as a ticket that does not exist.
+- Days are calendar days, and the drafted start is not after the drafted due day, each read with
+  the live value where not drafted (`start_after_due`).
+- The field is a shared single-value Team field (`not_a_team_field`) and the team exists
+  (`not_found`).
+- The scenario stays at 10,000 drafted tickets or fewer (`too_many_drafts`).
+- **Track permissions are not checked:** a draft changes nothing, so an editor may draft any ticket
+  of the plan; the change list says beforehand which ones the editor may not apply, from the track
+  permissions they hold, and applying checks again.
+- The answer is the written tickets' entries in the change list.
+
+#### Applying, ticket by ticket
+
+1. **Hold the scenario:** set `applying_since` on the main scenario if it is null or more than 10
+   minutes old; otherwise answer 409 `apply_in_progress`. One apply runs at a time per plan, and
+   promotion waits for it.
+2. **Read the chosen tickets' drafts and live tickets as the applier**, in one statement: in the plan
+   for them and outside the trash. A ticket that is not, or has no draft they are shown, is refused
+   as `gone`, the same whether it was deleted, hidden, moved out of the plan or never drafted, so the
+   answer never tells whether a draft is there.
+3. **Compare each drafted field with its live value:** every field already at its new value is
+   `already` and counts as applied; any field whose live value differs from its value when drafted
+   refuses the ticket as `changed_meanwhile`, with the values now, and nothing is sent.
+4. **Call the ticket's own `PATCH` in-process** through `callRoute` (`tickets/caller.ts`), with a
+   `Caller` built from the request (the applier, their authorization and API token), and
+   `{ startDate?, dueDate?, fields?, version }` with the `version` just read. Four at a time, in
+   ticket id order, as bulk changes run. Permissions per field ("Schedule tickets" for days, "Edit
+   tickets" or the field's own rule for the Team value), locks (WF-007, M1-029), layout and required
+   fields, formulas, history, `ticket.updated`, webhooks and follows all apply, and the history names
+   the applier (question 13).
+5. **Finish in one transaction:** delete each applied ticket's drafts whose `new_value` is still the
+   value applied (a draft changed meanwhile stays); write `refusal` and `refused_at` on refused ones,
+   which stay pending; clear `applying_since`; emit `plan.drafts_committed`. A server that stops
+   halfway leaves drafts whose value is now live: they read as already so and go on the next apply.
+6. **The answer:** `{ applied: [{ ticketId, key }], refused: [{ ticketId, key, reason, permission?,
+   locks?, fields?, now? }], next, notShown }`. With `all`, `next` is the cursor of the next 100
+   drafts shown (refused ones passed over), so the page loops and says "Applied 300 of 1,240". One
+   refusal never stops the others (PLN-002 (3)).
+
+| Ticket route answer | Reason | The page says |
+|---|---|---|
+| 403 `forbidden` with a permission | `no_permission` | "You may not schedule tickets in SPA" |
+| 403 with locks | `locked` | "Its status In review is locked" |
+| 409 `track_archived` | `track_archived` | "Its track is archived" |
+| 404, 409 `in_trash`, or step 2 | `gone` | "No longer in this plan for you" |
+| 409 `version_conflict` or `moved_meanwhile`, or step 3 | `changed_meanwhile` | "Changed since drafted: due is now 3 Dec" |
+| 400 `invalid_fields` | `invalid` | "Team is not on this ticket's form" |
+| Anything else, or a throw | `failed` | "Not changed; try again" |
+
+#### Discarding and scenarios
+
+- **Discard** removes the chosen tickets' drafts the person is shown, in any scenario. Drafts on
+  tickets the plan does not show them stay and are counted, so nobody removes what they cannot see,
+  as with a plan's hidden sources (stage 1; question 14).
+- **Scenarios are shared** with everyone who sees the plan; none is private (question 8).
+- **A new scenario** starts empty or as a copy of another's drafts the maker is shown; the rest are
+  counted (`left.notShown`). At most 20 per plan.
+- **Make main** (`promote`) swaps `main` in one transaction under both rows' locks, the main one
+  first. The chosen scenario's drafts become the plan's drafts to apply (PLN-003 (2)); the former main
+  stays as a scenario under its own name with its drafts, so nothing is lost (question 11).
+- **Deleting a scenario** takes all its drafts, those on tickets hidden from the deleter too, and the
+  dialog counts them: a container goes with what it holds, as a plan's hidden sources go with the
+  plan. Main cannot be deleted while other scenarios exist; it can be emptied with Discard.
+- After an apply, other scenarios' drafts on the same fields read as changed since drafted, by the
+  rule above.
+
+#### How the views read a scenario (`apps/server/src/plans/drafts.ts`)
+
+- **One function, `draftOverlay(scenarioId)`,** left-joins the scenario's drafts to `ticket k`,
+  folded to one row per ticket, and gives the expressions `START`, `DUE` and `TEAM(fieldId)`: the
+  drafted value where that field is drafted, the live column otherwise.
+- **Which tickets a view lists never comes from drafts.** The plan's `where` from `planTickets`, with
+  the viewer's ticket filter (QRY-008) and the views' filters, reads live columns, and no filter
+  (track, assignee, type, stage) is a draftable field, so drafts can neither widen nor narrow what a
+  viewer sees.
+- **Timeline:** items, roll-ups and the days `dependencyState` reads use the drafted days. An item's
+  own fields carry the drafted values, so the drawing code is unchanged, and a drafted item gains
+  `draft: { startDate?: { now }, dueDate?: { now }, stale }`.
+- **Calendar:** its month's range condition reads `START` and `DUE`, so a ticket drafted into the
+  month shows and one drafted out leaves.
+- **Capacity:** work counts in the period of its drafted due day. Teams' loads follow assignees,
+  which are not drafted in 1.0, so a Team value drafted alone moves no load. Work elsewhere stays live
+  (stage 3).
+- **Program board:** each card stands in the cell of its drafted Team value and due day.
+- **Counts that drafts touch.** A search finds live values, so such a count cannot equal its search.
+  A Capacity or board cell that a draft moves a ticket into or out of carries `drafts: n` and
+  `clause: null`; the page says "With 2 draft changes" and shows the count as text, not a link
+  (question 7). Cells no draft touches keep their links. To find them the server reads the live and
+  drafted places of the drafted tickets only. Without `scenario` every count equals its search as
+  before (PLN-005 (1), PLN-008).
+- **Summary, List and Releases stay live.** In a scenario the List says "The List shows tickets as
+  they are, not drafts", and editing cells in place is off, so no edit made in a scenario changes a
+  ticket (PLN-002 (1); question 10).
+- **A scenario missing or of another plan** answers 400 `invalid_fields` `{ scenario: 'not_found' }`;
+  the page then shows the plan live and says the scenario no longer exists.
+- Every answer in a scenario gains `scenario: { id, name, main, drafts, notShown }`.
+
+#### Comparing
+
+`GET /plans/:id/compare?a=&b=` with the views' filters; each side is `live` or a scenario. Over the
+plan's tickets the viewer is shown, for each side:
+
+- **The plan's end:** the latest due day of open tickets, with the ticket that sets it, and how many
+  open tickets have no due day, so an end is never shown without that number.
+- **Each plan team's end** by its Team value in the site's oldest shared Team field, as a new board
+  takes it (or `teamField=`), plus "Other or no team".
+- **Draft changes:** shown, and not shown as a number.
+- **How many tickets end later and earlier in B than in A,** and the first 200 tickets that differ,
+  with both values.
+
+It is one statement over the plan's tickets for the viewer, with both overlays, reading no ticket
+one by one. The page says each difference in words ("Ends 8 days later in Faster"). PLN-003 (1)
+holds when scenarios give work different teams and days; a Team change that moves days by itself
+waits for the auto-scheduler (T-089f), which writes its result as drafts into a scenario. Late
+dependencies and team loads per period are not compared in 1.0 (question 12).
+
+#### Who sees what
+
+- **A draft is shown to a viewer only when its ticket is in the plan for them** (`unfiltered`).
+  Otherwise it is counted, never named, keyed, dated or valued ("4 draft changes are on tickets this
+  plan does not show you": `notShown`), hidden, trashed, archived-track and left-the-plan tickets in
+  one number, as hidden sources are counted in stage 1. A ticket seen through a grant on a track the
+  plan does not show the viewer is not in their plan, so a draft never tells them a hidden source
+  holds it.
+- **The views apply only drafts on tickets the viewer is shown,** and work elsewhere and blockers
+  outside the plan stay live, so drafts add nothing about hidden work.
+- **Every viewer of the plan** can choose a scenario, see drafts on the views, read the change list
+  and compare; only editors write.
+- **An id the person is not shown** answers `not_found` on drafts and `gone` on apply, the same as a
+  missing one or one without a draft.
+- **Comparing** reads only the viewer's tickets, so two viewers can see different ends; the page says
+  the numbers are of the tickets they see.
+
+#### The pages, on a desktop and on a phone
+
+- **Scenario bar** on every tab, below the plan's name: a native select labelled **Scenario** with
+  **Live** first, then the scenarios ("Main" in words), then **New scenario…**; and a sentence:
+  "Changes you make here change tickets now." live, "Drafting in Faster: 12 changes. Nothing changes
+  tickets until you apply them." for an editor in a scenario, "Viewing Faster. Only the plan's owner
+  and site administrators can draft." for others. **Review 12 changes** opens Changes. The choice is
+  in the address (`scenario=4`, part of `viewKey`, so a link opens the same scenario and the views
+  read again); a plan opens Live (question 1). A change of scenario is announced. On a phone the
+  select is full width and 44 px high, the sentence under it.
+- **Timeline and Calendar in a scenario:** dragging, Alt and the arrows, and the side panel make
+  drafts through the stage 1 seam (`reschedule` becomes `scenario ? draft : the live call`). A
+  drafted bar has a **Draft** tag in text and a dashed edge, never colour alone; its description says
+  "Draft: 8 to 10 Dec. Now 1 to 3 Dec."; a stale one says "Changed since drafted". The side panel
+  shows Now and Draft with **Undo this draft**. A calendar chip begins with "Draft". After each draft
+  the status says "Draft: SPA-12 due 10 Dec in Faster. Nothing changed yet."
+- **Program board in a scenario:** drag and **Move…** make drafts (the Team value and days from
+  `cardChange`, without `version`), the dialog's button says **Draft the move**, cards carry a
+  **Draft** tag, touched cells say "includes drafts" without a link. Others' drafts show when the
+  board reads again: on a ticket change, after its own moves, and every 15 s while open, since drafts
+  are not in the change log. Live, the board is unchanged (PLN-008).
+- **Capacity in a scenario:** its heading names the scenario; **Set capacity** still sets the plan's
+  capacity, and its dialog says so.
+- **Changes tab** (`#/plans/12/changes?scenario=4`), after Program boards: the change list.
+  - On a desktop, a table grouped by ticket: a check box ("Select SPA-12"), key and summary as a
+    link, track, a line per field ("Due: 3 Dec → 10 Dec", "Team: Atlas → Borealis"), its state in
+    words ("Ready", "Changed since drafted: now 5 Dec", "Already so", "You may not schedule tickets in
+    SPA", "Refused: its status is locked", "Proposed by the auto-scheduler" once T-089f exists), who
+    drafted it and when. **Only those I can apply**, and "Select all 12 shown". Below: "3 more
+    changes are on tickets this plan does not show you."
+  - **Apply 3 changes** and **Apply all** (main only; another scenario offers **Make Faster main**
+    instead), **Discard 3 changes** and **Discard all** through the shared DangerAction (D13), and
+    **Keep my draft** on changed rows. Apply asks first: "Change 3 tickets as you, with your
+    permissions?", then shows progress in words. The result says "3 applied, 1 refused", each refused
+    row with its reason, still selected; focus moves to the result's heading and it is announced.
+  - On a phone each ticket is a card with a 44 px check box, and an action bar fixed at the bottom
+    holds **Apply 3** and **Discard 3**, with no sideways scrolling. 100 at a time, with **Show
+    more**.
+- **Scenarios tab** (`#/plans/12/scenarios?a=live&b=4`): each scenario with its changes (shown, and
+  not shown counted), who made it and when; **Open**, **Rename**, **Make main** (asks first: "Faster's
+  8 changes become the plan's drafts to apply. Main keeps its 12 as a scenario."), **Delete**
+  (DangerAction, naming its draft count, hidden ones counted) and **New scenario** (name, "Start from:
+  empty / a scenario"). Below, **Compare**: two selects, then a table of measures with A, B and the
+  difference in words, each team's end, and the tickets that differ; on a phone, a card per measure
+  and per team. Every dialog is a sheet on a phone.
+- **Files and the image (stage 8)** made in a scenario hold the drafted values, carry a "Draft"
+  column and say "Scenario: Faster, drafts not applied" in their header line and the image's title.
+  The List's file stays live.
+- **Everywhere:** glass per ADR-114, strings in both catalogues (`site`, `Plans`), status messages
+  announced, 44 px targets under a coarse pointer, no sideways scrolling at 360 px, and a story with
+  axe for each new component and dialog, at phone width too. New web files: `plans/ScenarioBar.tsx`,
+  `plans/PlanChangesPage.tsx`, `plans/PlanScenariosPage.tsx`, `plans/ScenarioCompare.tsx` and
+  `plans/scenarioClient.ts`; `address.ts` gains `scenario`, `a` and `b` and the `changes` and
+  `scenarios` sections.
+
+#### Events, audit and records
+
+Each event is emitted in its write's transaction with the plan as its subject and is audited, as
+`plan.*` and `workflow.draft_saved` are: drafts are the plan's content others see (question 12).
+Webhooks get none, as for `plan.*`. Payloads hold ids, days and team ids, never names.
+
+- `plan.scenario_created`: scenario, name, `from`, drafts copied, `notShown`
+- `plan.scenario_updated`: scenario, changes
+- `plan.scenario_deleted`: scenario, name, drafts
+- `plan.scenario_promoted`: scenario, former main
+- `plan.drafts_set`: scenario, `[{ ticketId, field, from, to }]`, removed, origin
+- `plan.drafts_discarded`: scenario, ticket ids, count
+- `plan.drafts_committed`: scenario, applied ids and keys, refused ids with reasons, `notShown`; its
+  own transaction after the tickets', each of which emits its `ticket.updated`. The contract scenario
+  lists `also: ['ticket.updated']`, as stage 4 brought in.
+
+**The data download** gains `planScenarios` (the scenarios a person made) and `planDrafts` (the
+drafts they last changed), by plan, scenario and ticket id with field and values, no key or summary,
+since the plan or ticket may be hidden from them now, as for capacity. **Erasure rewrites nothing:**
+`created_by` and `updated_by` keep the account's id, which now names the placeholder, as a plan's
+owner does. **A copy of a plan** (stage 8) takes no scenarios or drafts (question 18); a deleted plan
+takes its scenarios and drafts with it.
+
+#### Limits and performance
+
+| Limit | Value | Refusal |
+|---|---|---|
+| Scenarios a plan holds, main included | 20 | `too_many_scenarios` |
+| Drafted tickets a scenario holds (a scheduler preview of a whole listed plan fits) | 10,000 | `too_many_drafts` |
+| Tickets a drafts request holds | 200 | |
+| Tickets an apply request holds; the page loops | 100 | |
+| Applies at once per plan; stale after 10 minutes | 1 | `apply_in_progress` |
+| Change list page; tickets listed as differing | 100; 200 | |
+| Scenario names | 1 to 100 characters | |
+
+PLN-012's bar, by `expectWithinBudget` in `plans.large.test.ts` with a scenario of 2,000 drafts over
+10,000 tickets in every gate (100,000 with `TASKMOOR_LARGE_PLANS=1`): the Timeline, Calendar,
+Capacity and a board with `scenario=` each under 1 s; the comparison under 1 s; a change list page
+under 1 s; applying 100 tickets under 6 s, a target to measure, since each ticket costs what a bulk
+change's does. Enforcing them waits for the user's 2026-11-14 hold on benchmarking.
+
+#### Seams left for T-089f (the auto-scheduler, PLN-004)
+
+- `writeDrafts(trx, { scenarioId, updatedBy, origin, changes })` in `plans/drafts.ts` is the one
+  writer, under the checks and limits above; the scheduler writes `origin: 'scheduler'` into a new or
+  chosen scenario, which is then previewed, compared, made main and applied unchanged.
+- `draftOverlay(scenarioId)` lets it start from a scenario's days; Capacity takes `scenario`, so it
+  reads loads with drafts.
+- `field` is text: a `sprint` kind would apply through the sprint route, and applying maps kinds to
+  requests through one table.
+
+#### What the manual says
+
+When built, `docs/manual/use/multi-track.md` gains **Scenarios and draft changes**: Live against a
+scenario, what can be drafted and how drafts are marked, the change list and its states, applying and
+why a change can be refused, Keep my draft, discarding, scenarios, making one main, comparing, that
+the List and work elsewhere stay live, what is only counted and who may do what. "Not yet in plans"
+loses draft changes and scenarios, and `sources` stay current.
+
+#### Tests
+
+PLN-002 as it should read when built: *Taskmoor shall let a plan's editors hold changes to tickets'
+start and due days and Team values as draft changes in a scenario of the plan, show them on the
+Timeline, the Calendar, Capacity and program boards marked in words, list them with their values when
+drafted, now and drafted, and apply or discard all or chosen tickets' drafts; applying is each
+ticket's own change, with the applier's permissions, and a viewer sees drafts only on the plan's
+tickets they may see.* Acceptance: (1) edits in a scenario do not change tickets until applied;
+(2) applying 3 of 10 tickets' drafts changes only those 3, and the other 7 stay pending; (3) applying
+refuses a ticket with a reason (permission, lock, archived track, changed meanwhile, gone, not valid)
+without stopping the rest; (4) a viewer sees drafts only on tickets the plan shows them, and the rest
+only as a count.
+
+PLN-003 as it should read when built: *Taskmoor shall hold several scenarios per plan, each with its
+own draft changes and one of them main, the only one applied from; compare two side by side, or one
+with the tickets as they are, by the plan's end and each team's end; and make another scenario main.*
+Acceptance: (1) two scenarios with different Team values and days show different end dates; (2) making
+a scenario main makes its drafts the plan's drafts to apply, and keeps the former main's as a scenario.
+
+- `routes/plan-scenarios.test.ts`, `[PLN-002]`: (1) drafts of days and Team leave
+  `GET /tickets/:key`, its `version`, history and events unchanged and write nothing to the change
+  log; the Timeline, Calendar, Capacity and a board with `scenario` show drafted values and without
+  it live ones; touched cells carry no clause; a draft set back to live is removed; changed since
+  drafted, already so and Keep my draft. (2) Ten drafted tickets, apply three: exactly those change,
+  with history naming the applier and three `ticket.updated`; seven stay listed;
+  `plan.drafts_committed`; `all` with `next`. (3) The applier lacks "Schedule tickets" in one of two
+  tracks: those are `no_permission` with the permission and the rest apply; one case each for
+  `locked` (status and field), `track_archived`, `gone` (trashed, hidden and never drafted answer
+  alike), `changed_meanwhile` (a field changed live, and a version raced during the apply) and
+  `invalid` (Team not on the form); refusals stored and listed later; `apply_in_progress` and
+  `not_main`; a draft changed during an apply stays; an apply stopped halfway is finished by the next.
+- `[PLN-002] [QRY-008]`, (4): four viewers (a site administrator, someone who browses one of two
+  tracks, someone who sees the plan and none of its tracks, and someone whose only sight of a hidden
+  track's ticket is a ticket-level grant), with sentinel summaries and days on hidden tickets that
+  appear in no answer, only in `notShown`; non-editors get `edit_plan` on every write; 404 bodies equal a missing id's for a
+  hidden plan and for another plan's scenario; every count with no clause is one a draft touched, and
+  every other equals its search.
+- `[PLN-003]`: (1) scenarios A and B give one outcome's work different Team values and days through
+  `PUT .../drafts`; `compare` shows different plan and team ends, and their differing tickets; (2)
+  promotion swaps `main`, the former main keeps its drafts, applying takes the promoted drafts and the
+  former answers `not_main`. Also: a copy that counts `notShown`, rename and delete with a stale
+  `version`, `main_scenario`, `too_many_scenarios`, `too_many_drafts`, `start_after_due`, 200 per
+  write and 100 per apply.
+- `scopes.test.ts`, `[IAM-007]`: each route's class. `contract.test.ts`, `[AUT-010]`: a scenario per
+  mutating route, with `also` on apply. The audit catalogue test: each new type audited.
+  `privacy.test.ts`: the download lists a person's scenarios and drafts; erasure keeps them with the
+  placeholder. `plans.test.ts`: a copy takes no scenarios. An upgrade fixture for 0110 and the schema
+  golden file. `plans.large.test.ts`: the budgets above.
+- Web: `ScenarioBar.test.tsx` (address, sentences, announcement), `PlanChanges.test.tsx` (rows in
+  words, choosing, applying in batches with the result and focus, refusal words, Keep my draft, cards
+  at phone width with `setViewportWidth()`), `PlanScenarios.test.tsx` (new, rename, delete, make main,
+  compare as a table and as cards), additions to `PlanViews.test.tsx` and `ProgramBoardPage.test.tsx`
+  (in a scenario a drag calls the draft client and never `PATCH`, Draft tags and descriptions in
+  words, the List's notice and no editing in place, touched cells without links), `address.test.ts`,
+  `planExport.test.tsx`; stories with axe.
+- e2e `plan-scenarios.spec.ts`, desktop and phone: make a scenario, drag a bar and see the ticket
+  unchanged on its own page; move a card on the board; apply two of three, one refused for a lock,
+  with its reason; make a second scenario, compare the ends, make it main; on a phone the same through
+  the side panel and **Move…**, with the fixed action bar.
+
+#### Asked by the spec or nearby, not built here
+
+- Drafts of other fields (assignee, estimates, sprint, release, rank, status, parent) and of new
+  tickets; drafts in the List and editing in place as drafts.
+- A release across tracks' date as a draft: stage 4's confirmed change list stays, which departs from
+  stage 4's question 7, whose first answer said "held as a draft once T-089e exists" (question 9).
+- Applying from a scenario other than main, applying a single field, undoing an apply (the ticket's
+  history shows it), applying as a background job.
+- Capacity of a scenario's own, late dependencies and team loads in the comparison, comparing more
+  than two, side-by-side timelines, merging scenarios.
+- Private scenarios, permissions per scenario, live push of drafts and presence, notifications,
+  comments and webhooks about drafts, expiry of old drafts.
+- Saved snapshots of dates (PLN-011, T-089a).
+
+#### Questions for the user (the design takes the first answer each time)
+
+1. **Opening a plan:** shows Live (edits change tickets at once, as now) until someone picks a
+   scenario, kept in the address; or the main scenario when there is one; or the last choice in
+   this browser.
+2. **Who drafts and manages scenarios:** the plan's owner and site administrators; or everyone who
+   sees the plan; or each person in a sandbox of their own.
+3. **Applying from:** the main scenario only (make another main first); or any scenario.
+4. **A ticket changed since drafted:** applied when the drafted fields are still as drafted; or
+   refused whenever the ticket changed at all; or the draft overwrites.
+5. **What can be drafted in 1.0:** start and due days and the Team value; or also the assignee
+   (Capacity by person would then follow drafts); or sprint, release, estimate and rank too.
+6. **What a change is:** one ticket, all its drafted fields together; or each field on its own.
+7. **Counts that drafts touch:** "With 2 draft changes", as text with no link; or beside the live
+   count, which keeps its link.
+8. **Scenarios:** shared with everyone who sees the plan; or private to whoever made them.
+9. **A release across tracks' date:** stays stage 4's confirmed list; or becomes a draft too.
+10. **The List in a scenario:** live, with a notice and no editing in place; or editing in place
+    makes drafts.
+11. **Making a scenario main:** the former main stays as a scenario with its drafts; or its drafts
+    are discarded; or the two merge.
+12. **Events and the comparison:** every draft event audited, and the comparison by ends; or only
+    scenarios, applying and discarding audited; or late dependencies and team loads compared too.
+13. **Following:** applying makes you follow each ticket you change, as any edit and bulk change do;
+    or an apply follows nothing.
+14. **Drafts on tickets an editor is not shown:** they stay, counted, until someone who sees them
+    discards them or the scenario is deleted; or editors may discard them too.
+15. **Two editors drafting one field:** the last write wins; or a version per draft, the second
+    refused.
+16. **Words:** "scenario", "main", "draft change", "Apply" and "Discard"; or "Commit" as the spec
+    says; or other words.
+17. **Limits:** 20 scenarios, 10,000 drafted tickets each, 200 per draft request and 100 per apply;
+    or other numbers.
+18. **A copy of a plan:** no scenarios or drafts; or its scenarios with the drafts its maker is shown.
+
 ### Later stages
 
-Each adds its section here when it starts: draft changes and scenarios (T-089e; PLN-002,
-PLN-003), the auto-scheduler (T-089f; PLN-004), and the hierarchy grid and baselines (T-089a;
-PLN-010, PLN-011), which the user brought into 1.0 on 2026-11-13. Releases across tracks (stage 4),
-duplicating, linking and exporting (stage 8) and the program board with dependency options (stage
-5) are designed above. PLN-002 to PLN-011 move to M1 in the spec with their stage, so nothing lists
-them for 1.0 before they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009 with stage 3,
-PLN-007 with stage 4, and PLN-008 and PLN-013 with stage 5, which builds PLN-013 with the program
-board as the user decided on 2026-11-13 (T-089i).
+Each adds its section here when it starts: the auto-scheduler (T-089f; PLN-004), and the hierarchy
+grid and baselines (T-089a; PLN-010, PLN-011), which the user brought into 1.0 on 2026-11-13.
+Releases across tracks (stage 4), duplicating, linking and exporting (stage 8), the program board
+with dependency options (stage 5) and draft changes and scenarios (stage 6) are designed above.
+PLN-002 to PLN-011 move to M1 in the spec with their stage, so nothing lists them for 1.0 before
+they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009 with stage 3, PLN-007 with stage 4,
+PLN-008 and PLN-013 with stage 5, which builds PLN-013 with the program board as the user decided on
+2026-11-13 (T-089i), and PLN-002 and PLN-003 with stage 6.
 
 ## Options considered
 
@@ -1308,6 +1757,11 @@ board as the user decided on 2026-11-13 (T-089i).
 | The Timeline image captured from the page | One drawing | Past 200 only the rows in view are in the document, and a capture library is a new dependency |
 | The Timeline image on the server, in a headless browser | The same picture everywhere | A browser in every install, for one button |
 | View CSVs on the page from the view's own answer (chosen, stage 8) | The file equals the view, derived days and hidden counts included | No CSV route of their own for API tokens; the answer's JSON already serves them |
+| Drafts as rows per field over live tickets (chosen, stage 6) | Views swap a column; a ticket changed meanwhile is seen field by field; new kinds need no column | Every view joins the overlay |
+| Drafts as a copy of the plan's tickets per scenario | Views read one table | Out of date at once; a copy per viewer, or one that shows hidden tickets |
+| Applying through each ticket's own route, ticket by ticket (chosen, stage 6) | Exactly the checks, locks, history and events of an edit; one refusal stops nothing | Slower than one statement; a stop halfway leaves part applied, which the next apply finishes |
+| Applying all or nothing | Never part applied | One ticket the applier may not change stops the plan, against PLN-002 (3) |
+| Counts that drafts touch shown without a link (chosen, stage 6) | Every link still equals its search | A touched cell cannot be opened as a search |
 
 ## Consequences
 
@@ -1335,6 +1789,10 @@ board as the user decided on 2026-11-13 (T-089i).
   over-capacity would then differ between viewers.
 - Capacity follows the plan's teams as they are now: someone who leaves a team drops out of the
   view at once, and their capacity rows stay until the team leaves the plan or they come back.
+- When stage 6 is built, a viewer of a plan learns how many draft changes sit on tickets it does not
+  show them, though not which. Drafts are the plan's content: they stay through an apply that
+  refuses them and through erasure, until discarded or their scenario goes, and an applier's ticket
+  history, not the plan, records what changed.
 - When stage 4 is built, a viewer of a release across tracks learns how many linked releases and
   how many open tickets are hidden from them, though not which, nor where. Someone who moves its
   date can leave releases out of step, and they stay so until their tracks' administrators act.
