@@ -67,10 +67,11 @@ export async function runAxe() {
  * Controls under 44 px, and controls whose accessible name leaves out words they show (WCAG 2.5.3,
  * T-212). Links inside running text are left out of the first list, as the rule allows, and so is
  * a control whose box is smaller but whose press area holds a 44 px square a press is found to
- * reach (`pressable`). A size listed is the press area drawn (`target`): the box with what its
- * `::before` or `::after` draws over it (T-296), cut where its boxes clip it. One drawn a finger's
- * size that a press does not reach whole, as when another element lies over part of it, is listed
- * with its own size and `covered`.
+ * reach (`pressArea`). A size listed is the press area drawn (`target`): the box with what its
+ * `::before` or `::after` draws over it (T-296), cut where its boxes clip it. When another element
+ * lies over part of it, what is judged and listed is the part left (T-355): its largest rectangle
+ * a press reaches, with `partlyCovered`. One a press reaches nowhere is listed with its own size
+ * and `covered`. With a `minimum` of 0 no control is too small, and only the names are measured.
  */
 export function measureControls(minimum) {
   const CONTROLS = [
@@ -297,16 +298,27 @@ export function measureControls(minimum) {
    * label (`own`), and a control smaller than a finger also through the press area its `::before`
    * or `::after` draws over it, together with its own box (`drawn`, `pseudoBoxes`, T-296). What is
    * drawn is not yet what a press reaches: another element may lie over it, so a control whose
-   * `own` is under a finger is still pressed (`pressable`), and `drawn` only sizes what is listed.
+   * `own` is under a finger is still pressed (`pressArea`), and `drawn` only sizes what is listed.
+   * `area` is the rectangle around all of it in the window, where `pressArea` looks (T-355).
    */
   const target = (el) => {
     const own = el.getBoundingClientRect();
     let width = own.width;
     let height = own.height;
+    let area = { left: own.left, top: own.top, right: own.right, bottom: own.bottom };
+    const grow = (box) => {
+      area = {
+        left: Math.min(area.left, box.left),
+        top: Math.min(area.top, box.top),
+        right: Math.max(area.right, box.right),
+        bottom: Math.max(area.bottom, box.bottom),
+      };
+    };
     for (const label of el.labels ?? []) {
       const box = label.getBoundingClientRect();
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
+      grow(box);
     }
     const round = (n) => Math.round(n * 10) / 10;
     const labelled = { width: round(width), height: round(height) };
@@ -318,9 +330,10 @@ export function measureControls(minimum) {
         if (both.left > both.right + 0.5 || both.top > both.bottom + 0.5) continue;
         width = Math.max(width, Math.max(mine.right, box.right) - Math.min(mine.left, box.left));
         height = Math.max(height, Math.max(mine.bottom, box.bottom) - Math.min(mine.top, box.top));
+        grow(box);
       }
     }
-    return { own: labelled, drawn: { width: round(width), height: round(height) } };
+    return { own: labelled, drawn: { width: round(width), height: round(height) }, area };
   };
 
   /** Whether a press at this point of the window reaches the control, itself or by its label. */
@@ -332,15 +345,57 @@ export function measureControls(minimum) {
     return [...(el.labels ?? [])].some((label) => label === found || label.contains(found));
   };
 
+  /** The largest rectangle of `true` in rows of booleans, as [columns, rows]. */
+  const largestRectangle = (grid) => {
+    const heights = new Array(grid[0]?.length ?? 0).fill(0);
+    let best = [0, 0];
+    for (const row of grid) {
+      row.forEach((hit, i) => {
+        heights[i] = hit ? heights[i] + 1 : 0;
+      });
+      // The widest run at each height, with a stack of rising heights.
+      const stack = [];
+      for (let i = 0; i <= heights.length; i += 1) {
+        const h = i < heights.length ? heights[i] : 0;
+        let from = i;
+        while (stack.length > 0 && stack[stack.length - 1][1] >= h) {
+          const [start, height] = stack.pop();
+          if ((i - start) * height > best[0] * best[1]) best = [i - start, height];
+          from = start;
+        }
+        stack.push([from, h]);
+      }
+    }
+    return best;
+  };
+  /** The side of the largest square of `true` in rows of booleans. */
+  const largestSquare = (grid) => {
+    let above = new Array(grid[0]?.length ?? 0).fill(0);
+    let side = 0;
+    for (const row of grid) {
+      const here = row.map(() => 0);
+      row.forEach((hit, i) => {
+        if (!hit) return;
+        here[i] = 1 + (i === 0 ? 0 : Math.min(above[i], here[i - 1], above[i - 1]));
+        side = Math.max(side, here[i]);
+      });
+      above = here;
+    }
+    return side;
+  };
+
   /**
-   * Whether a finger has a whole `minimum` square to press a control in, however it is drawn: a
-   * box smaller than a finger can still be pressed over more, through a pseudo-element (the
-   * timeline's key links and one-day bars, TR-21) or a label, and a control under another cannot.
-   * The control is scrolled into the window, the press area is followed out from its centre along
-   * both axes with elementFromPoint, and a square of that size inside it is sampled on a 5 x 5
-   * grid. Every scroll position it changed is put back.
+   * What a finger can press of a control, however it is drawn: a box smaller than a finger can
+   * still be pressed over more, through a pseudo-element (the timeline's key links and one-day
+   * bars, TR-21) or a label, and a part another element lies over cannot be pressed (T-355). The
+   * control is scrolled into the window and its press area sampled a pixel apart with
+   * elementFromPoint: the area drawn (`target`), with what a press is found to reach out from the
+   * control's centre along both axes. `pressable` says a whole `minimum` square is reached;
+   * `reached` whether all, part or none of the area drawn is; `uncovered` is the largest rectangle
+   * reached (not measured for one found pressable at once). Every scroll position it changed is
+   * put back.
    */
-  const pressable = (el) => {
+  const pressArea = (el) => {
     const scrolled = [];
     for (let up = el.parentElement; up; up = up.parentElement) {
       scrolled.push([up, up.scrollLeft, up.scrollTop]);
@@ -348,29 +403,75 @@ export function measureControls(minimum) {
     const [windowX, windowY] = [window.scrollX, window.scrollY];
     try {
       el.scrollIntoView({ block: 'center', inline: 'center' });
+      const { area } = target(el);
       const box = el.getBoundingClientRect();
       const cx = box.left + box.width / 2;
       const cy = box.top + box.height / 2;
-      if (!reaches(el, cx, cy)) return false;
       const out = (dx, dy) => {
         let d = 0;
         while (d < minimum && reaches(el, cx + (d + 1) * dx, cy + (d + 1) * dy)) d += 1;
         return d;
       };
-      const [left, right, up, down] = [out(-1, 0), out(1, 0), out(0, -1), out(0, 1)];
-      // Sampled a pixel apart, an area `minimum` across is hit `minimum` times, give or take one.
+      // Where a press reaches past the area drawn (one no pseudo-element's style accounts for).
+      const [left, right, up, down] = reaches(el, cx, cy)
+        ? [out(-1, 0), out(1, 0), out(0, -1), out(0, 1)]
+        : [0, 0, 0, 0];
+      // Most controls a finger can press are found so quickly: a square of that size inside what
+      // the centre reaches, sampled on a 5 x 5 grid. Only the others are sampled all over.
       const side = minimum - 1;
-      if (left + right + 1 < side || up + down + 1 < side) return false;
-      const start = (centre, before, after) =>
-        Math.min(Math.max(centre - side / 2, centre - before), centre + after - side);
-      const x0 = start(cx, left, right);
-      const y0 = start(cy, up, down);
-      for (let i = 0; i <= 4; i += 1) {
-        for (let j = 0; j <= 4; j += 1) {
-          if (!reaches(el, x0 + (i * side) / 4, y0 + (j * side) / 4)) return false;
+      if (left + right >= side && up + down >= side) {
+        const start = (centre, before, after) =>
+          Math.min(Math.max(centre - side / 2, centre - before), centre + after - side);
+        const [x0, y0] = [start(cx, left, right), start(cy, up, down)];
+        let whole = true;
+        for (let i = 0; whole && i <= 4; i += 1) {
+          for (let j = 0; whole && j <= 4; j += 1) {
+            whole = reaches(el, x0 + (i * side) / 4, y0 + (j * side) / 4);
+          }
         }
+        if (whole) return { pressable: true, reached: 'all', uncovered: null };
       }
-      return true;
+      // What is outside the window is not pressed: only what is inside it is looked at.
+      const look = {
+        left: Math.max(0, Math.min(area.left, cx - left)),
+        top: Math.max(0, Math.min(area.top, cy - up)),
+        right: Math.min(window.innerWidth, Math.max(area.right, cx + right + 1)),
+        bottom: Math.min(window.innerHeight, Math.max(area.bottom, cy + down + 1)),
+      };
+      const [width, height] = [look.right - look.left, look.bottom - look.top];
+      if (width <= 0 || height <= 0) {
+        return { pressable: false, reached: 'none', uncovered: { width: 0, height: 0 } };
+      }
+      // A pixel apart, or further apart over a large area so that it stays quick.
+      const step = Math.max(1, Math.ceil(Math.sqrt((width * height) / 10_000)));
+      const [columns, rows] = [Math.ceil(width / step), Math.ceil(height / step)];
+      let [drawn, drawnReached, anyReached] = [0, 0, false];
+      const grid = [];
+      for (let j = 0; j < rows; j += 1) {
+        const y = look.top + (j + 0.5) * step;
+        const row = [];
+        for (let i = 0; i < columns; i += 1) {
+          const x = look.left + (i + 0.5) * step;
+          const hit = reaches(el, x, y);
+          row.push(hit);
+          anyReached ||= hit;
+          if (x >= area.left && x < area.right && y >= area.top && y < area.bottom) {
+            drawn += 1;
+            if (hit) drawnReached += 1;
+          }
+        }
+        grid.push(row);
+      }
+      const [across, tall] = largestRectangle(grid);
+      let reached = 'part';
+      if (!anyReached) reached = 'none';
+      else if (drawn === 0 || drawnReached === drawn) reached = 'all';
+      return {
+        // Sampled a pixel apart, an area `minimum` across is hit `minimum` times, give or take one.
+        pressable: (largestSquare(grid) + 1) * step >= minimum,
+        reached,
+        uncovered: { width: across * step, height: tall * step },
+      };
     } finally {
       for (const [up, left, top] of scrolled) {
         up.scrollLeft = left;
@@ -450,10 +551,18 @@ export function measureControls(minimum) {
       }
       name = name.trim().replace(/\s+/g, ' ');
       const { own, drawn } = target(el);
-      if ((own.width < minimum || own.height < minimum) && !inText(el) && !pressable(el)) {
-        // Drawn a finger's size but not pressed so: something lies over the press area.
-        const covered = drawn.width >= minimum && drawn.height >= minimum;
-        small.push({ role, name: name.slice(0, 80), ...(covered ? { ...own, covered } : drawn) });
+      if ((own.width < minimum || own.height < minimum) && !inText(el)) {
+        const press = pressArea(el);
+        if (!press.pressable) {
+          // Listed by what a press reaches: the area drawn when it reaches all of it, the largest
+          // part left when something lies over the rest (T-355), its own size when none is left.
+          const size = {
+            all: drawn,
+            part: { ...press.uncovered, partlyCovered: true },
+            none: { ...own, covered: true },
+          }[press.reached];
+          small.push({ role, name: name.slice(0, 80), ...size });
+        }
       }
       const seen = words(visibleWords(el));
       const said = words(name).join(' ');

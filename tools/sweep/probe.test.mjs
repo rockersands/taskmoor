@@ -80,14 +80,40 @@ describe('the sweep probe: controls too small for a finger (ADR-033)', () => {
     ]);
   });
 
-  it('[NFR-005] still counts a control whose press area another element covers', () => {
+  it('[NFR-005] still counts a control whose press area another element covers, by the part left', () => {
     drawn([
       { tag: 'a', name: 'Covered', box: [10, 100, 90, 20], press: [0, 100, 152, 44] },
       // Over the key's whole cell but its first 30 px, as a toggle with a z-index would be.
       { tag: 'button', name: 'Over it', box: [30, 100, 122, 44] },
     ]);
     const { small } = measureControls(44);
-    expect(small.map(({ name }) => name)).toEqual(['Covered']);
+    // Its centre is under the other: what is left of it is its first 20 px across (T-355).
+    expect(small).toEqual([
+      { role: 'link', name: 'Covered', width: 20, height: 20, partlyCovered: true },
+    ]);
+  });
+
+  /**
+   * The phone timeline (T-355): the key link "WEB-1", 87 x 20, pressed over its whole name cell
+   * (152 x 44) through its `::after`, with the expand toggle above the cell's left and the sticky
+   * timeline head above its top `headOver` px, as the sweep found them at 375 px.
+   */
+  function phoneTimelineKey(headOver) {
+    drawn([
+      { tag: 'a', name: 'WEB-1', box: [69, 395.6, 87, 20], press: [0, 391.6, 152, 44] },
+      { tag: 'button', name: 'Expand', box: [8, 391.6, 44, 44] },
+      { tag: 'button', name: 'Head', box: [0, 0, 375, 391.6 + headOver] },
+    ]);
+    return measureControls(44).small;
+  }
+
+  it('[NFR-005] judges the part of a press area left uncovered, not all or nothing (T-355)', () => {
+    // The head over the cell's top pixel leaves 100 x 43 beside the toggle: a finger's size.
+    expect(phoneTimelineKey(1)).toEqual([]);
+    // Over its top 4 px, 40 px are left: listed by that part.
+    expect(phoneTimelineKey(4)).toEqual([
+      { role: 'link', name: 'WEB-1', width: 83, height: 40, partlyCovered: true },
+    ]);
   });
 });
 
@@ -195,11 +221,32 @@ describe('the sweep probe: a press area drawn by a pseudo-element (T-296)', () =
     });
   }
 
-  it('[NFR-005] lists a bar whose press area another element lies over, by its own size', () => {
-    // The sticky ticket column over the press area's left half: a press there finds the column.
+  it('[NFR-005] lists a bar whose press area another element lies over by the part left (T-355)', () => {
+    // The sticky ticket column over the press area's left 20 px: a press there finds the column,
+    // and 24 x 44 is left of it.
     bar({ over: [0, 190, 112, 44] });
     expect(measureControls(44).small).toEqual([
+      { role: 'button', name: 'Bar', width: 24, height: 44, partlyCovered: true },
+    ]);
+    // Over all of it, nothing is left: listed by its own size.
+    bar({ over: [0, 190, 200, 44] });
+    expect(measureControls(44).small).toEqual([
       { role: 'button', name: 'Bar', width: 28, height: 24, covered: true },
+    ]);
+  });
+
+  it('[NFR-005] finds the part left away from the control, over a wide press area (T-355)', () => {
+    // A press area 300 x 44 from x 92, sampled 2 px apart for its size; the bar itself, at 100 to
+    // 128, is under the other element each time.
+    const wide = (over) => {
+      bar({ after: { width: '300px' }, press: [92, 190, 300, 44], over: [0, 190, over, 44] });
+      return measureControls(44).small;
+    };
+    // 62 x 44 left at its far end: a finger's size, though not where the bar is drawn.
+    expect(wide(330)).toEqual([]);
+    // 22 x 44 left.
+    expect(wide(370)).toEqual([
+      { role: 'button', name: 'Bar', width: 22, height: 44, partlyCovered: true },
     ]);
   });
 

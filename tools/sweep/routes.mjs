@@ -377,9 +377,15 @@ async function capture(pages, entry, combo, locale, slug) {
     record.sideways = await page.evaluate(measureSideways, combo.width);
     await page.evaluate(AXE);
     record.axe = await atMost(90_000, page.evaluate(runAxe));
-    const controls = await atMost(30_000, page.evaluate(measureControls, MINIMUM_TARGET));
+    // Controls too small count on a phone only: elsewhere no size is too small, which saves sampling
+    // their press areas (T-355).
+    const small = combo.phone && !entry.print;
+    const controls = await atMost(
+      30_000,
+      page.evaluate(measureControls, small ? MINIMUM_TARGET : 0),
+    );
     record.names = controls.names;
-    if (combo.phone && !entry.print) record.small = controls.small;
+    if (small) record.small = controls.small;
     if (combo.phone && combo.skin === 'light') {
       await page.setViewportSize({ width: 360, height: 740 });
       await page.waitForTimeout(150);
