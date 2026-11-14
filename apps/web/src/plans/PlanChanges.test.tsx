@@ -6,6 +6,7 @@ import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
 import { type FakePlanOptions, fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage } from './PlanPage';
+import type { ScenarioClient } from './scenarioClient';
 import { type FakeScenarioOptions, fakeScenarioClient } from './scenarioFixtures';
 
 /**
@@ -23,6 +24,7 @@ function renderChanges(
   hash = '#/plans/12/changes?scenario=1',
   options: FakeScenarioOptions = {},
   planOptions: FakePlanOptions = {},
+  wrap: (client: ScenarioClient) => ScenarioClient = (client) => client,
 ) {
   window.location.hash = hash;
   const plans = fakePlanClient(planOptions);
@@ -40,7 +42,7 @@ function renderChanges(
         id={12}
         section="changes"
         client={plans}
-        scenarios={scenarios}
+        scenarios={wrap(scenarios)}
         search={search}
         list={fakeListClient(search)}
         now={() => new Date('2026-11-04T09:00:00Z')}
@@ -105,6 +107,10 @@ describe('the change list (PLN-002)', () => {
     expect(scenarios.writes.at(-1)).toEqual([{ ticketId: 3, dueDate: '2026-11-21' }]);
     await screen.findByText('The draft of SHOP-3 is kept, against its values now.');
     await waitFor(() => expect(within(rowOf('SHOP-3')).getByText('Ready')).toBeVisible());
+    // Its Keep button is gone: the list's heading holds focus, not the page.
+    expect(
+      screen.getByRole('heading', { name: 'Changes in Main plan, the main scenario' }),
+    ).toHaveFocus();
   });
 
   it('[PLN-002] applies the chosen tickets only, after asking, and the rest stay pending', async () => {
@@ -214,6 +220,64 @@ describe('the change list (PLN-002)', () => {
       ['Faster', true, 1],
       ['Main plan', false, 3],
     ]);
+    // Make main is gone once Faster is main: the list's heading holds focus, not the page.
+    const heading = await screen.findByRole('heading', {
+      name: 'Changes in Faster, the main scenario',
+    });
+    expect(heading).toHaveFocus();
+  });
+
+  it('[PLN-002] starts afresh on another scenario: nothing chosen, no result of the one before', async () => {
+    const user = userEvent.setup();
+    renderChanges();
+    await user.click(await screen.findByRole('checkbox', { name: 'Select SHOP-3' }));
+    await user.click(screen.getByRole('button', { name: 'Apply 1 change' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Change 1 ticket/ })).getByRole('button', {
+        name: 'Apply 1 change',
+      }),
+    );
+    await screen.findByRole('heading', { name: '1 applied, 0 refused' });
+    await user.click(screen.getByRole('checkbox', { name: 'Select SHOP-2' }));
+    const select = screen.getByRole('combobox', { name: 'Scenario' });
+    await user.selectOptions(select, 'Faster');
+    await screen.findByRole('heading', { name: 'Changes in Faster' });
+    // SHOP-2 has a draft in Faster too: it was chosen in Main plan, not here.
+    expect(await screen.findByRole('checkbox', { name: 'Select SHOP-2' })).not.toBeChecked();
+    expect(screen.queryByRole('heading', { name: /applied/ })).toBeNull();
+  });
+
+  it('[PLN-002] never brings back a discarded ticket when a page asked for before answers late', async () => {
+    const user = userEvent.setup();
+    let answer: (() => void) | undefined;
+    // The first page holds SHOP-2; the next one, read before the discard, answers after it.
+    const paged = (client: ScenarioClient): ScenarioClient => ({
+      ...client,
+      changes: async (planId, sid, page = {}) => {
+        const all = await client.changes(planId, sid);
+        if (page.cursor === undefined) {
+          const first = all.changes.filter((c) => c.ticketId <= 2);
+          return { ...all, changes: first, next: 2 };
+        }
+        await new Promise<void>((resolve) => {
+          answer = resolve;
+        });
+        return { ...all, changes: all.changes.filter((c) => c.ticketId > 2), next: null };
+      },
+    });
+    renderChanges('#/plans/12/changes?scenario=1', {}, {}, paged);
+    await user.click(await screen.findByRole('button', { name: 'Show more' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select SHOP-2' }));
+    await user.click(screen.getByRole('button', { name: 'Discard 1 change' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^The drafts of 1 ticket/ })).getByRole('button', {
+        name: 'Discard 1 change',
+      }),
+    );
+    await screen.findByText('The drafts of 1 ticket in Main plan are discarded.');
+    await waitFor(() => expect(screen.queryByRole('link', { name: /^SHOP-2 / })).toBeNull());
+    await act(async () => answer?.());
+    expect(screen.queryByRole('link', { name: /^SHOP-2 / })).toBeNull();
   });
 
   it('[PLN-002] on a phone, shows each ticket as a card and keeps the actions in a bar', async () => {

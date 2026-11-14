@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -54,6 +54,15 @@ export function PlanScenariosPage({
   const [renaming, setRenaming] = useState<ScenarioRow | null>(null);
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Made main or deleted: the row's button goes once the list is read again, so the list's heading
+  // takes focus then.
+  const focusHeading = useRef(false);
+  useEffect(() => {
+    if (!list || !focusHeading.current) return;
+    focusHeading.current = false;
+    heading.current?.focus();
+  }, [list]);
 
   if (failed && !list) {
     return (
@@ -77,6 +86,7 @@ export function PlanScenariosPage({
       return;
     }
     setStatus(t('scenario.promote.done', { name: s.name }));
+    focusHeading.current = true;
     onChanged();
   };
   const remove = async (s: ScenarioRow) => {
@@ -87,13 +97,16 @@ export function PlanScenariosPage({
       throw new Error('refused');
     }
     setStatus(t('scenario.delete.done', { name: s.name }));
+    focusHeading.current = true;
     onChanged();
   };
 
   return (
     <section className="plan-scenarios" aria-labelledby={`${id}-title`}>
       <div className="plan-scenarios-head">
-        <h2 id={`${id}-title`}>{t('scenario.list.title')}</h2>
+        <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
+          {t('scenario.list.title')}
+        </h2>
         {list.editable && (
           <button
             type="button"

@@ -218,8 +218,9 @@ export interface AskFirstProps {
 /**
  * An action that changes something others rely on and asks first (ADR-122 stage 6): Apply and
  * Make main. Pressing it opens the question in its place with the action by name beside Cancel,
- * focus on Cancel; Escape and Cancel put the button back and focus it. Unlike `DangerAction` it
- * removes nothing, so it has the plain look.
+ * focus on Cancel; Escape, Cancel and the answer itself put the button back and focus it (the
+ * caller moves focus on when the button goes). Unlike `DangerAction` it removes nothing, so it has
+ * the plain look.
  */
 export function AskFirst({
   label,
@@ -282,6 +283,8 @@ export function AskFirst({
           type="button"
           className="button-primary"
           onClick={() => {
+            // Focus goes back to the first step; the caller moves it on if that step goes.
+            back.current = true;
             setAsking(false);
             void onConfirm();
           }}

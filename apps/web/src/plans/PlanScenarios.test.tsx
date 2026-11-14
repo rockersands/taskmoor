@@ -101,6 +101,10 @@ describe('a plan’s scenarios (PLN-003)', () => {
     await user.click(within(ask).getByRole('button', { name: 'Delete Steady' }));
     await screen.findByText('Steady is deleted.');
     await waitFor(() => expect(screen.queryByRole('heading', { name: /^Steady/ })).toBeNull());
+    // Its row is gone: the list's heading holds focus, not the page.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Scenarios', level: 2 })).toHaveFocus(),
+    );
   });
 
   it('[PLN-003] makes another scenario main after asking; the former main keeps its drafts', async () => {
@@ -114,6 +118,10 @@ describe('a plan’s scenarios (PLN-003)', () => {
     await user.click(within(ask).getByRole('button', { name: 'Make Faster main' }));
     await screen.findByText('Faster is now main: its drafts are the ones to apply.');
     await screen.findByRole('heading', { name: /^Faster.*Main$/, level: 3 });
+    // Make main is gone from its row: the list's heading holds focus, not the page.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Scenarios', level: 2 })).toHaveFocus(),
+    );
     const list = await scenarios.list(12);
     expect(list.scenarios.map((s) => [s.name, s.main, s.drafts])).toEqual([
       ['Faster', true, 1],
@@ -124,6 +132,21 @@ describe('a plan’s scenarios (PLN-003)', () => {
       ok: false,
       code: 'not_main',
     });
+  });
+
+  it('[PLN-003] gives focus back to Make main when making it main is refused', async () => {
+    const user = userEvent.setup();
+    const { scenarios } = renderScenarios();
+    scenarios.promote = async () => ({ ok: false, code: 'apply_in_progress', fields: {} });
+    const faster = await waitFor(() => itemOf('Faster'));
+    await user.click(within(faster).getByRole('button', { name: 'Make Faster main' }));
+    await user.click(
+      within(within(faster).getByRole('group')).getByRole('button', { name: 'Make Faster main' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Its drafts are being applied now. Try again once that is done.',
+    );
+    expect(within(faster).getByRole('button', { name: 'Make Faster main' })).toHaveFocus();
   });
 
   it('[PLN-003] compares two sides by the plan’s end and each team’s end, in words, as a table', async () => {

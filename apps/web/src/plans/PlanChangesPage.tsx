@@ -48,7 +48,12 @@ interface Applied {
  * desktop it is a table; on a phone each ticket is a card with a finger-sized check box, and an
  * action bar stays at the bottom.
  */
-export function PlanChangesPage({
+export function PlanChangesPage(props: PlanChangesPageProps) {
+  // Each scenario's list afresh: what was chosen, a result shown and pages read stay with theirs.
+  return <ScenarioChanges key={props.scenario?.id ?? 'none'} {...props} />;
+}
+
+function ScenarioChanges({
   planId,
   scenario,
   list,
@@ -69,6 +74,8 @@ export function PlanChangesPage({
   const [applying, setApplying] = useState<Applied | null>(null);
   const [busy, setBusy] = useState(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  // Focus goes here when the control that had it goes: Keep, Make main, Apply while it runs.
+  const heading = useRef<HTMLHeadingElement>(null);
   const words = useChangeWords(data);
   const sid = scenario?.id;
   const editable = list?.editable ?? false;
@@ -124,14 +131,17 @@ export function PlanChangesPage({
       return next;
     });
 
+  /** The next page, onto the list as it is then; a list read again meanwhile wins. */
   const more = async () => {
     if (data.next === null) return;
+    const asked = latest.current;
     const page = await client.changes(planId, scenario.id, { cursor: data.next }).catch(() => null);
+    if (asked !== latest.current) return;
     if (!page) {
       setProblem(t('scenario.changes.failed'));
       return;
     }
-    setData({ ...page, changes: [...data.changes, ...page.changes] });
+    setData((was) => (was ? { ...page, changes: [...was.changes, ...page.changes] } : was));
   };
 
   /** Applies batches until done; one refusal never stops the others (PLN-002 (3)). */
@@ -140,6 +150,8 @@ export function PlanChangesPage({
     const ids = picked.map((c) => c.ticketId);
     const total = which === 'chosen' ? ids.length : data.drafts - data.counts.refused;
     let progress: Applied = { applied: 0, refused: [], total, done: false };
+    // The buttons wait while it runs: the heading holds focus until the result's takes it.
+    heading.current?.focus();
     setApplying(progress);
     setStatus(t('scenario.apply.progress', { done: 0, total }));
     const step = (r: ApplyResult) => {
@@ -246,6 +258,8 @@ export function PlanChangesPage({
       return;
     }
     setStatus(t('scenario.keep.done', { key: c.key }));
+    // Its Keep button goes once the list is read again.
+    heading.current?.focus();
     load();
     onChanged();
   };
@@ -258,6 +272,8 @@ export function PlanChangesPage({
       return;
     }
     setStatus(t('scenario.promote.done', { name: scenario.name }));
+    // Make main goes once the scenarios are read again.
+    heading.current?.focus();
     onChanged();
   };
 
@@ -367,7 +383,7 @@ export function PlanChangesPage({
 
   return (
     <section className="plan-changes" aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>
+      <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
         {t(scenario.main ? 'scenario.changes.titleMain' : 'scenario.changes.title', {
           name: scenario.name,
         })}
