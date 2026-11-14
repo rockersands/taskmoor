@@ -61,6 +61,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | merged | 2026-11-14 | Done: `main` `1bf593c9` |
 | T-273 to T-275 | Mac | merged | 2026-11-14 | Done: `main` `07a56b32` |
 | T-265, T-270, T-240 (with TR-29's mixed dates), T-239, T-247 | Mac | merged | 2026-11-14 | Done: `main` `89c4433b` |
+| T-276, T-277, T-281 | Mac | `wave18m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
