@@ -1,7 +1,7 @@
 ---
 title: "Multi-track"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -10,7 +10,7 @@ attestation: own-words
 Multi-track brings the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
 shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
-**Capacity** and its tracks' **Releases**. Open **Multi-track** in the sidebar, under **Plan and track**.
+**Capacity**, its tracks' **Releases** and its **Program boards**. Open **Multi-track** in the sidebar, under **Plan and track**.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
@@ -91,6 +91,21 @@ dates**, with the days that decide it, and the counts of those not shown. **Only
 narrows the list, and **List of dependencies**, beside the zoom buttons, takes you straight to
 it. Choosing a bar also shows, in its side panel, which of its blockers are late and how many
 are elsewhere.
+
+### Dependency options
+
+A plan counts **Blocks** links always. Under **Settings**, **Dependencies**, its owner can tick
+other link types to count as well, such as **Precedes**. Each is read the way the link reads:
+for "A precedes B", B waits for A, so A is the blocker. A ticked type is drawn, badged, judged late
+and listed exactly like a **Blocks** link, on the Timeline, in its files and on the plan's program
+boards; in the list it shows its own phrase, such as "(precedes)". Two links between the same two
+tickets are one dependency. Untick it and those links stop counting at once.
+
+**Flag dependencies within one sprint** marks each dependency whose two tickets are in the same
+sprint now (one that has not been completed): its line on the Timeline is dotted, and the badge,
+the list and the program board's cards say **Same sprint** in words. Only dependencies between
+tickets you may see are marked, and the sprint is never named. A copy of the plan takes these
+options with it.
 
 ## Teams and capacity
 
@@ -188,6 +203,72 @@ for everyone who sees it, its views and capacity with it; its tickets stay as th
 
 Sharing a plan does not share its tracks or saved searches: someone who may not see a source sees
 nothing from it. Share those as well when they should.
+
+## Program boards
+
+A **program board** lays a plan's work out by team and by period, so the teams that deliver it can
+plan together. Open the plan's **Program boards** tab. A plan holds as many boards as you like,
+one per increment, say, each read only when opened.
+
+- **Rows** are the plan's teams (chosen under **Settings**, **Teams and capacity**), then **Other or
+  no team** for work whose team is empty or a team the plan does not plan with; a card there says
+  its team.
+- **A card's team** is its value in the board's **Team field**. A site administrator adds that
+  field (a shared field of the type Team) once; each board says which one it reads.
+- **Columns** are the plan's own periods, the same ones Capacity counts by, starting from the one
+  that holds the board's first day, after **Not scheduled** for open work with no due date. The
+  period holding today says **Now**.
+- **Which work:** the plan's outcomes and the work under them (features, bugs, chores, to-dos);
+  never subtickets. A ticket sits in the period that holds its own due date, so a board and
+  Capacity always agree. Closed work stays in its period, marked **Closed**.
+- **A cell** shows its first 20 cards, outcomes first, then in rank order; "and 14 more" opens the
+  search that finds all of them, and its count is that search's.
+- The plan's filters apply, and each card shows its dependencies as a badge ("Blocked by 2
+  tickets, 1 late"), with **Dependencies** listed below the board as on the Timeline.
+
+A board gives no access: you see only the cards you may see anyway. Work hidden from you is never
+a card and is not counted in any cell; a blocker hidden from you is counted on the card it holds
+up, never named.
+
+### Moving a card
+
+Drag a card to another cell, or use its **Move…** button, which asks for the team and the period
+(the way for the keyboard, a screen reader and a phone). Moving a card changes the ticket itself,
+as if you had edited it:
+
+- **Another team** sets its Team value; **Other or no team** clears it.
+- **Another period** moves its start and due dates by the same number of days, keeping the due date
+  inside that period (a due date of 31 January moved a month becomes the end of February). From
+  **Not scheduled**, the due date becomes the period's last day. To **Not scheduled**, the due date
+  is cleared and the start stays.
+
+So you need the right to change that ticket: "Schedule tickets" for its dates and the right to edit
+its Team value, in its track. When the move is refused, the board says why in words, and the card
+goes back. Closed cards do not move, and nothing moves on an archived board.
+
+### Working on a board together
+
+Several people can move cards on one board at once. Each move reaches everyone else who has the
+board open within about a second, without reloading, as far as each of them may see that ticket. If
+someone else moved or changed a card after your board last read it, your move is refused rather
+than undoing theirs: the board says "SPA-12 changed while you moved it", shows the card where it is
+now, and you can move it again if you still want to.
+
+Changes to the board itself (its name or periods) show for others the next time their board
+reads, which any moved card brings.
+
+### Making and changing boards
+
+The plan's owner and site administrators choose **New program board**: a name, the Team field,
+the day its first period holds and how many periods it shows (1 to 12). **Edit** changes them;
+**Archive** keeps a finished board readable and moves nothing on it, and **Restore** brings it
+back; **Delete** first says what it does, and removes the board for everyone while its tickets stay
+as they are. A copy of the plan leaves its boards behind.
+
+### On a phone
+
+A board shows one team at a time: choose it from **Team**, and each period is a list of its cards.
+Cards move with their **Move…** button.
 
 ## Releases across tracks
 
@@ -346,10 +427,11 @@ you send it to reads what it holds.
 
 ## Not yet in Multi-track
 
-The program board, draft changes and scenarios, and the auto-scheduler come in later versions. A
-link cannot be named and saved as a view, or made public; files come as CSV and PNG only, by hand,
-with no schedule; and a copy cannot follow its original. Dependencies are the **Blocks** links only:
-other link types do not count as dependencies. Capacity counts work by its due date, in points or
+Draft changes and scenarios, and the auto-scheduler come in later versions. A link cannot be
+named and saved as a view, or made public; files come as CSV and PNG only, by hand, with no
+schedule; and a copy cannot follow its original. A program board draws no lines between its cards
+(its badges and list say the same), shows no one else's cursor, cannot take its columns from each
+team's own sprints, and cannot be downloaded. Capacity counts work by its due date, in points or
 hours: velocity from past sprints, capacity in days or as a percentage of a working week, time set
 aside for leave as its own entry, and copying capacity between periods are not in Multi-track yet.
 Releases across tracks cannot yet be shipped together, have no combined notes, burndown or forecast
