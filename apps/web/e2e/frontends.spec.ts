@@ -118,7 +118,11 @@ test('[OPS-017] (1) a frontend registered by an administrator signs in at once, 
 
   // Removed: refused at once.
   await item.getByRole('button', { name: `Remove ${UNLISTED}` }).click();
-  await item.getByRole('button', { name: 'Remove it' }).click();
+  // Asks first, saying what will happen (D13).
+  await item
+    .getByRole('group', { name: /Its next request is refused\.$/ })
+    .getByRole('button', { name: `Remove ${UNLISTED}` })
+    .click();
   await expect(page.getByRole('status').filter({ hasText: 'was removed' })).toBeVisible();
   await expect(item).toHaveCount(0);
   expect(await refused()).toBe(403);

@@ -246,7 +246,8 @@ by itself.
 Its owner and administrators see **Edit** and **Delete**. **Edit** changes its name and description,
 and can make it end **When its work completes**, which clears its date and moves nothing. If someone
 changed it while you typed, nothing is saved: what you typed stays in the dialog, the page behind it
-reads itself again, and you check it and save again. **Delete** removes the release across tracks and
+reads itself again, and you check it and save again. **Delete**, in the danger colour, asks first;
+it removes the release across tracks and
 leaves all its releases as they are, on their own days.
 
 ### Moving its date

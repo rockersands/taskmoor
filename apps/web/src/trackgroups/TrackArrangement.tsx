@@ -670,6 +670,7 @@ export function TrackArrangement({
           <h2 id={`${id}-delete`} className="section-title">
             {t('trackGroups.delete.title', { name: deleting.name })}
           </h2>
+          {/* What will happen, then the action by name beside Cancel (D13). */}
           <p className="page-note">{t('trackGroups.delete.body')}</p>
           <div className="form-actions">
             <button
@@ -687,7 +688,7 @@ export function TrackArrangement({
                 );
               }}
             >
-              {t('trackGroups.delete.do')}
+              {t('trackGroups.delete.do', { name: deleting.name })}
             </button>
             <button type="button" className="button-secondary" onClick={() => setDeleting(null)}>
               {t('trackGroups.cancel')}

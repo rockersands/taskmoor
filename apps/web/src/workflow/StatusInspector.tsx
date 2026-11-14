@@ -1,7 +1,8 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useId } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { DangerAction } from '../shell/DangerAction';
 import {
   type Stage,
   type StatusPermissions,
@@ -49,8 +50,6 @@ export function StatusInspector({
   const t = useT();
   const intl = useIntl();
   const id = useId();
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
   const initial = definition.initialStatusId === statusId;
   const name = names.status(statusId);
   const list = (ids: number[]) => intl.formatList(ids.map((x) => names.transition(x)));
@@ -61,10 +60,6 @@ export function StatusInspector({
   const restricted = definition.statusPermissions?.[String(statusId)];
   const restrictedActions = ACTIONS.filter(([action]) => restricted?.[action] !== undefined);
   const removal = statusRemoval(definition, statusId);
-
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
 
   return (
     <section className="glass-card workflow-panel" aria-labelledby={`${id}-title`}>
@@ -108,48 +103,38 @@ export function StatusInspector({
       <div className="workflow-danger">
         {initial ? (
           <p className="form-hint">{t('admin.workflow.status.removeInitial')}</p>
-        ) : confirming ? (
-          <div className="token-confirm">
-            <p id={`${id}-confirm`}>{t('admin.workflow.status.confirmRemove', { name })}</p>
-            {removal.removed.length > 0 && (
-              <p>
-                {t('admin.workflow.status.removesTransitions', {
-                  count: removal.removed.length,
-                  names: list(removal.removed.map((x) => x.id)),
-                })}
-              </p>
-            )}
-            {removal.trimmed.length > 0 && (
-              <p>
-                {t('admin.workflow.status.trimsTransitions', {
-                  count: removal.trimmed.length,
-                  names: list(removal.trimmed.map((x) => x.id)),
-                })}
-              </p>
-            )}
-            <p>{t('admin.workflow.status.ticketsMove', { name })}</p>
-            <div className="token-confirm-actions">
-              <button
-                ref={confirmButton}
-                type="button"
-                className="button-danger"
-                onClick={onRemove}
-              >
-                {t('admin.workflow.status.confirmRemoveButton')}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setConfirming(false)}
-              >
-                {t('admin.workflow.cancel')}
-              </button>
-            </div>
-          </div>
         ) : (
-          <button type="button" className="button-secondary" onClick={() => setConfirming(true)}>
-            {t('admin.workflow.status.remove', { name })}
-          </button>
+          // Asks first, saying what will happen (D13): the transitions it takes along, and that
+          // its tickets move when the draft is published.
+          <DangerAction
+            label={t('admin.workflow.status.remove', { name })}
+            outcome={
+              <>
+                {t('admin.workflow.status.confirmRemove', { name })}
+                {removal.removed.length > 0 && (
+                  <>
+                    {' '}
+                    {t('admin.workflow.status.removesTransitions', {
+                      count: removal.removed.length,
+                      names: list(removal.removed.map((x) => x.id)),
+                    })}
+                  </>
+                )}
+                {removal.trimmed.length > 0 && (
+                  <>
+                    {' '}
+                    {t('admin.workflow.status.trimsTransitions', {
+                      count: removal.trimmed.length,
+                      names: list(removal.trimmed.map((x) => x.id)),
+                    })}
+                  </>
+                )}{' '}
+                {t('admin.workflow.status.ticketsMove', { name })}
+              </>
+            }
+            confirmLabel={t('admin.workflow.status.remove', { name })}
+            onConfirm={onRemove}
+          />
         )}
       </div>
     </section>

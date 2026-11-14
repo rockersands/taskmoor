@@ -117,7 +117,11 @@ test('[IAM-008] the administrator makes a group, adds a person, nests a group an
     const manage = page.getByRole('button', { name: `Manage ${name}` });
     if ((await manage.getAttribute('aria-expanded')) !== 'true') await manage.click();
     await page.getByRole('button', { name: `Delete group ${name}` }).click();
-    await page.getByRole('button', { name: 'Yes, delete' }).click();
+    // Asks first, saying what will happen (D13).
+    await page
+      .getByRole('group', { name: /Its members stay; permissions given to it go\.$/ })
+      .getByRole('button', { name: `Delete group ${name}` })
+      .click();
     await expect(page.getByText(`${name} was deleted.`)).toBeVisible();
   }
 });

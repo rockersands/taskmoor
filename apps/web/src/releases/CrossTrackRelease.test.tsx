@@ -498,15 +498,20 @@ describe('releases across tracks (PLN-007)', () => {
 
   it('[PLN-007] asks before deleting, and answers one it may not see as not found', async () => {
     const user = userEvent.setup();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const client = renderPage();
     const remove = vi.spyOn(client, 'remove');
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
-    expect(confirm).toHaveBeenCalledWith(
-      'Delete Spring launch? Its releases stay as they are, and free to join another.',
-    );
+    const trigger = await screen.findByRole('button', { name: 'Delete' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); Escape gives the focus back, sending nothing.
+    const question = screen.getByRole('group', {
+      name: 'Delete Spring launch? Its releases stay as they are, and free to join another.',
+    });
+    expect(within(question).getByRole('button', { name: 'Delete Spring launch' })).toBeVisible();
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus();
     expect(remove).not.toHaveBeenCalled();
-    confirm.mockRestore();
     const missing = {
       ...fakeCrossTrackClient(),
       get: async () => {

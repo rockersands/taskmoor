@@ -482,6 +482,11 @@ test('[IAM-007] a person creates an API token on the Account page, uses it and r
   await tokens.getByRole('button', { name: 'Done' }).click();
   await expect(tokens.getByLabel('New token', { exact: true })).toHaveCount(0);
   await tokens.getByRole('button', { name: 'Revoke E2E script' }).click();
+  // Asks first, saying what will happen (D13).
+  await tokens
+    .getByRole('group', { name: /^Revoke E2E script\?/ })
+    .getByRole('button', { name: 'Revoke E2E script' })
+    .click();
   await expect(tokens.getByText('Revoked E2E script.')).toBeVisible();
   const item = tokens.getByRole('listitem').filter({ hasText: 'E2E script' });
   await expect(item).toContainText('Revoked');
@@ -601,6 +606,11 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
 
   // Deactivating the service account stops every token at once.
   await page.getByRole('button', { name: 'Deactivate E2E robot' }).click();
+  // Asks first, saying what stops (D13).
+  await page
+    .getByRole('group', { name: /^E2E robot stops working at once/ })
+    .getByRole('button', { name: 'Deactivate E2E robot' })
+    .click();
   await expect(page.getByRole('button', { name: 'Reactivate E2E robot' })).toBeVisible();
   for (const token of [first, second]) {
     expect(await (await use(token)).json()).toEqual({

@@ -212,6 +212,35 @@ describe('a dashboard (M1-064)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
   });
 
+  it('[RPT-004] its owner deletes it only after saying what goes (D13)', async () => {
+    const user = userEvent.setup();
+    const client = fakeDashboardClient();
+    let refuse = true;
+    const remove = client.remove;
+    client.remove = async (id) => {
+      if (refuse) throw new ApiError(500, {});
+      return remove(id);
+    };
+    open({ client });
+    await user.click(await screen.findByRole('button', { name: 'Edit dashboard' }));
+    const trigger = screen.getByRole('button', { name: 'Delete dashboard' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Delete the dashboard Checkout team? Whoever it is shared with loses it too, and this cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete Checkout team' }));
+    // Refused: the reason shows and the question stays, to try again.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The dashboard could not be deleted.',
+    );
+    refuse = false;
+    await user.click(within(question).getByRole('button', { name: 'Delete Checkout team' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/dashboards'));
+    expect(client.dashboards.some((d) => d.id === 5)).toBe(false);
+  });
+
   it('[RPT-004] says when someone else saved first', async () => {
     const user = userEvent.setup();
     const client = fakeDashboardClient();

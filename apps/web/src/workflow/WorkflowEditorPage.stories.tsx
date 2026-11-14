@@ -117,7 +117,7 @@ export const StatusSelected: Story = {
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Remove Under review from the workflow' }),
     );
-    await expect(canvas.getByRole('button', { name: 'Remove status' })).toHaveFocus();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };
 

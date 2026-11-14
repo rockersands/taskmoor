@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { PageHeader } from '../shell/PageHeader';
 import {
   type ConfigurationClient,
@@ -29,6 +30,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const nameId = useId();
   const workflowId = useId();
   const notAdmin = useNotSetupAdmin();
@@ -93,6 +95,7 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.maps.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -226,8 +229,10 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
                       types={types}
                       onChanged={said}
                       onDeleted={(deleted) => {
+                        // The map's row goes: the page's heading takes the focus.
                         setOpen(null);
                         said(t('admin.maps.deleted', { name: deleted }));
+                        title.current?.focus();
                       }}
                       onProblem={(error) => setProblem(refusal(error))}
                     />
@@ -265,7 +270,6 @@ function MapPanel({
   const [fallback, setFallback] = useState('');
   const [entries, setEntries] = useState<{ ticketTypeId: number; workflowId: number }[]>([]);
   const [newType, setNewType] = useState('');
-  const [confirming, setConfirming] = useState(false);
 
   const show = (found: WorkflowMap) => {
     setMap(found);
@@ -393,39 +397,24 @@ function MapPanel({
         <button type="submit" className="button-primary">
           {t('admin.maps.save')}
         </button>
-        {!map.isDefault &&
-          (confirming ? (
-            <>
-              <span className="people-confirm">
-                {t('admin.maps.confirmDelete', { name: map.name })}
-              </span>
-              <button
-                type="button"
-                className="button-danger"
-                onClick={() =>
-                  void client.deleteWorkflowMap(id).then(() => onDeleted(map.name), onProblem)
-                }
-              >
-                {t('admin.maps.confirmYes')}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setConfirming(false)}
-              >
-                {t('admin.maps.confirmNo')}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="button-secondary"
-              aria-label={t('admin.maps.deleteOf', { name: map.name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('admin.maps.delete')}
-            </button>
-          ))}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        {!map.isDefault && (
+          <DangerAction
+            label={t('admin.maps.delete')}
+            name={t('admin.maps.deleteOf', { name: map.name })}
+            outcome={t('admin.maps.confirmDelete', { name: map.name })}
+            confirmLabel={t('admin.maps.deleteOf', { name: map.name })}
+            onConfirm={async () => {
+              try {
+                await client.deleteWorkflowMap(id);
+              } catch (error) {
+                onProblem(error);
+                throw error;
+              }
+              onDeleted(map.name);
+            }}
+          />
+        )}
       </div>
     </form>
   );

@@ -144,16 +144,23 @@ describe('the comments section (M1-018)', () => {
     expect(client.calls.find((c) => c.action === 'edit')?.args[0]).toBe(102);
     expect((await items())[1]?.textContent).toContain('Merged.');
 
+    const trigger = within(panel()).getAllByRole('button', {
+      name: /^Delete the comment by Ada Lovelace/,
+    })[1] as HTMLElement;
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13): the focus on Cancel.
+    const question = within(panel()).getByRole('group', {
+      name: 'Delete this comment? It disappears from the ticket for everyone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.click(
-      within(panel()).getAllByRole('button', {
-        name: /^Delete the comment by Ada Lovelace/,
-      })[1] as HTMLElement,
+      within(question).getByRole('button', { name: /^Delete the comment by Ada Lovelace/ }),
     );
-    expect(within(panel()).getByText('Delete this comment?')).toBeVisible();
-    await user.click(within(panel()).getByRole('button', { name: 'Yes, delete' }));
     expect(await within(panel()).findByText('Comment deleted.')).toBeInTheDocument();
     expect(await items()).toHaveLength(2);
     expect(client.calls.at(-1)).toEqual({ action: 'remove', args: [103] });
+    expect(within(panel()).getByRole('heading', { name: 'Comments' })).toHaveFocus();
   });
 
   it('[CORE-020] adds and removes reactions', async () => {

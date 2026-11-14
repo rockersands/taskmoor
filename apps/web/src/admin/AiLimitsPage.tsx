@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { FEATURE_NAMES, useFeatureName } from '../ai/DataStatement';
 import { ApiError, api } from '../api/client';
@@ -6,6 +6,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import type { AiLimit } from './AiUsagePage';
@@ -135,7 +136,7 @@ export function AiLimitsPage({ client = aiLimitsClient }: { client?: AiLimitsCli
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
   const failed = () => setProblem(t('admin.aiLimits.failedAction'));
 
@@ -179,7 +180,8 @@ export function AiLimitsPage({ client = aiLimitsClient }: { client?: AiLimitsCli
 }
 
 interface Feedback {
-  said: (text: string) => void;
+  /** Says what happened and loads the page again; the promise settles once it is loaded. */
+  said: (text: string) => Promise<void>;
   failed: () => void;
   client: AiLimitsClient;
 }
@@ -188,9 +190,10 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
   const t = useT();
   const id = useId();
   const [adding, setAdding] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
   return (
     <section aria-labelledby={id} className="glass-card admin-panel">
-      <h2 id={id} className="section-title">
+      <h2 id={id} ref={heading} tabIndex={-1} className="section-title">
         {t('admin.aiUsage.limits')}
       </h2>
       <p className="page-note">{t('admin.aiLimits.limitsHint')}</p>
@@ -201,7 +204,14 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
       ) : (
         <ul className="people-list">
           {limits.map((limit) => (
-            <LimitRow key={limit.id} limit={limit} client={client} said={said} failed={failed} />
+            <LimitRow
+              key={limit.id}
+              limit={limit}
+              client={client}
+              said={said}
+              failed={failed}
+              onDeleted={() => heading.current?.focus()}
+            />
           ))}
         </ul>
       )}
@@ -230,12 +240,21 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
   );
 }
 
-function LimitRow({ limit, client, said, failed }: Feedback & { limit: StoredLimit }) {
+function LimitRow({
+  limit,
+  client,
+  said,
+  failed,
+  onDeleted,
+}: Feedback & {
+  limit: StoredLimit;
+  /** The limit is gone: the list's heading takes the focus. */
+  onDeleted: () => void;
+}) {
   const t = useT();
   const intl = useIntl();
   const featureName = useFeatureName();
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const what =
     limit.scope === 'workspace'
       ? t('admin.aiUsage.scope.workspace')
@@ -270,50 +289,32 @@ function LimitRow({ limit, client, said, failed }: Feedback & { limit: StoredLim
         </p>
       </div>
       <div className="people-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">{t('admin.aiLimits.confirmDelete', { what })}</span>
-            <button
-              type="button"
-              className="button-danger people-action"
-              onClick={() => {
-                setConfirming(false);
-                client
-                  .deleteLimit(limit.id)
-                  .then(() => said(t('admin.aiLimits.limitDeleted')), failed);
-              }}
-            >
-              {t('admin.permissions.confirmYes')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              onClick={() => setConfirming(false)}
-            >
-              {t('admin.permissions.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-expanded={editing}
-              aria-label={t('admin.aiLimits.changeLimit', { what, period })}
-              onClick={() => setEditing(!editing)}
-            >
-              {t('admin.aiLimits.change')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('admin.aiLimits.deleteLimit', { what, period })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('admin.aiLimits.delete')}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-expanded={editing}
+          aria-label={t('admin.aiLimits.changeLimit', { what, period })}
+          onClick={() => setEditing(!editing)}
+        >
+          {t('admin.aiLimits.change')}
+        </button>
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.aiLimits.delete')}
+          name={t('admin.aiLimits.deleteLimit', { what, period })}
+          outcome={t('admin.aiLimits.confirmDelete', { what })}
+          confirmLabel={t('admin.aiLimits.deleteLimit', { what, period })}
+          onConfirm={async () => {
+            try {
+              await client.deleteLimit(limit.id);
+            } catch (error) {
+              failed();
+              throw error;
+            }
+            await said(t('admin.aiLimits.limitDeleted'));
+            onDeleted();
+          }}
+        />
       </div>
       {editing && (
         <div className="webhook-panel">

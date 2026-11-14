@@ -155,7 +155,10 @@ for (const backend of BACKENDS) {
 
     // Delete, confirmed.
     await panel.getByRole('button', { name: 'Delete notes.txt' }).click();
-    await panel.getByRole('button', { name: 'Yes, delete' }).click();
+    await panel
+      .getByRole('group', { name: 'Delete notes.txt for good?' })
+      .getByRole('button', { name: 'Delete notes.txt' })
+      .click();
     await expect(panel.getByText('notes.txt deleted.')).toBeVisible();
     await expect(panel.getByRole('link', { name: 'Download notes.txt' })).toBeHidden();
     await expect(panel.getByText('2 attachments')).toBeVisible();

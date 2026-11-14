@@ -88,15 +88,22 @@ describe('the frontends page (M1-108)', () => {
   it('[OPS-017] removes a frontend after a confirmation', async () => {
     const user = userEvent.setup();
     renderPage();
+    const trigger = await screen.findByRole('button', { name: 'Remove https://board.example.org' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13): the focus on Cancel.
+    const confirm = screen.getByRole('group', {
+      name: 'Remove https://board.example.org? Its next request is refused.',
+    });
+    expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.click(
-      await screen.findByRole('button', { name: 'Remove https://board.example.org' }),
+      within(confirm).getByRole('button', { name: 'Remove https://board.example.org' }),
     );
-    const confirm = screen.getByRole('group', { name: /Remove https:\/\/board\.example\.org\?/ });
-    await user.click(within(confirm).getByRole('button', { name: 'Remove it' }));
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'https://board.example.org' })).toBeNull(),
     );
     expect(screen.getByRole('status')).toHaveTextContent('https://board.example.org was removed.');
+    expect(screen.getByRole('heading', { name: 'Registered frontends' })).toHaveFocus();
   });
 
   it('[OPS-017] tells other people it is for site administrators', async () => {

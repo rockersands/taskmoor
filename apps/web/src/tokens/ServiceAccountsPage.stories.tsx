@@ -53,6 +53,19 @@ export const Rotated: Story = {
   },
 };
 
+/** Deactivate asks first, saying what stops (D13): the focus on Cancel, the safe choice. */
+export const ConfirmingDeactivate: Story = {
+  args: { client: fakeServiceAccountsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Deactivate Release robot' }));
+    await expect(
+      canvas.getByRole('group', { name: /^Release robot stops working at once/ }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
 export const NoAccounts: Story = {
   args: { client: fakeServiceAccountsClient({}, { accounts: [], tokens: [] }) },
 };

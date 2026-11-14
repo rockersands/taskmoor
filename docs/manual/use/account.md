@@ -201,7 +201,8 @@ token never does more than you may, and stops working when it expires or you rev
    program's secret store, then press **Done**.
 
 The list shows each token's state (**Active**, **Expired**, **Revoked** or **Replaced**), its
-scopes, when it was created, last used and expires. **Revoke** stops a token at once.
+scopes, when it was created, last used and expires. **Revoke** stops a token at once, after
+asking: programs using it stop working, and a revoked token cannot be used again.
 Administrators manage every token and service accounts on their own pages: see [API tokens and
 service accounts](../admin/api-tokens.md).
 

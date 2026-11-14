@@ -300,25 +300,37 @@ describe('directory administration (M1-082)', () => {
   it('[IAM-005] deletes a directory only after confirmation, and explains the last administrator', async () => {
     const user = userEvent.setup();
     let refuse = true;
+    let deleted = false;
     const calls = openPage({
-      'DELETE /directories/1': () =>
-        refuse ? jsonResponse(409, { error: 'last_admin' }) : noContent(),
+      'GET /directories': () =>
+        jsonResponse(200, {
+          directories: deleted ? [LAB] : [HEAD_OFFICE, LAB],
+          presets: PRESETS,
+        }),
+      'DELETE /directories/1': () => {
+        if (refuse) return jsonResponse(409, { error: 'last_admin' });
+        deleted = true;
+        return noContent();
+      },
     });
     const office = await directoryItem('Head office');
-    await user.click(within(office).getByRole('button', { name: 'Delete Head office' }));
-    expect(
-      within(office).getByText(
-        'Delete Head office? The 1,180 accounts it manages are deactivated and keep their work. Its groups stay as Taskmoor groups.',
-      ),
-    ).toBeVisible();
-    expect(within(office).getByRole('button', { name: 'Delete directory' })).toHaveFocus();
-    await user.click(within(office).getByRole('button', { name: 'Delete directory' }));
+    const trigger = within(office).getByRole('button', { name: 'Delete Head office' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13): the focus on Cancel, the safe choice.
+    const question = within(office).getByRole('group', {
+      name: 'Delete Head office? The 1,180 accounts it manages are deactivated and keep their work. Its groups stay as Taskmoor groups.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(within(question).getByRole('button', { name: 'Delete Head office' }));
     expect(await within(office).findByRole('alert')).toHaveTextContent(
       'manages the last active site administrator',
     );
+    // Refused: the question stays open, to try again.
     refuse = false;
-    await user.click(within(office).getByRole('button', { name: 'Delete directory' }));
+    await user.click(within(question).getByRole('button', { name: 'Delete Head office' }));
     expect(await screen.findByText('Deleted Head office.')).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: 'Directories' })).toHaveFocus();
     expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(2);
   });
 

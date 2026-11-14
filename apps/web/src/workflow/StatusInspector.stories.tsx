@@ -51,7 +51,9 @@ export const ConfirmingRemoval: Story = {
     await userEvent.click(
       canvas.getByRole('button', { name: 'Remove Under review from the workflow' }),
     );
-    await expect(canvas.getByText(/It also removes 3 transitions/)).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Remove status' })).toHaveFocus();
+    await expect(
+      canvas.getByRole('group', { name: /It also removes 3 transitions/ }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };

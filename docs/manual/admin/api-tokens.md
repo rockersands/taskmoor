@@ -61,7 +61,9 @@ administration) may ask for it; others get `scope_not_allowed`.
 
 Each token in the list shows its status (**Active**, **Expired**, **Revoked** or **Replaced**),
 its scopes, when it was created, when it was last used and from which address, and when it
-expires. To stop a token, select **Revoke**. It stops working at once.
+expires. To stop a token, select **Revoke**: in the danger colour, it first says that programs
+using the token stop working at once and that a revoked token cannot be used again. **Revoke**
+and the token's name, beside **Cancel**, does it.
 
 The Account page does not rotate tokens yet. Revoke the old token and create a new one, or call
 `POST /api/v1/account/tokens/<id>/rotate` from a signed-in browser session (see
@@ -88,6 +90,10 @@ accounts**:
 2. In the list, select **Tokens** next to the account. The **New token** form is the same as
    on the Account page, with **Administration** and **SCIM provisioning** on offer.
 3. Copy the new token when it is shown.
+
+**Deactivate**, beside **Tokens**, is in the danger colour and asks first, saying how many of the
+account's tokens stop working at once; no new token can be issued until **Reactivate**. **Revoke**
+on one of its tokens asks the same way as on the Account page.
 
 Because service accounts are not in the people list, add one to a group through the API:
 `PUT /api/v1/groups/<group id>/members/<service account id>`. The service account's id is in

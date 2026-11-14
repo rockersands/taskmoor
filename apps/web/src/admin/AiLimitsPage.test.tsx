@@ -127,9 +127,18 @@ describe('AI limits and prices (UI-T19)', () => {
       action: 'updateLimit',
       args: [1, { amount: 300000 }],
     });
-    await user.click(screen.getByRole('button', { name: 'Delete the limit: Each person, Day' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = screen.getByRole('button', { name: 'Delete the limit: Each person, Day' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = screen.getByRole('group', {
+      name: 'Delete the limit on Each person? AI calls it stops can run again.',
+    });
+    await user.click(
+      within(question).getByRole('button', { name: 'Delete the limit: Each person, Day' }),
+    );
     expect(await screen.findByText('The limit was deleted.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Spend limits' })).toHaveFocus();
   });
 
   it('[OPS-020] sets a rate, and goes back to the list price', async () => {

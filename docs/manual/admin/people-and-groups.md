@@ -292,7 +292,9 @@ restrict who sees tickets, or share dashboards and saved searches with them.
   then select **Add**. **Remove** takes a person out.
 - Under **Groups inside** a group, **Put a group inside** and **Choose a group**. The page also
   says which groups this one is inside.
-- **Delete group** asks to confirm. Its members stay; permissions given to the group go.
+- **Delete group**, in the danger colour, first says what will happen: its members stay;
+  permissions given to the group go. **Delete group** and its name, beside **Cancel**, does it, and
+  the page's heading takes the focus.
 
 Renaming a group is done through the API (`PATCH /api/v1/groups/:id`); the page does not
 rename yet.
@@ -347,8 +349,8 @@ On **Administration** > **Teams**:
 - Under **Members of** a team, **Add a person**: type two letters or more of a name or email,
   then select **Add**. **Remove** takes a person out. Members are people: service accounts and
   deactivated people cannot be added, and a deactivated member shows as deactivated.
-- **Delete team** asks to confirm. Boards and areas let go of the team, and Team fields that
-  named it become empty. The people stay.
+- **Delete team**, in the danger colour, first says what will happen: boards and areas let go of
+  the team, and Team fields that named it become empty. The people stay.
 
 Everyone who is signed in can read teams and their members through the API, for pickers and
 the Team field; only site administrators change them. Teams travel in the

@@ -190,10 +190,11 @@ Site administrators open **Administration** > **Visibility policies**:
    it too.
 4. On a level, choose **Who** and press **Add** to add a member: a role, a group, a person, the track's
    owner, the requester, the assignee, anyone signed in, or anyone. **Remove** takes a member away.
-5. **Delete level**: when tickets are at that level, the page says how many and asks where they go,
+5. **Delete level**, in the danger colour, asks first. When tickets are at that level, the page then says how many and asks where they go,
    under **Move them to**: another level, or no level, which shows them to everyone who sees the track.
    The ticket's history records it.
-6. **Delete policy** works only when no track uses it.
+6. **Delete policy** works only when no track uses it. It asks first, saying that its levels go
+   with it.
 
 A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses), which
 configuration administrators can use too.

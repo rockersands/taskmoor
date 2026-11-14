@@ -1,10 +1,11 @@
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import type { Grantee, Named } from './client';
@@ -38,7 +39,8 @@ function memberName(t: Translate, member: VisibilityMember): string {
 }
 
 interface Feedback {
-  said: (text: string) => void;
+  /** Says what happened and loads the page again; the promise settles once it is loaded. */
+  said: (text: string) => Promise<void>;
   failed: (error: unknown) => void;
 }
 
@@ -57,6 +59,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -89,7 +92,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
   const failed = (error: unknown) => {
     const code =
@@ -113,6 +116,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.visibility.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -156,7 +160,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
                   client={client}
                   said={(text) => {
                     creating.close();
-                    said(text);
+                    return said(text);
                   }}
                   failed={failed}
                   onCancel={creating.close}
@@ -176,6 +180,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
                     groups={state.groups}
                     said={said}
                     failed={failed}
+                    onDeleted={() => title.current?.focus()}
                   />
                 ))
               )}
@@ -236,10 +241,16 @@ function PolicyPanel({
   groups,
   said,
   failed,
-}: Feedback & Lists & { policy: VisibilityPolicy }) {
+  onDeleted,
+}: Feedback &
+  Lists & {
+    policy: VisibilityPolicy;
+    /** The policy is gone: the page's heading takes the focus. */
+    onDeleted: () => void;
+  }) {
   const t = useT();
   const id = useId();
-  const [confirming, setConfirming] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
   const [levelName, setLevelName] = useState('');
   const addLevel = (event: FormEvent) => {
     event.preventDefault();
@@ -252,7 +263,7 @@ function PolicyPanel({
   };
   return (
     <section aria-labelledby={`${id}-title`} className="glass-card admin-panel">
-      <h2 id={`${id}-title`} className="section-title">
+      <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="section-title">
         {policy.name}
       </h2>
       {policy.description && <p className="page-note">{policy.description}</p>}
@@ -302,6 +313,7 @@ function PolicyPanel({
               groups={groups}
               said={said}
               failed={failed}
+              onDeleted={() => heading.current?.focus()}
             />
           ))}
         </ul>
@@ -326,44 +338,23 @@ function PolicyPanel({
         </button>
       </form>
       <div className="people-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t('admin.visibility.confirmDeletePolicy', { name: policy.name })}
-            </span>
-            <button
-              type="button"
-              className="button-danger people-action"
-              onClick={() => {
-                setConfirming(false);
-                client
-                  .deletePolicy(policy.id)
-                  .then(
-                    () => said(t('admin.visibility.policyDeleted', { name: policy.name })),
-                    failed,
-                  );
-              }}
-            >
-              {t('admin.permissions.confirmYes')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              onClick={() => setConfirming(false)}
-            >
-              {t('admin.permissions.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="button-secondary people-action"
-            aria-label={t('admin.visibility.deletePolicyOf', { name: policy.name })}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.visibility.deletePolicy')}
-          </button>
-        )}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.visibility.deletePolicy')}
+          name={t('admin.visibility.deletePolicyOf', { name: policy.name })}
+          outcome={t('admin.visibility.confirmDeletePolicy', { name: policy.name })}
+          confirmLabel={t('admin.visibility.deletePolicyOf', { name: policy.name })}
+          onConfirm={async () => {
+            try {
+              await client.deletePolicy(policy.id);
+            } catch (error) {
+              failed(error);
+              throw error;
+            }
+            await said(t('admin.visibility.policyDeleted', { name: policy.name }));
+            onDeleted();
+          }}
+        />
       </div>
     </section>
   );
@@ -378,39 +369,53 @@ function LevelRow({
   groups,
   said,
   failed,
-}: Feedback & Lists & { policy: VisibilityPolicy; level: VisibilityLevel; index: number }) {
+  onDeleted,
+}: Feedback &
+  Lists & {
+    policy: VisibilityPolicy;
+    level: VisibilityLevel;
+    index: number;
+    /** The level is gone: its policy's heading takes the focus. */
+    onDeleted: () => void;
+  }) {
   const t = useT();
   const id = useId();
+  const row = useRef<HTMLLIElement>(null);
+  const replaceSelect = useRef<HTMLSelectElement>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(level.name);
   const [description, setDescription] = useState(level.description);
-  /** Deleting: asking first, or how many tickets need another level. */
-  const [deleting, setDeleting] = useState<null | 'ask' | { tickets: number }>(null);
+  /** How many tickets need another level, once the server said the level is in use. */
+  const [deleting, setDeleting] = useState<null | { tickets: number }>(null);
   const [replacement, setReplacement] = useState('none');
   const others = policy.levels.filter((l) => l.id !== level.id);
-  const remove = (replaceWith?: number | 'none') => {
-    client.deleteLevel(policy.id, level.id, replaceWith).then(
-      () => {
-        setDeleting(null);
-        said(t('admin.visibility.levelDeleted', { name: level.name }));
-      },
-      (error: unknown) => {
-        const body = error instanceof ApiError ? (error.body as { ticketCount?: number }) : null;
-        if (error instanceof ApiError && error.status === 409 && body?.ticketCount) {
-          setDeleting({ tickets: body.ticketCount });
-        } else {
-          setDeleting(null);
-          failed(error);
-        }
-      },
-    );
+  // In use: the question closes and the choice of a level for its tickets takes the focus.
+  useEffect(() => {
+    if (deleting) replaceSelect.current?.focus();
+  }, [deleting]);
+  const remove = async (replaceWith?: number | 'none') => {
+    try {
+      await client.deleteLevel(policy.id, level.id, replaceWith);
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { ticketCount?: number }) : null;
+      if (error instanceof ApiError && error.status === 409 && body?.ticketCount) {
+        setDeleting({ tickets: body.ticketCount });
+        return;
+      }
+      setDeleting(null);
+      failed(error);
+      throw error;
+    }
+    setDeleting(null);
+    await said(t('admin.visibility.levelDeleted', { name: level.name }));
+    onDeleted();
   };
   const move = (position: number) =>
     client
       .updateLevel(policy.id, level.id, { position })
       .then(() => said(t('admin.visibility.levelMoved', { name: level.name })), failed);
   return (
-    <li className="people-item people-group">
+    <li ref={row} className="people-item people-group">
       <div className="people-main">
         <p className="people-name">
           {level.name}
@@ -504,13 +509,13 @@ function LevelRow({
             </button>
           </form>
         )}
-        {deleting !== null && typeof deleting === 'object' && (
+        {deleting && (
           <form
             className="people-inline"
             aria-label={t('admin.visibility.replaceLevelOf', { name: level.name })}
             onSubmit={(event) => {
               event.preventDefault();
-              remove(replacement === 'none' ? 'none' : Number(replacement));
+              remove(replacement === 'none' ? 'none' : Number(replacement)).catch(() => {});
             }}
           >
             <p className="people-meta">
@@ -521,6 +526,7 @@ function LevelRow({
                 {t('admin.visibility.replaceWith')}
               </label>
               <select
+                ref={replaceSelect}
                 id={`${id}-replace`}
                 value={replacement}
                 onChange={(e) => setReplacement(e.target.value)}
@@ -539,69 +545,53 @@ function LevelRow({
             <button
               type="button"
               className="button-secondary people-action"
-              onClick={() => setDeleting(null)}
+              onClick={() => {
+                setDeleting(null);
+                // Back to the level's own Delete level.
+                row.current?.querySelector<HTMLButtonElement>('.button-danger-quiet')?.focus();
+              }}
             >
-              {t('admin.permissions.confirmNo')}
+              {t('danger.cancel')}
             </button>
           </form>
         )}
       </div>
       <div className="people-actions">
-        {deleting === 'ask' ? (
-          <>
-            <span className="people-confirm">
-              {t('admin.visibility.confirmDeleteLevel', { name: level.name })}
-            </span>
-            <button type="button" className="button-danger people-action" onClick={() => remove()}>
-              {t('admin.permissions.confirmYes')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              onClick={() => setDeleting(null)}
-            >
-              {t('admin.permissions.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('admin.visibility.moveUp', { name: level.name })}
-              disabled={index === 0}
-              onClick={() => void move(index - 1)}
-            >
-              {t('admin.visibility.up')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('admin.visibility.moveDown', { name: level.name })}
-              disabled={index === policy.levels.length - 1}
-              onClick={() => void move(index + 1)}
-            >
-              {t('admin.visibility.down')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-expanded={editing}
-              aria-label={t('admin.visibility.changeLevelOf', { name: level.name })}
-              onClick={() => setEditing(!editing)}
-            >
-              {t('admin.visibility.change')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('admin.visibility.deleteLevelOf', { name: level.name })}
-              onClick={() => setDeleting('ask')}
-            >
-              {t('admin.visibility.deleteLevel')}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-label={t('admin.visibility.moveUp', { name: level.name })}
+          disabled={index === 0}
+          onClick={() => void move(index - 1)}
+        >
+          {t('admin.visibility.up')}
+        </button>
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-label={t('admin.visibility.moveDown', { name: level.name })}
+          disabled={index === policy.levels.length - 1}
+          onClick={() => void move(index + 1)}
+        >
+          {t('admin.visibility.down')}
+        </button>
+        <button
+          type="button"
+          className="button-secondary people-action"
+          aria-expanded={editing}
+          aria-label={t('admin.visibility.changeLevelOf', { name: level.name })}
+          onClick={() => setEditing(!editing)}
+        >
+          {t('admin.visibility.change')}
+        </button>
+        {/* Asks first, saying what will happen (D13); a level in use asks where its tickets go. */}
+        <DangerAction
+          label={t('admin.visibility.deleteLevel')}
+          name={t('admin.visibility.deleteLevelOf', { name: level.name })}
+          outcome={t('admin.visibility.confirmDeleteLevel', { name: level.name })}
+          confirmLabel={t('admin.visibility.deleteLevelOf', { name: level.name })}
+          onConfirm={() => remove()}
+        />
       </div>
     </li>
   );

@@ -284,7 +284,8 @@ the ticket; they are not notified. After posting, the panel warns about anyone w
 Mentioned people get a notification in their [inbox](notifications.md).
 
 On each comment you can **Copy link**, add a reaction, and **Edit** or **Delete** it where your
-permissions allow. An edited comment shows when it was edited.
+permissions allow. **Delete** asks first, in the danger colour: the comment disappears from the
+ticket for everyone. An edited comment shows when it was edited.
 
 ### Attachments
 

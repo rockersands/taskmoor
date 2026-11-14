@@ -53,7 +53,8 @@ within its group or a group within your order.
 | Take a track out | The track down to **Tracks in no group** | **Take out of** and the group |
 | Change the order | A track within its group, or a group onto another | **Move earlier**, **Move later** |
 
-A group's own menu also has **Rename**, **Share…**, **Set on someone…** and **Delete group**;
+A group's own menu also has **Rename**, **Share…**, **Set on someone…** and **Delete group…**,
+which first says what will happen and offers **Delete** with the group's name beside **Cancel**;
 the arrow beside its name minimizes and opens it. A track sits in only one of your groups:
 moving it into another takes it out of the first. Your arrangement is kept on the server, so it
 is the same on every device. A group shows only the tracks you may see.
@@ -351,6 +352,9 @@ They are not the track templates under [Templates](#templates), which start a tr
   `/admin/ticket-templates`). They are offered in every track and read by everyone signed in.
   Configuration administrators and site administrators change them. They show in each track's list
   marked **Every track**, read-only there.
+
+**Delete** on a template, in the danger colour, asks first: tickets already made from it stay as
+they are.
 
 **New template** asks for:
 

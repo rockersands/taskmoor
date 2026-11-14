@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import type { User } from './client';
@@ -24,6 +25,7 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
   const { session } = useSession();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -68,6 +70,7 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.teams.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -149,8 +152,10 @@ export function TeamsPage({ client = teamsClient }: TeamsPageProps) {
                         client={client}
                         onChanged={said}
                         onDeleted={(name) => {
+                          // The team's row goes: the page's heading takes the focus.
                           setOpen(null);
                           said(t('admin.teams.deleted', { name }));
+                          title.current?.focus();
                         }}
                         onProblem={(error) => setProblem(refusal(error))}
                       />
@@ -253,7 +258,6 @@ function TeamPanel({
   const [lead, setLead] = useState('');
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<User[]>([]);
-  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -454,32 +458,22 @@ function TeamPanel({
       )}
 
       <div className="form-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t('admin.teams.confirmDelete', { name: current })}
-            </span>
-            <button
-              type="button"
-              className="button-danger"
-              onClick={() => void client.deleteTeam(id).then(() => onDeleted(current), onProblem)}
-            >
-              {t('admin.teams.confirmYes')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.teams.confirmNo')}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.teams.deleteOf', { name: current })}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.teams.delete')}
-          </button>
-        )}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.teams.delete')}
+          name={t('admin.teams.deleteOf', { name: current })}
+          outcome={t('admin.teams.confirmDelete', { name: current })}
+          confirmLabel={t('admin.teams.deleteOf', { name: current })}
+          onConfirm={async () => {
+            try {
+              await client.deleteTeam(id);
+            } catch (error) {
+              onProblem(error);
+              throw error;
+            }
+            onDeleted(current);
+          }}
+        />
       </div>
     </div>
   );

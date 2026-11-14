@@ -164,18 +164,29 @@ describe('ticket templates page (CORE-029)', () => {
   it('[CORE-029] deletes only after asking', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(
-      await screen.findByRole('button', { name: 'Delete template Release checklist' }),
-    );
+    const trigger = await screen.findByRole('button', {
+      name: 'Delete template Release checklist',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
     expect(client.removed).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+    // Asks first, saying what will happen (D13); Escape gives the focus back.
+    const question = screen.getByRole('group', {
+      name: 'Delete template Release checklist? Tickets already made from it stay as they are.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete template Release checklist' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Delete template Release checklist' }));
     await user.click(
-      screen.getByRole('button', { name: 'Yes, delete template Release checklist' }),
+      within(screen.getByRole('group')).getByRole('button', {
+        name: 'Delete template Release checklist',
+      }),
     );
     await waitFor(() => expect(client.removed).toEqual([RELEASE_TEMPLATE.id]));
     expect(await screen.findByText('Template Release checklist was deleted.')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText('Release checklist')).toBeNull());
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
   });
 
   it('[CORE-029] (2) keeps templates for every track without areas, releases or an assignee', async () => {

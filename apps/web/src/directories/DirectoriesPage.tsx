@@ -5,6 +5,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -302,6 +303,13 @@ export function DirectoriesPage({
                             if (editing === directory.id) setEditing(null);
                             await load();
                           }}
+                          onDeleted={async (message) => {
+                            setDone(message);
+                            if (editing === directory.id) setEditing(null);
+                            await load();
+                            // The directory's row is gone: the list's heading takes the focus.
+                            listHeading.current?.focus();
+                          }}
                           refuse={refuse}
                         />
                       ))}
@@ -332,6 +340,7 @@ function DirectoryItem({
   onTest,
   onMove,
   onChanged,
+  onDeleted,
   refuse,
 }: {
   directory: Directory;
@@ -346,25 +355,19 @@ function DirectoryItem({
   onTest: DirectoriesClient['test'];
   onMove: (by: -1 | 1) => Promise<void>;
   onChanged: (message: string) => Promise<void>;
+  onDeleted: (message: string) => Promise<void>;
   refuse: (error: unknown) => boolean;
 }) {
   const t = useT();
   const intl = useIntl();
   const id = useId();
   const editButton = useRef<HTMLButtonElement>(null);
-  const deleteButton = useRef<HTMLButtonElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<DirectoryRun[] | null>(null);
   const formatDate = (value: string) =>
     intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' });
   const value = (text: string) => t('common.value', { value: text });
-
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-  }, [confirming]);
 
   const act = async (work: () => Promise<void>) => {
     setWorking(true);
@@ -528,62 +531,36 @@ function DirectoryItem({
           >
             {t('admin.directories.edit')}
           </button>
-          <button
-            ref={deleteButton}
-            type="button"
-            className="button-secondary"
-            aria-label={t('admin.directories.deleteNamed', { name: directory.name })}
-            disabled={working}
-            onClick={() => setConfirming(true)}
-          >
-            {t('admin.directories.delete')}
-          </button>
-        </div>
-      </div>
-      {confirming && (
-        <div className="token-confirm">
-          <p>
-            {t('admin.directories.deleteConfirm', {
+          {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+          <DangerAction
+            label={t('admin.directories.delete')}
+            name={t('admin.directories.deleteNamed', { name: directory.name })}
+            outcome={t('admin.directories.deleteConfirm', {
               name: directory.name,
               accounts: directory.accounts,
             })}
-          </p>
-          <div className="token-confirm-actions">
-            <button
-              ref={confirmButton}
-              type="button"
-              className="button-danger"
-              disabled={working}
-              onClick={() =>
-                void act(async () => {
-                  try {
-                    await client.remove(directory.id);
-                  } catch (e) {
-                    if (e instanceof ApiError && e.code === 'last_admin') {
-                      setError(t('admin.directories.lastAdmin'));
-                      return;
-                    }
-                    if (!(e instanceof ApiError && e.status === 404)) throw e;
-                  }
-                  await onChanged(t('admin.directories.deleted', { name: directory.name }));
-                })
+            confirmLabel={t('admin.directories.deleteNamed', { name: directory.name })}
+            disabled={working}
+            onConfirm={async () => {
+              setError(null);
+              try {
+                await client.remove(directory.id);
+              } catch (e) {
+                if (e instanceof ApiError && e.code === 'last_admin') {
+                  setError(t('admin.directories.lastAdmin'));
+                  throw e;
+                }
+                // Already gone is as good as deleted.
+                if (!(e instanceof ApiError && e.status === 404)) {
+                  if (!refuse(e)) setError(t('admin.directories.actionFailed'));
+                  throw e;
+                }
               }
-            >
-              {t('admin.directories.confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => {
-                setConfirming(false);
-                deleteButton.current?.focus();
-              }}
-            >
-              {t('admin.directories.cancel')}
-            </button>
-          </div>
+              await onDeleted(t('admin.directories.deleted', { name: directory.name }));
+            }}
+          />
         </div>
-      )}
+      </div>
       {error && (
         <p role="alert" className="form-error">
           {error}

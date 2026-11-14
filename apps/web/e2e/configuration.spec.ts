@@ -127,7 +127,11 @@ test('[WF-001] the administrator makes a workflow map, puts a track on it and de
   await page.goto(`${BASE}/#/admin/workflow-maps`);
   await page.getByRole('button', { name: `Manage ${map}` }).click();
   await page.getByRole('button', { name: `Delete map ${map}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13); the answer names what goes.
+  await page
+    .getByRole('group', { name: /^Delete / })
+    .getByRole('button', { name: `Delete map ${map}` })
+    .click();
   await expect(page.getByRole('alert')).toBeVisible();
 
   // Back to the default map, and then the map goes.
@@ -138,7 +142,11 @@ test('[WF-001] the administrator makes a workflow map, puts a track on it and de
   await page.goto(`${BASE}/#/admin/workflow-maps`);
   await page.getByRole('button', { name: `Manage ${map}` }).click();
   await page.getByRole('button', { name: `Delete map ${map}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13); the answer names what goes.
+  await page
+    .getByRole('group', { name: /^Delete / })
+    .getByRole('button', { name: `Delete map ${map}` })
+    .click();
   await expect(page.getByText(`${map} was deleted.`)).toBeVisible();
 });
 
@@ -175,7 +183,11 @@ test('[CORE-009] the administrator adds a choice list, keeps its options and del
   await expect(page.getByText('North east was deleted.')).toBeVisible();
 
   await page.getByRole('button', { name: `Delete field ${field}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13); the answer names what goes.
+  await page
+    .getByRole('group', { name: /^Delete / })
+    .getByRole('button', { name: `Delete field ${field}` })
+    .click();
   await expect(page.getByText(`${field} was deleted.`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -282,7 +294,11 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   await typePanel.getByRole('button', { name: 'Save the set' }).click();
   await expect(page.getByText(`${types} was saved.`)).toBeVisible();
   await typePanel.getByRole('button', { name: `Delete set ${types}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13); the answer names what goes.
+  await page
+    .getByRole('group', { name: /^Delete / })
+    .getByRole('button', { name: `Delete set ${types}` })
+    .click();
   await expect(page.getByText(`${types} was deleted.`)).toBeVisible();
 
   await page.getByRole('button', { name: 'New field rule set' }).click();
@@ -303,7 +319,11 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   ).toBeDisabled();
   expect(await seriousAxeViolations(page)).toEqual([]);
   await rulePanel.getByRole('button', { name: `Delete set ${rules}` }).click();
-  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  // Asks first, saying what will happen (D13); the answer names what goes.
+  await page
+    .getByRole('group', { name: /^Delete / })
+    .getByRole('button', { name: `Delete set ${rules}` })
+    .click();
   await expect(page.getByText(`${rules} was deleted.`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

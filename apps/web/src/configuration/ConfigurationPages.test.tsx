@@ -285,9 +285,16 @@ describe('track and workflow map administration (M1-053)', () => {
       entries: [{ ticketTypeId: 6, workflowId: 2 }],
     });
     // And deletes it.
-    await user.click(within(map).getByRole('button', { name: 'Delete map Tasks apart' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = within(map).getByRole('button', { name: 'Delete map Tasks apart' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = within(map).getByRole('group', {
+      name: 'Delete Tasks apart? No track can use it afterwards, and this cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete map Tasks apart' }));
     expect(await screen.findByText('Tasks apart was deleted.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Workflow maps' })).toHaveFocus();
   });
 
   it('fits a small phone', async () => {

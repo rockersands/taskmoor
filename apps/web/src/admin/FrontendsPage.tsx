@@ -1,10 +1,11 @@
 import { type FrontendWindow, frontendSkew, type Skew } from '@taskmoor/webconfig';
-import { type FormEvent, useEffect, useId, useState } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 
@@ -101,7 +102,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
   const [problem, setProblem] = useState<MessageId | null>(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState<number | null>(null);
+  const registered = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     if (notAdmin) return;
@@ -148,20 +149,20 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
     }
   };
 
+  // Asked first (D13); a refusal keeps the question open, the reason above it.
   const remove = async (frontend: RegisteredFrontend) => {
-    setBusy(true);
     setProblem(null);
     setStatus('');
     try {
       await client.remove(frontend.id);
-      setConfirming(null);
-      setStatus(t('admin.frontends.removed', { origin: frontend.origin }));
-      await reload();
-    } catch {
+    } catch (error) {
       setProblem('admin.frontends.removeFailed');
-    } finally {
-      setBusy(false);
+      throw error;
     }
+    setStatus(t('admin.frontends.removed', { origin: frontend.origin }));
+    await reload();
+    // The frontend is gone: the list's heading takes the focus.
+    registered.current?.focus();
   };
 
   const versionLine = (frontend: RegisteredFrontend, window: FrontendWindow) => {
@@ -236,7 +237,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
           </section>
 
           <section aria-labelledby={`${id}-registered`}>
-            <h2 id={`${id}-registered`} className="facts-title">
+            <h2 id={`${id}-registered`} ref={registered} tabIndex={-1} className="facts-title">
               {t('admin.frontends.registered')}
             </h2>
             {view.frontends.length === 0 ? (
@@ -275,37 +276,18 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
                     {frontend.inEnvironment && (
                       <p className="page-note">{t('admin.frontends.alsoInEnvironment')}</p>
                     )}
-                    {confirming === frontend.id ? (
-                      <fieldset className="frontend-confirm">
-                        <legend>{t('admin.frontends.confirm', { origin: frontend.origin })}</legend>
-                        <button
-                          type="button"
-                          className="button-danger"
-                          disabled={busy}
-                          onClick={() => void remove(frontend)}
-                        >
-                          {t('admin.frontends.confirmRemove')}
-                        </button>
-                        <button
-                          type="button"
-                          className="button-secondary"
-                          onClick={() => setConfirming(null)}
-                        >
-                          {t('admin.frontends.cancel')}
-                        </button>
-                      </fieldset>
-                    ) : (
-                      <div className="form-actions">
-                        <button
-                          type="button"
-                          className="button-secondary"
-                          aria-label={t('admin.frontends.removeLabel', { origin: frontend.origin })}
-                          onClick={() => setConfirming(frontend.id)}
-                        >
-                          {t('admin.frontends.remove')}
-                        </button>
-                      </div>
-                    )}
+                    <div className="form-actions">
+                      <DangerAction
+                        label={t('admin.frontends.remove')}
+                        name={t('admin.frontends.removeLabel', { origin: frontend.origin })}
+                        outcome={t('admin.frontends.confirm', { origin: frontend.origin })}
+                        confirmLabel={t('admin.frontends.removeLabel', {
+                          origin: frontend.origin,
+                        })}
+                        disabled={busy}
+                        onConfirm={() => remove(frontend)}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>

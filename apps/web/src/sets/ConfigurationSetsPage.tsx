@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
@@ -6,6 +6,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { PageHeader } from '../shell/PageHeader';
 import {
   FIXED_FIELDS,
@@ -284,8 +285,9 @@ function TypeSetsSection({
   const [chosen, setChosen] = useState<number[]>([]);
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const heading = (
-    <h2 id={headingId} className="facts-title">
+    <h2 id={headingId} ref={headingRef} tabIndex={-1} className="facts-title">
       {t('admin.sets.typeSets')}
     </h2>
   );
@@ -401,7 +403,11 @@ function TypeSetsSection({
                 client={client}
                 said={said}
                 failed={failed}
-                onDeleted={() => setOpen(null)}
+                onDeleted={() => {
+                  // The set's row goes: the list's heading takes the focus.
+                  setOpen(null);
+                  headingRef.current?.focus();
+                }}
               />
             )}
           </li>
@@ -429,7 +435,6 @@ function TypeSetPanel({
 }) {
   const t = useT();
   const [chosen, setChosen] = useState(set.ticketTypes.map((type) => type.id));
-  const [confirming, setConfirming] = useState(false);
   return (
     <form
       className="people-panel"
@@ -459,65 +464,43 @@ function TypeSetPanel({
         </button>
         <DeleteButton
           name={set.name}
-          confirming={confirming}
-          setConfirming={setConfirming}
           hidden={!deletable || set.defaultFor.length > 0}
-          onDelete={() =>
-            client.deleteTypeSet(set.id).then(() => {
-              onDeleted();
-              said(t('admin.sets.deleted', { name: set.name }));
-            }, failed)
-          }
+          onDelete={async () => {
+            try {
+              await client.deleteTypeSet(set.id);
+            } catch (error) {
+              failed(error);
+              throw error;
+            }
+            onDeleted();
+            said(t('admin.sets.deleted', { name: set.name }));
+          }}
         />
       </div>
     </form>
   );
 }
 
+/** Deleting a set asks first, saying what will happen (D13); a refusal keeps the question open. */
 function DeleteButton({
   name,
-  confirming,
-  setConfirming,
   hidden,
   onDelete,
 }: {
   name: string;
-  confirming: boolean;
-  setConfirming: (on: boolean) => void;
   hidden: boolean;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const t = useT();
   if (hidden) return null;
-  if (!confirming) {
-    return (
-      <button
-        type="button"
-        className="button-secondary"
-        aria-label={t('admin.sets.deleteOf', { name })}
-        onClick={() => setConfirming(true)}
-      >
-        {t('admin.sets.delete')}
-      </button>
-    );
-  }
   return (
-    <>
-      <span className="people-confirm">{t('admin.sets.confirmDelete', { name })}</span>
-      <button
-        type="button"
-        className="button-danger"
-        onClick={() => {
-          setConfirming(false);
-          onDelete();
-        }}
-      >
-        {t('admin.sets.confirmYes')}
-      </button>
-      <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-        {t('admin.sets.confirmNo')}
-      </button>
-    </>
+    <DangerAction
+      label={t('admin.sets.delete')}
+      name={t('admin.sets.deleteOf', { name })}
+      outcome={t('admin.sets.confirmDelete', { name })}
+      confirmLabel={t('admin.sets.deleteOf', { name })}
+      onConfirm={onDelete}
+    />
   );
 }
 
@@ -540,6 +523,7 @@ function RuleSetsSection({
   const [name, setName] = useState('');
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
+  const heading = useRef<HTMLHeadingElement>(null);
   return (
     <section aria-labelledby={headingId} className="glass-card people-card">
       <CardHead
@@ -552,7 +536,7 @@ function RuleSetsSection({
           />
         }
       >
-        <h2 id={headingId} className="facts-title">
+        <h2 id={headingId} ref={heading} tabIndex={-1} className="facts-title">
           {t('admin.sets.ruleSets')}
         </h2>
       </CardHead>
@@ -637,7 +621,11 @@ function RuleSetsSection({
                 client={client}
                 said={said}
                 failed={failed}
-                onDeleted={() => setOpen(null)}
+                onDeleted={() => {
+                  // The set's row goes: the list's heading takes the focus.
+                  setOpen(null);
+                  heading.current?.focus();
+                }}
               />
             )}
           </li>
@@ -688,7 +676,6 @@ function RuleSetPanel({
   const formId = useId();
   const [set, setSet] = useState<RuleSet | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
-  const [confirming, setConfirming] = useState(false);
   const keys = [...SYSTEM_FIELDS, ...fields.map((f) => `cf[${f.id}]`)];
   const show = (found: RuleSet) => {
     setSet(found);
@@ -808,15 +795,17 @@ function RuleSetPanel({
         </button>
         <DeleteButton
           name={set.name}
-          confirming={confirming}
-          setConfirming={setConfirming}
           hidden={set.isDefault}
-          onDelete={() =>
-            client.deleteRuleSet(id).then(() => {
-              onDeleted();
-              said(t('admin.sets.deleted', { name: set.name }));
-            }, failed)
-          }
+          onDelete={async () => {
+            try {
+              await client.deleteRuleSet(id);
+            } catch (error) {
+              failed(error);
+              throw error;
+            }
+            onDeleted();
+            said(t('admin.sets.deleted', { name: set.name }));
+          }}
         />
       </div>
     </form>

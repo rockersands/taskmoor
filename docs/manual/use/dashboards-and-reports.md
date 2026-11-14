@@ -38,7 +38,8 @@ it.
 3. Pick a **Widget to add** and press **Add widget**. Each widget has **Settings**, **Up**,
    **Down**, **Left**, **Right** and **Remove**.
 4. In a widget's settings, give it an optional title and fill in its fields, then **Apply**.
-5. Press **Save dashboard**, or **Cancel**. **Delete dashboard** removes it after asking.
+5. Press **Save dashboard**, or **Cancel**. **Delete dashboard**, in the danger colour,
+   removes it after asking: whoever it is shared with loses it too.
 
 If someone else saved the dashboard meanwhile, reload it and make your change again.
 

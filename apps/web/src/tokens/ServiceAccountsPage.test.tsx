@@ -228,20 +228,40 @@ describe('service accounts page', () => {
     );
     const tokens = within(await screen.findByRole('region', { name: 'Tokens of Release robot' }));
     const list = await tokens.findByRole('list', { name: 'Tokens of Release robot' });
-    await user.click(
-      within(within(list).getAllByRole('listitem')[1] as HTMLElement).getByRole('button', {
-        name: 'Revoke Release key',
-      }),
-    );
+    const item = within(within(list).getAllByRole('listitem')[1] as HTMLElement);
+    const trigger = item.getByRole('button', { name: 'Revoke Release key' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13).
+    const question = item.getByRole('group', { name: /^Revoke Release key\? Programs using it/ });
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    await user.click(within(question).getByRole('button', { name: 'Revoke Release key' }));
     expect(await tokens.findByText('Revoked Release key.')).toBeVisible();
+    expect(tokens.getByRole('heading', { name: 'Tokens of Release robot' })).toHaveFocus();
     expect(calls.some((c) => c.method === 'DELETE' && c.path === '/admin/tokens/62')).toBe(true);
   });
 
   it('[IAM-007] deactivates and reactivates service accounts', async () => {
     const user = userEvent.setup();
     const { calls, list } = await openPage();
+    const trigger = list.getByRole('button', { name: 'Deactivate Release robot' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what stops (D13); Escape gives the focus back and sends nothing.
+    const question = list.getByRole('group', { name: /^Release robot stops working at once: / });
+    expect(question).toHaveAccessibleName(
+      'Release robot stops working at once: its 2 active tokens are refused, and no new token can be issued until you reactivate it.',
+    );
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(list.getByRole('button', { name: 'Deactivate Release robot' })).toHaveFocus();
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
     await user.click(list.getByRole('button', { name: 'Deactivate Release robot' }));
+    await user.click(
+      within(list.getByRole('group')).getByRole('button', { name: 'Deactivate Release robot' }),
+    );
     expect(await list.findByRole('button', { name: 'Reactivate Release robot' })).toBeVisible();
+    expect(list.getByRole('button', { name: 'Show the tokens of Release robot' })).toHaveFocus();
     await user.click(list.getByRole('button', { name: 'Reactivate Backup exporter' }));
     expect(await list.findByRole('button', { name: 'Deactivate Backup exporter' })).toBeVisible();
     expect(calls.filter((c) => c.method === 'POST').map((c) => c.path)).toEqual([

@@ -136,10 +136,6 @@
   gap: var(--space-2);
 }
 
-.comment-confirm {
-  font-weight: var(--font-weight-strong);
-}
-
 .comment-composer,
 .comment-editing {
   display: grid;

@@ -15,6 +15,7 @@ import {
   useSetScope,
   useTrackPageTrail,
 } from '../sets/trackScope';
+import { DangerAction } from '../shell/DangerAction';
 import { PageHeader } from '../shell/PageHeader';
 import { DraftDialog } from '../tickets/view/drafts';
 import {
@@ -79,6 +80,7 @@ export function LayoutEditorPage({
 }: LayoutEditorPageProps) {
   const t = useT();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
   useTrackPageTrail(scope, t('layouts.title'));
@@ -87,6 +89,7 @@ export function LayoutEditorPage({
     <section aria-labelledby={titleId} className="page page-full admin-page layout-editor-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('layouts.title')}
         {...(track
           ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) }
@@ -103,6 +106,7 @@ export function LayoutEditorPage({
           initialSetId={initialSetId}
           previewDelay={previewDelay}
           onRefused={setRefused}
+          focusTitle={() => title.current?.focus()}
         />
       ) : (
         <ScopeNote
@@ -130,10 +134,19 @@ interface LayoutSetsProps {
   previewDelay: number | undefined;
   /** The server refused the list: the page drops its purpose too, and only says so. */
   onRefused: (refused: boolean) => void;
+  /** Gives the page's heading the focus, once the open set is deleted. */
+  focusTitle: () => void;
 }
 
 /** The sets the page shows, the one open, adding one, and the editor of the open one. */
-function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: LayoutSetsProps) {
+function LayoutSets({
+  client,
+  track,
+  initialSetId,
+  previewDelay,
+  onRefused,
+  focusTitle,
+}: LayoutSetsProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const id = useId();
@@ -342,11 +355,13 @@ function LayoutSets({ client, track, initialSetId, previewDelay, onRefused }: La
                 setMessage(t('layouts.usedFor', { key: track?.key ?? '', name: used.name }));
                 setProblem(null);
               }}
-              onDeleted={(name) => {
+              onDeleted={async (name) => {
                 setDirty(false);
                 setMessage(t('layouts.deleted', { name }));
                 setProblem(null);
-                void load(null);
+                await load(null);
+                // Another set opens in its place: the page's heading takes the focus.
+                focusTitle();
               }}
             />
           )}
@@ -391,7 +406,7 @@ interface SetLoaderProps {
   onSaved: (set: LayoutSet) => void;
   /** The track now uses the set. */
   onAssigned: (set: LayoutSet) => void;
-  onDeleted: (name: string) => void;
+  onDeleted: (name: string) => Promise<void>;
   previewDelay?: number | undefined;
 }
 
@@ -478,7 +493,6 @@ function SetEditor({
   const [name, setName] = useState(set.name);
   const [form, setForm] = useState<FormChoice>({ ticketTypeId: null, operation: 'create' });
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [said, setSaid] = useState('');
 
@@ -791,46 +805,25 @@ function SetEditor({
           {t('layouts.discard')}
         </button>
         {dirty && <span className="token-badge">{t('layouts.unsaved')}</span>}
-        {!set.isDefault &&
-          (confirming ? (
-            <>
-              <span className="people-confirm">
-                {t('layouts.confirmDelete', { name: set.name })}
-              </span>
-              <button
-                type="button"
-                className="button-danger"
-                onClick={() => {
-                  setConfirming(false);
-                  setProblem(null);
-                  client.deleteLayoutSet(set.id).then(
-                    () => onDeleted(set.name),
-                    (error) => {
-                      if (!expired(error)) setProblem(refusal(t, error));
-                    },
-                  );
-                }}
-              >
-                {t('layouts.confirmYes')}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setConfirming(false)}
-              >
-                {t('layouts.confirmNo')}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="button-secondary layout-delete"
-              aria-label={t('layouts.deleteOf', { name: set.name })}
-              onClick={() => setConfirming(true)}
-            >
-              {t('layouts.delete')}
-            </button>
-          ))}
+        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+        {!set.isDefault && (
+          <DangerAction
+            label={t('layouts.delete')}
+            name={t('layouts.deleteOf', { name: set.name })}
+            outcome={t('layouts.confirmDelete', { name: set.name })}
+            confirmLabel={t('layouts.deleteOf', { name: set.name })}
+            onConfirm={async () => {
+              setProblem(null);
+              try {
+                await client.deleteLayoutSet(set.id);
+              } catch (error) {
+                if (!expired(error)) setProblem(refusal(t, error));
+                throw error;
+              }
+              await onDeleted(set.name);
+            }}
+          />
+        )}
       </div>
       {leaving &&
         createPortal(

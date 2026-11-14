@@ -113,10 +113,24 @@ describe('webhooks page (UI-T18)', () => {
   it('[API-009] deletes after asking', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Team chat' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    const trigger = await screen.findByRole('button', { name: 'Delete Team chat' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // Asks first, saying what will happen (D13); Escape gives the focus back.
+    const question = screen.getByRole('group', {
+      name: 'Delete Team chat? Its deliveries go with it.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete Team chat' })).toHaveFocus();
+    expect(client.calls).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Delete Team chat' }));
+    await user.click(
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete Team chat' }),
+    );
     expect(await screen.findByText('Webhook Team chat was deleted.')).toBeInTheDocument();
     expect(client.calls).toEqual([{ action: 'remove', args: [4] }]);
+    expect(screen.getByRole('heading', { level: 1, name: 'Webhooks' })).toHaveFocus();
   });
 
   it('[API-009] shows deliveries, filters them, and sends failed ones again', async () => {

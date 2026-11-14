@@ -154,6 +154,9 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
   // Deleted after asking.
   await page.goto(`${BASE}/#/admin/ticket-templates`);
   await page.getByRole('button', { name: `Delete template ${shared}` }).click();
-  await page.getByRole('button', { name: `Yes, delete template ${shared}` }).click();
+  await page
+    .getByRole('group', { name: /Tickets already made from it stay as they are\.$/ })
+    .getByRole('button', { name: `Delete template ${shared}` })
+    .click();
   await expect(page.getByRole('button', { name: `Edit template ${shared}` })).toHaveCount(0);
 });
