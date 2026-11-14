@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isCalendarDay } from '../tickets/model';
+import { Heap, stronglyConnected } from './graph';
 import { MAX_PERIODS } from './model';
 import { dayNumber, isoDay, type Period } from './periods';
 
@@ -282,57 +283,45 @@ export function barDays(
 
 const before = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-type Klass =
+/** How a run sorts a ticket (ADR-122 stage 7): closed, left out, kept or movable. */
+export type TicketClass =
   | { kind: 'closed' }
   | { kind: 'left_out'; reason: LeftOutReason }
   | { kind: 'kept'; reason: KeptReason }
   | { kind: 'movable' };
+type Klass = TicketClass;
+
+/**
+ * Sorts the tickets of a run: closed, left out, kept, movable, by the first rule that matches.
+ * `schedule()` and `evenOut()` share it, so both keep the same tickets.
+ */
+export function classify(
+  input: Pick<ScheduleInput, 'leaveOut' | 'keep'>,
+): (t: ScheduleTicket) => TicketClass {
+  const leaveTypes = new Set(input.leaveOut.typeIds);
+  const leaveReleases = new Set(input.leaveOut.releaseIds);
+  return (t) => {
+    if (t.stage === 'closed') return { kind: 'closed' };
+    if (t.level !== 0) return { kind: 'left_out', reason: 'level' };
+    if (leaveTypes.has(t.typeId)) return { kind: 'left_out', reason: 'type' };
+    if (t.releaseIds.some((r) => leaveReleases.has(r)))
+      return { kind: 'left_out', reason: 'release' };
+    if (t.leftOutByQuery) return { kind: 'left_out', reason: 'query' };
+    if (t.personDraft) return { kind: 'kept', reason: 'person_draft' };
+    if (!t.maySchedule) return { kind: 'kept', reason: 'may_not_schedule' };
+    if (t.keptByQuery) return { kind: 'kept', reason: 'kept_by_query' };
+    if (t.stage === 'active' && input.keep.inProgress)
+      return { kind: 'kept', reason: 'in_progress' };
+    if (t.inActiveSprint && input.keep.inActiveSprint) return { kind: 'kept', reason: 'in_sprint' };
+    return { kind: 'movable' };
+  };
+}
 
 interface Decision {
   outcome: ScheduleOutcome;
   reason: ScheduleReason;
   args: ScheduleArgs;
   warnings: ScheduleWarning[];
-}
-
-/** A binary heap of ticket indexes under a comparator. */
-class Heap {
-  private readonly items: number[] = [];
-  constructor(private readonly less: (a: number, b: number) => boolean) {}
-  get size() {
-    return this.items.length;
-  }
-  push(x: number) {
-    const a = this.items;
-    a.push(x);
-    let i = a.length - 1;
-    while (i > 0) {
-      const parent = (i - 1) >> 1;
-      if (!this.less(a[i] as number, a[parent] as number)) break;
-      [a[i], a[parent]] = [a[parent] as number, a[i] as number];
-      i = parent;
-    }
-  }
-  pop(): number {
-    const a = this.items;
-    const top = a[0] as number;
-    const last = a.pop() as number;
-    if (a.length > 0) {
-      a[0] = last;
-      let i = 0;
-      for (;;) {
-        const l = 2 * i + 1;
-        const r = l + 1;
-        let m = i;
-        if (l < a.length && this.less(a[l] as number, a[m] as number)) m = l;
-        if (r < a.length && this.less(a[r] as number, a[m] as number)) m = r;
-        if (m === i) break;
-        [a[i], a[m]] = [a[m] as number, a[i] as number];
-        i = m;
-      }
-    }
-    return top;
-  }
 }
 
 const zeroes = <K extends string>(keys: readonly K[]) =>
@@ -439,23 +428,7 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
   }
 
   // Sorting the tickets: closed, left out, kept, movable, by the first rule that matches.
-  const leaveTypes = new Set(input.leaveOut.typeIds);
-  const leaveReleases = new Set(input.leaveOut.releaseIds);
-  const klass: Klass[] = tickets.map((t) => {
-    if (t.stage === 'closed') return { kind: 'closed' };
-    if (t.level !== 0) return { kind: 'left_out', reason: 'level' };
-    if (leaveTypes.has(t.typeId)) return { kind: 'left_out', reason: 'type' };
-    if (t.releaseIds.some((r) => leaveReleases.has(r)))
-      return { kind: 'left_out', reason: 'release' };
-    if (t.leftOutByQuery) return { kind: 'left_out', reason: 'query' };
-    if (t.personDraft) return { kind: 'kept', reason: 'person_draft' };
-    if (!t.maySchedule) return { kind: 'kept', reason: 'may_not_schedule' };
-    if (t.keptByQuery) return { kind: 'kept', reason: 'kept_by_query' };
-    if (t.stage === 'active' && input.keep.inProgress)
-      return { kind: 'kept', reason: 'in_progress' };
-    if (t.inActiveSprint && input.keep.inActiveSprint) return { kind: 'kept', reason: 'in_sprint' };
-    return { kind: 'movable' };
-  });
+  const klass: Klass[] = tickets.map(classify(input));
   const movable = klass.map((k) => k.kind === 'movable');
 
   /** Where a ticket that is not placed ends: its later day, else its sprint's end. */
@@ -492,54 +465,7 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
 
   // Cycles: Tarjan's strongly connected components over every link between open tickets. It
   // gives them sinks first, the reverse topological order the effective ranks are computed in.
-  const component = new Array<number>(N).fill(-1);
-  const components: number[][] = [];
-  {
-    const index = new Array<number>(N).fill(-1);
-    const low = new Array<number>(N).fill(0);
-    const onStack = new Array<boolean>(N).fill(false);
-    const stack: number[] = [];
-    let counter = 0;
-    for (let root = 0; root < N; root++) {
-      if (index[root] !== -1) continue;
-      const work: [number, number][] = [[root, 0]];
-      index[root] = low[root] = counter++;
-      stack.push(root);
-      onStack[root] = true;
-      while (work.length > 0) {
-        const frame = work[work.length - 1] as [number, number];
-        const [v, next] = frame;
-        const edges = out[v] as number[];
-        if (next < edges.length) {
-          frame[1] = next + 1;
-          const w = edges[next] as number;
-          if (index[w] === -1) {
-            index[w] = low[w] = counter++;
-            stack.push(w);
-            onStack[w] = true;
-            work.push([w, 0]);
-          } else if (onStack[w]) {
-            low[v] = Math.min(low[v] as number, index[w] as number);
-          }
-          continue;
-        }
-        work.pop();
-        const parent = work[work.length - 1];
-        if (parent) low[parent[0]] = Math.min(low[parent[0]] as number, low[v] as number);
-        if (low[v] === index[v]) {
-          const members: number[] = [];
-          for (;;) {
-            const w = stack.pop() as number;
-            onStack[w] = false;
-            component[w] = components.length;
-            members.push(w);
-            if (w === v) break;
-          }
-          components.push(members);
-        }
-      }
-    }
-  }
+  const { component, components } = stronglyConnected(N, out);
   const inCycle = (i: number) =>
     selfLinked[i] === true || (components[component[i] as number]?.length ?? 0) > 1;
 
