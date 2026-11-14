@@ -1468,6 +1468,21 @@
   backdrop-filter: none;
 }
 
+/*
+ * On a phone a glass card keeps its tint, sheen and rim but blurs nothing behind it. A card there
+ * is as wide as the window and can be several windows tall (Account's notifications, about
+ * 2,500 px), and in the second sweep Chromium drew such a card's blurred backdrop out of step with
+ * the canvas after a scroll: a hard band of another part of the picture across the whole card,
+ * while the gutter beside it stayed right. Without a backdrop filter the canvas shows through the
+ * tint as it is, which a phone's narrow gutters make look the same as the blur did.
+ */
+@media (max-width: 767px) {
+  .glass-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* A board's cards stay cheap: no blur, no glow, only flat edges and one shadow. */
 .board-card {
   box-shadow: var(--glass-highlight-flat), var(--shadow-1);

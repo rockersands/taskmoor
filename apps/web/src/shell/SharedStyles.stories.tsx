@@ -190,3 +190,38 @@ export const Everything: Story = {
     expect(style(dialog).backgroundColor).toMatch(/^rgb\(/);
   },
 };
+
+/** Whether a card's fill lets the canvas through: a colour with some transparency. */
+const seeThrough = (element: Element) => {
+  const parts = getComputedStyle(element).backgroundColor.match(/[\d.]+/g) ?? [];
+  return parts.length === 4 && Number(parts[3]) < 1;
+};
+
+/**
+ * ADR-114, ADR-033: on a phone a glass card blurs nothing behind it. A card several windows tall
+ * had its blurred backdrop drawn out of step with the canvas after a scroll (the second sweep's
+ * account notifications); the card stays glass, its tinted fill showing the canvas through.
+ */
+export const GlassOnAPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    const cards = Array.from(canvasElement.querySelectorAll('.glass-card'));
+    await expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      await expect(getComputedStyle(card).backdropFilter).toBe('none');
+      await expect(seeThrough(card)).toBe(true);
+    }
+  },
+};
+
+/** On a wide screen the same cards are blurred glass. */
+export const GlassOnADesktop: Story = {
+  globals: { viewport: { value: 'desktop' } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    const card = canvasElement.querySelector('.glass-card');
+    if (!card) throw new Error('the story draws glass cards');
+    await expect(getComputedStyle(card).backdropFilter).toContain('blur');
+  },
+};
