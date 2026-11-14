@@ -221,8 +221,11 @@
   font-weight: var(--font-weight-strong);
 }
 
+/* A chip is a row with its text centred in its height: on touch it is a finger tall (D9). The
+   text keeps to one line and ends in an ellipsis. */
 .calendar-chip {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   overflow: hidden;
   padding: var(--space-half) var(--space-1);
@@ -238,6 +241,13 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: grab;
+}
+
+.calendar-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .calendar-chip[data-stage="closed"] {
@@ -335,8 +345,11 @@
     display: none;
   }
 
+  /* A day of the list is a part of the card, with the card's own room inside its edge. */
   .calendar-day {
+    gap: var(--space-1);
     min-height: 0;
+    padding: var(--space-3) var(--space-4);
     border-inline-end: 0;
   }
 

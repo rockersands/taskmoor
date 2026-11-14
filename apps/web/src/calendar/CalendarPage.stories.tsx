@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { asOnATouchScreen } from '../test/touch';
+import { asOnATouchScreen, onARealTouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
 import { fakeCalendarClient } from './fixtures';
 
@@ -185,6 +185,32 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'November 2026' })).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * The list of days on a phone's touch screen (D9; M1-049): the card keeps room inside its edge,
+ * and each finger-tall chip has its text in the middle of its height, not at the top.
+ */
+export const DayListOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const chip = await canvas.findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    const card = canvasElement.querySelector('.calendar-grid.is-agenda')?.getBoundingClientRect();
+    if (!card) throw new Error('a phone shows the month as a list of days');
+    const box = chip.getBoundingClientRect();
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect(box.left - card.left).toBeGreaterThanOrEqual(16);
+    for (const heading of canvasElement.querySelectorAll('.calendar-date')) {
+      await expect(heading.getBoundingClientRect().left - card.left).toBeGreaterThanOrEqual(16);
+    }
+    const words = document.createRange();
+    words.selectNodeContents(chip);
+    const text = words.getBoundingClientRect();
+    const middle = (r: DOMRect) => (r.top + r.bottom) / 2;
+    await expect(Math.abs(middle(text) - middle(box))).toBeLessThanOrEqual(1);
   },
 };
 
