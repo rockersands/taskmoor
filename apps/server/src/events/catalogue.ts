@@ -1099,6 +1099,28 @@ export const EVENT_TYPES = {
     }),
   },
   /**
+   * A plan's program boards (PLN-008; ADR-122 stage 5): made, changed (name, Team field, first
+   * day, periods, archived) and removed. Cards are tickets: moving one is the ticket's own event.
+   */
+  'plan.program_board_created': {
+    subject: 'plan',
+    payload: z.object({
+      boardId: id,
+      name: z.string(),
+      teamFieldId: id.nullable(),
+      from: z.string(),
+      periods: z.number().int().positive(),
+    }),
+  },
+  'plan.program_board_updated': {
+    subject: 'plan',
+    payload: z.object({ boardId: id, changes }),
+  },
+  'plan.program_board_deleted': {
+    subject: 'plan',
+    payload: z.object({ boardId: id, name: z.string() }),
+  },
+  /**
    * Releases across tracks (PLN-007; ADR-122 stage 4). A move lists each release it changed with
    * its old day, each it left with the reason, and how many were hidden from the mover; each
    * release moved also emits its own `release.updated`.
