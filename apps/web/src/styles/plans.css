@@ -7,10 +7,6 @@
   color: var(--color-text-muted);
 }
 
-.plans-page > .glass-card > h2 {
-  margin-block: 0 var(--space-3);
-}
-
 .plans-page > .glass-card {
   padding: var(--space-4);
 }
@@ -24,10 +20,6 @@
   border-radius: var(--radius-1);
   background: var(--color-warning-soft);
   color: var(--color-text);
-}
-
-.plan-notices li + li {
-  margin-top: var(--space-1);
 }
 
 .plan-filters {
@@ -224,14 +216,6 @@
   overflow-wrap: anywhere;
 }
 
-.capacity-table tbody th > * {
-  display: block;
-}
-
-.capacity-table tbody th > * + * {
-  margin-top: var(--space-1);
-}
-
 /*
  * "Open, no due date" holds what no period counts, often most of the work: it stays in view at the
  * table's end, opaque as the names are, however narrow the page (PL-2; T-213).
@@ -258,15 +242,6 @@
   gap: var(--space-1) var(--space-2);
 }
 
-/* The name stays opaque, as the row's other names do: the cells scroll under it. */
-.capacity-row.is-team th {
-  background: var(--color-surface-sunken);
-}
-
-.capacity-row.is-team td {
-  background: var(--glass-surface-sunken);
-}
-
 .capacity-card-title {
   margin: 0;
   font-size: var(--font-size-300);
@@ -276,15 +251,6 @@
 .capacity-row.is-team .capacity-name,
 .capacity-card.is-team .capacity-card-title {
   font-weight: var(--font-weight-strong);
-}
-
-.capacity-row.is-person th {
-  padding-inline-start: var(--space-5);
-}
-
-.capacity-row.is-unassigned th,
-.capacity-row.is-others th {
-  font-style: italic;
 }
 
 .capacity-cell {
@@ -540,7 +506,6 @@
     align-items: center;
   }
 
-  .plan-page .page-header-actions button,
   .plan-download button,
   .plan-share-status input,
   .plan-duplicate-dialog input,
@@ -555,6 +520,11 @@
   .plan-filters button,
   .plan-sources input:not([type="checkbox"], [type="radio"]),
   .calendar-more {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* After the rules above that end in a button: this one is more specific (see the file's end). */
+  .plan-page .page-header-actions button {
     min-height: var(--hit-target-touch);
   }
 
@@ -618,8 +588,7 @@
   font-size: var(--font-size-200);
 }
 
-.program-board th,
-.program-board td {
+.program-board :is(th, td) {
   padding: var(--space-2);
   border-bottom: 1px solid var(--glass-edge);
   border-inline-end: 1px solid var(--glass-edge);
@@ -915,8 +884,7 @@
   border-collapse: collapse;
 }
 
-.scenario-table th,
-.scenario-table td {
+.scenario-table :is(th, td) {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   text-align: start;
@@ -1123,4 +1091,49 @@
     column-gap: 0.3em;
     min-height: var(--hit-target-touch);
   }
+}
+
+/*
+ * Kept last: each rule below is more specific than a rule above that ends in the same element, and
+ * Biome's noDescendingSpecificity wants the more specific one later in the file. Where they meet
+ * those rules they win on specificity alone, so their place here changes nothing they draw.
+ */
+
+/* A plan's notices, one under another. */
+.plan-notices li + li {
+  margin-top: var(--space-1);
+}
+
+/* The headings of the cards on the list of plans. */
+.plans-page > .glass-card > h2 {
+  margin-block: 0 var(--space-3);
+}
+
+/* Teams and capacity: what a row's name cell holds, a line each. */
+.capacity-table tbody th > * {
+  display: block;
+}
+
+.capacity-table tbody th > * + * {
+  margin-top: var(--space-1);
+}
+
+/* A team's row is sunken. Its name stays opaque, as the row's other names do: the cells scroll
+   under it. */
+.capacity-row.is-team th {
+  background: var(--color-surface-sunken);
+}
+
+.capacity-row.is-team td {
+  background: var(--glass-surface-sunken);
+}
+
+/* A person sits under their team; the unassigned work and the others' work are set apart. */
+.capacity-row.is-person th {
+  padding-inline-start: var(--space-5);
+}
+
+.capacity-row.is-unassigned th,
+.capacity-row.is-others th {
+  font-style: italic;
 }

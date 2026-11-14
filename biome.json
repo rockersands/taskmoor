@@ -64,14 +64,6 @@
           "suspicious": { "noConsole": "off" }
         }
       }
-    },
-    {
-      "includes": ["apps/web/src/styles/plans.css"],
-      "linter": {
-        "rules": {
-          "style": { "noDescendingSpecificity": "info" }
-        }
-      }
     }
   ]
 }
