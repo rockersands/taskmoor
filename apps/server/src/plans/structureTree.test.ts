@@ -1,6 +1,7 @@
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import {
+  appendTo,
   type BuiltStructure,
   buildStructure,
   type ExpandLevel,
@@ -341,5 +342,57 @@ describe('buildStructure (PLN-010; ADR-122 stage 10)', () => {
     expect(built.total).toBe(100_000);
     expect(built.more).toBe(true);
     expect(built.rows.ticket.at(-1)).toBe(100_000);
+  });
+
+  // A copy of a list per entry made these quadratic: 17 s for 100,000 rows in two groups, longer
+  // for one parent with 100,000 children. Linear, each takes well under a second. The timeout
+  // fails a synchronous test that runs past it, so the test needs no speed budget.
+  it('[PLN-010] groups 100,000 top rows into two values in linear time', { timeout: 8_000 }, () => {
+    const n = 100_000;
+    const list = Array.from({ length: n }, (_, i) => tk(i + 1));
+    const built = buildStructure(
+      input({
+        tickets: map(list),
+        inserted: list.map((t) => t.id),
+        groups: [
+          {
+            field: 'track',
+            values: new Map(list.map((t) => [t.id, t.id % 2 === 0 ? 'b' : 'a'])),
+            labels: new Map([
+              ['a', 'Apps'],
+              ['b', 'Back'],
+            ]),
+          },
+        ],
+        limit: n + 2,
+      }),
+    );
+    expect(built.total).toBe(n + 2);
+    expect(built.more).toBe(false);
+    expect(built.groups.map((g) => [g.row, g.label])).toEqual([
+      [0, 'Apps'],
+      [n / 2 + 1, 'Back'],
+    ]);
+  });
+
+  it('[PLN-010] nests 100,000 inserted children under one parent in linear time', {
+    timeout: 8_000,
+  }, () => {
+    const n = 100_000;
+    const list = Array.from({ length: n }, (_, i) => tk(i + 1, i === 0 ? null : 1));
+    const built = buildStructure(input({ tickets: map(list), inserted: list.map((t) => t.id) }));
+    expect(built.total).toBe(n);
+    expect(built.rows.depth.filter((d) => d === 1)).toHaveLength(n - 1);
+  });
+
+  it('[PLN-010] appendTo grows a list in place, 100,000 entries under one key', {
+    timeout: 8_000,
+  }, () => {
+    const lists = new Map<number, number[]>();
+    for (let i = 0; i < 100_000; i++) appendTo(lists, 7, i);
+    const list = lists.get(7);
+    appendTo(lists, 7, -1);
+    expect(lists.get(7)).toBe(list);
+    expect(list).toHaveLength(100_001);
   });
 });

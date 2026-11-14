@@ -30,6 +30,7 @@ import {
   structureSpec,
 } from '../plans/structures';
 import {
+  appendTo,
   buildStructure,
   type ExpandLevel,
   type GroupLevel,
@@ -739,7 +740,7 @@ async function readSkeleton(trx: Trx, input: SkeletonInput) {
     const edges = new Map<number, number[]>();
     const expandable = new Set(start);
     for (const r of reached.slice(0, GRID_ROWS)) {
-      edges.set(r.src, [...(edges.get(r.src) ?? []), r.dst]);
+      appendTo(edges, r.src, r.dst);
       if (r.depth < step.depth) expandable.add(r.dst);
     }
     for (const r of reached.slice(0, GRID_ROWS)) candidates.add(r.dst);
@@ -793,8 +794,7 @@ async function readSkeleton(trx: Trx, input: SkeletonInput) {
   );
   if (children) {
     const edges = new Map<number, number[]>();
-    const add = (parent: number, id: number) =>
-      edges.set(parent, [...(edges.get(parent) ?? []), id]);
+    const add = (parent: number, id: number) => appendTo(edges, parent, id);
     for (const e of childEdges) add(e.parent, e.id);
     // An inserted ticket under a ticket the walk reached: that row reaches it, and counts it as
     // shown elsewhere.

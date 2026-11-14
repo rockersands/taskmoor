@@ -64,6 +64,16 @@ export interface StructureInput {
   limit: number;
 }
 
+/**
+ * Adds `value` to the list under `key`, in place. Lists here grow to 100,000 entries, so a copy
+ * per entry would be quadratic and hold the server for seconds.
+ */
+export function appendTo<K, V>(lists: Map<K, V[]>, key: K, value: V): void {
+  const list = lists.get(key);
+  if (list) list.push(value);
+  else lists.set(key, [value]);
+}
+
 /** Where a row came from: 0 inserted, 1 a child, 2 + n the nth links step (from 0). */
 export const VIA_INSERTED = 0;
 export const VIA_CHILD = 1;
@@ -149,7 +159,7 @@ export function buildStructure(input: StructureInput): BuiltStructure {
   };
   for (const id of inserted) {
     const p = nestedIn(id);
-    if (p !== null) under.set(p, [...(under.get(p) ?? []), id]);
+    if (p !== null) appendTo(under, p, id);
   }
   let top: Node[] = [];
   const grow = (rootId: number) => {
@@ -175,7 +185,7 @@ export function buildStructure(input: StructureInput): BuiltStructure {
     const buckets = new Map<string | null, Node[]>();
     for (const row of rows) {
       const v = level.values.get(row.ticket) ?? null;
-      buckets.set(v, [...(buckets.get(v) ?? []), row]);
+      appendTo(buckets, v, row);
     }
     const values = [...buckets.keys()].sort((a, b) => {
       if (a === null) return b === null ? 0 : 1;
