@@ -1845,6 +1845,8 @@ and the page notes above say what changed where they belong):
 
 #### Questions for the user (the design takes the first answer each time)
 
+**Answered on 2026-11-14 (T-306): the user took Claude's recommendation for all eighteen, the first answer each, as built (decisions.csv).**
+
 1. **Opening a plan:** shows Live (edits change tickets at once, as now) until someone picks a
    scenario, kept in the address; or the main scenario when there is one; or the last choice in
    this browser.
@@ -2500,6 +2502,8 @@ from the design above, or settles what it left open:
 
 #### Questions for the user (the design takes the first answer each time)
 
+**Answered on 2026-11-14 (T-312): the user took Claude's recommendation for all twenty-four, the first answer each, as built; question 24 too (decisions.csv).**
+
 1. **What a run fills:** the plan's periods, with the capacity set on the Capacity tab (PLN-004
    says sprints and is reworded); or the sprints of each team's Scrum board (`board.team_id`), with
    capacity per sprint; or both, chosen per run.
@@ -3119,6 +3123,8 @@ the build differs from the design above, or settles what it left open:
 
 #### Questions for the user (the design takes the first answer each time)
 
+**Answered on 2026-11-14 (T-314): the user took Claude's recommendation for each, the first answer each, as built (decisions.csv). Question 17, added during the build, follows the same answer.**
+
 1. **What evening out is called** ("level" already names a hierarchy level): **Even out load**;
    or "Fix over-capacity"; or "Level resources", accepting the clash.
 2. **Evening out and the auto-scheduler:** a second mode of the same run (same route, reads, keep
@@ -3562,6 +3568,8 @@ skip-level parents (`ParentRules.skipLevels` stays off, so moves need no cycle w
 steps deeper than 3; a structure's own filters beyond the plan's.
 
 #### Questions for the user (the design takes the first answer each time)
+
+**Answered on 2026-11-14 (T-315): the user took Claude's recommendation for each, the first answer each; stage 10 is built on them (decisions.csv).**
 
 1. **Where a structure lives:** inside a plan, as its Grid section, shared with whoever sees the
    plan; or on its own, saved and shared like a saved search; or both.
