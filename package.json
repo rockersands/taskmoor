@@ -30,6 +30,7 @@
     "spike": "tsx packages/spikes/src/cli/spike.ts",
     "bench:check": "tsx packages/devtools/src/cli/bench-check.ts",
     "demo": "tsx apps/server/src/demo/cli.ts",
+    "sweep": "node tools/sweep/routes.mjs",
     "bench:search": "tsx apps/server/src/search/bench/cli.ts",
     "load": "tsx apps/server/src/load/cli.ts",
     "status-report": "tsx packages/devtools/src/cli/status-report.ts",
