@@ -98,6 +98,15 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   }).sort(byWords);
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'medium' });
+  // In the table the day and the time stand on two lines, and where a record came from under who
+  // made it, so the action and its subject have the room they need beside Administration's list
+  // (AD-2).
+  const whenCell = (iso: string) => (
+    <time dateTime={iso}>
+      <span className="audit-day">{intl.formatDate(new Date(iso), { dateStyle: 'medium' })}</span>{' '}
+      <span className="audit-time">{intl.formatTime(new Date(iso), { timeStyle: 'medium' })}</span>
+    </time>
+  );
   const who = (r: AuditRecord) =>
     r.actor
       ? t('common.value', { value: r.actor.name ?? r.actor.email ?? `#${r.actor.id}` })
@@ -230,7 +239,7 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
             <li key={r.seq} className="audit-entry">
               <p className="audit-entry-when">{when(r.occurredAt)}</p>
               <p className="audit-entry-what">
-                <strong>{who(r)}</strong> <span>{auditActionWords(t, r.action)}</span>
+                <strong>{who(r)}</strong> <span>{auditActionWords(t, r.action, r.about)}</span>
               </p>
               {(r.subject || r.ip) && (
                 <p className="page-note">
@@ -257,17 +266,22 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
                 <th scope="col">{t('admin.audit.column.who')}</th>
                 <th scope="col">{t('admin.audit.column.action')}</th>
                 <th scope="col">{t('admin.audit.column.subject')}</th>
-                <th scope="col">{t('admin.audit.column.address')}</th>
               </tr>
             </thead>
             <tbody>
               {log.records.map((r) => (
                 <tr key={r.seq}>
-                  <td className="audit-when">{when(r.occurredAt)}</td>
-                  <td>{who(r)}</td>
-                  <td>{auditActionWords(t, r.action)}</td>
+                  <td className="audit-when">{whenCell(r.occurredAt)}</td>
+                  <td className="audit-who">
+                    {who(r)}
+                    {r.ip && (
+                      <span className="audit-from">
+                        {t('admin.audit.entryFrom', { address: r.ip })}
+                      </span>
+                    )}
+                  </td>
+                  <td>{auditActionWords(t, r.action, r.about)}</td>
                   <td>{r.subject ? auditSubjectText(t, r.subject) : ''}</td>
-                  <td>{r.ip ? t('common.value', { value: r.ip }) : ''}</td>
                 </tr>
               ))}
             </tbody>

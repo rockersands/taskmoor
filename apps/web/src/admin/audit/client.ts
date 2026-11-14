@@ -1,4 +1,5 @@
 import { API_BASE, api } from '../../api/client';
+import type { AuditAbout } from './words';
 
 /** One audit record, as `GET /api/v1/audit` answers (M1-003; IAM-013). */
 export interface AuditRecord {
@@ -10,6 +11,8 @@ export interface AuditRecord {
   subject: { type: string; id: string | null; name?: string } | null;
   details: unknown;
   ip: string | null;
+  /** The role given or taken and to whom, named as they are now (S3-AD-4). */
+  about?: AuditAbout;
 }
 
 export interface AuditFilter {

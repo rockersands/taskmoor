@@ -8,7 +8,7 @@ import { setViewportWidth } from '../../test/viewport';
 import { ADMIN, MEMBER } from '../fixtures';
 import { AuditPage } from './AuditPage';
 import { filterParams } from './client';
-import { fakeAuditClient, RECORDS } from './fixtures';
+import { fakeAuditClient, RECORDS, SWEEP_RECORDS } from './fixtures';
 
 function renderPage(client = fakeAuditClient(), locale: 'en' | 'en-XA' = 'en', session = ADMIN) {
   const errors: Error[] = [];
@@ -149,6 +149,41 @@ describe('audit log page (M1-085)', () => {
     expect(within(first as HTMLElement).getByText('From 203.0.113.5')).toBeVisible();
     expect(within(last as HTMLElement).getByText('Taskmoor')).toBeVisible();
     expect(within(last as HTMLElement).queryByText(/About:/)).toBeNull();
+  });
+
+  it('[IAM-013] puts the day over the time and the address under who, beside the list (AD-2)', async () => {
+    renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
+    const table = await screen.findByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['When', 'Who, from where', 'Action', 'Subject']);
+    const cells = within(within(table).getAllByRole('row')[3] as HTMLElement).getAllByRole('cell');
+    const when = cells[0]?.querySelector('time');
+    expect(when).toHaveAttribute('dateTime', '2026-11-14T09:14:29Z');
+    expect(when?.querySelector('.audit-day')).toHaveTextContent('Nov 14, 2026');
+    expect(when?.querySelector('.audit-time')).toHaveTextContent(/\d:14:29/);
+    expect(cells[1]?.firstChild?.textContent).toBe('Eval Admin');
+    expect(within(cells[1] as HTMLElement).getByText('From 127.0.0.1')).toHaveClass('audit-from');
+    expect(cells[2]).toHaveTextContent('Ticket template created');
+  });
+
+  it('[IAM-013] says which role was given and to whom, and a refused password link (S3-AD-1, S3-AD-4)', async () => {
+    renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
+    const table = await screen.findByRole('table');
+    const actions = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[2]?.textContent);
+    expect(actions).toEqual([
+      'Password link refused',
+      'Track role “Developers” given to Noor Haddad',
+      'Ticket template created',
+      'Password changed',
+      'Ticket deleted',
+    ]);
+    expect(screen.getByText('Ticket “MOB-12”')).toBeVisible();
   });
 
   it('[IAM-013] words every action it knows, in Spanish too, and shows an unknown code as it is', async () => {
