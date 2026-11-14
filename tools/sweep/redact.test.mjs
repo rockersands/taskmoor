@@ -181,7 +181,15 @@ describe("the demo's output", () => {
 
   it('[NFR-008] prints and writes only through redact, in every file of the tool', () => {
     const here = fileURLToPath(new URL('.', import.meta.url));
-    const files = ['routes.mjs', 'demo.mjs', 'session.mjs', 'seed.mjs', 'probe.mjs', 'plan.mjs'];
+    const files = [
+      'routes.mjs',
+      'demo.mjs',
+      'session.mjs',
+      'seed.mjs',
+      'probe.mjs',
+      'plan.mjs',
+      'states.mjs',
+    ];
     const writes = [];
     for (const file of files) {
       const text = readFileSync(join(here, file), 'utf8');

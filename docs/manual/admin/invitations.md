@@ -208,7 +208,7 @@ to ask a site administrator for a new one.
 
 Where a site has set its organization's domains (**Settings** > **Security**), anyone at another
 domain is external and must use two-factor authentication. A personal address counts. Invitations
-keep to this rule: the inviter is told **This address is outside your organization**, the page says
+keep to this rule: the inviter is told **This address is outside your organisation**, the page says
 so too, and after choosing a password the person sets up an authenticator app before they get a
 session. Until then they hold the role but cannot sign in. On a site with no domain list, nothing
 changes.

@@ -47,13 +47,13 @@ whole sprint rather than a query, so they stay as they are, and the page says so
 The filter is yours alone. It is kept in the page's address (`tracks/PAY?filter=...`), so it
 survives a reload and you can bookmark the filtered summary or send yourself the link; anyone who
 opens that link sees the summary filtered the same way, as far as they may see. Nothing is saved
-on the server, and the summary the owner set up does not change. Pressing **Customize** shows the
+on the server, and the summary the owner set up does not change. Pressing **Customise** shows the
 widgets unfiltered, as everyone will see them.
 
-### Customizing the summary
+### Customising the summary
 
-The track's owner and its administrators see **Customize**. It starts from the numbers above, as
-one widget called **This track's numbers**, so nothing is lost. They can then choose a **Layout**
+The track's owner and its administrators see **Customise**. It starts from the numbers above, as
+one widget called **This track’s numbers**, so nothing is lost. They can then choose a **Layout**
 of one to three columns, add any [widget](dashboards-and-reports.md#widgets) with **Widget to
 add**, set each one up, move them (by drag, by their buttons or with Alt and the arrow keys, as
 on a [dashboard](dashboards-and-reports.md#arranging-widgets)) and remove them, and press **Save the
@@ -194,7 +194,7 @@ it is long; on a phone the summary sits under the key.
 - **Dependencies**: "blocks" links between listed tickets show as lines. A line turns dashed
   and red when the blocked ticket starts on or before the day its blocker is due, unless one of
   the two is already closed.
-- **No dates** marks a ticket without any, at today.
+- **No dates** marks a ticket without any, just after today's line.
 
 Under the chart, **What the bars mean** explains each of these styles, listing only those the
 timeline draws.
@@ -202,7 +202,9 @@ timeline draws.
 The **Zoom** buttons switch between **Weeks**, **Months** and **Quarters**. **Today** scrolls
 to the current day. The month's name stays in view at the left of the days while you scroll. When
 a ticket's bar lies wholly before or after the days in view, its row shows **Earlier** or
-**Later** at that edge instead of looking empty; choose it to scroll to the bar. When more rows
+**Later** at that edge instead of looking empty; choose it to scroll to the bar. These markers are
+solid, so today's line passes behind their words. On a phone the ticket's key sits over its
+summary, and a tap anywhere on the two opens the ticket. When more rows
 wait below the chart's lower edge, the last ones fade out: scroll the chart, which you can also
 reach with Tab and scroll with the arrow keys.
 

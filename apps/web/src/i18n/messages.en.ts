@@ -43,16 +43,16 @@ export const messagesEn = {
   'track.section.releases': 'Releases',
   'track.section.files': 'Files and links',
   'track.section.statistics': 'Statistics',
-  'track.boardFailed': "This track's board could not be loaded. Try again in a moment.",
+  'track.boardFailed': 'This track’s board could not be loaded. Try again in a moment.',
   'track.notFound': 'No track has the key {key}, or you cannot see it.',
   'track.backlog.noneTitle': 'This track has no backlog',
   'track.backlog.none':
     'A backlog plans work in sprints, which only a Scrum board has. On this track, every ticket is on the board: its first column is where new work waits.',
   'track.backlog.openBoard': 'Open the board',
-  'track.backlog.kanbanAction': "Change the board's kind",
+  'track.backlog.kanbanAction': 'Change the board’s kind',
   'track.files.title': 'Files and links',
   'track.files.purpose':
-    "Everything attached or linked to this track's tickets, newest first. Each row leads to its ticket.",
+    'Everything attached or linked to this track’s tickets, newest first. Each row leads to its ticket.',
   'track.files.about':
     'Files live on tickets: this page gathers them, and the web links added to tickets, so a track’s documents are in one place. Only what is on tickets you may see is listed.',
   'track.files.failed': 'The files and links could not be loaded.',
@@ -63,7 +63,7 @@ export const messagesEn = {
   'track.files.truncated': 'Only the newest 200 of each are listed.',
   'track.outcomes.title': 'Outcomes',
   'track.outcomes.purpose':
-    "Each of this track's outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.",
+    'Each of this track’s outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.',
   'track.outcomes.about':
     'An outcome is a larger result the track works towards, with tickets under it. Its bar fills as those tickets close, and its dates come from the outcome itself.',
   'track.outcomes.failed': 'The outcomes could not be loaded.',
@@ -80,14 +80,14 @@ export const messagesEn = {
   'track.outcomes.howTo':
     'To add one, create a ticket of the type {types}, then add the tickets that work towards it from its page.',
   'track.outcomes.howToNone':
-    "None of this track's ticket types is at the outcome level. An administrator can add one in the track's settings.",
+    'None of this track’s ticket types is at the outcome level. An administrator can add one in the track’s settings.',
   'track.outcomes.create': 'Create a ticket',
   'track.outcomes.howToManage':
     'Choose New outcome to create one of the type {types}, then add the tickets that work towards it from its page.',
   'track.outcomes.manage.toggle': 'Manage outcomes',
   'track.outcomes.manage.title': 'Manage outcomes',
   'track.outcomes.manage.note':
-    "Create an outcome here, and use the tools under each one to change its summary and dates, move it up or down among the open ones, or close it. Each change is the same as on the outcome's own page.",
+    'Create an outcome here, and use the tools under each one to change its summary and dates, move it up or down among the open ones, or close it. Each change is the same as on the outcome’s own page.',
   'track.outcomes.manage.new': 'New outcome',
   'track.outcomes.manage.summary': 'Summary',
   'track.outcomes.manage.summaryMissing': 'Give the outcome a summary.',
@@ -109,7 +109,7 @@ export const messagesEn = {
   'track.outcomes.manage.closeHow': 'How to close {key}',
   'track.outcomes.manage.closed': 'Closed {key}.',
   'track.outcomes.manage.noClose':
-    "{key}'s workflow offers no way to a closed status from where it is now.",
+    '{key}’s workflow offers no way to a closed status from where it is now.',
   'track.outcomes.manage.onPage':
     'Closing {key} asks for more than can be filled in here: open it and close it from its page.',
   'track.outcomes.manage.forbidden': 'You may not make this change to this outcome.',
@@ -124,12 +124,12 @@ export const messagesEn = {
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
   'tracks.empty':
-    "A track holds a team or project's tickets. Administrators make them under Administration.",
+    'A track holds a team or project’s tickets. Administrators make them under Administration.',
   'tracks.emptyMayCreate':
-    "A track holds a team or project's tickets, with its board, backlog or list, and reports. Make the first one to start.",
+    'A track holds a team or project’s tickets, with its board, backlog or list, and reports. Make the first one to start.',
   'tracks.new': 'New track',
   'tracks.new.intro':
-    "A track holds a team or project's tickets. Its key starts every ticket's key.",
+    'A track holds a team or project’s tickets. Its key starts every ticket’s key.',
   'tracks.new.create': 'Create track',
   'tracks.new.cancel': 'Cancel',
   'tracks.new.close': 'Close without making a track',
@@ -152,7 +152,7 @@ export const messagesEn = {
   'trackGroups.count': '{count, plural, one {# track} other {# tracks}}',
   'trackGroups.empty': 'No tracks yet. Drop one here, or choose this group in a track’s menu.',
   'trackGroups.emptyShared': 'None of its tracks are open to you.',
-  'trackGroups.minimize': 'Minimize {name}',
+  'trackGroups.minimize': 'Minimise {name}',
   'trackGroups.open': 'Open {name}',
   'trackGroups.sharedBy': 'Shared by {name}',
   'trackGroups.sharedWith': 'Shared with {count, plural, one {# person} other {# people}}',
@@ -233,7 +233,7 @@ export const messagesEn = {
   'trackGroups.announce.deleted': '{name} deleted.',
   'trackGroups.announce.left': 'You left {name}.',
   'trackGroups.announce.renamed': 'Renamed to {name}.',
-  'trackGroups.announce.minimized': '{name} minimized.',
+  'trackGroups.announce.minimized': '{name} minimised.',
   'trackGroups.announce.opened': '{name} opened.',
   'purpose.tracks':
     'Every track you can see. Open one for its summary, board, backlog, calendar, timeline and statistics.',
@@ -859,7 +859,7 @@ export const messagesEn = {
   'importedLink.looking': 'Looking for what this link became…',
   'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',
   'importedLink.failed': 'The link could not be looked up. Try again in a moment.',
-  'importedLink.toSearch': 'Go to search',
+  'importedLink.notFound': 'Link not found',
   'saved.importProblem':
     'This saved search came from an import and does not run yet: {problem}. Change the query and save it to fix it.',
   'saved.failed': 'That did not work. Try again in a moment.',
@@ -2276,7 +2276,7 @@ export const messagesEn = {
   'admin.security.groups': 'Also required for members of these groups',
   'admin.security.noGroups': 'There are no groups yet.',
   'admin.security.groupsFailed': 'The groups could not be read. Try again in a moment.',
-  'admin.security.domains': 'Your organization’s email domains',
+  'admin.security.domains': 'Your organisation’s email domains',
   'admin.security.domainsHint':
     'One per line, such as example.com. Once you name one, people whose email is at any other domain are external and must use two-factor authentication. Leave it empty to treat everyone alike.',
   'admin.security.save': 'Save policy',
@@ -3092,7 +3092,7 @@ export const messagesEn = {
   'trackPeople.result.alreadyHolds': '{who}: already holds the role.',
   'trackPeople.result.sendFailed': 'The email could not be sent; try again from the list.',
   'trackPeople.result.external':
-    'This address is outside your organization, so two-factor authentication will be needed.',
+    'This address is outside your organisation, so two-factor authentication will be needed.',
   'trackPeople.problem.appoint':
     'You cannot give or remove the role that runs this track. A site administrator can.',
   'trackPeople.problem.lastAdmin':
@@ -3133,7 +3133,7 @@ export const messagesEn = {
   'invite.join': 'Join {key}',
   'invite.otherAccount': 'This invitation is for {email}. Sign out, then open the link again.',
   'invite.signOut': 'Sign out',
-  'invite.useProvider': 'This address signs in through its organization: sign in below.',
+  'invite.useProvider': 'This address signs in through its organisation: sign in below.',
   'invite.signInToFinish': 'Sign in to finish.',
   'admin.tracks.title': 'Tracks',
   'admin.tracks.intro':
@@ -4573,7 +4573,7 @@ export const messagesEn = {
   'boards.create.trackChoose': 'Choose a track',
   'boards.create.trackOption': '{name} ({key})',
   'boards.create.trackHint':
-    "The board shows this track's tickets. Its columns start from the statuses of the track's workflows.",
+    'The board shows this track’s tickets. Its columns start from the statuses of the track’s workflows.',
   'boards.create.noTracks': 'You cannot see any track yet, so a board would have nothing to show.',
   'boards.create.useQuery': 'Advanced: choose the tickets with a query',
   'boards.create.useTrack': 'Choose a track instead',
@@ -4631,7 +4631,7 @@ export const messagesEn = {
   'boards.settings.remove.to': 'Move them to',
   'boards.settings.remove.confirm': 'Remove the column',
   'boards.settings.reach.noStatus':
-    "No card can go to {column} yet: it has no status in this track's workflow.",
+    'No card can go to {column} yet: it has no status in this track’s workflow.',
   'boards.settings.reach.noPath':
     'No card can reach {column}: nothing in the workflow leads there.',
   'boards.settings.reach.shared':
@@ -5010,12 +5010,12 @@ export const messagesEn = {
   'dashboards.kind.group-by': 'Grouped tickets',
   'dashboards.kind.workload': 'Workload',
   'dashboards.kind.time-tracking': 'Time tracking',
-  'dashboards.kind.track-summary': "This track's numbers",
+  'dashboards.kind.track-summary': 'This track’s numbers',
   'dashboards.value.none': 'None',
   'dashboards.value.other': 'Other',
   'dashboards.widget.failed': 'This widget could not be loaded.',
   'dashboards.widget.badQuery':
-    "Taskmoor cannot read the query in this widget, so it shows nothing. Edit the dashboard and fix the query in the widget's settings.",
+    'Taskmoor cannot read the query in this widget, so it shows nothing. Edit the dashboard and fix the query in the widget’s settings.',
   'dashboards.widget.noLinks': 'No links yet.',
   'dashboards.widget.noTickets': 'No tickets.',
   'dashboards.widget.noData': 'Nothing to show yet.',
@@ -5383,22 +5383,22 @@ export const messagesEn = {
   'summary.purpose':
     'Where this track stands, at a glance: every number opens the search behind it.',
   'summary.about':
-    "Until someone customizes it, this page shows the track's numbers. The track's owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.",
-  'summary.customize': 'Customize',
+    'Until someone customises it, this page shows the track’s numbers. The track’s owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.',
+  'summary.customize': 'Customise',
   'summary.backToDefault': 'Back to the default',
   'summary.confirmDefault':
     'Go back to the default summary? This removes the widgets chosen for this track, for everyone.',
   'summary.backToDefaultDone': 'This track shows its default summary again.',
   'summary.save': 'Save the summary',
   'summary.conflict': 'Someone changed this summary meanwhile. Reload the page and try again.',
-  'summary.forbidden': "Only the track's owner and administrators can change its summary.",
+  'summary.forbidden': 'Only the track’s owner and administrators can change its summary.',
   'summary.unsaved': 'Save the summary to see this widget.',
   'summary.queryHint': 'Empty for this track',
-  'summary.numbersFailed': "This track's numbers could not be loaded.",
+  'summary.numbersFailed': 'This track’s numbers could not be loaded.',
   'summary.emptyTitle': 'No widgets on this summary',
-  'summary.empty': "The track's administrators chose no widgets for it yet.",
+  'summary.empty': 'The track’s administrators chose no widgets for it yet.',
   'summary.emptyEditable':
-    'Choose Customize to add some, or Back to the default for the numbers this page starts with.',
+    'Choose Customise to add some, or Back to the default for the numbers this page starts with.',
   'summary.filter.label': 'Filter this summary for yourself',
   'summary.filter.field': 'Only tickets that match',
   'summary.filter.placeholder': 'For example: assignee = currentUser()',
@@ -5406,7 +5406,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    "Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page's address, so you can bookmark it. The summary everyone else sees does not change.",
+    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',
@@ -5414,7 +5414,7 @@ export const messagesEn = {
   'statistics.purpose':
     'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
   'statistics.about':
-    "Each report counts only the tickets you can see in this track, so two people may read different numbers. Reports that follow sprints need the track's board to be a Scrum board; the others work on any board.",
+    'Each report counts only the tickets you can see in this track, so two people may read different numbers. Reports that follow sprints need the track’s board to be a Scrum board; the others work on any board.',
   'statistics.group.flow': 'Flow',
   'statistics.group.sprints': 'Sprints',
   'statistics.group.releases': 'Releases',
@@ -5429,7 +5429,7 @@ export const messagesEn = {
   'statistics.workloadNote': 'The remaining estimate of the open tickets you can see, by assignee.',
   'statistics.needsScrum.title': '{report} needs a Scrum board',
   'statistics.needsScrum':
-    "This report follows sprints, and this track's board is a Kanban board, which has none. The flow and ticket reports work on any board.",
+    'This report follows sprints, and this track’s board is a Kanban board, which has none. The flow and ticket reports work on any board.',
   'statistics.noSprints.title': 'No sprint has started yet',
   'statistics.noSprints': 'A sprint report appears here once a sprint of this board starts.',
   'statistics.sprint': 'Sprint',
@@ -6623,7 +6623,7 @@ export const messagesEn = {
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
-  'ticketTools.links.archived': "That ticket's track is archived, so its links cannot change.",
+  'ticketTools.links.archived': 'That ticket’s track is archived, so its links cannot change.',
   'ticketTools.subtickets.title': 'Subtickets',
   'ticketTools.children.title': 'Tickets under this',
   'ticketTools.subtickets.empty': 'None yet.',

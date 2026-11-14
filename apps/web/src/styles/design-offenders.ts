@@ -55,9 +55,12 @@ export const ALLOWED = {
   /** Selectors: fields need no entry. The user is still to decide on sticky cells (T-143). */
   opaqueSurfaces: {
     '.skip-link': 'it appears over anything at all, and must stay readable there',
+    '.glass-card':
+      'under 768 px only, in surfaces.css: the fallback tokens.css gives glass that cannot blur (ADR-114)',
     '.timeline-head': STICKY,
     '.timeline-corner': STICKY,
     '.timeline-label': STICKY,
+    '.timeline-edge': STICKY,
     '.timeline-group .timeline-label': STICKY,
     '.capacity-table thead th': STICKY,
     '.capacity-table tbody th': STICKY,

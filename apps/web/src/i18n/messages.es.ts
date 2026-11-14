@@ -881,7 +881,7 @@ export const messagesEs: Record<MessageId, string> = {
   'importedLink.looking': 'Buscando en qué se convirtió este enlace…',
   'importedLink.missing': 'Nada de lo importado coincide con este enlace, o no puedes verlo.',
   'importedLink.failed': 'No se pudo buscar el enlace. Inténtalo de nuevo en un momento.',
-  'importedLink.toSearch': 'Ir a la búsqueda',
+  'importedLink.notFound': 'Enlace no encontrado',
   'saved.importProblem':
     'Esta búsqueda guardada llegó con una importación y aún no funciona: {problem}. Cambia la consulta y guárdala para arreglarla.',
   'saved.failed': 'Eso no funcionó. Inténtalo de nuevo en un momento.',

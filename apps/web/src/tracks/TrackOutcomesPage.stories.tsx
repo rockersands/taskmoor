@@ -103,7 +103,7 @@ export const NoOutcomeType: Story = {
   args: { client: withOutcomes([], 100, []) },
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByText(/None of this track's ticket types/),
+      await within(canvasElement).findByText(/None of this track’s ticket types/),
     ).toBeVisible();
   },
 };

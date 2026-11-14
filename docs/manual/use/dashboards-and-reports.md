@@ -58,7 +58,7 @@ While you edit, move a widget in any of these ways:
 
 After each move, a screen reader hears where the widget is now, such as "Alpha is now in column 2,
 1 of 2". Nothing is kept until you press **Save dashboard**. A track's customized
-[summary](views.md#customizing-the-summary) is arranged the same way.
+[summary](views.md#customising-the-summary) is arranged the same way.
 
 ### Widgets
 

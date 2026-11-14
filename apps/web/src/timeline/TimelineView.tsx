@@ -72,6 +72,8 @@ const ZOOMS: { id: Zoom; label: MessageId }[] = [
 ];
 /** Every row's height, so dependency lines know where rows are (44px: a touch target). */
 const ROW = 44;
+/** The space between today's line and a "No dates" chip, so the line never runs along its edge. */
+const UNSCHEDULED_GAP = 4;
 /** Beyond this many rows only those in view are drawn, with some to spare on either side. */
 const WINDOW_AFTER = 200;
 const OVERSCAN = 20;
@@ -585,8 +587,8 @@ export function TimelineView({
             <button
               type="button"
               className="timeline-unscheduled"
-              // Past today's line, which runs through the middle of today's column.
-              style={{ left: x(today) + px / 2 + 2 }}
+              // Past today's line (2 px through the middle of today's column), with a gap.
+              style={{ left: x(today) + px / 2 + 2 + UNSCHEDULED_GAP }}
               onClick={() => setSelected(item.id)}
               aria-label={t('timeline.schedule', { key: item.key })}
               aria-describedby={badgeId}

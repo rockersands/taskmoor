@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { leaveMotion } from './motion';
@@ -36,6 +36,10 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
   const [active, setActive] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  // Whether commands wait below the list's foot: then its last line fades, so a list that ends
+  // on a whole command still shows there is more (on a phone, Account and Sign out lie below).
+  const [more, setMore] = useState(false);
   const listId = useId();
   // A phone's palette is narrow and has no keyboard to press Ctrl K on (PL-49).
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -72,6 +76,33 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+
+  const measureMore = () => {
+    const el = list.current;
+    setMore(el !== null && el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  };
+  // Measured again whenever the list changes, and when the window does (50vh is its height).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items is what changes the list
+  useLayoutEffect(() => {
+    if (!open) return;
+    measureMore();
+    window.addEventListener('resize', measureMore);
+    return () => window.removeEventListener('resize', measureMore);
+  }, [open, items]);
+
+  // The active option stays in the list's view as the arrow keys move it, or as a filter puts it
+  // back at the top (TR-4): focus stays in the search field, so the browser scrolls nothing itself.
+  // Only the list scrolls, never the page under the palette.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items move the active option too
+  useLayoutEffect(() => {
+    const el = list.current;
+    const option = el?.querySelector('[aria-selected="true"]');
+    if (!open || !el || !option) return;
+    const box = option.getBoundingClientRect();
+    const view = el.getBoundingClientRect();
+    if (box.top < view.top) el.scrollTop -= view.top - box.top;
+    else if (box.bottom > view.bottom) el.scrollTop += box.bottom - view.bottom;
+  }, [open, active, items]);
 
   useEffect(() => {
     if (open) {
@@ -178,10 +209,13 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
             />
             {/* APG combobox pattern: focus stays on the input; aria-activedescendant names the option. */}
             <div
+              ref={list}
               id={listId}
               className="palette-list"
               role="listbox"
               aria-label={t('palette.results')}
+              data-more={more ? '' : undefined}
+              onScroll={measureMore}
             >
               {items.length === 0 && (
                 <div

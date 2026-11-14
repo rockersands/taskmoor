@@ -121,7 +121,7 @@ export const CustomizedForAViewer: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('article', { name: 'Open bugs' })).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Customize' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Customise' })).toBeNull();
   },
 };
 
@@ -130,7 +130,7 @@ export const Customizing: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Customize' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Customise' }));
     await expect(await canvas.findByRole('button', { name: 'Save the summary' })).toBeVisible();
   },
 };
@@ -140,7 +140,7 @@ export const DefaultForAnAdministrator: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Customize' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Customise' })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Back to the default' })).toBeNull();
   },
 };
@@ -154,7 +154,7 @@ export const PhoneCustomizing: Story = {
   args: { client: fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM, mayCustomize: true }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Customize' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Customise' }));
     await expect(await canvas.findByRole('button', { name: 'Save the summary' })).toBeVisible();
   },
 };
@@ -189,7 +189,7 @@ export const FilteredForThemselves: Story = {
       canvas.getByText('Showing only the tickets that match assignee = currentUser().'),
     ).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Clear the filter' })).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Customize' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Customise' })).toBeNull();
   },
 };
 

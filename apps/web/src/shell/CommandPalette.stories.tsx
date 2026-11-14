@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { type Command, CommandPalette } from './CommandPalette';
 
 const commands: Command[] = [
@@ -43,5 +43,86 @@ export const Filtered: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /Search or jump to/ }));
     await userEvent.keyboard('trac');
     await expect(within(document.body).getAllByRole('option')).toHaveLength(1);
+  },
+};
+
+/** The palette as a site administrator has it on a ticket: more commands than fit. */
+const many: Command[] = [
+  ...commands,
+  ...(
+    [
+      'nav.inbox',
+      'nav.search',
+      'nav.dashboards',
+      'nav.plans',
+      'account.title',
+      'palette.appearance.light',
+      'palette.appearance.dark',
+      'palette.appearance.system',
+      'palette.signOut',
+    ] as const
+  ).map((labelId) => ({ id: labelId, labelId, run: () => {} })),
+  ...[1, 2, 3, 4, 5, 6].map((n) => ({
+    id: `follow-${n}`,
+    labelId: 'palette.ticket.follow' as const,
+    values: { key: `MOB-${n}` },
+    run: () => {},
+  })),
+];
+
+/** Whether the list's foot fades out. */
+const fadesAtFoot = (list: HTMLElement) => getComputedStyle(list).maskImage.includes('gradient');
+
+/**
+ * PL-49, ADR-033: on a phone the list holds half the window and can end on a whole command, so
+ * its foot fades while more follow (Account, the appearance choices and Sign out lie below). The
+ * fade goes once the list is scrolled to its end, and when a filter leaves only a few commands.
+ */
+export const MoreBelowFades: Story = {
+  args: { commands: many },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /Search or jump to/ }));
+    const list = await within(document.body).findByRole('listbox', { name: 'Commands' });
+    await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+    await expect(fadesAtFoot(list)).toBe(true);
+    list.scrollTop = list.scrollHeight;
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(false));
+    list.scrollTop = 0;
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(true));
+    await userEvent.keyboard('sign');
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(false));
+  },
+};
+
+/**
+ * TR-4, PL-49: focus stays in the search field, so the fade is lifted by the active option. Once
+ * the arrow keys move it on, nothing it reaches is faded, and it stays in the list's view all the
+ * way down, past the fold of a phone's half-window list.
+ */
+export const ArrowKeysLiftTheFade: Story = {
+  args: { commands: many },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /Search or jump to/ }));
+    const list = await within(document.body).findByRole('listbox', { name: 'Commands' });
+    await expect(fadesAtFoot(list)).toBe(true);
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(false));
+    const inView = () => {
+      const option = within(list).getByRole('option', { selected: true });
+      const box = option.getBoundingClientRect();
+      const view = list.getBoundingClientRect();
+      return box.top >= view.top - 0.5 && box.bottom <= view.bottom + 0.5;
+    };
+    for (let step = 1; step < many.length - 1; step++) {
+      await userEvent.keyboard('{ArrowDown}');
+      await expect(inView()).toBe(true);
+    }
+    await expect(list.scrollTop).toBeGreaterThan(0);
+    // Back at the first command, the list shows its top again and the fade returns.
+    for (let step = 0; step < many.length; step++) await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => expect(fadesAtFoot(list)).toBe(true));
+    await expect(inView()).toBe(true);
   },
 };
