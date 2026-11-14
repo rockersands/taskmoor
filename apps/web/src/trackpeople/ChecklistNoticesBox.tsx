@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { TrackPeopleClient } from './client';
 
@@ -9,10 +9,12 @@ export interface ChecklistNoticesBoxProps {
   /** What the track has stored. */
   on: boolean;
   client: Pick<TrackPeopleClient, 'setChecklistNotices'>;
-  /** Says what changed, for the page to say under the box. */
+  /** Says what changed, for the page to say beside the box. */
   onSaid: (text: string) => void;
-  /** A refusal, for the page to say why under the box. */
+  /** A refusal, for the page to say why beside the box. */
   onRefused: (error: unknown) => void;
+  /** What the page says about the last change, shown right under the box (T-248). */
+  answer?: ReactNode;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ChecklistNoticesBox({
   client,
   onSaid,
   onRefused,
+  answer,
 }: ChecklistNoticesBoxProps) {
   const t = useT();
   const id = useId();
@@ -69,6 +72,7 @@ export function ChecklistNoticesBox({
         />
         <label htmlFor={`${id}-box`}>{t('trackPeople.checklistNotices')}</label>
       </div>
+      {answer}
       <p id={`${id}-hint`} className="form-hint">
         {t('trackPeople.checklistNoticesHint')}
       </p>

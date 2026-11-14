@@ -396,7 +396,7 @@ describe('checklist notices (NTF-015)', () => {
   const pastTheWindow = () => new Date(Date.now() + 150 * 1000);
   /**
    * Ana renames the ticket, written `seconds` before the run that follows: under the two-minute
-   * window it falls due in mid-run (110) or was due before the run began (130).
+   * window it falls due in mid-run (110) or was due before the run began (150).
    */
   const renamedBefore = async (ticket: { id: number; key: string }, seconds: number) => {
     const renamed = await as('ana', {
@@ -467,18 +467,15 @@ describe('checklist notices (NTF-015)', () => {
     expect(email[0]?.text).toContain('- ana made 4 changes to checklists');
   });
 
-  it("[NTF-015] (2) a run begun after an email's window waits for its own, and the email does not wait for it", async () => {
+  it('[NTF-002] (1) [NTF-015] (2) an older change due during a run waits for it, at most one window, and both go in one email', async () => {
     const ticket = await followedTicket('Older notice due');
-    // The rename was due before the run began, and the mailer had not run since.
-    await renamedBefore(ticket, 130);
+    // The rename fell due 30 seconds before the run began, and the mailer had not run since.
+    await renamedBefore(ticket, 150);
     const list = await addList('ana', ticket.id, 'Steps', ['One', 'Two', 'Three']);
     await deliver();
 
-    // The rename goes without the run, which carries on.
-    const first = (await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key);
-    expect(first).toHaveLength(1);
-    expect(first[0]?.text).toContain('- ana updated the ticket');
-    expect(first[0]?.text).not.toMatch(/checklist/);
+    // The rename waits for the run instead of going on its own (T-248).
+    expect((await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key)).toEqual([]);
     for (const item of list.items) await tick('ana', ticket.id, list.id, item.id);
     await deliver();
     const finn = await noticesOf('finn', ticket.id);
@@ -486,12 +483,28 @@ describe('checklist notices (NTF-015)', () => {
       ['email', 4],
       ['inbox', 4],
     ]);
+    // Still waiting 80 seconds on, with the run gathering: the rename has been due 110 seconds.
+    expect((await mailAt(new Date(Date.now() + 80 * 1000)))('finn', ticket.key)).toEqual([]);
 
-    // Once the run's own window has passed, it goes as one line counting every change.
-    const second = (await mailAt(later()))('finn', ticket.key);
-    expect(second).toHaveLength(1);
-    expect(second[0]?.text).toContain('- ana made 4 changes to checklists');
-    expect(second[0]?.text).not.toContain('updated the ticket');
+    // One window after the rename fell due the run is still gathering (it began 30 seconds
+    // later), yet the email goes: one email holding both, the run as it stands.
+    const email = (await mailAt(new Date(Date.now() + 95 * 1000)))('finn', ticket.key);
+    expect(email).toHaveLength(1);
+    expect(email[0]?.text).toContain('- ana updated the ticket');
+    expect(email[0]?.text).toContain('- ana made 4 changes to checklists');
+    // Nothing is left to go later.
+    expect((await mailAt(later()))('finn', ticket.key)).toEqual([]);
+  });
+
+  it('[NTF-002] (1) a change with no checklist run goes when it falls due, not later', async () => {
+    const ticket = await followedTicket('No run');
+    await renamedBefore(ticket, 110);
+    // Not due yet: written 110 seconds ago under the two-minute window.
+    expect((await mailAt(new Date()))('finn', ticket.key)).toEqual([]);
+    const email = (await mailAt(new Date(Date.now() + 15 * 1000)))('finn', ticket.key);
+    expect(email).toHaveLength(1);
+    expect(email[0]?.text).toContain('- ana updated the ticket');
+    expect(email[0]?.text).not.toMatch(/checklist/);
   });
 
   it('[NTF-003] (2) reading a notice that outlived a sent email keeps the next email from going', async () => {

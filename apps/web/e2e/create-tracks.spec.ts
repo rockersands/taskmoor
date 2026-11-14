@@ -70,6 +70,24 @@ async function appoint(page: Page, name: string, tick: boolean) {
   await page.getByRole('button', { name: `Give Administrators to ${name}` }).click();
 }
 
+/**
+ * A role given is said where the person found was, right under the search field (T-248), not
+ * among the rows above, and told to a screen reader by the page's status line.
+ */
+async function expectSaidUnderSearch(page: Page, text: string) {
+  const said = page
+    .getByRole('region', { name: 'Who holds which role' })
+    .getByRole('listitem')
+    .filter({ hasText: text });
+  await expect(said).toBeVisible();
+  const search = await page.getByLabel('Find a person by name').boundingBox();
+  const at = await said.boundingBox();
+  const below = (at?.y ?? 0) - ((search?.y ?? 0) + (search?.height ?? 0));
+  expect(below).toBeGreaterThanOrEqual(0);
+  expect(below).toBeLessThan(80);
+  await expect(page.getByRole('status').filter({ hasText: text })).toHaveCount(1);
+}
+
 test('[IAM-033] the box given with the managing role lets a person create tracks; unticked, it does not', async ({
   page,
 }, testInfo) => {
@@ -114,9 +132,10 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);
   await appoint(page, people.lead, true);
-  await expect(
-    page.getByText(`${people.lead} now holds Administrators and can create tracks.`),
-  ).toBeVisible();
+  await expectSaidUnderSearch(
+    page,
+    `${people.lead} now holds Administrators and can create tracks.`,
+  );
 
   // The new manager can create tracks now.
   await signInAs(api, emails.lead, PASSWORD);
@@ -128,7 +147,7 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
   await visit(page, `#/manage/tracks/${made.track.id}`);
   await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
   await appoint(page, people.next, false);
-  await expect(page.getByText(`${people.next} now holds Administrators.`)).toBeVisible();
+  await expectSaidUnderSearch(page, `${people.next} now holds Administrators.`);
   expect(await noSidewaysScroll(page)).toBe(true);
 
   // The next manager runs the track but may not create tracks, and is not offered the box.

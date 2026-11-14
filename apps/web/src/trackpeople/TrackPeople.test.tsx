@@ -15,10 +15,15 @@ import {
   fakeInvitationClient,
   fakeTrackPeopleClient,
   LINK,
+  WAITING,
 } from './fixtures';
 import { InvitationPage } from './InvitationPage';
 import { ManagedTracksPage } from './ManagedTracksPage';
 import { TrackPeoplePage } from './TrackPeoplePage';
+
+/** An action's answer as drawn on the page, not the page's status line that also says it. */
+const seen = (text: string) =>
+  screen.findByText(text, { ignore: 'script, style, .visually-hidden' });
 
 function renderPeople(
   options: FakeTrackPeopleOptions = {},
@@ -60,11 +65,11 @@ describe('a track manager without site administration (IAM-030)', () => {
     expect(await screen.findByText('Kalo Reyes: Administrators')).toBeInTheDocument();
     expect(screen.getByText('Group Support: Members')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove Bo Lind from Members' }));
-    expect(await screen.findByText('Bo Lind no longer holds Members.')).toBeInTheDocument();
+    expect(await seen('Bo Lind no longer holds Members.')).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Role'), 'Viewers');
     await user.type(screen.getByLabelText('Find a person by name'), 'ana');
     await user.click(await screen.findByRole('button', { name: 'Give Viewers to Ana Duarte' }));
-    expect(await screen.findByText('Ana Duarte now holds Viewers.')).toBeInTheDocument();
+    expect(await seen('Ana Duarte now holds Viewers.')).toBeInTheDocument();
     expect(client.calls.filter((c) => c.action === 'setRole').map((c) => c.args)).toEqual([
       [3, 8, 'users', 2, false],
       [3, 9, 'users', 4, true],
@@ -232,9 +237,7 @@ describe('the invite dialog (IAM-027)', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
     );
-    expect(
-      await screen.findByText('The invitation to nia@example.com went out again.'),
-    ).toBeVisible();
+    expect(await seen('The invitation to nia@example.com went out again.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Make a new link for nia@example.com' }));
     const fresh = await screen.findByRole('textbox', { name: 'Link for nia@example.com' });
     expect((fresh as HTMLInputElement).value).toContain('again-21');
@@ -288,16 +291,14 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
     expect(screen.getByRole('heading', { level: 2, name: 'Notices to followers' })).toBeVisible();
     await user.click(box);
     expect(
-      await screen.findByText('Followers of tickets in SHOP now hear when a checklist changes.'),
+      await seen('Followers of tickets in SHOP now hear when a checklist changes.'),
     ).toBeInTheDocument();
     expect(box).toBeChecked();
     // From the keyboard too: Space on the focused box turns it off again.
     box.focus();
     await user.keyboard(' ');
     expect(
-      await screen.findByText(
-        'Followers of tickets in SHOP no longer hear when a checklist changes.',
-      ),
+      await seen('Followers of tickets in SHOP no longer hear when a checklist changes.'),
     ).toBeInTheDocument();
     expect(box).not.toBeChecked();
     expect(box).toHaveFocus();
@@ -325,7 +326,7 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
     expect(noticeCalls(client)).toEqual([[3, true]]);
   });
 
-  it('[NTF-015] says what happened under the box, where the person is, not at the top of the page (T-232)', async () => {
+  it('[NTF-015] says what happened right under the box, before its hint (T-248)', async () => {
     const user = userEvent.setup();
     renderPeople({ refuseNotices: true });
     const box = await screen.findByRole('checkbox', { name: NAME });
@@ -333,17 +334,23 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
     const card = screen.getByRole('region', { name: 'Notices to followers' });
     const alert = await within(card).findByRole('alert');
     expect(alert).toHaveTextContent('The track is archived, so its settings cannot change.');
-    // Right after the box and its hint, and the only alert on the page.
+    // Between the box and its hint, and the only alert on the page.
+    const hint = within(card).getByText(/^The followers of a ticket hear/);
     expect(box.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(alert.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByRole('alert')).toEqual([alert]);
     cleanup();
 
-    // What went through is said there too, in a status line a screen reader follows.
+    // What went through shows there too, and the page's status line tells a screen reader.
     renderPeople();
-    await user.click(await screen.findByRole('checkbox', { name: NAME }));
-    const saved = screen.getByRole('region', { name: 'Notices to followers' });
+    const saving = await screen.findByRole('checkbox', { name: NAME });
+    await user.click(saving);
+    const said = await seen('Followers of tickets in SHOP now hear when a checklist changes.');
+    const savedHint = screen.getByText(/^The followers of a ticket hear/);
+    expect(saving.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(said.compareDocumentPosition(savedHint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await waitFor(() =>
-      expect(within(saved).getByRole('status')).toHaveTextContent(
+      expect(screen.getByRole('status')).toHaveTextContent(
         'Followers of tickets in SHOP now hear when a checklist changes.',
       ),
     );
@@ -357,7 +364,7 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
     });
     await user.click(box);
     expect(
-      await screen.findByText(
+      await seen(
         'Quienes siguen tickets de SHOP ahora se enteran cuando cambia una lista de comprobación.',
       ),
     ).toBeInTheDocument();
@@ -366,39 +373,101 @@ describe('checklist notices, a choice of whoever runs the track (NTF-015)', () =
   });
 });
 
-describe('each card says what its actions did, on the card (T-232)', () => {
-  it('[IAM-028] a role that cannot be taken is refused on the card that lists the roles', async () => {
+describe('what an action did shows beside the row pressed (T-248)', () => {
+  /** The rows of a list, by what each says. */
+  const rowsOf = (list: HTMLElement) =>
+    within(list)
+      .getAllByRole('listitem')
+      .map((item) => item.textContent);
+  const holdersList = () =>
+    within(screen.getByRole('region', { name: 'Who holds which role' })).getAllByRole('list')[0];
+  /** The page's one status line, which tells a screen reader what went through. */
+  const announced = (text: string) =>
+    waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(text));
+
+  it('[IAM-030] a role taken away is said in its row’s place, between the rows around it, and told to a screen reader', async () => {
+    const user = userEvent.setup();
+    renderPeople();
+    await user.click(await screen.findByRole('button', { name: 'Remove Bo Lind from Members' }));
+    await seen('Bo Lind no longer holds Members.');
+    expect(rowsOf(holdersList() as HTMLElement)).toEqual([
+      'Kalo Reyes: AdministratorsRemove',
+      'Bo Lind no longer holds Members.',
+      'Group Support: MembersRemove',
+    ]);
+    await announced('Bo Lind no longer holds Members.');
+  });
+
+  it('[IAM-028] a refusal shows in the row pressed, and only there', async () => {
     const user = userEvent.setup();
     renderPeople();
     await user.click(
       await screen.findByRole('button', { name: 'Remove Kalo Reyes from Administrators' }),
     );
-    const roles = screen.getByRole('region', { name: 'Who holds which role' });
-    expect(await within(roles).findByRole('alert')).toHaveTextContent(
-      'This is the last person who runs the track',
-    );
-    expect(
-      within(screen.getByRole('region', { name: 'Notices to followers' })).queryByRole('alert'),
-    ).toBeNull();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('This is the last person who runs the track');
+    const row = alert.closest('li') as HTMLElement;
+    expect(row).toHaveTextContent('Kalo Reyes: Administrators');
+    expect(screen.getAllByRole('alert')).toEqual([alert]);
+    // Nothing went through, so nothing is told as done.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
-  it('[IAM-027] an invitation sent again is said on the card of invitations waiting', async () => {
+  it('[IAM-030] a role given is said where the person found was, under the search, until the next search', async () => {
     const user = userEvent.setup();
     renderPeople();
+    await screen.findByText('Kalo Reyes: Administrators');
+    await user.selectOptions(screen.getByLabelText('Role'), 'Viewers');
+    const search = screen.getByLabelText('Find a person by name');
+    await user.type(search, 'ana');
+    await user.click(await screen.findByRole('button', { name: 'Give Viewers to Ana Duarte' }));
+    const said = await seen('Ana Duarte now holds Viewers.');
+    expect(search.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(said.closest('li')).not.toBeNull();
+    // Not in the list of who holds which role above, where the person now appears.
+    expect(holdersList()).not.toContainElement(said);
+    await announced('Ana Duarte now holds Viewers.');
+    // A new search starts a new list.
+    await user.type(search, 'bo');
+    await waitFor(() => expect(said).not.toBeInTheDocument());
+  });
+
+  it('[IAM-027] each invitation’s answer, and its new link, show in its own row', async () => {
+    const user = userEvent.setup();
+    const second = { ...WAITING, id: 22, email: 'oli@example.com' };
+    renderPeople({ invitations: [WAITING, second] });
+    const waiting = await screen.findByRole('region', { name: 'Invitations waiting' });
+    const rowOf = (email: string) =>
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((li) => li.textContent?.startsWith(email)) as HTMLElement;
+
     await user.click(
-      await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
+      screen.getByRole('button', { name: 'Send the invitation to oli@example.com again' }),
     );
-    const waiting = screen.getByRole('region', { name: 'Invitations waiting' });
-    await waitFor(() =>
-      expect(within(waiting).getByRole('status')).toHaveTextContent(
-        'The invitation to nia@example.com went out again.',
+    expect(
+      await within(rowOf('oli@example.com')).findByText(
+        'The invitation to oli@example.com went out again.',
       ),
+    ).toBeVisible();
+    expect(rowOf('nia@example.com')).not.toHaveTextContent('went out again');
+    await announced('The invitation to oli@example.com went out again.');
+
+    await user.click(screen.getByRole('button', { name: 'Make a new link for oli@example.com' }));
+    const link = await within(rowOf('oli@example.com')).findByRole('textbox', {
+      name: 'Link for oli@example.com',
+    });
+    expect((link as HTMLInputElement).value).toContain('again-22');
+
+    // Withdrawn, the first row gives its place to what was done; the second keeps its own.
+    await user.click(
+      screen.getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
     );
-    for (const other of ['Who holds which role', 'Notices to followers']) {
-      expect(
-        within(screen.getByRole('region', { name: other })).getByRole('status'),
-      ).toBeEmptyDOMElement();
-    }
+    await seen('The invitation to nia@example.com was withdrawn.');
+    expect(rowsOf(within(waiting).getByRole('list'))[0]).toBe(
+      'The invitation to nia@example.com was withdrawn.',
+    );
+    expect(within(waiting).getAllByRole('listitem')).toHaveLength(2);
   });
 });
 
@@ -428,7 +497,7 @@ describe('the permission to create tracks with the role that runs the track (IAM
       await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),
     );
     expect(
-      await screen.findByText('Ana Duarte now holds Administrators and can create tracks.'),
+      await seen('Ana Duarte now holds Administrators and can create tracks.'),
     ).toBeInTheDocument();
     expect(setRoleCalls(client)).toEqual([[3, 7, 'users', 4, true, { createTracks: true }]]);
   });
@@ -443,7 +512,7 @@ describe('the permission to create tracks with the role that runs the track (IAM
     await user.click(
       await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),
     );
-    expect(await screen.findByText('Ana Duarte now holds Administrators.')).toBeInTheDocument();
+    expect(await seen('Ana Duarte now holds Administrators.')).toBeInTheDocument();
     expect(setRoleCalls(client)).toEqual([[3, 7, 'users', 4, true]]);
   });
 

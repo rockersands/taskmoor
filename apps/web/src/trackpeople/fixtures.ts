@@ -21,7 +21,7 @@ export const ROLES: TrackRole[] = [
   { id: 9, name: 'Viewers', description: '', runsTrack: false, givable: true },
 ];
 
-const WAITING: Invitation = {
+export const WAITING: Invitation = {
   id: 21,
   email: 'nia@example.com',
   role: { id: 8, name: 'Members' },
@@ -47,6 +47,8 @@ export interface FakeTrackPeopleOptions {
   checklistNotices?: boolean;
   /** Saving checklist notices fails: the track was archived meanwhile. */
   refuseNotices?: boolean;
+  /** This many more Members ("Member 1" and on), for a long list of who holds which role. */
+  crowd?: number;
 }
 
 export interface FakeTrackPeopleClient extends TrackPeopleClient {
@@ -65,7 +67,13 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
     {
       roleId: 8,
       roleName: 'Members',
-      users: [{ id: 2, name: 'Bo Lind' }],
+      users: [
+        { id: 2, name: 'Bo Lind' },
+        ...Array.from({ length: options.crowd ?? 0 }, (_, i) => ({
+          id: 200 + i,
+          name: `Member ${i + 1}`,
+        })),
+      ],
       groups: [{ id: 5, name: 'Support' }],
     },
   ];

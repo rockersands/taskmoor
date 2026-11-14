@@ -181,7 +181,16 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await page.reload();
   await expect(page.getByText('Guest Person: Viewers')).toBeVisible();
   await page.getByRole('button', { name: 'Remove Guest Person from Viewers' }).click();
-  await expect(page.getByText('Guest Person no longer holds Viewers.')).toBeVisible();
+  // Said in the place of the row taken away (T-248), and told to a screen reader.
+  await expect(
+    page
+      .getByRole('region', { name: 'Who holds which role' })
+      .getByRole('listitem')
+      .filter({ hasText: 'Guest Person no longer holds Viewers.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Guest Person no longer holds Viewers.' }),
+  ).toHaveCount(1);
   await expect(page.getByText('No invitations are waiting.')).toBeVisible();
   expect(await noSidewaysScroll(page)).toBe(true);
 });
