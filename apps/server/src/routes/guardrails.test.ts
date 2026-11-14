@@ -114,6 +114,59 @@ describe('configuration guardrails (M1-055)', () => {
     expect(unknown.statusCode).toBe(404);
   });
 
+  it('[CORE-026] names the access policy and, as its own field, the permission whose grants are counted most', async () => {
+    const policy = await admin({
+      method: 'POST',
+      url: '/api/v1/access-policies',
+      payload: { name: 'Counted: many' },
+    });
+    expect(policy.statusCode, policy.body).toBe(201);
+    const policyId = policy.json().policy.id as number;
+    const roles = (await admin({ method: 'GET', url: '/api/v1/roles' })).json().roles as {
+      id: number;
+    }[];
+    const people = await database.db.selectFrom('app_user').select('id').execute();
+    // More grants of one permission than any policy the site starts with.
+    const grantees = [
+      ...roles.map((r) => ({ grantee: 'role', roleId: r.id })),
+      ...people.map((p) => ({ grantee: 'user', userId: p.id })),
+      { grantee: 'track_owner' },
+      { grantee: 'any_user' },
+      { grantee: 'requester' },
+      { grantee: 'assignee' },
+    ];
+    for (const grantee of grantees) {
+      const res = await admin({
+        method: 'POST',
+        url: `/api/v1/access-policies/${policyId}/grants`,
+        payload: { permission: 'edit_tickets', ...grantee },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    }
+    const top = await database.db
+      .selectFrom('access_grant')
+      .select(['policy_id', 'permission', (eb) => eb.fn.countAll<number>().as('n')])
+      .groupBy(['policy_id', 'permission'])
+      .orderBy('n', 'desc')
+      .orderBy('policy_id')
+      .executeTakeFirstOrThrow();
+    expect([top.policy_id, top.permission]).toEqual([policyId, 'edit_tickets']);
+    const usage = (await guardrails()).get('grants_per_permission')?.usage;
+    expect(usage).toEqual({
+      value: Number(top.n),
+      where: {
+        kind: 'access_policy',
+        id: policyId,
+        name: 'Counted: many',
+        permission: 'edit_tickets',
+      },
+    });
+    // Other holders carry no permission.
+    expect((await guardrails()).get('priorities_per_track')?.usage.where).not.toHaveProperty(
+      'permission',
+    );
+  });
+
   it('[CORE-026] refuses the release past the limit, counts only open releases, and a raise works at once', async () => {
     await setLimit('releases_per_track', 2);
     const add = (name: string) =>

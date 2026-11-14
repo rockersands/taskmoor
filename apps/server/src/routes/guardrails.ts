@@ -17,7 +17,16 @@ import {
  * default and where it is used most; `PUT /api/v1/admin/guardrails/:name` sets a limit, which
  * takes effect with the next addition (CORE-026 (3)). Site administrators only.
  */
-const putBody = z.object({ limit: z.number().int().min(1).max(GUARDRAIL_CEILING) }).strict();
+export const putBody = z
+  .object({
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(GUARDRAIL_CEILING)
+      .meta({ description: 'The new limit, from 1 to the ceiling.' }),
+  })
+  .strict();
 
 export function registerGuardrailRoutes(app: FastifyInstance, db: Kysely<Database>): void {
   app.get('/api/v1/admin/guardrails', async (request, reply) => {

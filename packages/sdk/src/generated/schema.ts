@@ -20,6 +20,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/guardrails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The configuration limits and where each is used most
+         * @description Every guardrail with its default, the limit in force and the largest count on the site, with what holds it. No limit goes above `ceiling`. For site administrators.
+         */
+        get: operations["listGuardrails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guardrails/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Raise or lower a configuration limit
+         * @description Takes effect with the next addition. What already exists is never removed, so a lowered limit can leave the count above it. For site administrators.
+         */
+        put: operations["setGuardrail"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/property-indexes": {
         parameters: {
             query?: never;
@@ -1423,6 +1463,34 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        Guardrail: {
+            /** @description The limit a site starts with. */
+            default: number;
+            /** @description The limit in force on this site. */
+            limit: number;
+            /** @description The guardrail, such as `fields_per_track`. */
+            name: string;
+            usage: {
+                /** @description The largest count on the site. */
+                value: number;
+                /** @description What holds the largest count; null while nothing does. */
+                where: ({
+                    id: number;
+                    /** @description What holds that count, such as `track`, `field`, `workflow` or `access_policy`. */
+                    kind: string;
+                    /** @description Its name; a track by its key. */
+                    name: string;
+                    /** @description For grants per permission: the permission whose grants the access policy counts, by key, such as `browse_track`. */
+                    permission?: string;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
+            } & {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
         Link: {
             /** Format: date-time */
             createdAt: string;
@@ -2108,6 +2176,130 @@ export interface operations {
             };
             /** @description The session or token may not do this (its scope, or the person’s permissions). */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listGuardrails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every guardrail, in a fixed order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The highest limit allowed. */
+                        ceiling: number;
+                        guardrails: components["schemas"]["Guardrail"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setGuardrail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The guardrail, such as `fields_per_track`. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The new limit, from 1 to the ceiling. */
+                    limit: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The guardrail and its new limit. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        name: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
