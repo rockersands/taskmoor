@@ -411,8 +411,10 @@ export const PersonFilterAtPhoneWidth: Story = {
 };
 
 /**
- * A Kanban board on a phone (NFR-007; the second sweep's long Closed column): each column ends at
- * its last card, so a short one is not a screen and more of empty frame beside a long one.
+ * A Kanban board on a phone (NFR-007; the second and third sweeps' long Closed column): each
+ * column ends at its last card, so a short one is not a screen and more of empty frame beside a
+ * long one, and a long one scrolls inside itself, no taller than the screen, so the page ends
+ * with the board instead of running on for the length of the longest column.
  */
 export const ShortColumnBesideALongOneOnAPhone: Story = {
   args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
@@ -427,9 +429,19 @@ export const ShortColumnBesideALongOneOnAPhone: Story = {
     const last = cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0;
     // The cell's own padding below its last card, and no more.
     await expect(doing.getBoundingClientRect().bottom - last).toBeLessThan(24);
-    await expect(todo.getBoundingClientRect().height).toBeGreaterThan(
-      doing.getBoundingClientRect().height * 3,
+    // The long column: no taller than the screen, its cards scrolling inside it.
+    await expect(todo.getBoundingClientRect().height).toBeLessThanOrEqual(window.innerHeight);
+    await expect(todo.scrollHeight).toBeGreaterThan(todo.clientHeight * 2);
+    // The page is shorter than that column's cards: it ends with the board.
+    await expect(document.documentElement.scrollHeight).toBeLessThan(todo.scrollHeight);
+    // At the page's end the long column's last card is reached by scrolling the column.
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    todo.scrollTop = todo.scrollHeight;
+    const lastTodo = within(todo).getAllByRole('listitem').at(-1)?.getBoundingClientRect();
+    await expect(lastTodo?.bottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      window.innerHeight,
     );
+    window.scrollTo(0, 0);
   },
 };
 
@@ -451,15 +463,15 @@ export const DropBelowAShortColumnOnAPhone: Story = {
     const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
     grip.dispatchEvent(pointer('pointerdown', a));
     window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
-    // The columns scroll sideways, the page stays: Doing is beside the finger, its cards far above.
+    // The columns scroll sideways, the page stays: Doing is beside the finger, which goes below
+    // its last card, into the room the cell holds while a card is in hand.
     const scroller = doing.closest('.board-scroll') as HTMLElement;
     scroller.scrollLeft += doing.getBoundingClientRect().left - 40;
-    const box = doing.getBoundingClientRect();
-    const b = { x: box.left + box.width / 2, y: a.y + 12 };
     const cards = within(doing).getAllByRole('listitem');
-    await expect(cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0).toBeLessThan(
-      b.y - 200,
-    );
+    const lastBottom = cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0;
+    const box = doing.getBoundingClientRect();
+    const b = { x: box.left + box.width / 2, y: lastBottom + 48 };
+    await expect(b.y).toBeLessThan(box.bottom);
     window.dispatchEvent(pointer('pointermove', b));
     await waitFor(() => expect(doing).toHaveClass('is-drop-target'));
     window.dispatchEvent(pointer('pointerup', b));
