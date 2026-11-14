@@ -48,8 +48,8 @@ describe('people (M1-053, IAM-008)', () => {
     const user = userEvent.setup();
     const client = renderPage('users');
     await list();
-    await user.click(screen.getByRole('button', { name: 'Add a person' }));
-    const form = screen.getByRole('form', { name: 'Add a person' });
+    await user.click(screen.getByRole('button', { name: 'New person' }));
+    const form = screen.getByRole('form', { name: 'New person' });
     await user.type(within(form).getByLabelText('Name'), 'Mo Chen');
     await user.type(within(form).getByLabelText('Email'), 'mo@example.com');
     await user.click(within(form).getByRole('checkbox', { name: 'Site administrator' }));
@@ -63,8 +63,8 @@ describe('people (M1-053, IAM-008)', () => {
       args: [{ name: 'Mo Chen', email: 'mo@example.com', isSiteAdmin: true }],
     });
     // The same email twice is refused in words.
-    await user.click(screen.getByRole('button', { name: 'Add a person' }));
-    const again = screen.getByRole('form', { name: 'Add a person' });
+    await user.click(screen.getByRole('button', { name: 'New person' }));
+    const again = screen.getByRole('form', { name: 'New person' });
     await user.type(within(again).getByLabelText('Name'), 'Mo Again');
     await user.type(within(again).getByLabelText('Email'), 'mo@example.com');
     await user.click(within(again).getByRole('button', { name: 'Add' }));
@@ -125,6 +125,13 @@ describe('people (M1-053, IAM-008)', () => {
   it('[IAM-008] says only administrators manage people', () => {
     renderPage('users', MEMBER);
     expect(screen.getByText('Only site administrators manage people.')).toBeVisible();
+  });
+
+  it('[IAM-008] counts a group’s members and groups with the separator Teams uses (AD-18)', async () => {
+    renderPage('groups');
+    await list();
+    expect(screen.getByText('2 members · 0 groups inside · Sign off releases')).toBeVisible();
+    expect(screen.getByText('1 member · 0 groups inside')).toBeVisible();
   });
 
   it('[IAM-008] makes a group, adds a person, nests a group and refuses a loop', async () => {

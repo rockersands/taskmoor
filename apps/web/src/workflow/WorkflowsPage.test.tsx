@@ -245,7 +245,7 @@ describe('workflows administration (M1-030)', () => {
     const list = await within(section).findByRole('list', { name: 'Statuses' });
     expect(within(list).getAllByText('New stage', { selector: '.stage-badge' })).toHaveLength(3);
 
-    await user.click(within(section).getByRole('button', { name: 'Add a status' }));
+    await user.click(within(section).getByRole('button', { name: 'New status' }));
     const form = within(section).getByRole('form', { name: 'New status' });
     await user.keyboard('Waiting for parts');
     await user.click(within(form).getByRole('radio', { name: 'Closed' }));

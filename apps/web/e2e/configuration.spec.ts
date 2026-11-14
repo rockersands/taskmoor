@@ -258,6 +258,7 @@ test('[IAM-011] the administrator gives a person a global permission and takes i
   const permission =
     testInfo.project.name === 'mobile' ? 'Subscribe groups to searches' : 'Share saved searches';
   await page.goto(`${BASE}/#/admin/permissions`);
+  await page.getByRole('button', { name: 'New global permission' }).click();
   const give = page.getByRole('form', { name: 'Give a global permission' });
   await give.getByLabel('Permission').selectOption({ label: permission });
   await give.getByLabel('To').selectOption({ label: 'A person' });

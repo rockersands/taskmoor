@@ -13,6 +13,10 @@ import {
  * "New …" button among the page's actions, or at the head of a section's card, that opens the
  * form above the list, as Ticket templates and Webhooks do. The list comes first; the form shows
  * only when asked for.
+ *
+ * In a page's header it has one place on every page, at every width: under the title and its
+ * purpose line, at the start (`admin-new` in admin.css). The header's own wrapping once put it at
+ * the right of a short purpose line and under a long one.
  */
 export function NewButton({
   label,
@@ -33,7 +37,7 @@ export function NewButton({
     <button
       ref={ref}
       type="button"
-      className="button-primary"
+      className="button-primary admin-new"
       aria-expanded={open}
       onClick={onToggle}
       {...(tutorial ? { 'data-tutorial': tutorial } : {})}

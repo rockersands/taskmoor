@@ -10,6 +10,7 @@ import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import type { AiLimit } from './AiUsagePage';
+import { CardHead, NewButton, useNewForm } from './NewButton';
 
 /** A rate of the price table, in US dollars per million tokens (M1-077). */
 export interface AiPrice {
@@ -189,14 +190,39 @@ interface Feedback {
 function LimitsSection({ limits, client, said, failed }: Feedback & { limits: StoredLimit[] }) {
   const t = useT();
   const id = useId();
-  const [adding, setAdding] = useState(false);
+  const adding = useNewForm();
   const heading = useRef<HTMLHeadingElement>(null);
   return (
     <section aria-labelledby={id} className="glass-card admin-panel">
-      <h2 id={id} ref={heading} tabIndex={-1} className="section-title">
-        {t('admin.aiUsage.limits')}
-      </h2>
+      {/* The filled "New …" button at the head of the card, the form above the list (D11). */}
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.aiLimits.addLimit')}
+            open={adding.open}
+            onToggle={adding.toggle}
+            ref={adding.button}
+          />
+        }
+      >
+        <h2 id={id} ref={heading} tabIndex={-1} className="section-title">
+          {t('admin.aiUsage.limits')}
+        </h2>
+      </CardHead>
       <p className="page-note">{t('admin.aiLimits.limitsHint')}</p>
+      {adding.open && (
+        <LimitForm
+          label={t('admin.aiLimits.addLimit')}
+          client={client}
+          onSave={(input) =>
+            client.createLimit(input).then(() => {
+              adding.close();
+              said(t('admin.aiLimits.limitAdded'));
+            })
+          }
+          onCancel={adding.close}
+        />
+      )}
       {limits.length === 0 ? (
         <EmptyState compact title={t('admin.aiUsage.noLimits')}>
           {t('admin.aiLimits.noLimits')}
@@ -214,27 +240,6 @@ function LimitsSection({ limits, client, said, failed }: Feedback & { limits: St
             />
           ))}
         </ul>
-      )}
-      <button
-        type="button"
-        className="button-secondary"
-        aria-expanded={adding}
-        onClick={() => setAdding(!adding)}
-      >
-        {t('admin.aiLimits.addLimit')}
-      </button>
-      {adding && (
-        <LimitForm
-          label={t('admin.aiLimits.addLimit')}
-          client={client}
-          onSave={(input) =>
-            client.createLimit(input).then(() => {
-              setAdding(false);
-              said(t('admin.aiLimits.limitAdded'));
-            })
-          }
-          onCancel={() => setAdding(false)}
-        />
       )}
     </section>
   );
@@ -556,13 +561,36 @@ function LimitForm({
 function PricesSection({ prices, client, said, failed }: Feedback & { prices: AiPrice[] }) {
   const t = useT();
   const id = useId();
-  const [adding, setAdding] = useState(false);
+  const adding = useNewForm();
   return (
     <section aria-labelledby={id} className="glass-card admin-panel">
-      <h2 id={id} className="section-title">
-        {t('admin.aiLimits.prices')}
-      </h2>
+      <CardHead
+        action={
+          <NewButton
+            label={t('admin.aiLimits.addPrice')}
+            open={adding.open}
+            onToggle={adding.toggle}
+            ref={adding.button}
+          />
+        }
+      >
+        <h2 id={id} className="section-title">
+          {t('admin.aiLimits.prices')}
+        </h2>
+      </CardHead>
       <p className="page-note">{t('admin.aiLimits.pricesHint')}</p>
+      {adding.open && (
+        <PriceForm
+          label={t('admin.aiLimits.addPrice')}
+          onSave={(price) =>
+            client.setPrice(price).then(() => {
+              adding.close();
+              said(t('admin.aiLimits.priceSaved', { model: price.model }));
+            })
+          }
+          onCancel={adding.close}
+        />
+      )}
       <ul className="people-list">
         {prices.map((price) => (
           <PriceRow
@@ -574,26 +602,6 @@ function PricesSection({ prices, client, said, failed }: Feedback & { prices: Ai
           />
         ))}
       </ul>
-      <button
-        type="button"
-        className="button-secondary"
-        aria-expanded={adding}
-        onClick={() => setAdding(!adding)}
-      >
-        {t('admin.aiLimits.addPrice')}
-      </button>
-      {adding && (
-        <PriceForm
-          label={t('admin.aiLimits.addPrice')}
-          onSave={(price) =>
-            client.setPrice(price).then(() => {
-              setAdding(false);
-              said(t('admin.aiLimits.priceSaved', { model: price.model }));
-            })
-          }
-          onCancel={() => setAdding(false)}
-        />
-      )}
     </section>
   );
 }

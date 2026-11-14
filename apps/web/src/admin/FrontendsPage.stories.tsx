@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
 import { FrontendsPage } from './FrontendsPage';
 import { ADMIN, MEMBER } from './fixtures';
@@ -75,6 +75,9 @@ export const AtPhoneWidth: Story = {
     await expect(
       await canvas.findByRole('heading', { name: 'https://board.example.org' }),
     ).toBeVisible();
+    // The form, opened from its New button, fits too.
+    await userEvent.click(canvas.getByRole('button', { name: 'New frontend' }));
+    await expect(canvas.getByRole('form', { name: 'Add a frontend' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },
 };

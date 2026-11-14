@@ -93,6 +93,7 @@ test('[OPS-017] (1) a frontend registered by an administrator signs in at once, 
   const environment = page.getByRole('region', { name: 'From the server’s environment' });
   await expect(environment.getByRole('heading', { level: 3 })).toHaveCount(2);
 
+  await page.getByRole('button', { name: 'New frontend' }).click();
   await page.getByRole('textbox', { name: 'Origin' }).fill(UNLISTED);
   await page.getByRole('textbox', { name: 'Label' }).fill('Second kit');
   await page.getByRole('button', { name: 'Add frontend' }).click();

@@ -2032,6 +2032,8 @@ export const messagesEn = {
   'admin.frontends.environment': 'From the server’s environment',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS lists these. Change them there; a restart applies the change.',
+  'admin.frontends.new': 'New frontend',
+  'admin.frontends.cancel': 'Cancel',
   'admin.frontends.add': 'Add a frontend',
   'admin.frontends.origin': 'Origin',
   'admin.frontends.originHint':
@@ -2856,7 +2858,7 @@ export const messagesEn = {
   'admin.users.status.active': 'Active people',
   'admin.users.status.deactivated': 'Deactivated people',
   'admin.users.status.all': 'Everyone',
-  'admin.users.add': 'Add a person',
+  'admin.users.add': 'New person',
   'admin.users.name': 'Name',
   'admin.users.email': 'Email',
   'admin.users.makeSiteAdmin': 'Site administrator',
@@ -2928,7 +2930,7 @@ export const messagesEn = {
   'admin.groups.added': '{name} was added.',
   'admin.groups.deleted': '{name} was deleted.',
   'admin.groups.counts':
-    '{members, plural, one {# member} other {# members}}, {groups, plural, one {# group} other {# groups}} inside',
+    '{members, plural, one {# member} other {# members}} · {groups, plural, one {# group} other {# groups}} inside',
   'admin.groups.manage': 'Manage',
   'admin.groups.manageOf': 'Manage {name}',
   'admin.groups.membersOf': 'Members of {name}',
@@ -3451,6 +3453,7 @@ export const messagesEn = {
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
   'admin.permissions.global': 'Global permissions',
+  'admin.permissions.newGlobal': 'New global permission',
   'admin.permissions.addGlobal': 'Give a global permission',
   'admin.permissions.grantee.role': 'Role {name}',
   'admin.permissions.grantee.group': 'Group {name}',
@@ -3970,7 +3973,7 @@ export const messagesEn = {
     'Statuses belong to the whole site, and each workflow uses some of them. The stage gives a status its colour and meaning.',
   'admin.statuses.loading': 'Loading statuses…',
   'admin.statuses.failed': 'The statuses could not be loaded.',
-  'admin.statuses.add': 'Add a status',
+  'admin.statuses.add': 'New status',
   'admin.statuses.formNew': 'New status',
   'admin.statuses.formEdit': 'Edit {name}',
   'admin.statuses.name': 'Name',
@@ -6389,7 +6392,7 @@ export const messagesEn = {
     'Once a limit is reached, the AI calls it covers are refused before anything is sent, until its period starts again. A call already running still finishes.',
   'admin.aiLimits.noLimits':
     'AI runs with no ceiling until you add one. Add one to stop it at a number of tokens or a cost.',
-  'admin.aiLimits.addLimit': 'Add a limit',
+  'admin.aiLimits.addLimit': 'New limit',
   'admin.aiLimits.limitName': '{what}, per {period}',
   'admin.aiLimits.resets': 'Starts again {at} UTC',
   'admin.aiLimits.change': 'Change',
@@ -6433,7 +6436,7 @@ export const messagesEn = {
   'admin.aiLimits.resetPriceOf': 'Back to the list price: {name}',
   'admin.aiLimits.priceSaved': 'The rate of {model} was saved.',
   'admin.aiLimits.priceReset': '{model} is back to its list price.',
-  'admin.aiLimits.addPrice': 'Add a rate',
+  'admin.aiLimits.addPrice': 'New rate',
   'admin.aiLimits.provider': 'Provider',
   'admin.aiLimits.providerHint':
     'As the AI page names it, for example anthropic, bedrock or vertex.',

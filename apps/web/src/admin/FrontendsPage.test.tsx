@@ -51,7 +51,13 @@ describe('the frontends page (M1-108)', () => {
   it('[OPS-017] (1) adds a frontend, and says what was wrong with a bad origin', async () => {
     const user = userEvent.setup();
     const client = renderPage();
-    const origin = await screen.findByRole('textbox', { name: 'Origin' });
+    // The list first: the form opens from a filled "New …" button (D11, AD-18).
+    const open = await screen.findByRole('button', { name: 'New frontend' });
+    expect(open).toHaveClass('button-primary');
+    expect(screen.queryByRole('form', { name: 'Add a frontend' })).toBeNull();
+    await user.click(open);
+    expect(screen.getByRole('form', { name: 'Add a frontend' })).toBeVisible();
+    const origin = screen.getByRole('textbox', { name: 'Origin' });
     await user.type(origin, 'https://*.example.net');
     await user.click(screen.getByRole('button', { name: 'Add frontend' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/no path and no wildcard/);
@@ -78,9 +84,12 @@ describe('the frontends page (M1-108)', () => {
       await screen.findByRole('heading', { name: 'https://second.example.net' }),
     ).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
+    // Added: the form closes.
+    expect(screen.queryByRole('form', { name: 'Add a frontend' })).toBeNull();
 
     // The same origin again: already there.
-    await user.type(origin, 'https://second.example.net');
+    await user.click(screen.getByRole('button', { name: 'New frontend' }));
+    await user.type(screen.getByRole('textbox', { name: 'Origin' }), 'https://second.example.net');
     await user.click(screen.getByRole('button', { name: 'Add frontend' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('registered already');
   });

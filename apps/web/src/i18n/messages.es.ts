@@ -2084,6 +2084,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.environment': 'Del entorno del servidor',
   'admin.frontends.environmentHint':
     'TASKMOOR_ALLOWED_ORIGINS los incluye. Cámbialos allí; un reinicio aplica el cambio.',
+  'admin.frontends.new': 'Nuevo frontend',
+  'admin.frontends.cancel': 'Cancelar',
   'admin.frontends.add': 'Añadir un frontend',
   'admin.frontends.origin': 'Origen',
   'admin.frontends.originHint':
@@ -2938,7 +2940,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.status.active': 'Personas activas',
   'admin.users.status.deactivated': 'Personas desactivadas',
   'admin.users.status.all': 'Todos',
-  'admin.users.add': 'Añadir una persona',
+  'admin.users.add': 'Nueva persona',
   'admin.users.name': 'Nombre',
   'admin.users.email': 'Correo electrónico',
   'admin.users.makeSiteAdmin': 'Administrador del sitio',
@@ -3011,7 +3013,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.groups.added': 'Se añadió {name}.',
   'admin.groups.deleted': 'Se eliminó {name}.',
   'admin.groups.counts':
-    '{members, plural, one {# miembro} other {# miembros}}, {groups, plural, one {# grupo} other {# grupos}} dentro',
+    '{members, plural, one {# miembro} other {# miembros}} · {groups, plural, one {# grupo} other {# grupos}} dentro',
   'admin.groups.manage': 'Gestionar',
   'admin.groups.manageOf': 'Gestionar {name}',
   'admin.groups.membersOf': 'Miembros de {name}',
@@ -3542,6 +3544,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
   'admin.permissions.global': 'Permisos globales',
+  'admin.permissions.newGlobal': 'Nuevo permiso global',
   'admin.permissions.addGlobal': 'Dar un permiso global',
   'admin.permissions.grantee.role': 'Rol {name}',
   'admin.permissions.grantee.group': 'Grupo {name}',
@@ -4074,7 +4077,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los estados pertenecen a todo el sitio, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',
   'admin.statuses.loading': 'Cargando los estados…',
   'admin.statuses.failed': 'No se pudieron cargar los estados.',
-  'admin.statuses.add': 'Añadir un estado',
+  'admin.statuses.add': 'Nuevo estado',
   'admin.statuses.formNew': 'Estado nuevo',
   'admin.statuses.formEdit': 'Editar {name}',
   'admin.statuses.name': 'Nombre',
@@ -6535,7 +6538,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Al llegar a un límite, las llamadas de IA que cubre se rechazan antes de enviar nada, hasta que empiece de nuevo su periodo. Una llamada en curso aún termina.',
   'admin.aiLimits.noLimits':
     'La IA funciona sin tope hasta que añadas uno. Añade uno para detenerla en un número de tokens o un coste.',
-  'admin.aiLimits.addLimit': 'Añadir un límite',
+  'admin.aiLimits.addLimit': 'Nuevo límite',
   'admin.aiLimits.limitName': '{what}, por {period}',
   'admin.aiLimits.resets': 'Empieza de nuevo {at} UTC',
   'admin.aiLimits.change': 'Cambiar',
@@ -6582,7 +6585,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.resetPriceOf': 'Volver al precio de lista: {name}',
   'admin.aiLimits.priceSaved': 'Se guardó la tarifa de {model}.',
   'admin.aiLimits.priceReset': '{model} vuelve a su precio de lista.',
-  'admin.aiLimits.addPrice': 'Añadir una tarifa',
+  'admin.aiLimits.addPrice': 'Nueva tarifa',
   'admin.aiLimits.provider': 'Proveedor',
   'admin.aiLimits.providerHint':
     'Como lo nombra la página de IA, por ejemplo anthropic, bedrock o vertex.',

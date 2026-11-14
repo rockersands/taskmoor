@@ -128,9 +128,10 @@ export function StructureLists({
                 ))}
               </select>
             </div>
+            {/* Filled, like every add action in administration (D11, AD-19). */}
             <button
               type="button"
-              className="button-secondary"
+              className="button-primary"
               onClick={() => chosen && onAddStatus(Number(chosen))}
             >
               {t('admin.workflow.addStatusButton')}

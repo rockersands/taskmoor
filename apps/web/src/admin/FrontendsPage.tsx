@@ -8,6 +8,7 @@ import { useSession } from '../session/SessionProvider';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import { NewButton, useNewForm } from './NewButton';
 
 /** A registered frontend as `GET /api/v1/admin/frontends` lists it (M1-108). */
 export interface RegisteredFrontend {
@@ -103,6 +104,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const registered = useRef<HTMLHeadingElement>(null);
+  const adding = useNewForm();
 
   useEffect(() => {
     if (notAdmin) return;
@@ -140,6 +142,7 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
       setLabel('');
       setRedirects('');
       setWebsocket(true);
+      adding.close();
       setStatus(t('admin.frontends.added', { origin: added.origin }));
       await reload();
     } catch (error) {
@@ -200,7 +203,21 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
         title={t('admin.frontends.title')}
         {...(notAdmin
           ? {}
-          : { purpose: t('settings.frontendsHint'), about: t('admin.frontends.intro') })}
+          : {
+              purpose: t('settings.frontendsHint'),
+              about: t('admin.frontends.intro'),
+              // The list first, and a "New …" button that opens the form above it (D11, AD-18).
+              ...(view && {
+                actions: (
+                  <NewButton
+                    label={t('admin.frontends.new')}
+                    open={adding.open}
+                    onToggle={adding.toggle}
+                    ref={adding.button}
+                  />
+                ),
+              }),
+            })}
       />
       {notAdmin ? (
         <p className="page-note">{t('admin.frontends.forbidden')}</p>
@@ -214,6 +231,84 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
         </p>
       ) : (
         <>
+          {/* What an add or a removal did, or why it was refused: above the form and the list. */}
+          {problem && (
+            <p role="alert" className="form-error">
+              {t(problem)}
+            </p>
+          )}
+          <p role="status" className="form-status">
+            {status}
+          </p>
+          {adding.open && (
+            <form
+              className="form glass-card account-section frontend-form"
+              aria-labelledby={`${id}-add`}
+              onSubmit={(event) => void submit(event)}
+            >
+              <h2 id={`${id}-add`} className="facts-title">
+                {t('admin.frontends.add')}
+              </h2>
+              <div className="form-field">
+                <label htmlFor={`${id}-origin`}>{t('admin.frontends.origin')}</label>
+                <input
+                  id={`${id}-origin`}
+                  type="text"
+                  inputMode="url"
+                  autoComplete="off"
+                  spellCheck={false}
+                  required
+                  value={origin}
+                  aria-describedby={`${id}-origin-hint`}
+                  onChange={(e) => setOrigin(e.target.value)}
+                />
+                <p id={`${id}-origin-hint`} className="form-hint">
+                  {t('admin.frontends.originHint')}
+                </p>
+              </div>
+              <div className="form-field">
+                <label htmlFor={`${id}-label`}>{t('admin.frontends.label')}</label>
+                <input
+                  id={`${id}-label`}
+                  type="text"
+                  maxLength={200}
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor={`${id}-redirects`}>{t('admin.frontends.redirects')}</label>
+                <textarea
+                  id={`${id}-redirects`}
+                  rows={3}
+                  spellCheck={false}
+                  value={redirects}
+                  aria-describedby={`${id}-redirects-hint`}
+                  onChange={(e) => setRedirects(e.target.value)}
+                />
+                <p id={`${id}-redirects-hint`} className="form-hint">
+                  {t('admin.frontends.redirectsHint')}
+                </p>
+              </div>
+              <div className="form-field form-field-inline">
+                <input
+                  id={`${id}-websocket`}
+                  type="checkbox"
+                  checked={websocket}
+                  onChange={(e) => setWebsocket(e.target.checked)}
+                />
+                <label htmlFor={`${id}-websocket`}>{t('admin.frontends.websocket')}</label>
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="button-primary" disabled={busy}>
+                  {t('admin.frontends.addButton')}
+                </button>
+                <button type="button" className="button-secondary" onClick={adding.close}>
+                  {t('admin.frontends.cancel')}
+                </button>
+              </div>
+            </form>
+          )}
           <section aria-labelledby={`${id}-self`} className="glass-card facts">
             <h2 id={`${id}-self`} className="facts-title">
               {t('admin.frontends.self')}
@@ -316,79 +411,6 @@ export function FrontendsPage({ client = frontendsClient }: { client?: Frontends
               </ul>
             </section>
           )}
-
-          <form
-            className="form glass-card account-section frontend-form"
-            aria-labelledby={`${id}-add`}
-            onSubmit={(event) => void submit(event)}
-          >
-            <h2 id={`${id}-add`} className="facts-title">
-              {t('admin.frontends.add')}
-            </h2>
-            <div className="form-field">
-              <label htmlFor={`${id}-origin`}>{t('admin.frontends.origin')}</label>
-              <input
-                id={`${id}-origin`}
-                type="text"
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                required
-                value={origin}
-                aria-describedby={`${id}-origin-hint`}
-                onChange={(e) => setOrigin(e.target.value)}
-              />
-              <p id={`${id}-origin-hint`} className="form-hint">
-                {t('admin.frontends.originHint')}
-              </p>
-            </div>
-            <div className="form-field">
-              <label htmlFor={`${id}-label`}>{t('admin.frontends.label')}</label>
-              <input
-                id={`${id}-label`}
-                type="text"
-                maxLength={200}
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor={`${id}-redirects`}>{t('admin.frontends.redirects')}</label>
-              <textarea
-                id={`${id}-redirects`}
-                rows={3}
-                spellCheck={false}
-                value={redirects}
-                aria-describedby={`${id}-redirects-hint`}
-                onChange={(e) => setRedirects(e.target.value)}
-              />
-              <p id={`${id}-redirects-hint`} className="form-hint">
-                {t('admin.frontends.redirectsHint')}
-              </p>
-            </div>
-            <div className="form-field form-field-inline">
-              <input
-                id={`${id}-websocket`}
-                type="checkbox"
-                checked={websocket}
-                onChange={(e) => setWebsocket(e.target.checked)}
-              />
-              <label htmlFor={`${id}-websocket`}>{t('admin.frontends.websocket')}</label>
-            </div>
-            {problem && (
-              <p role="alert" className="form-error">
-                {t(problem)}
-              </p>
-            )}
-            <p role="status" className="form-status">
-              {status}
-            </p>
-            <div className="form-actions">
-              <button type="submit" className="button-primary" disabled={busy}>
-                {t('admin.frontends.addButton')}
-              </button>
-            </div>
-          </form>
         </>
       )}
     </section>
