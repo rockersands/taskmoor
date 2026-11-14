@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { fakeSprintClient } from '../sprints/fixtures';
 import { expectWithinBudget } from '../test/budget';
+import { gripsTooSmall, onARealTouchScreen } from '../test/touch';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, longColumn, manyCards, ONE_LANE, SCRUM_BOARD } from './fixtures';
 
@@ -92,6 +93,32 @@ export const Board: Story = {
     );
     await expect(slab.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
     await expect(slab.borderTopWidth).toBe('1px');
+  },
+};
+
+/**
+ * NFR-007, ADR-033: on a real touch screen at a desktop's width, every card's grip and the pencil
+ * beside it are a finger's size (T-231).
+ */
+export const GripsOnATouchScreen: Story = {
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
+    await expect(
+      await gripsTooSmall(canvasElement, ['.board-card-grip', '.board-card-move']),
+    ).toEqual([]);
+  },
+};
+
+/** The same on a phone. */
+export const GripsOnATouchPhone: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await expect(
+      await gripsTooSmall(canvasElement, ['.board-card-grip', '.board-card-move']),
+    ).toEqual([]);
   },
 };
 

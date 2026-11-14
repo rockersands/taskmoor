@@ -823,12 +823,13 @@ details[open] > summary.admin-disclosure::after,
   }
 
   /* A link inside a sentence keeps the line's height: its press area reaches above and below it
-     instead, so the line holding it is not pushed away from the one above (T-226). */
-  .people-page .page-note a {
+     instead, so the line holding it is not pushed away from the one above. On every page of
+     Administration: the layout editor's 'Back to managing KEY' and field rule links too (T-226). */
+  .admin-page .page-note a {
     position: relative;
   }
 
-  .people-page .page-note a::after {
+  .admin-page .page-note a::after {
     content: "";
     position: absolute;
     inset-inline: 0;

@@ -261,7 +261,19 @@ export function selectorsOf(list: string): string[] {
   return parts.map((p) => p.trim().replace(/\s+/g, ' ')).filter(Boolean);
 }
 
-const isTouchRule = (d: Declaration) => d.atRules.some((at) => at.includes('pointer: coarse'));
+/** A media query that holds only at some sizes of screen: every one of its alternatives asks for one. */
+const sizeGated = (at: string) =>
+  at.startsWith('@media') &&
+  at
+    .slice('@media'.length)
+    .split(',')
+    .every((query) => /\b(width|height)\b/.test(query));
+/**
+ * A rule for every touch screen: under `(pointer: coarse)` and under no query of the screen's
+ * size, which once hid a grip's finger size from wide touch screens with every test green (T-231).
+ */
+const isTouchRule = (d: Declaration) =>
+  d.atRules.some((at) => at.includes('pointer: coarse')) && !d.atRules.some(sizeGated);
 const FINGER = /var\(--hit-target-touch\)|^44px$/;
 
 /**
@@ -885,6 +897,22 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(
       short('.a { min-height: var(--hit-target); } .a { min-height: var(--hit-target-touch); }'),
     ).toEqual(['.a']);
+    // A finger's height on touch screens of some widths only, whichever way the query is written
+    // (T-231); a query that holds on any touch screen is no gate.
+    const mouse = '.a { min-height: var(--hit-target); }';
+    const finger = '.a { min-height: var(--hit-target-touch); }';
+    expect(short(`${mouse} @media (pointer: coarse) and (max-width: 767px) { ${finger} }`)).toEqual(
+      ['.a'],
+    );
+    expect(
+      short(`${mouse} @media (width < 768px) { @media (pointer: coarse) { ${finger} } }`),
+    ).toEqual(['.a']);
+    expect(
+      short(`${mouse} @media (pointer: coarse) { @media (min-height: 30rem) { ${finger} } }`),
+    ).toEqual(['.a']);
+    expect(short(`${mouse} @media (max-width: 767px), (pointer: coarse) { ${finger} }`)).toEqual(
+      [],
+    );
   });
 
   it('[NFR-005] holds a list to what is there, in both directions', () => {
