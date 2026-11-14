@@ -8,6 +8,7 @@ import type { MessageId } from '../../i18n/messages.en';
 import { navigate, routeHref } from '../../routing/router';
 import { useLeaveMotion } from '../../shell/motion';
 import { TrackSelect } from '../../shell/TrackSelect';
+import { refusedFieldLabel } from '../refusedFields';
 import { type CloneClient, type CloneTrack, cloneClient } from './client';
 
 /** The ticket being cloned, as the ticket view knows it. */
@@ -33,20 +34,8 @@ export interface CloneDialogProps {
 const SUBTICKET = -1;
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-/** The values a copy can be without, by the name the clone reports them under. */
+/** What a copy can be without besides fields, by the name the clone reports it under. */
 const LEFT_LABELS: Record<string, MessageId> = {
-  description: 'workflow.field.description',
-  environment: 'workflow.field.environment',
-  assigneeId: 'workflow.field.assignee',
-  requesterId: 'workflow.field.requester',
-  priorityId: 'workflow.field.priority',
-  labels: 'workflow.field.labels',
-  startDate: 'workflow.field.startDate',
-  dueDate: 'workflow.field.dueDate',
-  originalEstimate: 'workflow.field.originalEstimate',
-  targetReleaseIds: 'workflow.field.targetRelease',
-  foundInReleaseIds: 'workflow.field.foundInRelease',
-  areaIds: 'workflow.field.area',
   attachments: 'clone.attachments',
   links: 'clone.links',
 };
@@ -198,13 +187,13 @@ export function CloneDialog({
 
   const number = (n: number) => intl.formatNumber(n);
   const copyKey = first?.result?.ticket.key ?? null;
-  const left = (first?.result?.left ?? []).map((key) =>
-    LEFT_LABELS[key]
-      ? t(LEFT_LABELS[key])
-      : key.startsWith('fields.')
-        ? t('clone.customField')
-        : key,
-  );
+  // Each by its label, never the key the clone reports it under (T-292); one this client cannot
+  // name is said as something more.
+  const left = (first?.result?.left ?? []).map((key) => {
+    const own = Object.hasOwn(LEFT_LABELS, key) ? LEFT_LABELS[key] : undefined;
+    if (own) return t(own);
+    return refusedFieldLabel(t, key, undefined, 'clone.customField') ?? t('clone.otherValue');
+  });
 
   return (
     <div className="ticket-dialog-backdrop">
