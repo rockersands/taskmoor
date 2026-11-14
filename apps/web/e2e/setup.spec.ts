@@ -925,7 +925,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await signOutThroughMenu(page, ADMIN.name);
     await page.getByRole('button', { name: 'Sign in with Staff accounts' }).click();
     await expect(page.getByRole('alert')).toHaveText(
-      'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
+      'There is no account for you here yet. Ask a site administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
     await expect.poll(() => new URL(page.url()).hash).toBe('#/sign-in');
 

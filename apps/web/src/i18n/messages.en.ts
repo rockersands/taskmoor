@@ -469,7 +469,7 @@ export const messagesEn = {
   'tutorial.section.import': 'Import',
   'tutorial.section.importHint':
     'Bring tickets in from a CSV file, with a dry run first to check what will happen.',
-  'tutorial.setupOnly': 'For administrators',
+  'tutorial.setupOnly': 'For site and configuration administrators',
   'tutorial.actionOn': '{action}: {title}',
   'tutorial.loading': 'Reading your progress…',
   'tutorial.loadFailed':
@@ -983,17 +983,17 @@ export const messagesEn = {
   'auth.sso.error.invalidState':
     'The sign-in took too long, or it was started in another browser. Try again.',
   'auth.sso.error.providerError':
-    'Your identity provider did not complete the sign-in. Try again, and ask your administrator if it keeps happening.',
+    'Your identity provider did not complete the sign-in. Try again, and ask a site administrator if it keeps happening.',
   'auth.sso.error.providerUnavailable':
-    'Single sign-on is not available right now. Try again later, or ask your administrator.',
+    'Single sign-on is not available right now. Try again later, or ask a site administrator.',
   'auth.sso.error.emailUnverified':
-    'Your identity provider did not confirm your email address, so you could not be signed in. Ask your administrator for help.',
+    'Your identity provider did not confirm your email address, so you could not be signed in. Ask a site administrator for help.',
   'auth.sso.error.domainNotAllowed':
-    'Your email address is in a domain this sign-in option does not serve. Ask your administrator for help.',
+    'Your email address is in a domain this sign-in option does not serve. Ask a site administrator for help.',
   'auth.sso.error.noAccount':
-    'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
+    'There is no account for you here yet. Ask a site administrator to create one. If you were invited, sign in with the very address the invitation went to.',
   'auth.sso.error.accountDeactivated':
-    'Your account is deactivated. Ask your administrator if you need it again.',
+    'Your account is deactivated. Ask a site administrator if you need it again.',
   'auth.sso.error.unknown': 'Single sign-on did not work. Try again in a moment.',
   'auth.sso.breakGlassOnly':
     'The email and password did not sign you in. For this domain only break-glass accounts can use a password; everyone else signs in with {name}.',
@@ -1145,7 +1145,7 @@ export const messagesEn = {
   'account.intro.profile':
     'Your name, email, time zone and language, and how Taskmoor looks for you.',
   'account.intro.notifications':
-    'When Taskmoor tells you about changes, and whether by email, in your inbox or both.',
+    'When Taskmoor tells you about changes to the tickets you work on and follow, by email, in your inbox or both. Changes save at once.',
   'account.intro.security':
     'Your password, two-factor authentication and the devices where you are signed in.',
   'account.intro.tokens': 'The tokens your programs and scripts use to call the API as you.',
@@ -1159,8 +1159,6 @@ export const messagesEn = {
   'account.appearance.saved': 'Appearance saved to your account.',
   // Notification settings and unsubscribe links (M1-056, M1-057; NTF-002, NTF-004).
   'notifications.title': 'Notifications',
-  'notifications.intro':
-    'How Taskmoor tells you about changes to the tickets you work on and follow. Changes save at once.',
   'notifications.loading': 'Reading your notification settings…',
   'notifications.failed': 'Your notification settings could not be read. Try again in a moment.',
   'notifications.email': 'Email',

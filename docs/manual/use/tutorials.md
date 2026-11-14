@@ -25,6 +25,9 @@ in every section is saved with your account, so it follows you to another device
 | **Administration** | A person, a group with that person in it, and a role in a track for the group | Site administrators |
 | **Import** | Tickets brought in from a CSV file, after a dry run | Site administrators |
 
+A card for a section not offered to everyone says who it is for: **For site and configuration
+administrators** or **For site administrators**.
+
 You only see the sections you may do. If you cannot make tracks, **Tracks and tickets** asks you to
 open one of yours instead. The server still decides every change: a step you are not allowed to
 do shows the usual refusal, and you can choose **Next** to go past it.

@@ -112,8 +112,8 @@ export function NotificationsSection({ client }: NotificationsSectionProps) {
       className="glass-card account-section"
       id="notifications"
     >
+      {/* The page's intro says what this holds and that changes save at once (D17). */}
       {title}
-      <p className="page-note">{t('notifications.intro')}</p>
       <fieldset className="notification-delivery">
         <legend>{t('notifications.email')}</legend>
         {DELIVERIES.map((delivery) => (
