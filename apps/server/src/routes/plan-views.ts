@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import { compileCondition, compileQuery } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
 import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
+import { draftMarks, draftOverlay } from '../plans/drafts';
 import {
   calendarQuery,
   filterQuery,
@@ -23,6 +24,7 @@ import {
 } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { countBulkExport } from '../security/alerts';
+import { viewScenario } from './plan-scenarios';
 import { planVisible } from './plans';
 import { searchRefusal } from './search';
 
@@ -50,6 +52,11 @@ import { searchRefusal } from './search';
  *
  * With `export=true` the Timeline and the Calendar answer the same, read fresh for a file on the
  * page (PLN-014), and the read counts as a bulk export for the alert rule (ADR-109).
+ *
+ * With `scenario=<id>` the Timeline and the Calendar read that scenario's drafts (ADR-122 stage
+ * 6): days drafted on tickets the viewer is shown replace the live ones, and a drafted item says
+ * so (`draft`); which tickets are listed never comes from drafts. A scenario missing or of
+ * another plan answers 400 `invalid_fields` `{ scenario: 'not_found' }`.
  *
  * Rescheduling is the ticket's own change (`PATCH /tickets/:key`), with its permission
  * ("Schedule tickets"), history and events.
@@ -375,15 +382,22 @@ export function registerPlanViewRoutes(
     const f = timelineQuery.safeParse(request.query ?? {});
     if (!f.success)
       return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(f.error) });
-    const { export: exporting, ...filters } = f.data;
+    const { export: exporting, scenario: scenarioParam, ...filters } = f.data;
     try {
       const opened = await open(request, reply, filters);
       if (!opened) return reply;
       const { plan, tickets } = opened;
       const ws = request.workspaceId;
+      const scenario = await viewScenario(db, ws, plan.id, scenarioParam, tickets.unfiltered);
+      if (scenario === 'not_found') {
+        return reply.code(400).send({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+      }
       if (exporting) await countBulkExport(db, ws, request.user?.id as number);
+      const over = draftOverlay(scenario?.id ?? null, tickets.unfiltered);
+      const inScenario = scenario ? { scenario } : {};
       const none = {
         plan,
+        ...inScenario,
         query: tickets.query,
         items: [],
         links: [],
@@ -424,7 +438,7 @@ export function registerPlanViewRoutes(
           await sql<ItemRow>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
                    h.rank AS level_rank, h.kind AS level_kind, k.parent_id, s.name AS status,
-                   s.stage, k.start_date::text, k.due_date::text,
+                   s.stage, ${over.start}::text AS start_date, ${over.due}::text AS due_date,
                    ${SPRINT_OF('start_at')}::text AS sprint_start,
                    ${SPRINT_OF('end_at')}::text AS sprint_end,
                    k.track_id, k.assignee_id, u.name AS assignee_name, pr.name AS priority
@@ -435,6 +449,7 @@ export function registerPlanViewRoutes(
               JOIN hierarchy_level h ON h.id = y.level_id
               LEFT JOIN app_user u ON u.id = k.assignee_id
               LEFT JOIN priority pr ON pr.id = k.priority_id
+              ${over.join}
              WHERE k.id = ANY(${ids}::int[])
              ORDER BY k.rank, k.id`.execute(trx)
         ).rows;
@@ -455,11 +470,12 @@ export function registerPlanViewRoutes(
                WHERE tree.depth < 10 AND ${seen}
             )
             SELECT tree.root AS id,
-                   min(COALESCE(k.start_date, ${SPRINT_OF('start_at')}))::text AS start,
-                   max(COALESCE(k.due_date, ${SPRINT_OF('end_at')}))::text AS due,
+                   min(COALESCE(${over.start}, ${SPRINT_OF('start_at')}))::text AS start,
+                   max(COALESCE(${over.due}, ${SPRINT_OF('end_at')}))::text AS due,
                    count(*)::int AS total,
                    count(*) FILTER (WHERE k.closed_at IS NOT NULL)::int AS closed
               FROM tree JOIN ticket k ON k.id = tree.id
+              ${over.join}
              WHERE tree.depth > 0
              GROUP BY tree.root`.execute(trx)
         ).rows;
@@ -473,7 +489,8 @@ export function registerPlanViewRoutes(
         const links = deps.links;
         const elsewhere = deps.elsewhere;
         const linkTypeIds = deps.linkTypeIds;
-        return { rows, rollups, links, elsewhere, linkTypeIds, ids, more };
+        const marks = await draftMarks(trx, scenario?.id ?? null, ids);
+        return { rows, rollups, links, elsewhere, linkTypeIds, ids, more, marks };
       });
       if (answer.rows.length === 0) return none;
       const parents = [
@@ -491,8 +508,10 @@ export function registerPlanViewRoutes(
         tracks: await tracksOf(trx, trackIds, browses),
       }));
       const rollupOf = new Map(answer.rollups.map((r) => [r.id, r]));
+      const marks = 'marks' in answer ? answer.marks : new Map();
       return {
         plan,
+        ...inScenario,
         query: tickets.query,
         items: answer.rows.map((i) => {
           const own = i.start_date !== null || i.due_date !== null;
@@ -516,6 +535,7 @@ export function registerPlanViewRoutes(
             assignee:
               i.assignee_id === null ? null : { id: i.assignee_id, name: i.assignee_name ?? '' },
             priority: i.priority,
+            ...(marks.has(i.id) ? { draft: marks.get(i.id) } : {}),
           };
         }),
         links: answer.links,
@@ -534,7 +554,7 @@ export function registerPlanViewRoutes(
   app.get('/api/v1/plans/:id/calendar', async (request, reply) => {
     const q = calendarQuery.safeParse(request.query ?? {});
     if (!q.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { from, to, export: exporting, ...filters } = q.data;
+    const { from, to, export: exporting, scenario: scenarioParam, ...filters } = q.data;
     const span = (Date.parse(to) - Date.parse(from)) / 86_400_000;
     if (span < 0 || span > MAX_CALENDAR_DAYS) {
       return reply.code(400).send({ error: 'invalid_request', detail: 'range' });
@@ -543,9 +563,22 @@ export function registerPlanViewRoutes(
       const opened = await open(request, reply, filters);
       if (!opened) return reply;
       const { plan, tickets } = opened;
+      const scenario = await viewScenario(
+        db,
+        request.workspaceId,
+        plan.id,
+        scenarioParam,
+        tickets.unfiltered,
+      );
+      if (scenario === 'not_found') {
+        return reply.code(400).send({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+      }
       if (exporting) await countBulkExport(db, request.workspaceId, request.user?.id as number);
+      const over = draftOverlay(scenario?.id ?? null, tickets.unfiltered);
+      const inScenario = scenario ? { scenario } : {};
       const none = {
         plan,
+        ...inScenario,
         query: tickets.query,
         tickets: [],
         tracks: [],
@@ -570,27 +603,34 @@ export function registerPlanViewRoutes(
             trackId: number;
           }>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type, s.stage,
-                   k.start_date::text AS start, k.due_date::text AS due, k.track_id AS "trackId"
+                   ${over.start}::text AS start, ${over.due}::text AS due,
+                   k.track_id AS "trackId"
               FROM ticket k
               JOIN track t ON t.id = k.track_id
               JOIN status s ON s.id = k.status_id
               JOIN ticket_type y ON y.id = k.ticket_type_id
+              ${over.join}
              WHERE ${where}
-               AND (k.due_date BETWEEN ${from}::date AND ${to}::date
-                    OR k.start_date BETWEEN ${from}::date AND ${to}::date)
-             ORDER BY COALESCE(k.due_date, k.start_date), k.rank, k.id
+               AND (${over.due} BETWEEN ${from}::date AND ${to}::date
+                    OR ${over.start} BETWEEN ${from}::date AND ${to}::date)
+             ORDER BY COALESCE(${over.due}, ${over.start}), k.rank, k.id
              LIMIT ${LISTED + 1}`.execute(trx)
         ).rows;
         const listed = rows.slice(0, LISTED);
         const trackIds = [...new Set([...listed.map((r) => r.trackId), ...sourceTracks(tickets)])];
+        const marks = await draftMarks(
+          trx,
+          scenario?.id ?? null,
+          listed.map((r) => r.id),
+        );
         return {
-          tickets: listed,
+          tickets: listed.map((r) => (marks.has(r.id) ? { ...r, draft: marks.get(r.id) } : r)),
           tracks: await tracksOf(trx, trackIds, browses),
           ...(await markers(trx, ws, trackIds.filter(browses), { from, to })),
           truncated: rows.length > LISTED,
         };
       });
-      return { plan, query: tickets.query, ...answer };
+      return { plan, ...inScenario, query: tickets.query, ...answer };
     } catch (error) {
       return searchRefusal(reply as FastifyReply, error, timeoutMs);
     }

@@ -200,6 +200,17 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/plans/:id/program-boards/:boardId']).toBe('read');
     expect(classes['PATCH /api/v1/plans/:id/program-boards/:boardId']).toBe('write');
     expect(classes['DELETE /api/v1/plans/:id/program-boards/:boardId']).toBe('write');
+    // [IAM-007] Scenarios and draft changes (PLN-002, PLN-003): reads read, every change writes.
+    expect(classes['GET /api/v1/plans/:id/scenarios']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/scenarios']).toBe('write');
+    expect(classes['PATCH /api/v1/plans/:id/scenarios/:sid']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id/scenarios/:sid']).toBe('write');
+    expect(classes['POST /api/v1/plans/:id/scenarios/:sid/promote']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/scenarios/:sid/changes']).toBe('read');
+    expect(classes['PUT /api/v1/plans/:id/scenarios/:sid/drafts']).toBe('write');
+    expect(classes['POST /api/v1/plans/:id/scenarios/:sid/discard']).toBe('write');
+    expect(classes['POST /api/v1/plans/:id/scenarios/:sid/apply']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/compare']).toBe('read');
     // [IAM-007] Releases across tracks (PLN-007): reads read, changes write.
     expect(classes['GET /api/v1/cross-track-releases']).toBe('read');
     expect(classes['GET /api/v1/cross-track-releases/candidates']).toBe('read');

@@ -248,6 +248,14 @@ export const AUDITED_EVENTS = [
   'plan.program_board_created',
   'plan.program_board_updated',
   'plan.program_board_deleted',
+  // Scenarios and draft changes (PLN-002, PLN-003): the plan's content others see, audited.
+  'plan.scenario_created',
+  'plan.scenario_updated',
+  'plan.scenario_deleted',
+  'plan.scenario_promoted',
+  'plan.drafts_set',
+  'plan.drafts_discarded',
+  'plan.drafts_committed',
   // Releases across tracks (PLN-007): configuration others may see, as plans are.
   'cross_track_release.created',
   'cross_track_release.updated',

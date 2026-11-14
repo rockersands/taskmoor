@@ -79,6 +79,7 @@ import { registerOAuthRoutes, resourceMetadataUrl } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPersonalDataRoutes } from './routes/personal-data';
 import { registerPlanCapacityRoutes } from './routes/plan-capacity';
+import { registerPlanScenarioRoutes } from './routes/plan-scenarios';
 import { registerPlanViewRoutes } from './routes/plan-views';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -604,6 +605,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerProgramBoardRoutes(app, db, {
       catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Scenarios and draft changes (ADR-122 stage 6): applying runs the ticket's own change.
+    registerPlanScenarioRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      authorizer,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerCrossTrackReleaseRoutes(app, db, {

@@ -118,9 +118,21 @@ export const filterShape = {
 export const filterQuery = z.object(filterShape).strict();
 export type PlanFilters = z.infer<typeof filterQuery>;
 
+/**
+ * `scenario=`: the Timeline, the Calendar, Capacity and program boards read with that scenario's
+ * drafts (ADR-122 stage 6); without it they read the tickets as they are.
+ */
+export const scenarioShape = {
+  scenario: z
+    .string()
+    .regex(/^[1-9]\d{0,9}$/)
+    .refine((v) => Number(v) <= MAX_INT, 'too_large')
+    .optional(),
+};
+
 /** Reading a view for a file (PLN-014): the same answer, and it counts as a bulk export. */
 const exporting = { export: z.literal('true').optional() };
-export const timelineQuery = z.object({ ...filterShape, ...exporting }).strict();
+export const timelineQuery = z.object({ ...filterShape, ...scenarioShape, ...exporting }).strict();
 
 /** A copy of a plan (PLN-014): only its name is asked for. */
 export const duplicateBody = z.object({ name }).strict();
@@ -145,7 +157,7 @@ export const exportQuery = z
 
 const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
 export const calendarQuery = z
-  .object({ ...filterShape, ...exporting, from: day, to: day })
+  .object({ ...filterShape, ...scenarioShape, ...exporting, from: day, to: day })
   .strict();
 /** The longest range a calendar asks for: the six weeks a month shows, and some room. */
 export const MAX_CALENDAR_DAYS = 100;
@@ -156,6 +168,7 @@ export const MAX_PERIODS = 12;
 export const capacityQuery = z
   .object({
     ...filterShape,
+    ...scenarioShape,
     from: day.optional(),
     periods: z.coerce.number().int().min(1).max(MAX_PERIODS).optional(),
   })
