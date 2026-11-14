@@ -240,7 +240,7 @@ describe('directory administration (M1-082)', () => {
     // Asks first, naming how many go (D13); Escape gives the focus back, sending nothing.
     await user.click(trigger);
     const question = within(failing).getByRole('group', {
-      name: 'A full sync of Research lab starts now and removes 812 of its 1,200 people: the ones that left the directory. Those people are deactivated and keep their work.',
+      name: 'A full sync of Research lab starts now and removes 812 of its 1,200 people: the ones that left the directory. Those people are deactivated and keep their work. Any groups that left it are deleted, which cannot be undone.',
     });
     expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.keyboard('{Escape}');
@@ -265,6 +265,32 @@ describe('directory administration (M1-082)', () => {
     expect(
       within(failing).getByRole('button', { name: 'Sync all of Research lab now' }),
     ).toHaveFocus();
+  });
+
+  it('[IAM-005] a stop that counts groups says they are deleted for good, and what happens to people', async () => {
+    const user = userEvent.setup();
+    const lab: Directory = {
+      ...LAB,
+      enabled: true,
+      lastRun: {
+        ...FAILED,
+        error:
+          'safety_stop: the run would remove 30 of 40 groups; check the filters, or run a full sync confirming removals',
+      },
+    };
+    openPage({
+      'GET /directories': () =>
+        jsonResponse(200, { directories: [HEAD_OFFICE, lab], presets: PRESETS }),
+    });
+    const failing = await directoryItem('Research lab');
+    await user.click(
+      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+    );
+    expect(
+      within(failing).getByRole('group', {
+        name: 'A full sync of Research lab starts now and removes 30 of its 40 groups: the ones that left the directory. Those groups are deleted, which cannot be undone. Any people who left it are deactivated and keep their work.',
+      }),
+    ).toBeVisible();
   });
 
   it('[IAM-005] keeps the safety stop question open when the sync is refused', async () => {

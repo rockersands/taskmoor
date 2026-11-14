@@ -145,7 +145,9 @@ A sync that would remove more than half of a directory's people or groups (when 
 more) stops before changing anything, because a broken filter must not deactivate everyone.
 The history says so. If the removals are right, select **Sync and remove**, in the danger
 colour. It asks first, saying how many people or groups the full sync will remove and what
-happens to them. Its answer, **Sync** *directory* **and remove what left it**, runs the full
+happens to them: people are deactivated and keep their work, and groups are deleted, which
+cannot be undone. Whichever the stop counted, the question also says what happens to the other.
+Its answer, **Sync** *directory* **and remove what left it**, runs the full
 sync that confirms them; **Cancel** leaves everything as it is.
 
 ## Signing in through a directory
