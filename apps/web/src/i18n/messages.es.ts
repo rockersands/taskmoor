@@ -1129,6 +1129,7 @@ export const messagesEs: Record<MessageId, string> = {
   'mcp.intro':
     'Los agentes y asistentes de IA se conectan a Taskmoor mediante el Model Context Protocol con el token de API de una persona. Solo pueden hacer lo que esa persona y ese token pueden, y cada llamada a una herramienta queda en el registro de auditoría.',
   'mcp.failed': 'No se pudo cargar la configuración de MCP.',
+  'mcp.forbidden': 'Solo los administradores del sitio cambian la configuración del servidor MCP.',
   'mcp.formLabel': 'Configuración de MCP',
   'mcp.enabled': 'Permitir que se conecten agentes',
   'mcp.profile': 'Herramientas que reciben los agentes',

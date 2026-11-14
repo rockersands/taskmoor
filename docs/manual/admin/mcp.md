@@ -2,7 +2,7 @@
 title: "The MCP server"
 audience: admins
 sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/oauth.ts, apps/server/src/oauth/clients.ts, apps/server/src/oauth/tokens.ts, apps/web/src/oauth/ConsentPage.tsx, docs/adr/0084-oauth-for-mcp-clients.md
-accessed: 2026-11-13
+accessed: 2026-11-14
 attestation: own-words
 ---
 # The MCP server
@@ -38,7 +38,8 @@ administrators change this on **Administration**, then **MCP server**:
   working until it ends.
 
 Select **Save MCP settings**. The change applies to the next request; there is nothing to
-restart.
+restart. Anyone else who opens the page sees only its title and that site administrators change
+these settings.
 
 The list of allowed clients matches the name a client gives about itself. It keeps unexpected
 tools out, but it is not a credential: the token is.

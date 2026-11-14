@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
-import { api } from '../api/client';
+import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { useSession } from '../session/SessionProvider';
 import { PageHeader } from '../shell/PageHeader';
 import { BreakAtSlashes } from './BreakAtSlashes';
 
@@ -49,30 +50,46 @@ export function McpPage({
 }) {
   const t = useT();
   const id = useId();
+  const { session } = useSession();
+  const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [settings, setSettings] = useState<McpSettings | null>(null);
   const [clients, setClients] = useState('');
   const [failed, setFailed] = useState(false);
+  // Someone who may not change these is told only so (T-222), as the other admin pages do.
+  const [forbidden, setForbidden] = useState(notAdmin);
   const [status, setStatus] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
+    if (notAdmin) return;
     client.load().then(
       (s) => {
         setSettings(s);
         setClients(s.allowedClients.join('\n'));
       },
-      () => setFailed(true),
+      (error) => {
+        if (error instanceof ApiError && error.status === 403) setForbidden(true);
+        else setFailed(true);
+      },
     );
-  }, [client]);
+  }, [client, notAdmin]);
 
   const header = (
     <PageHeader
       titleId={`${id}-title`}
       title={t('mcp.title')}
-      purpose={t('settings.mcpHint')}
-      about={t('mcp.intro')}
+      {...(forbidden ? {} : { purpose: t('settings.mcpHint'), about: t('mcp.intro') })}
     />
   );
+
+  if (forbidden) {
+    return (
+      <section className="page admin-page mcp-page" aria-labelledby={`${id}-title`}>
+        {header}
+        <p className="page-note">{t('mcp.forbidden')}</p>
+      </section>
+    );
+  }
 
   if (failed) {
     return (
