@@ -297,10 +297,11 @@
   background: var(--color-danger-soft);
 }
 
+/* The pencil sits by the value it changes (PL-10), not across the cell by the next column. */
 .search-cell-view {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-2);
 }
 

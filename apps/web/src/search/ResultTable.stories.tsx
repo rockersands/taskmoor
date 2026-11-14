@@ -192,6 +192,18 @@ export const FitsTheCardAt1280: Story = {
     await expect(
       next.getBoundingClientRect().left - pencil.getBoundingClientRect().right,
     ).toBeGreaterThanOrEqual(32);
+    // And it sits by the value it changes, not across the cell by the next column (PL-10).
+    for (const column of ['assignee', 'priority']) {
+      for (const cell of cellsOf(table, column)) {
+        const value = cell.querySelector('.search-cell-value');
+        const edit = cell.querySelector('.search-cell-edit');
+        if (!value || !edit) throw new Error(`No value or pencil in ${column}`);
+        await expect(
+          edit.getBoundingClientRect().left - value.getBoundingClientRect().right,
+          `${column}: ${value.textContent}`,
+        ).toBeLessThanOrEqual(12);
+      }
+    }
   },
 };
 
