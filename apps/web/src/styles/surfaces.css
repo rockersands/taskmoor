@@ -1469,15 +1469,31 @@
 }
 
 /*
- * On a phone a glass card keeps its tint, sheen and rim but blurs nothing behind it. A card there
- * is as wide as the window and can be several windows tall (Account's notifications, about
- * 2,500 px), and in the second sweep Chromium drew such a card's blurred backdrop out of step with
- * the canvas after a scroll: a hard band of another part of the picture across the whole card,
- * while the gutter beside it stayed right. Without a backdrop filter the canvas shows through the
- * tint as it is, which a phone's narrow gutters make look the same as the blur did.
+ * On a phone a glass card is the opaque surface of its skin, as where glass cannot blur (tokens.css):
+ * no blur and no translucency, the rim a plain border, and what sits inside it (wells, fields) on
+ * the opaque tokens too. A card there is as wide as the window and can be several windows tall
+ * (Account's notifications, about 2,500 px), and in the second sweep Chromium drew such a card's
+ * blurred backdrop out of step with the canvas after a scroll: a hard band of another part of the
+ * picture across the whole card, while the gutter beside it stayed right. The trigger was not
+ * reproduced outside the app; an opaque card shows nothing behind it, so it cannot show it wrongly.
+ * The tokens are set again on the card, so `--glass-fill` is worked out from its own values.
  */
 @media (max-width: 767px) {
   .glass-card {
+    --glass-surface: var(--color-surface);
+    --glass-surface-chrome: var(--color-surface);
+    --glass-surface-strong: var(--color-surface-raised);
+    --glass-lens-fill: transparent;
+    --glass-surface-sunken: var(--color-surface-sunken);
+    --field-surface: var(--color-surface-raised);
+    --glass-tint-accent: var(--color-accent-soft);
+    --glass-blur: 0px;
+    --glass-blur-strong: 0px;
+    --glass-sheen: linear-gradient(transparent, transparent);
+    --glass-rim: linear-gradient(var(--color-border), var(--color-border));
+    --glass-fill: var(--glass-sheen), var(--glass-surface);
+    --glass-fill-chrome: var(--glass-sheen), var(--glass-surface-chrome);
+    --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
