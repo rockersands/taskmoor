@@ -84,8 +84,8 @@ Through the API, a field's `config` sets how some types behave: `maxChars` for a
 as `EUR`) for a number; `display` (`dropdown`, `radio`, `checkboxes`) for a choice list.
 
 Taskmoor does not yet offer track pickers, checklists or the other types of the full
-catalogue. The web page that makes a ticket does not yet offer people, group, team, release or
-area values; set them through the API, a CSV import or bulk changes.
+catalogue. The form that makes a ticket offers pickers for person, group, team, release and area
+fields, as the ticket page does.
 
 ### Adding and managing fields
 
