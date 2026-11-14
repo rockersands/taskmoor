@@ -430,6 +430,60 @@ describe('rich text formats and mentions (M1-017)', () => {
     ).toBe(400);
   });
 
+  it('[CORE-008] [IAM-010] finds the few who may be assigned however many matching names sort before them', async () => {
+    // 130 people whose names match "an" and sort first, none of them in the track, then one
+    // member who may be assigned: more than any single page the search reads.
+    const crowd = await database.db
+      .insertInto('app_user')
+      .values(
+        Array.from({ length: 130 }, (_, i) => ({
+          workspace_id: 1,
+          email: `crowd${i}@example.com`,
+          name: `Ana ${String(i).padStart(3, '0')}`,
+          password_hash: null,
+        })),
+      )
+      .returning('id')
+      .execute();
+    const dan = await database.db
+      .insertInto('app_user')
+      .values({ workspace_id: 1, email: 'dan@example.com', name: 'Dan Ortiz', password_hash: null })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const track = await database.db
+      .selectFrom('track')
+      .select('id')
+      .where('key', '=', 'RT')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('track_role_actor')
+      .values({
+        workspace_id: 1,
+        track_id: track.id,
+        role_id: await roleId('Members'),
+        user_id: dan.id,
+      })
+      .execute();
+    try {
+      const res = await as('alice', {
+        method: 'GET',
+        url: '/api/v1/people/mentionable?track=RT&q=an&assignable=true&limit=8',
+      });
+      expect(res.statusCode, res.body).toBe(200);
+      expect(res.json().people).toEqual([{ id: dan.id, name: 'Dan Ortiz', canView: true }]);
+    } finally {
+      await database.db.deleteFrom('track_role_actor').where('user_id', '=', dan.id).execute();
+      await database.db
+        .deleteFrom('app_user')
+        .where(
+          'id',
+          'in',
+          [...crowd, dan].map((r) => r.id),
+        )
+        .execute();
+    }
+  });
+
   it('[NTF-005] offers no one to people without "Browse users and groups"', async () => {
     await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
     try {

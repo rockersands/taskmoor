@@ -111,15 +111,22 @@ export function registerRichTextRoutes(
         ]),
       );
     }
-    // A few more than asked, so those who can see the ticket fill the list first.
-    const rows = await query
-      .orderBy(sql`lower(name)`)
-      .orderBy('id')
-      .limit(q.data.limit * 3)
-      .execute();
+    // A few more than asked, so those who can see the ticket fill the list first. For an
+    // assignee picker the permission is checked per person, after the text match: the reading
+    // goes on, a page at a time, until enough of them may be assigned or no one is left, so a
+    // site where few may be assigned still finds them however many names come first.
     const assignableOnly = q.data.assignable === 'true';
-    const people = (
-      await Promise.all(
+    const wanted = q.data.limit * 3;
+    const page = assignableOnly ? Math.max(wanted, 100) : wanted;
+    const people: { id: number; name: string; canView: boolean }[] = [];
+    for (let offset = 0; ; offset += page) {
+      const rows = await query
+        .orderBy(sql`lower(name)`)
+        .orderBy('id')
+        .limit(page)
+        .offset(offset)
+        .execute();
+      const found = await Promise.all(
         rows.map(async (r) => {
           if (
             assignableOnly &&
@@ -135,8 +142,10 @@ export function registerRichTextRoutes(
             : await as.can('browse_track', trackId as number);
           return { id: r.id, name: r.name, canView };
         }),
-      )
-    ).filter((p) => p !== null);
+      );
+      for (const p of found) if (p !== null) people.push(p);
+      if (!assignableOnly || rows.length < page || people.length >= wanted) break;
+    }
     people.sort((a, b) => Number(b.canView) - Number(a.canView));
     return { people: people.slice(0, q.data.limit) };
   });
