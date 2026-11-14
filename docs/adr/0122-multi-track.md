@@ -3097,11 +3097,18 @@ the build differs from the design above, or settles what it left open:
   of run replace each other's proposals shows when Even out load is chosen.
 - **Measured, not enforced** (the user's hold on benchmarking): `evenOut` alone on 10,000 tickets,
   20,000 links, 300 people and 12 periods, about 200 ms (`evenOut.large.test.ts`).
+- **The e2e** `apps/web/e2e/plan-baselines.spec.ts` is built, on a desktop and a phone: a
+  baseline compared after a ticket moves later, the critical path in words, and Even out load into
+  a scenario with a kept ticket staying. The critical path route's limits have tests in
+  `routes/plan-dependencies.test.ts`: the chains cut at 500 tickets with `more`, and 409
+  `plan_too_large` above 50,000 open tickets.
+- **The page's even-out count:** an even-out answer's `counts` carry `moved` (tickets moved or
+  pushed whose proposal stands), since the list of tickets is cut at 2,000 with those not moved
+  first; the result reads it rather than counting the list.
 - **Not yet done:** the budgets in `plans.large.test.ts` (a capture and a comparison of 50,000
-  tickets; `criticalPath` on 50,000 tickets and 100,000 links, and its route); the e2e
-  `plan-baselines.spec.ts`; a contract scenario with `mode: 'even_out'` (the existing one checks the
-  new payload fields with `'fill'`); `fakeScenarioClient`'s run ignores `mode`; a `TimelinePage`
-  story with the critical marks on. `docs/api` lists the five baseline routes and the critical
+  tickets; `criticalPath` on 50,000 tickets and 100,000 links, and its route); a contract scenario
+  with `mode: 'even_out'` (the existing one checks the new payload fields with `'fill'`);
+  `fakeScenarioClient`'s run ignores `mode`; a `TimelinePage` story with the critical marks on. `docs/api` lists the five baseline routes and the critical
   path's, all internal.
 
 #### Questions for the user (the design takes the first answer each time)

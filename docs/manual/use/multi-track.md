@@ -143,11 +143,13 @@ Turn it on with **Critical path**, beside the Timeline's zoom buttons; the page'
 days or else its sprint's, read in the scenario you chose. It goes through **Blocks** links and
 the link types the plan's [dependency options](#dependency-options) count. Closed tickets are left
 out and hold nothing up. A parent with no days of its own, whose bar is only its children's span,
-is not on the path; its children are. Some tickets are only counted, never named:
+is not on the path; its children are. Some things are only counted, never named:
 
 - tickets in a circle of dependencies, which have no slack;
-- tickets that wait for work outside the plan or not shown to you; that work is not counted, so
-  their own slack can be shorter than it looks;
+- work outside the plan or not shown to you that a ticket waits for. The tickets waiting are
+  counted ("1 ticket waits for work outside this plan…") and stay on the path, named where they
+  are on it, but the work they wait for is never named and holds nothing in their slack, so
+  their slack can be shorter than it looks;
 - open tickets without dates, which are left out.
 
 **It is yours:** the path runs over the whole plan as it shows it to you, whatever the filters,
@@ -575,9 +577,9 @@ in a scenario, as for any run.
 - **What it blocks:** a ticket it blocks that would now start on or before its new end moves too,
   to start the day after it, keeping its length, and so on along the chain. When that would move a
   ticket that may not move (a kept or left-out one, one above the lowest level, one dated only by
-  its sprint, one in a circle) or take a ticket past the run's last day, the whole move is undone,
-  the ticket stays, and the next one is tried. So the run makes no dependency late between the
-  tickets it reads.
+  its sprint, one in a circle, one waiting on a ticket the plan does not show you) or take a ticket
+  past the run's last day, the whole move is undone, the ticket stays, and the next one is tried.
+  So the run makes no dependency late between the tickets it reads.
 - **No room:** when no later period has room, the ticket stays. If the period is still over at the
   end, its tickets that could not move say "Still over" and the period is reported; if another
   ticket's move made it fit, they are simply left where they are.
