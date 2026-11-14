@@ -17,8 +17,9 @@ export interface PublishPanelProps {
   /** The draft's statuses, where tickets of dropped statuses may go. */
   draftStatusIds: readonly number[];
   /**
-   * The draft has no transitions and nothing to keep it so (no rule, no board): the server
-   * publishes it with a move into every status, as a new workflow gets (T-246; WF-008 (4)).
+   * The draft has no transitions and no rule: the server publishes it with a move into every
+   * status, as a new workflow gets (T-246; WF-008 (4)). A board-managed workflow always has its
+   * columns' moves, so it never gets here.
    */
   freeMoves?: boolean;
   busy: boolean;

@@ -483,9 +483,7 @@ export function fakeWorkflowsClient(
       // server also sets or clears the close reason, which this fake leaves out).
       const definition = draft.definition;
       const moving =
-        definition.transitions.length === 0 &&
-        Object.keys(definition.rules ?? {}).length === 0 &&
-        !definition.board
+        definition.transitions.length === 0 && Object.keys(definition.rules ?? {}).length === 0
           ? {
               ...definition,
               transitions: definition.statuses.map((x, index) => ({

@@ -712,9 +712,7 @@ export function WorkflowEditorPage({
           names={names}
           draftStatusIds={statusIdsOf(working)}
           freeMoves={
-            working.transitions.length === 0 &&
-            Object.keys(working.rules ?? {}).length === 0 &&
-            !working.board
+            working.transitions.length === 0 && Object.keys(working.rules ?? {}).length === 0
           }
           busy={busy}
           error={publishError}
