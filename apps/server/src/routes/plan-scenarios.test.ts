@@ -10,7 +10,15 @@ import { SESSION_COOKIE } from '../auth';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
-import { refusalOf } from '../plans/drafts';
+import {
+  clearSchedulerDrafts,
+  draftedTickets,
+  draftOverlay,
+  lockScenario,
+  refusalOf,
+  TooManyDrafts,
+  writeDrafts,
+} from '../plans/drafts';
 
 // Made for this run: no password is written in the repository.
 const PASSWORD = `plan-scenario-${randomBytes(18).toString('base64url')}`;
@@ -43,6 +51,7 @@ interface Change {
   mayApply: boolean;
   needs: string | null;
   refusal: { reason: string; permission?: string } | null;
+  origin: 'person' | 'scheduler';
   updatedBy: { id: number; name: string };
 }
 interface ChangeList {
@@ -1884,5 +1893,207 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
       notShown: 1,
     });
     expect((await live(retired.id)).due).toBe('2027-05-03');
+  });
+
+  it('[PLN-002] [PLN-004] says scheduler on the change list and the draft marks of the auto-scheduler’s drafts, until a person takes them over', async () => {
+    // A track of its own: an earlier case wrote SCA's tickets past its numbering.
+    tracks.SCS = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'SCS', name: 'Scheduled', mode: 'shared' },
+        },
+        201,
+      )
+    ).track.id;
+    await member('ana', 'SCS', 'Members');
+    const auto = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: {
+            name: 'Auto',
+            sources: [{ kind: 'track', trackId: tracks.SCS }],
+            shares: [{ scope: 'any_user' }],
+          },
+        },
+        201,
+      )
+    ).plan.id as number;
+    const one = await ticket('SCS', 'Proposed one', {
+      startDate: '2027-07-05',
+      dueDate: '2027-07-09',
+    });
+    const two = await ticket('SCS', 'Proposed two', { dueDate: '2027-07-09' });
+    const mine = await ticket('SCS', 'Drafted by hand', { dueDate: '2027-07-09' });
+    const run = (await makeScenario('admin', 'Run', {}, auto)).scenario;
+    // The run's write: under the scenario's lock, through the one writer, as the auto-scheduler.
+    const since = await lastEventId();
+    await database.db.transaction().execute(async (trx) => {
+      expect(await lockScenario(trx, auto, run.id)).toEqual({ id: run.id, applying_since: null });
+      // A scenario of another plan is not this plan's to lock.
+      expect(await lockScenario(trx, planId, run.id)).toBeUndefined();
+      const written = await writeDrafts(trx, {
+        workspaceId: 1,
+        planId: auto,
+        scenarioId: run.id,
+        updatedBy: users.admin?.id as number,
+        origin: 'scheduler',
+        keep: true,
+        changes: [
+          { ticketId: one.id, field: 'startDate', value: '2027-07-12', live: '2027-07-05' },
+          { ticketId: one.id, field: 'dueDate', value: '2027-07-16', live: '2027-07-09' },
+          { ticketId: two.id, field: 'dueDate', value: '2027-07-23', live: '2027-07-09' },
+        ],
+      });
+      expect(written.set).toHaveLength(3);
+      expect(await draftedTickets(trx, run.id)).toBe(2);
+    });
+    // Writing drafts emits nothing by itself: the caller emits.
+    expect(await eventsOf('plan.drafts_set', since)).toEqual([]);
+    await draft('admin', run.id, [{ ticketId: mine.id, dueDate: '2027-07-30' }], 200, auto);
+
+    const originOf = (list: ChangeList) =>
+      Object.fromEntries(list.changes.map((c) => [c.ticketId, c.origin]));
+    expect(originOf(await changes('admin', run.id, '', auto))).toEqual({
+      [one.id]: 'scheduler',
+      [two.id]: 'scheduler',
+      [mine.id]: 'person',
+    });
+    // Ana sees SCS: the same words for her.
+    expect(originOf(await changes('ana', run.id, '', auto))[one.id]).toBe('scheduler');
+
+    const timeline = async () =>
+      (
+        (await call('admin', {
+          method: 'GET',
+          url: `${plan(auto)}/timeline?scenario=${run.id}`,
+        })) as { items: { id: number; draft?: { origin: string } }[] }
+      ).items;
+    const markOf = (items: Awaited<ReturnType<typeof timeline>>, id: number) =>
+      items.find((i) => i.id === id)?.draft;
+    let items = await timeline();
+    expect(markOf(items, one.id)).toMatchObject({
+      startDate: { now: '2027-07-05' },
+      dueDate: { now: '2027-07-09' },
+      stale: false,
+      origin: 'scheduler',
+    });
+    expect(markOf(items, two.id)?.origin).toBe('scheduler');
+    expect(markOf(items, mine.id)?.origin).toBe('person');
+    const calendar = await call('admin', {
+      method: 'GET',
+      url: `${plan(auto)}/calendar?from=2027-07-12&to=2027-07-18&scenario=${run.id}`,
+    });
+    expect(calendar.tickets.find((x: { id: number }) => x.id === one.id)?.draft?.origin).toBe(
+      'scheduler',
+    );
+
+    // A run reads live days plus people's drafts only; the views read every draft.
+    const daysOf = async (origin?: 'person' | 'scheduler') => {
+      const over = draftOverlay(run.id, sql<boolean>`true`, 'dr', origin ? { origin } : {});
+      const rows = (
+        await sql<{ id: number; start: string | null; due: string | null }>`
+          SELECT k.id, (${over.start})::text AS start, (${over.due})::text AS due
+            FROM ticket k ${over.join}
+           WHERE k.id = ANY(${[one.id, two.id, mine.id]}::int[])`.execute(database.db)
+      ).rows;
+      return Object.fromEntries(rows.map((r) => [r.id, [r.start, r.due]]));
+    };
+    expect(await daysOf()).toEqual({
+      [one.id]: ['2027-07-12', '2027-07-16'],
+      [two.id]: [null, '2027-07-23'],
+      [mine.id]: [null, '2027-07-30'],
+    });
+    expect(await daysOf('person')).toEqual({
+      [one.id]: ['2027-07-05', '2027-07-09'],
+      [two.id]: [null, '2027-07-09'],
+      [mine.id]: [null, '2027-07-30'],
+    });
+    expect((await daysOf('scheduler'))[mine.id]).toEqual([null, '2027-07-09']);
+
+    // A copy keeps each draft's origin.
+    const copy = (await makeScenario('admin', 'Run copy', { from: run.id }, auto)).scenario;
+    expect(originOf(await changes('admin', copy.id, '', auto))).toEqual({
+      [one.id]: 'scheduler',
+      [two.id]: 'scheduler',
+      [mine.id]: 'person',
+    });
+
+    // Dragging the proposed bar makes both its days the person's draft.
+    await draft(
+      'admin',
+      run.id,
+      [{ ticketId: one.id, startDate: '2027-07-13', dueDate: '2027-07-19' }],
+      200,
+      auto,
+    );
+    expect(originOf(await changes('admin', run.id, '', auto))[one.id]).toBe('person');
+    items = await timeline();
+    expect(markOf(items, one.id)?.origin).toBe('person');
+
+    // Clearing the auto-scheduler's drafts leaves people's: Proposed one's are a person's now.
+    await sql`UPDATE plan_draft SET refusal = '{"reason":"failed"}'::jsonb, refused_at = now()
+               WHERE scenario_id = ${run.id}`.execute(database.db);
+    const removed = await database.db.transaction().execute(async (trx) => {
+      await lockScenario(trx, auto, run.id);
+      return clearSchedulerDrafts(trx, run.id, [
+        { ticketId: two.id, field: 'dueDate' },
+        { ticketId: one.id, field: 'startDate' },
+        { ticketId: one.id, field: 'dueDate' },
+        { ticketId: mine.id, field: 'dueDate' },
+      ]);
+    });
+    expect(removed).toEqual([{ ticketId: two.id, field: 'dueDate' }]);
+    const left = await database.db
+      .selectFrom('plan_draft')
+      .select(['ticket_id', 'field', 'origin', 'refusal'])
+      .where('scenario_id', '=', run.id)
+      .orderBy('ticket_id')
+      .orderBy('field')
+      .execute();
+    expect(left.map((r) => [r.ticket_id, r.field, r.origin])).toEqual([
+      [one.id, 'dueDate', 'person'],
+      [one.id, 'startDate', 'person'],
+      [mine.id, 'dueDate', 'person'],
+    ]);
+    // Only a ticket that lost a draft loses its refusal; nothing else does.
+    expect(left.every((r) => r.refusal !== null)).toBe(true);
+    await sql`UPDATE plan_draft SET refusal = NULL, refused_at = NULL
+               WHERE scenario_id = ${run.id}`.execute(database.db);
+    await database.db.transaction().execute(async (trx) => {
+      await writeDrafts(trx, {
+        workspaceId: 1,
+        planId: auto,
+        scenarioId: run.id,
+        updatedBy: users.admin?.id as number,
+        origin: 'scheduler',
+        changes: [{ ticketId: mine.id, field: 'startDate', value: '2027-07-26', live: null }],
+      });
+    });
+    await sql`UPDATE plan_draft SET refusal = '{"reason":"failed"}'::jsonb, refused_at = now()
+               WHERE scenario_id = ${run.id} AND ticket_id = ${mine.id}`.execute(database.db);
+    const again = await database.db
+      .transaction()
+      .execute((trx) =>
+        clearSchedulerDrafts(trx, run.id, [{ ticketId: mine.id, field: 'startDate' }]),
+      );
+    expect(again).toEqual([{ ticketId: mine.id, field: 'startDate' }]);
+    expect(
+      await database.db
+        .selectFrom('plan_draft')
+        .select(['field', 'refusal'])
+        .where('scenario_id', '=', run.id)
+        .where('ticket_id', '=', mine.id)
+        .execute(),
+    ).toEqual([{ field: 'dueDate', refusal: null }]);
+    expect(
+      await database.db.transaction().execute((trx) => clearSchedulerDrafts(trx, run.id, [])),
+    ).toEqual([]);
+    expect(new TooManyDrafts()).toBeInstanceOf(Error);
   });
 });

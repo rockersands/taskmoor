@@ -15,17 +15,21 @@ import {
   CHANGES_PAGE,
   changesQuery,
   compareQuery,
+  createScenario,
   createScenarioBody,
   DIFFERING,
   type DraftValue,
   type DraftWrite,
   discardBody,
+  draftedTickets,
   draftOverlay,
   draftsBody,
   draftValue,
   LIMITS,
   LIVE_JSON,
   liveValue,
+  lockPlan,
+  lockScenario,
   MAX_DRAFTED_TICKETS,
   MAX_SCENARIOS,
   type Refusal,
@@ -34,6 +38,7 @@ import {
   sameValue,
   scenarioParams,
   scenarioRows,
+  TooManyDrafts,
   teamFieldOf,
   teamKey,
   versionBody,
@@ -260,23 +265,6 @@ export function registerPlanScenarioRoutes(
       return null;
     }
     return { user, plan, scenario: scenario as ScenarioRow };
-  }
-
-  /**
-   * Locks the plan's row: making, deleting and promoting scenarios take it first, so each sees the
-   * scenarios the others committed (which is main, and whether another exists). A no-key lock, so
-   * a draft written meanwhile (whose foreign keys share the plan's key) never waits on it.
-   */
-  async function lockPlan(trx: Transaction<Database>, planId: number) {
-    await trx.selectFrom('plan').select('id').where('id', '=', planId).forNoKeyUpdate().execute();
-  }
-
-  /** How many drafted tickets a scenario holds in all. */
-  async function draftedTickets(q: Db, scenarioId: number) {
-    const row = await sql<{ n: number }>`
-      SELECT count(DISTINCT ticket_id)::int AS n FROM plan_draft
-       WHERE scenario_id = ${scenarioId}::int`.execute(q);
-    return row.rows[0]?.n ?? 0;
   }
 
   /**
@@ -524,59 +512,16 @@ export function registerPlanScenarioRoutes(
     try {
       const tickets = from === undefined ? null : await shownTo(request, o.plan.id);
       const shown = tickets?.unfiltered ?? null;
-      const outcome = await db.transaction().execute(async (trx) => {
-        // The plan's row orders scenario writes, so two makers never pass the limit together.
-        await lockPlan(trx, o.plan.id);
-        const existing = await trx
-          .selectFrom('plan_scenario')
-          .select(['id'])
-          .where('plan_id', '=', o.plan.id)
-          .execute();
-        if (existing.length >= MAX_SCENARIOS) return { refused: 'too_many_scenarios' as const };
-        if (from !== undefined && !existing.some((s) => s.id === from)) {
-          return { fields: { from: 'not_found' } };
-        }
-        const made = await trx
-          .insertInto('plan_scenario')
-          .values({
-            workspace_id: ws,
-            plan_id: o.plan.id,
-            name,
-            main: existing.length === 0,
-            created_by: o.user.id,
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        let copied = 0;
-        let notShown = 0;
-        if (from !== undefined) {
-          const visible = shown
-            ? sql<boolean>`(k.deleted_at IS NULL AND ${shown})`
-            : sql<boolean>`false`;
-          const inserted = await sql<{ ticket_id: number }>`
-            INSERT INTO plan_draft (workspace_id, plan_id, scenario_id, ticket_id, field,
-                                    team_field_id, old_value, new_value, origin, updated_by)
-            SELECT d.workspace_id, d.plan_id, ${made.id}::int, d.ticket_id, d.field,
-                   d.team_field_id, d.old_value, d.new_value, d.origin, ${o.user.id}::int
-              FROM plan_draft d JOIN ticket k ON k.id = d.ticket_id
-             WHERE d.scenario_id = ${from}::int AND ${visible}
-            RETURNING ticket_id`.execute(trx);
-          copied = new Set(inserted.rows.map((r) => r.ticket_id)).size;
-          notShown =
-            (
-              await sql<{ n: number }>`
-                SELECT count(DISTINCT d.ticket_id)::int AS n
-                  FROM plan_draft d JOIN ticket k ON k.id = d.ticket_id
-                 WHERE d.scenario_id = ${from}::int AND (${visible}) IS NOT TRUE`.execute(trx)
-            ).rows[0]?.n ?? 0;
-        }
-        await emit(trx, by(request), {
-          type: 'plan.scenario_created',
-          subjectId: o.plan.id,
-          payload: { scenarioId: made.id, name, from: from ?? null, drafts: copied, notShown },
-        });
-        return { id: made.id, copied, notShown };
-      });
+      const outcome = await db.transaction().execute((trx) =>
+        createScenario(trx, by(request), {
+          workspaceId: ws,
+          planId: o.plan.id,
+          name,
+          from,
+          createdBy: o.user.id,
+          shown,
+        }),
+      );
       if ('refused' in outcome) {
         return reply.code(409).send({ error: outcome.refused, limit: MAX_SCENARIOS });
       }
@@ -862,13 +807,7 @@ export function registerPlanScenarioRoutes(
       if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
       const outcome = await db.transaction().execute(async (trx) => {
         // The scenario's lock orders drafts written to it and the limit on them.
-        const locked = await trx
-          .selectFrom('plan_scenario')
-          .select('id')
-          .where('id', '=', o.scenario.id)
-          .where('plan_id', '=', o.plan.id)
-          .forUpdate()
-          .executeTakeFirst();
+        const locked = await lockScenario(trx, o.plan.id, o.scenario.id);
         if (!locked) return { missing: true as const };
         // Days are checked against what the ticket would have: this request's drafts, else the
         // scenario's, else the live value.
@@ -1430,8 +1369,6 @@ export function registerPlanScenarioRoutes(
     }
   });
 }
-
-class TooManyDrafts extends Error {}
 
 /** A refusal as stored on its drafts: the reason and what the page says with it. */
 function refusalStored(r: Refusal): Refusal {
